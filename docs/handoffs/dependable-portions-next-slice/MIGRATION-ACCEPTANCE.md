@@ -9,6 +9,11 @@ stable verification, full PostgreSQL, signed delivery and resource disposition
 are recorded in `.task/portions-migration-20261114/delivery.json`.
 Alex owns CI monitoring; local checks do not qualify a hosted final candidate.
 
+The retained V1 continuation entered clean at matching local/remote
+`40824fbaf62a5c11170e62f312d3ff0d883e8c72`. Its separate evidence owner is
+`.task/v1-history-20261114/delivery.json`. The cooking Save repair and recorded
+push/PR CI success remain preserved; this continuation does not monitor CI.
+
 ## Authorized Portions acceptance change
 
 The required native-focus matrix now covers 320 px and 390 px at normal text in
@@ -82,8 +87,9 @@ and stack location:
 
 - 33 receipts across 14 recipes contain 140 identical duplicate `kind` sites in
   saved ingredient amount input. Duplicate properties are intentionally rejected.
-- The other 13 fail the final input-hash/derived-result consistency condition;
-  its two alternatives have not been isolated further.
+- The other 13 were originally recorded at the combined final input-hash/derived-result
+  condition. The continuation below isolates them as derived-result identity
+  mismatches, with **zero input-hash failures**.
 
 The old generated nullable union's duplicate discriminator explains a known
 producer representation hazard. It does not qualify all historical hashes/results.
@@ -111,6 +117,78 @@ executed paths establish the inspections above; unused interruption/restore
 branches are unqualified and must not become an operator procedure. The retained
 `DO-NOT-RUN.md` records this limitation. Required follow-up must reuse the shipped
 guarded CLI and snapshot/recovery owners with new evidence paths.
+
+## Retained V1 reconciliation: stopped at authority dependency
+
+The continuation restored the original dump, SHA256
+`25eab5f9bdc4f35b8385f05c86a0c384fe0b3da89c2576f04f89566d96cc9ecc`,
+into one fresh PostgreSQL 18.6 container with no network or published ports.
+All 46 operation identities, input hashes, original-request text and JSONB results
+equal the earlier copied-library inventory. Exact original-request/input UTF-8
+bytes and restored `result::text` bytes are preserved per operation beneath
+`.task/v1-history-20261114/raw/`; JSONB did not retain original result wire
+whitespace, member order or duplicate tokens. Original receipts were not rewritten.
+
+The per-receipt report is `.task/v1-history-20261114/receipt-authority.json`.
+Each record separates raw hashes, recipe/operation/version identity, original input
+and hash derivation, captured baseline/revisions, result IDs/revisions and binding
+dependencies, strict outcome and unresolved producer authority. The original
+46-receipt failure inventory remains unchanged.
+
+Both the exact extracted old assembly and a fresh build of entry HEAD reproduce
+all 46 original-request byte strings through `CaptureOriginal`, baseline hashes,
+expected content/source revisions and input hashes. This establishes the exact
+writer/DTO representation family, not which historical process wrote each receipt.
+The duplicate family matches the retained generated Kiota nullable union writers,
+which both emit `kind`; `UpdateRecipeDto` stores those operands as `JsonElement`.
+Source blob/package-lock identities and the prior raw-wire repair evidence are
+retained separately. V1 contains no receipt-level writer/build/serializer identity.
+
+The 13 nonduplicate failures differ only in newly allocated cooking binding IDs
+and graph references, including `countBindingId` and allocation-group membership.
+V1 `PrepareEdit` calls discovery with `Guid.NewGuid`, so rereconstruction generates
+different IDs. All input hashes match. For the other 33 receipts, bypassing duplicate
+parsing solely for component diagnosis reproduces the saved result. That bypass
+is not an admitted format or a production reader change. Fresh strict old/current
+readers still report **0 accepted, 46 rejected**: 33 duplicate inputs and 13 result
+identity mismatches. No parser/result failure mechanism remains unexplained;
+receipt-level producer authority remains unresolved for all 46.
+
+The smallest proposed existing-owner repair would supply recorded fresh binding
+IDs at independently reconstructed allocation sites using `DiscoverRecorded`,
+while retaining V1 association policy and exact result comparison. V2 already
+uses this owner. Independent read-only review found a blocking integrity limit:
+V1's input hash does not bind its saved result, and recorded opaque IDs cannot
+prove their own historical origin. A detached diagnostic changed a fresh binding
+ID consistently with its references; the proposed recorded-allocation computation
+still matched with the same input hash. This demonstrates a proof gap, not actual
+tampering of the retained source. The approved bilingual storage contract also
+keeps V1 pure derivation unchanged.
+
+A narrow duplicate exception has the same authority gap: identical duplicates,
+recognizable serializer shape and self-consistency cannot establish a known writer.
+Continued strict rejection is therefore the selected disposition. No runtime or
+test implementation was made, and no aggregate task closed.
+
+The unresolved decision is whether independently trusted historical evidence can
+bind each exact recipe/operation, original-request/input hash and saved JSONB result
+to its writer/build/serializer, or whether a separately approved one-time exact
+source attestation may replace that missing provenance. The latter would be a new
+integrity-policy mechanism, not routine compatibility work. Only after that decision
+could a versioned rule reuse recorded allocation and, if separately justified,
+recognize the exact historical duplicate representation. Unknown writers, foreign
+sources, conflicting duplicates and changed attested bytes/results must reject.
+No such attestation or rule was installed.
+
+Focused existing public-duplicate and V1/V2 retained-history controls passed
+**17 tests, zero skips**. Fresh original PostgreSQL read-back, current build and
+strict/component diagnostics passed their stated checks. Regression RED/GREEN is
+not applicable to this evidence-only delivery. Affected publication/recovery suites
+and the full PostgreSQL suite were not run at this authority stopping boundary;
+they remain required for a subsequently authorized runtime reconciliation. The
+owned proof container/volume were removed; all six preexisting containers and
+port 3000 match entry. No vocabulary publication, migration, conversion, reset,
+reopening, source-environment operation or synthetic receipt substitution occurred.
 
 ## Independent acceptance and remaining gates
 

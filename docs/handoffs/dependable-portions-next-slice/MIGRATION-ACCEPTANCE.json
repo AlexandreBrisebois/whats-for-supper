@@ -184,7 +184,7 @@
     "eligible": [],
     "reason": "All six changes retain incomplete aggregate acceptance."
   },
-  "nextBoundedSelection": "Establish and review valid retained V1 history authority for this actual copied library before retrying vocabulary/source admission and the selected migration tasks. Preserve raw receipts and unsupported-source rejection.",
+  "nextBoundedSelection": "Resolve the retained V1 writer/result authority and unchanged-derivation integrity-policy dependency documented in the current handoff. Do not implement recorded-ID or duplicate admission until the exact rule and trusted evidence are approved; preserve all 46 strict rejections.",
   "exclusions": [
     "Shared-environment vocabulary adoption",
     "Migration activation",
@@ -194,5 +194,46 @@
     "Similar",
     "Garlic",
     "Adjacent UI"
-  ]
+  ],
+  "retainedV1Reconciliation": {
+    "entryCommit": "40824fbaf62a5c11170e62f312d3ff0d883e8c72",
+    "state": "stopped-at-unresolved-integrity-authority",
+    "evidenceOwner": ".task/v1-history-20261114/delivery.json",
+    "perReceiptReport": ".task/v1-history-20261114/receipt-authority.json",
+    "perReceiptReportSha256": "6b5b79c8bd96ffb57d162f8e5b89c8275bb76e1ef2fbc2a932c0b7c4af4c1039",
+    "originalInventoryPreserved": true,
+    "exactOriginalDumpReadbackPassed": true,
+    "exactCaptureOriginalReproduction": 46,
+    "baselineAndRevisionChecksPassed": 46,
+    "inputHashesReproduced": 46,
+    "duplicateReceipts": 33,
+    "duplicateRecipes": 14,
+    "identicalDuplicateSites": 140,
+    "otherReceipts": {
+      "inputHashFailures": 0,
+      "derivedFreshBindingIdentityMismatches": 13
+    },
+    "strictReaders": {
+      "oldAccepted": 0,
+      "currentAccepted": 0,
+      "stillRejected": 46,
+      "unexplainedFailureMechanisms": 0
+    },
+    "receiptLevelWriterAuthorityUnresolved": 46,
+    "independentReview": "stop dependent implementation; recorded opaque IDs and self-consistency do not authenticate saved results or writer",
+    "proposal": "Existing recorded-allocation owner is the smallest reconstruction option; duplicate compatibility requires a separately justified versioned rule. Neither is installed.",
+    "missingProof": "Trusted per-receipt writer/build/serializer plus exact original-request/input and saved JSONB result binding, or an explicitly approved one-time exact-source attestation and revised V1 integrity policy.",
+    "coherentBindingIdSubstitutionDiagnostic": "Proposed recorded-allocation computation matches altered result identity with unchanged input hash; diagnostic only, not production acceptance.",
+    "runtimeChanges": [],
+    "originalReceiptChanges": [],
+    "focusedControls": {
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "log": ".task/v1-history-20261114/focused-controls.log"
+    },
+    "affectedPublicationRecoveryAndFullPostgres": "not-run at unresolved-authority boundary; required for later runtime reconciliation",
+    "vocabularyPublication": false,
+    "migrationExecuted": false
+  }
 }
