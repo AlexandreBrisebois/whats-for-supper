@@ -13,6 +13,7 @@ import { scalarQuantity } from '../src/testing/grocery-fixtures';
 import { checkedExtra, groceryChecked } from './supper-grocery';
 import fs from 'node:fs';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 
 async function settingsFixture(page: Page) {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1973,7 +1974,7 @@ test.describe('unknown prior amount without review in French', () => {
 // One continuous user journey; shared schedule/recipe/serving owners retain all writes.
 for (const appLocale of ['en', 'fr'] as const) {
   test.describe(`combined supper journey ${appLocale}`, () => {
-    test.use({ appLocale, reducedMotion: 'reduce' });
+    test.use({ appLocale, reducedMotion: 'reduce', dateOnlyClock: true });
     for (const [width, height, enlarged, configured] of [
       [390, 844, false, true],
       [820, 1180, false, false],
@@ -2097,6 +2098,12 @@ for (const appLocale of ['en', 'fr'] as const) {
             },
           })
         );
+        if (appLocale === 'en' && configured) {
+          // Exercise a full navigation after more elapsed native time than the entry
+          // assertion's five-second bound. A civil-date fixture must keep Motion's
+          // performance clock aligned with the new document's native animation timeline.
+          await delay(6100);
+        }
         await page.goto(
           `/recipes?focus=search&addToDay=4&weekOffset=0&referenceWeekStartDate=${reference}`
         );

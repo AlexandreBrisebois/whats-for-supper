@@ -180,8 +180,19 @@ for (const scenario of ['pending batch', 'later remote event', 'out-of-order rea
         ),
       MOCK_IDS.MEMBER_ALEX
     );
+    // The desktop grocery panel performs its own initial authoritative read.
+    // Settle it before counting reads caused by the held movement requests.
+    const initialGroceries = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname === '/api/schedule' &&
+        url.searchParams.has('referenceWeekStartDate')
+      );
+    });
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toContainText('First supper');
+    await (await initialGroceries).finished();
     const moves: import('@playwright/test').Route[] = [];
     const reads: { route: import('@playwright/test').Route; snapshot: typeof schedule }[] = [];
     await page.route(
