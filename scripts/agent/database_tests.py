@@ -178,7 +178,9 @@ def execute_tests(args, env, log):
         except OSError as error:
             raise Unavailable('Could not start dotnet test.') from error
         try:
-            return child.wait(timeout=180)
+            # Covers the pinned SDK build and the complete relational suite.
+            # Keep a finite deadline and the same stop/reap/no-retry behavior.
+            return child.wait(timeout=600)
         except (subprocess.TimeoutExpired, KeyboardInterrupt):
             try:
                 os.killpg(child.pid, signal.SIGKILL)

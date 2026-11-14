@@ -61,3 +61,30 @@ Propose a single receipt reader: query command Id plus every lifecycle observati
 Before logic: actual PostgreSQL tests must expose repeated reset after later human check; partial interruption after first week; mismatch before first write; crash rollback of reset plus receipt; completed unknown-command inertness; and prune->resume without reset. Include past/current/future stored-only and assignment-only weeks, old plan statuses/IDs, all event intent/servings/prepared/cooked/history and extra checked states preserved.
 
 Pure controls cover exact manifest/artifact40-vs64/schema/model/snapshot/reference/recipe-op/week-set mismatch, duplicate/forged live/pruned receipts, invalid IDs/closed properties/statuses, and no eligibility from counts. Native controls include same operation changed request rejection, converter V2 replay preserving IDs, transaction failure before commit leaves both reset/receipt absent, crash after commit returns same receipt, later check/baseline preserved on replay, and existing ordinary recompute/locale behavior unchanged. No PG runs without serialized lease. Freeze precise five+shared dependency scope, before/after hashes, intended failures and stable zero-skip receipts for independent review. No code until Root approves shared receipt/context design.
+
+
+## Implemented bounded refinements — 2026-11-14
+
+The user selected this executor slice after the qualified recovery checkpoint.
+[The executor handoff](MIGRATION-EXECUTOR.md) owns its implementation and rehearsal
+qualification. The earlier plan remains the historical design input.
+
+- One converter core retains ordinary conversion/replay and search invalidation;
+  the internal migration call defers redundant queued grocery refresh because the
+  complete week set is rebuilt synchronously.
+- The manifest binds an evaluation business date from the existing calendar owner.
+  Every migration recompute uses it, including interrupted resume; quantities and
+  serving versions come from one projection. Reopening requires later current-date
+  freshness acceptance.
+- The existing grocery outcome column now retains exact submitted input in a closed
+  V2 envelope. Input hashes and raw V1 replay remain unchanged. This preserves
+  partial/empty bulk-map evidence required to verify later human checks.
+- Validated live/pruned inert plan bindings contribute only to the existing opaque
+  presentation epoch. Old item/bulk requests fail before outcome replay. Plan
+  presence grants neither conversion eligibility nor completed-campaign authority.
+- Source admission compares the complete validated baseline projection and actual
+  current content. The actual lock-owning PostgreSQL session, revocable capability,
+  recovery Write lease and post-lock checks protect mutation/commit.
+
+Operator CLI targets only an explicitly selected disposable copy and returns before
+host/worker/bootstrap execution. Activation and cutover remain outside this slice.

@@ -100,9 +100,17 @@ public static partial class FoodVocabularyInventoryQualification
         foreach (var physical in history.PhysicalRetirements)
             Add(RecipePhysicalLifecycle.VocabularyReferences(physical), "physical-retirement", physical.RecipeId.ToString("D"));
         foreach (var command in history.Commands)
+        {
             MaintenanceCommandLifecycle.ValidateCurrentReferences(command, history.Retirements, history.PhysicalRetirements);
+            if (command.CommandType == CanonicalRecipeMigrationReceipt.CommandType)
+                Add(CanonicalRecipeMigrationReceipt.VocabularyReferences(command), "migration-receipt", command.Id.ToString("D"));
+        }
         foreach (var maintenance in history.MaintenanceRetirements)
-            MaintenanceCommandLifecycle.ValidateRetainedReferences(maintenance, history.Retirements, history.PhysicalRetirements);
+        {
+            var command = MaintenanceCommandLifecycle.ReadValidatedRetainedCommand(maintenance, history.Retirements, history.PhysicalRetirements);
+            if (command.CommandType == CanonicalRecipeMigrationReceipt.CommandType)
+                Add(CanonicalRecipeMigrationReceipt.VocabularyReferences(command), "retained-migration-receipt", command.Id.ToString("D"));
+        }
         foreach (var physical in history.PhysicalRetirements)
             RecipePhysicalLifecycle.ValidateRetainedWorkflowReferences(physical, history.Retirements);
         foreach (var stage in history.StagedJournals)

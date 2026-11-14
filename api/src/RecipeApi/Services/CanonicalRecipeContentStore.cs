@@ -18,7 +18,7 @@ public sealed record CanonicalRecipeContent(
 
 public sealed record CanonicalRecipeWriteResult(CanonicalRecipeContent Content, IReadOnlyDictionary<string, Guid> CreatedIds);
 
-public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClock clock, SupperProjectionInvalidation invalidation, FoodVocabularyStore vocabulary, IValidationService? validation = null)
+public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClock clock, SupperProjectionInvalidation invalidation, FoodVocabularyStore vocabulary, IValidationService? validation = null, DeploymentCalendar? migrationCalendar = null)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly string[] ProtectedFacts = ["description", "amount", "amountText", "unit", "scaling", "package", "shopping"];
@@ -76,9 +76,17 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         return result;
     }
 
-    public async Task<CanonicalRecipeWriteResult> ConvertAsync(Guid id, string expectedContentRevision,
+    public Task<CanonicalRecipeWriteResult> ConvertAsync(Guid id, string expectedContentRevision,
         string expectedSourceRevision, Guid operationId, CancellationToken ct = default)
+        => ConvertCoreAsync(id, expectedContentRevision, expectedSourceRevision, operationId, ct);
+
+    // The migration caller rebuilds every week synchronously. The same converter
+    // and V2 replay owner run without scheduling redundant refresh workflows.
+    private async Task<CanonicalRecipeWriteResult> ConvertCoreAsync(Guid id, string expectedContentRevision,
+        string expectedSourceRevision, Guid operationId, CancellationToken ct,
+        Func<CancellationToken, Task>? migrationAdmission = null)
     {
+        if (migrationAdmission is not null) await migrationAdmission(ct);
         RequireOperation(operationId);
         var hash = Hash(new { Kind = "convert", expectedContentRevision, expectedSourceRevision });
         var before = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException();
@@ -86,6 +94,7 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         var authority = await vocabulary.CaptureAuthorityAsync(before.FoodMappingEvidence, ct);
         await using var transaction = await RecipeRotation.LockAsync(db, id, ct, lockSupperInputs: true);
         var recipe = await db.Recipes.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException();
+        if (migrationAdmission is not null) await migrationAdmission(ct);
         if (await Replay(id, operationId, hash, recipe, ct) is { } replay) return replay;
         Guard(recipe, expectedContentRevision, expectedSourceRevision);
         if (EvidenceValue(recipe) != EvidenceValue(before)) throw Conflict(recipe);
@@ -98,6 +107,7 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
             var unchanged = new CanonicalRecipeWriteResult(existing, new Dictionary<string, Guid>());
             RecordV2(recipe, operationId, "convert", hash, baseline, priorEvidence, authority, null, unchanged, priorEvidence);
             await db.SaveChangesAsync(ct);
+            if (migrationAdmission is not null) await migrationAdmission(ct);
             if (transaction is not null) await transaction.CommitAsync(ct);
             return unchanged;
         }
@@ -112,8 +122,10 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         recipe.CanonicalContent = JsonSerializer.Serialize(content, Json);
         recipe.Ingredients = JsonSerializer.Serialize(lines.Select(Render));
         recipe.UpdatedAt = clock.UtcNow;
-        RecordV2(recipe, operationId, "convert", hash, baseline, priorEvidence, authority, null, result, recipe.FoodMappingEvidence);
-        await Invalidate(recipe, ct);
+        RecordV2(recipe, operationId, "convert", hash, baseline, priorEvidence, authority, null, result, recipe.FoodMappingEvidence,
+            migrationAdmission is null ? null : recipe.UpdatedAt);
+        await Invalidate(recipe, ct, deferGroceryRefresh: migrationAdmission is not null);
+        if (migrationAdmission is not null) await migrationAdmission(ct);
         if (transaction is not null) await transaction.CommitAsync(ct);
         return result;
     }
@@ -396,7 +408,7 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         Result = JsonSerializer.Serialize(result, Json),
         CreatedAt = clock.UtcNow
     });
-    private async Task Invalidate(Recipe recipe, CancellationToken ct)
+    private async Task Invalidate(Recipe recipe, CancellationToken ct, bool deferGroceryRefresh = false)
     {
         var sidecar = await db.RecipeSearchDocuments.FindAsync([recipe.Id], ct);
         if (sidecar is null) db.RecipeSearchDocuments.Add(new RecipeSearchDocument
@@ -411,7 +423,7 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         });
         else { sidecar.IndexStatus = "pending"; sidecar.EmbeddingStatus = "pending"; sidecar.EmbeddingFingerprint = null; }
         await db.SaveChangesAsync(ct);
-        await invalidation.EnlistRecipeAsync(recipe.Id, ct);
+        if (!deferGroceryRefresh) await invalidation.EnlistRecipeAsync(recipe.Id, ct);
     }
     internal static string NormalizeJson(string? value)
     {

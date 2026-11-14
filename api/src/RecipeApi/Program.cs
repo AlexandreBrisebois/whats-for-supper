@@ -31,7 +31,8 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    var builder = WebApplication.CreateBuilder(args);
+    var migrationOperator = args.Length > 0 && args[0] == "--canonical-migration";
+    var builder = WebApplication.CreateBuilder(migrationOperator ? [] : args);
     // ── Serilog ──────────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, services, config) =>
         config.ReadFrom.Configuration(ctx.Configuration)
@@ -386,6 +387,8 @@ try
 
     // ── Build ─────────────────────────────────────────────────────────────────
     var app = builder.Build();
+    if (migrationOperator)
+        return await CanonicalRecipeMigrationOperator.RunAsync(app.Services, args);
     _ = app.Services.GetRequiredService<DeploymentCalendar>();
     _ = app.Services.GetRequiredService<RecipeRotationOptions>();
     _ = app.Services.GetRequiredService<HistoricalInterestOptions>();

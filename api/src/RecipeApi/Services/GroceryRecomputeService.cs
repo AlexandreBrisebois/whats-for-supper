@@ -14,7 +14,7 @@ namespace RecipeApi.Services;
 /// Recomputes the pre-aggregated grocery list stored in <c>weekly_plans.grocery_items</c>
 /// whenever the recipe assignments for a week change.
 /// </summary>
-public class GroceryRecomputeService(
+public partial class GroceryRecomputeService(
     RecipeDbContext db,
     AisleMapper aisleMapper,
     ILogger<GroceryRecomputeService> logger,
@@ -84,9 +84,9 @@ public class GroceryRecomputeService(
     }
 
     private async Task<(WeeklyPlan Plan, Dictionary<string, bool> Checks, bool Changed)> RecomputeOwnedAsync(
-        RecipeDbContext db, DateOnly monday, CancellationToken ct)
+        RecipeDbContext db, DateOnly monday, CancellationToken ct, bool migrationReset = false, DateOnly? evaluationDate = null)
     {
-        var inputs = await SupperProjectionInputs.ReadWeekAsync(db, monday, calendar.Capture(clock.UtcNow).Today, ct);
+        var inputs = await SupperProjectionInputs.ReadWeekAsync(db, monday, evaluationDate ?? calendar.Capture(clock.UtcNow).Today, ct);
         // A saved UUID is usable only with its exact retained mapping authority.
         // Validate before any grocery row/check/baseline write; never rematch aliases.
         var savedRecipes = inputs.Select(input => input.Event.Recipe!).DistinctBy(recipe => recipe.Id).ToArray();
@@ -304,9 +304,14 @@ public class GroceryRecomputeService(
 
         plan.ServingInputVersion = SupperProjectionInputs.WeekVersion(inputs);
         var previousItems = GroceryRowState.Rows(plan);
-        GroceryRowState.RequireCurrent(plan, previousItems);
-        var priorChecks = GroceryRowState.Checks(plan);
-        var baselines = GroceryCheckedDemand.Read(plan, logger);
+        if (migrationReset)
+        {
+            try { GroceryRowState.RequireCurrent(plan, previousItems); }
+            catch (GroceryMutationConflictException) { previousItems = []; }
+        }
+        else GroceryRowState.RequireCurrent(plan, previousItems);
+        var priorChecks = migrationReset ? new Dictionary<string, bool>(StringComparer.Ordinal) : GroceryRowState.Checks(plan);
+        var baselines = migrationReset ? GroceryCheckedDemand.Read(new WeeklyPlan(), logger) : GroceryCheckedDemand.Read(plan, logger);
         var previousEvidence = GroceryDemandEvidence.Read(plan, logger);
         var nextEvidence = new Dictionary<string, GroceryDemandEvidence>(StringComparer.Ordinal);
         // Keep the exact pre-package JSON bytes when no package is declared.

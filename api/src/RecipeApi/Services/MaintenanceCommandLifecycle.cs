@@ -9,7 +9,7 @@ using RecipeApi.Models;
 namespace RecipeApi.Services;
 
 // Observation only: neither a copied command nor a pruning event certifies physical completion.
-internal static class MaintenanceCommandLifecycle
+internal static partial class MaintenanceCommandLifecycle
 {
     internal static async Task RetainAsync(RecipeDbContext db, MaintenanceCommand command, string disposition,
         Guid operationId, DateTimeOffset now, CancellationToken ct)

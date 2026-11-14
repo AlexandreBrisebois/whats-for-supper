@@ -49,3 +49,22 @@ Candidate process-restart/holder-loss rehearsal, final stable repository checks,
 hosted results and actual DV acceptance are separate evidence stages; pending stages
 remain pending until recorded. No entire change is eligible for archive from this
 bounded producer and maintenance slice.
+
+
+## Disposable migration executor checkpoint — 2026-11-14
+
+[The executor handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-EXECUTOR.md)
+records the selected tasks 1.1/1.2/3.3 and contributions to migration 3.1/3.2.
+It includes the exact disposable operator invocation, separate candidate/schema/
+artifact domains, source/selected/week admission, captured evaluation date,
+atomic once-only reset receipts, protected writer inventory, retained prune lookup,
+actual HTTP epoch fencing and independent immutable source review.
+
+The local synthetic-copy PostgreSQL/filesystem, process entrypoint and browser
+acceptance does not certify copied-library corpus adoption or deployed cutover.
+The final local gate's exact receipt/build/input identities and cleanup belong to
+`.task/migration-executor-20261113/final-verification-v2/runtime.json`.
+Alex owns CI monitoring after signed delivery. Current-date freshness, the actual
+old recovery pair, coordinated deployment/restart and independent new backup
+read-back remain prerequisites to later reopening. All changes retain open
+aggregate requirements, so no main-spec sync or archival is eligible here.

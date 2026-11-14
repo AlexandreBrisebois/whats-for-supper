@@ -38,6 +38,7 @@ public sealed partial class FoodVocabularyStore
         var version = (BigInteger.Parse(state?.PresentationVersion ?? "0", CultureInfo.InvariantCulture) + sequence).ToString(CultureInfo.InvariantCulture);
         var epoch = generation is not null ? Guid.ParseExact(generation, "N")
             : state is null ? Guid.Empty : Guid.Parse(state.PresentationEpoch);
+        epoch = await CanonicalRecipeMigrationReceipt.BindPresentationEpochAsync(db, epoch, ct);
         return new(authority, version, epoch, Array.AsReadOnly(overrides));
     }
 

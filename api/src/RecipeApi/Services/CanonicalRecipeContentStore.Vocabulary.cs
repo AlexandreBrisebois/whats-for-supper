@@ -42,7 +42,7 @@ public sealed partial class CanonicalRecipeContentStore
     }
 
     private void RecordV2(Recipe recipe, Guid operationId, string kind, string callerInputHash, RecipePublicationFields baseline,
-        string? priorEvidence, FoodVocabularyAuthority authority, UpdateRecipeDto? input, CanonicalRecipeWriteResult result, string? evidence)
+        string? priorEvidence, FoodVocabularyAuthority authority, UpdateRecipeDto? input, CanonicalRecipeWriteResult result, string? evidence, DateTimeOffset? recordedAt = null)
     {
         authority.Validate();
         FoodMappingQualification.Validate(result.Content, evidence, authority, recipe.Id);
@@ -58,7 +58,7 @@ public sealed partial class CanonicalRecipeContentStore
             InputHash = Hash(request),
             OriginalRequest = JsonSerializer.Serialize(request, Json),
             Result = JsonSerializer.Serialize(new CanonicalResultV2(2, result, new(evidence), decisions), Json),
-            CreatedAt = clock.UtcNow
+            CreatedAt = recordedAt ?? clock.UtcNow
         });
     }
 

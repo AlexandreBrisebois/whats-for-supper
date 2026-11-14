@@ -1,5 +1,7 @@
 # Dependable portions migration executor
 
+Delivered checkpoint: [executor handoff](../../docs/handoffs/dependable-portions-next-slice/MIGRATION-EXECUTOR.md). The instructions below record the completed bounded slice; select the later operator/cutover work separately.
+
 Work directly in `/Users/alex/Code/whats-for-supper` on local `recipe-view-redesign`. Read AGENT.md, its loading rules, the Codex adapter and Entire guide. Read `docs/handoffs/dependable-portions-next-slice/RECOVERY.md` and `migration-executor-plan.md`. Verify actual local/remote refs, unrelated work, application commit `71b56bc5945f0be770eeb02bc5759578faf0582f` and its documentation successors. Reuse the qualified recovery owners.
 
 Alex owns CI monitoring for the delivered application checkpoint. Review the current outcome and preserve its exact candidate identity and unresolved evidence. Local recovery gate `891e5245337542eab12cb722b59edd94` passed all 773 PostgreSQL cases with zero skips. Selected progress is 23/68, including bilingual task 4.1. Recheck current task state before edits.

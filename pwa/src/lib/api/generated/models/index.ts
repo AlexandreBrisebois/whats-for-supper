@@ -6160,7 +6160,7 @@ export interface GroceryBulkMutation extends Parsable {
    */
   expectedListVersion?: string | null;
   /**
-   * Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation or recovery rejects with epoch_conflict before replay or mutation.
+   * Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation, recovery or a retained fenced migration plan rejects with epoch_conflict before replay or mutation.
    */
   expectedPresentationEpoch?: Guid | null;
   /**
@@ -6299,7 +6299,7 @@ export interface GroceryItemMutation extends Parsable {
    */
   clientMutationId?: Guid | null;
   /**
-   * Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation or recovery rejects with epoch_conflict before replay or mutation.
+   * Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation, recovery or a retained fenced migration plan rejects with epoch_conflict before replay or mutation.
    */
   expectedPresentationEpoch?: Guid | null;
   /**
@@ -6440,7 +6440,7 @@ export interface GroceryMutationResult extends AdditionalDataHolder, Parsable {
    */
   presentationEpoch?: Guid | null;
   /**
-   * Exact independent presentation counter. Compare only within the same opaque presentationEpoch; establish a changed epoch through a fresh authoritative read. Locale selection never advances this counter or grocery versions. Legacy absence uses version zero and the nil UUID epoch.
+   * Exact independent presentation counter. Compare only within the same opaque presentationEpoch; establish a changed epoch through a fresh authoritative read. Locale selection never advances this counter or grocery versions. Legacy absence with no retained migration plan uses version zero and the nil UUID epoch. A retained fenced migration plan changes the opaque epoch independently of row demand; its epoch remains stable through receipt pruning and resume.
    */
   presentationVersion?: string | null;
   /**
@@ -8167,7 +8167,7 @@ export interface ScheduleDays extends AdditionalDataHolder, Parsable {
    */
   presentationEpoch?: Guid | null;
   /**
-   * Exact independent presentation counter. Compare only within the same opaque presentationEpoch; establish a changed epoch through a fresh authoritative read. Locale selection never advances this counter or grocery versions. Legacy absence uses version zero and the nil UUID epoch.
+   * Exact independent presentation counter. Compare only within the same opaque presentationEpoch; establish a changed epoch through a fresh authoritative read. Locale selection never advances this counter or grocery versions. Legacy absence with no retained migration plan uses version zero and the nil UUID epoch. A retained fenced migration plan changes the opaque epoch independently of row demand; its epoch remains stable through receipt pruning and resume.
    */
   presentationVersion?: string | null;
   /**

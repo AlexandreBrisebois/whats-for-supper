@@ -1689,7 +1689,7 @@ components:
         rowId: { type: string, format: uuid }
         weekStartDate: { type: string, format: date }
         expectedRowVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
-        expectedPresentationEpoch: { type: [string, 'null'], format: uuid, description: 'Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation or recovery rejects with epoch_conflict before replay or mutation.' }
+        expectedPresentationEpoch: { type: [string, 'null'], format: uuid, description: 'Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation, recovery or a retained fenced migration plan rejects with epoch_conflict before replay or mutation.' }
         checked: { type: boolean }
         clientMutationId: { type: string, format: uuid }
     GroceryBulkMutation:
@@ -1699,7 +1699,7 @@ components:
       properties:
         weekStartDate: { type: string, format: date }
         expectedListVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
-        expectedPresentationEpoch: { type: [string, 'null'], format: uuid, description: 'Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation or recovery rejects with epoch_conflict before replay or mutation.' }
+        expectedPresentationEpoch: { type: [string, 'null'], format: uuid, description: 'Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation, recovery or a retained fenced migration plan rejects with epoch_conflict before replay or mutation.' }
         checks: { type: object, additionalProperties: { type: boolean } }
         clientMutationId: { type: string, format: uuid }
     GroceryMutationResult:
@@ -1726,7 +1726,7 @@ components:
     GroceryPresentationVersion:
       type: string
       pattern: '^(0|[1-9][0-9]*)$'
-      description: Exact independent presentation counter. Compare only within the same opaque presentationEpoch; establish a changed epoch through a fresh authoritative read. Locale selection never advances this counter or grocery versions. Legacy absence uses version zero and the nil UUID epoch.
+      description: Exact independent presentation counter. Compare only within the same opaque presentationEpoch; establish a changed epoch through a fresh authoritative read. Locale selection never advances this counter or grocery versions. Legacy absence with no retained migration plan uses version zero and the nil UUID epoch. A retained fenced migration plan changes the opaque epoch independently of row demand; its epoch remains stable through receipt pruning and resume.
     GroceryDisplayLabels:
       type: object
       required: [en, fr]

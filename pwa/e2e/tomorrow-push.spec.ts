@@ -53,6 +53,16 @@ test('Home Take Out plus Tomorrow commits a full following week without prior va
   page.on('request', (r) => {
     if (r.method() === 'POST' && r.url().includes('/validate')) validations.push(r.url());
   });
+  await page.waitForFunction(() => Boolean((window as any).__sseSource));
+  await page.evaluate(() => {
+    (window as any).__tomorrowInvalidatedWeeks = [];
+    (window as any).__sseSource.addEventListener(
+      'fill_the_gap_invalidated',
+      (event: MessageEvent) => {
+        (window as any).__tomorrowInvalidatedWeeks.push(JSON.parse(event.data).weekOffset);
+      }
+    );
+  });
   const movement = page.waitForRequest(
     (r) => r.method() === 'POST' && r.url().includes('/api/schedule/move')
   );
@@ -82,10 +92,15 @@ test('Home Take Out plus Tomorrow commits a full following week without prior va
   expect(weeks[0].days[6]).toMatchObject({ status: 3, recipe: null });
   expect(weeks[1].days[0].recipe.id).toBe(MOCK_IDS.RECIPE_CHICKEN);
   expect(weeks[3].days[0].recipe.id).toBe(MOCK_IDS.RECIPE_LASAGNA);
-  // The move response precedes its mock SSE callbacks. Drain those callbacks
-  // before the page closes, keeping any teardown-time API reads isolated.
-  await page.context().route('**/api/**', (route) => route.abort());
-  await page.unrouteAll({ behavior: 'wait' });
+  // The move response precedes its notifications. Await the final affected week
+  // while retaining the fixture's page routes for any resulting API reads.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        [...new Set<number>((window as any).__tomorrowInvalidatedWeeks)].sort((a, b) => a - b)
+      )
+    )
+    .toEqual([0, 1, 2, 3]);
 });
 
 for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {

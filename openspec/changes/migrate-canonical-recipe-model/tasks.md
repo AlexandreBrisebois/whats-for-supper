@@ -54,8 +54,8 @@ empty or skipped required selections. Task IDs remain stable for handoffs.
 **Outcome/scenarios:** C10–C16, C37–C39, C44, C48; stable IDs and guarded/resumable publication.
 **Owners/boundaries:** canonical publication, real PostgreSQL and copied recipe/source/media store. Freeze the contracts exercised by each increment; final acceptance includes the adopted model-authored bilingual JSON and saved mappings, with no production resources. Workstream C owns orchestration and coordinates shared store hooks with A. Allocation/range/split-merge decisions remain settled for ordinary operations; the authorized migration-only reset preserves every plan/event, extras and history while rebuilding all lists. Conditional fallback stops on unexpected mismatches.
 
-- [ ] 1.1 Deliver no-write manifest schema and synthetic before/after protected-field fixtures for live/source hashes, IDs/links, human fields, quantities/notation, basis, steps/coverage, media, complete plan/event/assignment/servings/prepared-cooked preservation, every persisted or assignment-implied week, durable vocabulary revision/hash and exact allowed grocery-derived changes/reset checkpoints. Verify unsupported/conflict/defer outcomes and inventory every writer, including file-before-DB repair and stale old tabs. For conditional fallback, compare stable IDs/content and stop/report unexpected missing IDs or fact mismatches before writes; do not add a per-recipe edit-conflict workflow solely for absent UI edits.
-- [ ] 1.2 Add the missing selected-ID invocation/resume behavior to a focused `CanonicalRecipeMigrationPostgresTests` owner, reusing `CanonicalRecipePersistencePostgresTests` for atomic conversion, no positional associations, null/empty, unknown basis, stale human edit and identical replay. Run `task test:database -- --filter FullyQualifiedName~CanonicalRecipeMigrationPostgresTests` for intended red before implementing the operational path around the existing converter; run green with actual database/files and retain the existing persistence regressions. Document the actual invocation, input/checkpoint identities, exact protected hashes/relationship counts and usable deferred recipes, not only processed counts.
+- [x] 1.1 Deliver no-write manifest schema and synthetic before/after protected-field fixtures for live/source hashes, IDs/links, human fields, quantities/notation, basis, steps/coverage, media, complete plan/event/assignment/servings/prepared-cooked preservation, every persisted or assignment-implied week, durable vocabulary revision/hash and exact allowed grocery-derived changes/reset checkpoints. Verify unsupported/conflict/defer outcomes and inventory every writer, including file-before-DB repair and stale old tabs. For conditional fallback, compare stable IDs/content and stop/report unexpected missing IDs or fact mismatches before writes; do not add a per-recipe edit-conflict workflow solely for absent UI edits.
+- [x] 1.2 Add the missing selected-ID invocation/resume behavior to a focused `CanonicalRecipeMigrationPostgresTests` owner, reusing `CanonicalRecipePersistencePostgresTests` for atomic conversion, no positional associations, null/empty, unknown basis, stale human edit and identical replay. Run `task test:database -- --filter FullyQualifiedName~CanonicalRecipeMigrationPostgresTests` for intended red before implementing the operational path around the existing converter; run green with actual database/files and retain the existing persistence regressions. Document the actual invocation, input/checkpoint identities, exact protected hashes/relationship counts and usable deferred recipes, not only processed counts.
 
 ## 2. Recover current format and reject unsupported old backups
 
@@ -87,7 +87,7 @@ reset tests are reusable regression evidence, not proof of the deployment sequen
 - [ ] 3.1 Extend existing stale-editor/draft and recovery tests through real API/generated client/DB and stateful browser mocks for current-revision legacy payload rejection, delayed workers and refresh with all recoverable draft fields. Observe intended red for missing behavior before changing it. Rehearse the accepted maintenance path with the existing recovery boundary: drain/hold writes and workers, shut down, deploy frontend/backend/schema together, restart with the hold intact, read back, then reopen; inject interruption and prove recovery before reopening. Reuse snapshot owners without demo household reset or draft discard. Record green selected cases, fresh-backup read-back, exact old snapshot/application recovery pair and measured interruption window in the rollout packet.
 - [ ] 3.2 Complete the operator-reviewable in-place release packet in [the existing shared rollout owner](../canonical-ingredient-correction/rollout.md): exact candidate/schema, required first-pass browser/real DB/live results, maintenance procedure, complete preserved plan/event inventory, all-list rebuild and operation-bound reset disposition with retained extras/corrections/history, durable vocabulary/required references, manifests, unexpected mismatches/deferred IDs, pending derived work, recovery proof and approval scope. Verify no implementation task or packet claims success from skipped/not-run stages. Production execution, commit/push/deploy/archive are separate from completing this specification and its nonproduction rehearsal.
 
-- [ ] 3.3 Add intended-red migration/API/PostgreSQL and stateful browser fixtures with populated past/current/future weeks: preserve every planned meal/calendar event and its IDs/date/status/recipe/servings/prepared-cooked facts; rebuild every persisted or assignment-implied grocery week under the new model; reset checks/baselines only within the fenced migration epoch; preserve extras/content/corrections/history/removal links and other data. Prove complete week accounting, exact allowed derived-column/version changes, interrupted resume before reopen, no repeated reset of later human checks and unchanged ordinary split/merge/proven-increase continuity. Run `task test:database -- --filter FullyQualifiedName~CanonicalRecipeMigrationPostgresTests` plus relevant grocery browser cases before upgrade logic, then green; no empty-list prerequisite, plan/event clearing or household reset.
+- [x] 3.3 Add intended-red migration/API/PostgreSQL and stateful browser fixtures with populated past/current/future weeks: preserve every planned meal/calendar event and its IDs/date/status/recipe/servings/prepared-cooked facts; rebuild every persisted or assignment-implied grocery week under the new model; reset checks/baselines only within the fenced migration epoch; preserve extras/content/corrections/history/removal links and other data. Prove complete week accounting, exact allowed derived-column/version changes, interrupted resume before reopen, no repeated reset of later human checks and unchanged ordinary split/merge/proven-increase continuity. Run `task test:database -- --filter FullyQualifiedName~CanonicalRecipeMigrationPostgresTests` plus relevant grocery browser cases before upgrade logic, then green; no empty-list prerequisite, plan/event clearing or household reset.
 
 **Conditional fallback task, only if in-place assessment requires it:** prepare stable-ID/content comparison and input-preservation manifest; verify matching inputs can stage reviewed conversion, while missing IDs/unexpected fact differences stop/report before any fallback write. Test actual concurrent-change revision rejection and unchanged household hashes using disposable DB/files. No disk/live winner selector, per-recipe UI-edit resolution workflow, blanket seed/reset or production execution is authorized.
 
@@ -114,3 +114,52 @@ The 2026-11-12 user amendment supersedes the prospective idle-list gate: preserv
 every plan/event and rebuild all lists, with migration-only check/baseline reset.
 Tasks remain open for selected-ID conversion, protected-field/rebuild fixtures,
 stale-tab drafts, final binding/vocabulary recovery and coordinated cutover.
+
+
+## Disposable executor checkpoint — 2026-11-14
+
+Tasks 1.1, 1.2 and 3.3 have their bounded disposable-copy acceptance. The
+[executor handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-EXECUTOR.md)
+owns the source-admission, preservation/writer inventory, exact invocation,
+receipt/prune/retry, evaluation-date and operator boundary details.
+
+Real PostgreSQL RED receipts are retained for missing source admission, executor,
+operator-session revocation, atomicity/protected deltas, actual HTTP old-request
+and outcome replay, partial bulk input, selected fact validation, timestamp
+precision, canonical no-op and midnight/resume behavior. Integrated migration,
+maintenance and ordinary concurrency acceptance passed 79 cases with zero skips
+in `.task/database-tests/runs/6649fb4d97164aa8a67373bca632d4f8/result.json`;
+subsequent business-date cases passed 3/3 with zero skips in
+`.task/database-tests/runs/998a61bb459b40e5bbc3c38848d1a902/result.json`.
+The exact original four-portion 1/3 quantity/notation, source/media, 32-table
+protected inventory and all four fixture weeks are checked. Independent review
+is retained with immutable source artifacts under `.task/migration-executor-20261113/review/`.
+
+Stateful row/mock controls passed 49 cases; manifest/receipt/reference controls
+passed 56. All three focused production-build bilingual/migration browser cases
+passed with zero retries in `focused-browser-v5.log` under the same evidence
+owner. The final applicable gate follows preparation of this complete source/task
+path set; its exact invocation record and outcomes are retained in
+`final-verification-v2/runtime.json` and reported at delivery. These local claims
+remain separate from required final-candidate hosted/release qualification.
+
+Tasks 2.1/2.2, 3.1/3.2 and 4.1 remain open for their combined final producer,
+adoption, coordinated restart/recovery, current-date cutover packet and integrated
+release/hosted acceptance. Operator contributions here do not close those
+aggregates. No actual copied household library was activated, no vocabulary was
+adopted and no DV/production operation occurred. Conditional disk fallback was
+unnecessary. No fully completed change is archive-eligible at this checkpoint.
+
+
+The first full gate `8767b46de3b6410e99a82995219ee807` was not accepted:
+Tomorrow's assertions completed but teardown created competing route owners;
+required PostgreSQL completion exceeded the runner's 180-second compile/test
+budget. The preserved failure/blocked receipts are in the handoff. The bounded
+verification maintenance waits for exact affected-week notifications and uses a
+finite 600-second relational budget with the same cleanup/no-retry semantics.
+The complete gate is rerun for the revised source identity.
+
+The repaired Tomorrow and migration browser files passed 16/16 across two
+repetitions with zero retries in `focused-browser-v6.log`. All 18 existing
+relational-runner unit/cleanup controls passed. The final gate retains its own
+complete stable-content record rather than reusing the failed/blocked run.

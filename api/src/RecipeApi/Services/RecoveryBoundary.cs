@@ -9,7 +9,7 @@ public enum RecoveryAccess { Read, Write, Snapshot, Publish }
 public sealed class RecoveryBusyException(string message) : Exception(message);
 
 /// <summary>Cross-process leases. Order is always publication, then writes; never upgrade a held lease.</summary>
-public sealed class RecoveryBoundary(RecipeDbContext db, IConfiguration configuration, RecipesRootResolver recipes, DemoModeOptions? demoMode = null)
+public sealed partial class RecoveryBoundary(RecipeDbContext db, IConfiguration configuration, RecipesRootResolver recipes, DemoModeOptions? demoMode = null)
 {
     private readonly DemoModeOptions _demoPolicy = demoMode ?? new DemoModeOptions(configuration);
     private readonly AsyncLocal<LeaseState?> ambientLease = new();
@@ -53,6 +53,7 @@ public sealed class RecoveryBoundary(RecipeDbContext db, IConfiguration configur
     public async Task<IAsyncDisposable> EnterAsync(RecoveryAccess access, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+        if (access is RecoveryAccess.Write or RecoveryAccess.Publish) _ = OperatorMayWrite();
         if (ambientLease.Value is { } held && held.TryRetain(access, out var borrowed)) return borrowed!;
         if (!Enabled && !db.Database.IsNpgsql()) return new EmptyLease(this);
         if (!db.Database.IsNpgsql()) throw new RecoveryBusyException("Online recovery coordination requires PostgreSQL.");
@@ -65,7 +66,7 @@ public sealed class RecoveryBoundary(RecipeDbContext db, IConfiguration configur
             var publication = access == RecoveryAccess.Publish ? "pg_advisory_lock" : "pg_advisory_lock_shared";
             await using var command = new NpgsqlCommand($"SELECT {publication}(244001)", connection);
             await command.ExecuteNonQueryAsync(timeout.Token);
-            if (access is RecoveryAccess.Write or RecoveryAccess.Publish && MaintenanceHeld)
+            if (access is RecoveryAccess.Write or RecoveryAccess.Publish && !OperatorMayWrite() && MaintenanceHeld)
                 throw new RecoveryBusyException("Planned maintenance holds writes and recovery publication until verified operator reopening.");
             if (access is RecoveryAccess.Write or RecoveryAccess.Snapshot)
             {

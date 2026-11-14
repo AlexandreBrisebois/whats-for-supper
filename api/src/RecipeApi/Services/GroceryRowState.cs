@@ -12,7 +12,7 @@ public sealed class GroceryMutationConflictException(string code, GroceryMutatio
     public bool Absent { get; } = absent;
 }
 
-internal static class GroceryRowState
+internal static partial class GroceryRowState
 {
     internal static bool IsVersion(string? version) => version is { Length: > 0 and <= 20 } && version[0] != '0'
         && ulong.TryParse(version, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && n > 0;

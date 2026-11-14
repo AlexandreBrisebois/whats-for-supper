@@ -103,3 +103,105 @@ for (const locale of ['en', 'fr'] as const) {
     });
   });
 }
+
+test.describe('fenced migration presentation epoch', () => {
+  test.use({ dateOnlyClock: true });
+  test('rejects prior requests before replay and retains fresh human checks on reread', async ({
+    page,
+    baseURL,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const { groceryRows } = await setupCommonRoutes(page);
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+    const schedule = { ...builders.scheduleDays(), groceryItems: builders.groceryItems(['flour']) };
+    const preservedDays = structuredClone(schedule.days);
+    groceryRows.decorate(schedule);
+    const before = groceryRows.snapshot(schedule.weekStartDate);
+    const oldItem = {
+      rowId: before.groceryItems[0].rowId,
+      expectedRowVersion: before.groceryItems[0].rowVersion,
+      weekStartDate: before.weekStartDate,
+      checked: true,
+      clientMutationId: MOCK_IDS.RECIPE_CHICKEN,
+      expectedPresentationEpoch: before.presentationEpoch,
+    };
+    expect(groceryRows.mutate(before.weekStartDate, 'item', oldItem).status).toBe(200);
+    const checked = groceryRows.snapshot(before.weekStartDate);
+    const oldBulk = {
+      weekStartDate: before.weekStartDate,
+      expectedListVersion: checked.groceryListVersion,
+      checks: checked.groceryState,
+      clientMutationId: MOCK_IDS.RECIPE_LASAGNA,
+      expectedPresentationEpoch: before.presentationEpoch,
+    };
+    expect(groceryRows.mutate(before.weekStartDate, 'bulk', oldBulk).status).toBe(200);
+    // Assemble the recorded server snapshot through the existing mock owner;
+    // executor/atomic-reset semantics are qualified by PostgreSQL tests.
+    const migrationEpoch = '09000000-0000-4000-8000-000000000055';
+    groceryRows.advanceGeneration(migrationEpoch);
+    const prior = groceryRows.snapshot(before.weekStartDate);
+    expect(
+      groceryRows.mutate(before.weekStartDate, 'item', {
+        ...oldItem,
+        expectedRowVersion: prior.groceryItems[0].rowVersion,
+        checked: false,
+        clientMutationId: MOCK_IDS.RECIPE_GNOCCHI,
+        expectedPresentationEpoch: migrationEpoch,
+      }).status
+    ).toBe(200);
+    const migrated = groceryRows.snapshot(before.weekStartDate);
+    await page.route(
+      (url) => url.pathname === '/api/schedule',
+      (route) =>
+        route.fulfill({
+          json: { data: { ...schedule, ...groceryRows.snapshot(before.weekStartDate) } },
+        })
+    );
+    await mockSseWithConnectedSchedule(page, { ...schedule, ...migrated } as any);
+    await page.goto('/planner?tab=grocery');
+    await page.getByTestId('grocery-tab').click();
+    const item = page.locator(`[data-row-id="${oldItem.rowId}"]`);
+    await expect(item).toHaveAttribute('aria-checked', 'false');
+    for (const [suffix, body] of [
+      ['/item', oldItem],
+      ['', oldBulk],
+    ] as const) {
+      const refused = await page.evaluate(
+        async ({ suffix, body }) => {
+          const response = await fetch(`/api/schedule/0/grocery${suffix}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          return { status: response.status, body: await response.json() };
+        },
+        { suffix, body }
+      );
+      expect(refused).toMatchObject({ status: 409, body: { code: 'epoch_conflict' } });
+    }
+    expect(groceryRows.snapshot(before.weekStartDate)).toEqual(migrated);
+    const sent = page.waitForRequest(
+      (request) =>
+        request.method() === 'PATCH' && new URL(request.url()).pathname.endsWith('/grocery/item')
+    );
+    const settled = page.waitForResponse(
+      (response) =>
+        response.status() === 200 &&
+        response.request().method() === 'PATCH' &&
+        new URL(response.url()).pathname.endsWith('/grocery/item')
+    );
+    await item.click();
+    expect((await sent).postDataJSON().expectedPresentationEpoch).toBe(migrationEpoch);
+    await settled;
+    await expect(item).toHaveAttribute('aria-checked', 'true');
+    const afterCheck = groceryRows.snapshot(before.weekStartDate);
+    groceryRows.advanceGeneration(migrationEpoch);
+    await page.reload();
+    await page.getByTestId('grocery-tab').click();
+    await expect(item).toHaveAttribute('aria-checked', 'true');
+    expect(groceryRows.snapshot(before.weekStartDate)).toEqual(afterCheck);
+    expect(schedule.days).toEqual(preservedDays);
+  });
+});

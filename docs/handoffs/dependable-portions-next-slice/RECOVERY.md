@@ -1,5 +1,7 @@
 # Recovery-first delivery
 
+The bounded migration follow-up is now described in [the executor handoff](MIGRATION-EXECUTOR.md). The recovery checkpoint below retains its original candidate and qualification.
+
 ## Application checkpoint
 
 Signed commit `71b56bc5945f0be770eeb02bc5759578faf0582f` is pushed to `origin/recipe-view-redesign`. Implementation stayed on the local branch. The 69 application, test, contract and harness paths were independently reviewed and prepared before stable verification. Runtime acceptance used disposable databases and filesystems. The original six containers and port 3000 process were preserved.
@@ -43,25 +45,30 @@ Alex took ownership of CI monitoring after the application push. The last record
 
 ## Task and lifecycle reconciliation
 
-Bilingual task 4.1 is complete from its defined local recovery acceptance. Selected progress is 23/68. Every selected change retains unfinished acceptance, so the archive-eligible set is empty.
+Bilingual task 4.1 is complete from its defined local recovery acceptance. Selected progress is now 26/68 after migration tasks 1.1, 1.2 and 3.3. Every selected change retains unfinished acceptance, so the archive-eligible set is empty.
 
 | Change | Complete tasks | Remaining boundary |
 | --- | --- | --- |
 | canonical-ingredient-correction | 1/12 | Full producer/intake/corpus and release acceptance |
 | scale-cooking-step-ingredients | 2/14 | Combined producer, allocation, Cook and context acceptance |
 | bilingual-shopping-identity | 1/10 | Adoption/corrections, migration 4.2 and final release 5.1 |
-| migrate-canonical-recipe-model | 0/8 | Selected-ID executor, once-only week reset/retry and cutover |
+| migrate-canonical-recipe-model | 3/8 | Final producer/recovery baseline, coordinated cutover and integrated release acceptance |
 | restore-dependable-grocery-interactions | 8/9 | Final integrated production/hosted and common release evidence |
 | restore-local-ci-browser-parity | 11/15 | Required repeated-file and final production/hosted sequences |
 
 The archive workflow's artifact readiness is complete for these changes. Its task-completion check still finds unfinished implementation acceptance in every change. Their overlapping capability deltas remain with the open changes. Earlier source, mocked, local, hosted and DV evidence keeps its original qualification scope.
 
-## Bounded migration successor
+## Bounded migration executor delivery
 
-The next slice implements and rehearses the selected-ID executor and atomic once-only weekly reset on disposable copies. Tasks 1.1, 1.2 and 3.3 own that work, with necessary maintenance/operator contributions to 3.1 and 3.2. Use the approved executor plan and inspect the frozen inventory, receipt and capability before-images against current source.
+Tasks 1.1, 1.2 and 3.3 now deliver the disposable-copy selected-ID executor and
+atomic once-only weekly reset. The [executor handoff](MIGRATION-EXECUTOR.md)
+records source admission, actual revocable/session/Write boundaries, the frozen
+business date, exact preservation and live/pruned receipt semantics, accepted
+operator invocation, evidence and the next cutover boundary.
 
-`InspectSourceProtectionAsync` supplies validated source facts for a caller that already holds its operator boundary. `RequireSourceCoverageAsync` owns a Snapshot lease and a read-only live observation transaction. The executor must bind fresh protected-content comparisons to its actual revocable operation capability before mutation. Keep commit identity and artifact/schema/reference digests in their defined domains.
-
-Each unfinished week commits its rebuild, migration-only recipe check/baseline reset and completed receipt atomically. Completed receipts preserve later human checks on retry, including pruned receipt recovery. Every persisted or assignment-implied week is accounted for while plans, events, extras, corrections, media and history retain their protected facts.
-
-The successor ends with reviewed executor source, disposable rehearsal evidence and an operator/cutover handoff. Vocabulary adoption, activation and DV/production operations belong to later selected work. The ready continuation prompt contains the prerequisites, acceptance and delivery boundary. [Migration prompt](../../../.agents/prompts/dependable-portions-migration-next-slice.md)
+The next selected work is operator/cutover qualification against an actual copied
+library and candidate, including current-date freshness, final vocabulary adoption,
+the old application/schema recovery pair, coordinated shutdown/restart and an
+independent fresh backup read-back. No activation, DV or production operation was
+performed by the executor slice. Alex owns CI monitoring. Every selected change
+still has open aggregate requirements; the archive-eligible set remains empty.

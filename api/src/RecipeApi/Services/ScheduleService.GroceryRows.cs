@@ -17,9 +17,7 @@ public partial class ScheduleService
             || request.ClientMutationId is null || request.ClientMutationId == Guid.Empty)
             throw new GroceryMutationConflictException("upgrade_required");
         var id = request.RowId.Value.ToString("D");
-        object input = request.ExpectedPresentationEpoch is null
-            ? new { kind = "item", rowId = id, request.WeekStartDate, request.ExpectedRowVersion, request.Checked }
-            : new { kind = "item", rowId = id, request.WeekStartDate, request.ExpectedRowVersion, request.Checked, request.ExpectedPresentationEpoch };
+        var input = GroceryRowState.ItemInput(request);
         return MutateGroceryRowsAsync(offset, request.WeekStartDate.Value, request.ClientMutationId.Value,
             input, request.ExpectedPresentationEpoch,
             (plan, rows, checks) =>
@@ -41,9 +39,7 @@ public partial class ScheduleService
             || request.ClientMutationId is null || request.ClientMutationId == Guid.Empty)
             throw new GroceryMutationConflictException("upgrade_required");
         var ordered = request.Checks.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-        object input = request.ExpectedPresentationEpoch is null
-            ? new { kind = "bulk", request.WeekStartDate, request.ExpectedListVersion, checks = ordered }
-            : new { kind = "bulk", request.WeekStartDate, request.ExpectedListVersion, checks = ordered, request.ExpectedPresentationEpoch };
+        var input = GroceryRowState.BulkInput(request);
         return MutateGroceryRowsAsync(offset, request.WeekStartDate.Value, request.ClientMutationId.Value,
             input, request.ExpectedPresentationEpoch,
             (plan, rows, checks) =>
@@ -76,7 +72,7 @@ public partial class ScheduleService
         var presentation = await vocabulary.CapturePresentationAsync([], ct);
         if (expectedPresentationEpoch is { } expected ? expected != presentation.Epoch : presentation.Epoch != Guid.Empty)
             throw new GroceryMutationConflictException("epoch_conflict");
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(input))));
+        var hash = GroceryRowState.InputHash(input);
         var replay = false;
         WeeklyPlan? authoritativePlan = null;
         try
@@ -88,7 +84,7 @@ public partial class ScheduleService
                 {
                     if (saved.InputHash != hash) throw new GroceryMutationConflictException("mutation_conflict");
                     replay = true;
-                    return JsonSerializer.Deserialize<GroceryMutationResult>(saved.Outcome) ?? throw new JsonException("Invalid grocery mutation outcome.");
+                    return GroceryRowState.ReadCapturedOutcome(saved).Result;
                 }
                 var plan = await db.WeeklyPlans.SingleOrDefaultAsync(plan => plan.WeekStartDate == week, ct)
                     ?? throw new GroceryMutationConflictException("grocery_conflict", absent: true);
@@ -112,7 +108,7 @@ public partial class ScheduleService
                 plan.GroceryItems = JsonSerializer.Serialize(rows);
                 plan.GroceryListVersion = GroceryRowState.Next(plan.GroceryListVersion);
                 var outcome = GroceryRowState.Snapshot(plan, _clock.UtcNow, rowId);
-                db.GroceryMutationOutcomes.Add(new() { Id = mutationId, InputHash = hash, WeekStartDate = week, Outcome = GroceryRowState.SerializeOutcome(outcome) });
+                db.GroceryMutationOutcomes.Add(new() { Id = mutationId, InputHash = hash, WeekStartDate = week, Outcome = GroceryRowState.SerializeCapturedOutcome(outcome, input) });
                 await db.SaveChangesAsync(ct);
                 return outcome;
             }, ct, async outcome =>
