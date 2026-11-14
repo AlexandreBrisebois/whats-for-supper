@@ -17,8 +17,8 @@ Current full snapshot/staged restore captures exact vocabulary files, current an
 retained references and protected household facts. Ordinary and demo recovery keep
 their declared distinct dispositions. The [common handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-COMMON.md)
 qualifies tasks 1.1–1.3 and bounded recovery. The [grocery handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-GROCERIES.md)
-records selected group 2 qualification and the remaining correction/migration/release
-acceptance. The selected [sources policy](sources.md) owns the reviewed input.
+records selected group 2 qualification. The [private correction handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-CORRECTIONS.md)
+records selected group 3 qualification and remaining migration/release acceptance. The selected [sources policy](sources.md) owns the reviewed input.
 
 ## Decisions and Tradeoffs
 

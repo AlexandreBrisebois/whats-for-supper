@@ -50,9 +50,9 @@ Alex took ownership of CI monitoring after the application push. The last record
 
 ## Current task and lifecycle reconciliation — 2026-11-14
 
-The [bilingual grocery handoff](BILINGUAL-GROCERIES.md) owns the latest selected
-2.1–2.2 delivery and lifecycle audit. Current progress is 31/68 after those two
-tasks, common vocabulary 1.1–1.3 and migration 1.1/1.2/3.3 deliveries. Every owner
+The [private correction handoff](BILINGUAL-CORRECTIONS.md) owns the latest selected
+3.1–3.2 delivery and lifecycle audit. Current progress is 33/68 after those two
+tasks, grocery 2.1–2.2, common vocabulary 1.1–1.3 and migration 1.1/1.2/3.3 deliveries. Every owner
 retains unfinished aggregate acceptance. The current handoff records final selected
 counts, exact lifecycle deferrals and terminal source/runtime receipts.
 
@@ -60,7 +60,7 @@ counts, exact lifecycle deferrals and terminal source/runtime receipts.
 | --- | --- | --- |
 | canonical-ingredient-correction | 1/12 | Broader editor/corpus, later intake/general repair and integrated release |
 | scale-cooking-step-ingredients | 2/14 | Complete reevaluation/stale/failure, combined role/context and hosted acceptance |
-| bilingual-shopping-identity | 6/10 | Corrections, migration 4.2 and final release 5.1 |
+| bilingual-shopping-identity | 8/10 | Migration 4.2 and final release 5.1 |
 | migrate-canonical-recipe-model | 3/8 | Final baseline, recovery pair, coordinated cutover and integrated release |
 | restore-dependable-grocery-interactions | 8/9 | Final integrated candidate and applicable hosted acceptance |
 | restore-local-ci-browser-parity | 11/15 | Cooking cause/repetition and final local/hosted sequences |

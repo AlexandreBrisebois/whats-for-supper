@@ -27,8 +27,8 @@ All implementation boxes remain unchecked until actual acceptance. Use the share
 **Outcome/scenarios:** C25/C31/C34/C40; ordinary protected corrections, explicit clears and distinct private/global/category scopes.
 **Owners/boundaries:** guarded recipe shopping Save, shared food/fallback category contract and extra-occurrence owner; depends on groups1–2.
 
-- [ ] 3.1 Add intended-red `IngredientCategoryServiceTests` and `FoodCategoryCorrectionPostgresTests` for current/stale revisions, unique/conflicting prior manual categories, private label versus purchase-meaning change, explicit mapping clear, foreign/stale provider and locale/reimport/recovery. Exercise ordinary generated-client shopping/category correction and method-sensitive mocks. Verify food/fallback household scope never mutates extra occurrences or publishes global aliases; run focused API/database cases before logic.
-- [ ] 3.2 Implement only the qualified correction/category scopes and run3.1 green plus affected category/edit browser cases. Preserve protected private overrides and all conflicting prior manual choices; no source-order winner or stale mapping revival. New global alias/label release requires its pinned affected-set/reversal review, never household correction promotion. Document actual read-back, categoryRevision/contentRevision/mappingRevision guards and old-client compatibility/conflict behavior.
+- [x] 3.1 Add intended-red `IngredientCategoryServiceTests` and `FoodCategoryCorrectionPostgresTests` for current/stale revisions, unique/conflicting prior manual categories, private label versus purchase-meaning change, explicit mapping clear, foreign/stale provider and locale/reimport/recovery. Exercise ordinary generated-client shopping/category correction and method-sensitive mocks. Verify food/fallback household scope never mutates extra occurrences or publishes global aliases; run focused API/database cases before logic.
+- [x] 3.2 Implement only the qualified correction/category scopes and run3.1 green plus affected category/edit browser cases. Preserve protected private overrides and all conflicting prior manual choices; no source-order winner or stale mapping revival. New global alias/label release requires its pinned affected-set/reversal review, never household correction promotion. Document actual read-back, categoryRevision/contentRevision/mappingRevision guards and old-client compatibility/conflict behavior.
 
 ## 4. Preserve vocabulary and references through full recovery and migration
 
@@ -132,3 +132,24 @@ independent review, complete stable verify/full PostgreSQL, signed delivery and
 cleanup identities. Progress is 6/10, with correction 3.1–3.2, migration 4.2 and final
 release 5.1 retaining their acceptance. The six-owner total is 31/68. Every change
 has unfinished aggregate acceptance and remains active. Alex owns CI monitoring.
+
+## Private correction/category acceptance — 2026-11-14
+
+Tasks 3.1–3.2 qualify ordinary producer-backed EN/FR private shopping/category
+corrections, revision guards and protected human scopes. The
+[correction handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-CORRECTIONS.md)
+owns exact commands/receipts, fixture limitations, retained failures and remaining
+acceptance. Evidence owner `.task/bilingual-corrections-20261114/delivery.json`
+records terminal stable verification, full PostgreSQL, immutable review and signed
+delivery. Focused correction PostgreSQL passed 10/0 skips; broader bilingual
+regression passed 31/0 skips; affected API 184 and frontend/mock units 191 passed.
+Live2 passed one native owner plus five generated-client EN/FR browser journeys
+with zero skips/retries. Existing ordinary/demo full recovery qualifies corrected
+facts with the final full-suite identity. One intended-red provider regression
+reproduced acceptance of an unrequested key before the narrow request-key filter.
+No public API shape changed; generation is not applicable to that internal repair.
+
+Current progress is 8/10 bilingual and 33/68 release-family. Migration 4.2 and final
+release 5.1 remain open. No owner has complete whole-change acceptance, so no
+main-spec synchronization or archival is eligible. Historical 6/10 grocery and
+prior source/runtime/CI evidence above retain their original qualification.

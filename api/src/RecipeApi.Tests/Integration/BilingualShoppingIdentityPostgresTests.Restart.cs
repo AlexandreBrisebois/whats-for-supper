@@ -85,6 +85,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
             string evidence;
             string files;
             string membership;
+            string corrections;
             WeeklyPlan checkedPlan;
             try
             {
@@ -102,7 +103,21 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     var recipe = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
                     var content = CanonicalRecipeContentStore.Read(recipe)!;
                     var saved = await services.GetRequiredService<CanonicalRecipeContentStore>()
-                        .EditAsync(id, content.SourceRevision, Guid.NewGuid(), Edit(content, "50"));
+                        .EditAsync(id, content.SourceRevision, Guid.NewGuid(), Edit(content, "50",
+                            content.IngredientLines[0].Shopping with { Name = "onion, diced" }));
+                    saved = await services.GetRequiredService<CanonicalRecipeContentStore>().EditAsync(id, content.SourceRevision,
+                        Guid.NewGuid(), new UpdateRecipeDto
+                        {
+                            ExpectedContentRevision = saved.Content.ContentRevision,
+                            IngredientLines = JsonSerializer.SerializeToElement(saved.Content.IngredientLines.Select((line, index) => new RecipeIngredientLineInput
+                            {
+                                Id = line.Id, Description = line.Description, Amount = line.Amount, AmountText = line.AmountText,
+                                Unit = line.Unit, Scaling = line.Scaling, Package = line.Package,
+                                Shopping = index == 1 ? new(line.Shopping.Name, null, null) : line.Shopping
+                            }), Json)
+                        });
+                    await services.GetRequiredService<HouseholdFoodOverrideStore>().ReclassifyCategoryAsync(BoundedVocabularyInput.Onion, "Pantry", null);
+                    corrections = JsonSerializer.Serialize(await services.GetRequiredService<HouseholdFoodOverrideStore>().ReadRecoveryRowsAsync(), Json);
                     await services.GetRequiredService<ScheduleService>().AssignRecipeAsync(new(0, 0, id),
                         referenceWeekStartDate: new DateOnly(2026, 10, 12));
                     var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == new DateOnly(2026, 10, 12));
@@ -145,6 +160,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     Assert.Equal(evidence, recipe.FoodMappingEvidence);
                     Assert.Equal(membership, (await db.FamilySettings.AsNoTracking().SingleAsync(x => x.Key == "food_vocabulary_publication")).Value.GetRawText());
                     Assert.Equal(files, VocabularyFiles(services));
+                    Assert.Equal(corrections, JsonSerializer.Serialize(await services.GetRequiredService<HouseholdFoodOverrideStore>().ReadRecoveryRowsAsync(), Json));
                     var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == checkedPlan.WeekStartDate);
                     Assert.Equal((checkedPlan.GroceryItems, checkedPlan.GroceryState, checkedPlan.GroceryCheckedDemandBaselines),
                         (plan.GroceryItems, plan.GroceryState, plan.GroceryCheckedDemandBaselines));
@@ -160,6 +176,8 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 await VerifyProgramRestartsAsync(settings.ConnectionString, root, id, canonical, evidence, files, membership);
                 var options = new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(settings.ConnectionString).Options;
                 await using var finalDb = new RecipeDbContext(options);
+                var overrides = await finalDb.HouseholdFoodOverrides.AsNoTracking().ToArrayAsync();
+                Assert.Equal(corrections, JsonSerializer.Serialize(overrides.Select(HouseholdFoodOverrideSnapshot.From), Json));
                 var finalPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == checkedPlan.WeekStartDate);
                 Assert.Equal((checkedPlan.GroceryItems, checkedPlan.GroceryState, checkedPlan.GroceryCheckedDemandBaselines),
                     (finalPlan.GroceryItems, finalPlan.GroceryState, finalPlan.GroceryCheckedDemandBaselines));

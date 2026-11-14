@@ -1,5 +1,20 @@
 # Active resume checkpoints
 
+## Bilingual private shopping and category corrections (2026-11-14)
+
+Selected tasks 3.1–3.2 qualify ordinary EN/FR publication, guarded private shopping
+corrections, category scopes and revision conflicts on local recipe-view-redesign.
+The [current handoff](docs/handoffs/dependable-portions-next-slice/BILINGUAL-CORRECTIONS.md)
+and `.task/bilingual-corrections-20261114/delivery.json` own final stable verification,
+full PostgreSQL, immutable review, signed commits/pushes and resource disposition.
+Entry local/remote was clean fb4978e6d521bcceb8014951957bde5949554320; CI repair
+050c8d0635e071d9c6186ffc2df672a66b579908 was already included. Alex owns CI monitoring.
+Progress is 8/10 bilingual and 33/68 release-family. No complete change qualifies
+for sync/archive. Migration 4.2, release 5.1, later intake, shared adoption,
+activation, DV/production, Similar, garlic and adjacent UI remain subsequent
+selections. Similar stays deferred; selective repair stays superseded/unimplemented.
+
+
 ## Bilingual grocery grouping and labels (2026-11-14)
 
 Task/spec is bilingual-shopping-identity 2.1–2.2 on local recipe-view-redesign,

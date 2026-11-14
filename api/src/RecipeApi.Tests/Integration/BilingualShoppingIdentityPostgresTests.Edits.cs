@@ -13,6 +13,66 @@ namespace RecipeApi.Tests.Integration;
 
 public sealed partial class BilingualShoppingIdentityPostgresTests
 {
+    [RecipeImportReportPostgresTests.PostgresTheory]
+    [InlineData("en", "oignon émincé", true)]
+    [InlineData("fr", "onion, diced", true)]
+    [InlineData("en", "canned tomatoes", false)]
+    [InlineData("fr", "échalote", false)]
+    public Task OrdinaryPrivateName_OnlyReviewedSameFoodKeepsQualifiedAssociationAndRejectsMissingForeignStaleRevisions(
+        string locale, string name, bool retained) => WithHousehold(async factory =>
+    {
+        using var scope = factory.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var db = services.GetRequiredService<RecipeDbContext>();
+        var vocabulary = services.GetRequiredService<FoodVocabularyStore>();
+        await vocabulary.PublishReviewedAsync(BoundedVocabularyInput.Bytes(), null, Guid.NewGuid(), BoundedVocabularyInput.ReviewIdentity);
+        var imported = await ImportAsync(services, locale);
+        using var client = factory.CreateAuthenticatedClient();
+        async Task<RecipeApi.Models.Recipe> Read() => await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id);
+        var before = await Read();
+        var content = CanonicalRecipeContentStore.Read(before)!;
+        async Task Reject(object input, HttpStatusCode status)
+        {
+            using var response = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", input, Json);
+            Assert.Equal(status, response.StatusCode);
+            var unchanged = await Read();
+            Assert.Equal((before.Name, before.CanonicalContent, before.FoodMappingEvidence), (unchanged.Name, unchanged.CanonicalContent, unchanged.FoodMappingEvidence));
+        }
+        // A complete old-client request cannot partially change an unrelated field.
+        await Reject(new { name = "must not leak", ingredientLines = Edit(content, "999").IngredientLines }, HttpStatusCode.Conflict);
+        await Reject(new { name = "must not leak", expectedContentRevision = "foreign", ingredientLines = Edit(content, "999").IngredientLines }, HttpStatusCode.Conflict);
+        var shopping = content.IngredientLines[0].Shopping;
+        await Reject(WireEdit(Edit(content, "999", shopping with { MappingRevision = null })), HttpStatusCode.BadRequest);
+        await Reject(WireEdit(Edit(content, "999", shopping with { MappingRevision = "foreign" })), HttpStatusCode.BadRequest);
+        using (var correction = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", WireEdit(Edit(content, "25", shopping with { Name = name })), Json))
+            Assert.True(correction.StatusCode == HttpStatusCode.OK, await correction.Content.ReadAsStringAsync());
+        var corrected = await Read();
+        var current = CanonicalRecipeContentStore.Read(corrected)!;
+        var line = current.IngredientLines[0];
+        Assert.Equal(name, line.Shopping.Name);
+        Assert.Equal(retained ? shopping.FoodId : null, line.Shopping.FoodId);
+        Assert.Equal(retained, line.Shopping.MappingRevision is not null);
+        if (retained) Assert.NotEqual(shopping.MappingRevision, line.Shopping.MappingRevision);
+        Assert.Equal(before.RawMetadata, corrected.RawMetadata);
+        var decision = Assert.Single(JsonSerializer.Deserialize<RecipeFoodMappingEvidence>(corrected.FoodMappingEvidence!, Json)!.NameDecisions, x => x.IngredientLineId == line.Id);
+        Assert.Equal("explicit_private", decision.Kind);
+        using (var staleMapping = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", WireEdit(Edit(current, "999", shopping)), Json))
+            Assert.Equal(HttpStatusCode.BadRequest, staleMapping.StatusCode);
+        using (var staleContent = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", WireEdit(Edit(content, "999")), Json))
+            Assert.Equal(HttpStatusCode.Conflict, staleContent.StatusCode);
+        using (var quantity = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", WireEdit(Edit(current, "75")), Json))
+            Assert.Equal(HttpStatusCode.OK, quantity.StatusCode);
+        var saved = await Read();
+        var carried = Assert.Single(JsonSerializer.Deserialize<RecipeFoodMappingEvidence>(saved.FoodMappingEvidence!, Json)!.NameDecisions, x => x.IngredientLineId == line.Id);
+        Assert.Equal((decision.Kind, decision.DecidingOperationId, decision.MappingRevision), (carried.Kind, carried.DecidingOperationId, carried.MappingRevision));
+        var calls = imported.Provider.Invocations.Count;
+        await imported.Agent.ExecuteAsync(imported.Extraction, default);
+        var replay = await Read();
+        Assert.Equal((saved.CanonicalContent, saved.FoodMappingEvidence), (replay.CanonicalContent, replay.FoodMappingEvidence));
+        Assert.Equal(calls, imported.Provider.Invocations.Count);
+        Assert.Equal(BoundedVocabularyInput.Bytes(), (await vocabulary.CaptureActiveAsync())!.RawBytes);
+    });
+
     private static UpdateRecipeDto Edit(CanonicalRecipeContent content, string amount,
         RecipeShoppingAssociationDto? shopping = null) => new()
     {

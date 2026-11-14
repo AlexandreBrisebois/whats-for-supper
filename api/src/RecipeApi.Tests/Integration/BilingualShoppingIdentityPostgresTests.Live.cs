@@ -154,9 +154,13 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     var content = CanonicalRecipeContentStore.Read(recipe)!;
                     Assert.Equal("50", content.IngredientLines[0].AmountText);
                     Assert.Equal(original.RawMetadata, recipe.RawMetadata);
-                    Assert.Equal(CanonicalRecipeContentStore.Read(original)!.IngredientLines.Select(x => x.Shopping), content.IngredientLines.Select(x => x.Shopping));
+                    var originalLines = CanonicalRecipeContentStore.Read(original)!.IngredientLines;
+                    Assert.Equal(originalLines.Skip(1).Select(x => x.Shopping), content.IngredientLines.Skip(1).Select(x => x.Shopping));
+                    Assert.Equal(originalLines[0].Shopping.FoodId, content.IngredientLines[0].Shopping.FoodId);
+                    Assert.Equal(locale == "fr" ? "onion, diced" : "oignon émincé", content.IngredientLines[0].Shopping.Name);
                     var saved = JsonSerializer.Deserialize<RecipeFoodMappingEvidence>(recipe.FoodMappingEvidence!, Json)!;
                     Assert.Equal(3, saved.Mappings.Length);
+                    Assert.Equal("explicit_private", saved.NameDecisions.Single(x => x.IngredientLineId == content.IngredientLines[0].Id).Kind);
                     Assert.All(saved.Mappings, mapping => Assert.Equal(content.ContentRevision, mapping.Facts.ContentRevision));
                     Assert.Equal(calls[locale], imported.Provider.Invocations.Count);
                 }
@@ -165,6 +169,8 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 var rows = JsonSerializer.Deserialize<List<RecipeApi.Dto.GroceryLineItemDto>>(plan.GroceryItems, Json)!;
                 var onion = Assert.Single(rows, row => row.FoodId == BoundedVocabularyInput.Onion);
                 Assert.Equal(LegacyGroceryQuantity.Parse("100"), onion.ExactQuantity);
+                Assert.Equal("Pantry", onion.Section);
+                Assert.Equal("Pantry", (await db.HouseholdFoodOverrides.AsNoTracking().SingleAsync()).GrocerySection);
                 Assert.True(JsonDocument.Parse(plan.GroceryState).RootElement.GetProperty(onion.RowId).GetBoolean());
                 Assert.Equal("100", JsonDocument.Parse(plan.GroceryCheckedDemandBaselines).RootElement.GetProperty(onion.RowId)
                     .GetProperty("Quantity").GetProperty("value").GetProperty("n").GetString());

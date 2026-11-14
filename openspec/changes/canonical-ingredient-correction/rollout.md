@@ -1,8 +1,8 @@
 # Coordinated rollout and recovery gates
 
 This is the coordinated rollout gate owner. The November 14 bounded delivery
-qualifies bilingual grocery tasks 2.1–2.2 on disposable local resources and
-reconciles eligible lifecycle work with signed commits/pushes. The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-GROCERIES.md)
+qualifies bilingual correction tasks 3.1–3.2 on disposable local resources and
+reconciles eligible lifecycle work with signed commits/pushes. The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-CORRECTIONS.md)
 records source identity, CI ownership and remaining acceptance. DV/production
 operations, shared-library adoption and migration activation retain their later
 operator selection. Earlier operation-specific maintenance/DV authority remains

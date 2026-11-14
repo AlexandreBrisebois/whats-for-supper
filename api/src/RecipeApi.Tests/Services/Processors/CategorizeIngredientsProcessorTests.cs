@@ -99,6 +99,31 @@ public class CategorizeIngredientsProcessorTests : IDisposable
     // ── Tests ─────────────────────────────────────────────────────────────────
 
     [Fact]
+    public async Task DelayedProvider_RetainsArrivingManualCorrectionAndDiscardsForeignKeys()
+    {
+        _db.Recipes.Add(new Recipe { Id = _recipeId, RawMetadata = BuildRawMetadata("onion") });
+        await _db.SaveChangesAsync();
+        _chatClientMock.Setup(c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(),
+            It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()))
+            .Returns(async () =>
+            {
+                // Controlled provider boundary: the human correction wins before
+                // the delayed category reply completes. No network call occurs.
+                _db.IngredientCategories.Add(new IngredientCategory
+                { NormalizedKey = "onion", GrocerySection = "Pantry", Source = "manual", Confidence = 1 });
+                await _db.SaveChangesAsync();
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant,
+                    BuildLlmResponse(("onion", "Produce"), ("foreign purchase", "Meat"))));
+            });
+        await _processor.ExecuteAsync(MakeTask(_recipeId), default);
+        var correction = Assert.Single(_db.IngredientCategories);
+        Assert.Equal("onion", correction.NormalizedKey);
+        Assert.Equal("Pantry", correction.GrocerySection);
+        Assert.Equal("manual", correction.Source);
+        Assert.Equal(1, correction.Confidence);
+    }
+
+    [Fact]
     public async Task CanonicalRecipe_UsesCurrentShoppingNamesInsteadOfOldSupply()
     {
         var current = new CanonicalRecipeContent(2, "content.current", "source.current", 4,

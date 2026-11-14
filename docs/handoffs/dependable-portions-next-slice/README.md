@@ -1,8 +1,8 @@
 # Dependable portions next slice
 
-The [current bilingual grocery handoff](BILINGUAL-GROCERIES.md) owns the selected
-2.1–2.2 grouping/label qualification, candidate-specific evidence, lifecycle
-reconciliation, parallel CI ownership and next bounded selection. The [common
+The [current private correction handoff](BILINGUAL-CORRECTIONS.md) owns the selected
+3.1–3.2 correction/category qualification, candidate-specific evidence, lifecycle
+reconciliation, CI ownership and next bounded selection. The [common
 vocabulary delivery](BILINGUAL-COMMON.md), [migration executor](MIGRATION-EXECUTOR.md)
 and [recovery delivery](RECOVERY.md) retain their actual accepted scopes and source
 identities. Earlier checkpoints remain in [DELIVERY.md](DELIVERY.md) and
@@ -37,8 +37,8 @@ Exact after-images are compressed source archives for recovery if temporary work
 
 ## Release work still open
 
-Selected progress is 31/68 after bilingual grocery tasks 2.1–2.2. Final
-verification belongs to BILINGUAL-GROCERIES.md and its delivery receipt. Correction/category acceptance, remaining intake/corpus, final baseline
+Selected progress is 33/68 after bilingual correction tasks 3.1–3.2. Final
+verification belongs to BILINGUAL-CORRECTIONS.md and its delivery receipt. Remaining intake/corpus, final baseline
 recovery, stale-client/draft cutover rehearsal, exact images, final DV preservation
 and whole-release hosted qualification remain with their named owners. Preserve
 every planned meal/event/identity/intent, extras, human corrections, media, drafts

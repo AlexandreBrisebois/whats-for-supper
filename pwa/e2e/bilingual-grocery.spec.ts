@@ -80,6 +80,19 @@ for (const locale of ['en', 'fr'] as const) {
       if ((await aisle.getAttribute('aria-expanded')) !== 'true') await aisle.click();
       await page.locator(`[data-testid="reclassify-btn"][data-item-name="${label}"]`).click();
       await expect(page.getByTestId('category-prior-choices')).toBeVisible();
+      // A controlled failed transport leaves the real method-sensitive mock
+      // authority untouched; the next generated-client attempt reaches it.
+      let attempts = 0;
+      await page.route('**/api/foods/*/category', async (route) => {
+        if (route.request().method() !== 'PATCH') return route.fallback();
+        attempts += 1;
+        return attempts === 1 ? route.fulfill({ status: 503 }) : route.fallback();
+      });
+      await page.getByTestId('section-option-Pantry').click();
+      await expect(page.getByTestId('reclassify-error')).toBeVisible();
+      expect(groceryRows.snapshot(schedule.weekStartDate)).toEqual(before);
+      await expect(item).toHaveAttribute('aria-checked', 'true');
+      await expect(page.getByTestId('section-option-Pantry')).toBeEnabled();
       await page.getByTestId('section-option-Pantry').click();
       await expect(page.getByTestId('section-picker')).toHaveCount(0);
       await expect(
@@ -90,7 +103,12 @@ for (const locale of ['en', 'fr'] as const) {
           path: '/api/foods/09000000-0000-4000-8000-000000000001/category',
           body: { grocerySection: 'Pantry', expectedCategoryRevision: null },
         },
+        {
+          path: '/api/foods/09000000-0000-4000-8000-000000000001/category',
+          body: { grocerySection: 'Pantry', expectedCategoryRevision: null },
+        },
       ]);
+      expect(attempts).toBe(2);
       const after = groceryRows.snapshot(schedule.weekStartDate);
       expect(after.groceryState).toEqual(before.groceryState);
       expect(after.groceryItems[0]).toMatchObject({

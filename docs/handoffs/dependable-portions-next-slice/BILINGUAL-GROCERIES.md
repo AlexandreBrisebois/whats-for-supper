@@ -1,5 +1,9 @@
 # Bilingual grocery grouping and labels
 
+The subsequent [private correction handoff](BILINGUAL-CORRECTIONS.md) owns the
+current 3.1–3.2 delivery and 33/68 lifecycle checkpoint. This grocery delivery
+retains its original candidate, observations and failures.
+
 This delivery completes `bilingual-shopping-identity` tasks 2.1–2.2 on local
 `recipe-view-redesign`, starting from clean local/remote
 `fe6263bbb8a3337fdb662a883ce2bb845270e94a`. Alex owns CI monitoring.

@@ -4,7 +4,7 @@ using Xunit.Abstractions;
 
 namespace RecipeApi.Tests.Integration;
 
-public sealed class FoodCategoryCorrectionPostgresTests(ITestOutputHelper output)
+public sealed partial class FoodCategoryCorrectionPostgresTests(ITestOutputHelper output)
 {
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public Task Compatibility_CreatesRetainedOverrideStoreIdempotentlyAndRejectsIncompleteReferences() => new TomorrowPushPostgresTests(output).WithDatabase(async settings =>

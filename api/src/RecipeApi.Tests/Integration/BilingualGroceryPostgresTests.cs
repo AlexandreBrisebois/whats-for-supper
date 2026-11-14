@@ -24,7 +24,7 @@ public sealed partial class BilingualGroceryPostgresTests(ITestOutputHelper outp
     private static readonly Guid Onion = Guid.Parse("ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee");
     private static readonly DateOnly Monday = new(2026, 10, 12);
 
-    private Task WithHousehold(Func<TestWebApplicationFactory, Task> check, bool seedPlans = true) => new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
+    internal Task WithHousehold(Func<TestWebApplicationFactory, Task> check, bool seedPlans = true) => new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
     {
         var provider = new Mock<IChatClient>(MockBehavior.Strict);
         var network = new Mock<IHttpClientFactory>(MockBehavior.Strict);
@@ -76,14 +76,14 @@ public sealed partial class BilingualGroceryPostgresTests(ITestOutputHelper outp
         return id;
     }
 
-    private static async Task Assign(TestWebApplicationFactory factory, Guid id, int day)
+    internal static async Task Assign(TestWebApplicationFactory factory, Guid id, int day)
     {
         using var client = factory.CreateAuthenticatedClient();
         using var response = await client.PostAsJsonAsync($"/api/schedule/assign?referenceWeekStartDate={Monday:yyyy-MM-dd}", new { weekOffset = 0, dayIndex = day, recipeId = id });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    private static async Task<WeeklyPlan> Plan(TestWebApplicationFactory factory)
+    internal static async Task<WeeklyPlan> Plan(TestWebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<RecipeDbContext>().WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == Monday);

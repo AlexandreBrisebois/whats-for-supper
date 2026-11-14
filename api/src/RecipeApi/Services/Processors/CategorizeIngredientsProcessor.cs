@@ -181,10 +181,11 @@ public class CategorizeIngredientsProcessor(
             var normalizedKey = result.NormalizedKey;
             var sectionString = result.Section;
 
-            if (string.IsNullOrWhiteSpace(normalizedKey) || string.IsNullOrWhiteSpace(sectionString))
+            if (string.IsNullOrWhiteSpace(normalizedKey) || string.IsNullOrWhiteSpace(sectionString)
+                || !uncachedNames.Contains(normalizedKey, StringComparer.Ordinal))
             {
                 logger.LogWarning(
-                    "CategorizeIngredients: LLM returned entry with missing normalizedKey or section — discarding");
+                    "CategorizeIngredients: LLM returned an unrequested key or missing section — discarding");
                 continue;
             }
 

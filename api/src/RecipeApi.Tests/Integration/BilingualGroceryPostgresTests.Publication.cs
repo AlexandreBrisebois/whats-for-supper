@@ -17,7 +17,7 @@ namespace RecipeApi.Tests.Integration;
 
 public sealed partial class BilingualGroceryPostgresTests
 {
-    private sealed record SourceLine(string Name, string? Amount = "1", string? Unit = "g", RecipePackageDto? Package = null);
+    internal sealed record SourceLine(string Name, string? Amount = "1", string? Unit = "g", RecipePackageDto? Package = null);
 
     private static RecipePackageDto Package(string capacity, string basis = "net") =>
         new(new("cans", null), new(LegacyGroceryQuantity.Parse(capacity)!, new("g", null)), basis);
@@ -50,7 +50,7 @@ public sealed partial class BilingualGroceryPostgresTests
 
     // Associations originate in ordinary URL capture/extraction/publication. The
     // following guarded Save exercises supported user quantity/unit/package edits.
-    private static async Task<Guid> PublishSource(TestWebApplicationFactory factory, string locale, params SourceLine[] lines)
+    internal static async Task<Guid> PublishSource(TestWebApplicationFactory factory, string locale, params SourceLine[] lines)
     {
         using var scope = factory.Services.CreateScope();
         var source = JsonSerializer.Serialize(new
@@ -90,10 +90,10 @@ public sealed partial class BilingualGroceryPostgresTests
         await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(Monday, default);
     }
 
-    private static List<GroceryLineItemDto> Rows(WeeklyPlan plan) => JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems, Json)!;
-    private static Dictionary<string, bool> Checks(WeeklyPlan plan) => JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState, Json)!;
+    internal static List<GroceryLineItemDto> Rows(WeeklyPlan plan) => JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems, Json)!;
+    internal static Dictionary<string, bool> Checks(WeeklyPlan plan) => JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState, Json)!;
 
-    private static async Task Check(TestWebApplicationFactory factory, GroceryLineItemDto row, bool value = true)
+    internal static async Task Check(TestWebApplicationFactory factory, GroceryLineItemDto row, bool value = true)
     {
         using var client = factory.CreateAuthenticatedClient();
         var schedule = await GroceryTestRows.ReadAsync(client, Monday);
@@ -106,7 +106,7 @@ public sealed partial class BilingualGroceryPostgresTests
         Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
     }
 
-    private static async Task<string> VocabularyState(TestWebApplicationFactory factory)
+    internal static async Task<string> VocabularyState(TestWebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope();
         var services = scope.ServiceProvider;
