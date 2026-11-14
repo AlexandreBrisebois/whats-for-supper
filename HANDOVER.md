@@ -1,5 +1,15 @@
 # Active resume checkpoints
 
+## Dependable portions recovery and migration successor (2026-11-13)
+
+The bounded recovery-first slice is delivered on local and remote `recipe-view-redesign` in signed application commit `71b56bc5945f0be770eeb02bc5759578faf0582f`. The work covers F1 typed legacy authority, ordinary3/demo4 independent recovery, validated source protection, OpenAPI/SDK/mocks and grocery epoch/lease fencing. Runtime qualification used disposable resources, with original containers and port 3000 preserved.
+
+Complete stable 69-path gate `891e5245337542eab12cb722b59edd94` passed 773 PostgreSQL cases with zero skips, 2,192 frontend units, 1,007 browsers with 101 existing conditional skips and zero retries, 2,836 host API tests with 671 conditional skips, and harness/contracts/live endpoint/content checks. Independent immutable review is clear. Earlier failures and exact evidence are retained in [the recovery delivery](docs/handoffs/dependable-portions-next-slice/RECOVERY.md).
+
+Bilingual task 4.1 is complete, bringing selected progress to 23/68. All six changes retain unfinished acceptance and remain open. Alex owns current CI monitoring. Entire's stale installed Git-hook paths skipped session capture, while repository hooks and GPG signing passed.
+
+The next selected implementation is the disposable-copy migration executor under tasks 1.1/1.2/3.3 and necessary maintenance/operator dependencies. The [continuation prompt](.agents/prompts/dependable-portions-migration-next-slice.md) defines its prerequisites, checks and stopping boundary. Earlier checkpoints below retain their original tested identities.
+
 ## Dependable portions grocery/intake checkpoint and recovery handoff (2026-11-13)
 
 Shutdown update: Alex requested immediate local consolidation and explicitly confirmed future work directly on local `recipe-view-redesign`; temporary implementation worktrees are historical only. Signed repair `d1c12107` and the one-string package expectation correction are retained with the tracked [shutdown checkpoint](docs/handoffs/dependable-portions-next-slice/SHUTDOWN.md). Resume with [.agents/prompts/dependable-portions-shutdown-resume.md](.agents/prompts/dependable-portions-shutdown-resume.md), finishing the PDF V2 assertion/local+CI qualification before the next recovery slice. PDF EN browser passed but native persistence failed; no PDF patch exists. All owned checks/resources finished; workers frozen. This update supersedes the earlier preparation snapshot below.

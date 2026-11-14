@@ -1,6 +1,6 @@
 # Checkpoint delivery
 
-Current shutdown/resumption status is in [SHUTDOWN.md](SHUTDOWN.md); the preparation snapshot below is historical.
+Current recovery delivery and the migration successor are recorded in [RECOVERY.md](RECOVERY.md). Shutdown history is retained in [SHUTDOWN.md](SHUTDOWN.md). The preparation snapshot below keeps its original checkpoint identity.
 
 ## Locally qualified code
 

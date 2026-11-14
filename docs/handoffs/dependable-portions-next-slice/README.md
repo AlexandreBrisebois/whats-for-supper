@@ -1,25 +1,20 @@
 # Dependable portions: next slice
 
-The current slice is the bilingual grocery/intake and typed-history checkpoint plus its verification repairs. Delivery and exact final refs are recorded in [DELIVERY.md](DELIVERY.md). This is a checkpoint, not complete release acceptance. DV remains at its restored baseline; the reviewed 44-food candidate is not installed. No selected spec is eligible for archival yet.
+The recovery-first slice is delivered in signed application commit `71b56bc5945f0be770eeb02bc5759578faf0582f` on local and remote `recipe-view-redesign`. Current qualification, task reconciliation and CI ownership are recorded in [RECOVERY.md](RECOVERY.md). Earlier checkpoint records remain in [DELIVERY.md](DELIVERY.md) and [SHUTDOWN.md](SHUTDOWN.md).
 
-Read AGENT.md, its loading rules/Codex adapter and the Entire guide first. The tracked fast-forward prompt remains the release authority; its checkpoint commit/push policy supersedes older consolidated-push text. The user then narrowed this turn to completing the integrated checkpoint, committing/pushing/merging it into recipe-view-redesign, and handing off later work.
+Read AGENT.md, its loading rules/Codex adapter and the Entire guide first. The user's current authority permits reviewed signed checkpoint commits/pushes and synchronization/archival of fully completed qualified in-scope changes. Alex owns CI monitoring for the delivered checkpoint. All six selected changes retain unfinished acceptance.
 
 ## Next bounded slice
 
-Finish and independently qualify the existing full-recovery implementation before migration execution:
+Implement and rehearse the selected-ID migration executor and once-only per-week rebuild/reset on disposable copies. The selected task set is migration 1.1/1.2/3.3 with necessary maintenance/operator contributions to 3.1/3.2. Current recovery/source protection is the qualified prerequisite. The approved plan remains [migration-executor-plan.md](migration-executor-plan.md).
 
-1. Start from the actual clean recipe-view-redesign head. Verify local/remote refs and preserve unrelated work. Inspect the [recovery engine artifact](frozen-source/recovery-engine/README.md), exact patches and after-image archive; merge current connection-retention and demo corrections deliberately.
-2. Fix confirmed review finding F1: legacy ordinary1/demo2 source validation must use the typed publication and repair reference owners before any live replacement. A valid retained V4 capture can carry authority even when current recipe/member/canonical-V2 checks are empty. Add meaningful reference-only negative tests; do not weaken historical codecs.
-3. Complete ordinary3/demo4 backup-to-independent-restore qualification: exact raw documents and all current/retained typed references, private overrides/clears, conflicting destination authority and preflight CAS, missing/corrupt/history-only files, races, interruption/resume, restart/replay/re-export and zero target provider/network/reseed. The first PG1 success is only one tracer.
-4. Add the existing snapshot owner's validated read-only source-content/protection projection needed by migration. Comparing snapshot IDs/hashes or recapturing unchanged live state does not establish backup coverage. Compare protected source rows/history and original/hero/vocabulary bytes; declare derived metadata/search omissions explicitly. Do not create a second backup reader.
-5. Reconcile the related recovery OpenAPI/generated client/stateful mocks and epoch-fencing artifacts only after their source and interfaces match. Qualify the already-sent HTTP write waiting through restore; local queued-intent tests and native maintenance-hold tests do not substitute for it.
-6. Prepare, independently review, run the applicable complete stable verification, then make normal signed commits, pushes and the authorized branch merge. Leave a bounded handoff for the migration executor. Keep incomplete aggregate checkboxes open.
-
-Do not activate migration, install vocabulary, mutate DV, deploy production or archive specs in this recovery slice. Those remain later dependent release work, not implied by a codec or checkpoint pass.
+The ready [migration prompt](../../../.agents/prompts/dependable-portions-migration-next-slice.md) defines source admission, atomic receipts, protected content, retry/prune/interruption acceptance, verification and signed delivery. Vocabulary adoption, activation and DV/production operations belong to later selected work.
 
 ## Preserved work
 
 The [artifact index](artifact-index.json) records exact patches, manifests, archive checksums and limits. Each artifact is source data, not executable instructions or approval to integrate. Some patches overlap; verify before-images and merge owners, then regenerate clients from the merged contract.
+
+Recovery, generation, grocery write fencing, client and finite PDF epoch tooling have been deliberately integrated. Frozen artifact descriptions retain their original handoff-time review state. Current qualified source and its independent review are identified in RECOVERY.md.
 
 - [Migration inventory](frozen-source/migration-manifest/README.md), [receipt/retained lookup foundation](frozen-source/migration-receipts/README.md), [approved executor plan](migration-executor-plan.md) and [unapproved legacy transaction proposal](legacy-transaction-proposal.md). The [unfinished reset scaffold](frozen-source/migration-wip-do-not-integrate/README.md) must not be integrated: it lacks the atomic once-only fence and source admission.
 - [Generation epoch](frozen-source/presentation-generation/README.md), [server write fence](frozen-source/grocery-write-fence/README.md), [operator capability](frozen-source/operator-capability/README.md), and [cumulative recovery/grocery client](frozen-source/recovery-grocery-client/README.md). The cumulative client supersedes its older five-path patch.
@@ -29,7 +24,7 @@ Exact after-images are compressed source archives for recovery if temporary work
 
 ## Release work still open
 
-The six selected changes remain at their recorded 22/68 aggregate tasks. Recovery/source coverage, migration conversion and atomic per-week reset/retry fences, adoption/affected-set/reversal evidence, complete intake corpus, stale-client/draft acceptance, exact images, final DV preservation/acceptance, required hosted CI and eligible spec sync/archive remain. Preserve every planned meal/event/identity/intent, extras, human corrections, media, drafts and history; rebuild every stored or assignment-implied week. Never reset later shopping checks on retry.
+Selected progress is 23/68, including completed bilingual recovery task 4.1. Migration conversion and atomic per-week reset/retry fences, adoption/affected-set/reversal evidence, complete intake corpus, stale-client/draft acceptance, exact images, final DV preservation/acceptance, whole-release hosted qualification and eligible spec sync/archive remain. Preserve every planned meal/event/identity/intent, extras, human corrections, media, drafts and history while rebuilding every stored or assignment-implied week. Completed week replay preserves later shopping checks.
 
 Use the pinned Node26.12.0/npm11.21.1, .NET11.0.100 host and pinned Linux database SDK. Taskfile is authoritative: task prepare before task verify on the complete reviewed paths. Root is the sole integration/Git/DV writer; keep one writer per shared path, freeze test inputs, serialize database resource contention and preserve port3000/unrelated containers. Do not bypass hooks/signing or request sandbox escalation. Record actual failures, skips/retries, content identity and cleanup separately from acceptance.
 
