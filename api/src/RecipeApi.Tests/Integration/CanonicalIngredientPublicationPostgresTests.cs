@@ -23,14 +23,15 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests(ITestOut
     private const string Original = """{"name":"Original","recipeIngredient":["salt"],"recipeInstructions":[{"@type":"HowToStep","text":"Mix."}]}""";
     private const string Replacement = """{"name":"Replacement","recipeIngredient":["pepper"],"recipeInstructions":[{"@type":"HowToStep","text":"Stir."}]}""";
 
-    private async Task WithStore(Func<IServiceProvider, RecipeRepository, RecipeFilePublicationStore, FailingStorage, Task> action, bool localRecipeStore = false)
+    private async Task WithStore(Func<IServiceProvider, RecipeRepository, RecipeFilePublicationStore, FailingStorage, Task> action, bool localRecipeStore = false, Action<IServiceCollection>? configureServices = null)
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
-            await using var factory = localRecipeStore
-                ? await TestWebApplicationFactory.CreateWithAuthAsync(new DeploymentCalendarIntegrationTests.CalendarClock(), new()
-                { ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = settings.ConnectionString, ["Tests:LocalRecipeStore"] = "true" })
-                : await TomorrowPushPostgresTests.CreateFactory(settings);
+            var settingsOverrides = new Dictionary<string, string?>
+            { ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = settings.ConnectionString };
+            if (localRecipeStore) settingsOverrides["Tests:LocalRecipeStore"] = "true";
+            await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(new DeploymentCalendarIntegrationTests.CalendarClock(),
+                settingsOverrides, configureServices: configureServices);
             await TomorrowPushPostgresTests.Seed(factory);
             using var scope = factory.Services.CreateScope();
             var services = scope.ServiceProvider;

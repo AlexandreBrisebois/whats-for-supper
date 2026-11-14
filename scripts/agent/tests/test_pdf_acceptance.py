@@ -19,5 +19,5 @@ class PdfAcceptanceTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertRegex(result.stdout, r'(?:tests|# tests) 30\b')
+        self.assertRegex(result.stdout, r'(?:tests|# tests) 32\b')
         self.assertRegex(result.stdout, r'(?:skipped|# skipped) 0\b')

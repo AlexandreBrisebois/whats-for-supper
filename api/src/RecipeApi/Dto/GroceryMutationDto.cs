@@ -2,8 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace RecipeApi.Dto;
 
-public sealed record GroceryItemMutationDto(Guid? RowId, DateOnly? WeekStartDate, string? ExpectedRowVersion, bool? Checked, Guid? ClientMutationId);
-public sealed record GroceryBulkMutationDto(DateOnly? WeekStartDate, string? ExpectedListVersion, Dictionary<string, bool>? Checks, Guid? ClientMutationId);
+public sealed record GroceryItemMutationDto(Guid? RowId, DateOnly? WeekStartDate, string? ExpectedRowVersion, bool? Checked, Guid? ClientMutationId, Guid? ExpectedPresentationEpoch = null);
+public sealed record GroceryBulkMutationDto(DateOnly? WeekStartDate, string? ExpectedListVersion, Dictionary<string, bool>? Checks, Guid? ClientMutationId, Guid? ExpectedPresentationEpoch = null);
 
 public sealed record GroceryMutationResult(
     [property: JsonPropertyName("updatedAt")] DateTimeOffset UpdatedAt,

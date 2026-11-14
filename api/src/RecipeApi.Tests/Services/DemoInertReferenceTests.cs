@@ -3,6 +3,8 @@ using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
@@ -81,7 +83,30 @@ public sealed class DemoInertReferenceTests
         var beforeCapture = instance.RecipePublicationCapture;
         var ordinaryError = await Record.ExceptionAsync(() => vocabulary.CaptureActiveAsync());
         Assert.True(ordinaryError is InvalidDataException or System.Text.Json.JsonException, ordinaryError?.ToString());
-        var recovery = new RecoverySnapshotService(db, roots, data, configuration, clock, boundary, vocabulary);
+        using var services = new ServiceCollection().AddScoped(_ => db).AddSingleton<GroceryCheckCoordinator>().BuildServiceProvider();
+        var groceries = new GroceryRecomputeService(db, new AisleMapper(), NullLogger<GroceryRecomputeService>.Instance,
+            clock, new DeploymentCalendar(configuration), services.GetRequiredService<GroceryCheckCoordinator>(), vocabulary: vocabulary);
+        var overrides = new HouseholdFoodOverrideStore(db, clock, vocabulary, boundary, groceries);
+        var recovery = new RecoverySnapshotService(db, roots, data, configuration, clock, boundary, vocabulary, overrides);
+        var facts = await (Task<FoodVocabularyInventoryFacts>)typeof(FoodVocabularyStore)
+            .GetMethod("ObserveInventoryFactsAsync", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(vocabulary, [CancellationToken.None])!;
+        if (mutation is not null)
+        {
+            var packetError = Record.Exception(() => FoodVocabularyInventoryQualification.WriteHistoryObservations(facts,
+                "demo-destination", null, null, null));
+            Assert.True(packetError is InvalidDataException or System.Text.Json.JsonException, packetError?.ToString());
+        }
+        else
+        {
+            var packet = FoodVocabularyInventoryQualification.WriteHistoryObservations(facts, "demo-destination", null, null, null);
+            var retained = Assert.Single(FoodVocabularyInventoryQualification.ReadHistoryObservations(packet));
+            Assert.Equal("demo-destination", retained.Context.Kind);
+            var retainedWorkflow = Assert.Single(retained.Facts.History.Instances);
+            Assert.Equal(beforeCapture, retainedWorkflow.RecipePublicationCapture);
+            Assert.Equal(WorkflowStatus.Pending, retainedWorkflow.Status);
+            Assert.Equal(2, retainedWorkflow.Tasks.Count);
+            Assert.Equal(extra.TaskId, Assert.Single(retainedWorkflow.Tasks, x => x.TaskId == extra.TaskId).TaskId);
+        }
         var guard = typeof(RecoverySnapshotService).GetMethod("RequireLegacyDemoFoodFreeAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
         if (mutation is not null)
         {

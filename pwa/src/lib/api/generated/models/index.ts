@@ -352,6 +352,28 @@ export function createFoodCategoryConflictFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FoodVocabularyDestinationBaseline}
+ */
+// @ts-ignore
+export function createFoodVocabularyDestinationBaselineFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFoodVocabularyDestinationBaseline;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {FoodVocabularyDocumentReference}
+ */
+// @ts-ignore
+export function createFoodVocabularyDocumentReferenceFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoFoodVocabularyDocumentReference;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {GoToItem}
  */
 // @ts-ignore
@@ -1433,6 +1455,28 @@ export function createRecoveryErrorFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecoveryRestorePreflight}
+ */
+// @ts-ignore
+export function createRecoveryRestorePreflightFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecoveryRestorePreflight;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecoveryRestoreRequest}
+ */
+// @ts-ignore
+export function createRecoveryRestoreRequestFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecoveryRestoreRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecoveryResult}
  */
 // @ts-ignore
@@ -2341,6 +2385,60 @@ export function deserializeIntoFoodCategoryConflict(
 }
 /**
  * The deserialization information for the current model
+ * @param FoodVocabularyDestinationBaseline The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFoodVocabularyDestinationBaseline(
+  foodVocabularyDestinationBaseline: Partial<FoodVocabularyDestinationBaseline> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    documents: (n) => {
+      foodVocabularyDestinationBaseline.documents =
+        n.getCollectionOfObjectValues<FoodVocabularyDocumentReference>(
+          createFoodVocabularyDocumentReferenceFromDiscriminatorValue
+        );
+    },
+    generation: (n) => {
+      foodVocabularyDestinationBaseline.generation = n.getStringValue();
+    },
+    historySha256: (n) => {
+      foodVocabularyDestinationBaseline.historySha256 = n.getStringValue();
+    },
+    membershipSha256: (n) => {
+      foodVocabularyDestinationBaseline.membershipSha256 = n.getStringValue();
+    },
+    overridesSha256: (n) => {
+      foodVocabularyDestinationBaseline.overridesSha256 = n.getStringValue();
+    },
+    revision: (n) => {
+      foodVocabularyDestinationBaseline.revision = n.getStringValue();
+    },
+    version: (n) => {
+      foodVocabularyDestinationBaseline.version = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param FoodVocabularyDocumentReference The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoFoodVocabularyDocumentReference(
+  foodVocabularyDocumentReference: Partial<FoodVocabularyDocumentReference> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    revision: (n) => {
+      foodVocabularyDocumentReference.revision = n.getStringValue();
+    },
+    sha256: (n) => {
+      foodVocabularyDocumentReference.sha256 = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param GoToItem The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -2400,6 +2498,9 @@ export function deserializeIntoGroceryBulkMutation(
     },
     expectedListVersion: (n) => {
       groceryBulkMutation.expectedListVersion = n.getStringValue();
+    },
+    expectedPresentationEpoch: (n) => {
+      groceryBulkMutation.expectedPresentationEpoch = n.getGuidValue();
     },
     weekStartDate: (n) => {
       groceryBulkMutation.weekStartDate = n.getDateOnlyValue();
@@ -2615,6 +2716,9 @@ export function deserializeIntoGroceryItemMutation(
     },
     clientMutationId: (n) => {
       groceryItemMutation.clientMutationId = n.getGuidValue();
+    },
+    expectedPresentationEpoch: (n) => {
+      groceryItemMutation.expectedPresentationEpoch = n.getGuidValue();
     },
     expectedRowVersion: (n) => {
       groceryItemMutation.expectedRowVersion = n.getStringValue();
@@ -4977,6 +5081,47 @@ export function deserializeIntoRecoveryError(
 }
 /**
  * The deserialization information for the current model
+ * @param RecoveryRestorePreflight The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecoveryRestorePreflight(
+  recoveryRestorePreflight: Partial<RecoveryRestorePreflight> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    destination: (n) => {
+      recoveryRestorePreflight.destination = n.getObjectValue<FoodVocabularyDestinationBaseline>(
+        createFoodVocabularyDestinationBaselineFromDiscriminatorValue
+      );
+    },
+    manifestSha256: (n) => {
+      recoveryRestorePreflight.manifestSha256 = n.getStringValue();
+    },
+    requiresExpectedDestinationRevision: (n) => {
+      recoveryRestorePreflight.requiresExpectedDestinationRevision = n.getBooleanValue();
+    },
+    snapshotId: (n) => {
+      recoveryRestorePreflight.snapshotId = n.getGuidValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecoveryRestoreRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecoveryRestoreRequest(
+  recoveryRestoreRequest: Partial<RecoveryRestoreRequest> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    expectedDestinationRevision: (n) => {
+      recoveryRestoreRequest.expectedDestinationRevision = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param RecoveryResult The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5933,6 +6078,49 @@ export interface FoodCategoryConflict extends AdditionalDataHolder, ApiError, Pa
 }
 export type FoodCategoryConflict_code =
   (typeof FoodCategoryConflict_codeObject)[keyof typeof FoodCategoryConflict_codeObject];
+/**
+ * Versioned exact destination observation. Hashes include absence, private override sequences and clears, typed live and retained inert history, generation and every referenced immutable document. Raw private history is not exposed.
+ */
+export interface FoodVocabularyDestinationBaseline extends Parsable {
+  /**
+   * The documents property
+   */
+  documents?: FoodVocabularyDocumentReference[] | null;
+  /**
+   * The generation property
+   */
+  generation?: string | null;
+  /**
+   * The historySha256 property
+   */
+  historySha256?: string | null;
+  /**
+   * The membershipSha256 property
+   */
+  membershipSha256?: string | null;
+  /**
+   * The overridesSha256 property
+   */
+  overridesSha256?: string | null;
+  /**
+   * The revision property
+   */
+  revision?: string | null;
+  /**
+   * The version property
+   */
+  version?: number | null;
+}
+export interface FoodVocabularyDocumentReference extends Parsable {
+  /**
+   * The revision property
+   */
+  revision?: string | null;
+  /**
+   * The sha256 property
+   */
+  sha256?: string | null;
+}
 export interface GoToItem extends AdditionalDataHolder, Parsable {
   /**
    * The description property
@@ -5971,6 +6159,10 @@ export interface GroceryBulkMutation extends Parsable {
    * The expectedListVersion property
    */
   expectedListVersion?: string | null;
+  /**
+   * Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation or recovery rejects with epoch_conflict before replay or mutation.
+   */
+  expectedPresentationEpoch?: Guid | null;
   /**
    * The weekStartDate property
    */
@@ -6106,6 +6298,10 @@ export interface GroceryItemMutation extends Parsable {
    * The clientMutationId property
    */
   clientMutationId?: Guid | null;
+  /**
+   * Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation or recovery rejects with epoch_conflict before replay or mutation.
+   */
+  expectedPresentationEpoch?: Guid | null;
   /**
    * The expectedRowVersion property
    */
@@ -7861,6 +8057,30 @@ export interface RecoveryError extends AdditionalDataHolder, ApiError, Parsable 
    */
   state?: string | null;
 }
+export interface RecoveryRestorePreflight extends Parsable {
+  /**
+   * Versioned exact destination observation. Hashes include absence, private override sequences and clears, typed live and retained inert history, generation and every referenced immutable document. Raw private history is not exposed.
+   */
+  destination?: FoodVocabularyDestinationBaseline | null;
+  /**
+   * The manifestSha256 property
+   */
+  manifestSha256?: string | null;
+  /**
+   * The requiresExpectedDestinationRevision property
+   */
+  requiresExpectedDestinationRevision?: boolean | null;
+  /**
+   * The snapshotId property
+   */
+  snapshotId?: Guid | null;
+}
+export interface RecoveryRestoreRequest extends Parsable {
+  /**
+   * Exact preflight destination revision. Required for a new-format snapshot replacing a different valid vocabulary head. A mismatch rejects before a durable journal or live mutation; refresh preflight before another request.
+   */
+  expectedDestinationRevision?: string | null;
+}
 export interface RecoveryResult extends AdditionalDataHolder, Parsable {
   /**
    * The message property
@@ -8402,6 +8622,52 @@ export function serializeFoodCategoryConflict(
 }
 /**
  * Serializes information the current object
+ * @param FoodVocabularyDestinationBaseline The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFoodVocabularyDestinationBaseline(
+  writer: SerializationWriter,
+  foodVocabularyDestinationBaseline:
+    Partial<FoodVocabularyDestinationBaseline> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!foodVocabularyDestinationBaseline || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<FoodVocabularyDocumentReference>(
+    'documents',
+    foodVocabularyDestinationBaseline.documents,
+    serializeFoodVocabularyDocumentReference
+  );
+  writer.writeStringValue('generation', foodVocabularyDestinationBaseline.generation);
+  writer.writeStringValue('historySha256', foodVocabularyDestinationBaseline.historySha256);
+  writer.writeStringValue('membershipSha256', foodVocabularyDestinationBaseline.membershipSha256);
+  writer.writeStringValue('overridesSha256', foodVocabularyDestinationBaseline.overridesSha256);
+  writer.writeStringValue('revision', foodVocabularyDestinationBaseline.revision);
+  writer.writeNumberValue('version', foodVocabularyDestinationBaseline.version);
+}
+/**
+ * Serializes information the current object
+ * @param FoodVocabularyDocumentReference The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeFoodVocabularyDocumentReference(
+  writer: SerializationWriter,
+  foodVocabularyDocumentReference: Partial<FoodVocabularyDocumentReference> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!foodVocabularyDocumentReference || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('revision', foodVocabularyDocumentReference.revision);
+  writer.writeStringValue('sha256', foodVocabularyDocumentReference.sha256);
+}
+/**
+ * Serializes information the current object
  * @param GoToItem The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -8461,6 +8727,7 @@ export function serializeGroceryBulkMutation(
   );
   writer.writeGuidValue('clientMutationId', groceryBulkMutation.clientMutationId);
   writer.writeStringValue('expectedListVersion', groceryBulkMutation.expectedListVersion);
+  writer.writeGuidValue('expectedPresentationEpoch', groceryBulkMutation.expectedPresentationEpoch);
   writer.writeDateOnlyValue('weekStartDate', groceryBulkMutation.weekStartDate);
 }
 /**
@@ -8672,6 +8939,7 @@ export function serializeGroceryItemMutation(
   }
   writer.writeBooleanValue('checked', groceryItemMutation.checked);
   writer.writeGuidValue('clientMutationId', groceryItemMutation.clientMutationId);
+  writer.writeGuidValue('expectedPresentationEpoch', groceryItemMutation.expectedPresentationEpoch);
   writer.writeStringValue('expectedRowVersion', groceryItemMutation.expectedRowVersion);
   writer.writeGuidValue('rowId', groceryItemMutation.rowId);
   writer.writeDateOnlyValue('weekStartDate', groceryItemMutation.weekStartDate);
@@ -10821,6 +11089,53 @@ export function serializeRecoveryError(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecoveryRestorePreflight The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecoveryRestorePreflight(
+  writer: SerializationWriter,
+  recoveryRestorePreflight: Partial<RecoveryRestorePreflight> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recoveryRestorePreflight || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeObjectValue<FoodVocabularyDestinationBaseline>(
+    'destination',
+    recoveryRestorePreflight.destination,
+    serializeFoodVocabularyDestinationBaseline
+  );
+  writer.writeStringValue('manifestSha256', recoveryRestorePreflight.manifestSha256);
+  writer.writeBooleanValue(
+    'requiresExpectedDestinationRevision',
+    recoveryRestorePreflight.requiresExpectedDestinationRevision
+  );
+  writer.writeGuidValue('snapshotId', recoveryRestorePreflight.snapshotId);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecoveryRestoreRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecoveryRestoreRequest(
+  writer: SerializationWriter,
+  recoveryRestoreRequest: Partial<RecoveryRestoreRequest> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recoveryRestoreRequest || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue(
+    'expectedDestinationRevision',
+    recoveryRestoreRequest.expectedDestinationRevision
+  );
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param RecoveryResult The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -12229,6 +12544,7 @@ export const GroceryMutationConflict_codeObject = {
   Mutation_conflict: 'mutation_conflict',
   Week_conflict: 'week_conflict',
   Active_legacy_list: 'active_legacy_list',
+  Epoch_conflict: 'epoch_conflict',
 } as const;
 export const GrocerySectionObject = {
   Produce: 'Produce',

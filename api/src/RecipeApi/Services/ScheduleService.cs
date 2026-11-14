@@ -10,7 +10,7 @@ using static RecipeApi.Dto.SmartDefaultsDto;
 
 namespace RecipeApi.Services;
 
-public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest, GroceryCheckCoordinator groceryChecks, SupperProjectionInvalidation projectionInvalidation, GroceryExtraService? groceryExtras = null, GroceryExtraRolloverService? groceryExtraRollover = null, GroceryPresentationService? groceryPresentation = null)
+public partial class ScheduleService(RecipeDbContext dbContext, ILogger<ScheduleService> logger, IScheduleEventPublisher publisher, GroceryRecomputeService groceryRecomputeService, IClock clock, DeploymentCalendar calendar, HistoricalInterestService historicalInterest, GroceryCheckCoordinator groceryChecks, SupperProjectionInvalidation projectionInvalidation, GroceryExtraService? groceryExtras = null, GroceryExtraRolloverService? groceryExtraRollover = null, GroceryPresentationService? groceryPresentation = null, FoodVocabularyStore? groceryVocabulary = null, RecoveryBoundary? groceryRecoveryBoundary = null)
 {
     private readonly RecipeDbContext _dbContext = dbContext;
     private readonly ILogger<ScheduleService> _logger = logger;

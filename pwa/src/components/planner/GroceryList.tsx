@@ -568,6 +568,8 @@ export function GroceryList({
     const id = item.rowId;
     if (!id || !week || !reference || !item.rowVersion) return;
     const intended = !usePlannerStore.getState().groceryState[id];
+    const intentEpoch = captured.groceryPresentationEpoch;
+    const currentEpoch = () => useWeekStore.getState().groceryPresentationEpoch === intentEpoch;
     const token = beginGroceryIntent(week, id, intended);
     setErrorItems((previous) => {
       const next = new Set(previous);
@@ -584,6 +586,7 @@ export function GroceryList({
     };
     try {
       await enqueueGroceryIntent(week, id, async () => {
+        if (!currentEpoch()) return;
         const current = useWeekStore.getState();
         const row =
           current.weekStartDate === week
@@ -596,6 +599,7 @@ export function GroceryList({
               rowId: id,
               weekStartDate: DateOnly.parse(week)!,
               checked: intended,
+              expectedPresentationEpoch: intentEpoch,
               expectedRowVersion: currentGroceryVersion(
                 week,
                 id,
@@ -605,6 +609,7 @@ export function GroceryList({
             },
             reference
           );
+          if (!currentEpoch()) return;
           if (!outcome?.rowVersion || !outcome.listVersion || !outcome.rows || !outcome.checks)
             throw new Error('Missing authoritative grocery outcome.');
           rememberGroceryVersion(week, id, outcome.rowVersion);
@@ -617,14 +622,24 @@ export function GroceryList({
             groceryState: outcome.checks,
           });
         } catch (error) {
+          if (!currentEpoch()) return;
           // Unknown replies are read before any later queued intention. Never
           // automatically replay the failed mutation or restore a whole old map.
           try {
+            const expectedPresentationEpoch = useWeekStore.getState().groceryPresentationEpoch;
             const snapshot = await getSchedule(weekOffset, reference, true);
-            const authoritative = snapshot?.groceryItems?.find((row) => row.rowId === id);
-            if (authoritative?.rowVersion)
-              rememberGroceryVersion(week, id, authoritative.rowVersion);
-            if (snapshot) useWeekStore.getState().applyGrocerySnapshot(snapshot);
+            if (!currentEpoch()) return;
+            if (
+              snapshot &&
+              useWeekStore
+                .getState()
+                .applyGrocerySnapshot(snapshot, { expectedPresentationEpoch }) &&
+              currentEpoch()
+            ) {
+              const authoritative = snapshot.groceryItems?.find((row) => row.rowId === id);
+              if (authoritative?.rowVersion)
+                rememberGroceryVersion(week, id, authoritative.rowVersion);
+            }
           } catch {
             /* Keep the last confirmed state and an explicit row error. */
           }

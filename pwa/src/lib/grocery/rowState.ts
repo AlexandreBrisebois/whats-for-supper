@@ -65,3 +65,11 @@ export function enqueueGroceryIntent<T>(
   void next.then(cleanup, cleanup);
   return next;
 }
+
+// A freshly authorized recovery generation retires transient intentions and
+// version floors for the prior household state. Tokens remain globally unique.
+export function retireGroceryIntents() {
+  pending.clear();
+  queues.clear();
+  versions.clear();
+}

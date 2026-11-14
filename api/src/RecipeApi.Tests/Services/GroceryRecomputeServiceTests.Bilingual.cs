@@ -111,7 +111,7 @@ public partial class GroceryRecomputeServiceTests
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
         await _scope.ServiceProvider.GetRequiredService<ScheduleService>().MutateGroceryItemAsync(0,
-            new(Guid.Parse(row.RowId), TestMonday, row.RowVersion, true, Guid.NewGuid()), reference: TestMonday);
+            new(Guid.Parse(row.RowId), TestMonday, row.RowVersion, true, Guid.NewGuid(), await BilingualMutationEpoch()), reference: TestMonday);
         var before = await _db.WeeklyPlans.AsNoTracking().SingleAsync();
         var response = await _scope.ServiceProvider.GetRequiredService<ScheduleService>().GetScheduleAsync(0, TestMonday);
         var wire = JsonSerializer.SerializeToElement(response, PackageJson);
@@ -162,7 +162,7 @@ public partial class GroceryRecomputeServiceTests
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var original = Assert.Single(await GetGroceryItemsAsync(TestMonday));
         await _scope.ServiceProvider.GetRequiredService<ScheduleService>().MutateGroceryItemAsync(0,
-            new(Guid.Parse(original.RowId), TestMonday, original.RowVersion, true, Guid.NewGuid()), reference: TestMonday);
+            new(Guid.Parse(original.RowId), TestMonday, original.RowVersion, true, Guid.NewGuid(), await BilingualMutationEpoch()), reference: TestMonday);
         var checkedBefore = await _db.WeeklyPlans.AsNoTracking().SingleAsync();
         using var client = _factory.CreateClient();
         using var initial = await client.SendAsync(new HttpRequestMessage(HttpMethod.Patch, $"/api/foods/{OnionFood}/category")
@@ -212,7 +212,7 @@ public partial class GroceryRecomputeServiceTests
         Assert.Equal(CannedTomatoFood, small.FoodId);
         Assert.Equal(CannedTomatoFood, large.FoodId);
         foreach (var row in rows) await _scope.ServiceProvider.GetRequiredService<ScheduleService>().MutateGroceryItemAsync(0,
-            new(Guid.Parse(row.RowId), TestMonday, row.RowVersion, true, Guid.NewGuid()), reference: TestMonday);
+            new(Guid.Parse(row.RowId), TestMonday, row.RowVersion, true, Guid.NewGuid(), await BilingualMutationEpoch()), reference: TestMonday);
         var before = await _db.WeeklyPlans.AsNoTracking().SingleAsync();
         var baseline = JsonDocument.Parse(before.GroceryCheckedDemandBaselines).RootElement.GetProperty(large.RowId).GetRawText();
         var recipe = await _db.Recipes.AsNoTracking().SingleAsync(x => x.Id == smallId);
@@ -247,7 +247,7 @@ public partial class GroceryRecomputeServiceTests
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var before = Assert.Single(await GetGroceryItemsAsync(TestMonday));
         await _scope.ServiceProvider.GetRequiredService<ScheduleService>().MutateGroceryItemAsync(0,
-            new(Guid.Parse(before.RowId), TestMonday, before.RowVersion, true, Guid.NewGuid()), reference: TestMonday);
+            new(Guid.Parse(before.RowId), TestMonday, before.RowVersion, true, Guid.NewGuid(), await BilingualMutationEpoch()), reference: TestMonday);
         var recipe = await _db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
         var content = CanonicalRecipeContentStore.Read(recipe)!;
         var line = content.IngredientLines[0];
@@ -300,13 +300,19 @@ public partial class GroceryRecomputeServiceTests
     [Fact]
     public async Task BilingualPresentation_LabelOnlyReleaseAndStoredMutationReplayUseCurrentLabelsWithoutTouchingDemand()
     {
+        // Actual filesystem generation seam, not a restore engine qualification.
+        var roots = _scope.ServiceProvider.GetRequiredService<RecipeApi.Infrastructure.RecipesRootResolver>();
+        Assert.Contains("wfs-test-", roots.BaseRoot, StringComparison.Ordinal);
+        Directory.CreateDirectory(roots.BaseRoot);
+        File.WriteAllText(Path.Combine(roots.BaseRoot, ".recovery-active"), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(roots.Root);
         await InstallBilingualConsumerVocabulary();
         await SeedQualifiedFood(TestMonday, "onion");
         await SeedQualifiedFood(TestMonday.AddDays(1), "oignon");
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
         var mutationId = Guid.NewGuid();
-        var request = new GroceryItemMutationDto(Guid.Parse(row.RowId), TestMonday, row.RowVersion, true, mutationId);
+        var request = new GroceryItemMutationDto(Guid.Parse(row.RowId), TestMonday, row.RowVersion, true, mutationId, await BilingualMutationEpoch());
         var checkedResponse = await _scope.ServiceProvider.GetRequiredService<ScheduleService>().MutateGroceryItemAsync(0, request, reference: TestMonday);
         var before = await _db.WeeklyPlans.AsNoTracking().SingleAsync();
         var savedOutcome = await _db.GroceryMutationOutcomes.AsNoTracking().SingleAsync(x => x.Id == mutationId);
@@ -328,7 +334,7 @@ public partial class GroceryRecomputeServiceTests
         Assert.Equal("Fresh onion", shown.Presentation!.DisplayLabels.En);
         Assert.Equal("Oignon bulbe frais", shown.Presentation.DisplayLabels.Fr);
         Assert.Equal("2", replay.PresentationVersion);
-        Assert.NotEqual(checkedResponse.PresentationEpoch, replay.PresentationEpoch);
+        Assert.Equal(checkedResponse.PresentationEpoch, replay.PresentationEpoch);
         Assert.Equal(row.RowId, shown.RowId);
         Assert.Equal(checkedResponse.RowVersion, replay.RowVersion);
         Assert.Equal(checkedResponse.ListVersion, replay.ListVersion);
@@ -442,5 +448,35 @@ public partial class GroceryRecomputeServiceTests
         Assert.Equal("conflict", row.Presentation!.CategoryStatus);
         Assert.Equal(2, row.Presentation.CategoryChoices.Count);
     }
+
+    [Fact]
+    public async Task BilingualPresentation_ChangedMembershipEpochRejectsOldCheckBeforeRetainedOutcomeLookup()
+    {
+        await InstallBilingualConsumerVocabulary();
+        await SeedQualifiedFood(TestMonday, "onion");
+        await _service.RecomputeForWeekAsync(TestMonday, default);
+        var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+        var request = new GroceryItemMutationDto(Guid.Parse(row.RowId), TestMonday, row.RowVersion, true, Guid.NewGuid(), await BilingualMutationEpoch());
+        var store = _scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>();
+        var active = (await store.CaptureActiveAsync())!;
+        var next = System.Text.Json.Nodes.JsonNode.Parse(active.RawBytes)!;
+        next["revision"] = "fixture-next-head";
+        var release = next["releases"]![0]!.DeepClone();
+        release["revision"] = "fixture-next-head";
+        foreach (var food in release["foods"]!.AsArray()) food!["revision"] = food["revision"]!.GetValue<string>() + "-next";
+        next["releases"]!.AsArray().Add(release);
+        await store.PublishReviewedAsync(System.Text.Encoding.UTF8.GetBytes(next.ToJsonString()), active.Reference, Guid.NewGuid(), "test-review:next-head");
+        var before = await _db.WeeklyPlans.AsNoTracking().SingleAsync();
+        var error = await Assert.ThrowsAsync<GroceryMutationConflictException>(() => _scope.ServiceProvider.GetRequiredService<ScheduleService>()
+            .MutateGroceryItemAsync(0, request, reference: TestMonday));
+        Assert.Equal("epoch_conflict", error.Code);
+        var after = await _db.WeeklyPlans.AsNoTracking().SingleAsync();
+        Assert.Equal(before.GroceryState, after.GroceryState);
+        Assert.Equal(before.GroceryCheckedDemandBaselines, after.GroceryCheckedDemandBaselines);
+        Assert.False(await _db.GroceryMutationOutcomes.AnyAsync());
+    }
+
+    private async Task<Guid> BilingualMutationEpoch() =>
+        (await _scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>().CapturePresentationAsync([])).Epoch;
 
 }

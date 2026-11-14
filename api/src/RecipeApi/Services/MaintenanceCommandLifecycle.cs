@@ -55,6 +55,16 @@ internal static class MaintenanceCommandLifecycle
     private sealed record RetainedPayload(int Version, string ExecutionDisposition, RetainedCommand Command,
         RetainedWorkflow[] WorkflowRetirements, RetainedPhysical[] PhysicalRetirements);
 
+    internal static void ValidateCurrentReferences(MaintenanceCommandObservation command,
+        IReadOnlyList<WorkflowLifecycleRecord> workflows, IReadOnlyList<RecipePhysicalDeletion> physical)
+    {
+        var targets = ManagementService.ReadMaintenanceCommandAuthority(command);
+        if (command.CommandType != CaptureFailureService.DeleteFailedCaptureResidueCommand) return;
+        if (workflows.Any(x => x.OperationId == command.Id && x.Id != targets.WorkflowInstanceId)
+            || physical.Any(x => x.OperationId == command.Id && x.RecipeId != targets.RecipeId))
+            throw new InvalidDataException("Current maintenance authority conflicts with its retained lifecycle links.");
+    }
+
     internal static void ValidateRetainedReferences(MaintenanceCommandLifecycleRecord record,
         IReadOnlyList<WorkflowLifecycleRecord> workflows, IReadOnlyList<RecipePhysicalDeletion> physical)
     {

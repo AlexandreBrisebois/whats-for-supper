@@ -30,6 +30,7 @@ public sealed class RecoveryBoundaryMiddleware(RequestDelegate next)
         }
         await using (lease)
         {
+            using var binding = boundary.BindLease(lease);
             if (demoMode.Enabled)
             {
                 var generation = await DemoGenerationProtocol.CurrentAsync(db, context.RequestAborted);

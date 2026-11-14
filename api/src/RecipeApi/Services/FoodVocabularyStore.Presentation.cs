@@ -16,6 +16,8 @@ public sealed partial class FoodVocabularyStore
         await using var lease = await boundary.EnterAsync(RecoveryAccess.Read, ct);
         await using var presentationLock = await EnterPresentationLockAsync(write: false, ct);
         await using var readConnection = await DatabaseReadConnection.RetainAsync(db, ct);
+        _ = recipes.Root; // Validate the actual selected generation while publication is excluded.
+        var generation = recipes.Generation;
         var active = await CaptureActiveAsync(ct);
         var membership = await db.FamilySettings.AsNoTracking().SingleOrDefaultAsync(x => x.Key == Key, ct);
         var state = membership is null ? null : ReadMembership(membership.Value.GetRawText());
@@ -34,7 +36,9 @@ public sealed partial class FoodVocabularyStore
         HouseholdFoodOverrideValidation.Validate(overrides, authority);
         var sequence = overrides.Select(row => BigInteger.Parse(row.PresentationSequence, CultureInfo.InvariantCulture)).DefaultIfEmpty(BigInteger.Zero).Max();
         var version = (BigInteger.Parse(state?.PresentationVersion ?? "0", CultureInfo.InvariantCulture) + sequence).ToString(CultureInfo.InvariantCulture);
-        return new(authority, version, state is null ? Guid.Empty : Guid.Parse(state.PresentationEpoch), Array.AsReadOnly(overrides));
+        var epoch = generation is not null ? Guid.ParseExact(generation, "N")
+            : state is null ? Guid.Empty : Guid.Parse(state.PresentationEpoch);
+        return new(authority, version, epoch, Array.AsReadOnly(overrides));
     }
 
     // Acquire after the recovery publication lease, before recipe/week locks.

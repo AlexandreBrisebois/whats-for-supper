@@ -1942,3 +1942,177 @@ it('persists an explicit food choice even when a conflict currently falls back t
   );
   refresh.mockRestore();
 });
+
+it('does not send a queued pre-restore check after a new generation is accepted', async () => {
+  const oldEpoch = 'c87604be-598c-4a36-9c38-9f04a248dc73';
+  const nextEpoch = 'bc34397f-b8b6-487f-9d4d-74da9b7cbf66';
+  const item = makeItem('onion', 'Produce');
+  let finish!: (value: unknown) => void;
+  const previous = {
+    groceryPresentationEpoch: useWeekStore.getState().groceryPresentationEpoch,
+    groceryPresentationVersion: useWeekStore.getState().groceryPresentationVersion,
+  };
+  useWeekStore.setState({
+    groceryPresentationEpoch: oldEpoch,
+    groceryPresentationVersion: '9',
+    groceryListVersion: '9',
+    groceryVersionWeek: '2025-01-06',
+    authoritativeGroceryChecks: { [item.rowId!]: false },
+  });
+  mockToggleGroceryItem.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const view = renderStoreBacked([item]);
+  try {
+    fireEvent.click(screen.getByTestId('grocery-item-checkbox'));
+    await waitFor(() => expect(mockToggleGroceryItem).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('grocery-item-checkbox'));
+    act(() => {
+      expect(
+        useWeekStore.getState().applyGrocerySnapshot(
+          {
+            weekStartDate: '2025-01-06',
+            groceryListVersion: '1',
+            groceryItems: [item],
+            groceryState: { [item.rowId!]: false },
+            presentationVersion: '1',
+            presentationEpoch: nextEpoch,
+          },
+          { expectedPresentationEpoch: oldEpoch }
+        )
+      ).toBe(true);
+    });
+    await act(async () =>
+      finish({
+        rowId: item.rowId,
+        rowVersion: '10',
+        listVersion: '10',
+        rows: [item],
+        checks: { [item.rowId!]: true },
+        weekStartDate: '2025-01-06',
+        presentationVersion: '10',
+        presentationEpoch: oldEpoch,
+      })
+    );
+    expect(mockToggleGroceryItem).toHaveBeenCalledTimes(1);
+    expect(useWeekStore.getState().groceryListVersion).toBe('1');
+  } finally {
+    view.unmount();
+    useWeekStore.setState(previous);
+  }
+});
+
+it('sends a new-generation intent without waiting for an old in-flight reply or using its version floor', async () => {
+  const oldEpoch = 'c87604be-598c-4a36-9c38-9f04a248dc73';
+  const nextEpoch = 'bc34397f-b8b6-487f-9d4d-74da9b7cbf66';
+  const item = makeItem('onion', 'Produce');
+  let finish!: (value: unknown) => void;
+  const previous = {
+    groceryPresentationEpoch: useWeekStore.getState().groceryPresentationEpoch,
+    groceryPresentationVersion: useWeekStore.getState().groceryPresentationVersion,
+  };
+  useWeekStore.setState({
+    groceryPresentationEpoch: oldEpoch,
+    groceryPresentationVersion: '9',
+    groceryListVersion: '9',
+    groceryVersionWeek: '2025-01-06',
+    authoritativeGroceryChecks: { [item.rowId!]: false },
+  });
+  const oldReply = {
+    rowId: item.rowId,
+    rowVersion: '10',
+    listVersion: '10',
+    rows: [item],
+    checks: { [item.rowId!]: true },
+    weekStartDate: '2025-01-06',
+    presentationVersion: '10',
+    presentationEpoch: oldEpoch,
+  };
+  mockToggleGroceryItem
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    )
+    .mockResolvedValueOnce({
+      ...oldReply,
+      rowVersion: '2',
+      listVersion: '2',
+      presentationVersion: '1',
+      presentationEpoch: nextEpoch,
+    });
+  const view = renderStoreBacked([item]);
+  try {
+    fireEvent.click(screen.getByTestId('grocery-item-checkbox'));
+    await waitFor(() => expect(mockToggleGroceryItem).toHaveBeenCalledTimes(1));
+    act(() => {
+      expect(
+        useWeekStore.getState().applyGrocerySnapshot(
+          {
+            weekStartDate: '2025-01-06',
+            groceryListVersion: '1',
+            groceryItems: [item],
+            groceryState: { [item.rowId!]: false },
+            presentationVersion: '1',
+            presentationEpoch: nextEpoch,
+          },
+          { expectedPresentationEpoch: oldEpoch }
+        )
+      ).toBe(true);
+    });
+    fireEvent.click(screen.getByTestId('grocery-item-checkbox'));
+    await waitFor(() => expect(mockToggleGroceryItem).toHaveBeenCalledTimes(2));
+    expect(mockToggleGroceryItem.mock.calls[1][1].expectedRowVersion).toBe('1');
+    expect(mockToggleGroceryItem.mock.calls[0][1].expectedPresentationEpoch).toBe(oldEpoch);
+    expect(mockToggleGroceryItem.mock.calls[1][1].expectedPresentationEpoch).toBe(nextEpoch);
+    const readsBeforeOldReply = mockReadSchedule.mock.calls.length;
+    await act(async () => finish(oldReply));
+    expect(useWeekStore.getState().groceryListVersion).toBe('2');
+    expect(mockReadSchedule).toHaveBeenCalledTimes(readsBeforeOldReply);
+  } finally {
+    if (finish) await act(async () => finish(oldReply));
+    view.unmount();
+    useWeekStore.setState(previous);
+  }
+});
+
+it('establishes the freshly read generation after a stale grocery write is refused', async () => {
+  const oldEpoch = 'c87604be-598c-4a36-9c38-9f04a248dc73';
+  const nextEpoch = 'bc34397f-b8b6-487f-9d4d-74da9b7cbf66';
+  const item = makeItem('onion', 'Produce');
+  const previous = {
+    groceryPresentationEpoch: useWeekStore.getState().groceryPresentationEpoch,
+    groceryPresentationVersion: useWeekStore.getState().groceryPresentationVersion,
+  };
+  useWeekStore.setState({
+    groceryPresentationEpoch: oldEpoch,
+    groceryPresentationVersion: '9',
+    groceryListVersion: '9',
+    groceryVersionWeek: '2025-01-06',
+    authoritativeGroceryChecks: { [item.rowId!]: false },
+  });
+  const view = renderStoreBacked([item]);
+  try {
+    mockToggleGroceryItem.mockRejectedValueOnce({ code: 'epoch_conflict' });
+    mockReadSchedule.mockResolvedValue({
+      weekStartDate: '2025-01-06',
+      groceryListVersion: '1',
+      groceryItems: [item],
+      groceryState: { [item.rowId!]: false },
+      presentationVersion: '1',
+      presentationEpoch: nextEpoch,
+    });
+    await act(async () => fireEvent.click(screen.getByTestId('grocery-item-checkbox')));
+    expect(mockToggleGroceryItem).toHaveBeenCalledTimes(1);
+    expect(useWeekStore.getState().groceryPresentationEpoch).toBe(nextEpoch);
+    expect(useWeekStore.getState().groceryListVersion).toBe('1');
+    expect(mockGroceryState[item.rowId!]).toBe(false);
+  } finally {
+    view.unmount();
+    useWeekStore.setState(previous);
+  }
+});

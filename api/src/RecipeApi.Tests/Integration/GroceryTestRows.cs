@@ -30,9 +30,10 @@ internal static class GroceryTestRows
         var id = row.GetProperty("rowId").GetString()!;
         var response = await client.PatchAsJsonAsync($"/api/schedule/0/grocery/item?referenceWeekStartDate={monday:yyyy-MM-dd}", new {
             rowId = id, weekStartDate = monday.ToString("yyyy-MM-dd"), expectedRowVersion = row.GetProperty("rowVersion").GetString(),
+            expectedPresentationEpoch = schedule.GetProperty("presentationEpoch").GetGuid(),
             @checked = value, clientMutationId = Guid.NewGuid(),
         });
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.StatusCode == HttpStatusCode.OK, $"Expected grocery check 200; received {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
         return id;
     }
 }

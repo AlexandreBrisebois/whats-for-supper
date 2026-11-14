@@ -263,6 +263,16 @@ export async function setupCommonRoutes(
   recoveryOptions: {
     canonicalEditor?: RecipeDto;
     busy?: boolean;
+    recoveryDestination?: () => {
+      version: number;
+      revision: string;
+      generation: string | null;
+      membershipSha256: string | null;
+      overridesSha256: string;
+      historySha256: string;
+      documents: Array<{ revision: string; sha256: string }>;
+    };
+    recoveryRequiresExpectedDestinationRevision?: boolean;
     recipePublicationPending?: () => boolean;
     schedulePostCommitFailure?: (
       operation: 'assign' | 'defer' | 'move' | 'remove' | 'prepare'
@@ -2523,6 +2533,43 @@ export async function setupCommonRoutes(
       message: 'Recovery is coordinating household operations.',
     });
 
+  let recoveryDestinationSequence = 0;
+  let recoveryGeneration: string | null = null;
+  const fixtureHash = (value: unknown) =>
+    createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  const recoveryDestination = () =>
+    recoveryOptions.recoveryDestination?.() ?? {
+      version: 1,
+      revision: fixtureHash(['recovery-destination', recoveryDestinationSequence]),
+      generation: recoveryGeneration,
+      membershipSha256: null,
+      overridesSha256: fixtureHash([]),
+      historySha256: fixtureHash([]),
+      documents: [],
+    };
+  await page.route('**/api/management/recovery/restore/*/preflight', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    if (recoveryOptions.demoMode) return refuseDemoManagement(route);
+    if (recoveryOptions.busy) return recoveryBusy(route);
+    const id = new URL(route.request().url()).pathname.split('/').at(-2)!;
+    const saved = recoverySnapshots.get(id);
+    if (!saved)
+      return recoveryReply(route, 400, {
+        state: 'invalid',
+        message: 'Snapshot manifest is missing.',
+      });
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        snapshotId: id,
+        manifestSha256: fixtureHash(saved),
+        destination: recoveryDestination(),
+        requiresExpectedDestinationRevision:
+          recoveryOptions.recoveryRequiresExpectedDestinationRevision ?? false,
+      }),
+    });
+  });
   await page.route('**/api/management/recovery/snapshots', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     if (recoveryOptions.busy) return recoveryBusy(route);
@@ -2557,6 +2604,40 @@ export async function setupCommonRoutes(
         state: 'invalid',
         message: 'Snapshot manifest is missing.',
       });
+    let body: unknown;
+    try {
+      body = route.request().postDataJSON();
+    } catch {
+      return recoveryReply(route, 400, {
+        state: 'invalid',
+        message: 'Restore request is malformed.',
+      });
+    }
+    if (
+      body != null &&
+      (typeof body !== 'object' ||
+        Array.isArray(body) ||
+        Object.keys(body).some((key) => key !== 'expectedDestinationRevision'))
+    )
+      return recoveryReply(route, 400, {
+        state: 'invalid',
+        message: 'Restore request is malformed.',
+      });
+    const expected = (body as { expectedDestinationRevision?: unknown } | null)
+      ?.expectedDestinationRevision;
+    if (expected != null && (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected)))
+      return recoveryReply(route, 400, {
+        state: 'invalid',
+        message: 'Restore destination revision is malformed.',
+      });
+    if (
+      (recoveryOptions.recoveryRequiresExpectedDestinationRevision && expected == null) ||
+      (expected != null && expected !== recoveryDestination().revision)
+    )
+      return recoveryReply(route, 409, {
+        state: 'destination-conflict',
+        message: 'Restore destination authority changed.',
+      });
     const restored = structuredClone(saved);
     familyMembers.splice(0, familyMembers.length, ...restored.members);
     recipeUpdates.clear();
@@ -2584,6 +2665,10 @@ export async function setupCommonRoutes(
       }
     }
     restoredSnapshot = id;
+    const generation = randomUUID();
+    recoveryGeneration = generation.replaceAll('-', '');
+    groceryRows.advanceGeneration(generation);
+    recoveryDestinationSequence++;
     return recoveryReply(route, 200, {
       state: 'completed',
       message: 'Exact state restored.',

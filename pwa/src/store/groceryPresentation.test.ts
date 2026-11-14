@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useWeekStore } from './weekStore';
 import { usePlannerStore } from './plannerStore';
 import { builders } from '@/testing/builders';
+import { beginGroceryIntent, finishGroceryIntent } from '@/lib/grocery/rowState';
 
 const week = '2026-05-04';
 const epoch = 'c87604be-598c-4a36-9c38-9f04a248dc73';
@@ -95,6 +96,22 @@ describe('independent grocery presentation fence', () => {
     expect(useWeekStore.getState().groceryItems[0].displayLabels?.en).toBe('Restored');
   });
 
+  it.each(['1', '9'])(
+    'accepts restored list version %s only behind a fresh changed-epoch read',
+    (listVersion) => {
+      const store = useWeekStore.getState();
+      store.applyGrocerySnapshot(snapshot('8', 'Before restore', '9'));
+      const restored = snapshot('1', 'Restored', listVersion, restoredEpoch);
+      restored.groceryState[row.rowId!] = false;
+      expect(store.applyGrocerySnapshot(restored)).toBe(false);
+      expect(store.applyGrocerySnapshot(restored, { expectedPresentationEpoch: epoch })).toBe(true);
+      expect(useWeekStore.getState().groceryListVersion).toBe(listVersion);
+      expect(useWeekStore.getState().groceryItems[0].displayLabels?.en).toBe('Restored');
+      expect(usePlannerStore.getState().groceryState[row.rowId!]).toBe(false);
+      expect(store.applyGrocerySnapshot(snapshot('9', 'Late pre-restore', '10'))).toBe(false);
+    }
+  );
+
   it('rejects a pending next-week read captured before a household epoch change', () => {
     const store = useWeekStore.getState();
     store.applyGrocerySnapshot(snapshot('8', 'Before restore'));
@@ -119,4 +136,21 @@ describe('independent grocery presentation fence', () => {
       expect(useWeekStore.getState().groceryItems).toEqual([]);
     }
   );
+});
+
+it('retires pre-restore optimistic checks only when a changed epoch is authoritatively accepted', () => {
+  const store = useWeekStore.getState();
+  const original = snapshot('8', 'Before restore', '9');
+  original.groceryState[row.rowId!] = false;
+  store.applyGrocerySnapshot(original);
+  const token = beginGroceryIntent(week, row.rowId!, true);
+  try {
+    const restored = snapshot('1', 'Restored', '1', restoredEpoch);
+    restored.groceryState[row.rowId!] = false;
+    expect(store.applyGrocerySnapshot(restored)).toBe(false);
+    expect(store.applyGrocerySnapshot(restored, { expectedPresentationEpoch: epoch })).toBe(true);
+    expect(usePlannerStore.getState().groceryState[row.rowId!]).toBe(false);
+  } finally {
+    finishGroceryIntent(week, row.rowId!, token);
+  }
 });

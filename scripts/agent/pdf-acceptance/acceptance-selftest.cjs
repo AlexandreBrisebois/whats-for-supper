@@ -47,7 +47,7 @@ function audit(s,phase) {
 }
 function install(s,phase) { const receipt=audit(s,phase);s.audits[phase]={path:'/synthetic/'+phase+'.json',sha256:'6'.repeat(64),receipt};return receipt; }
 function context(s) { return {base:'http://localhost:3405',report:s,fixtureSource:source}; }
-function pending(s,kind,method,route,details={}) {const intent={kind,method,route,outcome:'pending',...details};s.intents.push(intent);return intent;}
+function pending(s,kind,method,route,details={}) {const intent={kind,method,route,outcome:'pending',...(kind==='check-sauce-pdf'?{checkedPresentationEpoch:uid(77)}:{}),...details};s.intents.push(intent);return intent;}
 function patch(current,type) {const ingredientLines=clean(current.ingredientLines.map(api.ingredientInput));ingredientLines[0].amount=type==='pasta-250'?scalar('250'):null;ingredientLines[0].amountText=type==='pasta-250'?'250':null;return {expectedContentRevision:current.contentRevision,servings:4,ingredientLines,instructionSections:api.instructionInput(current)};}
 
 test('finite ordinary singular PDF capture is admitted by actual guard with synthetic bound authority',()=>{
@@ -72,7 +72,7 @@ test('capture adapter is enrolled only for writable capture and strict policy ow
  assert.equal(api.captureBodyAdapterEnabled('capture',false),true);
  const code=fs.readFileSync(path.join(__dirname,'acceptance.cjs'),'utf8');
  for(const [start,end,expected] of [
-  ['function requestAllowed(','async function describeBody','9c4005d95fde0a45185bbaa8ac2ea5fffae784db4ced297bd63d8eb56b99dc91'],
+  ['function requestAllowed(','async function describeBody','39314211d3f631a33ee3444f4c9222ecbb91336bb7f650336f2d501e40f8c3bb'],
   ['async function describeBody(','function requireNoBlockedRequests','de17e7d86b67706068e0fd1d939f6ad253953a1df9e63cd474ca6790e3497100'],
   ['function authorize(','async function call','fffd3fa825ea1c485e3c1f6da670f5e81ff9a846a27a14d11c4c96e91cc9c2df']
  ])assert.equal(sha(code.slice(code.indexOf(start),code.indexOf(end,code.indexOf(start)))),expected);
@@ -172,21 +172,21 @@ test('dated override/assignment/check routes require phase audit and exact curre
  s=state(2);s.stage='demand';install(s,'producer-settled');const assigned={weekOffset:0,dayIndex:0,recipeId:id,requireEmpty:true};s.created[0].assignmentIntent={outcome:'pending'};pending(s,'assign-pdf','POST','/api/schedule/assign',{allowedBody:assigned});
  assert.equal(api.requestAllowed('POST','/api/schedule/assign?referenceWeekStartDate='+selected.weekStartDate,assigned,context(s)),true);
  assert.equal(api.requestAllowed('POST','/api/schedule/assign?referenceWeekStartDate='+selected.weekStartDate,{...assigned,recipeId:foreign},context(s)),false);
- s=state(3);s.stage='demand';install(s,'producer-settled');pending(s,'check-sauce-pdf','PATCH','/api/schedule/0/grocery/item',{checkedRow:sauce});const check={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80)};
+ s=state(3);s.stage='demand';install(s,'producer-settled');pending(s,'check-sauce-pdf','PATCH','/api/schedule/0/grocery/item',{checkedRow:sauce});const check={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80),expectedPresentationEpoch:uid(77)};
  assert.equal(api.requestAllowed('PATCH','/api/schedule/0/grocery/item?referenceWeekStartDate='+selected.weekStartDate,check,context(s)),true);
  for(const b of [{...check,rowId:foreign},{...check,checked:false},{...check,expectedRowVersion:'stale'},{...check,weekStartDate:'2027-02-15'},{...check,extra:true},{...check,clientMutationId:null}])assert.equal(api.requestAllowed('PATCH','/api/schedule/0/grocery/item?referenceWeekStartDate='+selected.weekStartDate,b,context(s)),false);
 });
 
 test('grocery check rejects omission of the captured reference query',()=>{
  const s=state(3);s.stage='demand';install(s,'producer-settled');pending(s,'check-sauce-pdf','PATCH','/api/schedule/0/grocery/item',{checkedRow:sauce});
- const check={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80)};
+ const check={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80),expectedPresentationEpoch:uid(77)};
  assert.equal(api.requestAllowed('PATCH','/api/schedule/0/grocery/item',check,context(s)),false);
 });
 
 test('grocery check requires exactly the admitted reference query and current finite scope',async()=>{
  const { groceryWire } = require('./action-wire-offline.cjs');
  const s=state(3);s.stage='demand';install(s,'producer-settled');pending(s,'check-sauce-pdf','PATCH','/api/schedule/0/grocery/item',{checkedRow:sauce});
- const check={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80)};
+ const check={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80),expectedPresentationEpoch:uid(77)};
  const wire=await groceryWire(process.env.WFS_OFFLINE_REPO_ROOT ?? process.cwd(),check,selected.weekStartDate);
  assert.equal(wire.method,'PATCH');assert.equal(wire.contentType,'application/json');assert.deepEqual(wire.body,check);
  assert.equal(new URL(wire.url).pathname,'/api/schedule/0/grocery/item');
@@ -401,7 +401,7 @@ test('all nine production action forms serialize into the finite guard offline',
   if(index===0){body=clean(captureExpected);route='/api/recipes/capture-pdf';method='POST';details.allowedBody=body;}
   else if(index===1||index===7){body={referenceWeekStartDate:selected.weekStartDate,weekOffset:0,expectedVersion:'version-current',days:[{date:selected.date,servings:index===1?8:null}]};route='/api/schedule/servings';method='PUT';details={allowedBody:body,previousOverride:index===1?null:8};}
   else if(index===2){body={weekOffset:0,dayIndex:0,recipeId:id,requireEmpty:true};route='/api/schedule/assign';method='POST';s.created[0].assignmentIntent={outcome:'pending'};details.allowedBody=body;}
-  else if(index===3){body={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80)};route='/api/schedule/0/grocery/item';method='PATCH';details.checkedRow=sauce;}
+  else if(index===3){body={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80),expectedPresentationEpoch:uid(77)};route='/api/schedule/0/grocery/item';method='PATCH';details.checkedRow=sauce;}
   else if(index===4||index===5){const current=recipe(index===4?'200':'250'),type=index===4?'pasta-250':'pasta-clear';body=patch(current,type);route='/api/recipes/'+id;method='PATCH';details={recipeId:id,currentSnapshot:current,patchPolicy:{type}};}
   else if(index===6){route='/api/schedule/day/'+selected.date+'/remove';method='DELETE';}
   else {route='/api/recipes/'+id;method='DELETE';s.created[0].removalIntent={recipeId:id};}
@@ -414,4 +414,28 @@ test('all nine production action forms serialize into the finite guard offline',
   assert.equal(api.requestAllowed(wire.method,wire.url,wire.body,context(s)),true,kind+' admitted');
   assert.equal(api.requestAllowed(wire.method,wire.url,wire.body,{...context(s),readOnly:true}),false,kind+' read-only rejected');
  }
+});
+
+test('grocery check binds the exact captured presentation epoch in the serialized request', async()=>{
+ const epoch=uid(77),s=state(3);s.stage='demand';install(s,'producer-settled');
+ pending(s,'check-sauce-pdf','PATCH','/api/schedule/0/grocery/item',{checkedRow:sauce,checkedPresentationEpoch:epoch});
+ const body={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80),expectedPresentationEpoch:epoch};
+ const { groceryWire }=require('./action-wire-offline.cjs');
+ const wire=await groceryWire(process.env.WFS_OFFLINE_REPO_ROOT??process.cwd(),body,selected.weekStartDate);
+ assert.equal(api.requestAllowed(wire.method,wire.url,wire.body,context(s)),true);
+ for(const value of [undefined,null,foreign]){const bad={...body,expectedPresentationEpoch:value};assert.equal(api.requestAllowed(wire.method,wire.url,bad,context(s)),false);}
+});
+
+test('grocery check admits the captured nil presentation epoch without admitting nil identifiers', async()=>{
+ const nil='00000000-0000-0000-0000-000000000000',s=state(3);s.stage='demand';install(s,'producer-settled');
+ pending(s,'check-sauce-pdf','PATCH','/api/schedule/0/grocery/item',{checkedRow:sauce,checkedPresentationEpoch:nil});
+ const body={rowId:sauce.rowId,weekStartDate:selected.weekStartDate,expectedRowVersion:sauce.rowVersion,checked:true,clientMutationId:uid(80),expectedPresentationEpoch:nil};
+ const { groceryWire }=require('./action-wire-offline.cjs');
+ const wire=await groceryWire(process.env.WFS_OFFLINE_REPO_ROOT??process.cwd(),body,selected.weekStartDate);
+ assert.deepEqual(wire.body,body);
+ assert.equal(api.requestAllowed(wire.method,wire.url,wire.body,context(s)),true);
+ for(const value of [undefined,null,foreign])assert.equal(api.requestAllowed(wire.method,wire.url,{...body,expectedPresentationEpoch:value},context(s)),false);
+ assert.equal(api.requestAllowed(wire.method,wire.url,{...body,clientMutationId:nil},context(s)),false);
+ const foreignState=clean(s);foreignState.created[0].id=nil;
+ assert.equal(api.requestAllowed(wire.method,wire.url,body,context(foreignState)),false);
 });

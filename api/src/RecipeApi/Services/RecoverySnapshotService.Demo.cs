@@ -47,6 +47,9 @@ public partial class RecoverySnapshotService
         ["maintenance_commands"] = "invalidate",
         ["recovery_publication"] = "fresh-publication"
     };
+    private static readonly IReadOnlyDictionary<string, string> CurrentDemoDispositions =
+        new SortedDictionary<string, string>(DemoDispositions.ToDictionary(x => x.Key, x => x.Value), StringComparer.Ordinal)
+        { ["household_food_overrides"] = "restore" };
     private static readonly HashSet<string> DemoClearTables = ["recipe_repair_intents", "recipe_import_reports", "weekly_plans", "calendar_events", "weekly_household_interest", "grocery_extra_occurrences", "supper_servings", "grocery_mutation_outcomes"];
     internal string DemoBaselineRoot
     {
@@ -144,7 +147,7 @@ public partial class RecoverySnapshotService
         finally { if (stage is not null && Directory.Exists(stage)) Directory.Delete(stage, true); }
     }
 
-    private static string NormalizeDemoRows(string table, string rows)
+    private static string NormalizeDemoRows(string table, string rows, bool currentFormat = false)
     {
         if (DemoClearTables.Contains(table)) return "[]";
         var values = JsonNode.Parse(rows)!.AsArray();
@@ -167,18 +170,19 @@ public partial class RecoverySnapshotService
                     row["is_discoverable"] = row["is_ready"]!.GetValue<bool>() && RecipeRotation.Suitable(recipe) && !recipe.RotationHumanOff;
                 }
             }
-        if (table == "family_settings" && values.Any(row => row!["key"]!.GetValue<string>() is not ("family_goto" or SupperServingsService.DefaultKey)))
+        if (table == "family_settings" && values.Any(row => row!["key"]!.GetValue<string>() is not ("family_goto" or SupperServingsService.DefaultKey)
+            && !(currentFormat && row["key"]!.GetValue<string>() == "food_vocabulary_publication")))
             throw new InvalidDataException("Unclassified household setting; declare ownership before demo capture/reset.");
         return values.ToJsonString();
     }
 
-    private async Task ValidateDemoInventoryAsync(NpgsqlConnection connection, CancellationToken ct, bool prospectiveDemoInvalidation = false)
+    private async Task ValidateDemoInventoryAsync(NpgsqlConnection connection, CancellationToken ct, bool currentFormat = false, bool prospectiveDemoInvalidation = false)
     {
         var names = await ScalarAsync(connection, "SELECT string_agg(tablename,',' ORDER BY tablename) FROM pg_tables WHERE schemaname='public'", ct);
         var actual = names.Split(',');
         if (!actual.SequenceEqual(DemoDispositions.Keys.Append("household_food_overrides").Order()))
             throw new InvalidDataException("Household schema has unclassified state; recapture requires an explicit disposition for every table.");
-        await RequireLegacyDemoFoodFreeAsync(ct, prospectiveDemoInvalidation);
+        if (!currentFormat) await RequireLegacyDemoFoodFreeAsync(ct, prospectiveDemoInvalidation);
     }
     private async Task RequireLegacyDemoFoodFreeAsync(CancellationToken ct, bool prospectiveDemoInvalidation)
     {
@@ -198,24 +202,56 @@ public partial class RecoverySnapshotService
         }
     }
 
-    private async Task ValidateLegacyDemoTableAuthorityAsync(NpgsqlConnection connection, CancellationToken ct)
+    private async Task ValidateLegacyTableAuthorityAsync(NpgsqlConnection connection, CancellationToken ct)
     {
         if (await ScalarAsync(connection, "SELECT count(*)::text FROM pg_temp.recovery_family_settings WHERE key='food_vocabulary_publication'", ct) != "0"
             || await ScalarAsync(connection, "SELECT count(*)::text FROM pg_temp.recovery_recipes WHERE food_mapping_evidence IS NOT NULL", ct) != "0"
             || await ScalarAsync(connection, "SELECT count(*)::text FROM pg_temp.recovery_canonical_recipe_operations WHERE original_request::jsonb->>'version'='2'", ct) != "0")
             throw new InvalidDataException("Legacy demo format 2 contains unsupported food vocabulary authority.");
-        await using var command = new NpgsqlCommand("SELECT id,canonical_content::text,food_mapping_evidence::text FROM pg_temp.recovery_recipes", connection);
-        await using var reader = await command.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-        {
-            var recipe = new FoodVocabularyRecipeObservation(reader.GetGuid(0), reader.IsDBNull(1) ? null : reader.GetString(1),
-                reader.IsDBNull(2) ? null : reader.GetString(2));
-            if (FoodVocabularyInventoryQualification.RecipeReferences(recipe).Length != 0)
-                throw new InvalidDataException("Legacy demo format 2 contains unsupported ingredient food authority.");
-        }
+        await using (var command = new NpgsqlCommand("SELECT id,canonical_content::text,food_mapping_evidence::text FROM pg_temp.recovery_recipes", connection))
+        await using (var reader = await command.ExecuteReaderAsync(ct))
+            while (await reader.ReadAsync(ct))
+            {
+                var recipe = new FoodVocabularyRecipeObservation(reader.GetGuid(0), reader.IsDBNull(1) ? null : reader.GetString(1),
+                    reader.IsDBNull(2) ? null : reader.GetString(2));
+                if (FoodVocabularyInventoryQualification.RecipeReferences(recipe).Length != 0)
+                    throw new InvalidDataException("Historical snapshots contain unsupported ingredient food authority.");
+            }
+        await using (var command = new NpgsqlCommand("SELECT recipe_id,operation_id,input_hash,payload::text,result_hash,delivered,created_at FROM pg_temp.recovery_recipe_file_publications", connection))
+        await using (var reader = await command.ExecuteReaderAsync(ct))
+            while (await reader.ReadAsync(ct))
+            {
+                var publication = new RecipeFilePublication
+                {
+                    RecipeId = reader.GetGuid(0),
+                    OperationId = reader.GetGuid(1),
+                    InputHash = reader.GetString(2),
+                    Payload = reader.GetString(3),
+                    ResultHash = reader.GetString(4),
+                    Delivered = reader.GetBoolean(5),
+                    CreatedAt = reader.GetFieldValue<DateTimeOffset>(6)
+                };
+                if (RecipeFilePublicationStore.VocabularyReferences(publication).Length != 0)
+                    throw new InvalidDataException("Historical snapshots contain unsupported retained publication food authority.");
+            }
+        await using (var command = new NpgsqlCommand("SELECT id,recipe_id,input_hash,payload::text,created_at FROM pg_temp.recovery_recipe_repair_intents", connection))
+        await using (var reader = await command.ExecuteReaderAsync(ct))
+            while (await reader.ReadAsync(ct))
+            {
+                var repair = new RecipeRepairIntent
+                {
+                    Id = reader.GetGuid(0),
+                    RecipeId = reader.GetGuid(1),
+                    InputHash = reader.GetString(2),
+                    Payload = reader.GetString(3),
+                    CreatedAt = reader.GetFieldValue<DateTimeOffset>(4)
+                };
+                if (RecipeReportRepairIntent.VocabularyReferences(repair).Length != 0)
+                    throw new InvalidDataException("Historical snapshots contain unsupported retained repair food authority.");
+            }
     }
 
-    private static void ValidateDemoSettingReferences(string settingRows, string recipeRows)
+    private static void ValidateDemoSettingReferences(string settingRows, string recipeRows, bool currentFormat = false)
     {
         using var recipes = JsonDocument.Parse(recipeRows);
         var ids = recipes.RootElement.EnumerateArray().Select(r => r.GetProperty("id").GetGuid()).ToHashSet();
@@ -223,6 +259,11 @@ public partial class RecoverySnapshotService
         foreach (var row in settings.RootElement.EnumerateArray())
         {
             var value = row.GetProperty("value");
+            if (currentFormat && row.GetProperty("key").GetString() == "food_vocabulary_publication")
+            {
+                _ = FoodVocabularyStore.InspectMembership(value.GetRawText());
+                continue;
+            }
             if (row.GetProperty("key").GetString() == SupperServingsService.DefaultKey)
             {
                 SupperServingsService.ValidateDefaultSetting(value);

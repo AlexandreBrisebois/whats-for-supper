@@ -9,6 +9,7 @@ public sealed partial class FoodVocabularyStore
     // observed, including originals whose runtime membership has been retired.
     internal async Task<FoodVocabularyInventoryFacts> ObserveInventoryFactsAsync(CancellationToken ct)
     {
+        await using var readConnection = await DatabaseReadConnection.RetainAsync(db, ct);
         var membership = await db.FamilySettings.AsNoTracking().SingleOrDefaultAsync(x => x.Key == Key, ct);
         var recipeFacts = await db.Recipes.IgnoreQueryFilters().AsNoTracking().Select(x => new FoodVocabularyRecipeObservation(
             x.Id, x.CanonicalContent, x.FoodMappingEvidence)).ToArrayAsync(ct);
@@ -24,7 +25,10 @@ public sealed partial class FoodVocabularyStore
             await db.RecipeRepairIntents.AsNoTracking().ToArrayAsync(ct),
             await db.RecipePhysicalDeletions.AsNoTracking().ToArrayAsync(ct),
             await db.MaintenanceCommandLifecycleRecords.AsNoTracking().ToArrayAsync(ct),
-            await ObserveStagedJournalsAsync(ct));
+            await ObserveStagedJournalsAsync(ct),
+            await db.MaintenanceCommands.AsNoTracking().Select(x => new MaintenanceCommandObservation(x.Id,
+                x.CommandType, x.Status, x.Payload, x.Result, x.Attempts, x.RequestedBy, x.CreatedAt, x.ScheduledFor,
+                x.StartedAt, x.CompletedAt, x.LastError)).ToArrayAsync(ct));
         // Observe rows directly. The public presentation feed calls CaptureActive
         // and therefore cannot be called from the absent-membership inventory.
         var overrides = (await db.HouseholdFoodOverrides.AsNoTracking().OrderBy(x => x.Id).ToArrayAsync(ct))

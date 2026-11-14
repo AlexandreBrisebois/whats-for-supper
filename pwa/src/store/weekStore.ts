@@ -1,5 +1,9 @@
 import { groceryPresentation, retainGroceryPresentation } from '@/lib/grocery/presentation';
-import { groceryVersion, overlayGroceryIntents } from '@/lib/grocery/rowState';
+import {
+  groceryVersion,
+  overlayGroceryIntents,
+  retireGroceryIntents,
+} from '@/lib/grocery/rowState';
 import { create } from 'zustand';
 import {
   readCalendar,
@@ -401,7 +405,6 @@ export const useWeekStore = create<WeekState>((set, get) => {
       if (version === null && snapshot.groceryListVersion !== null) return false;
       const previous =
         get().groceryVersionWeek === week ? groceryVersion(get().groceryListVersion) : null;
-      if (previous !== null && (version === null || version < previous)) return false;
       const presentation = groceryPresentation(
         snapshot.presentationVersion,
         snapshot.presentationEpoch
@@ -421,6 +424,8 @@ export const useWeekStore = create<WeekState>((set, get) => {
         changedEpoch &&
         (!authority || authority.expectedPresentationEpoch !== current.groceryPresentationEpoch)
       )
+        return false;
+      if (!changedEpoch && previous !== null && (version === null || version < previous))
         return false;
       const stalePresentation =
         priorPresentation !== null &&
@@ -442,12 +447,14 @@ export const useWeekStore = create<WeekState>((set, get) => {
         return false;
       const known = get().authoritativeGroceryChecks;
       if (
+        !changedEpoch &&
         previous !== null &&
         previous === version &&
         (Object.keys(checks).length !== Object.keys(known).length ||
           Object.entries(checks).some(([id, checked]) => known[id] !== checked))
       )
         return false;
+      if (changedEpoch) retireGroceryIntents();
       set({
         groceryItems: stalePresentation
           ? retainGroceryPresentation(snapshot.groceryItems ?? [], current.groceryItems)

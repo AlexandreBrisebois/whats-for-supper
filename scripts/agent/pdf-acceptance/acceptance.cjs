@@ -95,10 +95,10 @@ function requestAllowed(method, address, body, context) {
     const row = intent.checkedRow;
     return intent.kind === 'check-sauce-pdf' && !url.username && !url.password
       && url.searchParams.size === 1 && url.searchParams.get('referenceWeekStartDate') === fixture.selected.weekStartDate
-      && row && row.normalizedKey === source.ingredientNames.sauce && same(row.recipeIds, [fixture.id])
+      && (uuid(intent.checkedPresentationEpoch) || intent.checkedPresentationEpoch === '00000000-0000-0000-0000-000000000000') && row && row.normalizedKey === source.ingredientNames.sauce && same(row.recipeIds, [fixture.id])
       && same(row.quantity, scalar('200')) && typeof body?.clientMutationId === 'string' && uuid(body.clientMutationId)
       && !state.intents.some(other => other !== intent && other.issuedBody?.clientMutationId === body.clientMutationId)
-      && same({ ...body, clientMutationId: null }, { rowId: row.rowId, weekStartDate: fixture.selected.weekStartDate, expectedRowVersion: row.rowVersion, checked: true, clientMutationId: null });
+      && same({ ...body, clientMutationId: null }, { rowId: row.rowId, weekStartDate: fixture.selected.weekStartDate, expectedRowVersion: row.rowVersion, checked: true, clientMutationId: null, expectedPresentationEpoch: intent.checkedPresentationEpoch });
   }
   if (method === 'DELETE' && route === `/api/schedule/day/${fixture.selected.date}/remove`) return intent.kind === 'remove-pdf' && body === undefined
     && url.searchParams.size === 1 && url.searchParams.get('expectedPlanToken') === fixture.assignmentReceipt?.removalToken;
@@ -456,7 +456,7 @@ async function demandStage(browser, family, member, secret) {
   try {
     const page = await context.newPage(); await page.goto(`/planner?weekOffset=0&referenceWeekStartDate=${selected.weekStartDate}`); await page.getByTestId('grocery-tab').click();
     for (const header of await page.locator('[data-testid^="aisle-header-"][aria-expanded="false"]').all()) await header.click();
-    const intent = { kind: 'check-sauce-pdf', method: 'PATCH', route: '/api/schedule/0/grocery/item', checkedRow: demand.sauce, at: new Date().toISOString(), outcome: 'pending' };
+    const intent = { kind: 'check-sauce-pdf', method: 'PATCH', route: '/api/schedule/0/grocery/item', checkedRow: demand.sauce, checkedPresentationEpoch: demand.week.presentationEpoch, at: new Date().toISOString(), outcome: 'pending' };
     beginIntent(intent);
     const pending = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname === intent.route); pending.catch(() => {});
     try {

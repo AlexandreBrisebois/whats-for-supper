@@ -14,9 +14,8 @@ public partial class DemoShowcaseLoopPostgresTests
     [RecipeImportReportPostgresTests.PostgresTheory]
     [InlineData("override")]
     [InlineData("membership")]
-    [InlineData("mapping")]
     [InlineData("canonical-v2")]
-    public async Task LegacyDemo2_CannotCaptureFoodAuthority(string owner)
+    public async Task CurrentDemo4_CapturesFoodAuthorityWithExplicitDispositions(string owner)
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
@@ -35,11 +34,6 @@ public partial class DemoShowcaseLoopPostgresTests
                 "api/src/RecipeApi.Tests/Fixtures/food-vocabulary-three-anchor-v1.json"));
             await services.GetRequiredService<FoodVocabularyStore>().PublishReviewedAsync(bytes, null, Guid.NewGuid(), "legacy-demo-reject");
         }
-        if (owner == "mapping")
-        {
-            recipe.FoodMappingEvidence = "{}";
-            await db.SaveChangesAsync();
-        }
         if (owner == "canonical-v2")
         {
             await services.GetRequiredService<CanonicalRecipeContentStore>().ConvertAsync(recipe.Id,
@@ -47,8 +41,14 @@ public partial class DemoShowcaseLoopPostgresTests
             Assert.NotEmpty(await db.CanonicalRecipeOperations.ToArrayAsync());
         }
         var before = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id);
-        await Assert.ThrowsAsync<InvalidDataException>(() => services.GetRequiredService<ManagementService>().CaptureDemoStateAsync());
-        Assert.False(File.Exists(Path.Combine(services.GetRequiredService<DataRootResolver>().Root, "demo", "current")));
+        await services.GetRequiredService<ManagementService>().CaptureDemoStateAsync();
+        var selected = SelectedBaseline(scope);
+        var manifest = System.Text.Json.JsonSerializer.Deserialize<RecoveryManifest>(
+            await File.ReadAllTextAsync(Path.Combine(selected, "manifest.json")), JsonDefaults.CamelCase)!;
+        Assert.Equal(4, manifest.Version);
+        Assert.Contains("household_food_overrides", manifest.Tables);
+        Assert.Contains(manifest.Files, x => x.Path == "vocabulary/index.json");
+        Assert.Contains(manifest.Files, x => x.Path == "vocabulary/history-observations.json");
         var after = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id);
         Assert.Equal((before.CanonicalContent, before.FoodMappingEvidence), (after.CanonicalContent, after.FoodMappingEvidence));
         Assert.Equal(owner == "override" ? 1 : 0, await db.HouseholdFoodOverrides.CountAsync());
@@ -56,7 +56,7 @@ public partial class DemoShowcaseLoopPostgresTests
     }
 
     [RecipeImportReportPostgresTests.PostgresFact]
-    public async Task LegacyDemo2_RechecksActualOverrideOwnerAfterWritersDrain()
+    public async Task CurrentDemo4_RechecksActualOverrideOwnerAfterWritersDrain()
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
@@ -77,13 +77,25 @@ public partial class DemoShowcaseLoopPostgresTests
         var recovery = new RecoverySnapshotService(db, services.GetRequiredService<RecipesRootResolver>(),
             services.GetRequiredService<DataRootResolver>(), services.GetRequiredService<IConfiguration>(),
             services.GetRequiredService<IClock>(), services.GetRequiredService<RecoveryBoundary>(),
-            services.GetRequiredService<FoodVocabularyStore>(), checkpoint);
-        await Assert.ThrowsAsync<InvalidDataException>(() => recovery.RestoreDemoAsync(null, default));
+            services.GetRequiredService<FoodVocabularyStore>(), services.GetRequiredService<HouseholdFoodOverrideStore>(), checkpoint);
+        await Assert.ThrowsAsync<RecoveryDestinationConflictException>(() => recovery.RestoreDemoAsync(null, default));
         Assert.True(checkpoint.Applied);
         Assert.Equal("Later human recipe name", (await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id)).Name);
         Assert.Equal(retained.Id, (await db.HouseholdFoodOverrides.AsNoTracking().SingleAsync()).Id);
         Assert.Equal(baseline, SelectedBaseline(scope));
         Assert.False(File.Exists(Path.Combine(services.GetRequiredService<RecipesRootResolver>().BaseRoot, ".recovery-journal.json")));
+    }
+
+    [RecipeImportReportPostgresTests.PostgresFact]
+    public async Task CurrentDemo4_InvalidCurrentEvidenceCannotPublishBaseline()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        db.Recipes.Add(new Recipe { Name = "Invalid evidence", FoodMappingEvidence = "{}", AddedBy = app.DefaultFamilyMemberId });
+        await db.SaveChangesAsync();
+        await Assert.ThrowsAsync<InvalidDataException>(() => scope.ServiceProvider.GetRequiredService<ManagementService>().CaptureDemoStateAsync());
+        Assert.False(File.Exists(Path.Combine(scope.ServiceProvider.GetRequiredService<DataRootResolver>().Root, "demo", "current")));
+        Assert.Equal("{}", (await db.Recipes.AsNoTracking().SingleAsync()).FoodMappingEvidence);
     }
 
     private static HouseholdFoodOverride ProtectedClear()

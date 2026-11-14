@@ -1205,3 +1205,192 @@ it('food category mock preserves checks and conflicts on stale revisions across 
     ],
   });
 });
+
+it('recovery preflight is read-only and stale destination revisions reject before household replacement', async () => {
+  const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+  const page = {
+    route: vi.fn(
+      async (pattern: Parameters<Page['route']>[0], handler: (route: Route) => Promise<unknown>) =>
+        handlers.set(pattern, handler)
+    ),
+    evaluate: vi.fn().mockResolvedValue(undefined),
+  };
+  let revision = 'a'.repeat(64);
+  const destination = () => ({
+    version: 1,
+    revision,
+    generation: null,
+    membershipSha256: 'b'.repeat(64),
+    overridesSha256: 'c'.repeat(64),
+    historySha256: 'd'.repeat(64),
+    documents: [{ revision: 'fixture.destination', sha256: 'f'.repeat(64) }],
+  });
+  const common = await setupCommonRoutes(page as unknown as Page, undefined, {
+    recoveryDestination: destination,
+    recoveryRequiresExpectedDestinationRevision: true,
+  });
+  const call = async (pattern: string, method: string, path: string, body?: unknown) => {
+    const fulfill = vi.fn();
+    const fallback = vi.fn();
+    const handler = handlers.get(pattern);
+    expect(handler).toBeDefined();
+    await handler!({
+      request: () => ({
+        method: () => method,
+        url: () => `http://localhost${path}`,
+        postDataJSON: () => body,
+      }),
+      fulfill,
+      fallback,
+      continue: vi.fn(),
+    } as unknown as Route);
+    const response = fulfill.mock.calls[0]?.[0];
+    return response
+      ? {
+          status: response.status ?? 200,
+          json: response.json ?? JSON.parse(response.body),
+          fallback,
+        }
+      : { status: null, json: null, fallback };
+  };
+  const saved = await call(
+    '**/api/management/recovery/snapshots',
+    'POST',
+    '/api/management/recovery/snapshots'
+  );
+  await call('**/api/family', 'POST', '/api/family', { name: 'Protected later member' });
+  const count = common.readFamilyCount();
+  const path = `/api/management/recovery/restore/${saved.json.snapshotId}`;
+  const preflight = await call(
+    '**/api/management/recovery/restore/*/preflight',
+    'GET',
+    `${path}/preflight`
+  );
+  expect(preflight.status).toBe(200);
+  expect(preflight.json).toEqual({
+    snapshotId: saved.json.snapshotId,
+    manifestSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+    destination: destination(),
+    requiresExpectedDestinationRevision: true,
+  });
+  expect(common.readFamilyCount()).toBe(count);
+  const wrongMethod = await call(
+    '**/api/management/recovery/restore/*/preflight',
+    'POST',
+    `${path}/preflight`
+  );
+  expect(wrongMethod.fallback).toHaveBeenCalledOnce();
+  revision = 'e'.repeat(64);
+  expect(
+    (
+      await call('**/api/management/recovery/restore/*', 'POST', path, {
+        expectedDestinationRevision: preflight.json.destination.revision,
+      })
+    ).status
+  ).toBe(409);
+  expect((await call('**/api/management/recovery/restore/*', 'POST', path)).status).toBe(409);
+  expect(
+    (
+      await call('**/api/management/recovery/restore/*', 'POST', path, {
+        expectedDestinationRevision: revision,
+        invented: true,
+      })
+    ).status
+  ).toBe(400);
+  expect(common.readFamilyCount()).toBe(count);
+  expect(
+    (
+      await call('**/api/management/recovery/restore/*', 'POST', path, {
+        expectedDestinationRevision: revision,
+      })
+    ).status
+  ).toBe(200);
+  expect(common.readFamilyCount()).toBe(count - 1);
+});
+
+it.each(['item', 'bulk'] as const)(
+  'common exact restore advances the grocery epoch before old %s write or receipt replay',
+  async (kind) => {
+    const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
+    const page = {
+      route: vi.fn(
+        async (
+          pattern: Parameters<Page['route']>[0],
+          handler: (route: Route) => Promise<unknown>
+        ) => handlers.set(pattern, handler)
+      ),
+      evaluate: vi.fn().mockResolvedValue(undefined),
+    };
+    const common = await setupCommonRoutes(page as unknown as Page);
+    const schedule = { ...builders.scheduleDays(), groceryItems: builders.groceryItems(['Onion']) };
+    common.groceryRows.decorate(schedule);
+    const initial = common.groceryRows.snapshot(schedule.weekStartDate);
+    const row = initial.groceryItems[0];
+    const body: Record<string, unknown> = {
+      weekStartDate: initial.weekStartDate,
+      clientMutationId: MOCK_IDS.RECIPE_TACOS,
+      expectedPresentationEpoch: initial.presentationEpoch,
+      ...(kind === 'item'
+        ? { rowId: row.rowId, expectedRowVersion: row.rowVersion, checked: true }
+        : { expectedListVersion: initial.groceryListVersion, checks: { [row.rowId]: true } }),
+    };
+    const call = async (pattern: string, method: string, path: string, input?: unknown) => {
+      const fulfill = vi.fn();
+      await handlers.get(pattern)!({
+        request: () => ({
+          method: () => method,
+          url: () => `http://localhost${path}`,
+          postDataJSON: () => input,
+        }),
+        fulfill,
+        fallback: vi.fn(),
+        continue: vi.fn(),
+      } as unknown as Route);
+      const response = fulfill.mock.calls[0][0];
+      return { status: response.status ?? 200, json: response.json ?? JSON.parse(response.body) };
+    };
+    const pattern = `**/api/schedule/*/grocery${kind === 'item' ? '/item' : ''}**`;
+    const path = `/api/schedule/0/grocery${kind === 'item' ? '/item' : ''}?referenceWeekStartDate=${initial.weekStartDate}`;
+    expect((await call(pattern, 'PATCH', path, body)).status).toBe(200);
+    const saved = await call(
+      '**/api/management/recovery/snapshots',
+      'POST',
+      '/api/management/recovery/snapshots'
+    );
+    const restore = `/api/management/recovery/restore/${saved.json.snapshotId}`;
+    expect((await call('**/api/management/recovery/restore/*', 'POST', restore)).status).toBe(200);
+    const restored = common.groceryRows.snapshot(initial.weekStartDate);
+    expect(restored.presentationEpoch).not.toBe(initial.presentationEpoch);
+    const preflight = await call(
+      '**/api/management/recovery/restore/*/preflight',
+      'GET',
+      `${restore}/preflight`
+    );
+    expect(preflight.json.destination.generation).toBe(
+      restored.presentationEpoch.replaceAll('-', '')
+    );
+    expect(await call(pattern, 'PATCH', path, body)).toMatchObject({
+      status: 409,
+      json: { code: 'epoch_conflict' },
+    });
+    const fresh = {
+      ...body,
+      clientMutationId: MOCK_IDS.RECIPE_LASAGNA,
+      expectedRowVersion: restored.groceryItems[0].rowVersion,
+      expectedListVersion: restored.groceryListVersion,
+    };
+    expect(await call(pattern, 'PATCH', path, fresh)).toMatchObject({
+      status: 409,
+      json: { code: 'epoch_conflict' },
+    });
+    expect(common.groceryRows.snapshot(initial.weekStartDate)).toEqual(restored);
+    expect(
+      (
+        await call(pattern, 'PATCH', path, {
+          ...fresh,
+          expectedPresentationEpoch: restored.presentationEpoch,
+        })
+      ).status
+    ).toBe(200);
+  }
+);

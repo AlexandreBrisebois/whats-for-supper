@@ -191,7 +191,7 @@ public partial class DemoShowcaseLoopPostgresTests : IAsyncLifetime
             scope.ServiceProvider.GetRequiredService<DataRootResolver>(),
             scope.ServiceProvider.GetRequiredService<IConfiguration>(),
             scope.ServiceProvider.GetRequiredService<IClock>(),
-            scope.ServiceProvider.GetRequiredService<RecoveryBoundary>(), scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>(), new InterruptAt(point));
+            scope.ServiceProvider.GetRequiredService<RecoveryBoundary>(), scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>(), scope.ServiceProvider.GetRequiredService<HouseholdFoodOverrideStore>(), new InterruptAt(point));
         await Assert.ThrowsAsync<IOException>(() => recovery.RestoreDemoAsync(null, CancellationToken.None));
         db.ChangeTracker.Clear();
         Assert.Equal(committed ? "Baseline soup" : "Visitor edit", (await db.Recipes.SingleAsync()).Name);

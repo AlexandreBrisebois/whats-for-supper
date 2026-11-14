@@ -127,7 +127,7 @@ it('updates server presentation without changing demand versions, checks or rece
       labelStatus: 'resolved',
     })),
     presentationVersion: '8',
-    presentationEpoch: '4e7341d8-5f29-45f0-8c11-f9689ee16783',
+    presentationEpoch: before.presentationEpoch,
   });
   const after = f.state.snapshot(week);
   expect(after.groceryListVersion).toBe(before.groceryListVersion);
@@ -142,3 +142,56 @@ it('updates server presentation without changing demand versions, checks or rece
   expect(replay.json.rows[0].displayLabels.fr).toBe('Oignon');
   expect((original as any).json.presentationVersion).toBe('0');
 });
+
+it.each(['item', 'bulk'] as const)(
+  'rejects a pre-generation %s request before retained receipt replay or a fresh write',
+  (kind) => {
+    const f = fixture();
+    f.project(scalarQuantity(50));
+    const before = f.state.snapshot(week);
+    const row = before.groceryItems[0];
+    const body =
+      kind === 'item'
+        ? {
+            rowId: row.rowId,
+            expectedRowVersion: row.rowVersion,
+            weekStartDate: week,
+            checked: true,
+            clientMutationId: f.mutationId(),
+            expectedPresentationEpoch: before.presentationEpoch,
+          }
+        : {
+            weekStartDate: week,
+            expectedListVersion: before.groceryListVersion,
+            checks: { [row.rowId]: true },
+            clientMutationId: f.mutationId(),
+            expectedPresentationEpoch: before.presentationEpoch,
+          };
+    expect(f.state.mutate(week, kind, body).status).toBe(200);
+    const current = f.state.snapshot(week);
+    const epoch = '09000000-0000-4000-8000-000000000005';
+    f.state.decorate({ ...current, presentationEpoch: epoch });
+    const restored = f.state.snapshot(week);
+    expect(f.state.mutate(week, kind, body)).toMatchObject({
+      status: 409,
+      json: { code: 'epoch_conflict' },
+    });
+    const fresh = {
+      ...body,
+      clientMutationId: f.mutationId(),
+      expectedRowVersion: restored.groceryItems[0].rowVersion,
+      expectedListVersion: restored.groceryListVersion,
+    };
+    expect(f.state.mutate(week, kind, fresh)).toMatchObject({
+      status: 409,
+      json: { code: 'epoch_conflict' },
+    });
+    expect(f.state.mutate(week, kind, { ...fresh, expectedPresentationEpoch: null })).toMatchObject(
+      { status: 409, json: { code: 'epoch_conflict' } }
+    );
+    expect(f.state.snapshot(week)).toEqual(restored);
+    expect(f.state.mutate(week, kind, { ...fresh, expectedPresentationEpoch: epoch }).status).toBe(
+      200
+    );
+  }
+);

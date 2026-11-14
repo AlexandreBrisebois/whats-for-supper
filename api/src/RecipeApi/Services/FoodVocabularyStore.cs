@@ -235,6 +235,7 @@ public sealed partial class FoodVocabularyStore(RecipeDbContext db, IStorageProv
     {
         var facts = await ObserveInventoryFactsAsync(ct);
         FoodVocabularyDefinitions.Require(FoodVocabularyInventoryQualification.RequiredReferences(facts).Count == 0);
+        await RequireRetainedAbsenceAsync(ct);
 
     }
 }

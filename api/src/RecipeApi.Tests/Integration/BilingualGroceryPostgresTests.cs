@@ -80,11 +80,13 @@ public sealed class BilingualGroceryPostgresTests(ITestOutputHelper output)
         var small = Assert.Single(rows, row => row.RecipeIds.Contains(smallId));
         var large = Assert.Single(rows, row => row.RecipeIds.Contains(largeId));
         using var client = factory.CreateAuthenticatedClient();
+        var schedule = await GroceryTestRows.ReadAsync(client, Monday);
         foreach (var row in new[] { small, large })
         {
             using var check = await client.PatchAsJsonAsync($"/api/schedule/0/grocery/item?referenceWeekStartDate={Monday:yyyy-MM-dd}", new
-            { rowId = row.RowId, weekStartDate = Monday, expectedRowVersion = row.RowVersion, @checked = true, clientMutationId = Guid.NewGuid() });
-            Assert.Equal(HttpStatusCode.OK, check.StatusCode);
+            { rowId = row.RowId, weekStartDate = Monday, expectedRowVersion = row.RowVersion,
+                expectedPresentationEpoch = schedule.GetProperty("presentationEpoch").GetGuid(), @checked = true, clientMutationId = Guid.NewGuid() });
+            Assert.True(check.StatusCode == HttpStatusCode.OK, $"Expected grocery check 200; received {(int)check.StatusCode}: {await check.Content.ReadAsStringAsync()}");
         }
         var checkedPlan = await Plan(factory);
         var baseline = JsonDocument.Parse(checkedPlan.GroceryCheckedDemandBaselines).RootElement.GetProperty(large.RowId).GetRawText();

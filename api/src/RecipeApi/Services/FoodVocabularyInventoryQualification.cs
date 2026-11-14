@@ -17,7 +17,8 @@ public sealed record FoodVocabularyHistoryFacts(IReadOnlyList<WorkflowInstance> 
     IReadOnlyList<WorkflowResetIntent> Resets, IReadOnlyList<WorkflowProcessorAttempt> Attempts,
     IReadOnlyList<WorkflowLifecycleRecord> Retirements, IReadOnlyList<RecipeRepairIntent> Repairs,
     IReadOnlyList<RecipePhysicalDeletion> PhysicalRetirements,
-    IReadOnlyList<MaintenanceCommandLifecycleRecord> MaintenanceRetirements, IReadOnlyList<FoodVocabularyStagedJournalObservation> StagedJournals);
+    IReadOnlyList<MaintenanceCommandLifecycleRecord> MaintenanceRetirements, IReadOnlyList<FoodVocabularyStagedJournalObservation> StagedJournals,
+    IReadOnlyList<MaintenanceCommandObservation> Commands);
 public sealed record FoodVocabularyInventoryFacts(FoodVocabularyMembershipObservation Membership,
     IReadOnlyList<FoodVocabularyRecipeObservation> Recipes, IReadOnlyList<CanonicalRecipeOperation> CanonicalOperations,
     IReadOnlyList<RecipeFilePublication> Publications, FoodVocabularyHistoryFacts History, FoodVocabularyOverrideFeed Overrides);
@@ -25,10 +26,13 @@ public sealed record FoodVocabularyReferenceOrigin(FoodVocabularyReference Refer
 
 // No database, storage, identity allocation or current-head lookup belongs here.
 // Each retained format is interpreted exclusively by its existing typed owner.
-public static class FoodVocabularyInventoryQualification
+public static partial class FoodVocabularyInventoryQualification
 {
     public static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferences(FoodVocabularyInventoryFacts facts)
         => RequiredReferences(facts, prospectiveDemoInvalidation: false);
+
+    internal static IReadOnlyList<FoodVocabularyReferenceOrigin> ContextReferences(FoodVocabularyContextFacts context) =>
+        context.Context.Kind == "demo-destination" ? RequiredReferencesForDemoInvalidation(context.Facts) : RequiredReferences(context.Facts);
 
     internal static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferencesForDemoInvalidation(FoodVocabularyInventoryFacts facts)
         => RequiredReferences(facts, prospectiveDemoInvalidation: true);
@@ -41,7 +45,7 @@ public static class FoodVocabularyInventoryQualification
         var history = facts.History;
         FoodVocabularyDefinitions.Require(history.Instances is not null && history.Launches is not null && history.Children is not null
             && history.Resets is not null && history.Attempts is not null && history.Retirements is not null && history.Repairs is not null
-            && history.PhysicalRetirements is not null && history.MaintenanceRetirements is not null && history.StagedJournals is not null);
+            && history.PhysicalRetirements is not null && history.MaintenanceRetirements is not null && history.StagedJournals is not null && history.Commands is not null);
         RequireUnique(facts.Recipes, x => x.RecipeId);
         RequireUnique(facts.CanonicalOperations, x => (x.RecipeId, x.OperationId));
         RequireUnique(facts.Publications, x => (x.RecipeId, x.OperationId));
@@ -54,6 +58,7 @@ public static class FoodVocabularyInventoryQualification
         RequireUnique(history.Repairs, x => x.Id);
         RequireUnique(history.PhysicalRetirements, x => x.RecipeId);
         RequireUnique(history.MaintenanceRetirements, x => (x.Id, x.Disposition));
+        RequireUnique(history.Commands, x => x.Id);
         RequireUnique(history.StagedJournals, x => (x.RecipeId, x.OperationId, x.InputHash));
         var origins = new HashSet<FoodVocabularyReferenceOrigin>();
         void Add(IEnumerable<FoodVocabularyReference> references, string kind, string key)
@@ -94,6 +99,8 @@ public static class FoodVocabularyInventoryQualification
             Add(RecipeReportRepairIntent.VocabularyReferences(repair), "repair", repair.Id.ToString("D"));
         foreach (var physical in history.PhysicalRetirements)
             Add(RecipePhysicalLifecycle.VocabularyReferences(physical), "physical-retirement", physical.RecipeId.ToString("D"));
+        foreach (var command in history.Commands)
+            MaintenanceCommandLifecycle.ValidateCurrentReferences(command, history.Retirements, history.PhysicalRetirements);
         foreach (var maintenance in history.MaintenanceRetirements)
             MaintenanceCommandLifecycle.ValidateRetainedReferences(maintenance, history.Retirements, history.PhysicalRetirements);
         foreach (var physical in history.PhysicalRetirements)

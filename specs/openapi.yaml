@@ -114,6 +114,47 @@ components:
         message: { type: string }
         snapshotId: { type: string, format: uuid, nullable: true }
 
+    FoodVocabularyDocumentReference:
+      type: object
+      additionalProperties: false
+      required: [revision, sha256]
+      properties:
+        revision: { type: string, minLength: 1 }
+        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+    FoodVocabularyDestinationBaseline:
+      type: object
+      additionalProperties: false
+      required: [version, revision, generation, membershipSha256, overridesSha256, historySha256, documents]
+      description: Versioned exact destination observation. Hashes include absence, private override sequences and clears, typed live and retained inert history, generation and every referenced immutable document. Raw private history is not exposed.
+      properties:
+        version: { type: integer, const: 1 }
+        revision: { type: string, pattern: '^[0-9a-f]{64}$' }
+        generation: { type: [string, 'null'] }
+        membershipSha256: { type: [string, 'null'], pattern: '^[0-9a-f]{64}$' }
+        overridesSha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        historySha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        documents:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/FoodVocabularyDocumentReference' }
+    RecoveryRestorePreflight:
+      type: object
+      additionalProperties: false
+      required: [snapshotId, manifestSha256, destination, requiresExpectedDestinationRevision]
+      properties:
+        snapshotId: { type: string, format: uuid }
+        manifestSha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        destination: { $ref: '#/components/schemas/FoodVocabularyDestinationBaseline' }
+        requiresExpectedDestinationRevision: { type: boolean }
+    RecoveryRestoreRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expectedDestinationRevision:
+          type: [string, 'null']
+          pattern: '^[0-9a-f]{64}$'
+          description: Exact preflight destination revision. Required for a new-format snapshot replacing a different valid vocabulary head. A mismatch rejects before a durable journal or live mutation; refresh preflight before another request.
+
     PdfCaptureRequest:
       type: object
       required: [file]
@@ -1648,6 +1689,7 @@ components:
         rowId: { type: string, format: uuid }
         weekStartDate: { type: string, format: date }
         expectedRowVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        expectedPresentationEpoch: { type: [string, 'null'], format: uuid, description: 'Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation or recovery rejects with epoch_conflict before replay or mutation.' }
         checked: { type: boolean }
         clientMutationId: { type: string, format: uuid }
     GroceryBulkMutation:
@@ -1657,6 +1699,7 @@ components:
       properties:
         weekStartDate: { type: string, format: date }
         expectedListVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        expectedPresentationEpoch: { type: [string, 'null'], format: uuid, description: 'Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation or recovery rejects with epoch_conflict before replay or mutation.' }
         checks: { type: object, additionalProperties: { type: boolean } }
         clientMutationId: { type: string, format: uuid }
     GroceryMutationResult:
@@ -1677,7 +1720,7 @@ components:
       type: object
       required: [code]
       properties:
-        code: { type: string, enum: [upgrade_required, grocery_conflict, mutation_conflict, week_conflict, active_legacy_list] }
+        code: { type: string, enum: [upgrade_required, grocery_conflict, mutation_conflict, week_conflict, active_legacy_list, epoch_conflict] }
         current: { $ref: '#/components/schemas/GroceryMutationResult' }
         absent: { type: boolean }
     GroceryPresentationVersion:
@@ -4464,6 +4507,12 @@ paths:
           name: snapshotId
           required: true
           schema: { type: string, format: uuid }
+      description: Historical empty-body restores keep their existing interpretation. New ordinary3/demo4 snapshots validate exact vocabulary/history authority and require the preflight destination revision when replacing a different valid head. Every new-format request captures and rechecks its destination baseline after writers drain, before the durable journal or live writes. An uncertain response must be reconciled through recovery status before another write.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecoveryRestoreRequest' }
       responses:
         '403':
           description: Manual household restore is unavailable in demo mode; automatic demo resets remain server-owned
@@ -4481,12 +4530,49 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryError' }
         '409':
-          description: Recovery already active or pending reconciliation
+          description: Recovery is busy, or destination authority differs from the expected revision (state destination-conflict). No new live restore writes occurred. Refresh preflight before another correction.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryError' }
         '503':
           description: Recovery not configured or coordination timed out; retry safely
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+
+  /api/management/recovery/restore/{snapshotId}/preflight:
+    get:
+      summary: Inspect an exact snapshot and its current restore destination
+      description: Read-only validation and coherent destination observation. Creates no staging files, durable journal, pointer changes or live mutations. Does not reserve the returned revision; restore rechecks it after writers drain.
+      operationId: preflightExactRecoveryRestore
+      parameters:
+        - in: path
+          name: snapshotId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Valid snapshot and exact current destination baseline, without a data wrapper.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryRestorePreflight' }
+        '400':
+          description: Snapshot or destination authority is missing, corrupt or unsupported; live state unchanged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '403':
+          description: Manual restore preflight is unavailable in demo mode.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoManagementUnavailableError' }
+        '409':
+          description: Recovery is busy or pending reconciliation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '503':
+          description: Recovery is unavailable or coordination timed out.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryError' }

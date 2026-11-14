@@ -49,3 +49,9 @@ those dependencies before mutation. Never run it in this tracked directory or
 reuse the synthetic dates as proof that live weeks are absent. Keep reports,
 screenshots, secrets, dumps and private household data outside Git. Root remains
 the sole DV mutator for the current release.
+
+The grocery check binds the exact `presentationEpoch` from the ordinary demand
+read. The finite guard requires its serialized `expectedPresentationEpoch` to
+match that captured value and retains the existing source, query, amount and
+identity checks.
+A captured nil UUID is valid for presentation epochs only.

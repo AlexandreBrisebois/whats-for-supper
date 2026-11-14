@@ -48,7 +48,7 @@ export function createGroceryRowState(checks: Map<string, Record<string, boolean
   const weeks = new Map<string, State>();
   const retired = new Set<string>();
   const foodCategories = new Map<string, { section: string; revision: string }>();
-  const presentationEpoch = randomUUID();
+  let presentationEpoch = '00000000-0000-0000-0000-000000000000';
   const receipts = new Map<string, { hash: string; outcome: Record<string, any> }>();
   let replayed = false;
   const read = (week: string) => {
@@ -58,7 +58,7 @@ export function createGroceryRowState(checks: Map<string, Record<string, boolean
         weekStartDate: week,
         groceryListVersion: '1',
         presentationVersion: '0',
-        presentationEpoch: '00000000-0000-0000-0000-000000000000',
+        presentationEpoch,
         groceryItems: [],
         groceryState: {},
         signature: '[]',
@@ -260,6 +260,9 @@ export function createGroceryRowState(checks: Map<string, Record<string, boolean
     )
       return conflict('upgrade_required');
     if (body.weekStartDate !== week) return conflict('week_conflict');
+    const epoch = snapshot(week).presentationEpoch;
+    if ((body.expectedPresentationEpoch ?? '00000000-0000-0000-0000-000000000000') !== epoch)
+      return conflict('epoch_conflict');
     const canonical =
       kind === 'item'
         ? {
@@ -277,7 +280,11 @@ export function createGroceryRowState(checks: Map<string, Record<string, boolean
               Object.entries(body.checks).sort(([a], [b]) => a.localeCompare(b))
             ),
           };
-    const hash = createHash('sha256').update(JSON.stringify(canonical)).digest('hex');
+    const bound =
+      body.expectedPresentationEpoch == null
+        ? canonical
+        : { ...canonical, expectedPresentationEpoch: body.expectedPresentationEpoch };
+    const hash = createHash('sha256').update(JSON.stringify(bound)).digest('hex');
     const replay = receipts.get(body.clientMutationId);
     if (replay) {
       replayed = true;
@@ -386,6 +393,11 @@ export function createGroceryRowState(checks: Map<string, Record<string, boolean
     return { status: 204, affected };
   };
   return {
+    advanceGeneration(epoch: string) {
+      if (!guid(epoch)) throw new Error('Recovery generation must be a UUID.');
+      presentationEpoch = epoch;
+      for (const state of weeks.values()) state.presentationEpoch = epoch;
+    },
     decorate,
     snapshot,
     reclassifyFood,
