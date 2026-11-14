@@ -678,8 +678,16 @@ class PipelineTests(unittest.TestCase):
                 return {'normalizedKey': key, 'recipeIds': [recipe], 'rowId': key + '-row',
                         'rowVersion': '2', 'demandIdentity': key + '-identity', 'quantity': scalar(amount) if amount else None}
             sauce = row('sauce', 200)
-            def schedule(amount):
-                return {'weekStartDate': '2026-10-12', 'groceryItems': [row('pasta', amount), sauce, row('salt to taste', None)],
+            def schedule(amount, *, presented=True):
+                rows = [row('pasta', amount), copy.deepcopy(sauce), row('salt to taste', None)]
+                if presented:
+                    for item in rows:
+                        key = item['normalizedKey']
+                        item.update(displayLabels={'en': key, 'fr': key}, labelStatus='fallback',
+                                    displayNameVariants={'en': [], 'fr': []}, categoryScope='fallback',
+                                    categoryStatus='resolved', categoryRevision=None,
+                                    categoryChoices=[{'normalizedKey': key, 'grocerySection': 'Pantry', 'source': 'llm'}])
+                return {'weekStartDate': '2026-10-12', 'groceryItems': rows,
                         'groceryState': {'sauce-row': True}}
             browser[locale] = {'locale': locale, 'id': recipe, 'accepted': {'data': {'id': recipe}}, 'captureRequests': 1,
                                'initial': initial, 'saved': saved, 'final': final, 'checked': schedule(400),
@@ -707,7 +715,7 @@ class PipelineTests(unittest.TestCase):
                      'publications': [{'operationId': value, 'inputHash': 'a' * 64, 'resultHash': 'b' * 64, 'delivered': True}
                                       for value in [workflows[0]['id'], workflows[0]['tasks'][0]['taskId']]],
                      'categories': [{'normalizedKey': key, 'grocerySection': 'Pantry'} for key in ['pasta', 'salt to taste', 'sauce']],
-                     'reports': [], 'rows': [{'weekStartDate': '2026-10-12', 'items': schedule(None)['groceryItems']}],
+                     'reports': [], 'rows': [{'weekStartDate': '2026-10-12', 'items': schedule(None, presented=False)['groceryItems']}],
                      'checks': [{'weekStartDate': '2026-10-12', 'state': {'sauce-row': True}, 'baseline': {'sauce-row': {'quantity': scalar(200)}}}],
                      'operations': [{'operationId': uid(700 + number), 'inputHash': 'a' * 64} for number in [1, 2]]}
             proof['sourceFiles']['original/source.pdf'] = {'sha256': '20808885823da6870ff6dfd8b7408e35d0fc0de766491bdc0344b204df48916d', 'bytes': 1330}
@@ -756,6 +764,25 @@ class PipelineTests(unittest.TestCase):
                        [(owner, 'Passed'), (owner, 'Passed')], [(owner, 'Passed'), (owner + 'Other', 'Passed')]]:
             with self.subTest(native=native): self.assertNotEqual(execute(native=native), 0)
         self.assertNotEqual(execute(missing='native'), 0)
+        for locale in ['en', 'fr']:
+            for fault in ['missing-presentation', 'changed-label', 'extra-browser', 'missing-identity', 'stored-quantity', 'extra-stored']:
+                changed_browser, changed_persisted = copy.deepcopy(browser), copy.deepcopy(persisted)
+                def sauce_row(rows):
+                    return next(item for item in rows if item['normalizedKey'] == 'sauce')
+                observed = sauce_row(changed_browser[locale]['afterClear']['groceryItems'])
+                stored = sauce_row(changed_persisted[locale]['proof']['rows'][0]['items'])
+                if fault == 'missing-presentation':
+                    for name in ['checked', 'afterSave', 'afterClear']:
+                        del sauce_row(changed_browser[locale][name]['groceryItems'])['displayLabels']
+                elif fault == 'changed-label': observed['displayLabels']['fr'] = 'changed'
+                elif fault == 'extra-browser':
+                    for name in ['checked', 'afterSave', 'afterClear']:
+                        sauce_row(changed_browser[locale][name]['groceryItems'])['unexpected'] = True
+                elif fault == 'missing-identity': del observed['demandIdentity']
+                elif fault == 'stored-quantity': stored['quantity'] = scalar(201)
+                else: stored['unexpected'] = True
+                with self.subTest(locale=locale, row_fault=fault):
+                    self.assertNotEqual(execute(changed_browser=changed_browser, changed_persisted=changed_persisted), 0)
         for locale in ['en', 'fr']:
             for suffix in ['browser-results', 'browser-receipt', 'persisted-result']:
                 with self.subTest(missing=locale + '-' + suffix): self.assertNotEqual(execute(missing=locale + '-' + suffix), 0)

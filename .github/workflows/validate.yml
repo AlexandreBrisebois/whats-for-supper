@@ -897,9 +897,16 @@ jobs:
               sauce = one_row(rows, 'sauce', recipe)
               assert sauce['quantity'] == scalar(200) and one_row(rows, 'pasta', recipe)['quantity'] is None
               assert proof['checks'][0]['state'][sauce['rowId']] is True and isinstance(proof['checks'][0]['baseline'][sauce['rowId']], dict)
+              # Schedule rows add server-owned presentation to the exact stored row.
+              presentation_fields = {'displayLabels', 'labelStatus', 'displayNameVariants', 'categoryScope', 'categoryStatus', 'categoryRevision', 'categoryChoices'}
+              checked_sauce = one_row(browser['checked']['groceryItems'], 'sauce', recipe)
+              assert not set(sauce) & presentation_fields
+              assert set(checked_sauce) == set(sauce) | presentation_fields
               for name in ['checked', 'afterSave', 'afterClear']:
                   assert browser[name]['weekStartDate'] == '2026-10-12'
-                  assert one_row(browser[name]['groceryItems'], 'sauce', recipe) == sauce
+                  presented_sauce = one_row(browser[name]['groceryItems'], 'sauce', recipe)
+                  assert presented_sauce == checked_sauce
+                  assert {key: value for key, value in presented_sauce.items() if key not in presentation_fields} == sauce
                   assert browser[name]['groceryState'][sauce['rowId']] is True
               assert one_row(browser['checked']['groceryItems'], 'pasta', recipe)['quantity'] == scalar(400)
               assert one_row(browser['afterSave']['groceryItems'], 'pasta', recipe)['quantity'] == scalar(500)

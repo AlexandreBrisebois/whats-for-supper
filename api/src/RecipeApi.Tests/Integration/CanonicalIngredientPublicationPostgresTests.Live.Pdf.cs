@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Builder;
@@ -310,8 +311,11 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
         Assert.Equal(id, Assert.Single(pasta.RecipeIds));
         using var checks = JsonDocument.Parse(plan.GroceryState);
         Assert.False(checks.RootElement.GetProperty(pasta.RowId).GetBoolean());
+        var retainedResultReader = typeof(CanonicalRecipeContentStore).GetMethod("ReadValidatedRetainedResult",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        Assert.NotNull(retainedResultReader);
         var operations = (await db.CanonicalRecipeOperations.AsNoTracking().Where(x => x.RecipeId == id).ToArrayAsync())
-            .Select(operation => JsonSerializer.Deserialize<CanonicalRecipeWriteResult>(operation.Result, JsonDefaults.CamelCase)!).ToArray();
+            .Select(operation => Assert.IsType<CanonicalRecipeWriteResult>(retainedResultReader.Invoke(null, [operation]))).ToArray();
         Assert.Equal(2, operations.Length);
         var saved = Assert.Single(operations, operation => operation.Content.ContentRevision ==
             receipt.GetProperty("saved").GetProperty("contentRevision").GetString());
