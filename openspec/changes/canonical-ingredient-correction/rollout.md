@@ -1,6 +1,12 @@
 # Coordinated rollout and recovery gates
 
-This is the authoritative coordinated rollout gate owner, not an authorization by itself. The current slice has explicit commit and nonproduction DV authorization plus a maintenance-hold extension; production and unrelated reset/reseed remain excluded. It replaces the old permanent-legacy-restore rollout. The [migration companion](../migrate-canonical-recipe-model/design.md) owns implementation/recovery; this file links the accepted portions release gates. The 2026-11-12 user amendment includes model-authored bilingual identity and its durable JSON backup, and replaces empty-list admission with plan-preserving all-list rebuilding.
+This is the coordinated rollout gate owner. The November 14 bounded delivery
+qualifies bilingual grocery tasks 2.1–2.2 on disposable local resources and
+reconciles eligible lifecycle work with signed commits/pushes. The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-GROCERIES.md)
+records source identity, CI ownership and remaining acceptance. DV/production
+operations, shared-library adoption and migration activation retain their later
+operator selection. Earlier operation-specific maintenance/DV authority remains
+attached to its historical receipts. This plan replaces the old permanent-legacy-restore rollout. The [migration companion](../migrate-canonical-recipe-model/design.md) owns implementation/recovery; this file links the accepted portions release gates. The 2026-11-12 user amendment includes model-authored bilingual identity and its durable JSON backup, and replaces empty-list admission with plan-preserving all-list rebuilding.
 
 Alex accepts planned downtime and confirms frontend/backend/database deploy as one
 release. Reuse the demo/online-recovery coordination mechanism, with migration's

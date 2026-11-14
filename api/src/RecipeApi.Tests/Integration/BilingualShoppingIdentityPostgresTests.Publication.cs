@@ -24,9 +24,9 @@ namespace RecipeApi.Tests.Integration;
 public sealed partial class BilingualShoppingIdentityPostgresTests
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private sealed record ImportedSource(Guid Id, WorkflowTask Extraction, RecipeAgent Agent, Mock<IChatClient> Provider);
+    internal sealed record ImportedSource(Guid Id, WorkflowTask Extraction, RecipeAgent Agent, Mock<IChatClient> Provider);
 
-    private static async Task<ImportedSource> ImportAsync(IServiceProvider services, string locale)
+    internal static async Task<ImportedSource> ImportAsync(IServiceProvider services, string locale, string? sourceJson = null)
     {
         var db = services.GetRequiredService<RecipeDbContext>();
         var storage = services.GetRequiredService<IStorageProvider>();
@@ -52,7 +52,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
         var names = locale == "fr"
             ? new[] { "oignon émincé", "tomate", "tomates en conserve", "échalote", "tomates séchées" }
             : new[] { "onion, diced", "tomato", "canned tomatoes", "échalote", "tomatoes with basil" };
-        var source = JsonSerializer.Serialize(new
+        var source = sourceJson ?? JsonSerializer.Serialize(new
         {
             name = "Bounded " + locale,
             recipeYield = "4 servings",

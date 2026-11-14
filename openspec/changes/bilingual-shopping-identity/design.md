@@ -4,9 +4,21 @@
 
 ## Context and Existing Ownership
 
-Canonical shopping fields already retain nullable FoodId/MappingRevision and protected names; ordinary Save rejects unqualified association changes. `SupperIngredientProjection` fingerprints a saved FoodId or fallback name plus package. `GroceryRecomputeService` currently groups normalized names/unit/package rather than food IDs. `IngredientNormalizer` provides mechanical fallback, not bilingual semantic authority. Reuse their exact numeric, saved-contributor, split/merge and checked-baseline rules.
+Canonical shopping fields retain FoodId/MappingRevision with coherent persisted
+mapping evidence and protected name/clear decisions. FoodVocabularyStore supplies
+revision-bound reviewed JSON and presentation captures. GroceryRecomputeService
+groups qualified saved identities within exact compatible unit/package buckets;
+GroceryPresentationService decorates response copies with EN/FR labels and saved
+source fallback. IngredientNormalizer owns conservative mechanical fallback.
+Existing contributor, split/merge and checked-demand-baseline owners coordinate
+persistence and check transitions.
 
-`CurrentRecoveryHouseholdState.Dictionary.cs` validates internal releases, exact aliases, qualifiers, per-line mappings and household overrides; it explicitly is not live catalogue adoption. `Infrastructure/CurrentRecoveryArchive.cs` recognizes required food-dictionary/household-food-overrides artifact kinds. `LocalStorageProvider.SaveAtomicallyAsync` supplies durable whole-file publication. However, `RecoverySnapshotService` currently captures selected DB tables/media/weekly interest, and restore rejects unknown nonrecipe artifacts: placing JSON under DataRoot alone does not integrate full backup/restore. The selected [sources policy](sources.md) replaces external dataset adoption.
+Current full snapshot/staged restore captures exact vocabulary files, current and
+retained references and protected household facts. Ordinary and demo recovery keep
+their declared distinct dispositions. The [common handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-COMMON.md)
+qualifies tasks 1.1–1.3 and bounded recovery. The [grocery handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-GROCERIES.md)
+records selected group 2 qualification and the remaining correction/migration/release
+acceptance. The selected [sources policy](sources.md) owns the reviewed input.
 
 ## Decisions and Tradeoffs
 

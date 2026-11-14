@@ -1,6 +1,16 @@
 # Tasks
 
-## Current coordinated release policy — 2026-11-11
+## Current selected delivery — 2026-11-14
+
+The current bounded selection is bilingual-shopping-identity 2.1–2.2 and
+evidence-backed lifecycle reconciliation across the six dependable-portions owners.
+Signed commits/pushes belong to this selected delivery; Alex owns CI monitoring.
+The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-GROCERIES.md)
+records candidate-qualified checks, current task counts and each remaining acceptance
+boundary. Historical policies and receipts below retain their original operation
+scope. A partially qualified task continues under its existing acceptance criteria.
+
+## Historical coordinated release policy — 2026-11-11
 
 The user authorized completing the remaining accepted dependable-portions release
 after predecessor C05 at `74f0a48b47ffd6eccb52d3710de58c384c2b6aaa`.
@@ -28,19 +38,19 @@ The operational navigation record is `.task/dependable-portions-coordinator/cont
 
 Accepted product behavior on 2026-11-10: automatic relationship setup applies to
 imports and to saved ingredient/step updates, with an AI workflow task if needed.
-No special markup or mandatory linking UI. This missing producer is the next
-workstream B dependency; reuse the existing projection engine and qualified UI.
-These tasks do not mark the engine, broader change or release complete.
+No special markup or mandatory linking UI. Recorded deterministic producer subsets
+and saved-edit revalidation now supply the foundation. The aggregate tasks retain
+their broader reevaluation, stale/failure and integrated acceptance criteria.
 
 - [ ] 0.1 Define the bounded relationship evidence/validator contract and existing workflow entry points for import and committed ingredient/step edits. Specify affected-dependency revalidation, saved input revisions, stale-result rejection, duplicate delivery, failure and quiet abstention. Explain what proves whole versus partial use without provider-certified labels or numeric/name/position matching alone. Assign canonical Save/publication hooks to workstream A and proposal/validation to B before edits. No public API change is presumed; use the shared contract owner if one is needed.
 - [ ] 0.2 Add intended-red ordinary-producer tests through real API/workflow/PostgreSQL with provider doubles only at the external boundary; implement the smallest accepted whole-use path and run green. Cover import, ingredient edit, step edit, human clear, no-op/unrelated edit, stale completion after another edit, duplicate delivery and provider failure. Reuse deterministic validation before scheduling AI. Publish only server-validated current-revision relationships, preserve saved originals and prove groceries count once. Name actual test owners and evidence rather than claiming seeded projection fixtures cover production.
 - [ ] 0.3 Qualify a real generated-client/browser journey: import → ingredient correction → eligible reevaluation → step correction → reevaluation → coherent Cook refresh at changed portions, with unchanged original user text and one ingredient demand. Include uncertain fallback, retained cooking state and delayed-result rejection. Reconcile existing supported allocation coverage under groups 1–3 and run the affected checks plus group 4.1 on the integrated candidate; report hosted acceptance separately.
 
-Groups 1–3 retain their task IDs and acceptance obligations, but now reconcile existing implementation rather than prescribe rebuilding it. The original proposed `CookingStepScalingPostgresTests` class was realized by `CookingStepScalingPostgres_*` methods in `CanonicalIngredientEditPostgresTests` partials; use those actual owners. `CookingStepProjectionTests`, `CookingStepAllocationTests`, `LiveBrowser_Cooking*`, CooksMode units and the named browser suites already exist. Add intended-red coverage only for a demonstrated missing behavior or the new group 0 producer; retain original red/green evidence for implemented behavior.
+Groups 1–3 retain their task IDs and acceptance obligations, but now reconcile existing implementation rather than prescribe rebuilding it. The original proposed `CookingStepScalingPostgresTests` class was realized by `CookingStepScalingPostgres_*` methods in `CanonicalIngredientEditPostgresTests` partials; use those actual owners. `CookingStepProjectionTests`, `CookingStepAllocationTests`, `LiveBrowser_Cooking*`, CooksMode units and the named browser suites already exist. Add intended-red coverage only for a demonstrated missing behavior or demonstrated gaps in group 0 production; retain original red/green evidence for implemented behavior.
 
 | Tasks | Implementation baseline | Remaining completion evidence |
 | --- | --- | --- |
-| 0.1–0.3 | Ordinary producer and evidence validator missing | Bounded evidence design, real import/edit/workflow tests and generated-client/Cook tracer; seeded bindings do not qualify |
+| 0.1–0.3 | Recorded ordinary deterministic producer and evidence-validator subsets exist | Reconcile the complete reevaluation, stale/failure and integrated generated-client/Cook contract against the candidate-specific subset receipts |
 | 1.1–1.2 | Contract, projection, original editor and live consumer owners exist | Map C01–C03/C12–C18/C46 to actual owners and extend acceptance through group 0 production |
 | 2.1–2.3 | Allocation arithmetic, total-edit revalidation and quiet uncertainty behavior exist | Reconcile supported-role/adversarial coverage and only close demonstrated gaps on the integrated candidate |
 | 3.1–3.2 | Current-content/prepared-count and explicit refresh consumers exist | Reconcile current owner evidence and preserve context through new relationship publication |

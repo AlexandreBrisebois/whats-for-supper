@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
+using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
@@ -40,6 +42,11 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     ["Tests:HttpUrl"] = "http://127.0.0.1:0"
                 }, configureApplication: app =>
                 {
+                    app.MapPost("/_test/bilingual/recompute", async (GroceryRecomputeService groceries) =>
+                    {
+                        await groceries.RecomputeForWeekAsync(new(2026, 10, 12), default);
+                        return Results.NoContent();
+                    });
                     app.MapFallback("{**path}", async context =>
                     {
                         using var gateway = new HttpClient();
@@ -76,10 +83,19 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 ["en"] = await ImportAsync(services, "en"),
                 ["fr"] = await ImportAsync(services, "fr")
             };
+            var monday = new DateOnly(2026, 10, 12);
+            db.FamilyMembers.Add(new FamilyMember { Name = "Second bilingual reader" });
+            db.SupperServings.AddRange(new SupperServing { Date = monday, OverrideServings = 4 },
+                new SupperServing { Date = monday.AddDays(1), OverrideServings = 4 });
+            await db.SaveChangesAsync();
+            var schedule = services.GetRequiredService<ScheduleService>();
+            await schedule.AssignRecipeAsync(new(0, 0, imports["en"].Id), referenceWeekStartDate: monday);
+            await schedule.AssignRecipeAsync(new(0, 1, imports["fr"].Id), referenceWeekStartDate: monday);
             var originalRecipes = await db.Recipes.AsNoTracking().Where(x => imports.Values.Select(value => value.Id).Contains(x.Id)).ToArrayAsync();
             var originalFiles = VocabularyFiles(services);
             var calls = imports.ToDictionary(x => x.Key, x => x.Value.Provider.Invocations.Count);
             var member = await db.FamilyMembers.Select(x => x.Id).FirstAsync();
+            var members = await db.FamilyMembers.OrderBy(x => x.Id).Select(x => x.Id).ToArrayAsync();
             ProcessStartInfo Command(params string[] arguments)
             {
                 var start = new ProcessStartInfo("node")
@@ -96,6 +112,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 start.Environment["HEARTH_SECRET"] = TestWebApplicationFactory.TestSecret;
                 start.Environment["BILINGUAL_SOURCE_IDS"] = JsonSerializer.Serialize(imports.ToDictionary(x => x.Key, x => x.Value.Id));
                 start.Environment["BILINGUAL_MEMBER_ID"] = member.ToString("D");
+                start.Environment["BILINGUAL_MEMBER_IDS"] = JsonSerializer.Serialize(members);
                 start.Environment["PLAYWRIGHT_JSON_OUTPUT_NAME"] = Path.Combine(evidence, "browser-results.json");
                 return start;
             }
@@ -144,13 +161,22 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     Assert.Equal(calls[locale], imported.Provider.Invocations.Count);
                 }
                 Assert.Equal(originalFiles, VocabularyFiles(services));
+                var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                var rows = JsonSerializer.Deserialize<List<RecipeApi.Dto.GroceryLineItemDto>>(plan.GroceryItems, Json)!;
+                var onion = Assert.Single(rows, row => row.FoodId == BoundedVocabularyInput.Onion);
+                Assert.Equal(LegacyGroceryQuantity.Parse("100"), onion.ExactQuantity);
+                Assert.True(JsonDocument.Parse(plan.GroceryState).RootElement.GetProperty(onion.RowId).GetBoolean());
+                Assert.Equal("100", JsonDocument.Parse(plan.GroceryCheckedDemandBaselines).RootElement.GetProperty(onion.RowId)
+                    .GetProperty("Quantity").GetProperty("value").GetProperty("n").GetString());
                 Assert.Empty(provider.Invocations);
                 Assert.Empty(network.Invocations);
                 await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new
                 {
                     recipes = await db.Recipes.AsNoTracking().Where(x => imports.Values.Select(value => value.Id).Contains(x.Id))
                         .Select(x => new { x.Id, x.CanonicalContent, x.FoodMappingEvidence, x.RawMetadata }).ToArrayAsync(),
-                    vocabularyFiles = JsonSerializer.Deserialize<JsonElement>(originalFiles), providerCalls = provider.Invocations.Count, networkCalls = network.Invocations.Count
+                    vocabularyFiles = JsonSerializer.Deserialize<JsonElement>(originalFiles),
+                    groceries = new { plan.GroceryItems, plan.GroceryState, plan.GroceryCheckedDemandBaselines },
+                    providerCalls = provider.Invocations.Count, networkCalls = network.Invocations.Count
                 }, Json));
             }
             finally

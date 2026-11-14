@@ -1,6 +1,16 @@
 # Tasks
 
-## Current coordinated release policy — 2026-11-11
+## Current selected delivery — 2026-11-14
+
+The current bounded selection is bilingual-shopping-identity 2.1–2.2 and
+evidence-backed lifecycle reconciliation across the six dependable-portions owners.
+Signed commits/pushes belong to this selected delivery; Alex owns CI monitoring.
+The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-GROCERIES.md)
+records candidate-qualified checks, current task counts and each remaining acceptance
+boundary. Historical policies and receipts below retain their original operation
+scope. A partially qualified task continues under its existing acceptance criteria.
+
+## Historical coordinated release policy — 2026-11-11
 
 The user authorized completing the remaining accepted dependable-portions release
 after predecessor C05 at `74f0a48b47ffd6eccb52d3710de58c384c2b6aaa`.
@@ -34,24 +44,22 @@ records implementation state separately from evidence. The earlier documentation
 [current coordinated slice](proposal.md#coordinated-slice-1--selected-2026-11-10)
 records current delivery scope separately.
 
-| Area / task | Implementation at a666a64f | Evidence / remaining boundary |
+| Area / task | Current qualified foundation | Evidence / remaining boundary |
 | --- | --- | --- |
 | Exact content, guards, editing (1–2) | Canonical store, DTO/client, original editor and draft recovery exist | `.task/canonical-existing-flows-20261110/outcome.json` and `.task/flagged-correction-20261110/outcome.json`; reconcile all required cases, especially ordinary package/definition input and final upgrade acceptance |
 | Fresh URL (3.1) | Implemented, including retained-review correction and exact facts | `.task/canonical-fresh-retention-20261110/handoff.md`; locally qualified, not every source channel |
 | Fresh original photo (3.1) | Implemented in a666a64f, including retained-review repair and ancestry guards | `.task/photo-canonical-20261111/handoff.md`; focused PostgreSQL 3/3, native live 1/1, browser 3/3 and combined local verifier passed; hosted not run |
-| Common projections (3.2) | Canonical ingredient inputs and much of Cook/prepared/context behavior exist | Reuse step companion evidence; ordinary relationship producer remains missing |
+| Common projections (3.2) | Canonical ingredient inputs and much of Cook/prepared/context behavior exist | Reuse step companion producer/consumer evidence; combined role/context and release reconciliation remains |
 | PDF/synthesis/share/general repair (3.3–3.6) | Not fully canonical | Separate later increments; do not reopen URL/photo merely because 3.1 is unchecked |
-| Ordinary relationship production | Missing | Step companion tasks 0.1–0.3 own import/post-edit proposal and evidence validation; A supplies canonical Save/publication hooks |
-| Library conversion/recovery | Primitives and bounded backup/seed/sync exist | Migration companion owns operational conversion, maintenance and rehearsal |
-| Bilingual catalogue/merging | Included, implementation pending under its companion | Reviewed model-authored durable JSON, saved mapping/grouping/corrections and full recovery/cutover qualification |
+| Ordinary relationship production | Deterministic import/edit producer subsets and evidence validation exist | Step companion tasks 0.1–0.3 retain their broader reevaluation, stale/failure and integrated acceptance; recorded subset receipts retain their candidate scope |
+| Library conversion/recovery | Source-admitted disposable executor, once-only week reset and independent current-format recovery exist | Migration companion retains final baseline, actual recovery pair, coordinated cutover and integrated release acceptance |
+| Bilingual vocabulary/grouping | Reviewed durable JSON, ordinary saved mappings, grouping/label owners and independent full recovery exist | Companion group 2 qualification uses the reviewed release; correction, migration and final release acceptance remain separately tracked |
 
-First increment: reuse URL/photo and manual correction, then close the ordinary
-instruction-scaling connection. Workstream A owns canonical store/RecipeService/
-publication changes; B requests these hooks through A instead of writing them
-concurrently. C can inventory and prepare conversion/recovery in parallel. Later
-intake channels remain separate. Product scope is settled; task 0.1 in the step
-companion must design and test the bounded evidence rules without treating an AI
-label or confidence as proof.
+Current work reuses accepted URL/photo/manual correction and relationship-producer
+subsets. Canonical Save/publication and step validation keep their existing owners.
+Bilingual group 2 qualifies those saved mappings through grocery consumers. Later
+intake, broader reevaluation, correction and operator acceptance retain their task
+owners and explicit bounded selections.
 
 ## 1. Read exact original facts through the existing stack
 

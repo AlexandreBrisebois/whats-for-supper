@@ -48,20 +48,26 @@ Alex took ownership of CI monitoring after the application push. The last record
 - PR checks are [43554633994](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/43554633994).
 - Install identity is [43554634019](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/43554634019).
 
-## Task and lifecycle reconciliation
+## Current task and lifecycle reconciliation — 2026-11-14
 
-Bilingual task 4.1 is complete from its defined local recovery acceptance. Selected progress is now 26/68 after migration tasks 1.1, 1.2 and 3.3. Every selected change retains unfinished acceptance, so the archive-eligible set is empty.
+The [bilingual grocery handoff](BILINGUAL-GROCERIES.md) owns the latest selected
+2.1–2.2 delivery and lifecycle audit. Current progress is 31/68 after those two
+tasks, common vocabulary 1.1–1.3 and migration 1.1/1.2/3.3 deliveries. Every owner
+retains unfinished aggregate acceptance. The current handoff records final selected
+counts, exact lifecycle deferrals and terminal source/runtime receipts.
 
 | Change | Complete tasks | Remaining boundary |
 | --- | --- | --- |
-| canonical-ingredient-correction | 1/12 | Full producer/intake/corpus and release acceptance |
-| scale-cooking-step-ingredients | 2/14 | Combined producer, allocation, Cook and context acceptance |
-| bilingual-shopping-identity | 1/10 | Adoption/corrections, migration 4.2 and final release 5.1 |
-| migrate-canonical-recipe-model | 3/8 | Final producer/recovery baseline, coordinated cutover and integrated release acceptance |
-| restore-dependable-grocery-interactions | 8/9 | Final integrated production/hosted and common release evidence |
-| restore-local-ci-browser-parity | 11/15 | Required repeated-file and final production/hosted sequences |
+| canonical-ingredient-correction | 1/12 | Broader editor/corpus, later intake/general repair and integrated release |
+| scale-cooking-step-ingredients | 2/14 | Complete reevaluation/stale/failure, combined role/context and hosted acceptance |
+| bilingual-shopping-identity | 6/10 | Corrections, migration 4.2 and final release 5.1 |
+| migrate-canonical-recipe-model | 3/8 | Final baseline, recovery pair, coordinated cutover and integrated release |
+| restore-dependable-grocery-interactions | 8/9 | Final integrated candidate and applicable hosted acceptance |
+| restore-local-ci-browser-parity | 11/15 | Cooking cause/repetition and final local/hosted sequences |
 
-The archive workflow's artifact readiness is complete for these changes. Its task-completion check still finds unfinished implementation acceptance in every change. Their overlapping capability deltas remain with the open changes. Earlier source, mocked, local, hosted and DV evidence keeps its original qualification scope.
+Artifact readiness is complete, with parity specs skipped. The eligible main-spec
+sync/archive set is empty. Earlier source, mocked, local, hosted and DV evidence
+retains its original scope, candidate identity and unresolved failures.
 
 ## Bounded migration executor delivery
 
@@ -71,7 +77,7 @@ records source admission, actual revocable/session/Write boundaries, the frozen
 business date, exact preservation and live/pruned receipt semantics, accepted
 operator invocation, evidence and the next cutover boundary.
 
-The next selected work is operator/cutover qualification against an actual copied
+The executor successor retains operator/cutover qualification against an actual copied
 library and candidate, including current-date freshness, final vocabulary adoption,
 the old application/schema recovery pair, coordinated shutdown/restart and an
 independent fresh backup read-back. No activation, DV or production operation was

@@ -186,6 +186,9 @@ public class IngredientNormalizerTests
     [Theory]
     [InlineData("apple", "pomme")]
     [InlineData("broccoli", "brocoli")]
+    [InlineData("onion, diced", "oignon émincé")]
+    [InlineData("canned tomatoes", "tomates en conserve")]
+    [InlineData("shallot", "échalote")]
     public void Normalize_DoesNotMergeCrossLanguageNames(string first, string second)
     {
         Assert.NotEqual(IngredientNormalizer.Normalize(first), IngredientNormalizer.Normalize(second));

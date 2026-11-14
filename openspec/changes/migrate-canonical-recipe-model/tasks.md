@@ -1,6 +1,16 @@
 # Tasks
 
-## Current coordinated release policy — 2026-11-11
+## Current selected delivery — 2026-11-14
+
+The current bounded selection is bilingual-shopping-identity 2.1–2.2 and
+evidence-backed lifecycle reconciliation across the six dependable-portions owners.
+Signed commits/pushes belong to this selected delivery; Alex owns CI monitoring.
+The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-GROCERIES.md)
+records candidate-qualified checks, current task counts and each remaining acceptance
+boundary. Historical policies and receipts below retain their original operation
+scope. A partially qualified task continues under its existing acceptance criteria.
+
+## Historical coordinated release policy — 2026-11-11
 
 The user authorized completing the remaining accepted dependable-portions release
 after predecessor C05 at `74f0a48b47ffd6eccb52d3710de58c384c2b6aaa`.
@@ -37,9 +47,9 @@ regression baseline, not an instruction to rebuild it.
 
 | Task area | Implemented foundation to reuse | Remaining completion evidence |
 | --- | --- | --- |
-| 1.1–1.2 | Guarded per-recipe `ConvertAsync`, codec and `CanonicalRecipePersistencePostgresTests` | Selected-ID manifest and actual resumable invocation, deferred/conflict outcomes and protected-state read-back |
+| 1.1–1.2 | Completed source-admitted selected-ID disposable invocation, resumable receipts and protected-state read-back | Exact bounded acceptance and operator invocation are in the [executor handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-EXECUTOR.md); actual copied-library activation retains its later operator selection |
 | 2.1–2.2 | Canonical backup/seed/sync in `CanonicalIngredientPublicationPostgresTests.ExistingFlows`; current-recovery inspection; existing exact snapshot/recovery | Final baseline inventory/publication, current-only activation and interrupted independent recovery |
-| 3.1–3.3 | Canonical old-writer conflicts, draft recovery, recovery leases and grocery identity/check behavior | Coordinated deployment across restart, stale-tab refresh, complete plan/event preservation and all-list rebuild/reset-epoch proof |
+| 3.1–3.3 | Completed 3.3 disposable all-list rebuild, plan/event preservation and once-only reset/retry proof; maintenance/client contributions exist | 3.1–3.2 retain coordinated deployment/restart, stale-tab refresh, exact recovery pair, current-date freshness and final operator packet |
 | 4.1 | Earlier candidate-specific local evidence | Integrated final candidate and required hosted acceptance |
 
 The bounded existing-operation checkpoint is

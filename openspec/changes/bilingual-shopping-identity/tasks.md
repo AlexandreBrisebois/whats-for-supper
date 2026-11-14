@@ -19,8 +19,8 @@ All implementation boxes remain unchecked until actual acceptance. Use the share
 **Outcome/scenarios:** C09/C22–C25/C47; exact identity grouping and EN/FR labels with independent unit/package meaning.
 **Owners/boundaries:** GroceryRecomputeService, projection/labels, category lookup and row/check coordination. Depends on group1 and current exact quantity contract.
 
-- [ ] 2.1 Add intended-red affected `GroceryRecomputeServiceTests`, `IngredientNormalizerTests` and `BilingualGroceryPostgresTests`: reviewed onion variants group once; fresh/canned,400g/800g packages, incompatible units and unsupported regional conversions stay separate; unknown terms retain source fallback. Reuse actual package-clear/split/merge/contributor guards and prove two members/locales/source order change only labels, not quantities, row IDs/checks/baselines. Run focused API owners and `task test:database -- --filter FullyQualifiedName~BilingualGroceryPostgresTests` before logic; synchronize schedule/locale mocks.
-- [ ] 2.2 Implement deterministic saved-identity grouping and read-time labels; run2.1 green, affected mock units and grocery/browser locale/check cases. Provider spies must show zero lookup/translation/model calls on reads/recompute/restart/restore. Requalify untouched800 continuity when400 package clears; mapping changes use existing meaning-change/split/merge/proven-increase policy, while label-only updates never reset checks. Document exact source fallback and missing-label behavior, including simultaneous EN/FR reads.
+- [x] 2.1 Add intended-red affected `GroceryRecomputeServiceTests`, `IngredientNormalizerTests` and `BilingualGroceryPostgresTests`: reviewed onion variants group once; fresh/canned,400g/800g packages, incompatible units and unsupported regional conversions stay separate; unknown terms retain source fallback. Reuse actual package-clear/split/merge/contributor guards and prove two members/locales/source order change only labels, not quantities, row IDs/checks/baselines. Run focused API owners and `task test:database -- --filter FullyQualifiedName~BilingualGroceryPostgresTests` before logic; synchronize schedule/locale mocks.
+- [x] 2.2 Implement deterministic saved-identity grouping and read-time labels; run2.1 green, affected mock units and grocery/browser locale/check cases. Provider spies must show zero lookup/translation/model calls on reads/recompute/restart/restore. Requalify untouched800 continuity when400 package clears; mapping changes use existing meaning-change/split/merge/proven-increase policy, while label-only updates never reset checks. Document exact source fallback and missing-label behavior, including simultaneous EN/FR reads.
 
 ## 3. Correct private shopping identity and household category safely
 
@@ -89,3 +89,46 @@ test query was scoped to its own database. Its corrected two-case acceptance
 passed with zero skips in `c1e5909b77a24079b7e4345b27eb4f4e`. The final 27-path
 source, independent review and repeated complete verification retain separate
 identities in the delivery receipt.
+
+## Grocery grouping and labels acceptance — 2026-11-14
+
+Tasks 2.1–2.2 qualify the existing saved-identity grouping, exact aggregation,
+read-time presentation and coordinated check owners with the exact reviewed
+three-food input. Stable selected PostgreSQL acceptance passed 13 cases with zero
+skips in `.task/database-tests/runs/946811587f0149b8a92054c6994b1b3c/result.json`,
+identity `c4803e6b11bc3af511d82acc7bc89ebbb3247a5307f7b611ad7d2a7331ad5df7`.
+This includes eight grocery cases, independent DI/two executable starts and four
+ordinary/demo independent backup/restore cases. Named GroceryRecomputeServiceTests
+and IngredientNormalizerTests passed 171 with zero skips. Affected mock/grocery
+units passed 155.
+
+The ordinary producer-backed matrix publishes seven EN/FR recipes through the
+common saved-mapping seam before supported quantity/unit/package Saves and
+assignment. It qualifies source permutations, metric/culinary/regional/count/package
+boundaries, exact accented fallback, simultaneous labels, protected private spelling
+and clear, mapping/split/merge meaning policy, untouched-800 continuity and original
+checked 2–3 baseline retention through overlap/unknown/incomparable states before
+4–5 proves increase. Original source and mapping/reference revisions remain exact.
+
+Two production-built browser repetitions each passed one native owner and three
+browser journeys with zero skips/retries. The repeat build is
+`-ux2jrTimCaIHvwSEQu68`, source manifest
+`03ae5c3156ff29431f02267828214c0e95df952b8a1ee4daa2e7f206d67e69a3`.
+It exercises ordinary generated-client editor Saves, independent EN/FR members,
+keyboard check binding and saved 100 g baseline read-back. External acquisition/
+extraction doubles, controlled Hero publication and explicit real-owner recompute
+retain their stated fixture scope. Strict app-level provider/network spies are zero.
+
+Actual restart and ordinary full recovery now also compare checked grocery rows
+and baselines and actual private-name/clear publication. Demo recovery retains its
+established clear disposition. Source/fixture/compiler and content-mutation failures
+remain separately retained. Existing implementation met the inspected contract;
+this qualification introduces test/evidence coverage. The public contract, generated
+client and method-sensitive mock owners supply their existing behavior.
+
+The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-GROCERIES.md)
+and `.task/bilingual-groceries-20261114/delivery.json` own final prepared paths,
+independent review, complete stable verify/full PostgreSQL, signed delivery and
+cleanup identities. Progress is 6/10, with correction 3.1–3.2, migration 4.2 and final
+release 5.1 retaining their acceptance. The six-owner total is 31/68. Every change
+has unfinished aggregate acceptance and remains active. Alex owns CI monitoring.

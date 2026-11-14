@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
+using RecipeApi.Dto;
+using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
@@ -83,6 +85,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
             string evidence;
             string files;
             string membership;
+            WeeklyPlan checkedPlan;
             try
             {
                 await using (var first = await TestWebApplicationFactory.CreateWithAuthAsync(
@@ -102,6 +105,13 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                         .EditAsync(id, content.SourceRevision, Guid.NewGuid(), Edit(content, "50"));
                     await services.GetRequiredService<ScheduleService>().AssignRecipeAsync(new(0, 0, id),
                         referenceWeekStartDate: new DateOnly(2026, 10, 12));
+                    var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == new DateOnly(2026, 10, 12));
+                    var onion = Assert.Single(JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems, Json)!,
+                        row => row.FoodId == BoundedVocabularyInput.Onion);
+                    var epoch = (await services.GetRequiredService<FoodVocabularyStore>().CapturePresentationAsync([])).Epoch;
+                    await services.GetRequiredService<ScheduleService>().MutateGroceryItemAsync(0,
+                        new(Guid.Parse(onion.RowId), plan.WeekStartDate, onion.RowVersion, true, Guid.NewGuid(), epoch), reference: plan.WeekStartDate);
+                    checkedPlan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == plan.WeekStartDate);
                     recipe = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
                     canonical = recipe.CanonicalContent!;
                     evidence = recipe.FoodMappingEvidence!;
@@ -135,6 +145,9 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     Assert.Equal(evidence, recipe.FoodMappingEvidence);
                     Assert.Equal(membership, (await db.FamilySettings.AsNoTracking().SingleAsync(x => x.Key == "food_vocabulary_publication")).Value.GetRawText());
                     Assert.Equal(files, VocabularyFiles(services));
+                    var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == checkedPlan.WeekStartDate);
+                    Assert.Equal((checkedPlan.GroceryItems, checkedPlan.GroceryState, checkedPlan.GroceryCheckedDemandBaselines),
+                        (plan.GroceryItems, plan.GroceryState, plan.GroceryCheckedDemandBaselines));
                     Assert.Empty(provider.Invocations);
                     Assert.Empty(network.Invocations);
                     output.WriteLine("BILINGUAL_RESTART " + JsonSerializer.Serialize(new
@@ -145,6 +158,11 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     }, Json));
                 }
                 await VerifyProgramRestartsAsync(settings.ConnectionString, root, id, canonical, evidence, files, membership);
+                var options = new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(settings.ConnectionString).Options;
+                await using var finalDb = new RecipeDbContext(options);
+                var finalPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == checkedPlan.WeekStartDate);
+                Assert.Equal((checkedPlan.GroceryItems, checkedPlan.GroceryState, checkedPlan.GroceryCheckedDemandBaselines),
+                    (finalPlan.GroceryItems, finalPlan.GroceryState, finalPlan.GroceryCheckedDemandBaselines));
             }
             finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
         });

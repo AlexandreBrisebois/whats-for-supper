@@ -2,7 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Moq;
 using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Models;
@@ -13,25 +16,43 @@ using Xunit.Abstractions;
 
 namespace RecipeApi.Tests.Integration;
 
-// Controlled saved mappings qualify consumers; real producer proof is the
-// separately executed BilingualGroceries_ActualEnFrImports... tracer.
-public sealed class BilingualGroceryPostgresTests(ITestOutputHelper output)
+// The original cases use controlled saved mappings. The Publication partial
+// qualifies ordinary reviewed-source publication before grocery consumption.
+public sealed partial class BilingualGroceryPostgresTests(ITestOutputHelper output)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly Guid Onion = Guid.Parse("ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee");
     private static readonly DateOnly Monday = new(2026, 10, 12);
 
-    private Task WithHousehold(Func<TestWebApplicationFactory, Task> check) => new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
+    private Task WithHousehold(Func<TestWebApplicationFactory, Task> check, bool seedPlans = true) => new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
     {
+        var provider = new Mock<IChatClient>(MockBehavior.Strict);
+        var network = new Mock<IHttpClientFactory>(MockBehavior.Strict);
         await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(new DeploymentCalendarIntegrationTests.CalendarClock(), new()
-        { ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = settings.ConnectionString, ["Tests:LocalRecipeStore"] = "true" });
-        await TomorrowPushPostgresTests.Seed(factory);
+        { ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = settings.ConnectionString, ["Tests:LocalRecipeStore"] = "true" },
+            configureServices: registrations =>
+            {
+                registrations.RemoveAll<IChatClient>();
+                registrations.AddSingleton(provider.Object);
+                registrations.RemoveAll<IHttpClientFactory>();
+                registrations.AddSingleton(network.Object);
+            });
+        if (seedPlans) await TomorrowPushPostgresTests.Seed(factory);
         using (var scope = factory.Services.CreateScope())
         {
-            var bytes = await File.ReadAllBytesAsync(Path.Combine(DeploymentCalendarPostgresTests.RepositoryRoot(), "api/src/RecipeApi.Tests/Fixtures/food-vocabulary-three-anchor-v1.json"));
+            var bytes = BoundedVocabularyInput.Bytes();
             await scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>().PublishReviewedAsync(bytes, null, Guid.NewGuid(), "test-review:native-grocery-consumers");
+            if (!seedPlans)
+            {
+                var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                db.SupperServings.AddRange(Enumerable.Range(0, 7).Select(day =>
+                    new SupperServing { Date = Monday.AddDays(day), OverrideServings = 4 }));
+                await db.SaveChangesAsync();
+            }
         }
         await check(factory);
+        Assert.Empty(provider.Invocations);
+        Assert.Empty(network.Invocations);
     });
 
     private static async Task<Guid> SeedMapped(TestWebApplicationFactory factory, string name, string amount = "1", string unit = "g", RecipePackageDto? package = null)

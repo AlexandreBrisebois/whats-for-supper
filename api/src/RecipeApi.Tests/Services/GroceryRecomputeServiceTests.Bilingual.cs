@@ -5,6 +5,7 @@ using RecipeApi.Dto;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Integration;
+using RecipeApi.Tests.Infrastructure;
 using RecipeApi.Utils;
 using Xunit;
 
@@ -18,8 +19,7 @@ public partial class GroceryRecomputeServiceTests
 
     private async Task InstallBilingualConsumerVocabulary()
     {
-        var bytes = await File.ReadAllBytesAsync(Path.Combine(DeploymentCalendarPostgresTests.RepositoryRoot(),
-            "api/src/RecipeApi.Tests/Fixtures/food-vocabulary-three-anchor-v1.json"));
+        var bytes = BoundedVocabularyInput.Bytes();
         await _scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>()
             .PublishReviewedAsync(bytes, null, Guid.NewGuid(), "test-review:grocery-consumers");
         _service = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();

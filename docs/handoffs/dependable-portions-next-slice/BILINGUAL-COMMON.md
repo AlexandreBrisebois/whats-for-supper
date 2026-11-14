@@ -159,9 +159,9 @@ evidence supports this common vocabulary slice. Combined grocery grouping,
 private/category correction, migration 4.2 and final release 5.1 acceptance stay
 with their selected task owners.
 
-The next bounded implementation selection can qualify tasks 2.1–2.2 through the
-existing grocery aggregation, locale-label and row/check owners after explicit
-selection. Reuse this exact release and saved mapping seam. Preserve the existing
+The subsequent selected tasks 2.1–2.2 use the existing grocery aggregation,
+locale-label and row/check owners. Their current evidence and lifecycle
+reconciliation are in [BILINGUAL-GROCERIES.md](BILINGUAL-GROCERIES.md). Reuse this exact release and saved mapping seam. Preserve the existing
 plans/events, extras, corrections, history and continuing check policy. Migration
 activation and shared-environment vocabulary adoption retain their operator
 prerequisites in [the migration handoff](MIGRATION-EXECUTOR.md) and shared rollout.

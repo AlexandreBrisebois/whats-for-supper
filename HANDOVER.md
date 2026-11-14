@@ -1,5 +1,29 @@
 # Active resume checkpoints
 
+## Bilingual grocery grouping and labels (2026-11-14)
+
+Task/spec is bilingual-shopping-identity 2.1–2.2 on local recipe-view-redesign,
+starting from clean local/remote fe6263bbb8a3337fdb662a883ce2bb845270e94a.
+The selected scope includes evidence-backed lifecycle cleanup, eligible sync/archive,
+current handoff and signed commits/pushes. Alex owns CI monitoring.
+
+The [current handoff](docs/handoffs/dependable-portions-next-slice/BILINGUAL-GROCERIES.md)
+records the exact reviewed input, ordinary producer-backed grocery/unit/package/
+label/check qualification, independent offline recovery and runtime identities.
+Existing grouping, projection, presentation and row/check owners supply the behavior.
+Tasks 2.1–2.2 are complete, bilingual progress is 6/10 and selected progress is 31/68.
+Stable focused PostgreSQL passed 13/13 with zero skips; two production repetitions
+each passed one native owner and three browser journeys with zero skips/retries.
+Final prepared source, immutable review, stable verify/full PostgreSQL records and
+owned cleanup belong to .task/bilingual-groceries-20261114/delivery.json.
+
+CI repair reserves its migration test, validate workflow and pipeline regression
+files. Its concurrent shared-checkout write invalidated a focused run after eight
+passing grocery cases. Final source/ownership reconciliation precedes stable
+verification. The six release changes retain incomplete aggregate acceptance;
+Similar stays deferred and selective repair stays superseded/unimplemented.
+Port 3000 and the six entry containers remain reserved.
+
 ## Bilingual common vocabulary slice (2026-11-14)
 
 Task/spec is `bilingual-shopping-identity` 1.1–1.3 on local `recipe-view-redesign`,

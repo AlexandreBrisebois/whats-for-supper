@@ -138,6 +138,32 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     new HouseholdFoodOverride { Id = Guid.NewGuid(), Revision = "protected-clear-revision", FallbackKey = "cleared onion",
                         ShoppingName = null, ProtectedFields = ["shoppingName"], PresentationSequence = "3", CreatedAt = at, UpdatedAt = at });
                 await sourceDb.SaveChangesAsync();
+                var protectedSource = await BilingualShoppingIdentityPostgresTests.ImportAsync(sourceServices, "fr");
+                var protectedContent = CanonicalRecipeContentStore.Read(await sourceDb.Recipes.AsNoTracking().SingleAsync(x => x.Id == protectedSource.Id))!;
+                await sourceServices.GetRequiredService<CanonicalRecipeContentStore>().EditAsync(protectedSource.Id, protectedContent.SourceRevision,
+                    Guid.NewGuid(), new UpdateRecipeDto
+                    {
+                        ExpectedContentRevision = protectedContent.ContentRevision,
+                        IngredientLines = JsonSerializer.SerializeToElement(protectedContent.IngredientLines.Select((ingredient, index) => new RecipeIngredientLineInput
+                        {
+                            Id = ingredient.Id, Description = ingredient.Description, Amount = ingredient.Amount, AmountText = ingredient.AmountText,
+                            Unit = ingredient.Unit, Scaling = ingredient.Scaling, Package = ingredient.Package,
+                            Shopping = index == 0 ? ingredient.Shopping with { Name = "onion, diced" }
+                                : index == 1 ? new(ingredient.Shopping.Name, null, null) : ingredient.Shopping
+                        }), JsonDefaults.CamelCase)
+                    });
+                var expectedProtectedRecipe = await sourceDb.Recipes.AsNoTracking().SingleAsync(x => x.Id == protectedSource.Id);
+                var protectedDecisions = JsonSerializer.Deserialize<RecipeFoodMappingEvidence>(expectedProtectedRecipe.FoodMappingEvidence!, JsonDefaults.CamelCase)!;
+                Assert.Contains(protectedDecisions.NameDecisions, decision => decision.Kind == "explicit_private");
+                Assert.Contains(protectedDecisions.NameDecisions, decision => decision.Kind == "protected_clear");
+                var monday = new DateOnly(2026, 10, 12);
+                await sourceServices.GetRequiredService<ScheduleService>().AssignRecipeAsync(new(0, 0, protectedSource.Id), referenceWeekStartDate: monday);
+                var sourcePlan = await sourceDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                var epoch = (await vocabulary.CapturePresentationAsync([])).Epoch;
+                foreach (var grocery in JsonSerializer.Deserialize<List<GroceryLineItemDto>>(sourcePlan.GroceryItems, JsonDefaults.CamelCase)!)
+                    await sourceServices.GetRequiredService<ScheduleService>().MutateGroceryItemAsync(0,
+                        new(Guid.Parse(grocery.RowId), monday, grocery.RowVersion, true, Guid.NewGuid(), epoch), reference: monday);
+                sourcePlan = await sourceDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                 await sourceStorage.SaveAsync("recipes", Id + "/hero.webp", new byte[] { 4, 5, 6 });
                 var expectedOverrides = JsonSerializer.Serialize(await sourceServices.GetRequiredService<HouseholdFoodOverrideStore>().ReadRecoveryRowsAsync());
                 var expectedRecipe = await sourceDb.Recipes.AsNoTracking().SingleAsync(x => x.Id == mappedId);
@@ -180,6 +206,24 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                         var recipe = await targetDb.Recipes.AsNoTracking().SingleAsync(x => x.Id == mappedId);
                         Assert.Equal((expectedRecipe.CanonicalContent, expectedRecipe.FoodMappingEvidence, expectedRecipe.RawMetadata, expectedRecipe.Notes),
                             (recipe.CanonicalContent, recipe.FoodMappingEvidence, recipe.RawMetadata, recipe.Notes));
+                        await targetServices.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
+                        var restoredPlan = await targetDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
+                        if (demo)
+                        {
+                            Assert.Empty(await targetDb.CalendarEvents.AsNoTracking().ToArrayAsync());
+                            Assert.Equal(("[]", "{}", "{}"),
+                                (restoredPlan.GroceryItems, restoredPlan.GroceryState, restoredPlan.GroceryCheckedDemandBaselines));
+                        }
+                        else
+                        {
+                            Assert.Equal((sourcePlan.GroceryItems, sourcePlan.GroceryState, sourcePlan.GroceryCheckedDemandBaselines),
+                                (restoredPlan.GroceryItems, restoredPlan.GroceryState, restoredPlan.GroceryCheckedDemandBaselines));
+                            var presented = await targetServices.GetRequiredService<ScheduleService>().GetScheduleAsync(0, monday);
+                            Assert.Contains(presented.GroceryItems!, grocery => grocery.Presentation!.DisplayLabels.Fr.Contains("onion, diced", StringComparison.Ordinal));
+                        }
+                        var protectedRecipe = await targetDb.Recipes.AsNoTracking().SingleAsync(x => x.Id == protectedSource.Id);
+                        Assert.Equal((expectedProtectedRecipe.CanonicalContent, expectedProtectedRecipe.FoodMappingEvidence, expectedProtectedRecipe.RawMetadata),
+                            (protectedRecipe.CanonicalContent, protectedRecipe.FoodMappingEvidence, protectedRecipe.RawMetadata));
                         Assert.Equal(new byte[] { 1, 2, 3 }, await targetRepository.GetOriginalImageAsync(Id, 0, default));
                         Assert.Equal(new byte[] { 4, 5, 6 }, await targetStorage.LoadAsync("recipes", Id + "/hero.webp"));
                         Assert.Equal(expectedOverrides, JsonSerializer.Serialize(await targetServices.GetRequiredService<HouseholdFoodOverrideStore>().ReadRecoveryRowsAsync()));
