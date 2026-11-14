@@ -1,12 +1,16 @@
 # Coordinated rollout and recovery gates
 
-This is the coordinated rollout gate owner. The November 14 bounded delivery
-qualifies bilingual correction tasks 3.1–3.2 on disposable local resources and
-reconciles eligible lifecycle work with signed commits/pushes. The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-CORRECTIONS.md)
-records source identity, CI ownership and remaining acceptance. DV/production
-operations, shared-library adoption and migration activation retain their later
-operator selection. Earlier operation-specific maintenance/DV authority remains
-attached to its historical receipts. This plan replaces the old permanent-legacy-restore rollout. The [migration companion](../migrate-canonical-recipe-model/design.md) owns implementation/recovery; this file links the accepted portions release gates. The 2026-11-12 user amendment includes model-authored bilingual identity and its durable JSON backup, and replaces empty-list admission with plan-preserving all-list rebuilding.
+This is the coordinated rollout gate owner. The current November 14 selection is
+recorded in the [Portions/copied-library handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)
+and [exact operator packet](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.json).
+It qualifies the authorized normal-text Portions matrix and an actual historical
+old recovery pair; retained V1 receipt admission blocks current-format capture and
+migration. No selected aggregate task is complete. Alex owns CI monitoring.
+Shared adoption, activation and DV/production retain later operator selection.
+Earlier operation-specific authority remains attached to its original receipts.
+The [migration companion](../migrate-canonical-recipe-model/design.md) owns the
+executor/recovery. The 2026-11-12 amendment preserves all plans/events and rebuilds
+all stored/implied grocery weeks; only the fenced migration epoch may reset checks.
 
 Alex accepts planned downtime and confirms frontend/backend/database deploy as one
 release. Reuse the demo/online-recovery coordination mechanism, with migration's
@@ -74,3 +78,33 @@ Alex owns CI monitoring after signed delivery. Current-date freshness, the actua
 old recovery pair, coordinated deployment/restart and independent new backup
 read-back remain prerequisites to later reopening. All changes retain open
 aggregate requirements, so no main-spec sync or archival is eligible here.
+
+## Actual copied-library admission — 2026-11-14
+
+Entry `6589c18a` and the exact candidate assembly/catalog/configuration, source dump,
+all protected key/column/file/history inventories, recipe revisions and 36-week
+membership are bound in the current packet. The held source recovery pair was
+independently restored and old `7a502eff` application/database/schema health passed.
+The source has 221 recipes, 23 retired, 69 events and 1,576 files. These are the
+historical captured facts, not current source-environment inventory or a count
+allowance. Complete 32-table read-back after failed admission has zero row changes.
+
+All 46 V1 edit receipts reject under the old and candidate pure readers: 33 have
+proven duplicate amount-kind fields; 13 fail the final input-hash/result condition.
+The existing strict owner refused vocabulary publication before capture/conversion.
+The reviewed vocabulary hash is retained; no membership/file was adopted. The
+exact hold survived two actual Program starts. Diagnostic date 2026-11-14 UTC is
+not an admitted migration's frozen evaluation date or reopening freshness proof.
+
+Current-format preconversion snapshot, source-admitted CLI capture/execution,
+interrupted conversion/resume, all-list rebuild, fresh postconversion backup,
+independent restore/re-export and coordinated reopening are blocked/not-run. No
+protected history was deleted/normalized and no synthetic library substituted.
+A valid retained-authority baseline or separately reviewed exact historical receipt
+reconciliation is the missing prerequisite. Preserve these bytes and the old pair.
+
+Independent 291-case PostgreSQL and real generated-client fixture/browser passes
+retain their own identities in the packet. They do not close migration 2.1/2.2/3.1/3.2
+or bilingual 4.2. All six changes remain active at 33/68; sync/archive eligibility
+is empty. The final stable repository/full PostgreSQL receipts and signed delivery
+are owned by `.task/portions-migration-20261114/delivery.json`.

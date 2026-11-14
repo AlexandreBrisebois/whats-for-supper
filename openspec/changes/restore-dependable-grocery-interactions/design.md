@@ -30,7 +30,7 @@ Use the shared proposed item/bulk DTOs, absolute week, row/list versions and mut
 
 ## Compatibility, Rollout and Reversal
 
-Requires a reviewed row-ID/client fence and the migration companion's fresh-list upgrade contract. Alex confirms there will be no active grocery list during update and the next list will be new. Create new recipe-derived rows unchecked with no copied old-name checks or baselines; preserve historical lists/check data and extra occurrence history. Do not build a one-time ambiguous active-check conversion or shopping review UI. If assessment contradicts the no-active-list condition, stop/report rather than discard data. This is not permission to reset household state.
+Requires a reviewed row-ID/client fence and the migration companion's plan-preserving all-list upgrade contract. The 2026-11-12 amendment supersedes the historical no-active-list gate: preserve every planned meal/calendar event and rebuild every stored or assignment-implied grocery week, including active lists. Only the captured fenced migration epoch may reset recipe-row checks and checked-demand baselines; completed retries preserve later human checks. Preserve manual extras, corrections, removal links and history. No empty-list admission, plan deletion, household reset or historical count allowance applies. Ordinary recomputation and exact restore retain their existing check/baseline policy.
 
 ## User Experience
 

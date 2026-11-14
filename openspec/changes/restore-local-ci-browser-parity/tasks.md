@@ -2,13 +2,14 @@
 
 ## Current selected delivery — 2026-11-14
 
-The current bounded selection is bilingual-shopping-identity 3.1–3.2 and
-evidence-backed lifecycle reconciliation across the six dependable-portions owners.
-Signed commits/pushes belong to this selected delivery; Alex owns CI monitoring.
-The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-CORRECTIONS.md)
-records candidate-qualified checks, current task counts and each remaining acceptance
-boundary. Historical policies and receipts below retain their original operation
-scope. A partially qualified task continues under its existing acceptance criteria.
+The current bounded selection covers the authorized Portions native-focus coverage
+amendment, disposable copied-library migration 2.1–2.2/3.1–3.2, contingent bilingual
+4.2 and evidence-backed lifecycle reconciliation. Signed commits/pushes are authorized;
+Alex owns CI monitoring. The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)
+and its packet distinguish passed independent regressions from actual copied-library
+source admission, which remains blocked by retained V1 operation validation.
+No selected aggregate task is complete; progress remains 33/68. Historical policies
+and receipts below retain their original scope and remaining acceptance.
 
 ## Historical coordinated release policy — 2026-11-11
 

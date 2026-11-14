@@ -1,5 +1,21 @@
 # Active resume checkpoints
 
+## Portions coverage and copied-library admission (2026-11-14)
+
+The [current handoff](docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)
+and its operator packet own this selection from clean local/remote `6589c18a`.
+The native-focus matrix now requires normal text at 320 px and 390 px in EN/FR;
+the historic 200% failure/root cause remains unresolved. Fresh production repetition
+passed 27 cases with zero skips/retries. An actual held 221-recipe library restored
+independently with 31 table inventories and 1,576 files equal. Old `7a502eff`
+API/schema health passed. Current 32-table inspection and two held Program starts
+passed their bounded checks, but all 46 V1 receipts fail original-operation
+validation under both old and current readers. No vocabulary, conversion, reset
+or reopening occurred. Selected migration and bilingual 4.2 remain open, progress
+8/10 and 33/68, with no sync/archive eligible. Next select exact retained-history
+qualification. Terminal checks, signature, push and cleanup belong to
+`.task/portions-migration-20261114/delivery.json`. Alex owns CI monitoring.
+
 ## Bilingual private shopping and category corrections (2026-11-14)
 
 Selected tasks 3.1–3.2 qualify ordinary EN/FR publication, guarded private shopping

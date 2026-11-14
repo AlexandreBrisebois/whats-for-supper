@@ -1,27 +1,27 @@
 # Dependable portions next slice
 
-The [current private correction handoff](BILINGUAL-CORRECTIONS.md) owns the selected
-3.1–3.2 correction/category qualification, candidate-specific evidence, lifecycle
-reconciliation, CI ownership and next bounded selection. The [common
-vocabulary delivery](BILINGUAL-COMMON.md), [migration executor](MIGRATION-EXECUTOR.md)
-and [recovery delivery](RECOVERY.md) retain their actual accepted scopes and source
-identities. Earlier checkpoints remain in [DELIVERY.md](DELIVERY.md) and
-[SHUTDOWN.md](SHUTDOWN.md).
+The [current Portions and copied-library handoff](MIGRATION-ACCEPTANCE.md) and
+[operator packet](MIGRATION-ACCEPTANCE.json) own the November 14 selected coverage
+amendment, actual recovery-pair qualification, source-admission blocker and remaining
+acceptance. Earlier [private corrections](BILINGUAL-CORRECTIONS.md),
+[grocery grouping](BILINGUAL-GROCERIES.md), [common vocabulary](BILINGUAL-COMMON.md),
+[migration executor](MIGRATION-EXECUTOR.md) and [recovery](RECOVERY.md) retain their
+own accepted scopes and source identities. Earlier checkpoints remain in
+[DELIVERY.md](DELIVERY.md) and [SHUTDOWN.md](SHUTDOWN.md).
 
-Read AGENT.md, its loading rules/Codex adapter and the Entire guide first. The
-current authority covers selected work, reviewed signed commits/pushes and
-synchronization/archival of fully completed qualified in-scope changes. Alex owns
-CI monitoring. All six release-family changes retain unfinished acceptance.
+Read AGENT.md, its loading rules/Codex adapter and the Entire guide first. Reviewed
+signed commits/pushes and eligible lifecycle reconciliation belong to the selected
+delivery. Alex owns CI monitoring. All six changes retain incomplete acceptance.
 
 ## Next bounded selection
 
-After group 2 delivery, select bilingual-shopping-identity 3.1–3.2 for ordinary
-private shopping/category correction qualification. Reuse the exact reviewed
-three-food input, saved mapping/evidence, existing revision guards, category and
-extra-occurrence owners. The current handoff records prerequisites and stopping
-boundaries. Copied-library vocabulary adoption, migration activation and coordinated
-cutover retain their operator selection and the executor handoff's recovery pair,
-current-date freshness and independent backup/read-back prerequisites.
+Establish valid retained V1 operation authority for the actual copied library,
+using exact old-writer/request/baseline/result proof while preserving raw history.
+Review any precise compatibility rule before retrying vocabulary/source admission.
+No conversion or all-list rebuild occurred; migration 2.1–2.2/3.1–3.2 and bilingual
+4.2 remain open. Reuse the completed executor; its recovery-pair, current-date
+freshness and independent backup/read-back gates remain. Shared adoption,
+activation and DV/production remain subsequent selections.
 
 ## Preserved work
 
@@ -37,8 +37,9 @@ Exact after-images are compressed source archives for recovery if temporary work
 
 ## Release work still open
 
-Selected progress is 33/68 after bilingual correction tasks 3.1–3.2. Final
-verification belongs to BILINGUAL-CORRECTIONS.md and its delivery receipt. Remaining intake/corpus, final baseline
+Progress remains 33/68; no aggregate task completed in this copied-library slice.
+Final verification belongs to MIGRATION-ACCEPTANCE.md and its delivery receipt.
+Remaining intake/corpus, final baseline
 recovery, stale-client/draft cutover rehearsal, exact images, final DV preservation
 and whole-release hosted qualification remain with their named owners. Preserve
 every planned meal/event/identity/intent, extras, human corrections, media, drafts

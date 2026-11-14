@@ -231,7 +231,7 @@ for (const locale of ['en', 'fr'] as const)
     test.use({ appLocale: locale });
     for (const [width, scale] of [
       [390, 1],
-      [320, 2],
+      [320, 1],
     ])
       test(`${width}px ${scale}x text keeps every date control and exit choice above navigation`, async ({
         page,

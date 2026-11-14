@@ -4,6 +4,15 @@
 
 All implementation boxes remain unchecked until actual acceptance. Use the shared [contracts](../canonical-ingredient-correction/contracts.md), [corpus](../canonical-ingredient-correction/acceptance-corpus.md) and [review](../canonical-ingredient-correction/review.md); Root owns those artifacts. For actual API changes, update OpenAPI first, regenerate the client, then synchronize consumers and method-sensitive mocks, conflicts, reads and SSE. Preserve accepted PDF/portions/package/step/check behavior; no bilingual code enters PDF freshness.
 
+## Current copied-library selection — 2026-11-14
+
+The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)
+records the actual old recovery pair, complete copied inventory and retained V1
+history admission blocker. Task 4.2 remains open: no copied-library conversion or
+all-list rebuild occurred. Bilingual remains 8/10 and the release family 33/68.
+Independent current-format fixture/browser passes do not replace that acceptance.
+Alex owns hosted CI monitoring; release 5.1 retains its separate requirements.
+
 ## 1. Qualify and publish a bounded saved bilingual vocabulary
 
 **Outcome/scenarios:** C22–C25/C47; reviewed model-authored exact identities, honest fallback and durable revision-bound mapping.

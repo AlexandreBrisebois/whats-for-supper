@@ -78,10 +78,18 @@ seeded-binding C01 passes do not qualify that producer.
 | C48 recovery | Crash between media staging, DB commit, activation and fresh backup | Complete committed or prior generation recovered before household use; no success from queued work; pre-cutover rollback pair verified |
 | C49 UI | All supported content in EN/FR 320 px, 200%, tablet split view | Quiet preview/Original/Reset, hero/sidebar, controls, drafts, reading offset and touch targets retain approved composition |
 | C50 CI | New live scenario, empty test filter, opt-in DB skip, first failure then retry | Inventory assignment does not count as execution; required real DB/live cases have zero skips; outcomes and never-run stages separately reported |
-
 | C51 groceries | Retained check after overlap/decrease, repeated true/bulk replacement/retry, locale/unit change and recovery | Persist original checked-demand baseline unchanged; compatible conversions compare exactly, incomparable/unknown baselines remain unprovable; no replay rebaselines |
 | C52 groceries | Reset or explicit uncheck followed by recheck at 4–5 | Capture new baseline 4–5 only on false→true; unchanged demand preserves check and later provable increase resets once |
 | C53 migration | Rebuild populated past/current/future lists through the new model | Preserve all planned meals/events/extras/corrections/history; reset checks/baselines only in the fenced idempotent migration epoch |
+
+The 2026-11-14 authorized C49 exception applies only to the Portions native-focus
+matrix in `planner-portions-refinement.spec.ts`: require normal-size text at both
+320 px and 390 px in EN/FR, retaining Tab/Shift+Tab traversal, actual focus
+hit-testing, all date/reset/original controls, unsaved drafts and exit choices.
+Its 320 px/200% native-focus case is optional. The hosted French failure on
+`fb4978e6d521bcceb8014951957bde5949554320` remains historical evidence with an
+unresolved root cause; this acceptance change does not establish an enlarged-text
+layout repair. All unrelated C49 enlarged-text and 200% requirements remain.
 
 ## Existing regression owners and future seam classes
 

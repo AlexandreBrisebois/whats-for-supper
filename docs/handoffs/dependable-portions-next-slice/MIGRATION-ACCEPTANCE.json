@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "state": "blocked-before-conversion",
+  "entryCommit": "6589c18a7073afc3aeacb94dd6a4a6506030eb5a",
+  "branch": "recipe-view-redesign",
+  "ciMonitoringOwner": "Alex",
+  "bilingualProgress": "8/10",
+  "releaseFamilyProgress": "33/68",
+  "newlyCompletedTasks": [],
+  "authorizedPortionsAmendment": {
+    "required": [
+      "en/320px/1x",
+      "fr/320px/1x",
+      "en/390px/1x",
+      "fr/390px/1x"
+    ],
+    "optional": "320px/2x native-focus matrix entry",
+    "unrelatedAssertionsRetained": true,
+    "historicalJobUrl": "https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/43620241257/job/132524778916",
+    "historicalCandidate": "fb4978e6d521bcceb8014951957bde5949554320",
+    "historicalResult": {
+      "passed": 352,
+      "skipped": 6,
+      "failed": 1,
+      "attempts": 2
+    },
+    "enlargedTextRootCause": "unresolved",
+    "layoutRepairClaimed": false
+  },
+  "copiedBaseline": {
+    "source": "/Users/alex/Code/whats-for-supper/.task/dependable-portions-coordinator/pdf3/release/predeploy-8585db24-8ac9-4b9d-97aa-d21800055f82",
+    "historicalSource": true,
+    "sourceCapturedOperation": "8585db24-8ac9-4b9d-97aa-d21800055f82",
+    "oldCommit": "7a502eff4e805bad939e9f909bb2c83350e9ba81",
+    "candidateBase": "6589c18a7073afc3aeacb94dd6a4a6506030eb5a",
+    "qualifiedAtUtc": "2026-11-14T18:03:55.238774+00:00",
+    "sourceFiles": {
+      "database.dump": "25eab5f9bdc4f35b8385f05c86a0c384fe0b3da89c2576f04f89566d96cc9ecc",
+      "data.tar": "07e26b87a47805f9abdfad69ce6a54d15a03236c13607d50e7b0d0edd1ccb76b",
+      "files.sha256": "4cb537857d48de963ae91044457828c14643708a4e9d99ee23248e6af84a99ce",
+      "readback.json": "ff367e7662ce7eea8c8a6e05783ade721e2b61f3832d25dc6f0e61cc6c84052a"
+    },
+    "network": "wfs-copy-c2e29e6196",
+    "networkId": "875d2d219e9a62c6db4f530f00abeb288851b8032d3d114a408ee7b7e1e13cea",
+    "databaseContainer": "wfs-copy-pg-c2e29e6196",
+    "databaseId": "32372712e44d0ce1aced2e44be9f15be7993d924f5805255642855a43df11ee4",
+    "oldImages": {
+      "whats-for-supper-api": "sha256:7db9f1984f059bbb88611ac58e444d6d750a806f3e262f639e08706466786ad9",
+      "whats-for-supper-pwa": "sha256:fcd4f02e952f28b2b7c96d71af21ff61566b339e6409a5f9cd2a73404ea97e00",
+      "whats-for-supper-traefik": "sha256:0f6150202bc1fed72a7bd2107460eaa510e5b8a905f3fdb5b84f2c8619c33368",
+      "whats-for-supper-postgres": "sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0"
+    },
+    "restoredDatabases": [
+      "wfs_copy_old",
+      "wfs_copy_candidate",
+      "wfs_copy_restore"
+    ],
+    "tablesEqual": true,
+    "filesEqual": true,
+    "fileCount": 1576,
+    "networkInternal": true,
+    "publishedPorts": false
+  },
+  "oldApplication": {
+    "commit": "7a502eff4e805bad939e9f909bb2c83350e9ba81",
+    "image": "sha256:7db9f1984f059bbb88611ac58e444d6d750a806f3e262f639e08706466786ad9",
+    "assemblySha256": "58196b0daeb4e2b5881c482328709a790c1bc1254561e8437a5846e57544743b",
+    "configuration": {
+      "POSTGRES_CONNECTION_STRING": "[synthetic credential]",
+      "DATA_ROOT": "/data",
+      "HEARTH_SECRET": "[synthetic credential]",
+      "DEMO_MODE": "false",
+      "Calendar__TimeZone": "UTC",
+      "DREAMING_CRON_UTC": "0 3 * * *",
+      "DEMO_RESTORE_CRON_UTC": "0 3 * * *",
+      "GEMINI_API_KEY": "[synthetic credential]",
+      "GEMINI_MODEL_ID": "gemini-test",
+      "GEMINI_ENDPOINT": "http://127.0.0.1:9/v1/",
+      "ASPNETCORE_URLS": "http://+:9001",
+      "RecipesRoot": "/data/recipes"
+    },
+    "network": "owned internal PostgreSQL namespace"
+  },
+  "catalog": {
+    "wfs_copy_old": {
+      "liveCatalogSha256": "202b3b0d9719fcf2e694add4d1a04eefbbb34974572d7909e5dfb0a6fb23210c",
+      "tableCount": 31,
+      "postgresVersion": "PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+      "extensions": "[{\"name\": \"pg_trgm\", \"version\": \"1.6\"}, {\"name\": \"plpgsql\", \"version\": \"1.0\"}, {\"name\": \"vector\", \"version\": \"0.8.7\"}]",
+      "catalogDumpSha256": "0321099a741fc45a519170d7460a61b90e649ad4507edbcf9f17440a5d01c1f2"
+    },
+    "wfs_copy_candidate": {
+      "liveCatalogSha256": "edd40bb30ea7232a9269d93e2d4c4cd4022f7af655204649d89296361c65713a",
+      "tableCount": 32,
+      "postgresVersion": "PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+      "extensions": "[{\"name\": \"pg_trgm\", \"version\": \"1.6\"}, {\"name\": \"plpgsql\", \"version\": \"1.0\"}, {\"name\": \"vector\", \"version\": \"0.8.7\"}]",
+      "catalogDumpSha256": "aef86224c13230c60a62d0410691fc4e1665cba641cb00f6908dbc4b568b755b"
+    }
+  },
+  "candidate": {
+    "operationId": "27bcc43b-c1db-4998-acf3-1a5e174742ab",
+    "candidate": "6589c18a7073afc3aeacb94dd6a4a6506030eb5a",
+    "assemblySha256": "9580c5e0319a2079a716b1ed3da44d9396a6901186263646504bd36d1ec77dcd",
+    "markerSha256": "1977276753890d3f4e464286c465ecbbcc58bca490e3b46911effc0c8bd4faed",
+    "schemaSha256": "edd40bb30ea7232a9269d93e2d4c4cd4022f7af655204649d89296361c65713a",
+    "startedAtUtc": "2026-11-14T18:05:55.7733174+00:00"
+  },
+  "inventory": {
+    "schemaSha256": "edd40bb30ea7232a9269d93e2d4c4cd4022f7af655204649d89296361c65713a",
+    "assemblySha256": "9580c5e0319a2079a716b1ed3da44d9396a6901186263646504bd36d1ec77dcd",
+    "tables": 32,
+    "recipes": 221,
+    "storedOrAssignmentImpliedWeeks": 36,
+    "currentDate": "2026-11-14",
+    "currentDateReopeningFreshness": "blocked: no conversion or reopening",
+    "databaseUnchangedAfterRejectedAdmission": true,
+    "vocabularyPublished": false,
+    "held": true,
+    "diagnosticEvaluationDate": "2026-11-14",
+    "admittedMigrationEvaluationDate": null
+  },
+  "sourceAdmission": {
+    "state": "blocked",
+    "retainedReceiptsRejected": 46,
+    "duplicateInputReceipts": 33,
+    "duplicateSites": 140,
+    "recipesWithDuplicateInputs": 14,
+    "otherInputHashOrDerivedResultMismatch": 13,
+    "oldReaderRejectsSame46": true,
+    "candidateDatabaseRowsUnchanged": true,
+    "vocabularyPublished": false,
+    "missingPrerequisite": "A source with valid retained V1 original-operation authority, or a separately reviewed historical-receipt reconciliation with exact old-writer/hash/result proof.",
+    "syntheticSubstitution": false
+  },
+  "stageOutcomes": {
+    "oldPairIndependentDatabaseAndFileReadback": "passed",
+    "oldApplicationHealth": "passed",
+    "candidateHeldStarts": "passed: two expected activation rejections",
+    "schemaOnDisposableCopies": "passed",
+    "completeTableKeyColumnFileHistoryInventory": "passed",
+    "currentFormatSourceAdmission": "blocked",
+    "sourceAdmittedMigrationManifest": "not-run: admission blocked",
+    "conversionAndAllWeekRebuild": "not-run: admission blocked",
+    "retainedReceiptMigrationResume": "not-run on copied library",
+    "postConversionIndependentBackupRestoreReexport": "not-run: admission blocked",
+    "coordinatedPwaBackendSchemaReopening": "not-run: admission blocked",
+    "currentDateReopeningFreshness": "blocked: no admitted migration/reopening",
+    "finalCandidateHostedQualification": "not-run; Alex monitors CI"
+  },
+  "independentRegression": {
+    "focusedPostgresRecord": ".task/database-tests/runs/e4fd7e228a0e48c3bcbc78d595ebb679/result.json",
+    "focusedPostgresPassed": 291,
+    "focusedPostgresSkipped": 0,
+    "portionsProduction": {
+      "recordPath": ".task/portions-migration-20261114/portions-production/runtime.json",
+      "passed": 27,
+      "skipped": 0,
+      "workers": 4,
+      "retries": 0,
+      "repeatEach": 3
+    },
+    "mockedMigrationRecovery": {
+      "recordPath": ".task/portions-migration-20261114/focused-browser/runtime.json",
+      "passed": 19,
+      "skipped": 0,
+      "retries": 0
+    },
+    "realApiGeneratedClient": {
+      "recordPath": ".task/portions-migration-20261114/live-regression/runtime.json",
+      "nativePassed": 2,
+      "browserPassed": 6,
+      "skipped": 0,
+      "retries": 0,
+      "scope": "Controlled producer and editor/draft/correction fixtures, distinct from copied-library acceptance."
+    }
+  },
+  "artifactManifest": {
+    "path": ".task/portions-migration-20261114/copied-library/reviewed-evidence-manifest.json",
+    "sha256": "003a7d80403d1309e0df691e5cf0e8af39621de73c69d6c7f813c96420823fe5"
+  },
+  "lifecycle": {
+    "syncedCapabilities": [],
+    "archivedChanges": [],
+    "eligible": [],
+    "reason": "All six changes retain incomplete aggregate acceptance."
+  },
+  "nextBoundedSelection": "Establish and review valid retained V1 history authority for this actual copied library before retrying vocabulary/source admission and the selected migration tasks. Preserve raw receipts and unsupported-source rejection.",
+  "exclusions": [
+    "Shared-environment vocabulary adoption",
+    "Migration activation",
+    "DV/production operations",
+    "Final release5.1",
+    "Additional intake",
+    "Similar",
+    "Garlic",
+    "Adjacent UI"
+  ]
+}
