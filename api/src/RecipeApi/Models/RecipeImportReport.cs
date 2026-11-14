@@ -40,6 +40,9 @@ public class RecipeImportReport
     [Column("updated_at")]
     public DateTimeOffset UpdatedAt { get; set; }
 
+    [Column("repair_intent_id")]
+    public Guid? RepairIntentId { get; set; }
+
     [Column("last_workflow_instance_id")]
     public Guid? LastWorkflowInstanceId { get; set; }
 

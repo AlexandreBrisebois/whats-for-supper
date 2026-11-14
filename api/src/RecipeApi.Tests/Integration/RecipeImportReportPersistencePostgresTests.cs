@@ -159,7 +159,7 @@ public class RecipeImportReportPersistencePostgresTests : IAsyncLifetime
         var (recipe, member) = await SeedAsync();
         int? persistedCountAtLaunch = null;
         var orchestrator = new Mock<IWorkflowOrchestrator>();
-        orchestrator.Setup(x => x.TriggerAsync("url-import", It.IsAny<Dictionary<string, string>>(), null))
+        orchestrator.Setup(x => x.TriggerReportAsync(It.IsAny<Guid>(), recipe.Id, "url-import", It.IsAny<Dictionary<string, string>>()))
             .Returns(async () =>
             {
                 persistedCountAtLaunch = await PersistedCountAsync();

@@ -28,6 +28,8 @@ const mockRefreshSession = vi.fn().mockResolvedValue(undefined);
 const mockMarkReady = vi.fn();
 const mockSetGroceryState = vi.fn();
 const mockApplyGroceryExtrasUpdate = vi.fn();
+const mockApplyGrocerySnapshot = vi.fn();
+const mockRefreshGroceries = vi.fn().mockResolvedValue(undefined);
 
 // weekStore weekOffset — default to 0; tests can override via mockWeekOffset
 let mockSession: { phase: string; weekStartDate: string | null } | null = null;
@@ -69,6 +71,7 @@ vi.mock('@/store/todayStore', () => ({
 
 vi.mock('@/store/weekStore', () => ({
   useWeekStore: {
+    setState: vi.fn(),
     getState: () => ({
       weekOffset: mockWeekOffset,
       weekStartDate: mockWeekStartDate,
@@ -79,6 +82,8 @@ vi.mock('@/store/weekStore', () => ({
       applyVoteUpdate: mockApplyVoteUpdate,
       applySmartDefaultsUpdate: mockApplySmartDefaultsUpdate,
       applyGroceryExtrasUpdate: mockApplyGroceryExtrasUpdate,
+      applyGrocerySnapshot: mockApplyGrocerySnapshot,
+      refreshGroceries: mockRefreshGroceries,
     }),
   },
 }));
@@ -384,6 +389,8 @@ describe('week_updated event', () => {
       recipe,
       status: 1,
       nonCooking: null,
+      occurrenceId: null,
+      preparation: null,
     });
   });
 });
@@ -624,14 +631,22 @@ describe('recipe_failed event', () => {
 // ── grocery_updated event ─────────────────────────────────────────────────
 
 describe('grocery_updated event', () => {
-  it('grocery_updated event updates plannerStore.groceryState', () => {
+  it('grocery_updated event applies a versioned absolute-week snapshot', () => {
     mockWeekOffset = 0;
     const { source } = setupHook();
 
-    const groceryState = { flour: true, eggs: false };
-    source.emit('grocery_updated', { weekOffset: 0, weekStartDate: '2025-01-13', groceryState });
+    const groceryState = { '05000000-0000-4000-8000-000000000001': true };
+    const snapshot = {
+      weekOffset: 0,
+      weekStartDate: '2025-01-13',
+      groceryState,
+      groceryListVersion: '2',
+      groceryItems: [],
+    };
+    source.emit('grocery_updated', snapshot);
 
-    expect(mockSetGroceryState).toHaveBeenCalledWith(groceryState);
+    expect(mockApplyGrocerySnapshot).toHaveBeenCalledWith(snapshot);
+    expect(mockRefreshGroceries).toHaveBeenCalledTimes(1);
   });
 
   it('grocery_updated for different weekOffset is ignored', () => {
@@ -641,6 +656,7 @@ describe('grocery_updated event', () => {
     const groceryState = { flour: true };
     source.emit('grocery_updated', { weekOffset: 1, weekStartDate: '2025-01-20', groceryState });
 
+    expect(mockApplyGrocerySnapshot).not.toHaveBeenCalled();
     expect(mockSetGroceryState).not.toHaveBeenCalled();
   });
 });
@@ -684,18 +700,26 @@ describe('cleanup', () => {
 it('passes custom non-cooking metadata through slot updates to planner and today', () => {
   const { source } = setupHook();
   const plan = { kind: 'custom', customLabel: 'Birthday supper' };
-  source.emit('slot_updated', { date: '2025-01-15', recipe: null, status: 3, nonCooking: plan });
+  source.emit('slot_updated', {
+    date: '2025-01-15',
+    recipe: null,
+    status: 3,
+    nonCooking: plan,
+    occurrenceId: null,
+  });
   expect(mockApplyServerUpdate).toHaveBeenCalledWith({
     date: '2025-01-15',
     recipe: null,
     status: 3,
     nonCooking: plan,
+    occurrenceId: null,
   });
   expect(mockApplySlotUpdate).toHaveBeenCalledWith({
     date: '2025-01-15',
     recipe: null,
     status: 3,
     nonCooking: plan,
+    occurrenceId: null,
   });
 });
 
@@ -716,6 +740,8 @@ it.each(['connected', 'week_updated'])(
       recipe: null,
       status: 3,
       nonCooking: plan,
+      occurrenceId: null,
+      preparation: null,
     });
   }
 );
@@ -779,4 +805,19 @@ it('a delayed legacy defaults event cannot repopulate a confirmed unowned sessio
   });
   expect(mockApplySmartDefaultsUpdate).not.toHaveBeenCalled();
   expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+});
+
+it('carries persisted occurrence identity through slot and week events', () => {
+  const { source } = setupHook();
+  const occurrenceId = '990e8400-e29b-41d4-a716-446655440070';
+  source.emit('slot_updated', { date: '2025-01-15', recipe: null, status: 0, occurrenceId });
+  expect(mockApplyServerUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ occurrenceId }));
+  expect(mockApplySlotUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ occurrenceId }));
+  source.emit('week_updated', {
+    schedule: {
+      weekStartDate: '2025-01-13',
+      days: [{ date: '2025-01-15', recipe: null, status: 0, occurrenceId }],
+    },
+  });
+  expect(mockApplyServerUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ occurrenceId }));
 });

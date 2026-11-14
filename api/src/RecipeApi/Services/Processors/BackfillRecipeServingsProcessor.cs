@@ -22,7 +22,7 @@ public sealed class BackfillRecipeServingsProcessor(RecipeDbContext db, IWorkflo
                 value.ValueKind == JsonValueKind.String && Guid.TryParse(value.GetString(), out var id)) cursor = id;
         }
         var rows = await db.Recipes.IgnoreQueryFilters().AsNoTracking()
-            .Where(r => r.Servings == null && (!cursor.HasValue || r.Id.CompareTo(cursor.Value) > 0))
+            .Where(r => r.CanonicalContent == null && r.Servings == null && (!cursor.HasValue || r.Id.CompareTo(cursor.Value) > 0))
             .OrderBy(r => r.Id).Take(BatchSize).Select(r => new { r.Id, r.RawMetadata }).ToListAsync(ct);
         var updated = 0;
         var unresolved = 0;
@@ -32,7 +32,7 @@ public sealed class BackfillRecipeServingsProcessor(RecipeDbContext db, IWorkflo
             var count = RecipeServings.FromMetadata(row.RawMetadata);
             if (!count.HasValue) { unresolved++; continue; }
             updated += await db.Recipes.IgnoreQueryFilters()
-                .Where(r => r.Id == row.Id && r.Servings == null && r.RawMetadata == row.RawMetadata)
+                .Where(r => r.Id == row.Id && r.CanonicalContent == null && r.Servings == null && r.RawMetadata == row.RawMetadata)
                 .ExecuteUpdateAsync(set => set.SetProperty(r => r.Servings, count).SetProperty(r => r.UpdatedAt, clock.UtcNow), ct);
         }
         Guid? next = rows.Count == BatchSize ? rows[^1].Id : null;

@@ -13,13 +13,21 @@ const mocks = vi.hoisted(() => ({
   saveRecoveryRecipe: vi.fn().mockResolvedValue(undefined),
   sync: vi.fn(),
   readSchedule: vi.fn(),
+  captureSlot: vi.fn(),
   movePost: vi.fn().mockResolvedValue({ data: { moved: true, refreshComplete: true } }),
-  deferPost: vi.fn().mockResolvedValue({ data: { message: 'Moved meal to Monday, May 18.' } }),
+  deferPost: vi.fn().mockResolvedValue({
+    data: {
+      scheduledDate: '2026-05-18',
+      scheduledWeekOffset: 2,
+      message: 'Moved meal to Monday, May 18.',
+    },
+  }),
   addToast: vi.fn(),
   removeDelete: vi.fn().mockResolvedValue(undefined),
   validatePost: vi.fn().mockResolvedValue(undefined),
   loadActiveGoTo: vi.fn().mockResolvedValue(null),
   currentRecipe: null as any,
+  occurrenceId: 'saved-today' as string | null,
   todayStatus: 0 as 0 | 2 | 3,
   nonCooking: null as { kind: string; customLabel: string | null } | null,
   todayString: '2026-05-07',
@@ -88,10 +96,24 @@ vi.mock('@/components/home/TonightPivotCard', () => ({
 
 vi.mock('@/components/home/TonightMenuCard', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./TonightMenuCard')>()),
-  TonightMenuCard: ({ onSkip }: { onSkip: () => void }) => (
-    <button data-testid="skip-btn" onClick={onSkip}>
-      Skip
-    </button>
+  TonightMenuCard: ({
+    onSkip,
+    onCookMode,
+    ingredientContext,
+  }: {
+    onSkip: () => void;
+    onCookMode: () => void;
+    ingredientContext?: unknown;
+  }) => (
+    <>
+      <button data-testid="cook-mode-btn" onClick={onCookMode}>
+        Cook
+      </button>
+      <div data-testid="home-ingredient-context">{JSON.stringify(ingredientContext)}</div>
+      <button data-testid="skip-btn" onClick={onSkip}>
+        Skip
+      </button>
+    </>
   ),
 }));
 
@@ -175,7 +197,9 @@ vi.mock('@/components/planner/QuickFindModal', () => ({
 }));
 
 vi.mock('@/components/planner/CooksMode', () => ({
-  CooksMode: () => null,
+  CooksMode: ({ ingredientContext }: { ingredientContext: unknown }) => (
+    <div data-testid="home-cooking-context">{JSON.stringify(ingredientContext)}</div>
+  ),
 }));
 
 vi.mock('@/components/ui/SolarLoader', () => ({
@@ -201,6 +225,7 @@ vi.mock('@/store/todayStore', () => ({
       calendar: fixtureCalendar(),
       calendarError: mocks.calendarFailure ? 'Calendar unavailable' : null,
       currentRecipe: mocks.currentRecipe,
+      occurrenceId: mocks.occurrenceId,
       status: mocks.todayStatus,
       nonCooking: mocks.nonCooking,
       isLoading: false,
@@ -220,6 +245,7 @@ vi.mock('@/store/todayStore', () => ({
           return fixtureCalendar();
         },
         currentRecipe: mocks.currentRecipe,
+        occurrenceId: mocks.occurrenceId,
         status: mocks.todayStatus,
         nonCooking: mocks.nonCooking,
         applyServerUpdate: mocks.applyServerUpdate,
@@ -292,6 +318,11 @@ vi.mock('@/lib/api/api-client', () => ({
   },
 }));
 
+vi.mock('@/lib/planner/slotAssignment', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/planner/slotAssignment')>()),
+  getPlannerSlot: (...args: unknown[]) => mocks.captureSlot(...args),
+}));
+
 vi.mock('@/lib/api/planner', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/api/planner')>()),
   assignRecipeToDay: vi.fn(),
@@ -320,6 +351,34 @@ const votingSession = (
   coveredSlots: phase === 'converged' ? 3 : 1,
   candidateCount: 3,
   smartDefaults: { preSelectedRecipes: [], openSlots: [] },
+});
+
+beforeEach(() => {
+  mocks.captureSlot
+    .mockReset()
+    .mockImplementation(async (weekOffset, dayIndex, referenceWeekStartDate) => ({
+      weekOffset,
+      dayIndex,
+      referenceWeekStartDate,
+      date: mocks.todayString,
+      recipe: mocks.currentRecipe,
+      status: mocks.todayStatus,
+      removalToken: 'v1.' + 'a'.repeat(43),
+    }));
+  mocks.movePost.mockReset().mockResolvedValue({
+    data: { moved: true, refreshComplete: true, destinationDate: '2026-05-08' },
+  });
+  mocks.deferPost.mockReset().mockResolvedValue({
+    data: {
+      scheduledDate: '2026-05-18',
+      scheduledWeekOffset: 2,
+      message: 'Moved meal to Monday, May 18.',
+    },
+  });
+  mocks.saveRecoveryRecipe.mockReset().mockResolvedValue(undefined);
+  mocks.readSchedule.mockReset().mockImplementation(async () => ({
+    days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
+  }));
 });
 
 describe('HomeCommandCenter', () => {
@@ -830,7 +889,13 @@ describe('HomeCommandCenter', () => {
     await waitFor(() => {
       expect(mocks.deferPost).toHaveBeenCalledWith(
         expect.objectContaining({ recipeId: 'recipe-1' }),
-        { queryParameters: { referenceWeekStartDate: DateOnly.parse('2026-05-04') } }
+        {
+          queryParameters: {
+            referenceWeekStartDate: DateOnly.parse('2026-05-04'),
+            targetWeekOffset: 1,
+          },
+          options: [expect.objectContaining({ maxRetries: 0 })],
+        }
       );
       expect(mocks.movePost).not.toHaveBeenCalled();
       expect(mocks.addToast).toHaveBeenCalledWith('Moved meal to Monday, May 18.');
@@ -1043,7 +1108,9 @@ describe('Home acknowledged replacement recovery', () => {
     mocks.readSchedule.mockReset().mockImplementation(async () => ({
       days: [{ date: '2026-05-07', recipe: { id: 'replacement-recipe' }, status: 0 }],
     }));
-    mocks.deferPost.mockReset().mockResolvedValue({ data: { scheduledDate: '2026-05-11' } });
+    mocks.deferPost.mockReset().mockResolvedValue({
+      data: { scheduledDate: '2026-05-11', scheduledWeekOffset: 1, message: 'Moved' },
+    });
     mocks.removeDelete.mockReset().mockResolvedValue(undefined);
   });
   const open = async (action = 'tomorrow') => {
@@ -1074,6 +1141,84 @@ describe('Home acknowledged replacement recovery', () => {
       );
     }
   );
+  it('does not save after an unconfirmed Next Week destination', async () => {
+    mocks.deferPost.mockResolvedValueOnce({ data: { message: 'No change' } });
+    await open('next-week');
+    expect(mocks.saveRecoveryRecipe).not.toHaveBeenCalled();
+    expect(screen.getByText(/original meal could not be confirmed/i)).toBeInTheDocument();
+  });
+  it('reconciles a lost Drop reply without repeating removal', async () => {
+    mocks.removeDelete.mockRejectedValueOnce(new Error('Reply lost'));
+    mocks.readSchedule.mockResolvedValueOnce({
+      days: [
+        {
+          date: '2026-05-07',
+          recipe: { id: 'original' },
+          status: 0,
+          removalToken: 'v1.' + 'a'.repeat(43),
+        },
+      ],
+    });
+    mocks.readSchedule.mockResolvedValueOnce({
+      days: [{ date: '2026-05-07', recipe: null, status: 0 }],
+    });
+    await open('drop');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('retry-replacement'));
+    });
+    expect(mocks.removeDelete).toHaveBeenCalledTimes(1);
+    expect(mocks.saveRecoveryRecipe).toHaveBeenCalledTimes(1);
+  });
+  it('Drop reads and sends the authoritative original token without transport replay', async () => {
+    mocks.readSchedule.mockResolvedValueOnce({
+      days: [
+        {
+          date: '2026-05-07',
+          recipe: { id: 'original' },
+          status: 0,
+          removalToken: 'v1.' + 'a'.repeat(43),
+        },
+      ],
+    });
+    await open('drop');
+    expect(mocks.removeDelete).toHaveBeenCalledWith({
+      queryParameters: { expectedPlanToken: 'v1.' + 'a'.repeat(43) },
+      options: [expect.objectContaining({ maxRetries: 0 })],
+    });
+  });
+  it('Drop keeps the opening guard when the same recipe becomes Cooked or gains votes', async () => {
+    const opening = 'v1.' + 'a'.repeat(43);
+    const changed = 'v1.' + 'b'.repeat(43);
+    mocks.readSchedule.mockResolvedValue({
+      days: [{ date: '2026-05-07', recipe: { id: 'original' }, status: 2, removalToken: changed }],
+    });
+    mocks.removeDelete.mockImplementationOnce(async (request: any) => {
+      if (request.queryParameters.expectedPlanToken === opening) throw { responseStatusCode: 409 };
+    });
+    await open('drop');
+    expect(mocks.removeDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ queryParameters: { expectedPlanToken: opening } })
+    );
+    expect(mocks.saveRecoveryRecipe).not.toHaveBeenCalled();
+  });
+  it('Drop preserves a concurrent changed original and never saves the replacement', async () => {
+    mocks.removeDelete.mockRejectedValueOnce({ responseStatusCode: 409 });
+    mocks.readSchedule.mockResolvedValueOnce({
+      days: [
+        {
+          date: '2026-05-07',
+          recipe: { id: 'other' },
+          status: 0,
+          removalToken: 'v1.' + 'b'.repeat(43),
+        },
+      ],
+    });
+    await open('drop');
+    expect(mocks.removeDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ queryParameters: { expectedPlanToken: 'v1.' + 'a'.repeat(43) } })
+    );
+    expect(mocks.saveRecoveryRecipe).not.toHaveBeenCalled();
+  });
   it('recognizes a committed replacement after a lost response without another POST', async () => {
     mocks.saveRecoveryRecipe.mockRejectedValueOnce({ responseStatusCode: 504 });
     await open();
@@ -1233,10 +1378,16 @@ it('can leave after a confirmed save and failed refresh without claiming the mea
   expect(mocks.saveRecoveryRecipe).toHaveBeenCalledTimes(1);
 });
 
-it('retains the server destination toast when Pick Something Else defers the original', async () => {
+it('retains the actual server destination in the replacement confirmation receipt', async () => {
   vi.clearAllMocks();
   mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
-  mocks.deferPost.mockResolvedValueOnce({ data: { message: 'Moved meal to Monday, May 18.' } });
+  mocks.deferPost.mockResolvedValueOnce({
+    data: {
+      scheduledDate: '2026-05-18',
+      scheduledWeekOffset: 2,
+      message: 'Moved meal to Monday, May 18.',
+    },
+  });
   mocks.saveRecoveryRecipe.mockResolvedValueOnce(undefined);
   mocks.readSchedule.mockResolvedValue({
     days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
@@ -1248,6 +1399,74 @@ it('retains the server destination toast when Pick Something Else defers the ori
   await act(async () => {
     fireEvent.click(screen.getByTestId('recovery-action-next-week'));
   });
-  expect(mocks.addToast).toHaveBeenCalledWith('Moved meal to Monday, May 18.');
+  expect(JSON.parse(sessionStorage.getItem('wfs.planning-result')!)).toMatchObject({
+    original: { recipeName: 'A', destinationDate: '2026-05-18', spillover: true },
+  });
   expect(mocks.deferPost).toHaveBeenCalledTimes(1);
+});
+
+it('does not delete after the opening snapshot resolves for an unmounted Home recovery', async () => {
+  vi.clearAllMocks();
+  mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
+  let resolve!: (slot: any) => void;
+  mocks.captureSlot.mockReturnValueOnce(
+    new Promise((done) => {
+      resolve = done;
+    })
+  );
+  const view = render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+  fireEvent.click(screen.getByTestId('skip-btn'));
+  fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+  fireEvent.click(screen.getByTestId('quick-find-select'));
+  fireEvent.click(screen.getByTestId('recovery-action-drop'));
+  view.unmount();
+  await act(async () => {
+    resolve({
+      date: mocks.todayString,
+      weekOffset: 0,
+      dayIndex: 3,
+      referenceWeekStartDate: '2026-05-04',
+      recipe: { id: 'original' },
+      status: 0,
+      removalToken: 'v1.' + 'a'.repeat(43),
+    });
+  });
+  expect(mocks.removeDelete).not.toHaveBeenCalled();
+  expect(mocks.saveRecoveryRecipe).not.toHaveBeenCalled();
+});
+
+it.each(['saved-today', null])(
+  'captures deployment date and saved identity=%s when Home enters cooking',
+  (occurrence) => {
+    mocks.currentRecipe = { id: 'home-pasta', name: 'Pasta', image: '' };
+    mocks.todayStatus = 0;
+    mocks.occurrenceId = occurrence;
+    render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+    fireEvent.click(screen.getByTestId('cook-mode-btn'));
+    expect(JSON.parse(screen.getByTestId('home-cooking-context').textContent!)).toEqual({
+      context: 'assigned',
+      supperDate: mocks.todayString,
+      occurrenceId: occurrence ?? '',
+    });
+  }
+);
+
+it('captures the same assigned identity for Home ingredients and Cook', async () => {
+  mocks.currentRecipe = { id: 'recipe-one', name: 'Pasta', ingredients: ['200 g pasta'] };
+  mocks.todayStatus = 0;
+  mocks.nonCooking = null;
+  mocks.occurrenceId = 'occurrence-one';
+  mocks.todayString = '2026-05-07';
+  render(<HomeCommandCenter todaysRecipe={null} />);
+  expect(screen.getByTestId('home-ingredient-context')).toHaveTextContent(
+    JSON.stringify({
+      context: 'assigned',
+      supperDate: '2026-05-07',
+      occurrenceId: 'occurrence-one',
+    })
+  );
+  fireEvent.click(screen.getByTestId('cook-mode-btn'));
+  expect(await screen.findByTestId('home-cooking-context')).toHaveTextContent(
+    screen.getByTestId('home-ingredient-context').textContent!
+  );
 });

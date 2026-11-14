@@ -7,6 +7,20 @@ processes, ports or databases.
 
 ## Preparation and verification
 
+Before overlapping test or service work, coordinate ownership of ports, databases,
+server processes, build outputs and output records, as well as shared CPU/memory
+capacity. Prefer separating mutable state and using distinct task-owned resources
+before serializing independent work. Serialize genuine dependencies or unavoidable
+contention; keep one writer per shared file. A worktree is not runtime isolation.
+Use snapshots or owned resources for focused feedback where supported and report
+what they qualify; they do not narrow the verifier's actual source/runtime identity.
+Stabilize that selected identity for application and harness verification. Avoid
+redundant simultaneous broad gates. Inspect ownership and uncertain outcomes before
+cleanup or retry, and clean up only the
+resources that task owns. Keep each run's invocation-specific evidence and the
+required combined integration verification; parallel results do not automatically
+establish an integrated pass.
+
 Use `task verify:plan -- <paths>` to preview the existing verification selection
 as JSON, including selecting paths/classes, prerequisites and excluded scope.
 With no paths it uses all current Git changes. It runs no checks, computes no
@@ -16,14 +30,19 @@ acceptance. Recompute after edits. Unknown impact retains the conservative union
 For focused red/green feedback, `task test:api -- --filter <expression>` forwards
 arguments to the API test runner; `task test:unit -- <test-file>` forwards arguments
 to Vitest (paths relative to `pwa/`). `task test:e2e -- <spec-file>` already supports
-Playwright selection. A focused run does not replace applicable final verification.
+Playwright selection. Use focused red/green checks and affected seams during
+development, then the applicable union of final checks at the completed acceptance
+boundary. Do not repeat full suites per small increment or restart checks for status.
+Focused feedback does not replace required final, hosted or release gates.
 
 Before editing, inspect Git status and relevant diffs.
 Preserve unrelated changes and review overlapping edits
 manually; Git differences and explicit path selection do not prove edit ownership.
 
-Use `task gate` for development feedback and retain the broad final checks below.
-Its adaptive E2E selection does not replace backend tests or the scope review.
+Prefer those focused targets for development feedback. Use `task gate` only when
+its broad `dev:kill`/`test:kill` cleanup effects are safe and authorized; dedicated
+ports or worktrees cannot make process-name `pkill` safe. Its adaptive E2E selection
+does not replace backend tests or the scope review.
 
 `task verify` runs applicable final repository checks for the selected implementation
 scope; it does not advance tasks or establish task acceptance.
@@ -76,8 +95,7 @@ Finish performs no formatting/generation in the source tree. Agent Python comman
 use `-B` to avoid adding/updating bytecode during verification. Kiota check generates
 and formats only in its temporary output directory. `review` remains a reusable
 application validation target, with no formatter or process-kill step; it does not
-include E2E. Running it again after successful application verification is unnecessary. `gate` is the developer loop
-and still kills processes: inspect its effects and use dedicated resources.
+include E2E. Running it again after successful application verification is unnecessary.
 
 Finish captures input identity before verification and checks it after every check.
 Mutation fails content evidence and leaves remaining checks not-run. Application,
@@ -117,7 +135,8 @@ Executed checks record `duration_seconds` and the following identity check's
 identity time, identity call count, check time and total verification-loop time
 using a monotonic clock. Selection and record serialization are outside that total.
 Check time includes any fingerprinting internal to a child runner; these fields
-measure the outer verifier, not nested phases or model/token usage. Unexecuted
+measure the outer verifier, not nested phases or model/token usage. Use these
+observed timings to identify actual cost before proposing runner changes. Unexecuted
 checks have no duration. Timings are observations, not completion evidence.
 `.task/agent-finish/last-run.json` is an atomically updated convenience copy and can
 belong to another agent. Later edits to the tested inputs invalidate that identity
@@ -130,6 +149,17 @@ identity. Keep it untracked so regeneration also does not invalidate pre-commit
 hooks. Source, configuration and installed dependency changes remain checked.
 
 `agent:test:impact` uses current Git changes by default. Finish passes its selected
+PWA paths through the shared CI capability selector/inventory, including cross-feature
+detail and cooking consumers. CI-named production feedback uses
+`task test:e2e:ci -- <spec> --workers=4 --retries=0`; full mocked qualification uses
+`task check:push:pwa SUITES='tonight planning recipes household'`. These commands
+require an owned runtime with port 3000 free, clear inherited external URLs/selectors
+and record build/source/configuration identity through `scripts/ci/production-browser.cjs`.
+They never stop an unrelated server. Native/local qualification remains distinct
+from required hosted qualification of the same committed candidate. The existing
+manual `task check:push -- --plan --base <ref>` previews committed-range selection.
+
+Finish passes its selected
 paths to the impact runner. Unknown/unmapped application paths fall back to all E2E. Cache identity still covers repository
 source, configuration, installed dependencies/browser bytes, tool executables and
 hashed runtime/environment inputs. Success is stored only under the pre-test identity when
@@ -154,8 +184,13 @@ mocked API boundary.
   On macOS with no configured connection, the runner also uses the Linux SDK image
   pinned by `api/Dockerfile`, so Linux recovery durability checks execute on their
   supported filesystem. Repository source is copied into an ephemeral Linux workspace;
-  host build outputs are excluded. SDK/PostgreSQL containers share an owned private
-  network; the runner removes those resources after success, failure or timeout.
+  host build outputs are excluded. The SDK joins only its owned PostgreSQL
+  container's network namespace and connects over loopback; PostgreSQL remains on
+  the owned private network without a published host port. This avoids the bridge's
+  same-destination TIME_WAIT port ceiling for intentionally unpooled fixtures without
+  changing pooling, kernel settings or test parallelism. Temporary PostgreSQL keeps
+  explicit SCRAM TCP authentication. The runner removes the SDK, database and private
+  network after success, failure or timeout.
   This path requires Docker, without requiring a host .NET installation. Native Linux
   and explicitly configured connections retain host .NET execution; configured
   connections therefore require a supported host for Linux-only recovery coverage.
@@ -197,6 +232,12 @@ identity. Report final check results directly when no durable edit is needed.
 
 ## Scope review
 
+For an optional source self-check before committing, use the
+[review prompt quick start](../prompts/README.md): defect review first, then
+implementation quality review when useful. Both support uncommitted task changes
+and run read-only in the current agent. They complement this scope review and do
+not replace required verification or authorize fixes, staging or commits.
+
 After any applicable preparation and before `task verify`, inspect `git status --short`, staged
 and unstaged diffs, new/deleted files, and any changes within already dirty files.
 Review the full explicit path set before passing it to preparation or finish.
@@ -236,8 +277,9 @@ Update [HANDOVER](../../HANDOVER.md) at a meaningful handoff or interruption, on
 in the writer's own task section. Preserve other tasks. Use these compact fields:
 Task/spec; Worktree/branch; Authorized scope and source; Current checkpoint;
 Verification evidence and content identity; Blocker or next action.
-Check stale evidence against current files when resuming. Completed detail belongs
-with its selected task; HANDOVER supplies context, not authority. [JOURNAL](../../JOURNAL.md) is
+Check stale evidence against current files when resuming. Keep the active checkpoint
+concise, linking task-owned history/evidence instead of copying cumulative transcripts;
+HANDOVER supplies context, not authority. [JOURNAL](../../JOURNAL.md) is
 frozen historical evidence after its salvage pass; do not append session results.
 There is no mandatory multi-file turn-end bookkeeping or automatic cleanup skill.
 Useful repeatable tooling may be proposed within scope; temporary scripts do not

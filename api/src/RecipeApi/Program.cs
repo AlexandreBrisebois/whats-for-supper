@@ -31,7 +31,8 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    var builder = WebApplication.CreateBuilder(args);
+    var migrationOperator = args.Length > 0 && args[0] == "--canonical-migration";
+    var builder = WebApplication.CreateBuilder(migrationOperator ? [] : args);
     // ── Serilog ──────────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, services, config) =>
         config.ReadFrom.Configuration(ctx.Configuration)
@@ -75,17 +76,22 @@ try
     builder.Services.AddSingleton<RecipesRootResolver>();
     builder.Services.AddScoped<RecoverySnapshotService>();
     builder.Services.AddScoped<RecoveryBoundary>();
+    builder.Services.AddScoped<FoodVocabularyStore>();
+    builder.Services.AddScoped<GroceryPresentationService>();
+    builder.Services.AddScoped<HouseholdFoodOverrideStore>();
     builder.Services.AddHostedService<RecoveryReconciler>();
     builder.Services.AddSingleton<WorkflowRootResolver>();
     builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
     builder.Services.AddSingleton<IRecipeStore, LocalRecipeStore>();
     builder.Services.AddSingleton<IPromptRepository, EmbeddedPromptRepository>();
     builder.Services.AddScoped<RecipeRepository>();
+    builder.Services.AddScoped<RecipeFilePublicationStore>();
     builder.Services.AddScoped<WorkflowRepository>();
     builder.Services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();
     builder.Services.AddScoped<ManagementService>();
     builder.Services.AddScoped<RecipeImportBulkService>();
     builder.Services.AddScoped<RecipeService>();
+    builder.Services.AddScoped<CanonicalRecipeContentStore>();
     builder.Services.AddScoped<PdfCaptureService>();
     builder.Services.AddSingleton<IPdfPageRenderer, PdfProcessRenderer>();
     builder.Services.AddScoped<IWorkflowProcessor, PdfConversionProcessor>();
@@ -119,6 +125,11 @@ try
     builder.Services.AddScoped<ScheduleService>();
     builder.Services.AddSingleton<GroceryCheckCoordinator>();
     builder.Services.AddScoped<GroceryRecomputeService>();
+    builder.Services.AddScoped<SupperServingsService>();
+    builder.Services.AddScoped<IngredientProjectionService>();
+    builder.Services.AddScoped<SupperProjectionInvalidation>();
+    builder.Services.AddScoped<ISupperProjectionPublisher, SupperProjectionPublisher>();
+    builder.Services.AddScoped<RecipeApi.Workflow.IWorkflowProcessor, RecipeApi.Services.Processors.RefreshSupperGroceriesProcessor>();
     builder.Services.AddScoped<IngredientCategoryService>();
     builder.Services.AddScoped<SettingsService>();
     builder.Services.AddSingleton<FeatureFlagRegistry>();
@@ -164,36 +175,33 @@ try
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new WebAcquisitionAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipeRepository>(),
+        sp.GetRequiredService<RecipeFilePublicationStore>(),
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<HttpClient>(),
         sp.GetRequiredService<ILogger<WebAcquisitionAgent>>()));
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipeRepository>(),
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
-        sp.GetRequiredService<RecipeDbContext>(),
+        sp.GetRequiredService<RecipeFilePublicationStore>(),
         "ExtractRecipe"));
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipeRepository>(),
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
-        sp.GetRequiredService<RecipeDbContext>(),
+        sp.GetRequiredService<RecipeFilePublicationStore>(),
         "GenerateDescription"));
 
     builder.Services.AddScoped<IWorkflowProcessor>(sp => new RecipeAgent(
         sp.GetRequiredService<IChatClient>(),
-        sp.GetRequiredService<RecipeRepository>(),
         sp.GetRequiredService<IPromptRepository>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<RecipeAgent>>(),
-        sp.GetRequiredService<RecipeDbContext>(),
+        sp.GetRequiredService<RecipeFilePublicationStore>(),
         "SynthesizeRecipe"));
 
     builder.Services.AddScoped<IWorkflowProcessor, RecipeHeroAgent>();
@@ -379,6 +387,8 @@ try
 
     // ── Build ─────────────────────────────────────────────────────────────────
     var app = builder.Build();
+    if (migrationOperator)
+        return await CanonicalRecipeMigrationOperator.RunAsync(app.Services, args);
     _ = app.Services.GetRequiredService<DeploymentCalendar>();
     _ = app.Services.GetRequiredService<RecipeRotationOptions>();
     _ = app.Services.GetRequiredService<HistoricalInterestOptions>();
@@ -418,6 +428,13 @@ try
     app.UseMiddleware<RecoveryBoundaryMiddleware>();
     app.MapControllers();
 
+    // Reconcile derivation changes before HTTP traffic and hosted workers can observe stale "current" groceries.
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        var services = scope.ServiceProvider;
+        await services.GetRequiredService<SupperProjectionInvalidation>().ReconcileActivationAsync(
+            services.GetRequiredService<RecoveryBoundary>(), services.GetRequiredService<RecoverySnapshotService>(), CancellationToken.None);
+    }
     await app.RunAsync();
 }
 catch (Exception ex) when (ex is not OperationCanceledException && ex.GetType().Name != "StopTheHostException")

@@ -1,4 +1,6 @@
-using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
@@ -10,159 +12,94 @@ using Xunit;
 
 namespace RecipeApi.Tests.Services.Processors;
 
-public class SyncRecipeProcessorTests : IDisposable
+public class SyncRecipeProcessorTests
 {
-    private readonly RecipeDbContext _db;
-    private readonly Mock<ILogger<SyncRecipeProcessor>> _loggerMock;
-    private readonly InMemoryStorageProvider _storage;
-    private readonly RecipeRepository _recipeRepository;
-    private readonly SyncRecipeProcessor _processor;
-    private readonly Guid _recipeId = Guid.NewGuid();
-
-    public SyncRecipeProcessorTests()
+    [Fact]
+    public async Task ExplicitCurrentReplay_OnlyConfirmsIdenticalFactsWithoutPublishingOrUpdating()
     {
-        _db = TestDbContextFactory.Create();
-        _loggerMock = new Mock<ILogger<SyncRecipeProcessor>>();
-        _storage = new InMemoryStorageProvider();
-        _recipeRepository = new RecipeRepository(_storage);
-        
-        var aisleMapper = new AisleMapper();
-        var groceryRecomputeService = new GroceryRecomputeService(_db, aisleMapper, new Mock<ILogger<GroceryRecomputeService>>().Object, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestGroceryCoordinator.Create(_db));
-        _processor = new SyncRecipeProcessor(new RecipeApi.Services.SystemClock(), _db, _recipeRepository, groceryRecomputeService, _loggerMock.Object);
-    }
+        using var db = TestDbContextFactory.Create();
+        var export = CurrentRecipeExportTests.Example();
+        var recipe = new Recipe { Id = export.RecipeId, Name = "Current human name", CanonicalContent = JsonSerializer.Serialize(export.Content, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            RawMetadata = export.RawMetadata, Servings = export.Content.Servings, Ingredients = "[]" };
+        db.Recipes.Add(recipe);
+        await db.SaveChangesAsync();
+        var repository = new RecipeRepository(new InMemoryStorageProvider());
+        await repository.SaveRecipeJsonAsync(recipe.Id, RecipeExportContent.WriteCurrent(export), default);
+        await repository.SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = "Stale file name" }, default);
+        var jsonBefore = await repository.GetRecipeJsonAsync(recipe.Id, default);
+        var rowBefore = JsonSerializer.Serialize(recipe);
+        var publisher = new Mock<ISupperProjectionPublisher>();
+        var invalidation = new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var processor = new SyncRecipeProcessor(new SystemClock(), db, repository, invalidation,
+            publisher.Object, NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, new SystemClock()));
+        var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id, mode = "current-format-replay" }) };
+        for (var index = 0; index < 2; index++) Assert.NotNull(await processor.ExecuteAsync(task, default));
+        Assert.Equal(rowBefore, JsonSerializer.Serialize(recipe));
+        Assert.Equal(jsonBefore, await repository.GetRecipeJsonAsync(recipe.Id, default));
+        Assert.Equal("Stale file name", (await repository.GetInfoAsync(recipe.Id, default)).Name);
+        Assert.Empty(db.RecipeFilePublications);
+        Assert.Empty(db.CanonicalRecipeOperations);
+        Assert.Empty(db.SupperServings);
+        publisher.VerifyNoOtherCalls();
 
-    public void Dispose()
-    {
-        _db.Dispose();
+        var changed = export with { Content = export.Content with { ContentRevision = "another-revision", Servings = 8 } };
+        await repository.SaveRecipeJsonAsync(recipe.Id, RecipeExportContent.WriteCurrent(changed), default);
+        await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, default));
+        Assert.Equal(rowBefore, JsonSerializer.Serialize(recipe));
+        await repository.SaveRecipeJsonAsync(recipe.Id, RecipeExportContent.WriteCurrent(export with { Content = export.Content with { Servings = 8 } }), default);
+        await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, default));
+        Assert.Equal(rowBefore, JsonSerializer.Serialize(recipe));
     }
 
     [Theory]
-    [InlineData("4", 4)]
-    [InlineData("3", 3)]
-    [InlineData("null", null)]
-    [InlineData("absent", 2)]
-    public async Task ExportedServingBasis_IsAuthoritativeIncludingExplicitNull(string count, int? expected)
+    [InlineData(false, "{\"recipeIngredient\":[\"old salt\"]}")]
+    [InlineData(true, "{\"recipeIngredient\":[\"old salt\"]}")]
+    [InlineData(false, "{\"backupContentVersion\":1,\"rawMetadata\":null,\"ingredients\":null,\"servings\":null}")]
+    [InlineData(true, "{\"backupContentVersion\":1,\"rawMetadata\":null,\"ingredients\":null,\"servings\":4}")]
+    public async Task UnlinkedSync_RefusesUncapturedDiskImportWithoutAnyMutation(bool hasInstance, string diskContent)
     {
-        var recipe = new Recipe { Id = _recipeId, Servings = 7 }; _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = _recipeId }, JsonDefaults.CamelCase));
-        var fields = count == "absent" ? "" : $",\"servings\":{count}";
-        var content = "{\"backupContentVersion\":1,\"rawMetadata\":\"{\\\"recipeYield\\\":\\\"2 portions\\\"}\",\"ingredients\":\"[\\\"340 g pasta\\\"]\"" + fields + "}";
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", content);
-        for (var attempt = 0; attempt < 2; attempt++) {
-            await _processor.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\":\"{_recipeId}\"}}" }, CancellationToken.None);
-            Assert.Equal(expected, recipe.Servings); Assert.Contains("2 portions", recipe.RawMetadata); Assert.Contains("340 g pasta", recipe.Ingredients);
-        }
-    }
+        using var db = TestDbContextFactory.Create();
+        var id = Guid.NewGuid();
+        var recipe = new Recipe { Id = id, Name = "Human name", Description = "", Servings = 7,
+            Ingredients = "[\"retained\"]", RawMetadata = "{\"recipeYield\":\"2 portions\"}" };
+        db.Recipes.Add(recipe);
+        var task = new WorkflowTask { InstanceId = hasInstance ? Guid.NewGuid() : Guid.Empty,
+            Payload = JsonSerializer.Serialize(new { recipeId = id }) };
+        if (hasInstance) db.WorkflowInstances.Add(new WorkflowInstance { Id = task.InstanceId, WorkflowId = "recipe-import" });
+        await db.SaveChangesAsync();
+        var storage = new InMemoryStorageProvider();
+        var repository = new RecipeRepository(storage);
+        await repository.SaveInfoAsync(new RecipeInfo { Id = id, Name = "Old file", ImageCount = 1 }, default);
+        await repository.SaveRecipeJsonAsync(id, diskContent, default);
+        var before = JsonSerializer.Serialize(recipe);
+        var invalidation = new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var publisher = new Mock<ISupperProjectionPublisher>();
+        var processor = new SyncRecipeProcessor(new SystemClock(), db, repository, invalidation,
+            publisher.Object, NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, (repository).StorageProvider, new SystemClock()));
 
-    [Theory]
-    [InlineData("0")]
-    [InlineData("-1")]
-    [InlineData("1.5")]
-    [InlineData("2147483648")]
-    [InlineData("\"4\"")]
-    [InlineData("true")]
-    [InlineData("{}")]
-    [InlineData("[]")]
-    public async Task MalformedExportedServings_FailsWithoutSaving(string count)
-    {
-        var recipe = new Recipe { Id = _recipeId, Servings = 7, Ingredients = "[\"retained\"]" }; _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = _recipeId }, JsonDefaults.CamelCase));
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", $$"""{"backupContentVersion":1,"rawMetadata":null,"ingredients":null,"servings":{{count}}}""");
-        await Assert.ThrowsAsync<InvalidDataException>(() => _processor.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\":\"{_recipeId}\"}}" }, CancellationToken.None));
-        _db.ChangeTracker.Clear(); var saved = await _db.Recipes.FindAsync(_recipeId); Assert.Equal(7, saved!.Servings); Assert.Contains("retained", saved.Ingredients);
-    }
-
-    [Fact]
-    public async Task ExportEnvelope_PreservesOuterNameAndTimeFallbackWhenInfoHasNoName()
-    {
-        var recipe = new Recipe { Id = _recipeId, Name = "Previous", TotalTime = "PT10M" };
-        _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = _recipeId }, JsonDefaults.CamelCase));
-        var raw = "{\"name\":\"Original extraction\",\"totalTime\":\"PT60M\",\"recipeYield\":\"4 portions\"}";
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", System.Text.Json.JsonSerializer.Serialize(new { backupContentVersion = 1, name = "Saved manual name", totalTime = "PT30M", rawMetadata = raw, ingredients = "[\"340 g pasta\"]", servings = (int?)4 }));
-        await _processor.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\":\"{_recipeId}\"}}" }, CancellationToken.None);
-        Assert.Equal("Saved manual name", recipe.Name); Assert.Equal("PT30M", recipe.TotalTime);
-        Assert.Equal(4, recipe.Servings); Assert.Equal(raw, recipe.RawMetadata);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, default));
+        Assert.Contains("committed producer publication", error.Message);
+        db.ChangeTracker.Clear();
+        Assert.Equal(before, JsonSerializer.Serialize(await db.Recipes.SingleAsync(x => x.Id == id)));
+        Assert.Equal(diskContent, await repository.GetRecipeJsonAsync(id, default));
+        Assert.Equal("Old file", (await repository.GetInfoAsync(id, default)).Name);
+        Assert.Empty(db.RecipeFilePublications);
+        Assert.Empty(db.CanonicalRecipeOperations);
+        Assert.Empty(db.SupperServings);
+        publisher.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public async Task ExecuteAsync_MissingRecipeInfo_ThrowsFileNotFoundException()
+    public async Task UnlinkedSync_DoesNotReadMissingFilesOrCreateMissingRecipe()
     {
-        // Arrange
-        var task = new WorkflowTask
-        {
-            Payload = $"{{\"recipeId\": \"{_recipeId}\"}}"
-        };
-        
-        // recipe.info is missing in _storage
-
-        // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(() => _processor.ExecuteAsync(task, CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_InvalidImageCount_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var task = new WorkflowTask
-        {
-            Payload = $"{{\"recipeId\": \"{_recipeId}\"}}"
-        };
-        
-        var info = new RecipeInfo { Id = _recipeId, ImageCount = -1 };
-        var infoJson = System.Text.Json.JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", infoJson);
-
-        // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => _processor.ExecuteAsync(task, CancellationToken.None));
-        Assert.Contains("Invalid ImageCount", ex.Message);
-    }
-
-    [Theory]
-    [InlineData("null")]
-    [InlineData("2")]
-    [InlineData("\"2 or 4 portions\"")]
-    public async Task ReplacementYield_ClearsOldCountAndKeepsReplacementQuantities(string yield)
-    {
-        var recipe = new Recipe { Id = _recipeId, Servings = 4 };
-        _db.Recipes.Add(recipe); await _db.SaveChangesAsync();
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = _recipeId }, JsonDefaults.CamelCase));
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", $$"""{"recipeYield":{{yield}},"recipeIngredient":["225 g Brussels sprouts"]}""");
-        for (var attempt = 0; attempt < 2; attempt++) {
-            await _processor.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\":\"{_recipeId}\"}}" }, CancellationToken.None);
-            Assert.Null(recipe.Servings);
-            Assert.Contains("225 g Brussels sprouts", recipe.Ingredients);
-        }
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_ValidData_SyncsToDb()
-    {
-        // Arrange
-        var task = new WorkflowTask
-        {
-            Payload = $"{{\"recipeId\": \"{_recipeId}\"}}"
-        };
-        
-        var info = new RecipeInfo { Id = _recipeId, ImageCount = 1, Name = "From Info", Description = "Desc from info" };
-        var infoJson = System.Text.Json.JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", infoJson);
-        
-        var recipeJson = new { name = "From Json", recipeIngredient = new[] { "Ing 1" }, totalTime = "PT30M" };
-        var recipeJsonContent = System.Text.Json.JsonSerializer.Serialize(recipeJson);
-        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.json", recipeJsonContent);
-
-        _db.Recipes.Add(new Recipe { Id = _recipeId, Name = "Original Name" });
-        await _db.SaveChangesAsync();
-
-        // Act
-        await _processor.ExecuteAsync(task, CancellationToken.None);
-
-        // Assert
-        var updated = await _db.Recipes.FindAsync(_recipeId);
-        Assert.NotNull(updated);
-        Assert.Equal("From Info", updated.Name); // Info takes precedence
-        Assert.Equal("Desc from info", updated.Description);
-        Assert.Contains("Ing 1", updated.Ingredients);
+        using var db = TestDbContextFactory.Create();
+        var invalidation = new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var repository = new RecipeRepository(new InMemoryStorageProvider());
+        var processor = new SyncRecipeProcessor(new SystemClock(), db, repository,
+            invalidation, Mock.Of<ISupperProjectionPublisher>(), NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, repository.StorageProvider, new SystemClock()));
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(new WorkflowTask
+            { Payload = JsonSerializer.Serialize(new { recipeId = Guid.NewGuid() }) }, default));
+        Assert.Contains("committed producer publication", error.Message);
+        Assert.Empty(db.Recipes);
     }
 }

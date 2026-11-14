@@ -262,7 +262,7 @@ The planner SHALL label offset zero This week, offset one Next week and other of
 
 ### Requirement: Render day content and planned count from displayed state
 
-The planner SHALL render displayed days in their supplied order. Status-three days SHALL use non-cooking presentation before recipe presentation. Other days with recipe IDs SHALL display recipe names; ordinary days without them SHALL offer Plan supper. The planner SHALL NOT display a weekly recipe-count badge or a replacement aggregate progress indicator.
+In recipe view the planner SHALL render displayed days in their supplied order. Status-three days SHALL use non-cooking presentation before recipe presentation. Other days with recipe IDs SHALL display recipe names; ordinary days without them SHALL offer Plan supper. The planner SHALL NOT display a weekly recipe-count badge or a replacement aggregate progress indicator. Portions mode SHALL use the same ordered dates for portion controls without altering saved recipes or suggestion state.
 
 #### Scenario: Empty persisted week
 - **WHEN** a successful read returns seven ordinary empty dates and no suggestions apply
@@ -492,3 +492,125 @@ Planner's existing recipe-row change action SHALL use the same opposing horizont
 #### Scenario: Other arrows retain their meaning
 - **WHEN** Planner displays week navigation or Save for Next Week options
 - **THEN** those actions retain their existing icons and behavior
+### Requirement: Switch Planner rows into At the table inline
+
+Planner SHALL expose Portions as a quiet rounded plate/cutlery-and-label control aligned with Ask the Family's visual language, below week dates and above voting. The adjacent Recipes heading SHALL stay absent; bottom Recipes navigation remains. Its inline ordered-date editor SHALL retain photo, joined minus/value/plus and direct entry without long recipe names. Week and Grocery navigation and visible voting actions SHALL remain available under existing guards.
+
+#### Scenario: Enter portions mode on a phone
+- **WHEN** Portions is activated for the loaded week
+- **THEN** the same ordered dates show effective counts and permitted editing while saved recipes remain unchanged
+- **AND** the entry is quieter than Ask the Family without looking disabled or hiding its label
+
+#### Scenario: Long recipe name or missing photo
+- **WHEN** a recipe has a long name or unavailable hero
+- **THEN** the editor omits its name and uses its photo or neutral fallback without shrinking controls
+
+#### Scenario: Empty and non-cooking nights
+- **WHEN** a date is empty or non-cooking
+- **THEN** an empty date permits portions editing with a neutral fallback; a non-cooking date keeps its recognizable icon/description without an active stepper
+- **AND** dormant saved portions remain available for a future recipe
+
+#### Scenario: Large text and tablet
+- **WHEN** English/French labels, 320 CSS px or 200% text require reflow
+- **THEN** dates, count controls, week navigation and voting remain readable with visible focus and 48 CSS px targets
+
+### Requirement: Preserve visible Swipe Match Cook voting controls
+
+Ask the Family, Nudge family and Close voting SHALL retain their existing state-dependent visible actions in their own row in ordinary Planner and Portions. Portions SHALL not consolidate them into overflow or alter votes. Starting a voting action SHALL preserve portions drafts under existing navigation/recovery boundaries.
+
+#### Scenario: Voting is open while portions is edited
+- **WHEN** VotingOpen is displayed and Portions opens
+- **THEN** Nudge family and Close voting remain visible and operable under ordinary rules
+- **AND** returning to normal recipe rows preserves voting state
+
+#### Scenario: Voting is available but not open
+- **WHEN** Ask the Family would ordinarily be available
+- **THEN** it remains a visible action rather than being replaced by the count editor or a menu
+
+### Requirement: Finish or cancel a week portions draft explicitly
+
+Portions SHALL provide a Recipes button with the planner icon to return to recipe cards, draft-only minus/plus and direct integer entry. Usual configuration SHALL live in Settings, not in this editor. A compact usual-number button SHALL clear a date override in the draft. Recipes saves one changed batch before returning without waiting for groceries; with no changes it returns directly. Failed, invalid, concurrent or uncertain saves SHALL preserve correctable drafts and existing reconciliation.
+
+#### Scenario: Include leftovers
+- **WHEN** Portions opens
+- **THEN** concise How many portions? and Include extra for leftovers guidance describe one total per date without attendance or separate leftovers controls
+
+#### Scenario: Edit two dates and finish
+- **WHEN** Wednesday is entered as five and Saturday as seven, then Recipes is activated
+- **THEN** one batch persists those integers and confirmed values appear on return
+- **AND** ordinary cards gain no permanent stepper or repeated default-setting field
+
+#### Scenario: Leave with a draft
+- **WHEN** a person changes week, opens Groceries or leaves Planner with unsaved counts
+- **THEN** Save and continue is primary, Keep editing secondary and Discard changes quiet text
+- **AND** save continues only after persistence; failure retains draft/destination, Keep editing stays and Discard restores saved state before leaving
+
+#### Scenario: Past or completed supper
+- **WHEN** a past date, future Cooked supper, non-cooking plan or explicitly prepared supper appears
+- **THEN** its stored/frozen portions remain read-only and historical plans remain unchanged
+
+#### Scenario: Blank usual portions
+- **WHEN** the legacy saved usual is blank or null and a date has no override
+- **THEN** the migrated date inherits a positive automatic family count when available, rather than preserving the former blank-as-original rule for editable future dates
+- **AND** an unavailable family count retains original quantities honestly; explicit overrides and historical/prepared original-quantity snapshots remain unchanged
+
+#### Scenario: Invalid entry or concurrent saved change
+- **WHEN** a count is zero, negative, fractional, nonnumeric or out of range, or another member changes the baseline
+- **THEN** validation/conflict review retains the draft without a partial batch, hidden overwrite or premature navigation
+
+#### Scenario: Automatic usual portions
+- **WHEN** no explicit usual exists and family size is four
+- **THEN** editable inherited dates use four and their compact reset target is four, without exposing the usual-setting field in Planner
+- **AND** explicit date overrides remain effective until deliberately reset
+
+#### Scenario: Correct today's Cooked count
+- **WHEN** today has a Cooked supper without an explicit preparation receipt
+- **THEN** the editor shows its actual saved count and enables deliberate dated correction under the supper-servings current-day rule
+- **AND** it remains marked Cooked; Recipes saves before returning; the three dirty-exit choices for other navigation and correction conflict/recovery keep their roles
+
+#### Scenario: Correct a frozen inherited number without an override
+- **WHEN** today's eligible Cooked supper has saved inherited portions five, no override and current usual four
+- **THEN** opening shows five without changing it, returning without edits preserves five, and entering four creates a real correction draft
+- **AND** Recipes persists four rather than mistaking equality with current usual for an unchanged saved count
+
+### Requirement: Recognise a supper already prepared ahead
+
+A dated supper explicitly prepared before its supper date SHALL remain on that date and show Already prepared with its actual preparation date. Planner, Home and dated detail SHALL not present it as waiting to be cooked again. Instructions SHALL remain readable. Legacy Cooked state alone SHALL not invent an actual preparation date.
+
+#### Scenario: Tuesday cooking for Friday
+- **WHEN** Friday lasagna is prepared on Tuesday and Friday is viewed later
+- **THEN** Friday retains lasagna, shows Already prepared and Prepared Tuesday, and offers reading without another cooking-completion prompt
+
+### Requirement: Label joined portions controls by date
+
+Each joined minus/value/plus group SHALL provide accessible date-specific names, a labeled directly editable numeric field and associated errors. Photo presentation SHALL not require visible recipe names or duplicate announcements. Compact styling SHALL preserve normal keyboard input, focus and target size rather than shrinking interaction areas.
+
+#### Scenario: Enter an odd count with a screen reader
+- **WHEN** a person focuses Friday's numeric field and enters seven
+- **THEN** its name identifies Friday and portions, seven remains editable, and minus/plus have distinct date-specific names
+
+### Requirement: Reset date portions with a compact usual-number action
+
+When an editable date has an override or changed draft and usual is known, its reset control SHALL show the usual number alone with a date-specific accessible action label. Activation SHALL clear the override draft and show inherited usual immediately, awaiting Recipes. Read-only dates SHALL remain protected. Unknown usual SHALL not create a blank or misleading numeric button; a quiet unavailable explanation SHALL retain date editing where allowed.
+
+#### Scenario: Reset five to usual four
+- **WHEN** Sunday's override is five and usual is four, then its visible 4 button is activated
+- **THEN** the field changes to four in the draft, its accessible name describes using usual four portions for Sunday, and Recipes persists removal of the override before returning
+
+#### Scenario: Same number but different inheritance
+- **WHEN** an uncompleted date has override four equal to usual four and the 4 reset button is activated
+- **THEN** reset still removes the explicit override on Recipes so a later automatic/default change can affect that date
+- **AND** accessible status explains the draft's inherited state without requiring a numeric change
+
+#### Scenario: Prepared and unavailable states
+- **WHEN** the date is frozen or the usual count is unknown
+- **THEN** no enabled numeric reset suggests it can change that state, and known prepared/date values are not overwritten
+
+#### Scenario: Default changes during editing
+- **WHEN** usual changes elsewhere while an override-reset draft is open
+- **THEN** existing baseline conflict/review handles it without silently saving a stale visible usual number
+
+#### Scenario: Reset a corrected Cooked count without following future usual changes
+- **WHEN** today's Cooked supper has no preparation receipt and its eligible correction draft uses the compact usual reset
+- **THEN** it previews the current usual number, with Recipes capturing that number for the completed date
+- **AND** reset also works when an earlier draft exists over a frozen inherited value without an override; later usual/member changes do not rescale the saved Cooked date

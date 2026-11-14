@@ -1,0 +1,70 @@
+{
+  "pwa/e2e/grocery-row-state.ts": {
+    "before": "18254f40fa8a9480df166f616cfc634cf1d6de4d8da2a9e120adbe985084bc63",
+    "after": "75e687483989d0c66ee477df800fdcc762add5f3b4bef96a49551c6c8a33aae1"
+  },
+  "pwa/e2e/mock-api.ts": {
+    "before": "b311d140d81684e5218c3d333fec564a69031fd44df2049cd734531335e1ec6c",
+    "after": "62ee3d3674ec0c884bf8d5b7d61ec02bb3b475373205202e571fa2d027adf982"
+  },
+  "pwa/e2e/online-recovery.spec.ts": {
+    "before": "2f2483fb46bbd2fa9e8bd92c5a3381d99614db23891cb774e44b5a72bd08f1c3",
+    "after": "93f0cc3f0569d4ba0be3f17a9769e5a621582a475f1230354cdcff994ab0ac0f"
+  },
+  "pwa/src/components/planner/GroceryList.test.tsx": {
+    "before": "cad34689b4aca187a7eb492f33e4876139bcc7b585fce4d3105b51b18acadab8",
+    "after": "b6839f8cf0dcb511303e7334aaad9a6516a155a7693e9a182aea04a9b14a7d06"
+  },
+  "pwa/src/components/planner/GroceryList.tsx": {
+    "before": "97f745b4168b598ad49ae29a2aecbbf067ba7eec8d1bff37a0a7e5a219091382",
+    "after": "8c26d316832d7039e8055355db810c279ebf09d469a0095289e9a468599d7d50"
+  },
+  "pwa/src/lib/api/generated/api/management/recovery/restore/index.ts": {
+    "before": "0db6bb97a234a64bf25577dfb77621d3bc15e5048fa97ac9c3b7c4b15a359c80",
+    "after": "f5e187cc2ae9c1aa545ef8339870627a12726adf67e8c4b82b31834d6266198a"
+  },
+  "pwa/src/lib/api/generated/api/management/recovery/restore/item/index.ts": {
+    "before": "db134ebad19ac07dd47edd90f1fb468fd5e2171a606e08b532e8ec574e54bdf4",
+    "after": "784c1a90f331de413d6d84c6d599f7415f7ea2a74991b56895476cdc0b214019"
+  },
+  "pwa/src/lib/api/generated/api/management/recovery/restore/item/preflight/index.ts": {
+    "before": null,
+    "after": "3e83a08858fa1c37288148bdc45bddd4e571a57a0f7a06905181734c10c30555"
+  },
+  "pwa/src/lib/api/generated/kiota-lock.json": {
+    "before": "457b421a3a76105c0a242b860d860a7303cc763c7c9e637d5f9694b644597088",
+    "after": "3c3677d43f5028a4aa777f247e608ca1d4fdbb936312785b170ba6c6389b9fac"
+  },
+  "pwa/src/lib/api/generated/models/index.ts": {
+    "before": "04bc2245f0b8e9e2982fd31c4a6077501812f0c72210bd010cf9aa8d18f08708",
+    "after": "7010c2840ff329bb48df3e5cf62ad6c2dfbaaee8448ec3b2cbc84ab5c6b7c67e"
+  },
+  "pwa/src/lib/api/recovery-wire.test.ts": {
+    "before": null,
+    "after": "cb2712abb705628dfd27fe82f12ed09c1a3dc963fce3b37872b802b960f702cc"
+  },
+  "pwa/src/lib/grocery/rowState.ts": {
+    "before": "39c2b0f2c7f16066d62a80d3795f7eb22431ff51f94411fb5445cf1223eed827",
+    "after": "8342739ca85406245d2de17a399c12e30cc8f24270cc03461c9a13c3e2ef2c39"
+  },
+  "pwa/src/store/groceryPresentation.test.ts": {
+    "before": "68ed914db4240d35d41b1a6d83f2f9e2b0555f33f31e180f825f24ac09367308",
+    "after": "007d4ad0c0718152a883ed8fb91f4e21d082280643e4d3b958d031c256c5532d"
+  },
+  "pwa/src/store/weekStore.ts": {
+    "before": "631deee1a8b4aa1d07cd1b0dd687d3f9b9b570701e03ea75ccd222c2195d09a9",
+    "after": "6499cd77f5fb19baee01ba075339da3ef6736788cbdefad079581951c461584a"
+  },
+  "pwa/src/testing/grocery-row-state.test.ts": {
+    "before": "e7feae67701acf1b6741c187e4d3f6e77ed32d0ae72b98ba68f9f147daa61cb6",
+    "after": "7d74d023d2fc91eeff88498a6a20aa5437971b541c9cd01ec636e281cb874ee4"
+  },
+  "pwa/src/testing/mock-api.test.ts": {
+    "before": "324cb380083bcd37652c5ae635a51b90388ae5164754579136d5c58c312eb27d",
+    "after": "d26b7c204f1cf50704438b9d27a7b8731eda71be5f4dd8a14aa80e91a8d9ce13"
+  },
+  "specs/openapi.yaml": {
+    "before": "9b82e1d26da461d17352567c5cb838d03e8ac8937b259928d970868ed95721c5",
+    "after": "992d6d5e88c44f0c41a5493cfc0200d024878136c46aa77bd4b5676861f3d588"
+  }
+}

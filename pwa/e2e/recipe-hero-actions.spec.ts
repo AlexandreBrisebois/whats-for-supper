@@ -88,61 +88,66 @@ test.describe('Recipe Hero Actions', () => {
     { width: 390, height: 844 },
     { width: 820, height: 1180 },
   ]) {
-    test(`detail action section owns its 8px inset at ${viewport.width}x${viewport.height}`, async ({
+    test(`final reading action remains reachable above planning at ${viewport.width}x${viewport.height}`, async ({
       page,
     }, testInfo) => {
       await page.setViewportSize(viewport);
       await openRecipeDetail(page);
       const finalAction = page.getByTestId('action-toggle-discovery');
       await finalAction.scrollIntoViewIfNeeded();
-      const gap = await finalAction.evaluate((button) => {
-        const scroller = button.closest('.overflow-y-auto') as HTMLElement;
-        scroller.scrollTop = scroller.scrollHeight;
-        return {
-          total: scroller.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom,
-          scrollerPadding: parseFloat(getComputedStyle(scroller).paddingBottom),
-          actionPadding: parseFloat(getComputedStyle(button.parentElement!).paddingBottom),
-        };
-      });
-      expect(gap.total).toBeGreaterThanOrEqual(31);
-      expect(gap.total).toBeLessThanOrEqual(34);
-      expect(gap.scrollerPadding).toBe(24);
-      expect(gap.actionPadding).toBe(8);
-      await expect(finalAction).toBeVisible();
+      await finalAction.focus();
+      await expect(finalAction).toBeInViewport({ ratio: 1 });
+      await expect(finalAction).toBeFocused();
+      const reading = page.getByTestId('recipe-detail-reading');
+      const planning = page.getByTestId('recipe-planning-actions');
+      const readingBounds = await reading.boundingBox();
+      const planningBounds = await planning.boundingBox();
+      expect(readingBounds!.y + readingBounds!.height).toBeLessThanOrEqual(planningBounds!.y + 1);
+      await expect(page.getByTestId('action-add-to-day')).toBeInViewport({ ratio: 1 });
+      await expect(page.getByTestId('action-close-sheet')).toBeInViewport({ ratio: 1 });
+      expect(await page.getByTestId('recipe-detail-sheet').evaluate((node) => node.scrollTop)).toBe(
+        0
+      );
       await page.screenshot({ path: testInfo.outputPath(`detail-actions-${viewport.width}.png`) });
     });
   }
 
-  test('detail edit actions stay reachable at the end of the scroller', async ({ page }) => {
+  test('detail edit actions stay reachable while reading scrolls independently', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await openRecipeDetail(page);
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
-    const cancel = page.getByTestId('recipe-cancel-edits');
-    await cancel.scrollIntoViewIfNeeded();
-    await cancel.focus();
-    const geometry = await cancel.evaluate((button) => {
-      const scroller = button.closest('.overflow-y-auto') as HTMLElement;
-      scroller.scrollTop = scroller.scrollHeight;
-      const panel = document.querySelector('[data-testid="recipe-detail-sheet"]')!;
-      return {
-        gap: scroller.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom,
-        scrollerPadding: parseFloat(getComputedStyle(scroller).paddingBottom),
-        actionPadding: parseFloat(getComputedStyle(button.parentElement!).paddingBottom),
-        withinPanel:
-          button.getBoundingClientRect().bottom + 4 <= panel.getBoundingClientRect().bottom,
-      };
+    await page.getByTestId('recipe-detail-reading').evaluate((node) => {
+      node.scrollTop = node.scrollHeight;
     });
-    expect(geometry.gap).toBeGreaterThanOrEqual(31);
-    expect(geometry.scrollerPadding).toBe(24);
-    expect(geometry.actionPadding).toBe(24);
-    expect(geometry.withinPanel).toBe(true);
-    await expect(cancel).toBeFocused();
+    for (const action of ['recipe-save-edits', 'recipe-cancel-edits']) {
+      const control = page.getByTestId(action);
+      await control.scrollIntoViewIfNeeded();
+      await control.focus();
+      await expect(control).toBeInViewport({ ratio: 1 });
+      await expect(control).toBeFocused();
+      const withinPanel = await control.evaluate((button) => {
+        const bounds = button.getBoundingClientRect();
+        const panel = document
+          .querySelector('[data-testid="recipe-detail-sheet"]')!
+          .getBoundingClientRect();
+        return bounds.top >= panel.top && bounds.bottom + 4 <= panel.bottom;
+      });
+      expect(withinPanel).toBe(true);
+    }
+    expect(await page.getByTestId('recipe-detail-sheet').evaluate((node) => node.scrollTop)).toBe(
+      0
+    );
+    await expect(page.getByTestId('action-close-sheet')).toBeInViewport({ ratio: 1 });
   });
 
   test.describe('French enlarged detail footer', () => {
     test.use({ appLocale: 'fr' });
-    test('keeps the final action and focus reachable on a short phone', async ({ page }) => {
+    test('keeps the final reading action and focus reachable on a short phone', async ({
+      page,
+    }) => {
       await page.setViewportSize({ width: 320, height: 568 });
       await openRecipeDetail(page);
       await page.evaluate(() => {
@@ -151,19 +156,12 @@ test.describe('Recipe Hero Actions', () => {
       const finalAction = page.getByTestId('action-toggle-discovery');
       await finalAction.scrollIntoViewIfNeeded();
       await finalAction.focus();
-      const geometry = await finalAction.evaluate((button) => {
-        const scroller = button.closest('.overflow-y-auto') as HTMLElement;
-        scroller.scrollTop = scroller.scrollHeight;
-        const panel = document.querySelector('[data-testid="recipe-detail-sheet"]')!;
-        return {
-          gap: scroller.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom,
-          withinPanel:
-            button.getBoundingClientRect().bottom + 4 <= panel.getBoundingClientRect().bottom,
-        };
-      });
-      expect(geometry.gap).toBeGreaterThanOrEqual(31);
-      expect(geometry.withinPanel).toBe(true);
+      await expect(finalAction).toBeInViewport({ ratio: 1 });
       await expect(finalAction).toBeFocused();
+      await expect(page.getByTestId('action-close-sheet')).toBeInViewport({ ratio: 1 });
+      expect(await page.getByTestId('recipe-detail-sheet').evaluate((node) => node.scrollTop)).toBe(
+        0
+      );
     });
   });
 
@@ -210,11 +208,7 @@ test.describe('Recipe Hero Actions', () => {
     let uploadCalled = false;
     await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/originals`, async (route) => {
       uploadCalled = true;
-      await route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify({ id: MOCK_IDS.PHOTO_NEW }),
-      });
+      await route.fallback();
     });
 
     await openRecipeDetail(page);
@@ -236,4 +230,87 @@ test.describe('Recipe Hero Actions', () => {
     await expect(page.getByText('Regenerating hero image...')).toBeVisible();
     expect(uploadCalled).toBe(true);
   });
+});
+
+test('canonical original editor saves through the generated client and reopens server-issued facts', async ({
+  page,
+  baseURL,
+}) => {
+  const id = MOCK_IDS.RECIPE_LASAGNA;
+  const row = (rowId: string, name: string, quantity: string, unit: string) => ({
+    id: rowId,
+    description: name,
+    amount: { kind: 'scalar', value: { n: quantity, d: '1' } },
+    amountText: quantity,
+    unit: { text: unit, definitionId: null },
+    scaling: 'proportional',
+    package: null,
+    shopping: { name, foodId: null, mappingRevision: null },
+    provenance: { origin: 'unknown', sourceRef: null, protectedFields: [] },
+  });
+  await setupCommonRoutes(page, undefined, {
+    canonicalEditor: builders.recipe({
+      id,
+      name: 'Original facts pasta',
+      contentSchemaVersion: 2,
+      contentRevision: 'initial-editor',
+      servings: 4,
+      ingredients: ['200 g pasta', '100 ml sauce'],
+      ingredientLines: [
+        row(MOCK_IDS.RECIPE_CARBONARA, 'pasta', '200', 'g'),
+        row(MOCK_IDS.RECIPE_CHICKEN, 'sauce', '100', 'ml'),
+      ],
+    } as any),
+  });
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.route('**/api/recipes/search', (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          topPick: null,
+          results: [builders.recipe({ id, name: 'Original facts pasta' })],
+          appliedFilters: {},
+          searchMode: 'explicit',
+          resultPath: 'lexical-only',
+        },
+      },
+    })
+  );
+  await page.goto('/recipes?focus=search');
+  await page.getByTestId('recipe-search-input').fill('Original facts pasta');
+  await page.getByTestId('recipe-search-input').press('Enter');
+  await page.getByTestId('stack-card-front').click();
+  await expect(page.getByTestId('recipe-detail-name')).toHaveText('Original facts pasta');
+  await page.getByTestId('action-gear-menu').click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByTestId('recipe-edit-amount-0')).toHaveValue('200');
+  await expect(page.getByTestId('recipe-edit-unit-0')).toHaveValue('g');
+  await page.getByTestId('recipe-edit-amount-0').fill('250');
+  const saving = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/recipes/${id}`) && response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('recipe-save-edits').click();
+  const response = await saving;
+  expect(
+    response.status(),
+    JSON.stringify({ request: response.request().postDataJSON(), response: await response.text() })
+  ).toBe(200);
+  const request = response.request().postDataJSON();
+  expect(request.expectedContentRevision).toBe('initial-editor');
+  expect(request).not.toHaveProperty('ingredients');
+  expect(request.ingredientLines[0]).toMatchObject({
+    id: MOCK_IDS.RECIPE_CARBONARA,
+    amount: { kind: 'scalar', value: { n: '250', d: '1' } },
+    amountText: '250',
+  });
+  await page.getByRole('button', { name: 'Preview 4 portions', exact: true }).click();
+  await expect(page.getByText('250 g pasta', { exact: true })).toBeVisible();
+  await expect(page.getByText('100 ml sauce', { exact: true })).toBeVisible();
+  await page.getByTestId('action-gear-menu').click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByTestId('recipe-edit-amount-0')).toHaveValue('250');
+  await expect(page.getByTestId('recipe-edit-amount-1')).toHaveValue('100');
 });

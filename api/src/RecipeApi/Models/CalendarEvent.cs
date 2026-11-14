@@ -31,6 +31,19 @@ public class CalendarEvent
     [Column("non_cooking_label")]
     public string? NonCookingLabel { get; set; }
 
+    [Column("prepared_on")]
+    public DateOnly? PreparedOn { get; set; }
+    [Column("prepared_at_utc")]
+    public DateTimeOffset? PreparedAtUtc { get; set; }
+    [Column("prepared_servings")]
+    public int? PreparedServings { get; set; }
+    [Column("prepared_original_servings")]
+    public int? PreparedOriginalServings { get; set; }
+    [Column("preparation_plan_token")]
+    public string? PreparationPlanToken { get; set; }
+    [Column("preparation_serving_version")]
+    public string? PreparationServingVersion { get; set; }
+
     [Column("vote_count")]
     public int? VoteCount { get; set; }
 

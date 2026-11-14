@@ -1,4 +1,9 @@
 'use client';
+import { PreparationStatus } from '@/components/planner/PreparationStatus';
+
+import { portionsReturnPath } from '@/lib/planner/portionsNavigation';
+import { useSupperServingsEditor } from '@/components/planner/useSupperServingsEditor';
+import { useReplacementRecovery } from '@/lib/planner/useReplacementRecovery';
 
 import React, { useEffect, useState, useMemo, useRef, memo } from 'react';
 import { createPortal } from 'react-dom';
@@ -30,6 +35,7 @@ import {
   getSchedule,
   removeRecipeFromDay,
   referenceRequest,
+  normalizeScheduleRecipe,
 } from '@/lib/api/planner';
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
@@ -52,7 +58,10 @@ import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useTodayStore } from '@/store/todayStore';
 import { useUiStore } from '@/store/uiStore';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
-import { type AssignmentRecipe, resolveOccupiedSlot } from '@/lib/planner/slotAssignment';
+import { readPlanningResult, retirePlanningResult } from '@/lib/planner/planningResult';
+import { describeOriginalDisposition } from '@/lib/planner/replacementCopy';
+import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
+import { type AssignmentRecipe } from '@/lib/planner/slotAssignment';
 import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
 import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
 import { usePlannerDrag } from '@/components/planner/usePlannerDrag';
@@ -121,7 +130,135 @@ export default function PlannerPage() {
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [pendingQuickFindDayIndex, setPendingQuickFindDayIndex] = useState<number | null>(null);
   const [successDay, setSuccessDay] = useState<number | null>(null);
+  const [planningConfirmation, setPlanningConfirmation] = useState<{
+    context: string;
+    identity: string;
+    message: string;
+    kind: 'replacement' | 'changed' | 'refresh-failed' | 'refreshing';
+  } | null>(null);
+  const [confirmationRetry, setConfirmationRetry] = useState(0);
+  const [detailSource, setDetailSource] = useState<{
+    date: string;
+    dayIndex: number;
+    occurrenceId?: string;
+    context: 'proposed' | 'assigned';
+    reference: string;
+    weekOffset: number;
+  } | null>(null);
   const [openDetailRecipeId, setOpenDetailRecipeId] = useState<string | null>(null);
+  const [verifiedDetail, setVerifiedDetail] = useState<string | null>(null);
+  const [detailReview, setDetailReview] = useState<{
+    identity: string;
+    kind: 'review' | 'retry' | 'completed';
+  } | null>(null);
+  const [detailReadAttempt, setDetailReadAttempt] = useState(0);
+  const currentDetailDay = detailSource ? schedule[detailSource.dayIndex] : undefined;
+  const detailDayVersion = JSON.stringify([
+    currentDetailDay?.date,
+    currentDetailDay?.recipe?.id,
+    currentDetailDay?.occurrenceId,
+    currentDetailDay?.status,
+    calendarVersion,
+  ]);
+  const detailIdentity =
+    detailSource && openDetailRecipeId
+      ? JSON.stringify([openDetailRecipeId, detailSource, detailDayVersion])
+      : null;
+  const activeDetailIdentity = useRef<string | null>(detailIdentity);
+  React.useLayoutEffect(() => {
+    activeDetailIdentity.current = detailIdentity;
+    return () => {
+      if (activeDetailIdentity.current === detailIdentity) activeDetailIdentity.current = null;
+    };
+  }, [detailIdentity]);
+  useEffect(() => {
+    if (
+      !detailSource ||
+      !openDetailRecipeId ||
+      detailSource.context !== 'assigned' ||
+      !detailSource.reference
+    )
+      return;
+    let active = true;
+    const source = detailSource;
+    const recipeId = openDetailRecipeId;
+    const identity = detailIdentity;
+    void getSchedule(source.weekOffset, source.reference)
+      .then((result) => {
+        if (!active || !identity) return;
+        const returnedCalendar = readCalendar(result?.calendar);
+        const day = result?.days?.[source.dayIndex];
+        const expectedTime =
+          Date.parse(`${source.reference}T00:00:00Z`) +
+          (source.weekOffset * 7 + source.dayIndex) * 86400000;
+        if (
+          source.dayIndex >= 0 &&
+          Date.parse(`${source.date}T00:00:00Z`) === expectedTime &&
+          returnedCalendar?.referenceWeekStartDate === source.reference &&
+          day?.date === source.date &&
+          day.recipe?.id === recipeId &&
+          (day.status === 0 || day.status === 1) &&
+          (!source.occurrenceId || day.occurrenceId === source.occurrenceId)
+        ) {
+          setVerifiedDetail(identity);
+        } else {
+          setDetailReview({
+            identity,
+            kind:
+              day?.date === source.date &&
+              day.recipe?.id === recipeId &&
+              (!source.occurrenceId || day.occurrenceId === source.occurrenceId) &&
+              (day.status === 2 || day.status === 4)
+                ? 'completed'
+                : 'review',
+          });
+        }
+      })
+      .catch(() => {
+        if (active && identity) setDetailReview({ identity, kind: 'retry' });
+      });
+    return () => {
+      active = false;
+    };
+  }, [detailIdentity, detailSource, openDetailRecipeId, detailReadAttempt]);
+  const openPlannedDay = async () => {
+    const source = detailSource;
+    const recipeId = openDetailRecipeId;
+    const identity = detailIdentity;
+    if (!source || !recipeId || verifiedDetail !== identity) return;
+    try {
+      const result = await getSchedule(source.weekOffset, source.reference);
+      if (activeDetailIdentity.current !== identity) return;
+      const returnedCalendar = readCalendar(result?.calendar);
+      const day = result?.days?.[source.dayIndex];
+      const expectedTime =
+        Date.parse(`${source.reference}T00:00:00Z`) +
+        (source.weekOffset * 7 + source.dayIndex) * 86400000;
+      if (
+        source.dayIndex < 0 ||
+        Date.parse(`${source.date}T00:00:00Z`) !== expectedTime ||
+        returnedCalendar?.referenceWeekStartDate !== source.reference ||
+        day?.date !== source.date ||
+        day.recipe?.id !== recipeId ||
+        (day.status !== 0 && day.status !== 1) ||
+        (source.occurrenceId && day.occurrenceId !== source.occurrenceId)
+      ) {
+        setVerifiedDetail(null);
+        setDetailReview({ identity: identity!, kind: 'review' });
+        return;
+      }
+      setOpenDetailRecipeId(null);
+      setDetailSource(null);
+      router.push(
+        `/planner?dayIndex=${source.dayIndex}&weekOffset=${source.weekOffset}&referenceWeekStartDate=${source.reference}`
+      );
+    } catch {
+      if (activeDetailIdentity.current === identity) {
+        setVerifiedDetail(null);
+        setDetailReview({ identity: identity!, kind: 'retry' });
+      }
+    }
+  };
   const [showNudgeDialog, setShowNudgeDialog] = useState(false);
   const [pendingRecovery, setPendingRecovery] = useState<{
     slot: {
@@ -130,6 +267,7 @@ export default function PlannerPage() {
       dayIndex: number;
       date: string;
       recipe: any;
+      removalToken?: string | null;
     };
     recipe: AssignmentRecipe;
   } | null>(null);
@@ -137,12 +275,66 @@ export default function PlannerPage() {
   const searchParams = useSearchParams();
   const planDate = searchParams.get('planDate');
   const referenceWeekStartDate = searchParams.get('referenceWeekStartDate') ?? undefined;
+  const portionReturn = portionsReturnPath(searchParams.get('returnTo'));
+  const portions = useSupperServingsEditor(
+    currentWeekOffset,
+    referenceWeekStartDate,
+    schedule,
+    portionReturn ? () => router.replace(portionReturn) : undefined
+  );
+  const portionEntry = searchParams.get('portions') === 'true' ? searchParams.toString() : null;
+  const enteredPortions = useRef<string | null>(null);
+  useEffect(() => {
+    if (!portionEntry) {
+      enteredPortions.current = null;
+      return;
+    }
+    if (enteredPortions.current === portionEntry || !schedule.some((day) => day.date === planDate))
+      return;
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (!active || enteredPortions.current === portionEntry) return;
+      enteredPortions.current = portionEntry;
+      void portions.open();
+    });
+    return () => {
+      active = false;
+    };
+    // The captured query owns this single entry; ordinary editor state updates do not reopen it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portionEntry, schedule, planDate]);
+  const detailEntry = searchParams.get('detailRecipe');
+  const enteredDetail = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detailEntry) {
+      enteredDetail.current = null;
+      return;
+    }
+    if (enteredDetail.current === detailEntry || !planDate) return;
+    const day = schedule.find((item) => item.date === planDate);
+    if (!day) return;
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (!active || enteredDetail.current === detailEntry) return;
+      enteredDetail.current = detailEntry;
+      setDetailSource({
+        date: planDate,
+        dayIndex: schedule.findIndex((item) => item.date === planDate),
+        reference: referenceWeekStartDate ?? '',
+        weekOffset: currentWeekOffset,
+        occurrenceId: searchParams.get('detailOccurrence') ?? undefined,
+        context: searchParams.get('detailContext') === 'proposed' ? 'proposed' : 'assigned',
+      });
+      setOpenDetailRecipeId(detailEntry);
+    });
+    return () => {
+      active = false;
+    };
+  }, [detailEntry, schedule, planDate, referenceWeekStartDate, currentWeekOffset, searchParams]);
   const openedPlanDate = useRef<string | null>(null);
   const successParam = searchParams.get('success');
   const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
   const { preview: dragPreview, start: startDrag } = usePlannerDrag(currentWeekOffset, activeTab);
-  const recoverySubmissionRef = useRef(false);
-  const recoveryRecipeResolvedRef = useRef(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const isWide = useMediaQuery('(min-width: 1024px)');
 
@@ -161,7 +353,7 @@ export default function PlannerPage() {
 
   useEffect(() => {
     useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
-  }, [currentWeekOffset, successParam, referenceWeekStartDate]);
+  }, [currentWeekOffset, referenceWeekStartDate]);
 
   useEffect(() => {
     if (!planDate) {
@@ -196,30 +388,124 @@ export default function PlannerPage() {
     setPrevOffset(currentWeekOffset);
   }
 
+  const confirmationDay = searchParams.get('dayIndex');
+  const confirmationQuery = searchParams.toString();
+  const confirmationContext = `${currentWeekOffset}/${referenceWeekStartDate}/${confirmationDay}`;
+  const pendingResult = readPlanningResult();
+  const pendingResultIdentity = JSON.stringify(pendingResult);
+  const visibleConfirmation =
+    planningConfirmation?.context === confirmationContext &&
+    (!pendingResult || planningConfirmation.identity === pendingResultIdentity)
+      ? planningConfirmation
+      : null;
+  const [previousConfirmationContext, setPreviousConfirmationContext] =
+    useState(confirmationContext);
+  // Adjust context-owned state before rendering a different dated destination.
+  if (previousConfirmationContext !== confirmationContext) {
+    setPreviousConfirmationContext(confirmationContext);
+    setPlanningConfirmation(null);
+    setSuccessDay(null);
+  }
+
+  const clearSuccessUrl = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('success');
+    router.replace(`/planner${params.size ? `?${params}` : ''}`, { scroll: false });
+  };
+
   useEffect(() => {
-    const success = searchParams.get('success');
-    const dayIndex = searchParams.get('dayIndex');
-    if (success && dayIndex !== null) {
-      const idx = parseInt(dayIndex);
-
-      // Defer state update to avoid cascading render error
-      const stateTimer = setTimeout(() => {
-        setSuccessDay(idx);
-      }, 0);
-
-      // Auto-scroll logic
-      const element = document.getElementById(`day-card-${idx}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-
-      const clearTimer = setTimeout(() => setSuccessDay(null), 3000);
-      return () => {
-        clearTimeout(stateTimer);
-        clearTimeout(clearTimer);
-      };
-    }
-  }, [searchParams]);
+    const result = readPlanningResult();
+    if (
+      !successParam ||
+      !result ||
+      result.weekOffset !== currentWeekOffset ||
+      String(result.dayIndex) !== confirmationDay ||
+      result.referenceWeekStartDate !== referenceWeekStartDate
+    )
+      return;
+    let active = true;
+    const isCurrent = () =>
+      active && JSON.stringify(readPlanningResult()) === JSON.stringify(result);
+    const confirm = (kind: NonNullable<typeof planningConfirmation>['kind'], message: string) =>
+      setPlanningConfirmation({
+        context: confirmationContext,
+        identity: JSON.stringify(result),
+        kind,
+        message,
+      });
+    void getSchedule(result.weekOffset, result.referenceWeekStartDate, true)
+      .then((fresh) => {
+        if (!isCurrent()) return;
+        const day = fresh?.days?.[result.dayIndex];
+        if (!fresh || !day?.date) throw new Error('Schedule result unavailable');
+        useWeekStore.getState().applySnapshot(fresh);
+        if (document.activeElement?.getAttribute('data-testid') === 'planner-confirmation-refresh')
+          document.getElementById(`day-card-${result.dayIndex}`)?.focus();
+        if (day.date !== result.date || day.recipe?.id !== result.recipeId) {
+          retirePlanningResult(result);
+          confirm(
+            'changed',
+            t(
+              'planner.savedPlanChanged',
+              'The saved plan has changed. Review this day before making another change.'
+            )
+          );
+          return;
+        }
+        const message = tWithVars('planner.recipePlanned', '{{recipe}} is planned for {{date}}.', {
+          recipe: day.recipe.name ?? result.recipeName,
+          date: formatSupperPlanDate(result.date),
+        });
+        // Delivery consumes this receipt. Renders, reloads and old URLs cannot replay it.
+        retirePlanningResult(result);
+        if (result.original) {
+          confirm(
+            'replacement',
+            [message, describeOriginalDisposition(result.original)].filter(Boolean).join(' ')
+          );
+        } else {
+          setPlanningConfirmation(null);
+          useUiStore.getState().addToast({ type: 'success', message });
+          const params = new URLSearchParams(confirmationQuery);
+          params.delete('success');
+          router.replace(`/planner${params.size ? `?${params}` : ''}`, { scroll: false });
+        }
+        setSuccessDay(result.dayIndex);
+        document.getElementById(`day-card-${result.dayIndex}`)?.scrollIntoView({
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            ? 'auto'
+            : 'smooth',
+          block: 'center',
+        });
+      })
+      .catch(() => {
+        if (isCurrent()) {
+          setSuccessDay(null);
+          confirm(
+            'refresh-failed',
+            tWithVars(
+              'planner.savedRefreshFailed',
+              '{{recipe}} was saved for {{date}}, but the plan could not refresh. Retry refresh.',
+              { recipe: result.recipeName, date: formatSupperPlanDate(result.date) }
+            )
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+    // Read identity also distinguishes two returns to the same dated destination.
+  }, [
+    successParam,
+    confirmationDay,
+    currentWeekOffset,
+    referenceWeekStartDate,
+    confirmationRetry,
+    confirmationContext,
+    pendingResultIdentity,
+    confirmationQuery,
+    router,
+  ]);
 
   const navigateToWeekOffset = (nextWeekOffset: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -229,7 +515,7 @@ export default function PlannerPage() {
       params.set('weekOffset', nextWeekOffset.toString());
     }
     const query = params.toString();
-    router.replace(query ? `/planner?${query}` : '/planner');
+    portions.requestDeparture(() => router.replace(query ? `/planner?${query}` : '/planner'));
   };
 
   const handlePrevWeek = () => navigateToWeekOffset(currentWeekOffset - 1);
@@ -265,10 +551,10 @@ export default function PlannerPage() {
           dayIndex: selectedDayIndex,
           date: selectedDay.date,
           recipe: selectedDay.recipe,
+          removalToken: selectedDay.removalToken,
         },
         recipe: nextRecipe,
       });
-      recoveryRecipeResolvedRef.current = false;
       setShowQuickFind(false);
       return;
     }
@@ -301,55 +587,45 @@ export default function PlannerPage() {
     }
   };
 
-  const [recoveryPending, setRecoveryPending] = useState(false);
-
-  const handleRecoveryAction = async (action: string) => {
-    if (!pendingRecovery) return;
-    if (action !== 'tomorrow' && action !== 'next_week' && action !== 'drop') return;
-    if (recoverySubmissionRef.current) return;
-
-    const { slot, recipe } = pendingRecovery;
-    recoverySubmissionRef.current = true;
-    setRecoveryPending(true);
-    let priorRecipeResolved = recoveryRecipeResolvedRef.current;
-
-    try {
-      if (!priorRecipeResolved) {
-        const deferResult = await resolveOccupiedSlot(slot, action, action === 'next_week');
-        priorRecipeResolved = true;
-        recoveryRecipeResolvedRef.current = true;
-        if (action === 'next_week' && deferResult?.data?.message) {
-          useUiStore.getState().addToast(deferResult.data.message);
-        }
-      }
-
-      await useWeekStore.getState().assignRecipe(slot.dayIndex, recipe, slot);
-
-      if (slot.weekOffset === 0 && slot.date === useTodayStore.getState().calendar?.today) {
-        useTodayStore.getState().applyServerUpdate({ date: slot.date, recipe, status: 0 });
-      }
-
+  const recovery = useReplacementRecovery({
+    slot: pendingRecovery?.slot,
+    recipe: pendingRecovery?.recipe,
+    onClosed: (saved) => {
+      if (!saved && pendingRecovery) setOpenDetailRecipeId(pendingRecovery.recipe.id);
       setPendingRecovery(null);
-      recoveryRecipeResolvedRef.current = false;
       setShowPivot(null);
       setSelectedDayIndex(null);
       setPendingQuickFindDayIndex(null);
-      await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
-    } catch (error) {
-      await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
-      useUiStore.getState().addToast({
-        type: 'error',
-        message: priorRecipeResolved
-          ? 'The previous meal was moved, but the replacement could not be added. Your plan was refreshed; please try again.'
-          : error instanceof Error && error.name === 'TomorrowMoveError'
-            ? error.message
-            : 'The current meal could not be moved. Your plan was refreshed; please try again.',
-      });
-    } finally {
-      recoverySubmissionRef.current = false;
-      setRecoveryPending(false);
-    }
-  };
+    },
+    onSaved: async () => {
+      if (!pendingRecovery) return;
+      const { slot } = pendingRecovery;
+      await useWeekStore.getState().init(slot.weekOffset, slot.referenceWeekStartDate);
+      router.push(
+        `/planner?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+      );
+    },
+    onReview: () => {
+      if (!pendingRecovery) return;
+      const { slot } = pendingRecovery;
+      router.push(
+        `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+      );
+    },
+    observed: (day) => {
+      const slot = pendingRecovery?.slot;
+      if (!slot) return;
+      const update = {
+        date: slot.date,
+        recipe: normalizeScheduleRecipe(day.recipe),
+        status: day.status ?? 0,
+        nonCooking: day.nonCooking,
+      };
+      useWeekStore.getState().applySlotUpdate(update);
+      if (slot.date === useTodayStore.getState().calendar?.today)
+        useTodayStore.getState().applyServerUpdate(update);
+    },
+  });
 
   const handleSearchPath = () => {
     const dayIndex = showPivot?.dayIndex ?? selectedDayIndex;
@@ -425,6 +701,53 @@ export default function PlannerPage() {
 
   return (
     <div className="flex flex-col solar-earth-bg pb-6">
+      {visibleConfirmation && (
+        <div
+          role="status"
+          data-testid="planner-planning-confirmation"
+          className="relative z-10 mx-4 rounded-2xl bg-sage/10 p-4 text-charcoal"
+        >
+          <p>{visibleConfirmation.message}</p>
+          {visibleConfirmation.kind === 'refresh-failed' ||
+          visibleConfirmation.kind === 'refreshing' ? (
+            <button
+              type="button"
+              data-testid="planner-confirmation-refresh"
+              onFocus={(event) => {
+                if (event.currentTarget.matches(':focus-visible'))
+                  event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
+              }}
+              aria-disabled={visibleConfirmation.kind === 'refreshing'}
+              aria-busy={visibleConfirmation.kind === 'refreshing'}
+              className="min-h-12 min-w-12 rounded-lg px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-700"
+              onClick={() => {
+                if (visibleConfirmation.kind === 'refreshing') return;
+                setPlanningConfirmation({ ...visibleConfirmation, kind: 'refreshing' });
+                setConfirmationRetry((value) => value + 1);
+              }}
+            >
+              {t('common.refresh', 'Refresh')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-testid="planner-confirmation-dismiss"
+              onFocus={(event) => {
+                if (event.currentTarget.matches(':focus-visible'))
+                  event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
+              }}
+              className="min-h-12 min-w-12 rounded-lg px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-700"
+              onClick={() => {
+                setPlanningConfirmation(null);
+                clearSuccessUrl();
+                document.getElementById(`day-card-${confirmationDay}`)?.focus();
+              }}
+            >
+              {t('common.close', 'Close')}
+            </button>
+          )}
+        </div>
+      )}
       {/* Animated Blobs */}
       <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
       <div className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]" />
@@ -452,7 +775,7 @@ export default function PlannerPage() {
                 <Calendar size={14} /> {t('planner.planner', 'Planner')}
               </button>
               <button
-                onClick={() => setActiveTab('grocery')}
+                onClick={() => portions.requestDeparture(() => setActiveTab('grocery'))}
                 data-testid="grocery-tab"
                 className={cn(
                   'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
@@ -527,7 +850,7 @@ export default function PlannerPage() {
                   type="button"
                   data-testid="planner-this-week-pill"
                   onClick={() => navigateToWeekOffset(0)}
-                  className="mx-auto mt-2 inline-flex h-8 items-center justify-center gap-1.5 rounded-full border border-terracotta/15 bg-white/75 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta-600 shadow-sm shadow-terracotta/5 transition-all hover:bg-terracotta/5 active:scale-95"
+                  className="mx-auto mt-2 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-terracotta/15 bg-white/75 px-4 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta-600 shadow-sm shadow-terracotta/5 transition-all hover:bg-terracotta/5 active:scale-95"
                   aria-label={t('planner.backToThisWeek', 'Back to this week')}
                   title={t('planner.backToThisWeek', 'Back to this week')}
                 >
@@ -597,81 +920,103 @@ export default function PlannerPage() {
               exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
-              {(isVotingOpen || canOpenVoting) && (
-                <div
-                  data-testid="planner-action-row"
-                  className={cn(
-                    'flex items-center justify-between gap-2',
-                    isWide ? 'mb-4 pt-2.5' : 'mb-5'
-                  )}
-                >
-                  {/* Left Slot: Secondary Actions */}
-                  <div className="flex justify-start">
-                    {isVotingOpen && (
-                      <button
-                        onClick={handleNudgeFamily}
-                        data-testid="nudge-family-cta"
-                        className="flex h-9 items-center gap-1.5 rounded-full bg-sage px-3 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
-                      >
-                        <Share2 size={10} />
-                        {t('planner.nudgeFamily', 'Nudge family')}
-                      </button>
+              <div className="flex flex-wrap items-start gap-x-1">
+                {portions.strip}
+                {(isVotingOpen || canOpenVoting) && (
+                  <div
+                    data-testid="planner-action-row"
+                    className={cn(
+                      'flex flex-1 flex-wrap items-center justify-end gap-1',
+                      isWide ? 'mb-4' : 'mb-5'
                     )}
-                  </div>
+                  >
+                    {/* Left Slot: Secondary Actions */}
+                    <div className="flex max-w-full justify-start">
+                      {isVotingOpen && (
+                        <button
+                          onClick={handleNudgeFamily}
+                          data-testid="nudge-family-cta"
+                          className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-2 rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-normal text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                        >
+                          <Share2 size={10} />
+                          {t('planner.nudgeFamily', 'Nudge family')}
+                        </button>
+                      )}
+                    </div>
 
-                  {/* Right Slot: Primary Actions */}
-                  <div className="flex justify-end">
-                    {canOpenVoting && (
-                      <button
-                        onClick={handleAskFamily}
-                        data-testid="ask-family-cta"
-                        className="flex h-9 items-center rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
-                      >
-                        <Users size={12} className="mr-2" />
-                        {t('planner.askFamily', 'Ask the Family')}
-                      </button>
-                    )}
-                    {isVotingOpen && (
-                      <button
-                        onClick={handleCloseVoting}
-                        data-testid="close-voting-btn"
-                        className="flex h-9 items-center gap-1.5 rounded-full border border-terracotta/10 bg-white/80 px-3 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta transition-all hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white active:scale-95"
-                      >
-                        <Ban size={10} />
-                        {t('planner.closeVoting', 'Close Voting')}
-                      </button>
-                    )}
+                    {/* Right Slot: Primary Actions */}
+                    <div className="flex max-w-full justify-end">
+                      {canOpenVoting && (
+                        <button
+                          onClick={handleAskFamily}
+                          data-testid="ask-family-cta"
+                          className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-2 rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                        >
+                          <Users size={12} />
+                          {t('planner.askFamily', 'Ask the Family')}
+                        </button>
+                      )}
+                      {isVotingOpen && (
+                        <button
+                          onClick={handleCloseVoting}
+                          data-testid="close-voting-btn"
+                          className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-2 rounded-full border border-terracotta/10 bg-white/80 px-4 text-[9px] font-black uppercase tracking-normal text-terracotta transition-all hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white active:scale-95"
+                        >
+                          <Ban size={10} />
+                          {t('planner.closeVoting', 'Close Voting')}
+                        </button>
+                      )}
+                    </div>
                   </div>
+                )}
+              </div>
+
+              {portions.editing ? (
+                portions.rows
+              ) : (
+                <div className="w-full space-y-3.5" data-testid="reorder-group">
+                  {schedule.map((day, index) => (
+                    <PlannerDayCard
+                      key={day.date ?? index}
+                      day={day}
+                      index={index}
+                      successDay={pendingResult ? null : successDay}
+                      onPivot={() => {
+                        setSelectedDayIndex(index);
+                        setShowPivot({ dayIndex: index });
+                      }}
+                      onViewRecipe={(recipeId) => {
+                        const reference = useWeekStore.getState().calendar?.referenceWeekStartDate;
+                        setDetailSource(
+                          day.date && reference
+                            ? {
+                                date: day.date,
+                                dayIndex: index,
+                                occurrenceId: !day._isPending
+                                  ? (day.occurrenceId as string)
+                                  : undefined,
+                                context: day._isPending ? 'proposed' : 'assigned',
+                                reference,
+                                weekOffset: currentWeekOffset,
+                              }
+                            : null
+                        );
+                        setOpenDetailRecipeId(recipeId);
+                      }}
+                      startDrag={startDrag}
+                      isDragSource={dragPreview?.from === index}
+                      isDropTarget={dragPreview?.target === index && dragPreview.from !== index}
+                      isWide={isWide}
+                      isToday={civilDate(day.date) !== null && day.date === authoritativeToday}
+                      isPast={
+                        !!authoritativeToday &&
+                        civilDate(day.date) !== null &&
+                        day.date! < authoritativeToday
+                      }
+                    />
+                  ))}
                 </div>
               )}
-
-              <div className="w-full space-y-3.5" data-testid="reorder-group">
-                {schedule.map((day, index) => (
-                  <PlannerDayCard
-                    key={day.date ?? index}
-                    day={day}
-                    index={index}
-                    successDay={successDay}
-                    onPivot={() => {
-                      setSelectedDayIndex(index);
-                      setShowPivot({ dayIndex: index });
-                    }}
-                    onViewRecipe={(recipeId) => {
-                      setOpenDetailRecipeId(recipeId);
-                    }}
-                    startDrag={startDrag}
-                    isDragSource={dragPreview?.from === index}
-                    isDropTarget={dragPreview?.target === index && dragPreview.from !== index}
-                    isWide={isWide}
-                    isToday={civilDate(day.date) !== null && day.date === authoritativeToday}
-                    isPast={
-                      !!authoritativeToday &&
-                      civilDate(day.date) !== null &&
-                      day.date! < authoritativeToday
-                    }
-                  />
-                ))}
-              </div>
               {dragPreview &&
                 createPortal(
                   <div
@@ -858,14 +1203,84 @@ export default function PlannerPage() {
 
       {openDetailRecipeId && (
         <RecipeDetailSheet
+          ingredientContext={
+            detailSource
+              ? detailSource.context === 'proposed'
+                ? { context: 'proposed', supperDate: detailSource.date }
+                : {
+                    context: 'assigned',
+                    supperDate: detailSource.date,
+                    occurrenceId: detailSource.occurrenceId ?? '',
+                  }
+              : undefined
+          }
           recipeId={openDetailRecipeId}
           plannerDayLabel={null}
-          onClose={() => setOpenDetailRecipeId(null)}
-          onUseForDay={async () => {
-            // Planner opens details for viewing; assignment flows stay in planner/recipes entrypoints.
+          sourceDayLabel={detailSource ? formatSupperPlanDate(detailSource.date) : undefined}
+          planningLoading={
+            detailSource?.context === 'assigned' &&
+            verifiedDetail !== detailIdentity &&
+            detailReview?.identity !== detailIdentity
+          }
+          planningNeedsCheck={
+            detailReview?.identity === detailIdentity && detailReview.kind !== 'completed'
+          }
+          plannedDayLabel={
+            verifiedDetail === detailIdentity && detailSource
+              ? formatSupperPlanDate(detailSource.date)
+              : undefined
+          }
+          onOpenPlannedDay={
+            verifiedDetail === detailIdentity ? () => void openPlannedDay() : undefined
+          }
+          planningMessage={
+            detailReview?.identity === detailIdentity
+              ? detailReview.kind === 'completed'
+                ? t(
+                    'recipes.reviewBeforePlanning',
+                    'Review this completed or voting supper in Planner.'
+                  )
+                : detailReview.kind === 'review'
+                  ? t(
+                      'recipes.planChanged',
+                      'Your plan changed. Review the selected day in Planner.'
+                    )
+                  : t(
+                      'recipes.checkPlanFailed',
+                      'Could not confirm this meal. Retry check before saving.'
+                    )
+              : undefined
+          }
+          planningActionLabel={
+            detailReview?.identity === detailIdentity
+              ? detailReview.kind !== 'retry'
+                ? t('recipes.reviewPlan', 'Review plan')
+                : t('recipes.retryPlanCheck', 'Retry check')
+              : undefined
+          }
+          onRetryTarget={
+            detailReview?.identity === detailIdentity && detailSource
+              ? detailReview.kind !== 'retry'
+                ? () => {
+                    setOpenDetailRecipeId(null);
+                    setDetailSource(null);
+                    router.push(
+                      `/planner?dayIndex=${detailSource.dayIndex}&weekOffset=${detailSource.weekOffset}&referenceWeekStartDate=${detailSource.reference}`
+                    );
+                  }
+                : () => {
+                    setDetailReview(null);
+                    setDetailReadAttempt((value) => value + 1);
+                  }
+              : undefined
+          }
+          onClose={() => {
+            setOpenDetailRecipeId(null);
+            setDetailSource(null);
           }}
+          onUseForDay={async () => {}}
           onFindSimilar={(recipeId) => {
-            router.push(`/recipes?open=${recipeId}`);
+            router.push(`/recipes?similarTo=${recipeId}`);
           }}
         />
       )}
@@ -873,18 +1288,19 @@ export default function PlannerPage() {
       <AnimatePresence>
         {pendingRecovery && (
           <SkipRecoveryDialog
-            pending={recoveryPending}
+            pending={recovery.pending}
             isOpen={true}
             step={2}
-            onClose={() => {
-              setPendingRecovery(null);
-              recoveryRecipeResolvedRef.current = false;
-            }}
-            onBack={() => {
-              setPendingRecovery(null);
-              recoveryRecipeResolvedRef.current = false;
-            }}
-            onAction={handleRecoveryAction}
+            source={pendingRecovery.slot}
+            replacement={recovery.feedback}
+            confirmAbandon={recovery.confirmAbandon}
+            onCancelAbandon={recovery.cancelAbandon}
+            onAbandon={recovery.abandon}
+            onRetryReplacement={recovery.retry}
+            onReviewPlan={recovery.review}
+            onClose={recovery.close}
+            onBack={recovery.close}
+            onAction={recovery.act}
           />
         )}
       </AnimatePresence>
@@ -967,6 +1383,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
       data-drag-source={isDragSource}
       data-drop-target={isDropTarget}
       id={`day-card-${index}`}
+      tabIndex={-1}
     >
       {isToday && (
         <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -1143,6 +1560,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                       >
                         {day.recipe.name}
                       </h4>
+                      {day.preparation && <PreparationStatus preparation={day.preparation} />}
                       {(() => {
                         const count = day._voteCount ?? day.recipe?.voteCount ?? null;
                         const isUnanimous = day._unanimousVote;

@@ -155,27 +155,44 @@ public class WorkflowWorker(
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<RecipeDbContext>();
 
+        await using (var resetRecovery = services.GetService<RecoveryBoundary>() is { } resetBoundary
+            ? await resetBoundary.EnterAsync(RecoveryAccess.Write, ct) : null)
+            await WorkflowReset.ReconcilePendingAsync(db, clock, ct);
+
+        // Repair feedback and its original command can commit before acceptance.
+        // Reconcile that durable gap before scanning executable workflow tasks.
+        if (services.GetService<IWorkflowOrchestrator>() is not null
+            || services.GetService<RecipeImportReportService>() is not null)
+        {
+            await using var recoveryLease = services.GetService<RecoveryBoundary>() is { } recovery
+                ? await recovery.EnterAsync(RecoveryAccess.Write, ct) : null;
+            if (services.GetService<RecipeImportReportService>() is { } reports)
+                await reports.ReconcilePendingAsync(ct);
+            if (services.GetService<IWorkflowOrchestrator>() is { } launches)
+                await launches.ReconcileLaunchesAsync(ct);
+        }
         var now = clock.UtcNow;
         List<WorkflowTask> pendingTasks = [];
 
-        // Try to use PostgreSQL's FOR UPDATE SKIP LOCKED for high concurrency.
-        // For in-memory DB (tests), fall back to simple SELECT.
-        try
+        // Retained historical/divergent records must not occupy every slot forever.
+        // Scan bounded candidate batches without changing them; admit at most ten
+        // captured commands. Dispatch repeats validation after throttle/recovery waits.
+        var considered = new HashSet<Guid>();
+        while (pendingTasks.Count < 10)
         {
-            pendingTasks = await QueryWithSkipLocked(db, now, ct);
-        }
-        catch (Exception ex)
-        {
-            // Fallback for databases that don't support FOR UPDATE SKIP LOCKED
-            // (like in-memory DB for tests).
-            logger.LogDebug(ex, "SKIP LOCKED query failed, using fallback");
-            pendingTasks = await db.WorkflowTasks
-                .Where(t => t.Status == TaskStatus.Pending &&
-                            (t.ScheduledAt == null || t.ScheduledAt <= now))
-                .OrderBy(t => t.ScheduledAt)
-                .Take(10)
-                .Include(t => t.Instance)
-                .ToListAsync(ct);
+            var candidates = await ReadPendingBatchAsync(db, now, considered.ToArray(), ct);
+            if (candidates.Count == 0) break;
+            foreach (var candidate in candidates)
+            {
+                considered.Add(candidate.TaskId);
+                var instance = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
+                    .SingleOrDefaultAsync(x => x.Id == candidate.InstanceId, ct);
+                if (!HasExecutionAuthority(instance, candidate.TaskId)
+                    || await db.WorkflowResetIntents.AnyAsync(x => x.TaskId == candidate.TaskId && x.AppliedAt == null, ct)) continue;
+                pendingTasks.Add(candidate);
+                if (pendingTasks.Count == 10) break;
+            }
+            if (candidates.Count < 10) break;
         }
 
         if (!pendingTasks.Any())
@@ -199,8 +216,50 @@ public class WorkflowWorker(
         return pendingTasks.Count;
     }
 
-    private static async Task<List<WorkflowTask>> QueryWithSkipLocked(
-        RecipeDbContext db, DateTimeOffset now, CancellationToken ct)
+    private async Task<List<WorkflowTask>> ReadPendingBatchAsync(RecipeDbContext db,
+        DateTimeOffset now, Guid[] excludedTaskIds, CancellationToken ct)
+    {
+        try
+        {
+            return await QueryBatchWithSkipLocked(db, now, excludedTaskIds, ct);
+        }
+        catch (Exception ex)
+        {
+            // Preserve the existing fallback for providers without SKIP LOCKED.
+            logger.LogDebug(ex, "SKIP LOCKED query failed, using fallback");
+            return await db.WorkflowTasks
+                .Where(t => t.Status == TaskStatus.Pending &&
+                            !excludedTaskIds.Contains(t.TaskId) &&
+                            t.Instance.Status != WorkflowStatus.Paused &&
+                            t.ProcessorName != UrlCaptureInitialization.ProcessorName &&
+                            t.ProcessorName != RecipeFollowupInitialization.ProcessorName &&
+                            (t.ScheduledAt == null || t.ScheduledAt <= now))
+                .OrderBy(t => t.ScheduledAt)
+                .Take(10)
+                .Include(t => t.Instance)
+                .ToListAsync(ct);
+        }
+    }
+
+    private bool HasExecutionAuthority(WorkflowInstance? instance, Guid taskId)
+    {
+        try
+        {
+            if (instance is null) throw new InvalidDataException("Workflow is unavailable.");
+            RecipeFilePublicationStore.ValidateExecutionLaunch(instance);
+            return true;
+        }
+        catch (Exception ex) when (ex is InvalidDataException or JsonException or ArgumentException)
+        {
+            // Do not clear results, advance retries, fail a parent or recapture
+            // current inputs as though they were the originally accepted command.
+            logger.LogWarning(ex, "Refusing workflow task {TaskId}: original launch authority is unavailable or divergent", taskId);
+            return false;
+        }
+    }
+
+    private static async Task<List<WorkflowTask>> QueryBatchWithSkipLocked(
+        RecipeDbContext db, DateTimeOffset now, Guid[] excludedTaskIds, CancellationToken ct)
     {
         // PostgreSQL-specific query using raw SQL with FOR UPDATE SKIP LOCKED
         return await db.WorkflowTasks
@@ -208,9 +267,14 @@ public class WorkflowWorker(
                 SELECT t.task_id, t.instance_id, t.task_name, t.processor_name, t.payload,
                        t.status, t.depends_on, t.retry_count, t.scheduled_at,
                        t.error_message, t.stack_trace, t.created_at, t.updated_at, 
-                       t.result
+                       t.result, t.child_launch_intent_id, t.reset_intent_id
                 FROM workflow_tasks t
                 WHERE t.status = {(int)TaskStatus.Pending}
+                  AND NOT (t.task_id = ANY({excludedTaskIds}))
+                  AND EXISTS (SELECT 1 FROM workflow_instances i
+                              WHERE i.id = t.instance_id
+                                AND i.status <> {(int)WorkflowStatus.Paused})
+                  AND t.processor_name NOT IN ({UrlCaptureInitialization.ProcessorName}, {RecipeFollowupInitialization.ProcessorName})
                   AND (t.scheduled_at IS NULL OR t.scheduled_at <= {now})
                 ORDER BY t.scheduled_at ASC
                 LIMIT 10
@@ -239,6 +303,8 @@ public class WorkflowWorker(
                 await using var recoveryLease = task.ProcessorName is not ("CaptureDemoState" or "RestoreDemoState")
                     && services.GetService<RecoveryBoundary>() is { } recovery
                     ? await recovery.EnterAsync(RecoveryAccess.Write, ct) : null;
+                await using var executionLease = await WorkflowExecutionLease.EnterAsync(db, task.TaskId, wait: false, ct);
+                if (executionLease is null) return;
                 await ProcessTaskAsync(task, db, ct);
             }
             finally
@@ -260,17 +326,29 @@ public class WorkflowWorker(
 
     private async Task ProcessTaskAsync(WorkflowTask task, RecipeDbContext db, CancellationToken ct)
     {
+        WorkflowProcessorAttempt? attempt = null;
+        var processorReturned = false;
+        string? returnedResult = null;
         try
         {
-            // Reload task with AsNoTracking to ensure we get the latest state from the DB,
-            // then attach it so we can continue processing it.
-            var refreshedTask = await db.WorkflowTasks.AsNoTracking()
-                .FirstOrDefaultAsync(t => t.TaskId == task.TaskId, cancellationToken: ct)
+            // Reload the complete aggregate after throttle/recovery waits. A matching
+            // selected task alone cannot certify unchanged sibling or parameter intent.
+            var instance = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
+                .SingleOrDefaultAsync(x => x.Id == task.InstanceId, ct);
+            var refreshedTask = instance?.Tasks.SingleOrDefault(x => x.TaskId == task.TaskId)
                 ?? throw new InvalidOperationException($"Task {task.TaskId} not found");
+            refreshedTask.Instance = instance!;
 
-            if (refreshedTask.Status is not (TaskStatus.Pending or TaskStatus.Processing)) return;
+            // Selection precedes throttle acquisition. A paused parent
+            // or another attempt's Processing state must still fence this pickup.
+            // Initialization placeholders carry accepted intent only; resetting
+            // their status never grants ordinary processor execution authority.
+            if (refreshedTask.Status != TaskStatus.Pending
+                || refreshedTask.Instance is null
+                || refreshedTask.Instance.Status == WorkflowStatus.Paused
+                || refreshedTask.ProcessorName is UrlCaptureInitialization.ProcessorName
+                    or RecipeFollowupInitialization.ProcessorName) return;
             task = refreshedTask;
-            db.WorkflowTasks.Attach(task);
 
             // If the task was rescheduled (e.g. by a 429 from another parallel task) while we were waiting
             // for the throttle, skip it now so we don't hit the rate limit again immediately.
@@ -281,11 +359,29 @@ public class WorkflowWorker(
                 return;
             }
 
+            if (!HasExecutionAuthority(instance, task.TaskId)
+                || await db.WorkflowResetIntents.AnyAsync(x => x.TaskId == task.TaskId && x.AppliedAt == null, ct)) return;
+
+            // Do not track the eligibility snapshot as the parent's current
+            // state. A sibling may pause it while this processor is running;
+            // completion/failure reconciliation must reread that stored state.
+            task.Instance = null!;
+            db.WorkflowTasks.Attach(task);
+
+            attempt = WorkflowProcessorHistory.Begin(db, task, instance!, clock.UtcNow);
             // Mark as processing
             task.Status = TaskStatus.Processing;
+            task.UpdatedAt = clock.UtcNow;
             task.ErrorMessage = null;
             task.StackTrace = null;
-            await db.SaveChangesAsync(ct);
+            try { await db.SaveChangesAsync(ct); }
+            catch (Exception admissionEx)
+            {
+                // A lost acknowledgement must not dispatch an unacknowledged
+                // attempt or publish a fabricated failure over a committed start.
+                logger.LogError(admissionEx, "Processor admission was not acknowledged for task {TaskId}", task.TaskId);
+                return;
+            }
 
             logger.LogInformation("Processing task {TaskId} with processor {ProcessorName}",
                 task.TaskId, task.ProcessorName);
@@ -305,6 +401,8 @@ public class WorkflowWorker(
 
             // Execute processor
             var result = await processor.ExecuteAsync(task, ct);
+            returnedResult = result is null ? null : JsonSerializer.Serialize(result, JsonDefaults.CamelCase);
+            processorReturned = true;
 
             // Mark as completed and handle promotion in a single transaction
             task.Status = TaskStatus.Completed;
@@ -312,10 +410,41 @@ public class WorkflowWorker(
 
             if (result != null)
             {
-                task.Result = JsonSerializer.Serialize(result, JsonDefaults.CamelCase);
+                task.Result = returnedResult;
             }
 
-            await db.SaveChangesAsync(ct);
+            try
+            {
+                await WorkflowProcessorHistory.ObserveAsync(db, attempt, task, "succeeded", processorReturned, returnedResult, clock.UtcNow, ct);
+                await db.SaveChangesAsync(ct);
+            }
+            catch (Exception outcomeEx)
+            {
+                // Outcome and task state share the save. Do not convert a lost
+                // success acknowledgement into a second, contradictory outcome.
+                logger.LogError(outcomeEx, "Processor outcome was not acknowledged for task {TaskId}", task.TaskId);
+                try
+                {
+                    // Independently read the atomic receipt before promoting
+                    // dependents. A rolled-back/unobserved outcome cannot do so.
+                    var committed = await db.WorkflowProcessorAttempts.AsNoTracking()
+                        .SingleOrDefaultAsync(x => x.Id == attempt.Id, CancellationToken.None);
+                    if (committed?.Outcome is not null && committed.RequestHash == attempt.RequestHash
+                        && committed.OutcomeHash == attempt.OutcomeHash)
+                    {
+                        WorkflowProcessorHistory.Validate(committed);
+                        await db.Entry(task).ReloadAsync(CancellationToken.None);
+                        await db.Entry(attempt).ReloadAsync(CancellationToken.None);
+                        if (task.Status == TaskStatus.Completed)
+                            await HandleTaskCompletionAsync(task.InstanceId, db, CancellationToken.None);
+                    }
+                }
+                catch (Exception readbackEx)
+                {
+                    logger.LogWarning(readbackEx, "Processor outcome readback remains unresolved for task {TaskId}", task.TaskId);
+                }
+                return;
+            }
 
             // Handle promotion and completion in a single consolidated step
             await HandleTaskCompletionAsync(task.InstanceId, db, ct);
@@ -344,6 +473,8 @@ public class WorkflowWorker(
             // even if proactive rescheduling of other tasks fails due to concurrency.
             try
             {
+                if (attempt is not null)
+                    await WorkflowProcessorHistory.ObserveAsync(db, attempt, task, "retry", processorReturned, returnedResult, clock.UtcNow, ct);
                 await db.SaveChangesAsync(ct);
             }
             catch (Exception saveEx)
@@ -402,6 +533,8 @@ public class WorkflowWorker(
             // 1. SAVE THE TASK FAILURE FIRST
             try
             {
+                if (attempt is not null)
+                    await WorkflowProcessorHistory.ObserveAsync(db, attempt, task, "failed", processorReturned, returnedResult, clock.UtcNow, ct);
                 await db.SaveChangesAsync(ct);
             }
             catch (Exception saveEx)
@@ -422,7 +555,7 @@ public class WorkflowWorker(
                     instance.UpdatedAt = clock.UtcNow;
                     await db.SaveChangesAsync(ct);
 
-                    await RecordImportReportFailureAsync(instance, task, ct);
+                    await RecordImportReportFailureAsync(instance, task, ex, ct);
 
                     // Publish recipe_failed SSE event — all retries exhausted, workflow is fatally failed.
                     // This fires on the fatal path only.
@@ -458,15 +591,23 @@ public class WorkflowWorker(
             {
                 foreach (var task in staleTasks)
                 {
+                    // A slow live processor is not a zombie. Claim the same lease
+                    // as dispatch/reset, then reread after any competing completion.
+                    await using var executionLease = await WorkflowExecutionLease.EnterAsync(db, task.TaskId, wait: false, ct);
+                    if (executionLease is null) continue;
+                    await db.Entry(task).ReloadAsync(ct);
+                    if (db.Entry(task).State == EntityState.Detached
+                        || task.Status != TaskStatus.Processing || task.UpdatedAt >= staleThreshold
+                        || await db.WorkflowResetIntents.AnyAsync(x => x.TaskId == task.TaskId && x.AppliedAt == null, ct)) continue;
                     var originalTime = task.UpdatedAt;
                     task.Status = TaskStatus.Pending;
                     task.RetryCount++;
                     task.UpdatedAt = clock.UtcNow;
                     task.ErrorMessage = $"Reclaimed by Zombie Reaper (stuck in Processing since {originalTime:u})";
+                    await db.SaveChangesAsync(ct);
                 }
 
-                await db.SaveChangesAsync(ct);
-                logger.LogInformation("Zombie Reaper reclaimed {Count} stale tasks that were stuck in Processing state.", staleTasks.Count);
+                logger.LogInformation("Zombie Reaper inspected {Count} stale processing tasks.", staleTasks.Count);
             }
         }
         catch (Exception ex)
@@ -612,6 +753,7 @@ public class WorkflowWorker(
     private async Task RecordImportReportFailureAsync(
         WorkflowInstance instance,
         WorkflowTask failedTask,
+        Exception failure,
         CancellationToken ct)
     {
         if (instance.WorkflowId is not ("recipe-import" or "url-import")) return;
@@ -629,7 +771,8 @@ public class WorkflowWorker(
                 recipeId.Value,
                 instance.Id,
                 failedTask.TaskName,
-                failedTask.ErrorMessage ?? "Unknown error");
+                failedTask.ErrorMessage ?? "Unknown error",
+                failedTask.ProcessorName == "ExtractRecipe" && failure is RecipeContentReviewException review ? review.Reasons : null);
         }
         catch (Exception ex)
         {

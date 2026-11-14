@@ -13,7 +13,7 @@ public sealed class RecoveryBoundaryMiddleware(RequestDelegate next)
         var path = context.Request.Path;
         var mutation = !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method)
             && path != "/api/recipes/search";
-        if ((!boundary.Enabled && !(mutation && boundary.CoordinatesWrites)) || !path.StartsWithSegments("/api")
+        if ((!boundary.Enabled && !db.Database.IsNpgsql()) || !path.StartsWithSegments("/api")
             || path.StartsWithSegments("/api/management/recovery") || path == "/api/management/status" || path == "/api/stream" || path == "/api/health")
         { await next(context); return; }
         IAsyncDisposable lease;
@@ -30,6 +30,7 @@ public sealed class RecoveryBoundaryMiddleware(RequestDelegate next)
         }
         await using (lease)
         {
+            using var binding = boundary.BindLease(lease);
             if (demoMode.Enabled)
             {
                 var generation = await DemoGenerationProtocol.CurrentAsync(db, context.RequestAborted);

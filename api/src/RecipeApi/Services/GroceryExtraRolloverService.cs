@@ -20,7 +20,8 @@ public sealed class GroceryExtraRolloverService(RecipeDbContext db, IClock clock
     public async Task<GroceryExtraRolloverResult> ReconcileAsync(DateOnly throughWeek, CancellationToken ct = default)
     {
         if (throughWeek.DayOfWeek != DayOfWeek.Monday) throw new ArgumentException("Rollover target must be Monday.", nameof(throughWeek));
-        await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+        var callerOwnsTransaction = db.Database.CurrentTransaction is not null;
+        await using var transaction = db.Database.IsRelational() && !callerOwnsTransaction ? await db.Database.BeginTransactionAsync(ct) : null;
         if (db.Database.IsNpgsql()) await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(1196578386)", ct);
         var all = await db.GroceryExtraOccurrences.OrderBy(x => x.WeekStartDate).ThenBy(x => x.CreatedAt).ToListAsync(ct);
         var created = 0;
@@ -37,7 +38,9 @@ public sealed class GroceryExtraRolloverService(RecipeDbContext db, IClock clock
         }
         await db.SaveChangesAsync(ct);
         if (transaction is not null) await transaction.CommitAsync(ct);
-        if (created > 0 && publisher is not null)
+        // An enlisted caller owns commit and its subsequent schedule publication.
+        // Never announce extras that its transaction can still roll back.
+        if (created > 0 && publisher is not null && !callerOwnsTransaction)
         {
             try
             {

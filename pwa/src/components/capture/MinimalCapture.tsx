@@ -748,8 +748,6 @@ export default function MinimalCapture({
               plannerDayLabel={null}
               onClose={() => setDuplicateRecipeId(null)}
               onUseForDay={async () => {}}
-              onPlanForLater={async () => {}}
-              onFindSimilar={() => {}}
             />
           )}
         </div>
@@ -996,8 +994,6 @@ export default function MinimalCapture({
             plannerDayLabel={null}
             onClose={() => setDuplicateRecipeId(null)}
             onUseForDay={async () => {}}
-            onPlanForLater={async () => {}}
-            onFindSimilar={() => {}}
           />
         )}
       </div>
@@ -1560,8 +1556,6 @@ export default function MinimalCapture({
           plannerDayLabel={null}
           onClose={() => setDuplicateRecipeId(null)}
           onUseForDay={async () => {}}
-          onPlanForLater={async () => {}}
-          onFindSimilar={() => {}}
         />
       )}
     </div>

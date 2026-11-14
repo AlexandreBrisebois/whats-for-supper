@@ -1,0 +1,554 @@
+{
+  "format": "wfs-bounded-vocabulary-corpus",
+  "version": 1,
+  "reference": {
+    "revision": "three-anchor-reviewed-2026-11-14.1",
+    "sha256": "9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b"
+  },
+  "matchKeyPolicyVersion": 1,
+  "cases": [
+    {
+      "locale": "en",
+      "text": "onion",
+      "matchKey": "onion",
+      "outcome": "exact",
+      "foodId": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+      "rationale": "Fresh bulb onion, unspecified variety. The listed literal diced/sliced phrases describe preparation of that purchase. Powder, green onion and shallot remain outside this identity."
+    },
+    {
+      "locale": "en",
+      "text": "onions",
+      "matchKey": "onions",
+      "outcome": "exact",
+      "foodId": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+      "rationale": "Fresh bulb onion, unspecified variety. The listed literal diced/sliced phrases describe preparation of that purchase. Powder, green onion and shallot remain outside this identity."
+    },
+    {
+      "locale": "en",
+      "text": "onion, diced",
+      "matchKey": "onion, diced",
+      "outcome": "exact",
+      "foodId": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+      "rationale": "Fresh bulb onion, unspecified variety. The listed literal diced/sliced phrases describe preparation of that purchase. Powder, green onion and shallot remain outside this identity."
+    },
+    {
+      "locale": "en",
+      "text": "onion, sliced",
+      "matchKey": "onion, sliced",
+      "outcome": "exact",
+      "foodId": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+      "rationale": "Fresh bulb onion, unspecified variety. The listed literal diced/sliced phrases describe preparation of that purchase. Powder, green onion and shallot remain outside this identity."
+    },
+    {
+      "locale": "fr",
+      "text": "oignon",
+      "matchKey": "oignon",
+      "outcome": "exact",
+      "foodId": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+      "rationale": "Fresh bulb onion, unspecified variety. The listed literal diced/sliced phrases describe preparation of that purchase. Powder, green onion and shallot remain outside this identity."
+    },
+    {
+      "locale": "fr",
+      "text": "oignons",
+      "matchKey": "oignons",
+      "outcome": "exact",
+      "foodId": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+      "rationale": "Fresh bulb onion, unspecified variety. The listed literal diced/sliced phrases describe preparation of that purchase. Powder, green onion and shallot remain outside this identity."
+    },
+    {
+      "locale": "fr",
+      "text": "oignon émincé",
+      "matchKey": "oignon émincé",
+      "outcome": "exact",
+      "foodId": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+      "rationale": "Fresh bulb onion, unspecified variety. The listed literal diced/sliced phrases describe preparation of that purchase. Powder, green onion and shallot remain outside this identity."
+    },
+    {
+      "locale": "en",
+      "text": "tomato",
+      "matchKey": "tomato",
+      "outcome": "exact",
+      "foodId": "d9940182-48c9-4823-a820-1c7c54869d5f",
+      "rationale": "Fresh raw tomato, unspecified variety. No preserved, dried, concentrated or prepared-product form is inferred."
+    },
+    {
+      "locale": "en",
+      "text": "tomatoes",
+      "matchKey": "tomatoes",
+      "outcome": "exact",
+      "foodId": "d9940182-48c9-4823-a820-1c7c54869d5f",
+      "rationale": "Fresh raw tomato, unspecified variety. No preserved, dried, concentrated or prepared-product form is inferred."
+    },
+    {
+      "locale": "fr",
+      "text": "tomate",
+      "matchKey": "tomate",
+      "outcome": "exact",
+      "foodId": "d9940182-48c9-4823-a820-1c7c54869d5f",
+      "rationale": "Fresh raw tomato, unspecified variety. No preserved, dried, concentrated or prepared-product form is inferred."
+    },
+    {
+      "locale": "fr",
+      "text": "tomates",
+      "matchKey": "tomates",
+      "outcome": "exact",
+      "foodId": "d9940182-48c9-4823-a820-1c7c54869d5f",
+      "rationale": "Fresh raw tomato, unspecified variety. No preserved, dried, concentrated or prepared-product form is inferred."
+    },
+    {
+      "locale": "en",
+      "text": "canned tomato",
+      "matchKey": "canned tomato",
+      "outcome": "exact",
+      "foodId": "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+      "rationale": "Canned tomato with cut unspecified. No fresh tomato, paste, explicit crushed cut, added seasoning, net/drained basis or package capacity is inferred."
+    },
+    {
+      "locale": "en",
+      "text": "canned tomatoes",
+      "matchKey": "canned tomatoes",
+      "outcome": "exact",
+      "foodId": "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+      "rationale": "Canned tomato with cut unspecified. No fresh tomato, paste, explicit crushed cut, added seasoning, net/drained basis or package capacity is inferred."
+    },
+    {
+      "locale": "fr",
+      "text": "tomate en conserve",
+      "matchKey": "tomate en conserve",
+      "outcome": "exact",
+      "foodId": "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+      "rationale": "Canned tomato with cut unspecified. No fresh tomato, paste, explicit crushed cut, added seasoning, net/drained basis or package capacity is inferred."
+    },
+    {
+      "locale": "fr",
+      "text": "tomates en conserve",
+      "matchKey": "tomates en conserve",
+      "outcome": "exact",
+      "foodId": "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+      "rationale": "Canned tomato with cut unspecified. No fresh tomato, paste, explicit crushed cut, added seasoning, net/drained basis or package capacity is inferred."
+    },
+    {
+      "text": "échalote",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Regional meaning can denote shallot or green onion; no bare-term exact identity proposed."
+    },
+    {
+      "text": "pepper",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Bare pepper/piment remain ambiguous across spice/vegetable or regional heat/product meaning. Poivron is deliberately outside this seed because no bell/sweet-pepper vegetable concept is proposed; its omission does not suggest a spice meaning. Explicit ground black pepper is separately proposed."
+    },
+    {
+      "text": "piment",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Bare pepper/piment remain ambiguous across spice/vegetable or regional heat/product meaning. Poivron is deliberately outside this seed because no bell/sweet-pepper vegetable concept is proposed; its omission does not suggest a spice meaning. Explicit ground black pepper is separately proposed."
+    },
+    {
+      "text": "poivron",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Bare pepper/piment remain ambiguous across spice/vegetable or regional heat/product meaning. Poivron is deliberately outside this seed because no bell/sweet-pepper vegetable concept is proposed; its omission does not suggest a spice meaning. Explicit ground black pepper is separately proposed."
+    },
+    {
+      "text": "coriander",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Coriander family deliberately omitted from this bounded draft; leaf/seed and language-specific usage require separate review."
+    },
+    {
+      "text": "coriandre",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Coriander family deliberately omitted from this bounded draft; leaf/seed and language-specific usage require separate review."
+    },
+    {
+      "text": "cilantro",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Coriander family deliberately omitted from this bounded draft; leaf/seed and language-specific usage require separate review."
+    },
+    {
+      "text": "cream",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Regional fat percentages, fermentation and product uses are not interchangeable; cream family omitted."
+    },
+    {
+      "text": "crème",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Regional fat percentages, fermentation and product uses are not interchangeable; cream family omitted."
+    },
+    {
+      "text": "heavy cream",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Regional fat percentages, fermentation and product uses are not interchangeable; cream family omitted."
+    },
+    {
+      "text": "double cream",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Regional fat percentages, fermentation and product uses are not interchangeable; cream family omitted."
+    },
+    {
+      "text": "crème fraîche",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Regional fat percentages, fermentation and product uses are not interchangeable; cream family omitted."
+    },
+    {
+      "text": "cornflour",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Can mean starch or milled maize depending on region; only explicit cornstarch/amidon de maïs is proposed."
+    },
+    {
+      "text": "corn flour",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Can mean starch or milled maize depending on region; only explicit cornstarch/amidon de maïs is proposed."
+    },
+    {
+      "text": "farine de maïs",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Can mean starch or milled maize depending on region; only explicit cornstarch/amidon de maïs is proposed."
+    },
+    {
+      "text": "milk",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Species, fat content and processing unspecified; no milk concept included."
+    },
+    {
+      "text": "lait",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Species, fat content and processing unspecified; no milk concept included."
+    },
+    {
+      "text": "butter",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Salt status unresolved; salted and unsalted butter have separate proposed IDs."
+    },
+    {
+      "text": "beurre",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Salt status unresolved; salted and unsalted butter have separate proposed IDs."
+    },
+    {
+      "text": "onion powder",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Not aliases of generic fresh bulb onion; powder/other alliums require separate concepts."
+    },
+    {
+      "text": "poudre d'oignon",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Not aliases of generic fresh bulb onion; powder/other alliums require separate concepts."
+    },
+    {
+      "text": "oignon en poudre",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Not aliases of generic fresh bulb onion; powder/other alliums require separate concepts."
+    },
+    {
+      "text": "green onion",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Not aliases of generic fresh bulb onion; powder/other alliums require separate concepts."
+    },
+    {
+      "text": "oignon vert",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Not aliases of generic fresh bulb onion; powder/other alliums require separate concepts."
+    },
+    {
+      "text": "shallot",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Not aliases of generic fresh bulb onion; powder/other alliums require separate concepts."
+    },
+    {
+      "text": "crushed tomatoes",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Do not collapse distinct cuts/concentration into generic canned tomatoes or explicitly double-concentrated paste."
+    },
+    {
+      "text": "tomates concassées",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Do not collapse distinct cuts/concentration into generic canned tomatoes or explicitly double-concentrated paste."
+    },
+    {
+      "text": "tomato paste",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Do not collapse distinct cuts/concentration into generic canned tomatoes or explicitly double-concentrated paste."
+    },
+    {
+      "text": "concentré de tomate",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Do not collapse distinct cuts/concentration into generic canned tomatoes or explicitly double-concentrated paste."
+    },
+    {
+      "text": "rice",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Generic grain/processing/variety missing; do not choose a specific dry grain/bean/flour identity."
+    },
+    {
+      "text": "riz",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Generic grain/processing/variety missing; do not choose a specific dry grain/bean/flour identity."
+    },
+    {
+      "text": "flour",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Generic grain/processing/variety missing; do not choose a specific dry grain/bean/flour identity."
+    },
+    {
+      "text": "farine",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Generic grain/processing/variety missing; do not choose a specific dry grain/bean/flour identity."
+    },
+    {
+      "text": "beans",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Generic grain/processing/variety missing; do not choose a specific dry grain/bean/flour identity."
+    },
+    {
+      "text": "haricots",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Generic grain/processing/variety missing; do not choose a specific dry grain/bean/flour identity."
+    },
+    {
+      "text": "tomato or pepper",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Alternatives are not exact aliases of either constituent."
+    },
+    {
+      "text": "tomate ou poivron",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Alternatives are not exact aliases of either constituent."
+    },
+    {
+      "text": "salted or unsalted butter",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Alternatives are not exact aliases of either constituent."
+    },
+    {
+      "text": "beurre salé ou non salé",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Alternatives are not exact aliases of either constituent."
+    },
+    {
+      "text": "extra-firm tofu",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Firm silken versus non-silken texture is not inferred. Generic firm, extra-firm and silken wording is outside the explicitly non-silken firm concept."
+    },
+    {
+      "text": "tofu extra-ferme",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Firm silken versus non-silken texture is not inferred. Generic firm, extra-firm and silken wording is outside the explicitly non-silken firm concept."
+    },
+    {
+      "text": "silken tofu",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Firm silken versus non-silken texture is not inferred. Generic firm, extra-firm and silken wording is outside the explicitly non-silken firm concept."
+    },
+    {
+      "text": "tofu soyeux",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Firm silken versus non-silken texture is not inferred. Generic firm, extra-firm and silken wording is outside the explicitly non-silken firm concept."
+    },
+    {
+      "text": "plain firm tofu",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Firm silken versus non-silken texture is not inferred. Generic firm, extra-firm and silken wording is outside the explicitly non-silken firm concept."
+    },
+    {
+      "text": "tofu ferme nature",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Firm silken versus non-silken texture is not inferred. Generic firm, extra-firm and silken wording is outside the explicitly non-silken firm concept."
+    },
+    {
+      "text": "1 can tomatoes",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Quantity/package wording is not a food alias; units, capacity, count kind and net/drained facts remain separate."
+    },
+    {
+      "text": "400 g canned tomatoes",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Quantity/package wording is not a food alias; units, capacity, count kind and net/drained facts remain separate."
+    },
+    {
+      "text": "une boîte de tomates",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Quantity/package wording is not a food alias; units, capacity, count kind and net/drained facts remain separate."
+    },
+    {
+      "text": "onion diced",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Literal punctuation-free form has no reviewed alias in this bounded release."
+    },
+    {
+      "text": "onion sliced",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Literal punctuation-free form has no reviewed alias in this bounded release."
+    },
+    {
+      "text": "oignon emince",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Accents are retained. This accent-stripped phrase has no reviewed alias."
+    },
+    {
+      "text": "salted butter",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Salted and unsalted products require separate identities. Both remain outside this three-food release."
+    },
+    {
+      "text": "unsalted butter",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Salted and unsalted products require separate identities. Both remain outside this three-food release."
+    },
+    {
+      "text": "beurre salé",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Salted and unsalted products require separate identities. Both remain outside this three-food release."
+    },
+    {
+      "text": "beurre non salé",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Salted and unsalted products require separate identities. Both remain outside this three-food release."
+    },
+    {
+      "text": "coriander leaf",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Leaf and seed require separate reviewed identities, outside this release."
+    },
+    {
+      "text": "coriander seed",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Leaf and seed require separate reviewed identities, outside this release."
+    },
+    {
+      "text": "feuille de coriandre",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Leaf and seed require separate reviewed identities, outside this release."
+    },
+    {
+      "text": "graine de coriandre",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Leaf and seed require separate reviewed identities, outside this release."
+    },
+    {
+      "text": "cream 15%",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Fat percentage and processing remain purchase qualifiers, outside this release."
+    },
+    {
+      "text": "crème 35 %",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Fat percentage and processing remain purchase qualifiers, outside this release."
+    },
+    {
+      "text": "onion with herbs",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Compound product has no exact full-phrase alias."
+    },
+    {
+      "text": "tomates en conserve au basilic",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Added seasoning has no exact full-phrase alias."
+    },
+    {
+      "text": "tomates séchées",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Drying differs from fresh and canned preservation."
+    },
+    {
+      "text": "tomato, paste",
+      "outcome": "unmapped",
+      "foodId": null,
+      "rationale": "Punctuation normalization cannot establish product equivalence."
+    }
+  ],
+  "collisionReviews": [
+    {
+      "sameLocale": true,
+      "locale": "en",
+      "matchKey": "onion",
+      "candidateFoodIds": [
+        "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+        "d9940182-48c9-4823-a820-1c7c54869d5f"
+      ],
+      "outcome": "reject-document"
+    },
+    {
+      "sameLocale": false,
+      "matchKey": "onion",
+      "candidateFoodIds": [
+        "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+        "d9940182-48c9-4823-a820-1c7c54869d5f"
+      ],
+      "outcome": "abstain"
+    }
+  ],
+  "distinctPurchasePairs": [
+    [
+      "d9940182-48c9-4823-a820-1c7c54869d5f",
+      "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb"
+    ]
+  ],
+  "independentQuantityFacts": [
+    "400 g and 800 g package capacities remain separate facts.",
+    "Net and drained basis remain separate facts.",
+    "Cup, tsp, tbsp, ml, mass and count kinds retain their existing owners.",
+    "Unknown regional units remain unresolved."
+  ]
+}

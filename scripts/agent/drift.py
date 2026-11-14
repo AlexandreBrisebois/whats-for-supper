@@ -112,14 +112,16 @@ def parse_cs_dto(file_path):
     # Properties with [JsonPropertyName("...")]
     # Capture everything between public/required and the property name (last word before { or newline)
     json_pattern = (
-        r'\[(?:property:\s*)?JsonPropertyName\("([^"]+)"\)\]'
-        r'[\s\n]*(?:public\s+)?(?:required\s+)?([\w<>, ?\[\]]+?)\s+(\w+)\s*\{'
+        r'\[(?:property:\s*)?JsonPropertyName\("([^"]+)"\)([^\]]*)\]'
+        r'[\s\n]*(?:public\s+)?(?:required\s+)?([\w.<>, ?\[\]]+?)\s+(\w+)\s*(?:\{|=>)'
     )
     for m in re.finditer(json_pattern, content):
         name = m.group(1)
-        type_name = m.group(2).strip()
+        type_name = m.group(3).strip()
         is_nullable = type_name.endswith("?") or bool(re.search(r'>\s*\?', type_name))
         is_required = "required" in m.group(0) or not is_nullable
+        if re.search(r'JsonIgnore\(\s*Condition\s*=\s*JsonIgnoreCondition\.WhenWritingDefault\s*\)', m.group(2)):
+            is_required = False
         props[name] = {"required": is_required}
 
     # Public properties without [JsonPropertyName]
@@ -203,6 +205,12 @@ def run_schema_drift(verbose=True):
                 issues += 1
             else:
                 cs_required = cs_props[match]["required"]
+                # A required JSON member may carry null. This static checker
+                # infers C# nullability; it cannot infer serializer presence.
+                spec_type = spec_props[p].get("type")
+                if (p in spec_required and not cs_required
+                        and isinstance(spec_type, list) and "null" in spec_type):
+                    continue
                 if (p not in spec_required and "default" in spec_props[p]
                         and "default" in cs_props[match]
                         and type(spec_props[p]["default"]) is type(cs_props[match]["default"])

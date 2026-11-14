@@ -1,0 +1,243 @@
+# Design
+
+## Context and Existing Ownership
+
+Current `CooksMode`, stepParser/instructionPresentation, RecipeService instruction PATCH and shared serving projection own reading/editing. `CookingStepProjection` already validates revision-bound spans and projects supported allocation forms; `IngredientProjectionService` supplies coherent ingredient/step context. `CanonicalRecipeContentStore` guards original edits and revalidates prior bindings. Reuse those owners, stable original sections/steps and the foundation's contentRevision; no separate step quantity store or replacement projection engine.
+
+Ordinary binding production is still missing: conversion creates empty bindings and instruction Save retains only prior bindings. The existing `CanonicalIngredientEditPostgresTests` step/allocation partials and `LiveBrowser_Cooking*` fixtures exercise consumer behavior with seeded relationships. Their passing evidence cannot establish that an ordinary imported or edited recipe acquires trusted relationships. Group 0 supplies this missing connection; groups 1–3 reconcile and extend existing owners only where their acceptance is absent or affected.
+
+## Decisions and Tradeoffs
+
+Use [shared bindings](../canonical-ingredient-correction/contracts.md) for mention, whole, absolute, fraction, remainder, fixed and per-item roles. Spans are UTF-16 half-open with expected text and exact text/content revisions; Unicode boundaries and duplicate occurrences must be tested. Structured segments could avoid offsets but would force a richer editor/import rewrite; validated spans fit the existing ordinary text editor. An invalid span leaves its original text untouched, not guessed.
+
+Check allocations only in explicit exhaustive same-row sequences. Alternative branches, mentions and reused references never add demand. A numeric remainder requires compatible known uses and correlation-safe arithmetic; intervals are not independent random allocations. One row's invalid sequence cannot invalidate other proven bindings. Fixed and per-item semantics need explicit evidence.
+
+## First Observable Slice
+
+### Accepted automatic reevaluation after import and edits — 2026-11-10
+
+The ordinary recipe editor remains the user entry point. No special recipe syntax
+or manual ingredient-to-step linking screen is required. Fresh intake and committed
+ingredient/step changes use the same relationship validation rules. At Save,
+revalidate unaffected proof and apply the already approved total/allocation rules;
+invalidate affected unsafe relationships before any later projection can use them.
+Unknown quantities and explicitly cleared rows/steps remain valid user decisions.
+
+When deterministic revalidation cannot establish a supported relationship, an AI
+task may propose relationships through the existing workflow system using captured
+saved originals, stable IDs and content/text revisions. This is relationship
+reevaluation, not a new source reimport or a replacement of human-authored facts.
+Alex explicitly accepted this first-release boundary: AI reevaluation may maintain
+scaling relationships but may not rewrite saved ingredient descriptions, amounts,
+units or instruction wording. Recipe rewriting is outside this workflow's scope.
+The server must establish the required association, numeric role and whole/partial
+evidence independently of a provider's confidence or `validated` label. The bounded
+evidence rules still require engineering design and adversarial acceptance; the
+permission to use AI does not resolve that missing validator by assumption.
+
+Reuse existing workflow scheduling, lifecycle, retry and publication owners. Scope
+work to affected relationships; a no-op or unrelated metadata change does not
+trigger an AI evaluation. Capture the committed input revision, deduplicate repeated
+delivery for that revision, and reject late results if current facts no longer match.
+Do not relink by row position or restore cleared facts. Provider failure or inability
+to prove a relationship leaves saved edits intact and affected wording original;
+unaffected validated relationships remain usable. Successful binding publication
+advances the coherent content revision through the canonical owner, changes no
+ingredient demand, and follows explicit refresh for an active Cook session.
+
+Workstream B owns proposal/validation behavior and its tests; A owns the required
+canonical Save/publication hooks. Coordinate that shared boundary before either
+worker edits it. The first tracer must exercise an ordinarily imported recipe,
+then both an ingredient change and a step change, through actual workflow/API/
+PostgreSQL and Cook projection; seeded bindings alone do not qualify this path.
+
+Four-portion 200 g pasta plus confirmed whole-use text → Edit original total to 250 → dated eight displays 500 g in checklist and step while groceries count 500 g once. It crosses canonical guarded PATCH, generated client, projection/API/PostgreSQL, actual Home → detail → Cook and stateful mocks; reads/projection make no provider calls, and workflow acceptance doubles only the external provider boundary. Follow with total oil 2 tbsp split 1+1, double to two 2 tbsp steps and total demand 4 tbsp.
+
+### Slice 1 evidence inlet
+
+`CookingStepRelationshipProducer` is the write-time deterministic owner. Its
+`Discover(content, previous)` follows existing projection revalidation on guarded
+Save and fresh URL/photo preparation. A complete affirmative action clause must
+express whole use explicitly, with exact quantity/unit and a unique canonical
+ingredient description. Supported English/French ordinary wording is intentionally
+bounded; unsupported trailing clauses, packages, duplicate references, unknown
+quantities, unresolved partial/conditional meaning and ambiguous rows abstain.
+The parser does not infer role from matching numbers/names/position alone. An
+independent named partial use of another ingredient does not invalidate this row.
+
+The internal payload stores versioned rule, source revision and original amount;
+it is evidence to recheck, never an authority label. Fresh publication independently
+compares binding-bearing original facts/text with the retained normalized source,
+then derives every supplied proof with incoming bindings removed. Safe empty
+pre-upgrade staged exports remain allowed. The guarded previous snapshot is the
+only authority for carrying a proven whole relationship across amount correction;
+source, row meaning, unit, text or dependency changes invalidate that exception.
+Explicit clears never reconstruct quantities. Own duplicate/malformed proof abstains;
+existing allocation-role proof retains its current owner. No producer/AI runs on read,
+projection or grocery recomputation.
+
+This slice uses synchronous deterministic reevaluation, so there is no delayed
+relationship job to deliver. Async proposal capture, provider failure and stale
+completion obligations remain open in 0.1–0.3 rather than being declared covered by
+ordinary PATCH conflicts. Exact role arithmetic and existing seeded consumers remain
+regressions; this tracer does not qualify ordinary production for every role.
+
+## State, Concurrency and Recovery
+
+Ingredient and instruction edits share expectedContentRevision. Installing updated content is atomic for ingredient list, steps and bindings; active cooking offers explicit refresh preserving unrelated checks, IDs/bookmark/offset/drafts. Stale responses cannot replace current content. Saving from scaled reading edits original wording, not rendered values. Lost replies reconcile through current detail before mutation replay.
+
+Existing quality report responses may contain new content: metadata/report updates may apply immediately, but a different semantic content revision must enter the same explicit refresh path. The existing Cook handler follows that separation; retain it for successful submission, resolution and saved-report/launch-failure responses. Applying returned semantic content immediately would mix new steps with old projected ingredients. Reporting/repair remains available; no candidate workflow is needed.
+
+## User Experience
+
+A scaled context keeps uncertain quantity wording original and readable without a routine uncertainty notice; keep unaffected valid steps projected. Do not show per-step badges or blanket warning for every unmeasured ingredient. Missing basis leaves original text and correction access; cooking and allowed completion remain available. Preserve time/temperature/equipment, source access, supported sections, both reading modes, focus and the phone/tablet roles described below.
+
+## Approved allocation correction
+
+Alex approved the rule: if original total changes 200→250 g and an explicit partial use is 50 g, retain 50 g original (75 g at portion factor 1.5). Do not redistribute it to 62.5 g original. Relative “half” remains half of the corrected total; proven whole uses track that total. Validate affected groups and remainders again; inconsistencies leave affected wording readable and retain correction/source access without a routine uncertainty notice or cooking block. This decision is settled; implementation approval and runtime acceptance remain separate.
+
+See the shared [dependency/conflict review](../canonical-ingredient-correction/review.md) for approval and release order, and [acceptance corpus](../canonical-ingredient-correction/acceptance-corpus.md) for preservation cases. Proposed API/schema details have one owner in [contracts.md](../canonical-ingredient-correction/contracts.md).
+
+## Cook mode cleanup amendment — 2026-11-09
+
+This amendment was approved and its bounded presentation changes were implemented under tasks 5.1–5.2. The following design and acceptance boundaries remain the preservation contract; task 5.3 tracks remaining combined qualification. The user's annotated `2545.jpg` was materialized and visually inspected at 390×844: the green ring encloses Edit and View Original, separate from the layers/document toggle on the left; the blue ring encloses the routine uncertainty paragraph and View adjusted ingredients link. It does not establish behavior at other widths.
+
+**Implemented slice and owner:** the existing CooksMode presentation and its affected tests remove the `cooking-step-uncertainty` paragraph and duplicate `cook.adjustedIngredients` header action. Keep projection/domain flags and safe original-prose fallback. Keep the dated/prepared context, actual load/projection/conflict/retry feedback, existing missing-projection limitation, changed-content/quantity messages and explicit Refresh actions. No API/schema/client, arithmetic, grocery, household, canonical correction, migration/recovery or completion changes are needed for this cleanup.
+
+**Layout:** the existing `cooks-mode-header-controls` flex-wrap toolbar owns the two groups. Keep the view toggle first and left. Put the existing conditional focused Edit and Original controls in a minimal flex action group with an automatic start margin on phones (for example `ml-auto md:ml-0`), wrapping within the available width; retain source/target/focus semantics. Tablet keeps its existing lower-left placement and separate focused Edit owner. Do not apply `justify-end` to the entire toolbar: that moves the distinct left view group too. Do not reorder controls in CSS or DOM; preserve view → Edit (when eligible) → Original keyboard order, named labels, ≥44×44 CSS-pixel targets, focus outlines, pressed/disabled/loading states and source-focus restoration. No fixed screenshot-derived widths, shrinking labels, clipped controls or horizontal page overflow. At narrow/enlarged French sizes, the right group may wrap onto a new right-aligned row.
+
+**Navigation and trade-offs:** retain the existing footer Ingredients/Resume steps path in All steps, including disabling Ingredients during editing and retaining checklist, bookmark and exact reading offset. Focused reading retains Back to prep (repeat Back as necessary); removing the header link does not add a new focused shortcut or change focused navigation. Its current `showIngredients` behavior is honored only in All steps, so do not expand this cleanup into a focused-navigation fix. Removing the paragraph also removes its `role=status` audible announcement: uncertain source wording remains truthful, but there is no separate uncertainty announcement. Do not replace it with a banner, badge, tooltip, hidden duplicate warning or reserved warning space. Real error and changed-content announcements remain.
+
+A responsive end-aligned action group meets the screenshot with one small wrapper. Right-aligning every tool contradicts the distinct left toggle; absolute positioning risks overlap/reflow; another ingredients shortcut or disclosure adds a mechanism the user asked to remove. Prefer subtraction plus the existing toolbar/navigation owners.
+
+**Required acceptance before completion:** no routine notice or duplicate header ingredients action in preparation or either reading presentation, in original, scaled, mixed uncertain and prepared contexts; valid amounts still project and uncertain spans stay original/readable without extra demand or cooking/completion block. Exercise All steps Ingredients → Resume with retained checks/bookmark/nonzero exact offset, disabled Ingredients while editing and retained drafts through refresh; exercise focused Back to prep. Render EN/FR at 320, 390 and 430 CSS-pixel widths, enlarged text and narrow landscape/safe-area reflow: left toggle, right Edit/Original group, correct order, full labels/targets/focus and no overflow. Each rendered toolbar row must end-align the action group against the toolbar's inner right edge when present; the view toggle stays against its inner left edge. Retain tablet portrait/landscape lower-left controls, 40% sidebar and source/focus behavior. Geometry and interaction evidence are required, not a class-name assertion alone.
+
+This is a UI preference amendment, not a newly demonstrated projection defect. Earlier positive uncertainty-notice and header-link expectations were replaced under the approved implementation; other acceptance remains binding. C19's prepared evidence remains tied to its source identity. The historical 11/12 report-opacity failure is retained in task evidence, followed by separately recorded report-navigation and fixture repairs and a 12/12 required local cooking pass. It is not the current unresolved result. Current integration and hosted-candidate gaps are tracked in tasks.md and the parity owner; do not infer that the cleanup fixed unrelated French focus/navigation, touch drag or Planner timing observations. This change establishes no deployment readiness and adds no old-backup support.
+
+## Explicit absolute-use evidence inlet
+
+The next bounded producer extends the slice 1 write-time owner with
+`explicit-absolute-clause` evidence. Its version/source/original amount, exact declared
+unit and UTF-16 measurement span are checked against the closed action clause and unique
+saved ingredient. A positive scalar use strictly below a known scalar total establishes
+partial use without asserting exhaustive allocation. Unsupported associations abstain.
+Fresh publication independently derives supplied proof; Save reuses only current valid
+proof from its guarded previous snapshot. Total corrections preserve the original absolute
+amount; step wording changes create new proof. Original facts, source and readable text
+are never rewritten by discovery. Existing projector payload amount/unit and all other
+roles retain their owners. No API, async task or other role producer is added.
+
+See [selected slice and scenario mapping](tasks.md#coordinated-absolute-use-slice-2) for
+C03/C45 acceptance, C01–C06/C12–C19/C46 preservation and remaining aggregate obligations.
+
+
+## Explicit half annotation evidence inlet
+
+
+Selected tasks: step 0.1–0.3 explicit annotated-half subset, 2.1/2.3/4.1. No new public inlet or provider authority. Ordinary current canonical ingredient facts and exact saved step text are the evidence inlet.
+
+Admit one closed affirmative clause: `Add half of the pasta (100 g).` / `Use half the pasta (100 g).`; French `Ajouter la moitié des pâtes (100 g).` / `Ajoutez la moitié de la farine (100 g).` Existing Add/Use/Cook/Boil/Mix and French verb variants may be reused. The row description is literal and unique, occurs once across all steps; a positive scalar proportional saved total and matching saved unit are required. Parenthesized numeric annotation is required; no plain-half or numeric-equality inference. Annotation must equal exact saved total × 1/2 at first production. Unsupported larger clauses, alternatives, conditions, repeated mentions and other partial/conditional sequences abstain.
+
+The binding role is existing `fraction`, payload `fraction:{n:"1",d:"2"}`. Its primary UTF-16 span selects only `half` / `moitié`; a new optional `annotationSpan` selects exactly the numeric measurement `100 g`. Existing relationshipEvidence stores original annotated amount and sourceRevision with rule `explicit-half-annotation-clause`. Both spans derive from a complete anchored parse of saved wording, never submitted provider offsets. No allocation group and no grocery contribution.
+
+Fresh validation strips submitted proof and independently rediscovers exact proof from canonical source facts, rejecting forged fraction/annotation/span/revisions and extra keys. Guarded saved-total correction can carry only previously persisted matching proof with unchanged source, row dependencies and exact step text/revision; it retains original annotation100g but recomputes display from corrected total. A step edit replaces proof and must independently match the then-current saved total. Clears/unrelated changes/no-ops follow established producer semantics.
+
+Projection reuses FractionAmount and existing exact Scale. Existing fractions without annotation remain unchanged. An annotated fraction replaces only its validated nonoverlapping annotation span, retaining the relative half and every other source byte. Bad/stale/overlapping annotation evidence leaves original readable. Basis4 total200g→250g projects `half … (187.5 g)` at six, while ingredient-derived groceries yield375g once.
+
+Trade-off: extend the existing fraction payload/projector with one optional span rather than manufacture an absolute role or duplicate numeric binding. This preserves fraction semantics and avoids duplicate use/allocation state. No new remainder/fixed/per-item producer, async workflow, exhaustive allocation inference or package/unit conversion.
+
+An explicit closed annotated-half clause naming another unique saved row is an independent subject for existing whole/absolute proof. It must not remove that unrelated proof; this subject check does not certify the other fraction or infer any exhaustive allocation.
+
+## C05 explicit final-remainder evidence inlet
+
+The selected successor admits one unique proportional saved scalar ingredient
+with one explicit measured prior use and one final use of all remaining contents.
+The final clauses are anchored English `Finally, use/add all the remaining <row>.`
+and French `Enfin, utilisez/ajoutez tout le reste de/d’<row>.`, with exact saved
+wording, units and UTF-16 spans. The existing measured-use grammar owns the prior
+clause. The two references occur once each in distinct ordered saved steps.
+Unknown units/totals, repeated references, unsupported branches, incompatible
+facts and ranges abstain. Supported zero remainder retains existing arithmetic.
+
+Every other step requires positive independent evidence. It must be a complete
+existing measured/whole/annotated-half or explicit-final clause naming another
+unique saved row, or the anchored neutral procedural grammar
+`Simmer <positive integer> minutes at <positive integer> °C.` with a required
+terminal period. Unsupported extra wording abstains for this sequence. Neutral
+numbers retain their saved text and acquire no quantity binding.
+
+The producer independently derives final exhaustive intent before creating the
+existing two-member allocationGroup and ordered predecessor edge. Fresh validation
+rederives literal source proof with incoming bindings removed, requires complete
+supplied graph membership and consistent bijective group identities, then compares
+exact evidence/revisions/spans. Labels, equality, summed uses and seeded groups
+supply no semantic authority. Guarded Save carries unaffected proof only from its
+captured prior snapshot. Final-step changes replace final proof, prior-step
+changes replace their dependent graph, and independent other-row proof survives.
+
+Existing projector/allocation arithmetic remains the owner. At basis four and
+eight portions, oil total two/prior one yields two plus two, total correction to
+three retains original one and yields two plus four with one six-tablespoon demand.
+Total one supports zero remainder. Total below one makes the numeric sequence
+uncertain quietly while original wording and cooking remain usable. The public
+binding payload already represents these fields, so the generated client and
+OpenAPI shapes are reused. Stateful mocks derive this bounded proof on Save.
+
+Evidence and selected-task bookkeeping reside under
+`.task/dependable-portions-slice5/` and the owner tasks. Async AI, additional role
+producers, later intake channels and aggregate closure remain outside this slice.
+
+## Standalone fixed-use evidence inlet — 2026-11-11
+
+The existing write-time owner accepts the closed affirmative English clause
+“For any number of portions, use exactly <amount> <saved unit> [of] <saved ingredient>.”
+and French “Quel que soit le nombre de portions, utilisez exactement <amount>
+<saved unit> de/d’<saved ingredient>.” Association requires one uniquely identified
+saved row and one literal occurrence with exact current source/content/text
+revisions and UTF-16 measurement span. Unknown or incompatible amount/unit,
+packages, repeated/alternative/conditional scope and foreign proof abstain.
+Positive canonical scalar fixed/proportional rows use the already supported
+mass/volume/independent culinary families. No basis or use≤total restriction is
+invented: fixed is an independent use policy, not an exhaustive allocation.
+The original fixed amount/unit is independently rederived at fresh publication;
+guarded Save can carry the same binding identity through total-only correction,
+including a corrected total below the dose. Text edits establish new proof,
+explicit clears remain cleared, and unrelated proof retains its owner. Payload
+uses the existing amount/unit and internal `explicit-fixed-portions-clause`
+evidence; there is no public contract or arithmetic change. One ingredient-derived
+demand remains independent of binding count. Runtime/hosted/DV qualification and
+first failures remain in tasks and operation-specific evidence.
+
+## Per-item evidence inlet
+
+The C06 inlet recognizes a closed count-first clause naming two distinct saved
+rows: `For all 4 pieces of tofu, use exactly 1/2 tsp of oil on each piece.` or
+`Pour tous les 4 morceaux de tofu, utilisez exactement 1/2 c. à thé d’huile sur
+chaque morceau.` The count uses the literal declared `pieces` or `morceaux` unit;
+this grants no unit conversion or catalogue equivalence. Exact canonical scalar
+operands, unique named rows/step identities and UTF-16 spans are validated before
+publishing an ordered whole-count binding and per-item dose binding.
+
+Both use internal evidence version 1, rule `explicit-per-item-clause`, source
+revision and original measured amount. The dose retains the existing
+`dose:{amount,unit}` and `countBindingId` payload. Fresh publication rederives both
+bindings and validates the complete supplied graph, including bijective ID/edge
+rewrites and raw payload equality. Provider labels grant no authority. No public
+DTO, projector, arithmetic or grocery-contribution change is required.
+
+Guarded prior proof can retain the count and dose identities when original totals
+change: count 4→6 projects 12 at eight portions, while oil 2→3 changes its own
+ingredient demand without changing the explicit half-teaspoon dose. An unknown or
+cleared oil total does not invent a grocery amount. Missing serving basis preserves
+original wording without guessing. Changed text needs fresh current evidence;
+after correcting the count, a new clause naming 6 and dose 1/3 replaces both
+same-step proof identities.
+
+The dose depends on the count, not the reverse. Renaming, removing or changing the
+dose row cannot erase an otherwise valid guarded count or unrelated prior proof.
+Such count-only carry cannot authorize a new exhaustive allocation: the unresolved
+source fallback preserves only exact prior/current validated independent proof,
+with unchanged selected-row dependencies and instruction text. Fresh missing,
+ambiguous or incompatible facts still abstain. Existing C01–C05 and fixed-use
+producer paths remain independently qualified. Local, native, DV and final hosted
+acceptance remain distinct gates under the coordinated delivery policy.

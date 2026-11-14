@@ -1,0 +1,138 @@
+[
+  {
+    "name": "recovery-engine",
+    "source_packet": "bilingual/a-reference-inventory/engine-next-slice-v1",
+    "files": 26,
+    "artifacts": {
+      "manifest-1.json": "69927805205abdc2625adb1b38c83dde11fe9fa7503f789797f3854bd261088e",
+      "manifest-2.json": "afde1910cf3c8bed76f6fcffcfbe1b2923f69a598470f90216f5655a901808b4",
+      "source-archive.json": "7b5646e192876a63dd33b09cc4196954e20df9807791e1911943b12921115740",
+      "patch-1.json": "75f95e718a8b2d56fb7d20e9b4f98a1a5de2616d6b12b9e4166e7b36ace0694a",
+      "patch-2.json": "ec8ae3f5e81b5354ed1465ce9f752f2db33242b99f75334ab6e35fb2ac1709ad"
+    },
+    "summary": "26 frozen after-images. First source-unavailable restore/replay/re-export PG1 passed b7e1182eb4f24e9a951eaa99d8376171, zero skips and target provider calls. NOT complete: confirmed F1 legacy publication/repair reference omission must be fixed before integration. Demo5/current shared retainer require reviewed context merges; no wholesale copy. Full corruption, destination-CAS/races, interruption, demo4 and source-coverage projection remain."
+  },
+  {
+    "name": "migration-manifest",
+    "source_packet": "b-migration-manifest/foundation-v1-pg-pending",
+    "files": 4,
+    "artifacts": {
+      "manifest-1.json": "7913ca505719c596f92eb47d667d488cf9859c94bf470c3e18ce89b80d8b6714",
+      "source-archive.json": "36c0119f938e97da2d4c28f36608eb15137db5d4670065c72e68a0a9a2d9efe4",
+      "patch-1.json": "eb7f99e67858a07207360b0706860154605846f03b48672106893e0b6a6078af"
+    },
+    "summary": "Four read-only foundation files. PG3 passed 3fb11a21dc104b2789d28c54c7418d65; no-write live inventory only. DEVELOPMENT recovery dependencies are excluded. Snapshot IDs/hashes and unchanged live recapture do NOT establish backup/live equivalence. A validated source-protection projection is still required."
+  },
+  {
+    "name": "presentation-generation",
+    "source_packet": "b-presentation-epoch/generation-v1",
+    "files": 2,
+    "artifacts": {
+      "manifest-1.json": "cfde08fc53b0df7cf73921286f7cca59d4dcc8fe00e130392dec6f7dd73beb83",
+      "source-archive.json": "16e87b6e38bb8ff652dc47bc76f9e60607e5355b4bcb0ccf349415e81fbfe24d",
+      "patch-1.json": "f8aa0c22bf79ef73951e705d303c48f03ee18ee9f991c2043d5bbb9e9b20cfdf"
+    },
+    "summary": "Two paths; actual filesystem generation N->Guid, membership/nil fallback; host70 passed. Native actual restore/waiting HTTP proof pending. Merge current DatabaseReadConnection helper deliberately."
+  },
+  {
+    "name": "grocery-write-fence",
+    "source_packet": "b-grocery-mutation-epoch/write-guard-v1",
+    "files": 5,
+    "artifacts": {
+      "manifest-1.json": "f5680600dafac55ee5ce0fd84f254a21cd7f36dc95b177f43f23e25d4c67de99",
+      "source-archive.json": "026fafe946060b8550d47c022f0537c9aa9304765a22bb0aca8d93e42fb74879",
+      "patch-1.json": "7119f7ac3e47f5d2dbd0e684c644f0d0939c72710f5280c3c36d7a027c74f7cc"
+    },
+    "summary": "Five paths; host264 and native2 f518a4b43d75435d9f565fd44fae7908 passed, zero skips. Astra source review clear; actual queued HTTP across restore still pending. Optional epoch is legacy only for authoritative nil, checked before outcome replay; old null input hash retained. Root contract/client packet is a dependency."
+  },
+  {
+    "name": "migration-receipts",
+    "source_packet": "b-migration-execution/pruned-lookup-v2",
+    "files": 2,
+    "artifacts": {
+      "manifest-1.json": "965ac783a2c9d643a63fc5f904dac13b3882ed1c734386bebe6627990f4d70f9",
+      "manifest-2.json": "0f089528d7af8c00f4e4fec3ee7d7098fa0b791b36c2d53bca0eb29ff16c75e6",
+      "source-archive.json": "bc414fb59c6b702022fe2fc62073e6a3d4d4231776626cf178b2338426891d5e",
+      "patch-1.json": "5bc25b8a976140f9f9dcb89d5a2438678dd3576ce7de0cc466f54899a1b0b8c8",
+      "patch-2.json": "67067f18fb7d90f1a92d1c691f30df97e702609a87fad2026e0b3ec021286048"
+    },
+    "summary": "Cumulative codec/lookup after-images, with ordered codec then lookup patches. Pure codec53 and host lookup56/final170 passed. No native reset/prune acceptance or executor/source admission. Completed inert receipts include live and validated retained copies; do not infer semantic eligibility from a plan receipt."
+  },
+  {
+    "name": "migration-wip-do-not-integrate",
+    "source_packet": "b-migration-execution/unfinished-wip4-do-not-integrate",
+    "files": 4,
+    "artifacts": {
+      "manifest-1.json": "241dde011d8d984c21d7f580cca656a6c3fea657fed62f775aa6ffa68e0f4995",
+      "source-archive.json": "464d80c4a6be4e2120cdb1dbb95cb728705fbc2a29f423133ff483c2d77df458",
+      "patch-1.json": "af12cf52cdf276ee55967c3acbeb3afcdf57791274528d949904adb0fe65436b"
+    },
+    "summary": "DO NOT INTEGRATE. Unqualified unused always-reset scaffold and partial keyword, without atomic per-week receipt, once-only reset fence, protected-state/source admission or native tests. Archived solely to preserve work; start implementation from proved codec/lookup, not this scaffold."
+  },
+  {
+    "name": "url-repair",
+    "source_packet": "c/url-ingredient-repair-v1",
+    "files": 10,
+    "artifacts": {
+      "manifest-1.json": "25fb951d98561637600479dd165508bced348cf6b06f4bd68590e3837dd9fdb6",
+      "source-archive.json": "5c30d244b1d56f2735023198cf0c3526be9dc9dfbe60e80256cb84b782c1cf7c",
+      "patch-1.json": "74eb5f494b99d93c817613fc36383ce1c6146fdd3cb6cc78c5dd64b34f591527"
+    },
+    "summary": "Ten paths, independently B reviewed. Host65+134 and native9 d220f032d9974cd390e631cae9f77b3f passed, zero skips; cleanup confirmed. Integrate with current photo metadata guard and PDF hooks by owned context merge. Durable ambiguous/failed candidate journal remains open; no DV/provider acceptance."
+  },
+  {
+    "name": "pdf-repair",
+    "source_packet": "c/pdf-ingredient-repair-v1",
+    "files": 8,
+    "artifacts": {
+      "manifest-1.json": "7993faf620d11a053ecabd01ed5bce517769de04902374e8b3ae9176fc82edb8",
+      "source-archive.json": "2b1a85fb8781ea1d2d8c69621f725c5a6e3ce20e78ec5ff993b885f1622fbb60",
+      "patch-1.json": "cf47380c601972bf9fbd14d65a654ca3542ed5e1fafaaae7951ba86be72e7616"
+    },
+    "summary": "Eight core paths; host188 and native4 49cd63d6117e4eb98df0c42b810ca33e passed, zero skips. Core PDF source independent review pending. Actual original two-page rendering, exact original receipt/pages, no rerender on repair/replay. Follow-up is separate."
+  },
+  {
+    "name": "pdf-followup",
+    "source_packet": "c/pdf-followup-v1",
+    "files": 5,
+    "artifacts": {
+      "manifest-1.json": "4981343eb886a81660cfac0532933913f7f3ebc9ad593070d3eb8a667db3bf59",
+      "source-archive.json": "e363cd710dd11c6d9ac2c079caad0aeb18d107c1d75dd520cb53376c71378c14",
+      "patch-1.json": "f3158c52eb724a8193d7166fae32936b40b81d497244eaceee8556d26f171ca8"
+    },
+    "summary": "Five paths atop PDF core8. Host191 passed, zero skips, including full protected-field/one-demand journey and negative omission controls. Independent source review and native1 PdfRepair_FullFollowupPreservesPrivateFieldsAndProducesOneDemand NOT RUN. No final PDF acceptance."
+  },
+  {
+    "name": "operator-capability",
+    "source_packet": "fast-forward-20261113/maintenance-capability-future-v1",
+    "files": 6,
+    "artifacts": {
+      "manifest-1.json": "6f4384f4855f387c77493ccdb9ee43c421d4e9d5ac60e3e3d181458bcd6318bd",
+      "source-archive.json": "49b09b420a3bac87456fd341cb115c439b1008a96e653fd6c7a9fe42d122c8c9",
+      "patch-1.json": "80821ebf708aa7a7bf3828e491fb9e22ad3213e93cf43af6bf52e7b5cd54554e"
+    },
+    "summary": "Six paths, including A neutral observation DTO dependency. Native5 passed in 0de9fbe443dd48a4a8e762958149e7f5 (separate presentation diagnostic intentionally failed). No independent implementation review, CLI entrypoint, full gate, actual migration activation or native pruned lookup acceptance. Marker/context/assembly identity and revocation are bounded controls, not source admission."
+  },
+  {
+    "name": "recovery-grocery-client",
+    "source_packet": "fast-forward-20261113/recovery-grocery-client-future-v1",
+    "files": 17,
+    "artifacts": {
+      "manifest-1.json": "cb42d18dfccb8f37934892aa225794d26d79ba0c6b7fd639cf3e3c3246157ca1",
+      "source-archive.json": "de3964705bb5112c759f385114dc8515900c65a872e1b84757a1f11fb7709f11",
+      "patch-1.json": "890025810e538a584a4744ca4a703c1e7721909df9f5f20e0bbf576bcc2c39ea"
+    },
+    "summary": "Seventeen cumulative paths, superseding the older client5 patch (do not apply both). Final frozen focused157 passed, webpack build passed. Initial5 C reviewed; later epoch body/refusal-read/SDK/mocks/contract changes need independent review. New browser test NOT RUN. Depends on A corrected recovery engine and B generation/write fence. Regenerate SDK from merged OpenAPI."
+  },
+  {
+    "name": "pdf-epoch-tool",
+    "source_packet": "fast-forward-20261113/pdf-grocery-epoch-v1",
+    "files": 3,
+    "artifacts": {
+      "manifest-1.json": "b47fa5e4ba1066d62e3e2db9f83689ea9bc5d7d7efc751d1425f6132e5fb8292",
+      "source-archive.json": "4d11d766daf0fde7bc156491d99bed5edb6f262b6e104d223566722e67b26e09",
+      "patch-1.json": "5432853b25f27483c107a8bfaffd2706aa2a1eb3cd651fcf11a07f4e6be6f250"
+    },
+    "summary": "Three paths. Independently C reviewed/executed31 offline cases, zero skips, including all nine actual serialized forms. Captured demand epoch now binds exact body field; previous finite scope/query/amount/identity controls retained. Depends on future SDK/client epoch field; no live PDF campaign acceptance."
+  }
+]

@@ -59,7 +59,7 @@ public partial class TomorrowPushPostgresTests(ITestOutputHelper output)
                 Assert.NotNull(plan.GroceryItems);
                 if (monday == new DateOnly(2026,10,12)) {
                     Assert.Equal(WeeklyPlanStatus.Locked, plan.Status);
-                    Assert.True(JsonDocument.Parse(plan.GroceryState!).RootElement.GetProperty("carrot").GetBoolean());
+                    Assert.True(GroceryTestRows.Checked(plan,"carrot"));
                 }
             }
         });
@@ -223,8 +223,11 @@ public partial class TomorrowPushPostgresTests(ITestOutputHelper output)
             VoteCount = i, CandidateIds = [Selected, Other],
         });
         db.CalendarEvents.Add(new CalendarEvent { Date = Sunday.AddDays(2), MealSlot = 1, RecipeId = Other, VoteCount = 99 });
-        db.WeeklyPlans.Add(new WeeklyPlan { Id = Guid.NewGuid(), WeekStartDate = new(2026,10,12), Status = WeeklyPlanStatus.Locked, GroceryState = "{\"carrot\":true}" });
+        db.WeeklyPlans.Add(new WeeklyPlan { Id = Guid.NewGuid(), WeekStartDate = new(2026,10,12), Status = WeeklyPlanStatus.Locked, GroceryState = "{}" });
         await db.SaveChangesAsync();
+        await scope.ServiceProvider.GetRequiredService<RecipeApi.Services.GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12),default);
+        using var shopper = factory.CreateAuthenticatedClient();
+        await GroceryTestRows.CheckAsync(shopper,new(2026,10,12),"carrot");
     }
 
     internal static Task<TestWebApplicationFactory> CreateFactory(NpgsqlConnectionStringBuilder settings) => TestWebApplicationFactory.CreateWithAuthAsync(new DeploymentCalendarIntegrationTests.CalendarClock(), new() {

@@ -4,6 +4,7 @@
 // @ts-ignore
 import {
   type WithSnapshotItemRequestBuilder,
+  WithSnapshotItemRequestBuilderNavigationMetadata,
   WithSnapshotItemRequestBuilderRequestsMetadata,
 } from './item/index';
 // @ts-ignore
@@ -38,6 +39,7 @@ export const RestoreRequestBuilderNavigationMetadata: Record<
 > = {
   bySnapshotId: {
     requestsMetadata: WithSnapshotItemRequestBuilderRequestsMetadata,
+    navigationMetadata: WithSnapshotItemRequestBuilderNavigationMetadata,
     pathParametersMappings: ['snapshotId'],
   },
 };

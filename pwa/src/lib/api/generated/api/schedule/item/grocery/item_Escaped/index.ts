@@ -4,112 +4,72 @@
 // @ts-ignore
 import {
   createDemoResetRequiredErrorFromDiscriminatorValue,
+  createGroceryMutationConflictFromDiscriminatorValue,
+  createGroceryMutationResultFromDiscriminatorValue,
   createRecoveryBusyErrorFromDiscriminatorValue,
+  serializeGroceryItemMutation,
+  serializeGroceryMutationResult,
   type DemoResetRequiredError,
+  type GroceryItemMutation,
+  type GroceryMutationConflict,
+  type GroceryMutationResult,
   type RecoveryBusyError,
 } from '../../../../../models/index';
 // @ts-ignore
 import {
-  type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type Parsable,
   type ParsableFactory,
-  type ParseNode,
   type RequestConfiguration,
   type RequestInformation,
   type RequestsMetadata,
-  type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ItemPatchRequestBody}
- */
-// @ts-ignore
-export function createItemPatchRequestBodyFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoItemPatchRequestBody;
-}
-/**
- * The deserialization information for the current model
- * @param ItemPatchRequestBody The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoItemPatchRequestBody(
-  itemPatchRequestBody: Partial<ItemPatchRequestBody> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    checked: (n) => {
-      itemPatchRequestBody.checked = n.getBooleanValue();
-    },
-    ingredientName: (n) => {
-      itemPatchRequestBody.ingredientName = n.getStringValue();
-    },
-  };
-}
 /**
  * Builds and executes requests for operations under /api/schedule/{weekOffset}/grocery/item
  */
 export interface Item_EscapedRequestBuilder extends BaseRequestBuilder<Item_EscapedRequestBuilder> {
   /**
-   * On one application instance, stores the supplied intended check value while retaining other current persisted entries. Item updates, full-map replacements and recomputation transitions share one server processing order, which does not imply click or arrival order. Returns 204 after persistence and the grocery publication attempt. Publication attempts follow this processing order; independent snapshots may still arrive late. A fresh read after outstanding operations settle recovers committed state.
+   * Requires the captured absolute Monday and authoritative row version. Names cannot identify checks; missing identity/version returns 409 upgrade_required. Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated commit retains unrelated rows and stores the mutation ID, request and outcome atomically. Identical retries replay the saved outcome; changed input under the same ID conflicts. Versions are unsigned-64 decimal strings. Publish after commit; lost replies require reread before replay. Extras retain their independent occurrence endpoint.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+   * @returns {Promise<GroceryMutationResult>}
+   * @throws {GroceryMutationConflict} error when the service returns a 409 status code
    * @throws {DemoResetRequiredError} error when the service returns a 412 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   patch(
-    body: ItemPatchRequestBody,
-    requestConfiguration?: RequestConfiguration<object> | undefined
-  ): Promise<void>;
+    body: GroceryItemMutation,
+    requestConfiguration?:
+      RequestConfiguration<Item_EscapedRequestBuilderPatchQueryParameters> | undefined
+  ): Promise<GroceryMutationResult | undefined>;
   /**
-   * On one application instance, stores the supplied intended check value while retaining other current persisted entries. Item updates, full-map replacements and recomputation transitions share one server processing order, which does not imply click or arrival order. Returns 204 after persistence and the grocery publication attempt. Publication attempts follow this processing order; independent snapshots may still arrive late. A fresh read after outstanding operations settle recovers committed state.
+   * Requires the captured absolute Monday and authoritative row version. Names cannot identify checks; missing identity/version returns 409 upgrade_required. Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated commit retains unrelated rows and stores the mutation ID, request and outcome atomically. Identical retries replay the saved outcome; changed input under the same ID conflicts. Versions are unsigned-64 decimal strings. Publish after commit; lost replies require reread before replay. Extras retain their independent occurrence endpoint.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toPatchRequestInformation(
-    body: ItemPatchRequestBody,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    body: GroceryItemMutation,
+    requestConfiguration?:
+      RequestConfiguration<Item_EscapedRequestBuilderPatchQueryParameters> | undefined
   ): RequestInformation;
 }
-export interface ItemPatchRequestBody extends AdditionalDataHolder, Parsable {
-  /**
-   * The checked property
-   */
-  checked?: boolean | null;
-  /**
-   * The ingredientName property
-   */
-  ingredientName?: string | null;
-}
 /**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param ItemPatchRequestBody The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
+ * Requires the captured absolute Monday and authoritative row version. Names cannot identify checks; missing identity/version returns 409 upgrade_required. Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated commit retains unrelated rows and stores the mutation ID, request and outcome atomically. Identical retries replay the saved outcome; changed input under the same ID conflicts. Versions are unsigned-64 decimal strings. Publish after commit; lost replies require reread before replay. Extras retain their independent occurrence endpoint.
  */
-// @ts-ignore
-export function serializeItemPatchRequestBody(
-  writer: SerializationWriter,
-  itemPatchRequestBody: Partial<ItemPatchRequestBody> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!itemPatchRequestBody || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeBooleanValue('checked', itemPatchRequestBody.checked);
-  writer.writeStringValue('ingredientName', itemPatchRequestBody.ingredientName);
-  writer.writeAdditionalData(itemPatchRequestBody.additionalData);
+export interface Item_EscapedRequestBuilderPatchQueryParameters {
+  /**
+   * Captured reference Monday; invalid or non-Monday values return 400 before mutation.
+   */
+  referenceWeekStartDate?: DateOnly;
 }
 /**
  * Uri template for the request builder.
  */
 export const Item_EscapedRequestBuilderUriTemplate =
-  '{+baseurl}/api/schedule/{weekOffset}/grocery/item';
+  '{+baseurl}/api/schedule/{weekOffset}/grocery/item{?referenceWeekStartDate*}';
 /**
  * Metadata for all the requests in the request builder.
  */
@@ -118,12 +78,14 @@ export const Item_EscapedRequestBuilderRequestsMetadata: RequestsMetadata = {
     uriTemplate: Item_EscapedRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     errorMappings: {
+      409: createGroceryMutationConflictFromDiscriminatorValue as ParsableFactory<Parsable>,
       412: createDemoResetRequiredErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
-    adapterMethodName: 'sendNoResponseContent',
+    adapterMethodName: 'send',
+    responseBodyFactory: createGroceryMutationResultFromDiscriminatorValue,
     requestBodyContentType: 'application/json',
-    requestBodySerializer: serializeItemPatchRequestBody,
+    requestBodySerializer: serializeGroceryItemMutation,
     requestInformationContentSetMethod: 'setContentFromParsable',
   },
 };

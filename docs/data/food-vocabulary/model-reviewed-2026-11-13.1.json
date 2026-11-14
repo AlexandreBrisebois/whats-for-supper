@@ -1,0 +1,1682 @@
+{
+  "version": 1,
+  "revision": "model-reviewed-2026-11-13.1",
+  "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1",
+  "units": [],
+  "releases": [
+    {
+      "revision": "model-reviewed-2026-11-13.1",
+      "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1",
+      "foods": [
+        {
+          "id": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+          "revision": "model-reviewed-2026-11-13.1/food-1",
+          "labels": {
+            "en": "Fresh bulb onion",
+            "fr": "Oignon frais"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "plantPart": "bulb",
+            "variety": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "onion",
+              "matchKey": "onion",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "onions",
+              "matchKey": "onions",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "onion, diced",
+              "matchKey": "onion, diced",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "onion, sliced",
+              "matchKey": "onion, sliced",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "oignon",
+              "matchKey": "oignon",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "oignons",
+              "matchKey": "oignons",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "oignon émincé",
+              "matchKey": "oignon émincé",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "d9940182-48c9-4823-a820-1c7c54869d5f",
+          "revision": "model-reviewed-2026-11-13.1/food-2",
+          "labels": {
+            "en": "Fresh tomato",
+            "fr": "Tomate fraîche"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "raw tomato",
+            "variety": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "tomato",
+              "matchKey": "tomato",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d9940182-48c9-4823-a820-1c7c54869d5f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "tomatoes",
+              "matchKey": "tomatoes",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d9940182-48c9-4823-a820-1c7c54869d5f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "tomate",
+              "matchKey": "tomate",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d9940182-48c9-4823-a820-1c7c54869d5f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "tomates",
+              "matchKey": "tomates",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d9940182-48c9-4823-a820-1c7c54869d5f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+          "revision": "model-reviewed-2026-11-13.1/food-3",
+          "labels": {
+            "en": "Canned tomatoes, unspecified cut",
+            "fr": "Tomates en conserve, coupe non précisée"
+          },
+          "qualifiers": {
+            "preservation": "canned",
+            "productForm": "tomatoes",
+            "cut": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "canned tomato",
+              "matchKey": "canned tomato",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "canned tomatoes",
+              "matchKey": "canned tomatoes",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "tomate en conserve",
+              "matchKey": "tomate en conserve",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "tomates en conserve",
+              "matchKey": "tomates en conserve",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "7906dc8b-4fb1-4e93-b567-64a893975bf2",
+          "revision": "model-reviewed-2026-11-13.1/food-4",
+          "labels": {
+            "en": "Double-concentrated tomato paste",
+            "fr": "Double concentré de tomate"
+          },
+          "qualifiers": {
+            "productForm": "tomato paste",
+            "concentration": "double"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "double-concentrated tomato paste",
+              "matchKey": "double-concentrated tomato paste",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/7906dc8b-4fb1-4e93-b567-64a893975bf2",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "double concentrated tomato paste",
+              "matchKey": "double concentrated tomato paste",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/7906dc8b-4fb1-4e93-b567-64a893975bf2",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "double concentré de tomate",
+              "matchKey": "double concentré de tomate",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/7906dc8b-4fb1-4e93-b567-64a893975bf2",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "afbf2bec-e468-4a8a-8c61-b1e58916efdf",
+          "revision": "model-reviewed-2026-11-13.1/food-5",
+          "labels": {
+            "en": "Salted butter",
+            "fr": "Beurre salé"
+          },
+          "qualifiers": {
+            "productForm": "dairy butter",
+            "salt": "salted"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "salted butter",
+              "matchKey": "salted butter",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/afbf2bec-e468-4a8a-8c61-b1e58916efdf",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "beurre salé",
+              "matchKey": "beurre salé",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/afbf2bec-e468-4a8a-8c61-b1e58916efdf",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "c8c1a9f0-2cbc-4e2a-a773-e3a0afc53d7f",
+          "revision": "model-reviewed-2026-11-13.1/food-6",
+          "labels": {
+            "en": "Unsalted butter",
+            "fr": "Beurre non salé"
+          },
+          "qualifiers": {
+            "productForm": "dairy butter",
+            "salt": "unsalted"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "unsalted butter",
+              "matchKey": "unsalted butter",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c8c1a9f0-2cbc-4e2a-a773-e3a0afc53d7f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "beurre non salé",
+              "matchKey": "beurre non salé",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c8c1a9f0-2cbc-4e2a-a773-e3a0afc53d7f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "beurre sans sel",
+              "matchKey": "beurre sans sel",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c8c1a9f0-2cbc-4e2a-a773-e3a0afc53d7f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "c76704a6-2898-43f2-a5d3-7921bce756ac",
+          "revision": "model-reviewed-2026-11-13.1/food-7",
+          "labels": {
+            "en": "Extra virgin olive oil",
+            "fr": "Huile d’olive vierge extra"
+          },
+          "qualifiers": {
+            "productForm": "olive oil",
+            "grade": "extra virgin"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "extra virgin olive oil",
+              "matchKey": "extra virgin olive oil",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c76704a6-2898-43f2-a5d3-7921bce756ac",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "extra-virgin olive oil",
+              "matchKey": "extra-virgin olive oil",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c76704a6-2898-43f2-a5d3-7921bce756ac",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "huile d'olive vierge extra",
+              "matchKey": "huile d'olive vierge extra",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c76704a6-2898-43f2-a5d3-7921bce756ac",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "huile d’olive vierge extra",
+              "matchKey": "huile d’olive vierge extra",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c76704a6-2898-43f2-a5d3-7921bce756ac",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "d4e526a5-150a-4499-b5ce-c93c33a68e02",
+          "revision": "model-reviewed-2026-11-13.1/food-8",
+          "labels": {
+            "en": "Refined canola oil",
+            "fr": "Huile de canola raffinée"
+          },
+          "qualifiers": {
+            "productForm": "canola oil",
+            "processing": "refined"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "refined canola oil",
+              "matchKey": "refined canola oil",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d4e526a5-150a-4499-b5ce-c93c33a68e02",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "huile de canola raffinée",
+              "matchKey": "huile de canola raffinée",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d4e526a5-150a-4499-b5ce-c93c33a68e02",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "9c90b351-d417-4514-b484-7294936b0004",
+          "revision": "model-reviewed-2026-11-13.1/food-9",
+          "labels": {
+            "en": "Refined sunflower oil",
+            "fr": "Huile de tournesol raffinée"
+          },
+          "qualifiers": {
+            "productForm": "sunflower oil",
+            "processing": "refined"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "refined sunflower oil",
+              "matchKey": "refined sunflower oil",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/9c90b351-d417-4514-b484-7294936b0004",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "huile de tournesol raffinée",
+              "matchKey": "huile de tournesol raffinée",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/9c90b351-d417-4514-b484-7294936b0004",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "cadaaf6c-586b-4e37-a70b-8564977b2ad4",
+          "revision": "model-reviewed-2026-11-13.1/food-10",
+          "labels": {
+            "en": "Fresh carrot",
+            "fr": "Carotte fraîche"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "plantPart": "root"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh carrot",
+              "matchKey": "fresh carrot",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/cadaaf6c-586b-4e37-a70b-8564977b2ad4",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "fresh carrots",
+              "matchKey": "fresh carrots",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/cadaaf6c-586b-4e37-a70b-8564977b2ad4",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "carotte fraîche",
+              "matchKey": "carotte fraîche",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/cadaaf6c-586b-4e37-a70b-8564977b2ad4",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "carottes fraîches",
+              "matchKey": "carottes fraîches",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/cadaaf6c-586b-4e37-a70b-8564977b2ad4",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "1dd1a720-09e8-4356-ac33-c38dc32c3cd8",
+          "revision": "model-reviewed-2026-11-13.1/food-11",
+          "labels": {
+            "en": "Fresh celery stalks",
+            "fr": "Branches de céleri fraîches"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "plantPart": "stalk",
+            "productForm": "celery stalks"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh celery stalks",
+              "matchKey": "fresh celery stalks",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/1dd1a720-09e8-4356-ac33-c38dc32c3cd8",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "celery stalks",
+              "matchKey": "celery stalks",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/1dd1a720-09e8-4356-ac33-c38dc32c3cd8",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "branches de céleri fraîches",
+              "matchKey": "branches de céleri fraîches",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/1dd1a720-09e8-4356-ac33-c38dc32c3cd8",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "branches de céleri",
+              "matchKey": "branches de céleri",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/1dd1a720-09e8-4356-ac33-c38dc32c3cd8",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "f40614de-f763-4c95-91b4-eac409895365",
+          "revision": "model-reviewed-2026-11-13.1/food-12",
+          "labels": {
+            "en": "Fresh broccoli",
+            "fr": "Brocoli frais"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "broccoli"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh broccoli",
+              "matchKey": "fresh broccoli",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f40614de-f763-4c95-91b4-eac409895365",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "brocoli frais",
+              "matchKey": "brocoli frais",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f40614de-f763-4c95-91b4-eac409895365",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "38ca2a03-bace-44c9-ba5f-8a9866aa5801",
+          "revision": "model-reviewed-2026-11-13.1/food-13",
+          "labels": {
+            "en": "Fresh cauliflower",
+            "fr": "Chou-fleur frais"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "cauliflower"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh cauliflower",
+              "matchKey": "fresh cauliflower",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/38ca2a03-bace-44c9-ba5f-8a9866aa5801",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "chou-fleur frais",
+              "matchKey": "chou-fleur frais",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/38ca2a03-bace-44c9-ba5f-8a9866aa5801",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "37480686-640b-48a2-9458-e75629c62dcc",
+          "revision": "model-reviewed-2026-11-13.1/food-14",
+          "labels": {
+            "en": "Fresh zucchini",
+            "fr": "Courgette fraîche"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "zucchini"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh zucchini",
+              "matchKey": "fresh zucchini",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/37480686-640b-48a2-9458-e75629c62dcc",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "courgette fraîche",
+              "matchKey": "courgette fraîche",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/37480686-640b-48a2-9458-e75629c62dcc",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "5d02ee55-c490-446c-abf7-481fa1b9d862",
+          "revision": "model-reviewed-2026-11-13.1/food-15",
+          "labels": {
+            "en": "Fresh cucumber",
+            "fr": "Concombre frais"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "cucumber"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh cucumber",
+              "matchKey": "fresh cucumber",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/5d02ee55-c490-446c-abf7-481fa1b9d862",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "concombre frais",
+              "matchKey": "concombre frais",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/5d02ee55-c490-446c-abf7-481fa1b9d862",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "96835086-f19e-4af8-92b8-89684b3f4208",
+          "revision": "model-reviewed-2026-11-13.1/food-16",
+          "labels": {
+            "en": "Fresh spinach leaves",
+            "fr": "Feuilles d’épinard fraîches"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "plantPart": "leaf"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh spinach leaves",
+              "matchKey": "fresh spinach leaves",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/96835086-f19e-4af8-92b8-89684b3f4208",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "feuilles d'épinard fraîches",
+              "matchKey": "feuilles d'épinard fraîches",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/96835086-f19e-4af8-92b8-89684b3f4208",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "feuilles d’épinard fraîches",
+              "matchKey": "feuilles d’épinard fraîches",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/96835086-f19e-4af8-92b8-89684b3f4208",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "a5a34593-a3ca-4167-8def-979e61f3eb6f",
+          "revision": "model-reviewed-2026-11-13.1/food-17",
+          "labels": {
+            "en": "Fresh white button mushrooms",
+            "fr": "Champignons de Paris blancs frais"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "mushrooms",
+            "variety": "white button"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh white button mushrooms",
+              "matchKey": "fresh white button mushrooms",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/a5a34593-a3ca-4167-8def-979e61f3eb6f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "champignons de Paris blancs frais",
+              "matchKey": "champignons de paris blancs frais",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/a5a34593-a3ca-4167-8def-979e61f3eb6f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "defb8a38-a9ba-485f-9f1f-25bb04157080",
+          "revision": "model-reviewed-2026-11-13.1/food-18",
+          "labels": {
+            "en": "Fresh green beans",
+            "fr": "Haricots verts frais"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "green beans"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh green beans",
+              "matchKey": "fresh green beans",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/defb8a38-a9ba-485f-9f1f-25bb04157080",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "haricots verts frais",
+              "matchKey": "haricots verts frais",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/defb8a38-a9ba-485f-9f1f-25bb04157080",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "8a9b7072-2cb3-4ce7-8676-3026a5d96e04",
+          "revision": "model-reviewed-2026-11-13.1/food-19",
+          "labels": {
+            "en": "Plain frozen green peas",
+            "fr": "Petits pois surgelés nature"
+          },
+          "qualifiers": {
+            "preservation": "frozen",
+            "productForm": "green peas",
+            "seasoning": "plain"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "plain frozen green peas",
+              "matchKey": "plain frozen green peas",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/8a9b7072-2cb3-4ce7-8676-3026a5d96e04",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "petits pois surgelés nature",
+              "matchKey": "petits pois surgelés nature",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/8a9b7072-2cb3-4ce7-8676-3026a5d96e04",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "16902f51-787d-4d86-82bf-cdb102cbc267",
+          "revision": "model-reviewed-2026-11-13.1/food-20",
+          "labels": {
+            "en": "Dried chickpeas",
+            "fr": "Pois chiches secs"
+          },
+          "qualifiers": {
+            "preservation": "dried",
+            "productForm": "chickpeas"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "dried chickpeas",
+              "matchKey": "dried chickpeas",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/16902f51-787d-4d86-82bf-cdb102cbc267",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "dry chickpeas",
+              "matchKey": "dry chickpeas",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/16902f51-787d-4d86-82bf-cdb102cbc267",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "pois chiches secs",
+              "matchKey": "pois chiches secs",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/16902f51-787d-4d86-82bf-cdb102cbc267",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "ede7be3f-6fa3-408d-b71c-69ee53dba6be",
+          "revision": "model-reviewed-2026-11-13.1/food-21",
+          "labels": {
+            "en": "Canned chickpeas",
+            "fr": "Pois chiches en conserve"
+          },
+          "qualifiers": {
+            "preservation": "canned",
+            "productForm": "chickpeas",
+            "salt": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "canned chickpeas",
+              "matchKey": "canned chickpeas",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ede7be3f-6fa3-408d-b71c-69ee53dba6be",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "pois chiches en conserve",
+              "matchKey": "pois chiches en conserve",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ede7be3f-6fa3-408d-b71c-69ee53dba6be",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "c745943f-9ea0-4612-96de-137c48dd560a",
+          "revision": "model-reviewed-2026-11-13.1/food-22",
+          "labels": {
+            "en": "Dried green lentils",
+            "fr": "Lentilles vertes sèches"
+          },
+          "qualifiers": {
+            "preservation": "dried",
+            "productForm": "lentils",
+            "variety": "green"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "dried green lentils",
+              "matchKey": "dried green lentils",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c745943f-9ea0-4612-96de-137c48dd560a",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "dry green lentils",
+              "matchKey": "dry green lentils",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c745943f-9ea0-4612-96de-137c48dd560a",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "lentilles vertes sèches",
+              "matchKey": "lentilles vertes sèches",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/c745943f-9ea0-4612-96de-137c48dd560a",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "fc63f1ee-e5c1-4c1f-aae3-df479523d075",
+          "revision": "model-reviewed-2026-11-13.1/food-23",
+          "labels": {
+            "en": "Dried split red lentils",
+            "fr": "Lentilles corail fendues sèches"
+          },
+          "qualifiers": {
+            "preservation": "dried",
+            "productForm": "lentils",
+            "variety": "red",
+            "processing": "split"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "dried split red lentils",
+              "matchKey": "dried split red lentils",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/fc63f1ee-e5c1-4c1f-aae3-df479523d075",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "dry split red lentils",
+              "matchKey": "dry split red lentils",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/fc63f1ee-e5c1-4c1f-aae3-df479523d075",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "lentilles corail fendues sèches",
+              "matchKey": "lentilles corail fendues sèches",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/fc63f1ee-e5c1-4c1f-aae3-df479523d075",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "5cca4982-5652-4441-9801-0ca0247c4b21",
+          "revision": "model-reviewed-2026-11-13.1/food-24",
+          "labels": {
+            "en": "Canned black beans",
+            "fr": "Haricots noirs en conserve"
+          },
+          "qualifiers": {
+            "preservation": "canned",
+            "productForm": "black beans",
+            "salt": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "canned black beans",
+              "matchKey": "canned black beans",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/5cca4982-5652-4441-9801-0ca0247c4b21",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "haricots noirs en conserve",
+              "matchKey": "haricots noirs en conserve",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/5cca4982-5652-4441-9801-0ca0247c4b21",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "2c3cd773-4906-4b17-8ab7-e762ccd8d43d",
+          "revision": "model-reviewed-2026-11-13.1/food-25",
+          "labels": {
+            "en": "Dry long-grain white rice",
+            "fr": "Riz blanc à grains longs sec"
+          },
+          "qualifiers": {
+            "state": "dry uncooked",
+            "productForm": "rice",
+            "grainLength": "long",
+            "processing": "white"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "dry long-grain white rice",
+              "matchKey": "dry long-grain white rice",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/2c3cd773-4906-4b17-8ab7-e762ccd8d43d",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "uncooked long-grain white rice",
+              "matchKey": "uncooked long-grain white rice",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/2c3cd773-4906-4b17-8ab7-e762ccd8d43d",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "riz blanc à grains longs sec",
+              "matchKey": "riz blanc à grains longs sec",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/2c3cd773-4906-4b17-8ab7-e762ccd8d43d",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "riz blanc à grains longs non cuit",
+              "matchKey": "riz blanc à grains longs non cuit",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/2c3cd773-4906-4b17-8ab7-e762ccd8d43d",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "f2e26338-5537-4cee-aaec-7bcc3b7d4717",
+          "revision": "model-reviewed-2026-11-13.1/food-26",
+          "labels": {
+            "en": "Dry long-grain brown rice",
+            "fr": "Riz brun à grains longs sec"
+          },
+          "qualifiers": {
+            "state": "dry uncooked",
+            "productForm": "rice",
+            "grainLength": "long",
+            "processing": "brown"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "dry long-grain brown rice",
+              "matchKey": "dry long-grain brown rice",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f2e26338-5537-4cee-aaec-7bcc3b7d4717",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "uncooked long-grain brown rice",
+              "matchKey": "uncooked long-grain brown rice",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f2e26338-5537-4cee-aaec-7bcc3b7d4717",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "riz brun à grains longs sec",
+              "matchKey": "riz brun à grains longs sec",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f2e26338-5537-4cee-aaec-7bcc3b7d4717",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "riz brun à grains longs non cuit",
+              "matchKey": "riz brun à grains longs non cuit",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f2e26338-5537-4cee-aaec-7bcc3b7d4717",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "65eb1b6e-4ec6-47da-adf1-11dbe1bc8732",
+          "revision": "model-reviewed-2026-11-13.1/food-27",
+          "labels": {
+            "en": "Dry rolled oats",
+            "fr": "Flocons d’avoine secs"
+          },
+          "qualifiers": {
+            "state": "dry",
+            "productForm": "oats",
+            "processing": "rolled"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "dry rolled oats",
+              "matchKey": "dry rolled oats",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/65eb1b6e-4ec6-47da-adf1-11dbe1bc8732",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "flocons d'avoine secs",
+              "matchKey": "flocons d'avoine secs",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/65eb1b6e-4ec6-47da-adf1-11dbe1bc8732",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "flocons d’avoine secs",
+              "matchKey": "flocons d’avoine secs",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/65eb1b6e-4ec6-47da-adf1-11dbe1bc8732",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "bc4cb802-9548-43a5-8de0-35d2858afad9",
+          "revision": "model-reviewed-2026-11-13.1/food-28",
+          "labels": {
+            "en": "Whole-wheat flour",
+            "fr": "Farine de blé complet"
+          },
+          "qualifiers": {
+            "productForm": "flour",
+            "grain": "wheat",
+            "processing": "whole grain"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "whole-wheat flour",
+              "matchKey": "whole-wheat flour",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/bc4cb802-9548-43a5-8de0-35d2858afad9",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "whole wheat flour",
+              "matchKey": "whole wheat flour",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/bc4cb802-9548-43a5-8de0-35d2858afad9",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "farine de blé complet",
+              "matchKey": "farine de blé complet",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/bc4cb802-9548-43a5-8de0-35d2858afad9",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "farine de blé entier",
+              "matchKey": "farine de blé entier",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/bc4cb802-9548-43a5-8de0-35d2858afad9",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "8cb21c1f-6988-4d57-9412-8654a3c06c8a",
+          "revision": "model-reviewed-2026-11-13.1/food-29",
+          "labels": {
+            "en": "White rice flour",
+            "fr": "Farine de riz blanc"
+          },
+          "qualifiers": {
+            "productForm": "flour",
+            "grain": "white rice"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "white rice flour",
+              "matchKey": "white rice flour",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/8cb21c1f-6988-4d57-9412-8654a3c06c8a",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "farine de riz blanc",
+              "matchKey": "farine de riz blanc",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/8cb21c1f-6988-4d57-9412-8654a3c06c8a",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "1e92ad0f-10d5-4b27-9490-5bfc2772cd3f",
+          "revision": "model-reviewed-2026-11-13.1/food-30",
+          "labels": {
+            "en": "Cornstarch",
+            "fr": "Amidon de maïs"
+          },
+          "qualifiers": {
+            "productForm": "starch",
+            "plant": "corn"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "cornstarch",
+              "matchKey": "cornstarch",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/1e92ad0f-10d5-4b27-9490-5bfc2772cd3f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "corn starch",
+              "matchKey": "corn starch",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/1e92ad0f-10d5-4b27-9490-5bfc2772cd3f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "amidon de maïs",
+              "matchKey": "amidon de maïs",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/1e92ad0f-10d5-4b27-9490-5bfc2772cd3f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "f97ea2eb-7521-46e3-97ac-c6c55c13f4f4",
+          "revision": "model-reviewed-2026-11-13.1/food-31",
+          "labels": {
+            "en": "White granulated sugar",
+            "fr": "Sucre blanc granulé"
+          },
+          "qualifiers": {
+            "productForm": "sugar",
+            "color": "white",
+            "texture": "granulated"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "white granulated sugar",
+              "matchKey": "white granulated sugar",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f97ea2eb-7521-46e3-97ac-c6c55c13f4f4",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "granulated white sugar",
+              "matchKey": "granulated white sugar",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f97ea2eb-7521-46e3-97ac-c6c55c13f4f4",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "sucre blanc granulé",
+              "matchKey": "sucre blanc granulé",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f97ea2eb-7521-46e3-97ac-c6c55c13f4f4",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "sucre blanc cristallisé",
+              "matchKey": "sucre blanc cristallisé",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/f97ea2eb-7521-46e3-97ac-c6c55c13f4f4",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "28a74143-4cdd-4729-815f-492c8ff86ca6",
+          "revision": "model-reviewed-2026-11-13.1/food-32",
+          "labels": {
+            "en": "Powdered sugar",
+            "fr": "Sucre glace"
+          },
+          "qualifiers": {
+            "productForm": "sugar",
+            "texture": "powdered",
+            "addedStarch": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "powdered sugar",
+              "matchKey": "powdered sugar",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/28a74143-4cdd-4729-815f-492c8ff86ca6",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "icing sugar",
+              "matchKey": "icing sugar",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/28a74143-4cdd-4729-815f-492c8ff86ca6",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "sucre glace",
+              "matchKey": "sucre glace",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/28a74143-4cdd-4729-815f-492c8ff86ca6",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "sucre à glacer",
+              "matchKey": "sucre à glacer",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/28a74143-4cdd-4729-815f-492c8ff86ca6",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "2ecadc4b-d0e9-4456-ab23-08253a824a19",
+          "revision": "model-reviewed-2026-11-13.1/food-33",
+          "labels": {
+            "en": "Fine iodized table salt",
+            "fr": "Sel de table fin iodé"
+          },
+          "qualifiers": {
+            "productForm": "table salt",
+            "texture": "fine",
+            "iodine": "iodized"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fine iodized table salt",
+              "matchKey": "fine iodized table salt",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/2ecadc4b-d0e9-4456-ab23-08253a824a19",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "sel de table fin iodé",
+              "matchKey": "sel de table fin iodé",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/2ecadc4b-d0e9-4456-ab23-08253a824a19",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "b2ab6a96-7d2e-4d96-9104-6d805ce3aae1",
+          "revision": "model-reviewed-2026-11-13.1/food-34",
+          "labels": {
+            "en": "Ground black pepper",
+            "fr": "Poivre noir moulu"
+          },
+          "qualifiers": {
+            "productForm": "pepper spice",
+            "variety": "black",
+            "processing": "ground"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "ground black pepper",
+              "matchKey": "ground black pepper",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/b2ab6a96-7d2e-4d96-9104-6d805ce3aae1",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "poivre noir moulu",
+              "matchKey": "poivre noir moulu",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/b2ab6a96-7d2e-4d96-9104-6d805ce3aae1",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "675baf27-7c7a-436a-82f9-bbb41eb957e9",
+          "revision": "model-reviewed-2026-11-13.1/food-35",
+          "labels": {
+            "en": "Unsmoked sweet ground paprika",
+            "fr": "Paprika doux moulu non fumé"
+          },
+          "qualifiers": {
+            "productForm": "paprika",
+            "heat": "sweet mild",
+            "processing": "ground",
+            "smoked": "no"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "unsmoked sweet ground paprika",
+              "matchKey": "unsmoked sweet ground paprika",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/675baf27-7c7a-436a-82f9-bbb41eb957e9",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "unsmoked ground sweet paprika",
+              "matchKey": "unsmoked ground sweet paprika",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/675baf27-7c7a-436a-82f9-bbb41eb957e9",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "paprika doux moulu non fumé",
+              "matchKey": "paprika doux moulu non fumé",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/675baf27-7c7a-436a-82f9-bbb41eb957e9",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "9dc195ea-f230-49a1-8db2-2d1325c2549d",
+          "revision": "model-reviewed-2026-11-13.1/food-36",
+          "labels": {
+            "en": "Ground cumin",
+            "fr": "Cumin moulu"
+          },
+          "qualifiers": {
+            "productForm": "cumin seed spice",
+            "processing": "ground"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "ground cumin",
+              "matchKey": "ground cumin",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/9dc195ea-f230-49a1-8db2-2d1325c2549d",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "cumin moulu",
+              "matchKey": "cumin moulu",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/9dc195ea-f230-49a1-8db2-2d1325c2549d",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "216c8078-c9be-4c5c-88a1-9bb00eed3b7a",
+          "revision": "model-reviewed-2026-11-13.1/food-37",
+          "labels": {
+            "en": "Dried oregano",
+            "fr": "Origan séché"
+          },
+          "qualifiers": {
+            "preservation": "dried",
+            "plantPart": "leaf",
+            "productForm": "oregano herb"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "dried oregano",
+              "matchKey": "dried oregano",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/216c8078-c9be-4c5c-88a1-9bb00eed3b7a",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "origan séché",
+              "matchKey": "origan séché",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/216c8078-c9be-4c5c-88a1-9bb00eed3b7a",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "68c0056a-8d69-4671-9951-82b9fba652b8",
+          "revision": "model-reviewed-2026-11-13.1/food-38",
+          "labels": {
+            "en": "Dried thyme",
+            "fr": "Thym séché"
+          },
+          "qualifiers": {
+            "preservation": "dried",
+            "plantPart": "herb",
+            "productForm": "thyme"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "dried thyme",
+              "matchKey": "dried thyme",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/68c0056a-8d69-4671-9951-82b9fba652b8",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "thym séché",
+              "matchKey": "thym séché",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/68c0056a-8d69-4671-9951-82b9fba652b8",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "e2acf30e-0cc4-4cda-8f66-097863227cea",
+          "revision": "model-reviewed-2026-11-13.1/food-39",
+          "labels": {
+            "en": "Fresh lemon",
+            "fr": "Citron frais"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "lemon"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh lemon",
+              "matchKey": "fresh lemon",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/e2acf30e-0cc4-4cda-8f66-097863227cea",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "citron frais",
+              "matchKey": "citron frais",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/e2acf30e-0cc4-4cda-8f66-097863227cea",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "73053247-5658-4d98-83a7-f94bdfe51090",
+          "revision": "model-reviewed-2026-11-13.1/food-40",
+          "labels": {
+            "en": "Fresh lime",
+            "fr": "Citron vert frais"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "lime"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "fresh lime",
+              "matchKey": "fresh lime",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/73053247-5658-4d98-83a7-f94bdfe51090",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "citron vert frais",
+              "matchKey": "citron vert frais",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/73053247-5658-4d98-83a7-f94bdfe51090",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "69255ebd-24a5-42e2-a4d8-a0079a3f1ce5",
+          "revision": "model-reviewed-2026-11-13.1/food-41",
+          "labels": {
+            "en": "Whole hen eggs in shell",
+            "fr": "Œufs de poule entiers en coquille"
+          },
+          "qualifiers": {
+            "productForm": "eggs in shell",
+            "species": "hen",
+            "size": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "whole hen eggs in shell",
+              "matchKey": "whole hen eggs in shell",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/69255ebd-24a5-42e2-a4d8-a0079a3f1ce5",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "œufs de poule entiers en coquille",
+              "matchKey": "œufs de poule entiers en coquille",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/69255ebd-24a5-42e2-a4d8-a0079a3f1ce5",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "79bd7a98-e808-401e-85bc-2c1db9634111",
+          "revision": "model-reviewed-2026-11-13.1/food-42",
+          "labels": {
+            "en": "Raw boneless skinless chicken breast",
+            "fr": "Poitrine de poulet crue sans os ni peau"
+          },
+          "qualifiers": {
+            "species": "chicken",
+            "state": "raw",
+            "cut": "breast",
+            "bone": "boneless",
+            "skin": "skinless"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "raw boneless skinless chicken breast",
+              "matchKey": "raw boneless skinless chicken breast",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/79bd7a98-e808-401e-85bc-2c1db9634111",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "poitrine de poulet crue sans os ni peau",
+              "matchKey": "poitrine de poulet crue sans os ni peau",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/79bd7a98-e808-401e-85bc-2c1db9634111",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "35e6848d-4209-4fe2-a808-264e0b69cdea",
+          "revision": "model-reviewed-2026-11-13.1/food-43",
+          "labels": {
+            "en": "Plain firm non-silken tofu",
+            "fr": "Tofu ferme nature non soyeux"
+          },
+          "qualifiers": {
+            "productForm": "tofu",
+            "texture": "firm",
+            "seasoning": "plain",
+            "silken": "no"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "plain firm non-silken tofu",
+              "matchKey": "plain firm non-silken tofu",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/35e6848d-4209-4fe2-a808-264e0b69cdea",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "tofu ferme nature non soyeux",
+              "matchKey": "tofu ferme nature non soyeux",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/35e6848d-4209-4fe2-a808-264e0b69cdea",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "7efc5007-7a14-48ff-97cb-adb8d269b350",
+          "revision": "model-reviewed-2026-11-13.1/food-44",
+          "labels": {
+            "en": "Plain frozen corn kernels",
+            "fr": "Grains de maïs surgelés nature"
+          },
+          "qualifiers": {
+            "preservation": "frozen",
+            "plantPart": "kernel",
+            "seasoning": "plain"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "plain frozen corn kernels",
+              "matchKey": "plain frozen corn kernels",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/7efc5007-7a14-48ff-97cb-adb8d269b350",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "grains de maïs surgelés nature",
+              "matchKey": "grains de maïs surgelés nature",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/7efc5007-7a14-48ff-97cb-adb8d269b350",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

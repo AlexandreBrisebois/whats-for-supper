@@ -65,7 +65,7 @@ export const RECIPE_FILTER_OPTIONS = [
   {
     key: 'readyToReviewOnly',
     labelKey: 'recipes.filterReadyToReview',
-    fallback: 'Ready to review',
+    fallback: 'Ready for review',
     testId: 'filter-ready-to-review',
   },
 ] as const satisfies ReadonlyArray<{

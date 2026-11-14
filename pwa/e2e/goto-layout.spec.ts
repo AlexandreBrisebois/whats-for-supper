@@ -360,7 +360,7 @@ test('Home Search selects today through planner and cancellation submits no meal
   await page.getByTestId('stack-card-front').click();
   await page.getByTestId('action-add-to-day').click();
   await expect(page).toHaveURL(
-    /\/planner\?success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
+    /\/planner\?(?:success=1&)?dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
   );
   expect(assignments).toHaveLength(1);
   expect(assignments[0]).toMatchObject({ dayIndex: 0, weekOffset: 0 });

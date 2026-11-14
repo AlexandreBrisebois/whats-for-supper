@@ -55,6 +55,30 @@ public sealed class ClassifyRecipeVegetarianProcessor(
         return recipeId;
     }
 
+    internal static Guid ValidateOriginalHistory(string? payload, string? returned)
+    {
+        WorkflowProcessorHistory.ReadObservation<JsonElement>(payload ?? "null");
+        var recipeId = ReadRecipeId(payload);
+        var result = WorkflowProcessorHistory.ReadObservation<JsonElement>(returned ?? "null");
+        if (recipeId == Guid.Empty || result.ValueKind != JsonValueKind.Object
+            || !result.TryGetProperty("recipeId", out var recipe) || recipe.ValueKind != JsonValueKind.String
+            || !recipe.TryGetGuid(out var observedRecipe) || observedRecipe != recipeId
+            || !result.TryGetProperty("outcome", out var outcome) || outcome.ValueKind != JsonValueKind.String)
+            throw new InvalidDataException("Original vegetarian classification receipt differs from its invocation.");
+        var hasFact = result.TryGetProperty("isVegetarian", out var fact);
+        var valid = outcome.GetString() switch
+        {
+            "classified" => hasFact && fact.ValueKind is JsonValueKind.True or JsonValueKind.False,
+            "not-found" or "unknown-no-ingredients" or "unknown-insufficient-ingredients" => !hasFact,
+            _ => false
+        };
+        if (!valid) throw new InvalidDataException("Original vegetarian classification outcome is inconsistent.");
+        // The returned boolean/outcome is an original receipt, not independent
+        // proof of ingredient, policy, provider or committed mutation authority.
+        // Unknown result extensions remain retained and unqualified.
+        return recipeId;
+    }
+
     private static string ExtractJsonPayload(string? response)
     {
         var trimmed = response?.Trim() ?? string.Empty;

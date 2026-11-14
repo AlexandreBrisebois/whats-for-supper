@@ -1,0 +1,22 @@
+{
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.PdfRepair.cs": {
+    "before": "d2bed86f60f26ae9b70cb61cccdfe07bfbcc1511b33370922c56aef039dfc56f",
+    "after": "f1448f3ac128abbe3fb0433d849e4adc52fd9e71c40dbb4183c86bbc1b3b6677"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.Workflow.cs": {
+    "before": "6c0c712af314e43efcbe6aa5c5ade628f2e0e20c20a36e5807c2fe916e53750f",
+    "after": "4c046739d40ece1495315b46454b8347f0891ed114dc3b93c82462094ba4d271"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.Categorization.cs": {
+    "before": "bb2d95bd3dbb639a72160f93ffb5128370cef28c4e457d7018f15975309faae7",
+    "after": "279fc52db46437c8231d9dff7754152d14c37cc6ecaeda3e56d5da2b876f1e10"
+  },
+  "api/src/RecipeApi.Tests/Services/RecipeProtectedPdfReimportTests.cs": {
+    "before": "6059774966d1224f7b96d431298a3209422240cd259c607d02e5ba5f878e2be2",
+    "after": "2d80600eeba24c0077d4bb5b4788ca91a4bd2fd0d28d0b7bd579ef1822cc94c1"
+  },
+  "api/src/RecipeApi.Tests/Integration/RecipeProtectedPdfReimportPostgresTests.cs": {
+    "before": "8338fcd8f103dffbcb1e0e17838d826f060dc5dfabd76aacf3dc61267d3c68bf",
+    "after": "ab6c0ac076dcf9342c36fcffc4696b887ec14744d42c12132219bd0c2cb61918"
+  }
+}

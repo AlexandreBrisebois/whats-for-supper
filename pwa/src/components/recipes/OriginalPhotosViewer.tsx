@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, type RefObject } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
 
 import { t } from '@/locales';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface OriginalPhotosViewerProps {
   recipeId: string;
@@ -13,6 +14,7 @@ interface OriginalPhotosViewerProps {
   onClose: () => void;
   /** Cooking owns a modal above its inert, still-mounted reading surface. */
   modal?: boolean;
+  returnFocus?: RefObject<HTMLElement | null>;
 }
 
 export function OriginalPhotosViewer({
@@ -21,6 +23,7 @@ export function OriginalPhotosViewer({
   finishedDishIndex,
   onClose,
   modal = false,
+  returnFocus,
 }: OriginalPhotosViewerProps) {
   // Logic to order images: finishedDishIndex first, then others.
   const imageIndices = useMemo(() => {
@@ -44,16 +47,17 @@ export function OriginalPhotosViewer({
   const [scale, setScale] = useState(1);
   const [direction, setDirection] = useState(0);
   const controls = useAnimation();
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!modal) return;
-    const previous = document.activeElement as HTMLElement | null;
+    const previous = returnFocus?.current ?? (document.activeElement as HTMLElement | null);
     closeRef.current?.focus({ preventScroll: true });
     return () => {
       if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
-  }, [modal]);
+  }, [modal, returnFocus]);
 
   useEffect(() => {
     if (scale === 1) {
@@ -61,15 +65,19 @@ export function OriginalPhotosViewer({
         scale: 1,
         x: 0,
         y: 0,
-        transition: { type: 'spring', stiffness: 200, damping: 25 },
+        transition: reducedMotion
+          ? { duration: 0 }
+          : { type: 'spring', stiffness: 200, damping: 25 },
       });
     } else {
       void controls.start({
         scale,
-        transition: { type: 'spring', stiffness: 200, damping: 25 },
+        transition: reducedMotion
+          ? { duration: 0 }
+          : { type: 'spring', stiffness: 200, damping: 25 },
       });
     }
-  }, [scale, controls]);
+  }, [scale, controls, reducedMotion]);
 
   const handleNext = useCallback(() => {
     if (scale > 1) setScale(1);
@@ -178,7 +186,7 @@ export function OriginalPhotosViewer({
       {/* Header */}
       <div className="flex h-20 items-center justify-between px-6">
         <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
             {t('recipes.viewOriginal', 'Original Photo')}
           </span>
           <span className="text-sm font-bold text-white/90">
@@ -221,13 +229,17 @@ export function OriginalPhotosViewer({
                 opacity: 0,
               }),
             }}
-            initial="enter"
+            initial={reducedMotion ? false : 'enter'}
             animate="center"
             exit="exit"
-            transition={{
-              x: { type: 'spring', stiffness: 300, damping: 30 },
-              opacity: { duration: 0.2 },
-            }}
+            transition={
+              reducedMotion
+                ? { duration: 0 }
+                : {
+                    x: { type: 'spring', stiffness: 300, damping: 30 },
+                    opacity: { duration: 0.2 },
+                  }
+            }
             className="absolute inset-0 flex items-center justify-center p-4"
           >
             <motion.div

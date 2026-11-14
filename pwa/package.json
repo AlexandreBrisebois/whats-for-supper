@@ -23,7 +23,7 @@
     "test:e2e:onboarding": "playwright test e2e/onboarding.spec.ts",
     "test:e2e:recipes": "playwright test e2e/recipes.spec.ts",
     "test:e2e:step-parser": "playwright test e2e/step-parser.spec.ts",
-    "test:e2e:ci": "npm run build && npm run test:e2e",
+    "test:e2e:ci": "node ../scripts/ci/production-browser.cjs qualify --",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:ui": "playwright test --ui",
     "agent:slice": "python3 ../scripts/agent/slice.py",

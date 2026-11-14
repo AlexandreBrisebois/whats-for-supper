@@ -1,0 +1,34 @@
+{
+  "api/src/RecipeApi/Services/Agents/RecipeAgent.cs": {
+    "before": "52a8fa35a3ad567f8aa8f2423851772e2cb0e5b2d5f76a20ddf004e10f92fc05",
+    "after": "fdc5e121110e2ee97cd954d203dc90a31e829f95850dfe05bf202527da5af997"
+  },
+  "api/src/RecipeApi/Services/Processors/PdfConversionProcessor.cs": {
+    "before": "b6e38141b3976258a4d113a3ffe8ea126c0e196fffa8a21093dc61fe70d0d415",
+    "after": "385caad5bd4f3b263d8c7963856f17cec0ff14b793a528f7a28cbbf426047fad"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.PdfRepair.cs": {
+    "before": null,
+    "after": "d2bed86f60f26ae9b70cb61cccdfe07bfbcc1511b33370922c56aef039dfc56f"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.Workflow.cs": {
+    "before": "afaf97d96017458d0893508b56e8651d0fabe7ce0f55e3f562648f6f59ab7534",
+    "after": "6c0c712af314e43efcbe6aa5c5ade628f2e0e20c20a36e5807c2fe916e53750f"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.Vocabulary.cs": {
+    "before": "ef229ac5dda4fe4728e35f0effe5871905ea32a40b08fc1e99e4c59ce55ce180",
+    "after": "8ea389a0f754e35639a9d7f2807296ff3d0e5b83e170ebb3542baf63030deab3"
+  },
+  "api/src/RecipeApi/Services/RecipeFilePublicationStore.cs": {
+    "before": "7db97a391ea5a4aa969de44f34f39e20a5b266d9af16840ea82b2b35ceeecc01",
+    "after": "dbd7b21b46c16e02eaa17f135fa6186a759af2aaf0050145bee4a2920a592359"
+  },
+  "api/src/RecipeApi.Tests/Services/RecipeProtectedPdfReimportTests.cs": {
+    "before": null,
+    "after": "6059774966d1224f7b96d431298a3209422240cd259c607d02e5ba5f878e2be2"
+  },
+  "api/src/RecipeApi.Tests/Integration/RecipeProtectedPdfReimportPostgresTests.cs": {
+    "before": null,
+    "after": "8338fcd8f103dffbcb1e0e17838d826f060dc5dfabd76aacf3dc61267d3c68bf"
+  }
+}

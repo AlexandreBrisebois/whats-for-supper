@@ -1,0 +1,152 @@
+{
+  "api/src/RecipeApi/Controllers/RecoveryController.cs": {
+    "beforeSha256": "b537b7fb421d91ead5c85cbd314c835f08d8dfc95e5416897c40f2f28acd85a4",
+    "afterSha256": "123dccf6258b23ceef2466388e263a1da2fbc13aa52e7c95a53954d900753cbc",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/FoodVocabularyStore.cs": {
+    "beforeSha256": "56a48e5e1898fe1542978062a4184ab93bd702d596edc94e61d4ff806652958d",
+    "afterSha256": "9124abe6f67f5329c7877a30e4e6fdb2077f8e85450c7de42793641faa5b85ff",
+    "beforeMode": "Exact Root127 retainer beforeimage, reconstructed and verified against recorded contemporary SHA",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/FoodVocabularyStore.Inventory.cs": {
+    "beforeSha256": "c439af0c071d9d8acff464f49036bf9d4c1e741fbeab6495451c9f0d1ee22a07",
+    "afterSha256": "3cfa6ab40d99c6a30c5dc41ab30d279a8ee3d088f1da6f7624f193be76ea5aeb",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/FoodVocabularyStore.Recovery.cs": {
+    "beforeSha256": null,
+    "afterSha256": "24bd1c537d7f68a0a2794da854524827a40a685b1bc0ac0349f9df3346f50a62",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/FoodVocabularyInventoryQualification.cs": {
+    "beforeSha256": "544f6805c17b55a89137a3bbbdcc093daf07377b7c770ffee40e5d484175554d",
+    "afterSha256": "e8d59591a55aa6be9c5f52f720cbcdd3bf489c185ff6e22962b107a43f7aa4ff",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/FoodVocabularyInventory.Serialization.cs": {
+    "beforeSha256": null,
+    "afterSha256": "95b317c9f9f813dd2139e730e2a3a5dd1b2086bee80810c21f3e17efe8cbb2b3",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/FoodVocabularyInventory.Index.cs": {
+    "beforeSha256": null,
+    "afterSha256": "a99fb8b945e10f83339e3edaea1be8a1fcb91418c4d5939c4dc0101588616a0c",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/FoodVocabularyInventory.Union.cs": {
+    "beforeSha256": null,
+    "afterSha256": "7f05ec89080a72fe1a3513e0d80612bec710aadf57f8e7696e43a7a2d84d7358",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/MaintenanceCommandObservation.cs": {
+    "beforeSha256": null,
+    "afterSha256": "0b97bb515fc8b13971adfa440b0ed4b3146bda476eb491b3c2c517f7ffc26b89",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": true
+  },
+  "api/src/RecipeApi/Services/MaintenanceCommandLifecycle.cs": {
+    "beforeSha256": "7d06d195199ba7b3eef5d0dba80a0c6170a737633f3b118c0c95451d01a888ad",
+    "afterSha256": "0bb2fc8e2841bec432fd939e03ed7cb55a24f9a9f1e7a81f8e18563d0eb84774",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/ManagementService.MaintenanceHistory.cs": {
+    "beforeSha256": null,
+    "afterSha256": "ab984bb1d8af71339d65e377e6d3ac38506564d2fc9110f9271b1b1e5e3fab8e",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/RecoverySnapshotService.cs": {
+    "beforeSha256": "b05d59a785b5a0f269e6ff1bf34c15000e751086ffea1dfac9db5c3b98403972",
+    "afterSha256": "6402562eb3a806b458a89025e91f7cce30746727e32038f9893f0f73417bbaf6",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/RecoverySnapshotService.Demo.cs": {
+    "beforeSha256": "d59dccbdc1cd7d3fff8a4dfac9e8e147bc7d1d3849f342921945f6a140c11fa7",
+    "afterSha256": "81443689930dd49d925c9aa7ac30defb84cf6e874c25785ac89e72a9938496b2",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/RecoverySnapshotService.Restore.cs": {
+    "beforeSha256": "99b49889882d2060e171ad8a4165a7d508e92c33378e8ccc4ad96bdba58ab80f",
+    "afterSha256": "f16fce716a40212d5d4bd562a841839b45b2adf819fa95127689b71c9a7c2fb4",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/RecoverySnapshotService.Vocabulary.cs": {
+    "beforeSha256": null,
+    "afterSha256": "7b624c9d86766d0abe6d2e7f198fa174e427d8dd156c73f4c07e7b8c0fc4e807",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/RecoverySnapshotService.VocabularyRestore.cs": {
+    "beforeSha256": null,
+    "afterSha256": "6c91d8e95f242d456a1ee7e7ecfd0d839773fdfe2c3b659677f9bb29c5c91585",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi/Services/RecoverySnapshotService.VocabularyPublication.cs": {
+    "beforeSha256": null,
+    "afterSha256": "c126fa93803bd4074e16052471e53cd7d1342d0c0211feaf7c4b2e6e2e63870c",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi.Tests/Services/FoodVocabularyHistoryObservationTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "c6c700f84bc5d78c3e8025f5070746c7d1c57f2fe23471c02ab38c0dcdb906be",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi.Tests/Services/FoodVocabularyHistoryUnionTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "11c638c866b5b2cb766bd24108ea4e1038784905bb2d628e99817988c0257288",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi.Tests/Services/RecoveryVocabularyContractTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "bc627a7140957b969d12b3c258cee36fd9b50fdd0a1262734247cc0fbe919c86",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi.Tests/Integration/CanonicalIngredientPublicationPostgresTests.Recovery.cs": {
+    "beforeSha256": null,
+    "afterSha256": "a198fb7051818c4565dce2d6f67d90e6ebaa977c4254cbcadc899a90f88661ed",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi.Tests/Integration/CanonicalIngredientPublicationPostgresTests.RecoveryRestore.cs": {
+    "beforeSha256": null,
+    "afterSha256": "efdfb0895383c013b315ba3a734c5274a23e20dc0f170cdc148ed7f7676e8143",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi.Tests/Integration/OnlineRecoveryPostgresTests.cs": {
+    "beforeSha256": "4c542d374e859ee1338d7bba484966ddaceef9b7c05af00b8fe50d3ba05f2a65",
+    "afterSha256": "360b8d1d2033bcc11e23687218db8bf6475a25f80b308e579aa1d35d88e7bc26",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi.Tests/Integration/DemoShowcaseLoopPostgresTests.cs": {
+    "beforeSha256": "03d09d7b1fe1407a153a6f5989214fd1d2fe78f1880476cc048f487951ee26aa",
+    "afterSha256": "0685fd51b265cc84d6fa3e54b9f18eda880d74a74ed986e6efccba01ab247235",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  },
+  "api/src/RecipeApi.Tests/Integration/DemoShowcaseLoopPostgresTests.VocabularyCompatibility.cs": {
+    "beforeSha256": "b1dfed7f007b993f0ffb35f1db5253fdd20a65d594f2d405b75405799c12adf0",
+    "afterSha256": "86674810376dea8d3cb392547b35295dfc105832a156f7769259ff50ae53345f",
+    "beforeMode": "Root127/current unchanged owner beforeimage",
+    "dependencyOnly": false
+  }
+}

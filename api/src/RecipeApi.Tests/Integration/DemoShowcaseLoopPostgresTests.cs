@@ -24,7 +24,7 @@ using PostgresFact = RecipeApi.Tests.Integration.RecipeImportReportPostgresTests
 
 namespace RecipeApi.Tests.Integration;
 
-public class DemoShowcaseLoopPostgresTests : IAsyncLifetime
+public partial class DemoShowcaseLoopPostgresTests : IAsyncLifetime
 {
     private readonly string database = "wfs_recovery_test_" + Guid.NewGuid().ToString("N");
     private readonly string backup = Path.Combine(Path.GetTempPath(), "wfs-recovery-backup-" + Guid.NewGuid().ToString("N"));
@@ -110,8 +110,18 @@ public class DemoShowcaseLoopPostgresTests : IAsyncLifetime
         var store = scope.ServiceProvider.GetRequiredService<IRecipeStore>();
         await store.SaveSourcePdfAsync(recipe.Id, new MemoryStream([1, 2, 3]));
         await store.SaveHeroImageAsync(recipe.Id, new MemoryStream([4, 5, 6]));
+        var repairOwner = typeof(RecipeFilePublicationStore).Assembly.GetType("RecipeApi.Services.RecipeReportRepairIntent")!
+            .GetMethod("Create", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
+        var repair = (RecipeRepairIntent)repairOwner.Invoke(null, [Guid.NewGuid(), recipe.Id, "url-import",
+            new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString("D"), ["privateFeedback"] = "Synthetic feedback" },
+            null, DateTimeOffset.UtcNow])!;
+        using (var original = JsonDocument.Parse(repair.Payload))
+            Assert.Equal("Synthetic feedback", original.RootElement.GetProperty("Parameters").GetProperty("privateFeedback").GetString());
+        db.RecipeRepairIntents.Add(repair);
+        await db.SaveChangesAsync();
         await service.CaptureDemoStateAsync();
-        _ = SelectedBaseline(scope);
+        var baseline = SelectedBaseline(scope);
+        Assert.Equal("[]", await File.ReadAllTextAsync(Path.Combine(baseline, "tables", "recipe_repair_intents.json")));
         recipe.Name = "Visitor edit";
         (await db.FeatureFlagOverrides.SingleAsync()).Enabled = true;
         (await db.IngredientCategories.SingleAsync()).GrocerySection = "Grocery";
@@ -137,6 +147,7 @@ public class DemoShowcaseLoopPostgresTests : IAsyncLifetime
         Assert.Empty(await db.CalendarEvents.ToListAsync());
         Assert.Empty(await db.RecipeVotes.ToListAsync());
         Assert.Empty(await db.RecipeImportReports.ToListAsync());
+        Assert.Empty(await db.RecipeRepairIntents.ToListAsync());
         Assert.False((await db.FeatureFlagOverrides.SingleAsync()).Enabled);
         Assert.Equal("Pantry", (await db.IngredientCategories.SingleAsync()).GrocerySection);
         Assert.Equal("family_goto", (await db.FamilySettings.SingleAsync()).Key);
@@ -180,7 +191,7 @@ public class DemoShowcaseLoopPostgresTests : IAsyncLifetime
             scope.ServiceProvider.GetRequiredService<DataRootResolver>(),
             scope.ServiceProvider.GetRequiredService<IConfiguration>(),
             scope.ServiceProvider.GetRequiredService<IClock>(),
-            scope.ServiceProvider.GetRequiredService<RecoveryBoundary>(), new InterruptAt(point));
+            scope.ServiceProvider.GetRequiredService<RecoveryBoundary>(), scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>(), scope.ServiceProvider.GetRequiredService<HouseholdFoodOverrideStore>(), new InterruptAt(point));
         await Assert.ThrowsAsync<IOException>(() => recovery.RestoreDemoAsync(null, CancellationToken.None));
         db.ChangeTracker.Clear();
         Assert.Equal(committed ? "Baseline soup" : "Visitor edit", (await db.Recipes.SingleAsync()).Name);

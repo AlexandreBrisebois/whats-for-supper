@@ -1,0 +1,18 @@
+{
+  "api/src/RecipeApi/Services/CanonicalRecipeMigrationReceipt.cs": {
+    "beforeSha256": null,
+    "afterSha256": "f3892636ef86c96f50f2b1b43e72ec75ec831b07f8550f512aa940b41e91cb04"
+  },
+  "api/src/RecipeApi.Tests/Services/CanonicalRecipeMigrationExecutionTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "1a8293118ae42259d309132316a42bdbf408073a81cd446feffad7f1d16100b6"
+  },
+  "api/src/RecipeApi/Services/GroceryRecomputeService.Migration.cs": {
+    "beforeSha256": null,
+    "afterSha256": "d788d4b66a3f0779f58b63f4006439dfa240a6a3861a9237542186fb618d3a96"
+  },
+  "api/src/RecipeApi/Services/GroceryRecomputeService.cs": {
+    "beforeSha256": "1fcdcf2755a27136b46e26d0a398d9f30bc7d663fb48c80eeeb443d2d8ab597e",
+    "afterSha256": "23b84ea94bf9a314762cdb9fc1621cb0c9155e862cc0386172405311bdd27402"
+  }
+}

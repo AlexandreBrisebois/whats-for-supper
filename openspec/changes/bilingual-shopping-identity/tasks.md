@@ -1,0 +1,91 @@
+# Tasks
+
+> **Selected — 2026-11-12:** Alex included bilingual identity in this release and selected app-owned model-authored durable JSON with full backup/restore. **Historical, superseded — 2026-11-10:** this feature was deferred from the first portions baseline. No external-dataset/licence adoption or separate scope-confirmation gate remains.
+
+All implementation boxes remain unchecked until actual acceptance. Use the shared [contracts](../canonical-ingredient-correction/contracts.md), [corpus](../canonical-ingredient-correction/acceptance-corpus.md) and [review](../canonical-ingredient-correction/review.md); Root owns those artifacts. For actual API changes, update OpenAPI first, regenerate the client, then synchronize consumers and method-sensitive mocks, conflicts, reads and SSE. Preserve accepted PDF/portions/package/step/check behavior; no bilingual code enters PDF freshness.
+
+## 1. Qualify and publish a bounded saved bilingual vocabulary
+
+**Outcome/scenarios:** C22–C25/C47; reviewed model-authored exact identities, honest fallback and durable revision-bound mapping.
+**Owners/boundaries:** existing canonical shopping/protected-content owner, storage/atomic JSON owner, import/correction seam and current recovery dictionary validation. No imported dataset or runtime translation dependency.
+**Acceptance boundary:** reviewed local vocabulary evidence plus actual producer/API/PostgreSQL/files; seeded IDs or model confidence alone do not qualify mapping.
+
+- [x] 1.1 Deliver a bounded model-authored UTF-8 JSON draft and its reviewed pinned format/release revision/raw SHA256. Record stable app IDs, EN/FR labels or explicit missing labels, full-phrase exact aliases, purchase qualifiers, authoring model/review provenance and unresolved terms. Review an EN/FR collision/false-merge/ambiguity corpus including fresh/canned, salted/unsalted, échalote, poivron/piment, coriander leaf/seed, cream percentages and alternatives. Deliver adoption/affected-set/reversal manifest with actual reviewed outcomes; do not label model confidence validated truth or add external licence/attribution/download gates. Verify exact JSON/hash and corpus/manifest consistency as the completion artifact.
+- [x] 1.2 Bind the live JSON/version/path and saved food/mapping/override revision scopes to Root's shared contracts and existing archive validation before code. Where APIs change, update OpenAPI/client/consumers/method-sensitive mocks. Add intended-red `BilingualShoppingIdentityPostgresTests` and deterministic resolver cases for actual EN/FR import publication, exact aliases, unknown/colliding fallback, stale/foreign association, private name/clear protection and revision/file mismatch; run `task test:database -- --filter FullyQualifiedName~BilingualShoppingIdentityPostgresTests` and affected pure owner before implementing the missing producer. Document actual seam/provider-double limits.
+- [x] 1.3 Implement qualified common saved mapping and durable versioned JSON publication through existing canonical/storage owners. Run1.2 green plus `task gen:client:check` where applicable and `task test:unit -- src/testing/mock-api.test.ts`. Prove restart reloads exact persisted/restored revisions without AI, network, reseed, overwrite or regeneration; initial install versus missing referenced data, stale expected revision/hash and interrupted atomic publication fail/recover safely. Keep quantity-only Saves and mapping contentRevision coherent. Record API/PostgreSQL/file/source hashes and usage documentation; new intake channels reuse this seam.
+
+## 2. Derive bilingual groceries without changing purchase/check policy
+
+**Outcome/scenarios:** C09/C22–C25/C47; exact identity grouping and EN/FR labels with independent unit/package meaning.
+**Owners/boundaries:** GroceryRecomputeService, projection/labels, category lookup and row/check coordination. Depends on group1 and current exact quantity contract.
+
+- [ ] 2.1 Add intended-red affected `GroceryRecomputeServiceTests`, `IngredientNormalizerTests` and `BilingualGroceryPostgresTests`: reviewed onion variants group once; fresh/canned,400g/800g packages, incompatible units and unsupported regional conversions stay separate; unknown terms retain source fallback. Reuse actual package-clear/split/merge/contributor guards and prove two members/locales/source order change only labels, not quantities, row IDs/checks/baselines. Run focused API owners and `task test:database -- --filter FullyQualifiedName~BilingualGroceryPostgresTests` before logic; synchronize schedule/locale mocks.
+- [ ] 2.2 Implement deterministic saved-identity grouping and read-time labels; run2.1 green, affected mock units and grocery/browser locale/check cases. Provider spies must show zero lookup/translation/model calls on reads/recompute/restart/restore. Requalify untouched800 continuity when400 package clears; mapping changes use existing meaning-change/split/merge/proven-increase policy, while label-only updates never reset checks. Document exact source fallback and missing-label behavior, including simultaneous EN/FR reads.
+
+## 3. Correct private shopping identity and household category safely
+
+**Outcome/scenarios:** C25/C31/C34/C40; ordinary protected corrections, explicit clears and distinct private/global/category scopes.
+**Owners/boundaries:** guarded recipe shopping Save, shared food/fallback category contract and extra-occurrence owner; depends on groups1–2.
+
+- [ ] 3.1 Add intended-red `IngredientCategoryServiceTests` and `FoodCategoryCorrectionPostgresTests` for current/stale revisions, unique/conflicting prior manual categories, private label versus purchase-meaning change, explicit mapping clear, foreign/stale provider and locale/reimport/recovery. Exercise ordinary generated-client shopping/category correction and method-sensitive mocks. Verify food/fallback household scope never mutates extra occurrences or publishes global aliases; run focused API/database cases before logic.
+- [ ] 3.2 Implement only the qualified correction/category scopes and run3.1 green plus affected category/edit browser cases. Preserve protected private overrides and all conflicting prior manual choices; no source-order winner or stale mapping revival. New global alias/label release requires its pinned affected-set/reversal review, never household correction promotion. Document actual read-back, categoryRevision/contentRevision/mappingRevision guards and old-client compatibility/conflict behavior.
+
+## 4. Preserve vocabulary and references through full recovery and migration
+
+**Outcome/scenarios:** C40–C42; exact durable JSON/references/private overrides, coherent offline full backup/restore and the linked migration-only reset boundary.
+**Owners/boundaries:** existing full RecoverySnapshotService capture/restore and archive dictionary/override/manifest validation; migration companion owns cutover operations.
+
+- [x] 4.1 Add intended-red actual full-backup→isolated-restore→re-export cases covering exact JSON bytes/format/releases/labels/aliases/qualifiers/provenance, every saved mapping/content reference, private overrides/clears and source/media. Include missing/corrupt/unsupported JSON, unknown food/release, checksum mismatch, stale replacement, different existing valid vocabulary and file/DB capture races rejected before restore writes. Run the affected real recovery/PostgreSQL owner, then extend ordinary capture manifest/required-artifact validation/staged publication/journal and explicit demo dispositions; run green with zero AI/network/implicit reseed and retain interruption evidence. Existing archive structs alone are not completion.
+- [ ] 4.2 Hand exact vocabulary/reference and affected-set evidence to the [migration companion](../migrate-canonical-recipe-model/design.md) and Root's [rollout](../canonical-ingredient-correction/rollout.md). Verify its actual acceptance preserves **all** plans/events, recomputes **all** grocery lists and permits bulk check/baseline reset only in its captured migration epoch, without resetting later checks on retry; manual extras/corrections/history survive. No empty-list gate, plan deletion or historical count/addition allowance is admissible. Record companion evidence and cross-owner reconciliation; do not implement a duplicate migration here.
+
+## 5. Final integration and verification
+
+- [ ] 5.1 Reconcile C22–C25/C31 and affected C40–C42/C47 outcomes with Root's common contracts/review/corpus/rollout and later intake-channel acceptance. Review the complete integrated task-owned diff, run applicable `task gen:client:check`, `task prepare -- <reviewed paths>` and `task verify -- <reviewed paths>`, then required exact-candidate realPG/native/DV/hosted seams with zero required skips. Record actual commands, invocation-specific record_path and passed/failed/blocked/skipped/not-run evidence; model authorship, mock reads, archive validation or planning completion alone cannot close this change.
+
+## Full recovery acceptance — 2026-11-13
+
+Task 4.1 is complete on signed application commit `71b56bc5945f0be770eeb02bc5759578faf0582f`. Stable 69-path repository verification `.task/agent-finish/runs/891e5245337542eab12cb722b59edd94.json` passed, including all 773 PostgreSQL cases with zero skips in `.task/database-tests/runs/afbd6006f2a0464f9e4d38f9448a7538/result.json`. Independent immutable review covers the prepared 69-file source manifest. Frontend units passed 2,192 cases, browsers passed 1,007 with 101 existing conditional skips and zero retries, host API passed 2,836 with 671 conditional skips, and harness, client generation, contracts and live endpoint parity passed.
+
+Ordinary3/demo4 independent restore and re-export preserve exact A/B vocabulary bytes and revisions, actual mapped canonical content, typed current and retained references, protected category/name/clear facts, and original/hero media. Corruption, unsupported inputs, unknown food/release, destination CAS, capture/staging races and staged/journal/pointer/committed interruptions have real PostgreSQL coverage. Restart and replay retain the exact vocabulary file set. Strict target `IChatClient` and `IHttpClientFactory` spies recorded zero calls. Earlier failed source/fixture runs remain retained with their original identities. The complete final PostgreSQL gate includes the corrected fixtures and all dependent epoch/lease cases.
+
+Task 4.2 still requires actual migration acceptance. Task 5.1 retains final corpus, exact-candidate native/DV/hosted release requirements. Ordinary association-clear producer and correction acceptance remain in their existing unchecked tasks. Alex took ownership of CI monitoring after the application push. Current delivery and the bounded migration handoff are recorded in [RECOVERY.md](../../../docs/handoffs/dependable-portions-next-slice/RECOVERY.md).
+
+## Common vocabulary acceptance — 2026-11-14
+
+Tasks 1.1–1.3 qualify the bounded common vocabulary slice through the existing
+publication, deterministic mapping and exact recovery owners. The version1
+three-food input has raw SHA256
+`9a73124844fd93422d00bda2a287169317377f69ef2a1a66f6b405e101e8274b`.
+Its review, 15 exact aliases, 65 unmapped corpus terms and captured
+adoption/affected-set/reversal manifests are linked from the
+[common handoff](../../../docs/handoffs/dependable-portions-next-slice/BILINGUAL-COMMON.md).
+Original model provenance is retained, including the unavailable exact deployment
+identifier. Independent finite review and immutable implementation review retain
+separate source hashes.
+
+Stable RED covers conflicting document hashes, prepared retry after missing/corrupt
+retained files and contradictory captured/membership revisions. GREEN includes
+25 pure owner/artifact cases, generated-client parity, 40 affected mock units,
+97 prepared-source PostgreSQL cases with zero skips, the corrected process-root
+canary case and two production-built EN/FR generated-client browser repetitions.
+Actual source publication saves mapping revisions. Quantity-only Saves carry
+those references, private names and explicit clears remain protected, stale/foreign
+inputs fail atomically, and exact offline instance/process restarts retain files.
+The existing full recovery test additionally exercises these exact bounded bytes
+through ordinary and demo isolated restore/re-export.
+
+`.task/bilingual-common-20261114/delivery.json` owns final prepared source/review,
+complete stable verification, full PostgreSQL, signed delivery and cleanup receipts.
+Earlier compile/setup, identity-mutation and meaningful failing runs retain their
+actual outcomes. The existing public API shapes and generated-client/mocks retain
+their contracts. Group 2, group 3, migration 4.2 and final combined release 5.1
+remain open. Alex owns CI monitoring.
+
+The first complete repository gate passed as
+`3c0c57a81f8b420e9688d289108579a6`. The additional full PostgreSQL run exposed a
+cross-database recovery fault-injection defect, with 835 passes and one migration
+session-loss failure. A foreign-database canary reproduced the fault before the
+test query was scoped to its own database. Its corrected two-case acceptance
+passed with zero skips in `c1e5909b77a24079b7e4345b27eb4f4e`. The final 27-path
+source, independent review and repeated complete verification retain separate
+identities in the delivery receipt.

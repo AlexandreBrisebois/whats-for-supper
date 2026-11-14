@@ -10,7 +10,21 @@ import {
   toDateStr,
   mockSseWithSlotUpdate,
   mockSseWithConnectedSchedule,
+  mockSupperServings,
 } from './mock-api';
+
+// Synthetic Home schedules and dated projection reads share one stateful owner.
+async function setupHomeProjection(page: Page, schedule: ReturnType<typeof builders.scheduleDays>) {
+  for (const day of schedule.days) if (day.recipe) day.occurrenceId ??= MOCK_IDS.SUPPER_OCCURRENCE;
+  await mockSupperServings(page, () => schedule, {
+    readFamilyCount: () => 4,
+    readRecipe: (id) =>
+      builders.recipe({
+        id,
+        ingredients: schedule.days.find((day) => day.recipe?.id === id)?.recipe?.ingredients ?? [],
+      }),
+  });
+}
 
 /** Use the existing browser schedule/SSE seams, leaving Home SSR reconciliation intact. */
 async function prepareAdaptiveTonight(page: Page, name: string, image = 'loaded') {
@@ -31,6 +45,7 @@ async function prepareAdaptiveTonight(page: Page, name: string, image = 'loaded'
       totalTime: 'PT25M',
       ingredients: ['Salmon', 'Green beans'],
     });
+  await setupHomeProjection(page, schedule);
   await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
   await page.route(
     (url) => url.pathname.endsWith('/api/schedule'),
@@ -341,6 +356,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
       image: '',
     });
     schedule.days.find((day) => day.date === toDateStr(currentMonday()))!.recipe = recipe;
+    await setupHomeProjection(page, schedule);
     await mockSseWithConnectedSchedule(page, schedule as unknown as ScheduleDays);
     await page.route(
       (url) => url.pathname.endsWith('/api/schedule') && url.searchParams.get('weekOffset') === '0',
@@ -1155,7 +1171,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Quick Find should close, Recovery Dialog should re-open at Step 2
     await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
-    await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
+    await expect(page.getByRole('heading', { name: /What about Test Lasagna on/ })).toBeVisible();
 
     // Click "Move to Tomorrow"
     await page.getByTestId('recovery-action-tomorrow').click();
@@ -1230,7 +1246,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Click "Take Out" → step 2
     await page.getByTestId('recovery-action-order-in').click();
-    await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
+    await expect(page.getByRole('heading', { name: /What about Test Lasagna on/ })).toBeVisible();
 
     // Click "Move to Tomorrow"
     await page.getByTestId('recovery-action-tomorrow').click();
@@ -1355,10 +1371,10 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Click "Take Out" → step 2
     await page.getByTestId('recovery-action-order-in').click();
-    await expect(page.getByText("What about tonight's recipe?")).toBeVisible();
+    await expect(page.getByRole('heading', { name: /What about Test Lasagna on/ })).toBeVisible();
 
     // Click "Just Drop Tonight"
-    await page.getByText('Just Drop Tonight').click();
+    await page.getByTestId('recovery-action-drop').click();
 
     // Ordered-in validation must be called
     await expect.poll(() => validateCalled).toBe(true);
@@ -1656,68 +1672,30 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
   test('Completing Cook Mode marks meal as cooked', async ({ page }) => {
     const monday = currentMonday();
     const today = toDateStr(monday);
-    const lasagnaRecipe = builders.scheduleRecipe({
-      id: MOCK_IDS.RECIPE_LASAGNA,
-      name: 'Test Lasagna',
-    });
-
-    let todayStatus = 0;
-    let validateCalled = false;
+    // Seed the captured occurrence through the same owner used by projection,
+    // preparation, REST reads and every EventSource reconnect.
+    const captured = await page.evaluate(
+      async ({ recipeId, today }) => {
+        const assigned = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId }),
+        });
+        if (!assigned.ok) throw new Error('Could not seed supper occurrence');
+        const schedule = (await (await fetch('/api/schedule?weekOffset=0')).json()).data;
+        return schedule.days.find((day: { date: string }) => day.date === today);
+      },
+      { recipeId: MOCK_IDS.RECIPE_LASAGNA, today }
+    );
+    expect(captured.occurrenceId).toBeTruthy();
+    const preparations: Record<string, unknown>[] = [];
     let cookedReconnects = 0;
-    const schedule = () => ({
-      ...builders.scheduleDays(),
-      weekOffset: 0,
-      days: Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(monday);
-        d.setUTCDate(monday.getUTCDate() + i);
-        return {
-          date: toDateStr(d),
-          status: i === 0 ? todayStatus : 0,
-          recipe: lasagnaRecipe,
-        };
-      }),
+    page.on('request', (request) => {
+      const path = new URL(request.url()).pathname;
+      if (request.method() === 'POST' && path === `/api/schedule/day/${today}/prepare`)
+        preparations.push(request.postDataJSON());
+      if (path === '/api/stream' && preparations.length) cookedReconnects++;
     });
-
-    // REST and every SSE reconnect read the same persisted mock state. Replaying
-    // status 0 after accepting validation would incorrectly undo the cooked UI.
-    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
-      const snapshot = schedule();
-      if (todayStatus === 2) cookedReconnects += 1;
-      await route.fulfill({
-        status: 200,
-        contentType: 'text/event-stream',
-        headers: { 'Cache-Control': 'no-cache' },
-        body: `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: snapshot })}\n\n`,
-      });
-    });
-    await page.route(
-      (url) => url.pathname.endsWith('/api/schedule'),
-      async (route) => {
-        if (route.request().method() !== 'GET') return route.fallback();
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: schedule() }),
-        });
-      }
-    );
-    await page.route(
-      (url) => url.pathname.endsWith(`/api/schedule/day/${today}/validate`),
-      async (route) => {
-        if (route.request().method() !== 'POST') return route.fallback();
-        expect(route.request().postDataJSON()).toEqual({
-          status: 2,
-          recipeId: MOCK_IDS.RECIPE_LASAGNA,
-        });
-        todayStatus = 2;
-        validateCalled = true;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { message: 'Day validated', mealMarkedCooked: true } }),
-        });
-      }
-    );
 
     await page.goto('/home');
     await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 10_000 });
@@ -1737,19 +1715,32 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     await expect(nextBtn).toHaveAccessibleName('Mark recipe as cooked');
     await nextBtn.click();
 
-    // Verify implicit cooked call
-    await expect.poll(() => validateCalled).toBe(true);
-
-    // Verify both optimistic completion and persistence across an SSE reconnect.
-    await expect(page.getByTestId('cooked-success-card')).toBeVisible();
+    await expect.poll(() => preparations.length).toBe(1);
+    expect(preparations[0]).toMatchObject({
+      expectedOccurrenceId: captured.occurrenceId,
+      recipeId: MOCK_IDS.RECIPE_LASAGNA,
+    });
+    const prepared = page.getByRole('button', { name: /Already prepared/ });
+    await expect(prepared).toContainText('Prepared Monday, May 4');
     await expect.poll(() => cookedReconnects, { timeout: 10_000 }).toBeGreaterThan(0);
-    await expect(page.getByTestId('cooked-success-card')).toBeVisible();
+    await expect(prepared).toBeVisible();
     await page.reload();
-    await expect(page.getByTestId('cooked-success-card')).toBeVisible();
-    await expect(page.getByTestId('cooked-success-title')).toHaveText('Enjoy your meal!');
-    await expect(page.getByTestId('cooked-success-card')).toContainText('Recipe marked as cooked');
-    await page.getByTestId('cooked-success-dismiss').click();
-    await expect(page.getByTestId('cooked-success-card')).toHaveCount(0);
+    await expect(prepared).toContainText('Prepared Monday, May 4');
+    const persisted = await page.evaluate(
+      async () => (await (await fetch('/api/schedule?weekOffset=0')).json()).data.days[0]
+    );
+    expect(persisted.status).toBe(2);
+    expect(persisted.occurrenceId).toBe(captured.occurrenceId);
+    expect(persisted.recipe.id).toBe(MOCK_IDS.RECIPE_LASAGNA);
+    expect(persisted.preparation.preparedOn).toBe(today);
+    await prepared.click();
+    await expect(page.getByTestId('cooks-mode-overlay')).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Mark recipe as cooked', exact: true })
+    ).toHaveCount(0);
+    await page.getByTestId('close-cooks-mode').click();
+    await expect(prepared).toBeVisible();
+    expect(preparations).toHaveLength(1);
     await expect(page).toHaveURL(/\/home$/);
   });
 });
@@ -2056,24 +2047,55 @@ test.describe('Home active voting handoff', () => {
     page,
   }) => {
     await prepare(page);
+    await page.addInitScript(() => {
+      (window as any).__homeVotingRetryClicks = 0;
+      document.addEventListener(
+        'click',
+        (event) => {
+          const button = event.target instanceof Element ? event.target.closest('button') : null;
+          if (
+            button?.closest('[data-testid="voting-nudge-card"]') &&
+            button.textContent?.trim() === 'Retry'
+          )
+            (window as any).__homeVotingRetryClicks++;
+        },
+        true
+      );
+    });
     let mode: 'failed' | 'ready' | 'pending' = 'failed';
+    let readyAfterRetry = 1;
     let release: (() => void) | undefined;
     await page.route('**/api/discovery/session', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
       if (mode === 'pending')
         await new Promise<void>((resolve) => {
           release = resolve;
         });
-      if (mode === 'failed')
+      // Background reconciliation must not consume a recovery reserved for Retry.
+      const retryClicks = await page.evaluate(() => (window as any).__homeVotingRetryClicks);
+      if (mode === 'failed' || (mode === 'ready' && retryClicks < readyAfterRetry))
         return route.fulfill({ status: 400, json: { message: 'Unavailable' } });
       return route.fulfill({ json: { data: round('2026-05-11', 'converged') } });
     });
     await page.goto('/home');
-    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible({
+    const retry = page
+      .getByTestId('voting-nudge-card')
+      .getByRole('button', { name: 'Retry', exact: true });
+    await expect(retry).toBeVisible({
       timeout: 20000,
     });
     await expect(page.getByTestId('home-see-matches')).toHaveCount(0);
     mode = 'ready';
-    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    // A reconnect may recheck voting before the person activates Retry.
+    await expect.poll(() => page.evaluate(() => !!(window as any).__sseSource)).toBe(true);
+    const backgroundRecheck = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === '/api/discovery/session'
+    );
+    await page.evaluate(() => (window as any).__sseSource.dispatchEvent(new Event('open')));
+    expect((await backgroundRecheck).status()).toBe(400);
+    await retry.click();
     await expect(page.getByTestId('home-see-matches')).toBeEnabled();
     mode = 'pending';
     await page.evaluate(() => dispatchEvent(new Event('pageshow')));
@@ -2085,9 +2107,11 @@ test.describe('Home active voting handoff', () => {
       timeout: 20000,
     });
     await expect(page.getByTestId('home-see-matches')).toBeEnabled();
+    readyAfterRetry = 2;
     mode = 'ready';
-    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await retry.click();
     await expect(page.getByTestId('home-voting-status')).toHaveCount(0);
+    expect(await page.evaluate(() => (window as any).__homeVotingRetryClicks)).toBe(2);
   });
 
   test.describe('French Home voting', () => {
@@ -2127,4 +2151,93 @@ test.describe('Home active voting handoff', () => {
       });
     }
   });
+});
+
+test('Home expanded assigned ingredients and captured Cook share six portions without writes', async ({
+  page,
+}) => {
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
+  await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
+    supperServings: {
+      knownRecipe: {
+        id: MOCK_IDS.RECIPE_SPAGHETTI,
+        basis: 2,
+        quantity: 200,
+        ingredient: 'pasta',
+        unit: 'g',
+      },
+    },
+  });
+  await page.goto('/onboarding');
+  await page.evaluate(
+    async ({ id, member }) => {
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({
+          state: { selectedFamilyMemberId: member, familyMembers: [{ id: member, name: 'Alex' }] },
+          version: 0,
+        })
+      );
+      const state = (
+        await (
+          await fetch('/api/schedule/servings?weekOffset=0&referenceWeekStartDate=2026-05-04')
+        ).json()
+      ).data;
+      const defaults = await fetch('/api/schedule/servings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          expectedVersion: state.version,
+          weekOffset: 0,
+          referenceWeekStartDate: '2026-05-04',
+          defaultServings: 6,
+          days: [],
+        }),
+      });
+      if (!defaults.ok) throw new Error('Could not configure fixture portions');
+      const assignment = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId: id }),
+      });
+      if (!assignment.ok) throw new Error('Could not seed captured supper');
+    },
+    { id: MOCK_IDS.RECIPE_SPAGHETTI, member: MOCK_IDS.MEMBER_ALEX }
+  );
+  const snapshot = () =>
+    page.evaluate(async () => ({
+      schedule: await (
+        await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-05-04')
+      ).json(),
+      portions: await (
+        await fetch('/api/schedule/servings?weekOffset=0&referenceWeekStartDate=2026-05-04')
+      ).json(),
+    }));
+  const before = await snapshot();
+  const writes: string[] = [];
+  const reads: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (!['GET', 'HEAD'].includes(request.method()) && url.pathname.startsWith('/api/'))
+      writes.push(request.method() + ' ' + url.pathname);
+    if (url.pathname.endsWith('/ingredient-projection')) reads.push(url.search);
+  });
+  await page.goto('/home');
+  await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+  await page.getByTestId('tonight-ingredients-toggle').click();
+  await expect(page.getByTestId('tonight-menu-card')).toContainText('600 g pasta');
+  await expect(page.getByTestId('ingredients-info-title')).toContainText('6 portions');
+  await page.getByTestId('cook-mode-btn').click();
+  await expect(page.getByTestId('cooks-mode-overlay')).toBeVisible();
+  await expect(page.getByTestId('cooks-mode-overlay')).toContainText('600 g pasta');
+  expect(reads.length).toBeGreaterThanOrEqual(2);
+  expect(new Set(reads).size).toBe(1);
+  expect(writes).toEqual([]);
+  expect(await snapshot()).toEqual(before);
 });

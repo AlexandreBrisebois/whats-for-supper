@@ -4,7 +4,8 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
-public class FamilyService(IClock clock, RecipeDbContext db, VotingSession? votingSession = null)
+public class FamilyService(IClock clock, RecipeDbContext db, DeploymentCalendar calendar,
+    SupperProjectionInvalidation projectionInvalidation, ISupperProjectionPublisher projectionPublisher, VotingSession votingSession)
 {
     public const string BrowseViewModeStack = "stack";
     public const string BrowseViewModeList = "list";
@@ -24,23 +25,27 @@ public class FamilyService(IClock clock, RecipeDbContext db, VotingSession? voti
         if (string.IsNullOrEmpty(trimmed))
             throw new ArgumentException("Family member name must not be empty.");
 
-        var normalized = trimmed.ToLowerInvariant();
-        var exists = await db.FamilyMembers
-            .AnyAsync(m => m.Name.Trim().ToLower() == normalized);
-        if (exists)
-            throw new DuplicateFamilyMemberException("A family member with this name already exists.");
-
-        var member = new FamilyMember { Name = trimmed, CreatedAt = clock.UtcNow, UpdatedAt = clock.UtcNow };
-        db.FamilyMembers.Add(member);
-        try
+        FamilyMember member;
+        bool automatic;
+        IReadOnlyList<DateOnly> weeks;
+        await using (var transaction = await SupperServingsService.BeginAsync(db, CancellationToken.None))
         {
-            await db.SaveChangesAsync();
+            var before = await SupperServingsService.ReadUsualAsync(db, CancellationToken.None);
+            automatic = before.Source == "family";
+            var normalized = trimmed.ToLowerInvariant();
+            var exists = await db.FamilyMembers.AnyAsync(m => m.Name.Trim().ToLower() == normalized);
+            if (exists) throw new DuplicateFamilyMemberException("A family member with this name already exists.");
+            member = new FamilyMember { Name = trimmed, CreatedAt = clock.UtcNow, UpdatedAt = clock.UtcNow };
+            db.FamilyMembers.Add(member);
+            try { await db.SaveChangesAsync(); }
+            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            { throw new DuplicateFamilyMemberException("A family member with this name already exists."); }
+            weeks = await EnlistMembershipChangeAsync(before);
+            if (transaction is not null) await transaction.CommitAsync();
         }
-        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
-        {
-            throw new DuplicateFamilyMemberException("A family member with this name already exists.");
-        }
-        if (votingSession is not null) await votingSession.RefreshAfterMutationAsync();
+        // Both notifications observe a committed/disposed transaction. Portions publish first.
+        if (automatic) await projectionPublisher.PublishAsync(weeks);
+        await votingSession.RefreshAfterMutationAsync();
         return member;
     }
 
@@ -111,11 +116,28 @@ public class FamilyService(IClock clock, RecipeDbContext db, VotingSession? voti
 
     public async Task DeleteFamilyMember(Guid id)
     {
-        var member = await db.FamilyMembers.FindAsync(id)
-            ?? throw new KeyNotFoundException($"Family member {id} not found.");
+        bool automatic;
+        IReadOnlyList<DateOnly> weeks;
+        await using (var transaction = await SupperServingsService.BeginAsync(db, CancellationToken.None))
+        {
+            var before = await SupperServingsService.ReadUsualAsync(db, CancellationToken.None);
+            automatic = before.Source == "family";
+            var member = await db.FamilyMembers.FindAsync(id)
+                ?? throw new KeyNotFoundException($"Family member {id} not found.");
+            db.FamilyMembers.Remove(member);
+            await db.SaveChangesAsync();
+            weeks = await EnlistMembershipChangeAsync(before);
+            if (transaction is not null) await transaction.CommitAsync();
+        }
+        if (automatic) await projectionPublisher.PublishAsync(weeks);
+        await votingSession.RefreshAfterMutationAsync();
+    }
 
-        db.FamilyMembers.Remove(member);
-        await db.SaveChangesAsync();
-        if (votingSession is not null) await votingSession.RefreshAfterMutationAsync();
+    private async Task<IReadOnlyList<DateOnly>> EnlistMembershipChangeAsync(SupperServingsService.UsualSnapshot before)
+    {
+        if (before.Source != "family") return [];
+        var after = await SupperServingsService.ReadUsualAsync(db, CancellationToken.None);
+        var weeks = await SupperServingsService.MaterializeInheritedAsync(db, clock, calendar, after.Count, CancellationToken.None);
+        return await projectionInvalidation.EnlistWeeksAsync(weeks, CancellationToken.None);
     }
 }

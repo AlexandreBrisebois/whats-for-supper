@@ -1,0 +1,19 @@
+# Dependable portions migration executor
+
+Delivered checkpoint: [executor handoff](../../docs/handoffs/dependable-portions-next-slice/MIGRATION-EXECUTOR.md). The instructions below record the completed bounded slice; select the later operator/cutover work separately.
+
+Work directly in `/Users/alex/Code/whats-for-supper` on local `recipe-view-redesign`. Read AGENT.md, its loading rules, the Codex adapter and Entire guide. Read `docs/handoffs/dependable-portions-next-slice/RECOVERY.md` and `migration-executor-plan.md`. Verify actual local/remote refs, unrelated work, application commit `71b56bc5945f0be770eeb02bc5759578faf0582f` and its documentation successors. Reuse the qualified recovery owners.
+
+Alex owns CI monitoring for the delivered application checkpoint. Review the current outcome and preserve its exact candidate identity and unresolved evidence. Local recovery gate `891e5245337542eab12cb722b59edd94` passed all 773 PostgreSQL cases with zero skips. Selected progress is 23/68, including bilingual task 4.1. Recheck current task state before edits.
+
+Implement only the bounded disposable-copy migration executor slice from `migrate-canonical-recipe-model` tasks 1.1, 1.2 and 3.3, plus necessary maintenance/operator contributions to 3.1/3.2. Refresh OpenSpec apply instructions and load its exact task/spec dependencies. Use current C# backend, database and API skills where applicable.
+
+1. Inspect the frozen migration inventory, receipt/retained lookup and operator capability artifacts, their exact before-images and approved executor plan. Merge deliberately against current recovery/lease code. The unfinished reset scaffold lacks the required atomic fence and source admission and remains preserved source evidence.
+2. Bind one operation to actual candidate/schema/model/source references, selected recipe operation IDs/revisions and every stored or assignment-implied week. Use the existing snapshot owner's validated source-protection projection and actual protected row/history/media/vocabulary comparisons. Re-admit inputs under the real revocable maintenance capability before mutation.
+3. Reuse the canonical converter and existing grocery coordinator/transaction/recompute owners. Commit each unfinished week's derived rebuild, migration-only recipe-row check/baseline reset and completed immutable receipt atomically. Retain every plan/event/identity/date/status/servings/prepared-cooked fact, manual extra and extra check, correction, source/media and history.
+4. Observe real PostgreSQL RED before missing behavior, then GREEN for interruption before/after commit, partial multiweek resume, stale/foreign/revoked bindings, duplicate operations, prune-to-resume and complete week accounting. A completed week replay preserves later human checks/baselines and returns its recorded disposition. Keep ordinary check continuity and stale client/worker fences qualified.
+5. Independently review immutable source, run `task prepare` then complete stable applicable `task verify`, and make normal signed checkpoint commits/pushes from this local branch. Reconcile task completion from actual evidence. Sync/archive fully completed qualified in-scope changes and retain unfinished changes.
+
+Use disposable databases/filesystems and isolated test/build outputs. Preserve unrelated work, port 3000 and unrelated containers. Root owns integration and Git operations. Keep one writer per shared file and explicit test-resource ownership.
+
+Deliver executor/rehearsal source, exact receipts/results and the next operator/cutover handoff. Vocabulary adoption, migration activation, DV changes, production deployment and adjacent intake/garlic/Similar/UI work remain outside this slice.

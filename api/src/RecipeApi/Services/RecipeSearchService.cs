@@ -71,7 +71,8 @@ public partial class RecipeSearchService(
             .AsNoTracking()
             .Where(recipe =>
                 recipe.DeletedAt == null &&
-                recipe.IsReady);
+                (recipe.IsReady || (appliedFilters.ReportedOnly == true || appliedFilters.ReadyToReviewOnly == true)
+                    && db.RecipeImportReports.Any(report => report.RecipeId == recipe.Id)));
 
         recipesQuery = RecipeSearchPredicate.Apply(recipesQuery, appliedFilters, db, _clock.UtcNow, gotoRecipeIds);
 

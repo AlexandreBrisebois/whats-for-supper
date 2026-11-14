@@ -111,6 +111,10 @@ async function installRecipeHarness(
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     const method = request.method();
+    // This harness owns detail/import reporting; the shared owner retains dated
+    // ingredient projections and validates their real response shape.
+    if (pathname !== `/api/recipes/${state.recipe.id}` && !pathname.endsWith('/import-report'))
+      return route.fallback();
 
     if (pathname.endsWith('/import-report')) {
       if (method === 'POST') {
@@ -409,8 +413,16 @@ test.describe('Recipe import issue reporting', () => {
       },
     });
     await openRecipeDetail(page);
+    await page.evaluate(async (recipe) => {
+      const result = await fetch(`/api/recipes/${recipe.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredients: recipe.ingredients }),
+      });
+      if (!result.ok) throw new Error('Could not seed coherent projection source');
+    }, state.recipe);
 
-    await page.getByTestId('time-cook-btn').click();
+    await page.getByTestId('action-cooks-mode').click();
     await expect(page.getByTestId('cooks-mode-overlay')).toBeVisible();
     const firstIngredient = page.getByTestId('ingredient-toggle').first();
     await firstIngredient.click();

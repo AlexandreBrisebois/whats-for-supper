@@ -99,7 +99,7 @@ public class DemoWorkflowSeederTests : IDisposable
                 ["DEMO_RESTORE_CRON_UTC"] = cron
             })
             .Build();
-        var orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db);
+        var orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(_db, _storage, new RecipeApi.Services.SystemClock()));
 
         return new DemoWorkflowSeeder(
             _db,

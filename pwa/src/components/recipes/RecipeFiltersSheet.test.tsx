@@ -117,7 +117,7 @@ describe('RecipeFiltersSheet', () => {
     const choices = screen
       .getAllByTestId(/mobile-filter-(new-recipes|not-cooked-long-time|reported|ready-to-review)/)
       .map((choice) => choice.textContent);
-    expect(choices).toEqual(['New', "It's Been a While", 'Reported', 'Ready to review']);
+    expect(choices).toEqual(['New', "It's Been a While", 'Reported', 'Ready for review']);
   });
 
   it('uses custom Main labels, discloses remaining choices, and retains selected chips after collapse', () => {

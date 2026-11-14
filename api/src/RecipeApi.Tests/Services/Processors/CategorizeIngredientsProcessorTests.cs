@@ -3,7 +3,9 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Moq;
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Models;
+using RecipeApi.Services;
 using RecipeApi.Services.Processors;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
@@ -95,6 +97,33 @@ public class CategorizeIngredientsProcessorTests : IDisposable
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CanonicalRecipe_UsesCurrentShoppingNamesInsteadOfOldSupply()
+    {
+        var current = new CanonicalRecipeContent(2, "content.current", "source.current", 4,
+            [new RecipeIngredientLineDto
+            {
+                Id = Guid.NewGuid(), Description = "fresh", Amount = null, AmountText = null,
+                Unit = null, Scaling = "proportional", Package = null,
+                Shopping = new("fresh", null, null), Provenance = new("human", null, [])
+            }], []);
+        _db.Recipes.Add(new Recipe
+        {
+            Id = _recipeId, RawMetadata = BuildRawMetadata("stale"),
+            CanonicalContent = JsonSerializer.Serialize(current)
+        });
+        _db.IngredientCategories.Add(new IngredientCategory
+        {
+            NormalizedKey = "fresh", GrocerySection = "Produce", Confidence = 0.99, Source = "llm"
+        });
+        await _db.SaveChangesAsync();
+
+        await _processor.ExecuteAsync(MakeTask(_recipeId), CancellationToken.None);
+
+        _chatClientMock.Verify(c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(),
+            It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
     /// <summary>
     /// When every ingredient in the recipe is already present in ingredient_categories,

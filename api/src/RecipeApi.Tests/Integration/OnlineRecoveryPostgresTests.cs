@@ -16,7 +16,7 @@ using PostgresFact = RecipeApi.Tests.Integration.RecipeImportReportPostgresTests
 
 namespace RecipeApi.Tests.Integration;
 
-public class OnlineRecoveryPostgresTests : IAsyncLifetime
+public partial class OnlineRecoveryPostgresTests : IAsyncLifetime
 {
     private readonly string database = "wfs_recovery_test_" + Guid.NewGuid().ToString("N");
     private readonly string backup = Path.Combine(Path.GetTempPath(), "wfs-recovery-backup-" + Guid.NewGuid().ToString("N"));
@@ -190,7 +190,7 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         await db.SaveChangesAsync();
         var interrupted = new RecoverySnapshotService(db, services.GetRequiredService<RecipesRootResolver>(),
             services.GetRequiredService<DataRootResolver>(), services.GetRequiredService<IConfiguration>(),
-            services.GetRequiredService<RecipeApi.Services.IClock>(), services.GetRequiredService<RecoveryBoundary>(), new InterruptAt(point));
+            services.GetRequiredService<RecipeApi.Services.IClock>(), services.GetRequiredService<RecoveryBoundary>(), services.GetRequiredService<FoodVocabularyStore>(), services.GetRequiredService<HouseholdFoodOverrideStore>(), new InterruptAt(point));
         await Assert.ThrowsAsync<IOException>(() => interrupted.RestoreExactAsync(captured.SnapshotId!.Value, CancellationToken.None));
         db.ChangeTracker.Clear();
         Assert.Equal(committed ? originalName : "Before restore", (await db.FamilyMembers.SingleAsync()).Name);
@@ -363,7 +363,7 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         Assert.Empty(Directory.Exists(backup) ? Directory.GetDirectories(backup) : []);
         var previous = await service.CaptureAsync(CancellationToken.None);
         var interrupted = new RecoverySnapshotService(services.GetRequiredService<RecipeDbContext>(), services.GetRequiredService<RecipesRootResolver>(),
-            services.GetRequiredService<DataRootResolver>(), services.GetRequiredService<IConfiguration>(), services.GetRequiredService<RecipeApi.Services.IClock>(), gate, new InterruptAt("export-staged"));
+            services.GetRequiredService<DataRootResolver>(), services.GetRequiredService<IConfiguration>(), services.GetRequiredService<RecipeApi.Services.IClock>(), gate, services.GetRequiredService<FoodVocabularyStore>(), services.GetRequiredService<HouseholdFoodOverrideStore>(), new InterruptAt("export-staged"));
         await Assert.ThrowsAsync<IOException>(() => interrupted.CaptureAsync(CancellationToken.None));
         Assert.Single(Directory.GetDirectories(backup));
         Assert.True(File.Exists(Path.Combine(backup, previous.SnapshotId!.Value.ToString("N"), "manifest.json")));
@@ -465,9 +465,12 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         var services = scope.ServiceProvider;
         services.GetRequiredService<IConfiguration>()["Recovery:WaitSeconds"] = "10";
         var db = services.GetRequiredService<RecipeDbContext>();
-        var instance = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "capture", CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
+        var instance = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "capture", Parameters = "{}", CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
         var task = new WorkflowTask { TaskId = Guid.NewGuid(), Instance = instance, TaskName = "stale", ProcessorName = "MustNeverExecute", Status = RecipeApi.Models.TaskStatus.Pending, CreatedAt = instance.CreatedAt, UpdatedAt = instance.UpdatedAt };
         db.WorkflowTasks.Add(task);
+        // Accept the synthetic command before testing recovery-time invalidation.
+        // Uncaptured historical work is correctly refused before acquiring a lease.
+        await services.GetRequiredService<RecipeFilePublicationStore>().CaptureLaunchAsync(instance);
         await db.SaveChangesAsync();
         var lease = await services.GetRequiredService<RecoveryBoundary>().EnterAsync(RecoveryAccess.Publish, CancellationToken.None);
         using var worker = new WorkflowWorker(services.GetRequiredService<IClock>(), app.Services.GetRequiredService<IServiceScopeFactory>(),
@@ -511,7 +514,7 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
             services.GetRequiredService<DataRootResolver>(),
             services.GetRequiredService<IConfiguration>(),
             new FixedClock(now),
-            services.GetRequiredService<RecoveryBoundary>());
+            services.GetRequiredService<RecoveryBoundary>(), services.GetRequiredService<FoodVocabularyStore>(), services.GetRequiredService<HouseholdFoodOverrideStore>());
         var snapshot = await recovery.CaptureAsync(CancellationToken.None);
         var command = new MaintenanceCommand
         {
@@ -550,7 +553,7 @@ public class OnlineRecoveryPostgresTests : IAsyncLifetime
         using var cancellation = new CancellationTokenSource();
         var interrupted = new RecoverySnapshotService(db, services.GetRequiredService<RecipesRootResolver>(),
             services.GetRequiredService<DataRootResolver>(), services.GetRequiredService<IConfiguration>(),
-            services.GetRequiredService<IClock>(), services.GetRequiredService<RecoveryBoundary>(), new CancelAt(point, cancellation));
+            services.GetRequiredService<IClock>(), services.GetRequiredService<RecoveryBoundary>(), services.GetRequiredService<FoodVocabularyStore>(), services.GetRequiredService<HouseholdFoodOverrideStore>(), new CancelAt(point, cancellation));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => point == "pointer"
             ? interrupted.RestoreExactAsync(snapshot.SnapshotId!.Value, cancellation.Token)
             : interrupted.CaptureAsync(cancellation.Token));

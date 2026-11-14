@@ -240,6 +240,7 @@ test.describe('Supper Planner', () => {
 
     let currentStatus = 0;
     let isLockedState = false;
+    const assignments = new Map<number, ReturnType<typeof builders.scheduleRecipe>>();
 
     const readScheduleFixture = () => {
       const monday = currentMonday();
@@ -261,6 +262,7 @@ test.describe('Supper Planner', () => {
             : {}),
         };
       });
+      for (const [index, recipe] of assignments) Object.assign(days[index], { recipe, status: 0 });
       return {
         ...builders.scheduleDays(),
         weekOffset: 0,
@@ -286,6 +288,22 @@ test.describe('Supper Planner', () => {
       async (route) => {
         const url = route.request().url();
         const method = route.request().method();
+
+        if (method === 'POST' && new URL(url).pathname === '/api/schedule/assign') {
+          const body = route.request().postDataJSON();
+          const target = readScheduleFixture().days[body.dayIndex];
+          if (!target || body.weekOffset !== 0)
+            return route.fulfill({ status: 400, json: { message: 'Invalid target.' } });
+          if (body.requireEmpty && target.recipe)
+            return route.fulfill({ status: 409, json: { message: 'That supper changed.' } });
+          assignments.set(
+            body.dayIndex,
+            builders.scheduleRecipe({ id: body.recipeId, name: 'Homemade Lasagna' })
+          );
+          return route.fulfill({
+            json: { data: { message: 'Recipe assigned', displacedRecipe: null } },
+          });
+        }
 
         if (method !== 'GET') {
           if (url.includes('/voting/open')) {
@@ -783,12 +801,37 @@ test.describe('Supper Planner', () => {
     }
 
     for (const index of [0, 2]) {
-      test(`success feedback stays distinct on temporal row ${index}`, async ({ page }) => {
-        await openEmphasis(page, 2);
-        await page.goto(`/planner?success=1&dayIndex=${index}`);
-        await expect(page.getByTestId(`day-card-${index}`).getByTestId('planner-meal')).toHaveClass(
-          /ring-4/
+      test(`${index === 0 ? 'confirmed' : 'unacknowledged'} success feedback stays distinct on temporal row ${index}`, async ({
+        page,
+      }) => {
+        const schedule = await openEmphasis(page, 2);
+        const day = schedule.days![index];
+        if (index === 0) {
+          await page.evaluate(
+            (result) => sessionStorage.setItem('wfs.planning-result', JSON.stringify(result)),
+            {
+              weekOffset: 0,
+              dayIndex: index,
+              referenceWeekStartDate: '2026-05-04',
+              date: String(day.date),
+              recipeId: day.recipe!.id,
+              recipeName: day.recipe!.name,
+            }
+          );
+        }
+        await page.goto(
+          `/planner?success=1&dayIndex=${index}&weekOffset=0&referenceWeekStartDate=2026-05-04`
         );
+        const meal = page.getByTestId(`day-card-${index}`).getByTestId('planner-meal');
+        if (index === 0) {
+          await expect(page.getByTestId('toast')).toContainText('Monday Lasagna');
+          await expect(page.getByTestId('planner-planning-confirmation')).toHaveCount(0);
+          await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
+          await expect(meal).toHaveClass(/ring-4/);
+        } else {
+          await expect(page.getByTestId('planner-planning-confirmation')).toHaveCount(0);
+          await expect(meal).not.toHaveClass(/ring-4/);
+        }
         await expect(page.getByTestId('day-card-2').getByTestId('planner-date')).toHaveAttribute(
           'aria-current',
           'date'
@@ -945,6 +988,13 @@ test.describe('Supper Planner', () => {
               await expect(button).toHaveAccessibleName(label);
               await button.click({ trial: true });
               const bounds = await button.boundingBox();
+              const portionsBounds = await page.getByTestId('at-the-table-mode').boundingBox();
+              expect(bounds!.y).toBeGreaterThanOrEqual(portionsBounds!.y - 1);
+              if (bounds!.y < portionsBounds!.y + portionsBounds!.height - 1) {
+                expect(bounds!.x).toBeGreaterThanOrEqual(
+                  portionsBounds!.x + portionsBounds!.width - 1
+                );
+              }
               expect(bounds!.x).toBeGreaterThanOrEqual(0);
               expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
               expect(await button.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
@@ -1080,13 +1130,196 @@ test.describe('Supper Planner', () => {
     await page.getByTestId('action-add-to-day').click();
 
     // 5. Verify redirect back to planner with success params
-    await page.waitForURL(/\/planner\?success=1&dayIndex=2/);
-    await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=2/);
+    await expect(page).toHaveURL(/\/planner\?.*referenceWeekStartDate=2026-05-04/);
 
-    // 6. Verify success feedback (ring) on the card
+    // 6. Confirm the persisted recipe/date explicitly; the ring supplements it.
+    await expect(page.getByTestId('toast')).toContainText('Homemade Lasagna');
+    await expect(page.getByTestId('toast')).toContainText('May 6');
+    await expect(page.getByTestId('planner-planning-confirmation')).toHaveCount(0);
+    await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
     await expect(targetCard.getByTestId('planner-meal')).toHaveClass(/ring-sage/, {
       timeout: 10_000,
     });
+  });
+
+  test.describe('quiet planning returns', () => {
+    for (const locale of ['en', 'fr'] as const) {
+      test.describe(locale, () => {
+        test.use({ appLocale: locale });
+        const returnUrl =
+          '/planner?success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-04';
+        async function returnToPlan(page: import('@playwright/test').Page, original?: object) {
+          const schedule = dragWeek();
+          await page.evaluate(
+            ({ url, original, recipeId }) => {
+              sessionStorage.setItem(
+                'wfs.planning-result',
+                JSON.stringify({
+                  weekOffset: 0,
+                  dayIndex: 0,
+                  referenceWeekStartDate: '2026-05-04',
+                  date: '2026-05-04',
+                  recipeId,
+                  recipeName: 'Monday Lasagna',
+                  original,
+                })
+              );
+              window.history.pushState(null, '', url);
+            },
+            { url: returnUrl, original, recipeId: MOCK_IDS.RECIPE_LASAGNA }
+          );
+          return schedule;
+        }
+        test('keeps replacement spillover readable and dismissible at narrow enlarged text without replay', async ({
+          page,
+        }, testInfo) => {
+          const schedule = dragWeek();
+          await mockNonCookingSchedule(page, schedule);
+          await page.setViewportSize({ width: 320, height: 568 });
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+          await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+          const writes: string[] = [];
+          page.on('request', (r) => {
+            if (r.url().includes('/api/') && r.method() !== 'GET')
+              writes.push(r.method() + ' ' + new URL(r.url()).pathname);
+          });
+          await returnToPlan(page, {
+            action: 'next_week',
+            recipeName: 'Original supper',
+            sourceDate: '2026-05-04',
+            destinationDate: '2026-05-18',
+            spillover: true,
+          });
+          const feedback = page.getByTestId('planner-planning-confirmation');
+          await expect(feedback).toHaveAttribute('role', 'status');
+          await expect(feedback).toContainText('Original supper');
+          await expect(feedback).toContainText(locale === 'en' ? 'May 18' : '18 mai');
+          await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
+          // Replacement details outlive the ordinary five-second toast.
+          await page.waitForTimeout(5200);
+          await expect(feedback).toBeVisible();
+          const dismiss = page.getByTestId('planner-confirmation-dismiss');
+          await expect(dismiss).toHaveAccessibleName(locale === 'en' ? 'Close' : 'Fermer');
+          await dismiss.focus();
+          await expect(dismiss).toBeFocused();
+          const box = (await dismiss.boundingBox())!;
+          expect(box.width).toBeGreaterThanOrEqual(48);
+          expect(box.height).toBeGreaterThanOrEqual(48);
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
+          ).toBe(true);
+          await page.screenshot({
+            path: testInfo.outputPath(`replacement-${locale}-320-200.png`),
+            fullPage: true,
+          });
+          await dismiss.press('Enter');
+          await expect(feedback).toHaveCount(0);
+          await expect(page.getByTestId('day-card-0')).toBeFocused();
+          await expect(page).not.toHaveURL(/success=/);
+          await page.reload();
+          await expect(feedback).toHaveCount(0);
+          await page.goto(returnUrl);
+          await expect(feedback).toHaveCount(0);
+          await expect(page.getByTestId('toast')).toHaveCount(0);
+          expect(writes).toEqual([]);
+        });
+        for (const changed of [false, true]) {
+          test(`retries only the read after saved-but-unrefreshed and ${changed ? 'shows changed plan' : 'confirms once'}`, async ({
+            page,
+          }, testInfo) => {
+            const schedule = dragWeek();
+            let reads = 0;
+            const writes: string[] = [];
+            // Settle normal week initialization before isolating the no-retry return read.
+            await page.goto('/planner?referenceWeekStartDate=2026-05-04');
+            await expect(page.getByTestId('day-card-0')).toBeVisible();
+            await page.setViewportSize({ width: 320, height: 568 });
+            await page.emulateMedia({ reducedMotion: 'reduce' });
+            await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+            await page.route(
+              (url) => url.pathname === '/api/schedule',
+              async (route) => {
+                if (route.request().method() !== 'GET') return route.fallback();
+                reads++;
+                if (reads === 1)
+                  return route.fulfill({
+                    status: 503,
+                    json: { message: 'Temporarily unavailable' },
+                  });
+                if (changed)
+                  schedule.days![0].recipe = builders.scheduleRecipe({
+                    id: MOCK_IDS.RECIPE_TACOS,
+                    name: 'Changed supper',
+                  });
+                await route.fulfill({ json: { data: schedule } });
+              }
+            );
+            page.on('request', (r) => {
+              if (r.url().includes('/api/') && r.method() !== 'GET')
+                writes.push(r.method() + ' ' + new URL(r.url()).pathname);
+            });
+            await returnToPlan(page);
+            const feedback = page.getByTestId('planner-planning-confirmation');
+            await expect(feedback).toContainText(
+              locale === 'en' ? 'could not refresh' : 'n’a pas pu être actualisé'
+            );
+            expect(reads).toBe(1);
+            expect(
+              await page.evaluate(() => sessionStorage.getItem('wfs.planning-result'))
+            ).not.toBeNull();
+            const retry = page.getByTestId('planner-confirmation-refresh');
+            await retry.focus();
+            await expect(retry).toBeFocused();
+            const box = (await retry.boundingBox())!;
+            expect(box.width).toBeGreaterThanOrEqual(48);
+            expect(box.height).toBeGreaterThanOrEqual(48);
+            expect(
+              await retry.evaluate((element) => {
+                const box = element.getBoundingClientRect();
+                const top = document.elementFromPoint(
+                  box.x + box.width / 2,
+                  box.y + box.height / 2
+                );
+                return element === top || element.contains(top);
+              })
+            ).toBe(true);
+            await page.screenshot({
+              path: testInfo.outputPath(`refresh-${locale}-320-200.png`),
+              fullPage: true,
+            });
+            await retry.press('Enter');
+            await expect(retry).toHaveCount(0);
+            await expect(page.getByTestId('day-card-0')).toBeFocused();
+            if (changed) {
+              await expect(feedback).toContainText(locale === 'en' ? 'has changed' : 'a changé');
+              await expect(page.getByTestId('day-card-0')).toContainText('Changed supper');
+              await expect(page.getByTestId('toast')).toHaveCount(0);
+              await page.getByTestId('planner-confirmation-dismiss').click();
+            } else {
+              await expect(feedback).toHaveCount(0);
+              await expect(page.getByTestId('toast')).toContainText('Monday Lasagna');
+              await expect(page.getByTestId('toast')).toHaveAttribute('role', 'status');
+              // Timer expiry belongs to ToastContainer's focused unit test. Keep
+              // one browser boundary for actual dismissal and return to planning.
+              if (locale === 'en') {
+                await page
+                  .getByTestId('toast')
+                  .getByRole('button', { name: 'Dismiss notification' })
+                  .click();
+                await expect(page.getByTestId('toast')).toHaveCount(0);
+                await page.getByTestId('day-card-0').focus();
+                await expect(page.getByTestId('day-card-0')).toBeFocused();
+              }
+            }
+            expect(reads).toBe(2);
+            expect(writes).toEqual([]);
+            expect(
+              await page.evaluate(() => sessionStorage.getItem('wfs.planning-result'))
+            ).toBeNull();
+          });
+        }
+      });
+    }
   });
 
   test('should trigger Cook Mode from a recipe card and navigate steps', async ({ page }) => {
@@ -1113,6 +1346,18 @@ test.describe('Supper Planner', () => {
       };
     }, PINNED_DATE);
 
+    // Use one state owner for the assigned occurrence and its guarded quantity read.
+    await setupCommonRoutes(page);
+    await page.goto('/onboarding');
+    const assigned = await page.evaluate(async (recipeId) => {
+      const response = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId }),
+      });
+      return response.status;
+    }, MOCK_IDS.RECIPE_LASAGNA);
+    expect(assigned).toBe(200);
     await page.goto('/planner');
     await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
 
@@ -1123,7 +1368,7 @@ test.describe('Supper Planner', () => {
     // Click STEPS button to launch Cooks Mode
     const detailSheet = page.getByTestId('recipe-detail-sheet');
     await expect(detailSheet).toBeVisible();
-    await detailSheet.getByTestId('time-cook-btn').click();
+    await detailSheet.getByTestId('action-cooks-mode').click();
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();
@@ -1606,8 +1851,14 @@ test.describe('Supper Planner', () => {
     expect(box.width).toBeGreaterThanOrEqual(44);
     expect(box.height).toBeGreaterThanOrEqual(44);
     const row = page.getByTestId('day-card-0');
-    const date = (await row.getByTestId('planner-date').boundingBox())!;
-    const content = (await row.getByTestId('planner-meal').boundingBox())!;
+    const { date, content } = await row.evaluate((node) => {
+      const date = node.querySelector<HTMLElement>('[data-testid="planner-date"]')!;
+      const meal = node.querySelector<HTMLElement>('[data-testid="planner-meal"]')!;
+      return {
+        date: date.getBoundingClientRect().toJSON(),
+        content: meal.getBoundingClientRect().toJSON(),
+      };
+    });
     expect(date.x + date.width).toBeLessThan(content.x);
     expect(Math.abs(date.y + date.height / 2 - content.y - content.height / 2)).toBeLessThan(1);
     expect(await row.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
@@ -1781,6 +2032,7 @@ test.describe('Supper Planner', () => {
     await page.route(
       (url) => url.pathname === '/api/schedule',
       async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
         const monday = currentMonday();
         const days = Array.from({ length: 7 }, (_, i) => {
           const d = new Date(monday);
@@ -1789,6 +2041,7 @@ test.describe('Supper Planner', () => {
           return {
             day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
             date: dateStr,
+            status: 0,
             ...(dateStr === todayStr
               ? {
                   recipe: builders.scheduleRecipe({
@@ -1848,7 +2101,7 @@ test.describe('Supper Planner', () => {
     // Launch cooks mode
     const detailSheet = page.getByTestId('recipe-detail-sheet');
     await expect(detailSheet).toBeVisible();
-    await detailSheet.getByTestId('time-cook-btn').click();
+    await detailSheet.getByTestId('action-cooks-mode').click();
 
     // Wait for loader to disappear and overlay to appear
     await expect(page.getByTestId('cooks-mode-loading')).not.toBeVisible({ timeout: 10_000 });
@@ -1952,8 +2205,9 @@ test.describe('Quick Replace relative next week', () => {
     );
     await page.getByRole('button', { name: /Save for Next Week/ }).click();
     await pending;
-    await expect(page.getByRole('button', { name: /Save for Next Week/ })).toBeDisabled();
-    await page.getByRole('button', { name: /Save for Next Week/ }).dispatchEvent('click');
+    await expect(page.getByTestId('replacement-feedback')).toHaveAttribute('role', 'status');
+    await expect(page.getByTestId('recovery-close')).toBeDisabled();
+    await page.getByTestId('recovery-close').dispatchEvent('click');
     expect(deferrals).toBe(1);
     expect(replacements).toBe(0);
     release();
@@ -2004,8 +2258,8 @@ test.describe('Quick Replace relative next week', () => {
       await expect(
         page.getByText(
           failure === 'defer'
-            ? 'The current meal could not be moved. Your plan was refreshed; please try again.'
-            : 'The previous meal was moved, but the replacement could not be added. Your plan was refreshed; please try again.'
+            ? 'Your plan changed. Review it before replacing this meal.'
+            : "Your original meal was updated. Your new meal wasn't saved."
         )
       ).toBeVisible();
       expect(deferrals).toBe(1);
@@ -2013,7 +2267,7 @@ test.describe('Quick Replace relative next week', () => {
       if (failure === 'defer') {
         await expect(page.getByTestId('day-card-2')).toContainText('Chicken');
       } else {
-        await page.getByRole('button', { name: /Save for Next Week/ }).click();
+        await page.getByTestId('recovery-retry-save').click();
         await expect(page.getByTestId('day-card-2')).toContainText(
           builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CARBONARA }).name!
         );

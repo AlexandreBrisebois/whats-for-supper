@@ -114,6 +114,47 @@ components:
         message: { type: string }
         snapshotId: { type: string, format: uuid, nullable: true }
 
+    FoodVocabularyDocumentReference:
+      type: object
+      additionalProperties: false
+      required: [revision, sha256]
+      properties:
+        revision: { type: string, minLength: 1 }
+        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+    FoodVocabularyDestinationBaseline:
+      type: object
+      additionalProperties: false
+      required: [version, revision, generation, membershipSha256, overridesSha256, historySha256, documents]
+      description: Versioned exact destination observation. Hashes include absence, private override sequences and clears, typed live and retained inert history, generation and every referenced immutable document. Raw private history is not exposed.
+      properties:
+        version: { type: integer, const: 1 }
+        revision: { type: string, pattern: '^[0-9a-f]{64}$' }
+        generation: { type: [string, 'null'] }
+        membershipSha256: { type: [string, 'null'], pattern: '^[0-9a-f]{64}$' }
+        overridesSha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        historySha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        documents:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/FoodVocabularyDocumentReference' }
+    RecoveryRestorePreflight:
+      type: object
+      additionalProperties: false
+      required: [snapshotId, manifestSha256, destination, requiresExpectedDestinationRevision]
+      properties:
+        snapshotId: { type: string, format: uuid }
+        manifestSha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        destination: { $ref: '#/components/schemas/FoodVocabularyDestinationBaseline' }
+        requiresExpectedDestinationRevision: { type: boolean }
+    RecoveryRestoreRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expectedDestinationRevision:
+          type: [string, 'null']
+          pattern: '^[0-9a-f]{64}$'
+          description: Exact preflight destination revision. Required for a new-format snapshot replacing a different valid vocabulary head. A mismatch rejects before a durable journal or live mutation; refresh preflight before another request.
+
     PdfCaptureRequest:
       type: object
       required: [file]
@@ -205,6 +246,7 @@ components:
           maxLength: 500
         status:
           $ref: '#/components/schemas/RecipeImportIssueStatus'
+          description: readyToReview means human attention is needed, including a system-flagged content validation issue; it does not by itself certify re-import completion. System flags carry an explanatory note without launching repair on creation or unchanged Save; eligible changed human comments retain automatic correction semantics.
         isReimporting: { type: boolean }
         reimportFailureMessage: { type: [string, 'null'] }
         reimportFailureImportId: { type: [string, 'null'], format: uuid }
@@ -225,6 +267,198 @@ components:
         reimportStarted: { type: boolean }
         importId: { type: [string, 'null'], format: uuid }
         reimportLaunchFailed: { type: boolean }
+
+    # Original canonical facts. Nullable on legacy reads until explicit guarded conversion.
+    RecipeUnit:
+      type: object
+      additionalProperties: false
+      required: [text, definitionId]
+      properties:
+        text: { type: string, minLength: 1 }
+        definitionId: { type: [string, 'null'], description: 'Validated exact definition; culinary cup, teaspoon and tablespoon are independent families, never implicit millilitres.' }
+    RecipePackage:
+      type: object
+      additionalProperties: false
+      required: [countUnit, capacity, basis]
+      description: 'Explicit package facts. Ordinary guarded ingredient Save may add or change literal units whose definitionId is null, or retain an unchanged validated definition at the same saved field. New or changed non-null definition objects require qualified definition validation. countUnit is an independently declared package label: a null ingredient unit remains null, and clearing it does not clear the package. Only the ingredient amount scales; capacity and basis remain fixed. No package-size, unit-equivalence or net/drained conversion is inferred.'
+      example:
+        countUnit: { text: cans, definitionId: null }
+        capacity:
+          amount: { kind: scalar, value: { n: '400', d: '1' } }
+          unit: { text: g, definitionId: null }
+        basis: net
+      properties:
+        countUnit: { $ref: '#/components/schemas/RecipeUnit' }
+        capacity:
+          type: object
+          additionalProperties: false
+          required: [amount, unit]
+          properties:
+            amount:
+              oneOf:
+                - $ref: '#/components/schemas/GroceryScalar'
+                - $ref: '#/components/schemas/GroceryRange'
+            unit: { $ref: '#/components/schemas/RecipeUnit' }
+        basis: { type: string, enum: [net, drained, unspecified] }
+    RecipeShoppingAssociation:
+      type: object
+      additionalProperties: false
+      required: [name, foodId, mappingRevision]
+      properties:
+        name: { type: string, minLength: 1 }
+        foodId: { type: [string, 'null'], format: uuid }
+        mappingRevision: { type: [string, 'null'] }
+    RecipeIngredientProvenance:
+      type: object
+      additionalProperties: false
+      required: [origin, sourceRef, protectedFields]
+      description: Server-owned provenance. Public references never disclose private evidence bytes.
+      properties:
+        origin: { type: string, enum: [human, source, legacy_unknown, unknown], description: 'Unknown authorship remains protected; legacy_unknown is retained for compatible reads.' }
+        sourceRef: { type: [string, 'null'] }
+        protectedFields:
+          type: array
+          uniqueItems: true
+          items: { type: string, enum: [description, amount, amountText, unit, scaling, package, shopping] }
+    RecipeIngredientFacts:
+      type: object
+      required: [description, amount, amountText, unit, scaling, package, shopping]
+      properties:
+        description: { type: string, minLength: 1 }
+        amount:
+          description: Exact normalized nonnegative rationals with at most 38 digits per operand; ranges are ordered. Null is unknown, zero is known.
+          oneOf:
+            - $ref: '#/components/schemas/GroceryScalar'
+            - $ref: '#/components/schemas/GroceryRange'
+            - type: 'null'
+        amountText: { type: [string, 'null'], description: 'Original supported notation; must parse to exactly amount. Null when amount is null.' }
+        unit:
+          oneOf:
+            - $ref: '#/components/schemas/RecipeUnit'
+            - type: 'null'
+        scaling: { type: string, enum: [proportional, fixed] }
+        package:
+          oneOf:
+            - $ref: '#/components/schemas/RecipePackage'
+            - type: 'null'
+        shopping: { $ref: '#/components/schemas/RecipeShoppingAssociation' }
+    RecipeIngredientLine:
+      allOf:
+        - $ref: '#/components/schemas/RecipeIngredientFacts'
+        - type: object
+          required: [id, provenance]
+          properties:
+            id: { type: string, format: uuid, description: Server-issued saved row identity, independent of order and name. }
+            provenance: { $ref: '#/components/schemas/RecipeIngredientProvenance' }
+    RecipeIngredientLineInput:
+      allOf:
+        - $ref: '#/components/schemas/RecipeIngredientFacts'
+        - type: object
+          description: Supply exactly one existing saved id or request-local clientId. Provenance is server-owned.
+          oneOf:
+            - required: [id]
+              not: { required: [clientId] }
+            - required: [clientId]
+              not: { required: [id] }
+          properties:
+            id: { type: string, format: uuid }
+            clientId: { type: string, minLength: 1, maxLength: 128 }
+    RecipeInstructionStep:
+      type: object
+      required: [id, text, textRevision, bindings]
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string }
+        textRevision: { type: string, minLength: 1, description: Opaque token changes only when step text changes. }
+        bindings:
+          type: array
+          items: { $ref: '#/components/schemas/IngredientUseBinding' }
+          description: Revision-bound validated ingredient uses owned by the cooking-step contract. Unvalidated source objects cannot authorize substitutions or demand.
+    IngredientUseBinding:
+      type: object
+      required: [id, ingredientLineId, stepId, validatedContentRevision, validatedTextRevision, span, role, payload, status]
+      properties:
+        id: { type: string, format: uuid }
+        ingredientLineId: { type: string, format: uuid }
+        stepId: { type: string, format: uuid }
+        validatedContentRevision: { type: string }
+        validatedTextRevision: { type: string }
+        span:
+          type: object
+          required: [start, end, expectedText]
+          properties:
+            start: { type: integer, minimum: 0, description: UTF-16 half-open offset against exact stored text. }
+            end: { type: integer, minimum: 0 }
+            expectedText: { type: string }
+        role: { type: string, enum: [mention, whole, absolute, fraction, remainder, fixed, perItem] }
+        payload:
+          type: object
+          description: 'Role evidence: whole uses the saved row total; absolute/fixed carry amount and unit; ungrouped fixed uses require a unique binding identity across current steps and canonical amount/unit evidence matching the bound row; their exact span wording remains unchanged at every target, including missing serving basis and permitted original-total corrections. Fixed is a binding policy independent of ingredient-row scaling and grocery demand. Grouped fixed uses, including exhaustive and remainder members, are unsupported and preserve affected original wording; fraction carries fraction {n,d}, a canonical exact rational in [0,1] of the current row total; validated relative spans retain their exact original wording at every target. An optional annotationSpan {start,end,expectedText} uses UTF-16 half-open offsets for an existing numeric measurement independently proved by explicit half wording, one unique current ingredient and compatible exact original-total evidence. Projection may replace only that validated nonoverlapping annotation with the fraction of the current total at the requested portions; it never adds an annotation or changes saved wording. Stale, forged, ambiguous, contradictory, conditional or overlapping annotation evidence leaves source wording unchanged; remainder carries allocationGroupId (UUID) and predecessors (ordered binding UUIDs), matching every preceding member of its explicit exhaustive allocationGroup; a single final remainder uses the current total less those proven uses. Its original relative span is retained with a parenthesized exact quantity in projection only; saved prose is unchanged. Scalar prior uses subtract exactly; fractions refer to the same current total, permitting correlation-safe range arithmetic; independent prior ranges cannot prove a remainder. perItem carries dose {amount,unit} (a canonical scalar fixed dose in the bound ingredient unit) and countBindingId (UUID of a separately validated whole item-count binding on a different ingredient row). The per-item binding identity must itself be unique across current steps. The count proof must be unique across current steps, revision/span-valid, ungrouped, scalar and proportional; the declared link is item-count evidence, never numeric discovery. Only that count scales; the exact per-item span remains unchanged. Missing, stale, overlapping, duplicate, cyclic, grouped or unsupported count proof leaves the dose wording uncertain; other valid bindings remain independent. Ingredient-total edits may carry this proof only when both linked rows and the count step keep identity, wording, unit, policy, package, shopping and source dependencies; their original totals may change without altering the fixed dose. An optional allocationGroup carries id (UUID), exhaustive (true), and ordered bindingIds (UUID array) repeated identically on every member. Only complete same-row groups of compatible whole/absolute/fraction uses whose exact sum equals the saved scalar total, or a terminal remainder whose known compatible predecessors and current total prove a nonnegative bounded exact result may project; missing, stale, ambiguous, contradictory or unsupported members preserve affected wording. Fraction proof requires a canonical known total and bounded exact arithmetic at the requested serving context; corrected totals retain the fraction and binding identity when other proof dependencies are unchanged. Ungrouped uses are never summed. Unsupported or unproved roles preserve original wording.'
+          additionalProperties: true
+        status: { type: string, enum: [validated, uncertain] }
+    InstructionProjection:
+      type: object
+      required: [sections, validatedUses, uncertainUses]
+      properties:
+        validatedUses: { type: integer, minimum: 0 }
+        uncertainUses: { type: integer, minimum: 0 }
+        sections:
+          type: array
+          items:
+            type: object
+            required: [sectionId, name, steps]
+            properties:
+              sectionId: { type: string, format: uuid }
+              name: { type: string, nullable: true }
+              steps:
+                type: array
+                items:
+                  type: object
+                  required: [stepId, textRevision, originalText, text]
+                  properties:
+                    stepId: { type: string, format: uuid }
+                    textRevision: { type: string }
+                    originalText: { type: string }
+                    text: { type: string, description: Only validated spans substituted; all other source text retained. }
+    RecipeInstructionSection:
+      type: object
+      required: [id, name, steps]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: [string, 'null'] }
+        steps: { type: array, items: { $ref: '#/components/schemas/RecipeInstructionStep' } }
+    RecipeInstructionStepInput:
+      type: object
+      required: [text]
+      oneOf:
+        - required: [id]
+          not: { required: [clientId] }
+        - required: [clientId]
+          not: { required: [id] }
+      properties:
+        id: { type: string, format: uuid }
+        clientId: { type: string, minLength: 1, maxLength: 128 }
+        text: { type: string }
+    RecipeInstructionSectionInput:
+      type: object
+      required: [name, steps]
+      oneOf:
+        - required: [id]
+          not: { required: [clientId] }
+        - required: [clientId]
+          not: { required: [id] }
+      properties:
+        id: { type: string, format: uuid }
+        clientId: { type: string, minLength: 1, maxLength: 128 }
+        name: { type: [string, 'null'] }
+        steps: { type: array, items: { $ref: '#/components/schemas/RecipeInstructionStepInput' } }
+    RecipeContentConflict:
+      type: object
+      required: [code, currentContentRevision, upgradeRequired]
+      properties:
+        code: { type: string, const: recipe_content_conflict }
+        currentContentRevision: { type: string, minLength: 1 }
+        upgradeRequired: { type: boolean }
 
     RecipeDto:
       type: object
@@ -265,6 +499,14 @@ components:
           type: [integer, 'null']
           minimum: 1
           description: Number of servings made by the stored ingredient quantities; null when unknown.
+        contentSchemaVersion: { type: [integer, 'null'], minimum: 2, maximum: 2, description: 'Null for legacy ownership; GET never initializes saved identities.' }
+        contentRevision: { type: [string, 'null'], description: 'Opaque original-content guard. Clients never order tokens lexically.' }
+        ingredientLines:
+          type: [array, 'null']
+          items: { $ref: '#/components/schemas/RecipeIngredientLine' }
+        instructionSections:
+          type: [array, 'null']
+          items: { $ref: '#/components/schemas/RecipeInstructionSection' }
         ingredients:
           type: [array, 'null']
           items: { type: string }
@@ -308,6 +550,102 @@ components:
       properties:
         updatedAt: { type: string, format: date-time }
         recipe: { $ref: '#/components/schemas/RecipeDto' }
+        createdIds:
+          type: object
+          additionalProperties: { type: string, format: uuid }
+          description: Request-local clientId to server-issued saved UUID mapping on successful creation of rows, sections or steps.
+
+    IngredientProjectionLine:
+      type: object
+      required: [originalText, name, quantity, unitText, status, issues]
+      properties:
+        originalText: { type: string }
+        displayText:
+          type: [string, 'null']
+          description: 'Optional server-derived ingredient presentation for the captured portion context. Canonical non-package lines with a reliable projected amount use exact scalar or range text, their independently declared unit and current shopping name; rounded compatibility quantity is not used to construct this text. Original, unquantified or unresolved non-package lines may omit this field or return null and retain originalText, without inventing an amount or factor. Package lines retain the exact projected ingredient count and unchanged declared capacity, count label and basis; no purchase rounding. If package scaling is unresolved, retains the original count without inventing a factor. originalText always retains original-basis wording and supported notation. Presentation is not an input to grocery identity, relationship discovery or semantic quantity versions. Older legacy lines may omit this field or return null.'
+        name: { type: string }
+        quantity: { type: number, nullable: true }
+        unitText: { type: string, nullable: true }
+        status: { type: string, enum: [scaled, original, unquantified, unresolved] }
+        issues:
+          type: array
+          items: { type: string, enum: [missing_basis, unreliable_amount, stale_source] }
+    SupperPreparation:
+      type: object
+      required: [preparedOn, preparedAtUtc, servings, portionContext, originalServings, planToken, servingVersion]
+      description: Stored preparation outcome. Null metadata on legacy Cooked entries does not imply an observed preparation date.
+      properties:
+        preparedOn: { type: string, format: date }
+        preparedAtUtc: { type: string, format: date-time }
+        servings: { type: integer, nullable: true, minimum: 1 }
+        portionContext: { type: string, enum: [dated, original], description: 'Original explicitly freezes the unconfigured original-basis context; a later household default cannot supply portions.' }
+        originalServings: { type: integer, nullable: true, minimum: 1 }
+        planToken: { type: string, description: Original accepted plan fingerprint. }
+        servingVersion: { type: string, description: Original accepted effective quantity/source fingerprint. }
+    PrepareSupperRequest:
+      type: object
+      required: [expectedOccurrenceId, recipeId, expectedPlanToken, expectedServingVersion]
+      properties:
+        expectedOccurrenceId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        expectedPlanToken: { type: string, pattern: '^v1\.[A-Za-z0-9_-]{43}$' }
+        expectedServingVersion: { type: string, pattern: '^[A-F0-9]{64}$', description: 'Captured preparationServingVersion from the displayed assigned projection, scoped to occurrence/date, effective count and ingredient source. Unrelated dates/default edits under an override do not conflict.' }
+    PrepareSupperResult:
+      type: object
+      required: [occurrenceId, recipeId, supperDate, preparation]
+      properties:
+        occurrenceId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        supperDate: { type: string, format: date }
+        preparation: { $ref: '#/components/schemas/SupperPreparation' }
+
+    IngredientPreview:
+      type: object
+      required: [recipeId, contentRevision, contextKey, baseServings, targetServings, factor, version, status, lines]
+      properties:
+        contentRevision: { type: string, description: Captured semantic recipe revision shared by both projections. }
+        contextKey: { type: string, description: Opaque identity including content revision and original/preview/dated serving context. }
+        instructionProjection:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/InstructionProjection' }]
+        recipeId: { type: string, format: uuid }
+        baseServings: { type: integer, nullable: true, minimum: 1 }
+        targetServings: { type: integer, enum: [2, 4, 6] }
+        factor: { type: number, nullable: true }
+        version: { type: string, description: 'Opaque recipe ingredient identity for this preview, not a dated portions or preparation token.' }
+        status: { type: string, enum: [scaled, partial, unresolved] }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/IngredientProjectionLine' }
+
+    IngredientProjection:
+      type: object
+      required: [recipeId, contentRevision, contextKey, supperDate, context, occurrenceId, baseServings, targetServings, factor, servingVersion, version, editable, status, lines]
+      properties:
+        contentRevision: { type: string, description: Captured semantic recipe revision shared by both projections. }
+        contextKey: { type: string, description: Opaque identity including content revision and original/preview/dated serving context. }
+        instructionProjection:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/InstructionProjection' }]
+        recipeId: { type: string, format: uuid }
+        supperDate: { type: string, format: date }
+        context: { type: string, enum: [proposed, assigned] }
+        occurrenceId: { type: string, format: uuid, nullable: true }
+        baseServings: { type: integer, nullable: true, minimum: 1 }
+        targetServings: { type: integer, nullable: true, minimum: 1 }
+        factor: { type: number, nullable: true }
+        preparationPlanToken: { type: string, nullable: true, description: 'Assigned occurrence fingerprint captured in the same repeatable-read snapshot as displayed quantities; proposed context is null.' }
+        preparationServingVersion: { type: string, nullable: true, description: 'Assigned effective ingredient identity for preparation, distinct from the week-wide portions edit version; proposed context is null.' }
+        preparation:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/SupperPreparation' }]
+        servingVersion: { type: string, description: 'Opaque portions optimistic-concurrency version, distinct from derived recipe input identity.' }
+        version: { type: string, description: 'Opaque effective ingredient identity for this recipe/date/context and occurrence. Includes original basis, target and ordered projected lines/issues; unaffected by unrelated dates, optimistic serving versions, notes or instruction-only edits.' }
+        editable: { type: boolean, description: 'Whether portions may be edited: ordinary unprepared current or future dates and deployment-local today when Cooked without a preparation receipt. Past, future Cooked, non-cooking and explicitly prepared dates are read-only.' }
+        status: { type: string, enum: [scaled, original, partial, unresolved] }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/IngredientProjectionLine' }
 
     PaginationDto:
       type: object
@@ -345,7 +683,9 @@ components:
           type: [boolean, 'null']
           description: True restricts all retrieval paths to current configured household GOTO membership before candidate limits and pagination. False or absent is inactive. Included in continuation compatibility; ranked continuations recheck membership without adding new candidates.
         discoverableOnly: { type: [boolean, 'null'] }
-        reportedOnly: { type: [boolean, 'null'] }
+        reportedOnly:
+          type: [boolean, 'null']
+          description: Includes existing reported recipes for review, including retained incomplete imports in the explicit filter-only list; ordinary discovery remains ready-only.
         readyToReviewOnly: { type: [boolean, 'null'] }
 
     RecipeSearchReasonDto:
@@ -485,10 +825,84 @@ components:
         referenceWeekStartDate: { type: string, format: date, description: Monday used to interpret request offsets., example: '2026-10-05' }
         nextDayAtUtc: { type: string, format: date-time, description: Next deployment midnight as a UTC instant., example: '2026-10-12T04:00:00Z' }
 
+    SupperServingDay:
+      type: object
+      required: [date, servings, overrideServings, editable]
+      properties:
+        date: { type: string, format: date }
+        servings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647 }
+        overrideServings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647 }
+        editable: { type: boolean, description: 'True for ordinary unprepared current or future dates and deployment-local today when Cooked without a preparation receipt. Past, future Cooked, non-cooking and explicitly prepared dates are read-only.' }
+    ServingGroceryRefresh:
+      type: object
+      required: [status, version, appliedVersion, resetSummaryVersion]
+      properties:
+        status: { type: string, enum: [current, updating, failed] }
+        version: { type: string, description: Current persisted projection input version. }
+        appliedVersion: { type: [string, 'null'] }
+        resetSummaryVersion: { type: [string, 'null'], description: Opaque identity of an actual check-reset event, independent of reusable input digests. Unchanged refresh retains it; a later changed projection with no reset retires it. }
+        workflowId: { type: [string, 'null'], format: uuid }
+    SupperServings:
+      type: object
+      required: [referenceWeekStartDate, weekOffset, weekStartDate, defaultServings, defaultServingsSource, version, days, groceryRefresh]
+      properties:
+        referenceWeekStartDate: { type: string, format: date }
+        weekOffset: { type: integer }
+        weekStartDate: { type: string, format: date }
+        defaultServings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647, description: Effective usual portions; automatic family size is null when no positive member count is available. }
+        defaultServingsSource: { type: string, enum: [explicit, family], description: Positive saved choice is explicit even when equal to family size; missing or null saved choice uses persisted family membership. }
+        version: { type: string, description: Opaque snapshot of usual-size and dated state; send unchanged as expectedVersion. }
+        days:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items: { $ref: '#/components/schemas/SupperServingDay' }
+        groceryRefresh: { $ref: '#/components/schemas/ServingGroceryRefresh' }
+        affectedWeekStartDates:
+          type: array
+          items: { type: string, format: date }
+    SupperServingsSave:
+      type: object
+      required: [referenceWeekStartDate, weekOffset, expectedVersion, days]
+      properties:
+        referenceWeekStartDate: { type: string, format: date }
+        weekOffset: { type: integer }
+        expectedVersion: { type: string, minLength: 1 }
+        defaultServings:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 2147483647
+          description: Omit to preserve the saved mode/value; null selects automatic persisted family-member count; a positive value selects an explicit total. Equal-number source changes are meaningful and change the optimistic version. Automatic member-count changes conflict with prior versions; explicit choices survive membership changes. Current/future inherited dates follow the effective usual; overrides, past, Cooked, prepared and non-cooking snapshots remain protected. A default-only batch has an empty days array.
+        days:
+          type: array
+          maxItems: 7
+          items:
+            type: object
+            required: [date, servings]
+            properties:
+              date: { type: string, format: date }
+              servings: { type: [integer, 'null'], minimum: 1, maximum: 2147483647, description: Null resets this dated override to usual size. }
+      example:
+        referenceWeekStartDate: '2026-10-05'
+        weekOffset: 0
+        expectedVersion: captured-opaque-version
+        defaultServings: 4
+        days: [{ date: '2026-10-07', servings: 6 }, { date: '2026-10-10', servings: null }]
+    SupperServingsRefresh:
+      type: object
+      required: [weekStartDates]
+      properties:
+        weekStartDates:
+          type: array
+          minItems: 1
+          items: { type: string, format: date }
+
     ScheduleDays:
       type: object
-      required: [weekOffset, locked, days, status, calendar, weekStartDate]
+      required: [weekOffset, locked, days, status, calendar, weekStartDate, groceryListVersion, presentationVersion, presentationEpoch]
       properties:
+        presentationVersion: { $ref: '#/components/schemas/GroceryPresentationVersion' }
+        presentationEpoch: { type: string, format: uuid }
         weekOffset: { type: integer }
         votingRoundId:
           type: [string, 'null']
@@ -506,6 +920,8 @@ components:
           minItems: 7
           maxItems: 7
           items: { $ref: '#/components/schemas/ScheduleDayDto' }
+        groceryListVersion: { type: [string, 'null'], pattern: '^[1-9][0-9]{0,19}$', description: Null only when this week has no materialized recipe grocery list. }
+        groceryRefresh: { $ref: '#/components/schemas/ServingGroceryRefresh' }
         groceryState:
           type: object
           additionalProperties: { type: boolean }
@@ -542,6 +958,18 @@ components:
         nonCooking:
           nullable: true
           allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
+        occurrenceId:
+          type: [string, 'null']
+          format: uuid
+          description: Persisted supper CalendarEvent identity. Null for an empty date; a recreated same-recipe assignment has a new identity. Capture with date and recipe for assigned ingredient reads.
+        preparation:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/SupperPreparation' }]
+        removalToken:
+          type: [string, 'null']
+          maxLength: 46
+          pattern: '^v1\.[A-Za-z0-9_-]{43}$'
+          description: Opaque fingerprint of the persisted supper entry and its plan state. Null when no supper entry exists; unrelated meal slots do not supply a token. Capture from an authoritative schedule read and pass unchanged to guarded removal.
 
     ScheduleRecipeDto:
       type: object
@@ -658,7 +1086,15 @@ components:
 
     UpdateRecipeDto:
       type: object
+      description: At canonical cutover every supplied semantic field requires expectedContentRevision; conflicts apply no field. Canonical and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly. Canonical writes remain gated by recovery and client qualification.
       properties:
+        expectedContentRevision: { type: string, minLength: 1 }
+        ingredientLines:
+          type: array
+          items: { $ref: '#/components/schemas/RecipeIngredientLineInput' }
+        instructionSections:
+          type: array
+          items: { $ref: '#/components/schemas/RecipeInstructionSectionInput' }
         name: { type: [string, 'null'] }
         description: { type: [string, 'null'] }
         ingredients:
@@ -737,7 +1173,7 @@ components:
         notes: { type: [string, 'null'] }
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
         totalTimeMinutes: { type: [integer, 'null'] }
-        servings: { type: [integer, 'null'] }
+        servings: { type: [integer, 'null'], minimum: 1, description: Declared positive share count when supplied. Omitted or null stays unknown; this count does not certify original-source evidence. }
         sourceUrl: { type: [string, 'null'], format: uri }
         sourceName: { type: [string, 'null'] }
         category: { type: [string, 'null'] }
@@ -938,6 +1374,7 @@ components:
           required: [date, status]
           properties:
             date: { type: string, format: date }
+            occurrenceId: { type: [string, 'null'], format: uuid, description: Persisted supper identity; null for an empty date. }
             recipe:
               oneOf:
                 - $ref: '#/components/schemas/ScheduleRecipeDto'
@@ -1024,10 +1461,14 @@ components:
       allOf:
         - $ref: '#/components/schemas/ScheduleStreamEvent'
         - type: object
-          required: [weekStartDate, weekOffset, groceryState]
+          required: [weekStartDate, weekOffset, groceryState, groceryListVersion, groceryItems, presentationVersion, presentationEpoch]
           properties:
+            presentationVersion: { $ref: '#/components/schemas/GroceryPresentationVersion' }
+            presentationEpoch: { type: string, format: uuid }
             weekOffset: { type: integer }
             weekStartDate: { type: string, format: date, description: Absolute Monday; consumers map it before relative offset guards. }
+            groceryListVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+            groceryItems: { type: array, items: { $ref: '#/components/schemas/GroceryLineItemDto' } }
             groceryState:
               type: object
               additionalProperties: { type: boolean }
@@ -1218,15 +1659,155 @@ components:
         taskCount: { type: integer }
 
     # --- Grocery ---
+    GroceryRational:
+      type: object
+      additionalProperties: false
+      required: [n, d]
+      properties:
+        n: { type: string, pattern: '^(0|[1-9][0-9]{0,37})$' }
+        d: { type: string, pattern: '^[1-9][0-9]{0,37}$' }
+    GroceryScalar:
+      type: object
+      additionalProperties: false
+      required: [kind, value]
+      properties:
+        kind: { type: string, const: scalar }
+        value: { $ref: '#/components/schemas/GroceryRational' }
+    GroceryRange:
+      type: object
+      additionalProperties: false
+      required: [kind, min, max]
+      properties:
+        kind: { type: string, const: range }
+        min: { $ref: '#/components/schemas/GroceryRational' }
+        max: { $ref: '#/components/schemas/GroceryRational' }
+    GroceryItemMutation:
+      type: object
+      additionalProperties: false
+      required: [rowId, weekStartDate, expectedRowVersion, checked, clientMutationId]
+      properties:
+        rowId: { type: string, format: uuid }
+        weekStartDate: { type: string, format: date }
+        expectedRowVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        expectedPresentationEpoch: { type: [string, 'null'], format: uuid, description: 'Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation, recovery or a retained fenced migration plan rejects with epoch_conflict before replay or mutation.' }
+        checked: { type: boolean }
+        clientMutationId: { type: string, format: uuid }
+    GroceryBulkMutation:
+      type: object
+      additionalProperties: false
+      required: [weekStartDate, expectedListVersion, checks, clientMutationId]
+      properties:
+        weekStartDate: { type: string, format: date }
+        expectedListVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        expectedPresentationEpoch: { type: [string, 'null'], format: uuid, description: 'Observed opaque grocery presentation epoch. Missing/null is accepted only while the authoritative epoch is the nil UUID. A stale or missing epoch after vocabulary installation, recovery or a retained fenced migration plan rejects with epoch_conflict before replay or mutation.' }
+        checks: { type: object, additionalProperties: { type: boolean } }
+        clientMutationId: { type: string, format: uuid }
+    GroceryMutationResult:
+      type: object
+      required: [updatedAt, weekStartDate, listVersion, checks, rows, presentationVersion, presentationEpoch]
+      properties:
+        presentationVersion: { $ref: '#/components/schemas/GroceryPresentationVersion' }
+        presentationEpoch: { type: string, format: uuid }
+        updatedAt: { type: string, format: date-time }
+        weekStartDate: { type: string, format: date }
+        listVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        rowId: { type: string, format: uuid }
+        rowVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        checked: { type: boolean }
+        checks: { type: object, additionalProperties: { type: boolean } }
+        rows: { type: array, items: { $ref: '#/components/schemas/GroceryLineItemDto' } }
+    GroceryMutationConflict:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, enum: [upgrade_required, grocery_conflict, mutation_conflict, week_conflict, active_legacy_list, epoch_conflict] }
+        current: { $ref: '#/components/schemas/GroceryMutationResult' }
+        absent: { type: boolean }
+    GroceryPresentationVersion:
+      type: string
+      pattern: '^(0|[1-9][0-9]*)$'
+      description: Exact independent presentation counter. Compare only within the same opaque presentationEpoch; establish a changed epoch through a fresh authoritative read. Locale selection never advances this counter or grocery versions. Legacy absence with no retained migration plan uses version zero and the nil UUID epoch. A retained fenced migration plan changes the opaque epoch independently of row demand; its epoch remains stable through receipt pruning and resume.
+    GroceryDisplayLabels:
+      type: object
+      required: [en, fr]
+      properties:
+        en: { type: string }
+        fr: { type: string }
+    GroceryDisplayNameVariants:
+      type: object
+      required: [en, fr]
+      properties:
+        en: { type: array, items: { $ref: '#/components/schemas/GroceryDisplayNameVariant' } }
+        fr: { type: array, items: { $ref: '#/components/schemas/GroceryDisplayNameVariant' } }
+    GroceryDisplayNameVariant:
+      type: object
+      required: [text, contributors]
+      properties:
+        text: { type: string }
+        contributors:
+          type: array
+          items: { $ref: '#/components/schemas/GroceryDisplayContributor' }
+    GroceryDisplayContributor:
+      type: object
+      required: [occurrenceId, recipeId, ingredientLineId]
+      properties:
+        occurrenceId: { type: string, format: uuid }
+        recipeId: { type: string, format: uuid }
+        ingredientLineId: { type: string, format: uuid }
+    GroceryCategoryChoice:
+      type: object
+      required: [normalizedKey, grocerySection, source]
+      properties:
+        normalizedKey: { type: string }
+        grocerySection: { type: string }
+        source: { type: string }
+    ReclassifyFoodCategoryRequest:
+      type: object
+      additionalProperties: false
+      required: [grocerySection, expectedCategoryRevision]
+      properties:
+        grocerySection: { $ref: '#/components/schemas/GrocerySection' }
+        expectedCategoryRevision:
+          type: [string, 'null']
+          description: Null requires no existing household food override; otherwise must match its current opaque category revision. Absence is an upgrade conflict, never blind overwrite.
+    FoodCategoryConflict:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, enum: [upgrade_required, food_category_conflict, food_identity_conflict] }
+        categoryRevision: { type: [string, 'null'] }
+
     GroceryLineItemDto:
       type: object
-      required: [displayName, normalizedKey, section, recipeIds]
+      required: [rowId, rowVersion, weekStartDate, source, demandIdentity, displayName, normalizedKey, section, recipeIds, displayLabels, labelStatus, displayNameVariants, categoryScope, categoryStatus, categoryRevision, categoryChoices]
       properties:
+        foodId: { type: [string, 'null'], format: uuid, description: Saved validated purchase identity; absent or null for source fallback. }
+        displayLabels: { $ref: '#/components/schemas/GroceryDisplayLabels' }
+        labelStatus: { type: string, enum: [resolved, fallback, conflict] }
+        displayNameVariants: { $ref: '#/components/schemas/GroceryDisplayNameVariants' }
+        categoryScope: { type: string, enum: [food, fallback] }
+        categoryStatus: { type: string, enum: [resolved, conflict] }
+        categoryRevision: { type: [string, 'null'] }
+        categoryChoices:
+          type: array
+          items: { $ref: '#/components/schemas/GroceryCategoryChoice' }
+        rowId: { type: string, format: uuid }
+        rowVersion: { type: string, pattern: '^[1-9][0-9]{0,19}$' }
+        weekStartDate: { type: string, format: date }
+        source: { type: string, const: recipe }
+        demandIdentity: { type: string }
         displayName: { type: string }
         normalizedKey: { type: string }
         section: { type: string }
-        quantity: { type: [number, 'null'] }
+        quantity:
+          oneOf:
+            - $ref: '#/components/schemas/GroceryScalar'
+            - $ref: '#/components/schemas/GroceryRange'
+            - { type: 'null' }
         unitText: { type: [string, 'null'] }
+        quantityComplete:
+          type: [boolean, 'null']
+          description: False when this line includes unknown or unusable numeric contributions, so a non-null quantity is only the known subtotal. Canonical null amounts stay unknown without phrase classification; retained qualitative legacy evidence keeps its compatibility semantics. Null or legacy absence means unknown completeness and cannot prove a requirement increase.
         recipeIds:
           type: array
           items: { type: string, format: uuid }
@@ -1553,6 +2134,43 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/HealthCheckResponse' }
+
+  /api/foods/{foodId}/category:
+    patch:
+      summary: Correct a household food category
+      description: Revises only the qualified saved food scope under an expected category revision. Retains human provenance and conflicts; never publishes a global alias or changes an extra occurrence. Recomputes all affected grocery weeks after persistence. The normalized ingredient endpoint remains fallback-key scoped.
+      operationId: reclassifyFoodCategory
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
+        - name: foodId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReclassifyFoodCategoryRequest' }
+      responses:
+        '204':
+          description: Private correction persisted and affected grocery weeks recomputed.
+        '400':
+          description: Invalid food identifier, malformed request or unsupported grocery section.
+        '409':
+          description: Missing revision presence, stale category revision or food identity is no longer qualified. Refresh authoritative state before another correction.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FoodCategoryConflict' }
+        '412':
+          description: Demo generation is absent or stale; refresh without replaying the old write.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
 
   /api/ingredients/{normalizedKey}/category:
     patch:
@@ -2209,6 +2827,11 @@ paths:
         establishes persistence, not readiness or verified workflow launch.
         Corrupt, encrypted and over-10-page documents fail the workflow and remain
         in Settings for Retry/Delete. No page truncation or PDF download.
+        A witnessed fresh PDF extraction that can preserve its supported original
+        facts losslessly publishes canonical ingredients and steps through its
+        guarded publication before readiness. Usable content requiring review
+        retains the existing unready review behavior. Rendered pages retain their
+        PDF conversion ancestry; later reimports do not inherit fresh-intake authority.
       security: [{ FamilyMemberId: [] }]
       requestBody:
         required: true
@@ -2306,6 +2929,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
       summary: Update a recipe
+      description: Recipe basis or ingredient corrections commit together with invalidation and durable grocery refresh work for affected current/future grocery contributions, preserving dated portion snapshots and original unscaled legacy non-supper/night-away contributions. Counts and original amounts are preserved; reads expose pending freshness until the worker recomputes. Existing week updates invalidate dated readers after commit.
       security: [{ FamilyMemberId: [] }]
       requestBody:
         required: true
@@ -2324,13 +2948,19 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '200':
-          description: OK
+          description: Authoritative original saved detail (unwrapped), with createdIds when new content entities were assigned identities
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data: { type: object }
+              schema: { $ref: '#/components/schemas/RecipeDetailResponse' }
+        '400':
+          description: Invalid supplied content, identity, quantity or conflicting legacy/current arrays; no field applied
+        '404':
+          description: Recipe unavailable
+        '409':
+          description: Missing/stale content guard or required client upgrade; no field applied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeContentConflict' }
     delete:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
@@ -2365,6 +2995,90 @@ paths:
                   assignedDays:
                     type: array
                     items: { type: string, format: date }
+
+  /api/recipes/{id}/ingredient-preview:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Preview ingredient quantities for two, four or six portions without saving
+      description: 'Read-only projection of current saved recipe ingredients using the shared scaling rules. Reliable structured amounts bind independently to their unchanged original ingredient lines; omitted or ambiguous lines cannot shift quantities or invalidate unrelated verified amounts. No date, occurrence or preparation authority is returned. Never changes recipes, portions, assignments, preparation, groceries, checks or refresh jobs. Missing basis returns unresolved with null factor; unreliable lines retain original evidence and intentional unquantified text stays ordinary.'
+      parameters:
+        - { name: targetServings, in: query, required: true, schema: { type: integer, enum: [2, 4, 6] } }
+      responses:
+        '200':
+          description: Preview with shared quantity completeness and original evidence
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IngredientPreview' }
+              example:
+                recipeId: '11111111-1111-4111-8111-111111111111'
+                baseServings: 2
+                targetServings: 4
+                factor: 2
+                version: recipe-preview-identity
+                status: scaled
+                lines: [{ originalText: '200 g pasta', name: pasta, quantity: 400, unitText: g, status: scaled, issues: [] }]
+        '400': { description: Missing or unsupported preview target }
+        '404': { description: Recipe not found }
+        '503':
+          description: Online recovery coordination is busy
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+
+  /api/recipes/{id}/ingredient-projection:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Read ingredients for a proposed date or captured assigned occurrence
+      description: 'Read-only. Resolve portions on the server; never assign, materialise snapshots, change defaults or call AI. No arbitrary targetServings input is accepted. Assigned context requires a matching supper occurrence identity. An assigned legacy recipe-backed night away uses original quantities with no target and editable false; a proposed replacement still resolves the dated portions. Original strings remain unchanged; absent coherent supply retains name-only fallback without numeric extraction. Intentionally unquantified directions are normal content.'
+      parameters:
+        - { name: supperDate, in: query, required: true, schema: { type: string, format: date }, example: '2026-10-14' }
+        - { name: context, in: query, required: true, schema: { type: string, enum: [proposed, assigned] }, example: proposed }
+        - { name: occurrenceId, in: query, required: false, schema: { type: string, format: uuid }, description: 'Required only for assigned context; captured from the matching schedule day.' }
+      responses:
+        '200':
+          description: Authoritative dated projection; unresolved lines retain current source text
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IngredientProjection' }
+              examples:
+                proposedFour:
+                  value:
+                    recipeId: '11111111-1111-4111-8111-111111111111'
+                    supperDate: '2026-10-14'
+                    context: proposed
+                    occurrenceId: null
+                    baseServings: 2
+                    targetServings: 4
+                    factor: 2
+                    servingVersion: portions-version
+                    version: recipe-and-portions-version
+                    editable: true
+                    status: scaled
+                    lines: [{ originalText: '200 g pasta', name: pasta, quantity: 400, unitText: g, status: scaled, issues: [] }]
+                assignedSix:
+                  value:
+                    recipeId: '11111111-1111-4111-8111-111111111111'
+                    supperDate: '2026-10-16'
+                    context: assigned
+                    occurrenceId: '22222222-2222-4222-8222-222222222222'
+                    baseServings: 2
+                    targetServings: 6
+                    factor: 3
+                    servingVersion: portions-version
+                    version: recipe-and-portions-version
+                    editable: true
+                    status: scaled
+                    lines: [{ originalText: '200 g pasta', name: pasta, quantity: 600, unitText: g, status: scaled, issues: [] }]
+        '400': { description: 'Missing/invalid date or context, unexpected targetServings, or missing assigned occurrence identity' }
+        '404': { description: Recipe not found }
+        '409': { description: Captured occurrence no longer matches this recipe and supper date }
+        '503':
+          description: Online recovery coordination is busy
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
 
   /api/recipes/{id}/import-report:
     parameters:
@@ -2526,9 +3240,15 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Export a privacy-scrubbed portable recipe bundle
+      description: Reads one coherent saved recipe and selected media snapshot. Canonical ingredient and instruction text is current; private evidence and local content identities are omitted. A pending file publication must be reconciled before export.
       operationId: exportRecipeShareBundle
       security: [{ FamilyMemberId: [] }]
       responses:
+        '409':
+          description: Recipe has a pending file publication; refresh after reconciliation before sharing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeContentConflict' }
         '503':
           description: Online recovery coordination is busy; retry after Retry-After seconds
           content:
@@ -2736,6 +3456,10 @@ paths:
         - $ref: '#/components/parameters/DemoMediaGeneration'
       summary: Get original recipe image by index
       operationId: getRecipeOriginalImage
+      description: |
+        For PDF captures this returns the selected rendered page by its ordered
+        image index. The retained source PDF remains separate and is not returned
+        by this image operation.
       tags: [Recipes]
       responses:
         '412':
@@ -2805,6 +3529,7 @@ paths:
         schema: { type: string, format: uuid }
     post:
       summary: Upload an original photo for the recipe
+      description: Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload. Canonical owners remain fenced until activation.
       operationId: uploadRecipeOriginal
       tags: [Recipes]
       requestBody:
@@ -2812,11 +3537,21 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required: [file]
               properties:
                 file:
                   type: string
                   format: binary
       responses:
+        '400':
+          description: Invalid or empty image, unsupported MIME type, or supported 20-photo limit exceeded
+        '404':
+          description: Recipe not found
+        '409':
+          description: Recipe/source changed during upload, pending file publication, or canonical owner remains fenced; no new append was published
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeContentConflict' }
         '403':
           $ref: '#/components/responses/DemoAiUnavailable'
         '503':
@@ -2830,9 +3565,13 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [id]
+                required: [data]
                 properties:
-                  id: { type: string, format: uuid }
+                  data:
+                    type: object
+                    required: [id]
+                    properties:
+                      id: { type: integer, minimum: 0, maximum: 19 }
 
   /api/recipes/{id}/hero/regenerate:
     parameters:
@@ -2955,6 +3694,89 @@ paths:
                 cuisines:
                   promoted: []
                   all: []
+
+  /api/schedule/servings:
+    get:
+      summary: Read dated portions without writing or refreshing groceries
+      parameters:
+        - name: weekOffset
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: referenceWeekStartDate
+          in: query
+          schema: { type: string, format: date }
+          description: Captured Monday; omitted resolves from deployment calendar.
+      responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '200':
+          description: Seven dated counts, explicit or automatic usual provenance and persisted grocery freshness. Missing or null saved usual derives from persisted family size; an empty roster resolves unavailable/null.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/SupperServings' }
+        '400': { description: Invalid reference Monday or week. }
+    put:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
+      summary: Atomically save sparse dated portions and optional usual size
+      description: Acknowledges committed counts and durable refresh work before grocery execution. Deployment-local today may be corrected when Cooked without a preparation receipt; past dates, future Cooked dates, non-cooking dates and explicit preparations are read-only. Eligibility is rechecked at submission. 400 or 409 applies none of the batch. Never changes recipes, calendar assignments, cooking history, preparation receipts or voting. Unknown replies require an authoritative read before retrying a write. After commit, an existing week_updated hint is published independently of grocery execution. Publication failure does not fail a confirmed save; missed updates reconcile through saved-state/projection reads on resume.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SupperServingsSave' }
+      responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '200':
+          description: Saved counts, affected absolute weeks and independently pending grocery refresh.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/SupperServings' }
+        '400': { description: 'Invalid date/count, duplicate date, date outside captured week or read-only target; nothing saved.' }
+        '409': { description: Relevant serving snapshot changed; nothing saved. Retain draft and review current values. }
+  /api/schedule/servings/refresh:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
+      summary: Retry groceries from current saved portions without replaying a count save
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SupperServingsRefresh' }
+      responses:
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '202': { description: Durable refresh queued or already pending for the captured absolute weeks. }
+        '400': { description: Invalid or non-Monday week. }
 
   /api/schedule:
     get:
@@ -3084,14 +3906,32 @@ paths:
   /api/schedule/day/{date}/remove:
     delete:
       summary: Remove a recipe from a scheduled day
-      description: Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
+      description: Optional expectedPlanToken atomically compares and removes only the matching current supper entry. Malformed supplied tokens return 400; stale or missing entries return 409 without mutation or follow-up. Omission preserves legacy date deletion. Removal, stale grocery metadata and durable refresh work commit before best-effort grocery/publication follow-ups. A committed removal returns 204 even if those follow-ups fail; read the captured week to inspect updating or failed groceryRefresh and retry refresh without repeating DELETE. A lost or uncertain primary response still requires authoritative reconciliation before further writes. Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
         - name: date
           in: path
           required: true
           schema: { type: string, format: date }
+        - name: expectedPlanToken
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 46
+            pattern: '^v1\.[A-Za-z0-9_-]{43}$'
+          description: Captured opaque removalToken; supplied empty or malformed values are invalid. Omit only for legacy unguarded deletion.
       responses:
+        '400':
+          description: Supplied expectedPlanToken is malformed
+          content:
+            application/json:
+              schema: { type: object, properties: { message: { type: string } } }
+        '409':
+          description: Expected supper is absent or changed; no calendar, grocery or publication mutation
+          content:
+            application/json:
+              schema: { type: object, properties: { message: { type: string } } }
         '412':
           description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
           content:
@@ -3103,7 +3943,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '204':
-          description: Removed
+          description: Removal committed (or already absent for legacy unguarded deletion); grocery follow-ups may still be updating or failed
 
   /api/schedule/lock:
     post:
@@ -3155,6 +3995,7 @@ paths:
     post:
       summary: Move a recipe in the schedule
       description: >
+        Preparation metadata travels with recipe/status during swaps and whole-event moves; frozen portions and actual history remain unchanged.
         Legacy same-week swap and push retain their existing behavior. Actual cross-week placement
         returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete.
         Both affected weeks receive independent grocery recomputation and snapshot publication attempts.
@@ -3208,6 +4049,7 @@ paths:
     post:
       summary: Defer a scheduled recipe to the first free date next week or later
       description: >
+        Deferral explicitly reopens completed content as Planned, clears its preparation receipt and recalculates history from remaining Cooked occurrences.
         Keeps the exact source date and recipe body and existing response shape. Searches from
         reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later
         weeks. Feedback reports the actual destination and claims next week is full only when
@@ -3266,7 +4108,8 @@ paths:
         With requireEmpty true, an explicit reference Monday and dayIndex 0-6 are required.
         The absence check and supper insertion are atomic; an existing supper entry returns 409
         without calendar, plan, grocery or publication changes. Other meal slots are preserved.
-        When requireEmpty is omitted or false, assigns a recipe to the specified day. If the target slot is already occupied and falls
+        When requireEmpty is omitted or false, replacement retains the stored entry identity, becomes Planned and clears prior preparation metadata. History for displaced explicitly prepared content is recalculated from remaining Cooked occurrences.
+        If the target slot is already occupied and falls
         on Sunday (dayIndex 6), the displaced recipe is automatically carried forward to Monday
         of the following week (weekOffset+1, dayIndex 0) rather than being silently dropped.
       parameters:
@@ -3375,6 +4218,44 @@ paths:
                     description: 'Rich, creamy, and sophisticated—perfect for a quick gourmet weeknight dinner.'
                     ingredients: ['Potato gnocchi', 'Gorgonzola cheese', 'Heavy cream', 'Walnuts', 'Sage']
 
+  /api/schedule/day/{date}/prepare:
+    post:
+      operationId: prepareSupper
+      summary: Prepare the captured saved supper without moving its planned date
+      description: 'Atomically accept Planned/Locked supper identity, plan and displayed effective quantities; record deployment-local actual date and UTC time and freeze portions. Exact matching retries return the original stored outcome before checking current defaults/source, without another history write. A different preparation context or stale/recreated occurrence returns 409 without mutation. Committed preparation survives publication failure. Unknown replies require an authoritative occurrence reread before another mutation. Legacy Cooked entries without preparation metadata are not fabricated preparations.'
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
+        - { name: date, in: path, required: true, schema: { type: string, format: date } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrepareSupperRequest' }
+      responses:
+        '200':
+          description: Confirmed stored preparation outcome, including exact matching retries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/PrepareSupperResult' }
+        '400': { description: 'Invalid date, identity or captured guard' }
+        '401': { description: Unauthorized }
+        '409': { description: 'Captured occurrence, plan, effective quantities or preparation context changed; no mutation' }
+
+        '412':
+          description: Demo generation absent or stale; refresh without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '503':
+          description: Online recovery busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+
   /api/schedule/day/{date}/validate:
     parameters:
       - name: date
@@ -3385,7 +4266,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
       summary: Validate a scheduled day (Cooked/Skipped)
-      description: 'The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.'
+      description: 'The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled, while preserving any later actual preparation time from an explicitly prepared Cooked occurrence. Legacy calendar-date fallbacks and earlier legacy-only history do not replace that captured instant. Ordinary validation without nonCooking serializes its occurrence read/check/write with guarded preparation. Owned primary transactions commit and dispose before publication; a matched already prepared occurrence is not recorded again. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.'
       requestBody:
         required: true
         content:
@@ -3489,35 +4370,34 @@ paths:
 
   /api/schedule/{weekOffset}/grocery/item:
     patch:
-      summary: Toggle a single grocery item (checked/unchecked)
+      summary: Guarded recipe-row check
       description: >-
-        On one application instance, stores the supplied intended check value while retaining
-        other current persisted entries. Item updates, full-map replacements and recomputation
-        transitions share one server processing order, which does not imply click or arrival
-        order. Returns 204 after persistence and the grocery publication attempt. Publication
-        attempts follow this processing order; independent snapshots may still arrive late.
-        A fresh read after outstanding operations settle recovers committed state.
+        Requires the captured absolute Monday and authoritative row version.
+        Names cannot identify checks; missing identity/version returns 409 upgrade_required.
+        Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated
+        commit retains unrelated rows and stores the mutation ID, request and outcome atomically.
+        Identical retries replay the saved outcome; changed input under the same ID conflicts.
+        Versions are unsigned-64 decimal strings. Publish after commit; lost replies require
+        reread before replay. Extras retain their independent occurrence endpoint.
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
         - name: weekOffset
           in: path
           required: true
           schema: { type: integer }
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          description: Captured reference Monday; invalid or non-Monday values return 400 before mutation.
+          schema: { type: string, format: date }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [ingredientName, checked]
-              properties:
-                ingredientName:
-                  type: string
-                  example: 'Chicken Breast'
-                checked:
-                  type: boolean
-                  example: true
+            schema: { $ref: '#/components/schemas/GroceryItemMutation' }
       responses:
+        '400':
+          description: Invalid captured reference Monday or unsupported absolute week
         '412':
           description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
           content:
@@ -3528,37 +4408,47 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
-        '204':
-          description: No Content
+        '409':
+          description: Missing identity/version, stale row/list, wrong absolute week, mutation reuse or unexpected legacy active list; no stale intent applies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroceryMutationConflict' }
+        '200':
+          description: Committed authoritative outcome or identical saved replay
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroceryMutationResult' }
 
   /api/schedule/{weekOffset}/grocery:
     patch:
-      summary: Update grocery checklist state for a week
+      summary: Guarded bulk replacement
       description: >-
-        Replaces the entire recipe-derived check map with the supplied dictionary, including
-        explicit false values; an empty dictionary clears it. On one application instance this
-        replacement shares server processing order with item updates and recomputation.
-        Missing keys in a stale replacement body are not merged from persisted state.
-        Returns 200 after persistence and the ordered grocery publication attempt. Notification
-        failure does not roll back a committed map; a fresh read recovers committed state.
+        Requires the captured absolute Monday and authoritative list version.
+        Names cannot identify checks; missing identity/version returns 409 upgrade_required.
+        Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated
+        commit retains unrelated rows and stores the mutation ID, request and outcome atomically.
+        Identical retries replay the saved outcome; changed input under the same ID conflicts.
+        Versions are unsigned-64 decimal strings. Publish after commit; lost replies require
+        reread before replay. Extras retain their independent occurrence endpoint.
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
         - name: weekOffset
           in: path
           required: true
           schema: { type: integer }
+        - name: referenceWeekStartDate
+          in: query
+          required: false
+          description: Captured reference Monday; invalid or non-Monday values return 400 before mutation.
+          schema: { type: string, format: date }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              additionalProperties:
-                type: boolean
-              example:
-                'Chicken Breast': true
-                'Olive Oil': false
+            schema: { $ref: '#/components/schemas/GroceryBulkMutation' }
       responses:
+        '400':
+          description: Invalid captured reference Monday or unsupported absolute week
         '412':
           description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
           content:
@@ -3569,17 +4459,20 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '409':
+          description: Missing identity/version, stale row/list, wrong absolute week, mutation reuse or unexpected legacy active list; no stale intent applies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroceryMutationConflict' }
         '200':
-          description: OK
+          description: Committed authoritative outcome or identical saved replay
           content:
             application/json:
               schema:
                 type: object
+                required: [data]
                 properties:
-                  data:
-                    type: object
-                    additionalProperties:
-                      type: boolean
+                  data: { $ref: '#/components/schemas/GroceryMutationResult' }
 
   /api/management/recovery/snapshots:
     post:
@@ -3614,6 +4507,12 @@ paths:
           name: snapshotId
           required: true
           schema: { type: string, format: uuid }
+      description: Historical empty-body restores keep their existing interpretation. New ordinary3/demo4 snapshots validate exact vocabulary/history authority and require the preflight destination revision when replacing a different valid head. Every new-format request captures and rechecks its destination baseline after writers drain, before the durable journal or live writes. An uncertain response must be reconciled through recovery status before another write.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecoveryRestoreRequest' }
       responses:
         '403':
           description: Manual household restore is unavailable in demo mode; automatic demo resets remain server-owned
@@ -3631,12 +4530,49 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryError' }
         '409':
-          description: Recovery already active or pending reconciliation
+          description: Recovery is busy, or destination authority differs from the expected revision (state destination-conflict). No new live restore writes occurred. Refresh preflight before another correction.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryError' }
         '503':
           description: Recovery not configured or coordination timed out; retry safely
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+
+  /api/management/recovery/restore/{snapshotId}/preflight:
+    get:
+      summary: Inspect an exact snapshot and its current restore destination
+      description: Read-only validation and coherent destination observation. Creates no staging files, durable journal, pointer changes or live mutations. Does not reserve the returned revision; restore rechecks it after writers drain.
+      operationId: preflightExactRecoveryRestore
+      parameters:
+        - in: path
+          name: snapshotId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Valid snapshot and exact current destination baseline, without a data wrapper.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryRestorePreflight' }
+        '400':
+          description: Snapshot or destination authority is missing, corrupt or unsupported; live state unchanged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '403':
+          description: Manual restore preflight is unavailable in demo mode.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoManagementUnavailableError' }
+        '409':
+          description: Recovery is busy or pending reconciliation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryError' }
+        '503':
+          description: Recovery is unavailable or coordination timed out.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryError' }
@@ -4236,6 +5172,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
       summary: Upsert a setting by key
+      description: >-
+        supper_servings_default is reserved; use the typed PUT /api/schedule/servings operation with its captured version.
+        food_vocabulary_publication is reserved for the reviewed vocabulary publication owner and cannot be written through generic settings.
+        Reserved-key rejection saves no setting; GET remains available and unrelated settings retain their existing behavior.
       security: [{ FamilyMemberId: [] }]
       requestBody:
         required: true
@@ -4243,6 +5183,7 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/SettingsDto' }
       responses:
+        '400': { description: Reserved supper_servings_default or food_vocabulary_publication key. Use its typed owner. No setting is saved. }
         '412':
           description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
           content:

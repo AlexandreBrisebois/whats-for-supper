@@ -37,7 +37,7 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
     [InlineData(4)]
     [InlineData(3)]
     [InlineData(null)]
-    public async Task ServingsExportRestoreSync_RetainsAuthoritativeCountAndRawYield(int? count)
+    public async Task ServingsExportRestore_RetainsAuthoritativeCountAndRawYieldAndRefusesUnlinkedSync(int? count)
     {
         var recipe = new Recipe { Name = "Radiatore", IsSynthesized = true, IsReady = true, Servings = count, Ingredients = "[\"510 g beef\",\"340 g pasta\"]", RawMetadata = "{\"recipeYield\":\"4 portions\"}" };
         Db.Recipes.Add(recipe); await Db.SaveChangesAsync();
@@ -51,10 +51,10 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
             recipe.Servings = 7; await Db.SaveChangesAsync();
             await Service.RestoreAsync();
             Assert.Equal(count, recipe.Servings);
-            await new SyncRecipeProcessor(_scope.ServiceProvider.GetRequiredService<IClock>(), Db,
-                new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()), _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>(),
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance)
-                .ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None);
+            await Assert.ThrowsAsync<InvalidDataException>(() => new SyncRecipeProcessor(_scope.ServiceProvider.GetRequiredService<IClock>(), Db,
+                new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()), _scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(), _scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(Db, (new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>())).StorageProvider, _scope.ServiceProvider.GetRequiredService<IClock>(), _scope.ServiceProvider))
+                .ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None));
             Assert.Equal(count, recipe.Servings); Assert.Contains("4 portions", recipe.RawMetadata); Assert.Equal(new[] { "510 g beef", "340 g pasta" }, RecipeService.DeserializeIngredients(recipe.Ingredients));
         }
     }
@@ -176,7 +176,7 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ExportedContent_RemainsReadableByDiskSyncWorkflow()
+    public async Task LegacyExportedContent_IsRefusedByUnlinkedDiskSyncWithoutChangingSavedFacts()
     {
         const string metadata = "{\"recipeInstructions\":[\"Simmer gently\"]}";
         var recipe = new Recipe { Name = "Soup", IsSynthesized = true, IsReady = true, RawMetadata = metadata, Ingredients = "[\"water\"]" };
@@ -185,9 +185,9 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
         await Service.BackupAsync();
         var processor = new SyncRecipeProcessor(_scope.ServiceProvider.GetRequiredService<IClock>(), Db,
             new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()),
-            _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>(),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance);
-        await processor.ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None);
+            _scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(), _scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(Db, (new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>())).StorageProvider, _scope.ServiceProvider.GetRequiredService<IClock>(), _scope.ServiceProvider));
+        await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None));
         Assert.Equal(metadata, recipe.RawMetadata);
         Assert.Equal("[\"water\"]", recipe.Ingredients);
     }

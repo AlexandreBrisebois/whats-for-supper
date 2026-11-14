@@ -284,6 +284,30 @@ public class ManagementServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task BackupRestore_SystemReviewNoteRemainsVisibleAndUnchangedSaveDoesNotLaunchRepair()
+    {
+        var id = Guid.NewGuid();
+        const string explanation = "The import did not provide usable cooking steps. Please review and correct them.";
+        _db.Recipes.Add(new Recipe { Id = id, Name = "System review", Ingredients = "[\"Salt\"]", SourceUrl = "https://example.invalid/review" });
+        _db.RecipeImportReports.Add(new RecipeImportReport { RecipeId = id, Reasons = ["steps"], Note = explanation, Status = RecipeImportReportStatus.ReadyToReview });
+        await _db.SaveChangesAsync();
+        await _recipeStore.WriteInfoAsync(new RecipeInfo { Id = id, Name = "System review", SourceUrl = "https://example.invalid/review" });
+        await _service.BackupAsync();
+        _db.RecipeImportReports.RemoveRange(_db.RecipeImportReports);
+        await _db.SaveChangesAsync();
+        await _service.RestoreAsync();
+        var restored = await _db.RecipeImportReports.SingleAsync(report => report.RecipeId == id);
+        Assert.Equal(explanation, restored.Note);
+        Assert.Null(restored.RepairIntentId);
+        var response = await _scope.ServiceProvider.GetRequiredService<RecipeImportReportService>().SubmitAsync(id, _factory.DefaultFamilyMemberId,
+            new() { Reasons = ["steps"], Note = explanation });
+        Assert.False(response.ReimportStarted);
+        Assert.False(response.ReimportLaunchFailed);
+        Assert.Empty(await _db.RecipeRepairIntents.ToListAsync());
+        Assert.Equal(explanation, (await _db.RecipeImportReports.SingleAsync(report => report.RecipeId == id)).Note);
+    }
+
+    [Fact]
     public async Task BackupRestoreRoundTrip_PreservesDuplicateOnlyAndMixedRecipeImportReports()
     {
         var recipeId = Guid.NewGuid();

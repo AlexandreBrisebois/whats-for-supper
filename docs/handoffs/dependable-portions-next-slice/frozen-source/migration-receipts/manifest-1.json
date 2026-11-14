@@ -1,0 +1,10 @@
+{
+  "api/src/RecipeApi/Services/CanonicalRecipeMigrationReceipt.cs": {
+    "beforeSha256": null,
+    "afterSha256": "8c90f25478cc2181d823eedc77240c02d57be2ae74936270b1d3fd1fda4a3d9b"
+  },
+  "api/src/RecipeApi.Tests/Services/CanonicalRecipeMigrationExecutionTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "ea69e9325615c7d3c3c276100cf15cc29d898e3079b78f9c09dc4bf8b51454f2"
+  }
+}

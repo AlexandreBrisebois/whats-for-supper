@@ -53,6 +53,16 @@ test('Home Take Out plus Tomorrow commits a full following week without prior va
   page.on('request', (r) => {
     if (r.method() === 'POST' && r.url().includes('/validate')) validations.push(r.url());
   });
+  await page.waitForFunction(() => Boolean((window as any).__sseSource));
+  await page.evaluate(() => {
+    (window as any).__tomorrowInvalidatedWeeks = [];
+    (window as any).__sseSource.addEventListener(
+      'fill_the_gap_invalidated',
+      (event: MessageEvent) => {
+        (window as any).__tomorrowInvalidatedWeeks.push(JSON.parse(event.data).weekOffset);
+      }
+    );
+  });
   const movement = page.waitForRequest(
     (r) => r.method() === 'POST' && r.url().includes('/api/schedule/move')
   );
@@ -82,10 +92,15 @@ test('Home Take Out plus Tomorrow commits a full following week without prior va
   expect(weeks[0].days[6]).toMatchObject({ status: 3, recipe: null });
   expect(weeks[1].days[0].recipe.id).toBe(MOCK_IDS.RECIPE_CHICKEN);
   expect(weeks[3].days[0].recipe.id).toBe(MOCK_IDS.RECIPE_LASAGNA);
-  // The move response precedes its mock SSE callbacks. Drain those callbacks
-  // before the page closes, keeping any teardown-time API reads isolated.
-  await page.context().route('**/api/**', (route) => route.abort());
-  await page.unrouteAll({ behavior: 'wait' });
+  // The move response precedes its notifications. Await the final affected week
+  // while retaining the fixture's page routes for any resulting API reads.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        [...new Set<number>((window as any).__tomorrowInvalidatedWeeks)].sort((a, b) => a - b)
+      )
+    )
+    .toEqual([0, 1, 2, 3]);
 });
 
 for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {
@@ -156,10 +171,12 @@ for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {
       await page.getByTestId('stack-card-front').click();
       await page.getByTestId('action-add-to-day').click();
     } else {
-      await page.goto('/browse-all-stack');
-      await page.getByTestId('stack-card-front').click();
-      await page.getByTestId('action-cook-this').click();
-      await page.getByTestId('action-cook-tonight').click();
+      await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+      await page.getByTestId('action-change-day').click();
+      await page.getByTestId('planning-week-previous').click();
+      await expect(page.getByTestId('planning-day-6')).toContainText('October 11');
+      await page.getByTestId('planning-day-6').click();
+      await page.getByTestId('action-add-to-day').click();
     }
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
     let moves = 0,
@@ -184,13 +201,37 @@ for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {
     await page.getByTestId('recovery-action-tomorrow').click();
     await move;
     try {
-      await expect(page.getByTestId('recovery-action-tomorrow')).toBeDisabled();
+      if (entry === 'Home') {
+        await expect(page.getByTestId('recovery-action-tomorrow')).toBeDisabled();
+      } else {
+        await expect(page.getByTestId('replacement-feedback')).toHaveAttribute('role', 'status');
+        await expect(page.getByTestId('replacement-feedback')).toContainText(
+          'Updating your original meal'
+        );
+        await expect(page.getByTestId('recovery-close')).toBeDisabled();
+        for (const action of ['tomorrow', 'next-week', 'drop'])
+          await expect(page.getByTestId(`recovery-action-${action}`)).toHaveCount(0);
+      }
+      expect(moves).toBe(1);
+      expect(assignments).toBe(0);
     } finally {
       release();
     }
-    await expect(page.getByText(/completed meal or changed plan blocks/)).toBeVisible();
+    if (entry === 'Home') {
+      await expect(page.getByText(/completed meal or changed plan blocks/)).toBeVisible();
+    } else {
+      await expect(page.getByTestId('replacement-feedback')).toContainText('Your plan changed');
+      await expect(page.getByTestId('recovery-review-plan')).toBeVisible();
+      await expect(page.getByTestId('recovery-retry-save')).toHaveCount(0);
+      await expect(page.getByTestId('recovery-retry-check')).toHaveCount(0);
+    }
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
     expect(moves).toBe(1);
     expect(assignments).toBe(0);
+    const source = await page.evaluate(async () => {
+      const response = await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-10-05');
+      return (await response.json()).data.days[6];
+    });
+    expect(source).toMatchObject({ date: '2026-10-11', recipe: { id: MOCK_IDS.RECIPE_CHICKEN } });
   });
 }

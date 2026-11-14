@@ -4,8 +4,10 @@
 // @ts-ignore
 import {
   createDemoAiUnavailableErrorFromDiscriminatorValue,
+  createRecipeContentConflictFromDiscriminatorValue,
   createRecoveryBusyErrorFromDiscriminatorValue,
   type DemoAiUnavailableError,
+  type RecipeContentConflict,
   type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
@@ -14,7 +16,6 @@ import {
   serializeMultipartBody,
   type AdditionalDataHolder,
   type BaseRequestBuilder,
-  type Guid,
   type Parsable,
   type ParsableFactory,
   type ParseNode,
@@ -24,6 +25,17 @@ import {
   type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {OriginalsPostResponse_data}
+ */
+// @ts-ignore
+export function createOriginalsPostResponse_dataFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoOriginalsPostResponse_data;
+}
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
@@ -45,27 +57,51 @@ export function deserializeIntoOriginalsPostResponse(
   originalsPostResponse: Partial<OriginalsPostResponse> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    data: (n) => {
+      originalsPostResponse.data = n.getObjectValue<OriginalsPostResponse_data>(
+        createOriginalsPostResponse_dataFromDiscriminatorValue
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param OriginalsPostResponse_data The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoOriginalsPostResponse_data(
+  originalsPostResponse_data: Partial<OriginalsPostResponse_data> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
     id: (n) => {
-      originalsPostResponse.id = n.getGuidValue();
+      originalsPostResponse_data.id = n.getNumberValue();
     },
   };
 }
 export interface OriginalsPostResponse extends AdditionalDataHolder, Parsable {
   /**
+   * The data property
+   */
+  data?: OriginalsPostResponse_data | null;
+}
+export interface OriginalsPostResponse_data extends AdditionalDataHolder, Parsable {
+  /**
    * The id property
    */
-  id?: Guid | null;
+  id?: number | null;
 }
 /**
  * Builds and executes requests for operations under /api/recipes/{-id}/originals
  */
 export interface OriginalsRequestBuilder extends BaseRequestBuilder<OriginalsRequestBuilder> {
   /**
-   * Upload an original photo for the recipe
+   * Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload. Canonical owners remain fenced until activation.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<OriginalsPostResponse>}
    * @throws {DemoAiUnavailableError} error when the service returns a 403 status code
+   * @throws {RecipeContentConflict} error when the service returns a 409 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
@@ -73,7 +109,7 @@ export interface OriginalsRequestBuilder extends BaseRequestBuilder<OriginalsReq
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<OriginalsPostResponse | undefined>;
   /**
-   * Upload an original photo for the recipe
+   * Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload. Canonical owners remain fenced until activation.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -98,8 +134,30 @@ export function serializeOriginalsPostResponse(
   if (!originalsPostResponse || isSerializingDerivedType) {
     return;
   }
-  writer.writeGuidValue('id', originalsPostResponse.id);
+  writer.writeObjectValue<OriginalsPostResponse_data>(
+    'data',
+    originalsPostResponse.data,
+    serializeOriginalsPostResponse_data
+  );
   writer.writeAdditionalData(originalsPostResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param OriginalsPostResponse_data The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeOriginalsPostResponse_data(
+  writer: SerializationWriter,
+  originalsPostResponse_data: Partial<OriginalsPostResponse_data> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!originalsPostResponse_data || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('id', originalsPostResponse_data.id);
+  writer.writeAdditionalData(originalsPostResponse_data.additionalData);
 }
 /**
  * Uri template for the request builder.
@@ -114,6 +172,7 @@ export const OriginalsRequestBuilderRequestsMetadata: RequestsMetadata = {
     responseBodyContentType: 'application/json',
     errorMappings: {
       403: createDemoAiUnavailableErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      409: createRecipeContentConflictFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',

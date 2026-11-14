@@ -4,19 +4,23 @@ const path = require('node:path');
 const suites = {
   tonight: [
     'action-pivot', 'home-goto', 'home-race', 'home-recipe', 'cook-mode-steps',
-    'cooking-instruction-recovery', 'meal-outcome-close', 'tomorrow-push',
+    'cooking-instruction-recovery', 'cooking-step-scaling', 'meal-outcome-close', 'tomorrow-push',
     'tonight-replacement-recovery',
   ],
   planning: [
-    'deployment-calendar', 'grocery', 'plan-later', 'planner', 'planner-full-cycle',
+    'bilingual-grocery',
+    'deployment-calendar', 'grocery', 'grocery-recipe-sources', 'plan-later', 'planner', 'planner-full-cycle',
     'planner-non-cooking-days', 'planner-reconciliation',
-    'planner-smart-defaults-week-offset', 'planner-voting-identity',
+    'planner-smart-defaults-week-offset', 'planner-voting-identity', 'planner-portions-refinement',
+    'prepared-supper', 'supper-servings', 'supper-servings-context', 'supper-servings-movement',
   ],
   recipes: [
+    'canonical-package',
     'browse-all-stack', 'browse-stack', 'stack-gestures', 'discovery', 'goto-layout', 'recipe-hero-actions',
     'recipe-notes-recovery', 'recipe-original-viewer', 'recipe-recovery',
     'recipe-share', 'recipes', 'search-hardening', 'search-invalidation-recovery',
     'sharing-fidelity', 'unified-recipes',
+    'recipe-detail-layout', 'recipe-ingredient-preview', 'quiet-portions-layout',
   ],
   household: [
     'auth-flow', 'welcome-demo', 'bug-condition-exploration', 'capture-flow', 'demo-mode',
@@ -44,6 +48,7 @@ function validateInventory(files) {
 
 function selectSuite(name, files) {
   validateInventory(files);
+  if (name === 'all') return Object.values(suites).flat().map(n => `**/${n}.spec.ts`);
   if (!Object.hasOwn(suites, name)) throw new Error(`Unknown E2E suite: ${name}`);
   return suites[name].map(n => `**/${n}.spec.ts`);
 }

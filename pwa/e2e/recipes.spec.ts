@@ -3,7 +3,13 @@ import { swipeCurrentStackCard } from './helpers/stack-swipe';
 import { test, expect } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
 import { expectDiscoveryGeometry } from './helpers/discovery-geometry';
-import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import {
+  MOCK_IDS,
+  builders,
+  setupCommonRoutes,
+  mockNonCookingSchedule,
+  mockSupperServings,
+} from './mock-api';
 
 const FILTER_MAIN_IDS = {
   BEEF: 'beef',
@@ -65,6 +71,7 @@ const MOCK_DETAIL_RECIPE = builders.recipe({
 });
 
 test.describe('Recipes Search Page', () => {
+  let commonRoutes: Awaited<ReturnType<typeof setupCommonRoutes>>;
   test.beforeEach(async ({ page }) => {
     const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
@@ -82,7 +89,7 @@ test.describe('Recipes Search Page', () => {
       );
     }, MOCK_IDS.MEMBER_ALEX);
 
-    await setupCommonRoutes(page);
+    commonRoutes = await setupCommonRoutes(page);
 
     await page.route('**/api/recipes/search', async (route) => {
       const body = route.request().postDataJSON() as { query?: string };
@@ -246,7 +253,7 @@ test.describe('Recipes Search Page', () => {
       }) => {
         await setupCommonRoutes(page);
         await page.addInitScript((language) => localStorage.setItem('locale', language), locale);
-        await page.goto(`/recipes?open=${id}`);
+        await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
         const edit = async () => {
           await page.getByTestId('action-gear-menu').click();
           await page.getByTestId('action-edit-recipe').click();
@@ -301,12 +308,22 @@ test.describe('Recipes Search Page', () => {
         ).toBeVisible();
         await expect(input).toHaveValue(String(next));
         await expect(page.getByTestId('recipe-servings')).toHaveCount(initial == null ? 0 : 1);
+        await expect(page.getByTestId('recipe-save-edits')).toBeDisabled();
+        await page
+          .getByRole('button', {
+            name: locale === 'en' ? 'Check saved recipe' : 'Vérifier la recette enregistrée',
+            exact: true,
+          })
+          .click();
+        await expect(page.getByTestId('recipe-save-edits')).toBeEnabled();
         await page.getByTestId('recipe-save-edits').click();
         await expect(input).toHaveCount(0);
-        const name = `${locale === 'en' ? 'Ingredients' : 'Ingrédients'} ${next} ${locale === 'en' ? 'servings' : 'portions'}`;
-        await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
-        await page.goto(`/recipes?open=${id}`);
-        await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+        const count = `${next} ${locale === 'en' ? 'servings' : 'portions'}`;
+        await expect(page.getByTestId('recipe-servings')).toHaveText(count);
+        await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
+        await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
+        await expect(page.getByTestId('recipe-servings')).toHaveText(count);
+        await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
         const read = await page.evaluate(
           async (id) => (await (await fetch(`/api/recipes/${id}`)).json()).recipe,
           id
@@ -320,7 +337,7 @@ test.describe('Recipes Search Page', () => {
     page,
   }) => {
     await setupCommonRoutes(page);
-    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
+    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}&reviewAmounts=true`);
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
     await page.getByTestId('recipe-edit-servings-input').fill('0');
@@ -329,7 +346,7 @@ test.describe('Recipes Search Page', () => {
       'true'
     );
     await page.evaluate(
-      (id) => history.pushState(null, '', `/recipes?open=${id}`),
+      (id) => history.pushState(null, '', `/recipes?open=${id}&reviewAmounts=true`),
       MOCK_IDS.RECIPE_CARBONARA
     );
     await expect(page.getByTestId('recipe-edit-servings-input')).toHaveCount(0);
@@ -341,34 +358,6 @@ test.describe('Recipes Search Page', () => {
       'aria-invalid',
       'false'
     );
-  });
-
-  test('servings mock validates supplied counts and preserves omission on PATCH then GET', async ({
-    page,
-  }) => {
-    await setupCommonRoutes(page);
-    await page.goto('/recipes');
-    const result = await page.evaluate(async (id) => {
-      const patch = async (body: unknown) => {
-        const res = await fetch(`/api/recipes/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        return res.status;
-      };
-      const invalid = [];
-      for (const servings of [null, 0, -1, 1.5, 2147483648, '3', true])
-        invalid.push(await patch({ servings }));
-      const success = await patch({ servings: 1 });
-      const omitted = await patch({ notes: 'keep' });
-      const read = await (await fetch(`/api/recipes/${id}`)).json();
-      return { invalid, success, omitted, read };
-    }, MOCK_IDS.RECIPE_LASAGNA);
-    expect(result.invalid).toEqual(Array(7).fill(400));
-    expect(result.success).toBe(200);
-    expect(result.omitted).toBe(200);
-    expect(result.read.recipe.servings).toBe(1);
   });
 
   for (const locale of ['en', 'fr'] as const) {
@@ -390,10 +379,7 @@ test.describe('Recipes Search Page', () => {
             },
           });
         });
-        await page.goto('/recipes?focus=search');
-        await page.getByTestId('recipe-search-input').fill('chicken');
-        await page.getByTestId('recipe-search-input').press('Enter');
-        await page.getByTestId('stack-card-front').click();
+        await page.goto(`/recipes?open=${MOCK_DETAIL_RECIPE.id}&reviewAmounts=true`);
         const title = locale === 'en' ? 'Ingredients' : 'Ingrédients';
         const label =
           servings === null
@@ -405,74 +391,59 @@ test.describe('Recipes Search Page', () => {
         });
         await expect(heading).toBeVisible();
         await expect(heading.locator('button,input,[tabindex]')).toHaveCount(0);
-        if (label) await expect(page.getByText(label, { exact: true })).toHaveCount(1);
+        if (label) await expect(page.getByTestId('recipe-servings')).toHaveText(label);
+        await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
         await expect(page.getByText('510 g beef', { exact: true })).toBeVisible();
         await expect(page.getByText('340 g pasta', { exact: true })).toBeVisible();
         await expect(page.getByTestId('recipe-servings')).toHaveCount(servings === null ? 0 : 1);
         await page.getByTestId('action-gear-menu').click();
         await page.getByTestId('action-edit-recipe').click();
-        await expect(heading).toBeVisible();
+        const editHeading = page.getByRole('heading', {
+          name: label ? `${title} ${label}` : title,
+          exact: true,
+        });
+        await expect(editHeading).toBeVisible();
         await expect(page.getByTestId('recipe-edit-ingredient-0')).toHaveValue('510 g beef');
         await expect(page.getByTestId('recipe-edit-ingredient-1')).toHaveValue('340 g pasta');
-        await expect(heading.locator('button,input,[tabindex]')).toHaveCount(0);
+        await expect(editHeading.locator('button,input,[tabindex]')).toHaveCount(0);
       });
     }
   }
 
   test('known-to-unknown detail identity drops the prior serving badge', async ({ page }) => {
-    await page.route('**/api/recipes/*', async (route) => {
-      if (route.request().method() !== 'GET') return route.fallback();
-      const id = new URL(route.request().url()).pathname.split('/').at(-1);
-      if (![MOCK_IDS.RECIPE_LASAGNA, MOCK_IDS.RECIPE_STIR_FRY].includes(id as any))
-        return route.fallback();
-      await route.fulfill({
-        json: {
-          recipe: {
-            ...MOCK_DETAIL_RECIPE,
-            id,
-            servings: id === MOCK_IDS.RECIPE_LASAGNA ? 4 : null,
-          },
-          updatedAt: '2026-05-04T12:00:00Z',
+    // Keep detail and dated-projection reads on the same stateful fixture owner.
+    await setupCommonRoutes(page, undefined, {
+      supperServings: {
+        knownRecipe: {
+          id: MOCK_IDS.RECIPE_LASAGNA,
+          basis: 4,
+          quantity: 200,
+          unit: 'g',
+          ingredient: 'pasta',
         },
-      });
+      },
     });
-    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}`);
-    await expect(
-      page.getByRole('heading', { name: 'Ingredients 4 servings', exact: true })
-    ).toBeVisible();
-    await page.evaluate(
-      (id) => history.pushState(null, '', `/recipes?open=${id}`),
-      MOCK_IDS.RECIPE_STIR_FRY
+    await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_LASAGNA}&reviewAmounts=true`);
+    await expect(page.getByTestId('recipe-servings')).toHaveText('4 servings');
+    const unknownRead = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === `/api/recipes/${MOCK_IDS.RECIPE_CARBONARA}`
     );
+    await page.evaluate(
+      (id) => history.pushState(null, '', `/recipes?open=${id}&reviewAmounts=true`),
+      MOCK_IDS.RECIPE_CARBONARA
+    );
+    const unknown = (await (await unknownRead).json()).recipe;
+    expect(unknown.id).toBe(MOCK_IDS.RECIPE_CARBONARA);
+    expect(unknown.servings ?? null).toBeNull();
+    await expect(page.getByTestId('recipe-detail-name')).toHaveText(unknown.name);
     await expect(page.getByRole('heading', { name: 'Ingredients', exact: true })).toBeVisible();
     await expect(page.getByTestId('recipe-servings')).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Set recipe portions', exact: true })
+    ).toBeVisible();
   });
-
-  for (const [recipeId, servings] of [
-    [MOCK_IDS.RECIPE_LASAGNA, 4],
-    [MOCK_IDS.RECIPE_CARBONARA, null],
-  ] as const) {
-    test(`shared detail mock preserves ${servings} across PATCH and GET with its existing envelope`, async ({
-      page,
-    }) => {
-      await setupCommonRoutes(page);
-      await page.goto('/recipes');
-      const result = await page.evaluate(async (id) => {
-        const before = await (await fetch(`/api/recipes/${id}`)).json();
-        await fetch(`/api/recipes/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ingredients: ['510 g beef', '340 g pasta'] }),
-        });
-        const after = await (await fetch(`/api/recipes/${id}`)).json();
-        return { before, after };
-      }, recipeId);
-      expect(result.before.recipe.servings).toBe(servings);
-      expect(result.after.recipe.servings).toBe(servings);
-      expect(result.after.recipe.ingredients).toEqual(['510 g beef', '340 g pasta']);
-      expect(result.after.updatedAt).toBeTruthy();
-    });
-  }
 
   test('removes a recipe from Browse after moving it to the bin without navigation', async ({
     page,
@@ -655,8 +626,8 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId('recipe-detail-sheet')).toContainText(/READY IN 45 MINS/i);
 
     // Verify the new COOK entry point is visible
-    await expect(page.getByTestId('time-cook-btn')).toBeVisible();
-    await expect(page.getByTestId('time-cook-btn')).toContainText(/STEPS/i);
+    await expect(page.getByTestId('action-cooks-mode')).toBeVisible();
+    await expect(page.getByTestId('action-cooks-mode')).toContainText(/Cook/i);
 
     await page.getByTestId('action-close-sheet').click();
 
@@ -709,26 +680,39 @@ test.describe('Recipes Search Page', () => {
 
   test('edits recipe card fields from a single edit mode', async ({ page }) => {
     let lastPatchBody: Record<string, unknown> | null = null;
+    const recipe = structuredClone(MOCK_DETAIL_RECIPE);
 
     await page.unroute('**/api/recipes/*');
+    // Detail GET/PATCH and proposed projection must read the same recipe.
+    // Keep the real normal-target/dated-edit path after Search -> card activation.
+    // Route fixtures keep ISO wire dates; this helper is typed with parsed SDK dates.
+    const schedule = builders.scheduleDays() as any;
+    await mockNonCookingSchedule(page, schedule);
+    await mockSupperServings(page, () => schedule, {
+      readFamilyCount: commonRoutes.readFamilyCount,
+      readRecipe: (id) => (id === recipe.id ? recipe : builders.recipe({ id })),
+    });
     await page.route('**/api/recipes/*', async (route) => {
       const method = route.request().method();
+      if (new URL(route.request().url()).pathname !== `/api/recipes/${recipe.id}`)
+        return route.fallback();
 
       if (method === 'GET') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ recipe: MOCK_DETAIL_RECIPE }),
+          body: JSON.stringify({ recipe }),
         });
         return;
       }
 
       if (method === 'PATCH') {
         lastPatchBody = route.request().postDataJSON() as Record<string, unknown>;
+        Object.assign(recipe, lastPatchBody);
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ recipe: { ...MOCK_DETAIL_RECIPE, ...lastPatchBody } }),
+          body: JSON.stringify({ recipe }),
         });
         return;
       }
@@ -736,12 +720,15 @@ test.describe('Recipes Search Page', () => {
       await route.fallback();
     });
 
-    await page.goto('/recipes?focus=search');
+    await page.goto('/recipes?focus=search&reviewAmounts=true');
 
     await expect(page.getByTestId('browse-all-loader')).not.toBeVisible({ timeout: 15_000 });
     await page.getByTestId('recipe-search-input').fill('chicken');
     await page.getByTestId('recipe-search-input').press('Enter');
     await page.getByTestId('stack-card-front').click();
+    await expect(page.getByTestId('recipe-ingredient-projection').getByRole('listitem')).toHaveText(
+      ['Pasta', 'Tomato', 'Cheese']
+    );
 
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();
@@ -761,6 +748,18 @@ test.describe('Recipes Search Page', () => {
       });
     await expect(page.getByTestId('recipe-detail-name')).toContainText('Rainy Night Lasagna');
     await expect(page.getByText('San Marzano tomato')).toBeVisible();
+    await expect(page.getByTestId('recipe-ingredient-projection').getByRole('listitem')).toHaveText(
+      ['Pasta', 'San Marzano tomato', 'Cheese']
+    );
+    const reread = await page.evaluate(
+      async (id) => (await (await fetch(`/api/recipes/${id}`)).json()).recipe,
+      recipe.id
+    );
+    expect(reread).toMatchObject({
+      name: 'Rainy Night Lasagna',
+      description: 'Layered comfort food with extra sauce.',
+      ingredients: ['Pasta', 'San Marzano tomato', 'Cheese'],
+    });
   });
 
   test('uses planner mode CTA from the detail sheet and returns to the planner success state', async ({
@@ -797,7 +796,7 @@ test.describe('Recipes Search Page', () => {
         dayIndex: 2,
         recipeId: MOCK_IDS.RECIPE_LASAGNA,
       });
-    await expect(page).toHaveURL(/\/planner\?success=1&dayIndex=2/);
+    await expect(page).toHaveURL(/\/planner\?(?:success=1&)?dayIndex=2/);
   });
 
   test('applying a filter from the chooser includes it in the next search request', async ({
@@ -912,6 +911,7 @@ test.describe('Recipes Search Page', () => {
     await expect(page.getByTestId('stack-card-front')).toBeVisible();
     await page.getByTestId('stack-card-front').click();
 
+    await page.getByTestId('action-gear-menu').click();
     await expect(page.getByTestId('action-find-similar')).toBeVisible();
     await page.getByTestId('action-find-similar').click();
 

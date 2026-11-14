@@ -15,7 +15,7 @@ describe('RecipeImportIssueBadge', () => {
 
   it('renders the durable reimport outcome with a non-color cue', () => {
     render(<RecipeImportIssueBadge status="readyToReview" />);
-    const badge = screen.getByLabelText('Recipe updated — ready to review');
+    const badge = screen.getByLabelText('Recipe ready for review');
     expect(badge).toHaveTextContent('Review');
     expect(badge.querySelector('svg')).not.toBeNull();
     expect(badge).toHaveClass('bg-sage-100', 'text-sage-800');
@@ -24,7 +24,7 @@ describe('RecipeImportIssueBadge', () => {
   it('uses a compact, non-wrapping presentation when requested', () => {
     render(<RecipeImportIssueBadge status="readyToReview" variant="compact" />);
 
-    const badge = screen.getByLabelText('Recipe updated — ready to review');
+    const badge = screen.getByLabelText('Recipe ready for review');
     expect(badge).toHaveClass('shrink-0', 'whitespace-nowrap', 'text-[10px]');
     expect(badge).toHaveTextContent('Review');
   });
@@ -33,8 +33,6 @@ describe('RecipeImportIssueBadge', () => {
     setLocale('fr');
     render(<RecipeImportIssueBadge status="readyToReview" variant="compact" />);
 
-    expect(screen.getByLabelText('Recette mise à jour — prête à vérifier')).toHaveTextContent(
-      'À vérifier'
-    );
+    expect(screen.getByLabelText('Recette à vérifier')).toHaveTextContent('À vérifier');
   });
 });

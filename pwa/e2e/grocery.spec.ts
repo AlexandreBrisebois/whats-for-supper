@@ -1,3 +1,8 @@
+import {
+  scalarQuantity,
+  fixtureGroceryId,
+  fixtureGroceryChecks,
+} from '../src/testing/grocery-fixtures';
 /**
  * E2E — Grocery List: PATCH failure behaviour
  *
@@ -23,68 +28,243 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 });
 
-test('common check mocks retain distinct intentions, false, replacement and clear on reread', async ({
+test('known unitless amounts preserve shopping rows and source disclosure without writes', async ({
+  page,
+  baseURL,
+}) => {
+  const { groceryRows } = await setupCommonRoutes(page);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  const snapshot = {
+    ...builders.scheduleDays(),
+    groceryItems: builders.groceryItems(['Garlic', 'Salt']).map((row, index) => ({
+      ...row,
+      quantity: scalarQuantity(index === 0 ? 0 : 2),
+      unitText: index === 0 ? null : '   ',
+      quantityComplete: index === 0,
+      recipeIds: [MOCK_IDS.RECIPE_LASAGNA],
+    })),
+  };
+  snapshot.days[0].recipe = builders.scheduleRecipe({
+    id: MOCK_IDS.RECIPE_LASAGNA,
+    name: 'Family lasagna',
+  });
+  groceryRows.decorate(snapshot);
+  // Seed an accepted check through the existing row owner; decoration alone
+  // intentionally starts new rows unchecked.
+  const checked = groceryRows.mutate(snapshot.weekStartDate, 'item', {
+    rowId: snapshot.groceryItems[1].rowId,
+    weekStartDate: snapshot.weekStartDate,
+    expectedRowVersion: snapshot.groceryItems[1].rowVersion,
+    checked: true,
+    clientMutationId: '04000000-0000-4000-8000-000000000099',
+  });
+  expect(checked.status).toBe(200);
+  Object.assign(snapshot, groceryRows.snapshot(snapshot.weekStartDate));
+  const before = structuredClone(snapshot);
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (
+      new URL(request.url()).pathname.startsWith('/api/') &&
+      !['GET', 'HEAD'].includes(request.method())
+    )
+      writes.push(`${request.method()} ${new URL(request.url()).pathname}`);
+  });
+  await page.route(
+    (url) => url.pathname === '/api/schedule',
+    (route) => route.fulfill({ json: { data: snapshot } })
+  );
+  await mockSseWithConnectedSchedule(
+    page,
+    snapshot as unknown as Parameters<typeof mockSseWithConnectedSchedule>[1]
+  );
+  await page.goto('/planner?tab=grocery');
+  await page.getByTestId('grocery-tab').click();
+  await expect(page.getByTestId('grocery-item-checkbox')).toHaveCount(2);
+  const salt = page.locator(`[data-row-id="${snapshot.groceryItems[1].rowId}"]`);
+  await expect(salt).toHaveAttribute('aria-checked', 'true');
+  await expect(
+    page.getByTestId('grocery-item-quantity-hint').filter({ hasText: /^\(0\)$/ })
+  ).toHaveCount(1);
+  await expect(
+    page.getByTestId('grocery-item-quantity-hint').filter({ hasText: /^2 known$/ })
+  ).toHaveCount(1);
+  await page.getByRole('button', { name: 'Source recipes for Salt', exact: true }).click();
+  await expect(
+    page.getByTestId('grocery-recipe-sources-region').getByRole('link', { name: 'Family lasagna' })
+  ).toBeVisible();
+  await expect(salt).toHaveAttribute('aria-checked', 'true');
+  await expect(
+    page.getByTestId('aisle-section-Pantry').getByTestId('grocery-item-checkbox')
+  ).toHaveCount(2);
+  expect(snapshot).toEqual(before);
+  expect(writes).toEqual([]);
+});
+
+test('opaque water row controls remain independent from other buckets and the extra', async ({
   page,
 }) => {
-  await page.route('**/api/schedule/*/grocery/item', (route) => route.fulfill({ status: 405 }));
-  await setupCommonRoutes(page);
-  await page.goto('/welcome');
-  await page.evaluate(() => {
-    const source = new EventTarget();
-    (window as any).__sseSource = source;
-    (window as any).__checkMaps = [];
-    source.addEventListener('grocery_updated', (event) =>
-      (window as any).__checkMaps.push(JSON.parse((event as MessageEvent).data).groceryState)
-    );
+  const { groceryRows } = await setupCommonRoutes(page);
+  const ids = [
+    '04000000-0000-4000-8000-000000000001',
+    '04000000-0000-4000-8000-000000000002',
+    '04000000-0000-4000-8000-000000000003',
+  ];
+  const week = '2026-05-04';
+  const snapshot = {
+    ...builders.scheduleDays(),
+    groceryListVersion: '1',
+    groceryState: {},
+    groceryItems: ids.map((rowId, index) => ({
+      rowId,
+      rowVersion: '1',
+      weekStartDate: week,
+      source: 'recipe',
+      displayName: 'Water',
+      normalizedKey: 'water',
+      section: 'Produce',
+      demandIdentity: `legacy-water-${index}`,
+      quantity: null,
+      quantityComplete: false,
+      unitText: ['g', 'ml', 'bottle'][index],
+      recipeIds: [MOCK_IDS.RECIPE_LASAGNA],
+    })),
+    groceryExtras: [
+      {
+        id: '04000000-0000-4000-8000-000000000004',
+        lineageId: '04000000-0000-4000-8000-000000000005',
+        occurrenceWeekStartDate: week,
+        name: 'Water',
+        normalizedKey: 'water',
+        grocerySection: 'Produce',
+        checked: false,
+        version: 1,
+        source: 'extra',
+        readOnly: false,
+      },
+    ],
+  };
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
+  await page.route(
+    (url) => url.pathname === '/api/schedule',
+    (route) => route.fulfill({ json: { data: snapshot } })
+  );
+  groceryRows.decorate(snapshot);
+  let submitted: Record<string, unknown> | undefined;
+  await page.route('**/api/schedule/*/grocery/item**', async (route) => {
+    submitted = route.request().postDataJSON();
+    const result = groceryRows.mutate(week, 'item', submitted);
+    Object.assign(snapshot, groceryRows.snapshot(week));
+    await route.fulfill(result);
   });
+  await mockSseWithConnectedSchedule(page, snapshot as any);
+  await page.goto('/planner?tab=grocery');
+  await page.getByTestId('grocery-tab').click();
+  const recipeControls = page.getByTestId('grocery-item-checkbox');
+  await expect(recipeControls).toHaveCount(3);
+  await expect(page.getByRole('checkbox', { name: /Water/ })).toHaveCount(4);
+  await recipeControls.nth(1).click();
+  await expect.poll(() => submitted?.rowId).toBe(ids[1]);
+  await expect(page.getByRole('checkbox', { name: /Water/, checked: true })).toHaveCount(1);
+  await expect(page.getByTestId('grocery-extra-checkbox')).toHaveAttribute('aria-checked', 'false');
+  await expect.poll(() => groceryRows.snapshot(week).groceryState[ids[1]]).toBe(true);
+  const checked = structuredClone(groceryRows.snapshot(week));
+  const selected = page.locator(`[data-row-id="${ids[1]}"]`);
+  await selected.click();
+  await expect.poll(() => groceryRows.snapshot(week).groceryState[ids[1]]).toBe(false);
+  await expect(selected).toHaveAttribute('aria-checked', 'false');
+  const reread = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === '/api/schedule'
+  );
+  await page.evaluate((older) => {
+    (window as any).__sseSource?.dispatchEvent(
+      new MessageEvent('grocery_updated', {
+        data: JSON.stringify({ type: 'grocery_updated', weekOffset: 0, ...older }),
+      })
+    );
+  }, checked);
+  await reread;
+  await expect(selected).toHaveAttribute('aria-checked', 'false');
+  await page.reload();
+  await page.getByTestId('grocery-tab').click();
+  await expect(page.locator(`[data-row-id="${ids[1]}"]`)).toHaveAttribute('aria-checked', 'false');
+});
+
+test('common check mocks guard rows, replay retries and fence stale bulk on reread', async ({
+  page,
+}) => {
+  await setupGroceryPage(page);
   const observed = await page.evaluate(async () => {
-    const item = (ingredientName: string, checked: boolean) =>
+    const read = async () => (await (await fetch('/api/schedule?weekOffset=0')).json()).data;
+    const initial = await read();
+    const ids = initial.groceryItems.slice(0, 2).map((row: any) => row.rowId);
+    const item = (body: any) =>
       fetch('/api/schedule/0/grocery/item', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredientName, checked }),
+        body: JSON.stringify(body),
       });
-    const read = async () =>
-      (await (await fetch('/api/schedule?weekOffset=0')).json()).data.groceryState;
-    const statuses = await Promise.all([item('Tomato', true), item('Lettuce', true)]).then(
-      (results) => results.map((r) => r.status)
+    const request = (id: string) => ({
+      rowId: id,
+      weekStartDate: initial.weekStartDate,
+      expectedRowVersion: '1',
+      checked: true,
+      clientMutationId: crypto.randomUUID(),
+    });
+    const first = request(ids[0]);
+    const statuses = (await Promise.all([item(first), item(request(ids[1]))])).map(
+      (response) => response.status
     );
-    const both = await read();
-    await item('Tomato', false);
-    const explicitFalse = await read();
-    const replacement = await fetch('/api/schedule/0/grocery', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ Tomato: false }),
-    });
-    const replacementBody = await replacement.json();
-    const replaced = await read();
-    await fetch('/api/schedule/0/grocery', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-    });
+    const after = await read();
+    const replay = await (await item(first)).json();
+    const staleItem = (
+      await item({ ...first, checked: false, clientMutationId: crypto.randomUUID() })
+    ).status;
+    const named = (await item({ ingredientName: 'Pasta', checked: true })).status;
+    const bulk = (version: string) =>
+      fetch('/api/schedule/0/grocery', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weekStartDate: initial.weekStartDate,
+          expectedListVersion: version,
+          checks: {},
+          clientMutationId: crypto.randomUUID(),
+        }),
+      });
+    const staleBulk = (await bulk(initial.groceryListVersion)).status;
+    const clear = await bulk(after.groceryListVersion);
+    const final = await read();
     return {
       statuses,
-      both,
-      explicitFalse,
-      replacementBody,
-      replaced,
-      cleared: await read(),
-      unsupported: (await fetch('/api/schedule/0/grocery/item')).status,
+      both: ids.every((id: string) => after.groceryState[id]),
+      replayed: replay.rowId === first.rowId,
+      staleItem,
+      staleBulk,
+      named,
+      clear: clear.status,
+      cleared: Object.values(final.groceryState).every((value) => value === false),
+      count: final.groceryItems.length,
     };
   });
   expect(observed).toEqual({
-    statuses: [204, 204],
-    both: { Tomato: true, Lettuce: true },
-    explicitFalse: { Tomato: false, Lettuce: true },
-    replacementBody: { data: { Tomato: false } },
-    replaced: { Tomato: false },
-    cleared: {},
-    unsupported: 405,
+    statuses: [200, 200],
+    both: true,
+    replayed: true,
+    staleItem: 409,
+    staleBulk: 409,
+    named: 409,
+    clear: 200,
+    cleared: true,
+    count: 4,
   });
-  await expect.poll(() => page.evaluate(() => (window as any).__checkMaps.length)).toBe(5);
-  expect(await page.evaluate(() => (window as any).__checkMaps.at(-1))).toEqual({});
 });
 
 test('a held item save leaves another row usable and failure reverts only that item', async ({
@@ -99,13 +279,13 @@ test('a held item save leaves another row usable and failure reverts only that i
   const pending = new Promise<void>((resolve) => {
     started = resolve;
   });
-  await page.route('**/api/schedule/*/grocery/item', async (route) => {
+  await page.route('**/api/schedule/*/grocery/item**', async (route) => {
     if (route.request().method() !== 'PATCH') return route.fallback();
-    if (route.request().postDataJSON().ingredientName === 'Pasta') {
+    if (route.request().postDataJSON().rowId === fixtureGroceryId('Pasta')) {
       started();
       await held;
       await route.fulfill({ status: 500, json: { message: 'Save failed' } });
-    } else await route.fulfill({ status: 204 });
+    } else await route.fallback();
   });
   const pasta = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Pasta' });
   const beef = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Beef' });
@@ -120,6 +300,102 @@ test('a held item save leaves another row usable and failure reverts only that i
   await expect(beef).toHaveAttribute('aria-checked', 'true');
 });
 
+test('queued same-row intents reconcile after a lost reply without crossing navigation', async ({
+  page,
+}) => {
+  const { groceryRows } = await setupGroceryPage(page);
+  const week = '2026-05-04';
+  const pastaId = fixtureGroceryId('Pasta');
+  const beefId = fixtureGroceryId('Beef');
+  let firstStarted!: () => void,
+    secondStarted!: () => void,
+    releaseFirst!: () => void,
+    releaseSecond!: () => void;
+  const firstPending = new Promise<void>((resolve) => {
+    firstStarted = resolve;
+  });
+  const secondPending = new Promise<void>((resolve) => {
+    secondStarted = resolve;
+  });
+  const firstHeld = new Promise<void>((resolve) => {
+    releaseFirst = resolve;
+  });
+  const secondHeld = new Promise<void>((resolve) => {
+    releaseSecond = resolve;
+  });
+  const requests: any[] = [];
+  await page.route('**/api/schedule/*/grocery/item**', async (route) => {
+    const body = route.request().postDataJSON();
+    if (body.rowId !== pastaId) return route.fallback();
+    requests.push(body);
+    const result = groceryRows.mutate(week, 'item', body);
+    if (requests.length === 1) {
+      firstStarted();
+      await firstHeld;
+      await route.abort('connectionreset');
+    } else {
+      secondStarted();
+      await secondHeld;
+      await route.fulfill(result).catch(() => {});
+    }
+  });
+  const pasta = page.locator(`[data-row-id="${pastaId}"]`);
+  const beef = page.locator(`[data-row-id="${beefId}"]`);
+  try {
+    await pasta.click();
+    await test.step('First write starts', () => firstPending, { timeout: 5000 });
+    await pasta.click();
+    await beef.click();
+    await expect.poll(() => groceryRows.snapshot(week).groceryState[beefId]).toBe(true);
+    expect(requests).toHaveLength(1);
+    releaseFirst();
+    await test.step('Queued write starts after reread', () => secondPending, { timeout: 5000 });
+    expect(requests[1].expectedRowVersion).toBe('2');
+    expect(requests[1].clientMutationId).not.toBe(requests[0].clientMutationId);
+    expect(requests[1].weekStartDate).toBe(week);
+    // A failed older intention is obsolete while the next intention is pending.
+    await test.step(
+      'Flush the optimistic render',
+      () =>
+        page.evaluate(
+          () =>
+            new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+        ),
+      { timeout: 2000 }
+    );
+    await expect(page.getByTestId('grocery-item-error')).toHaveCount(0, { timeout: 100 });
+    await test.step(
+      'Navigate while the reply is held',
+      async () => {
+        await page.getByRole('button', { name: 'Close grocery list', exact: true }).click();
+        await page.getByTestId('next-week').click();
+      },
+      { timeout: 5000 }
+    );
+    await expect(page.getByRole('heading', { name: 'May 11 — 17', exact: true })).toBeVisible();
+    const reply = page.waitForResponse(
+      (response) =>
+        response.url().includes('/grocery/item') &&
+        response.request().postDataJSON().clientMutationId === requests[1].clientMutationId
+    );
+    releaseSecond();
+    await reply;
+    await expect.poll(() => groceryRows.snapshot(week).groceryState[pastaId]).toBe(false);
+    expect(
+      Object.values(groceryRows.snapshot('2026-05-11').groceryState).every(
+        (value) => value === false
+      )
+    ).toBe(true);
+    await page.getByRole('button', { name: 'Previous week', exact: true }).click();
+    await page.getByTestId('grocery-tab').click();
+    await expect(pasta).toHaveAttribute('aria-checked', 'false');
+    await expect(beef).toHaveAttribute('aria-checked', 'true');
+  } finally {
+    releaseFirst();
+    releaseSecond();
+  }
+});
+
 async function setupGroceryPage(
   page: import('@playwright/test').Page,
   options: { empty?: boolean; milk?: boolean } = {}
@@ -129,7 +405,7 @@ async function setupGroceryPage(
     .context()
     .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
 
-  await setupCommonRoutes(page);
+  const { groceryRows } = await setupCommonRoutes(page);
 
   // Override schedule to return a week with one recipe that has known ingredients
   const monday = currentMonday();
@@ -212,22 +488,18 @@ async function setupGroceryPage(
                     },
                   ]
                 : [];
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              weekOffset: offset,
-              calendar: builders.deploymentCalendar() as any,
-              weekStartDate: selectedWeekStartDate as any,
-              locked: false,
-              status: 0,
-              days: selectedDays,
-              groceryItems: currentGroceryItems(),
-              groceryExtras: selectedExtras,
-            },
-          }),
-        });
+        const data = {
+          weekOffset: offset,
+          calendar: builders.deploymentCalendar(),
+          weekStartDate: selectedWeekStartDate,
+          locked: false,
+          status: 0,
+          days: selectedDays,
+          groceryItems: currentGroceryItems(),
+          groceryExtras: selectedExtras,
+        };
+        groceryRows.decorate(data);
+        await route.fulfill({ status: 200, json: { data } });
       } else {
         await route.fallback();
       }
@@ -295,21 +567,18 @@ async function setupGroceryPage(
     }
   );
 
-  await mockSseWithConnectedSchedule(page, {
+  const connected = {
     weekOffset: 0,
-    calendar: builders.deploymentCalendar() as any,
-    weekStartDate: '2026-05-04' as any,
+    calendar: builders.deploymentCalendar(),
+    weekStartDate: '2026-05-04',
     locked: false,
     status: 0,
     days,
-    get groceryItems() {
-      return currentGroceryItems();
-    },
-    get groceryExtras() {
-      return groceryExtras;
-    },
-    groceryState: { additionalData: {} },
-  } as any);
+    groceryItems: currentGroceryItems(),
+    groceryExtras,
+  };
+  groceryRows.decorate(connected);
+  await mockSseWithConnectedSchedule(page, connected as any);
 
   await page.goto('/planner');
   await expect(page.getByTestId('day-card-0')).toBeVisible({ timeout: 10_000 });
@@ -320,7 +589,265 @@ async function setupGroceryPage(
   if (!options.empty && !options.milk)
     await expect(page.getByTestId('aisle-section-Meat')).toBeVisible();
 
-  return { categoryOverrides, groceryExtras };
+  return { categoryOverrides, groceryExtras, groceryRows };
+}
+
+for (const appLocale of ['en', 'fr'] as const) {
+  test.describe(`shopping control continuity ${appLocale}`, () => {
+    test.use({ appLocale, hasTouch: true });
+    for (const width of [390, 768, 320]) {
+      for (const action of ['pointer', 'touch', 'Enter', 'Space'] as const) {
+        if (width === 320 && (action === 'pointer' || action === 'touch')) continue;
+        test(`${action} keeps extra focus and viewport at ${width}px`, async ({ page }) => {
+          const { groceryExtras } = await setupGroceryPage(page);
+          await page.setViewportSize({ width, height: 700 });
+          if (width === 320) await page.addStyleTag({ content: 'html { font-size: 200%; }' });
+          for (let index = 0; index < 14; index++)
+            groceryExtras.push({
+              ...builders.groceryExtra({
+                id: `05000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+                name: `Shopping extra ${index}`,
+                normalizedKey: `extra-${index}`,
+                grocerySection: 'Grocery',
+                checked: false,
+              }),
+            });
+          await page.reload();
+          await page.getByTestId('grocery-tab').click();
+          if (width === 320) await page.addStyleTag({ content: 'html { font-size: 200%; }' });
+          const row = page.locator('[data-extra-id="05000000-0000-4000-8000-000000000004"]');
+          const check = row.getByTestId('grocery-extra-checkbox');
+          await check.scrollIntoViewIfNeeded();
+          const scroll = page.getByTestId('grocery-checklist').locator('.overflow-y-auto').first();
+          await check.focus();
+          // Pointer actionability may scroll before activation. Capture the real
+          // shopper's viewport at click dispatch, before React changes the list.
+          await check.evaluate((element) =>
+            element.addEventListener(
+              'click',
+              () => {
+                (window as any).__checkStartScroll = element
+                  .closest('[data-testid="grocery-checklist"]')!
+                  .querySelector('.overflow-y-auto')!.scrollTop;
+              },
+              { capture: true, once: true }
+            )
+          );
+          let writes = 0;
+          page.on('request', (request) => {
+            if (
+              request.method() === 'PATCH' &&
+              new URL(request.url()).pathname ===
+                '/api/grocery-extras/05000000-0000-4000-8000-000000000004'
+            )
+              writes++;
+          });
+          const saved = page.waitForResponse(
+            (response) =>
+              response.request().method() === 'PATCH' &&
+              new URL(response.url()).pathname ===
+                '/api/grocery-extras/05000000-0000-4000-8000-000000000004'
+          );
+          if (action === 'pointer') await check.click();
+          else if (action === 'touch') await check.tap();
+          else await check.press(action);
+          await saved;
+          await expect(check).toHaveAttribute('aria-checked', 'true');
+          await expect(row.getByRole('status')).toHaveCount(0);
+          if (action === 'Enter' || action === 'Space') await expect(check).toBeFocused();
+          await expect(row.getByRole('button').last()).not.toBeFocused();
+          const before = await page.evaluate(() => (window as any).__checkStartScroll as number);
+          expect(before).toEqual(expect.any(Number));
+          expect(
+            Math.abs((await scroll.evaluate((element) => element.scrollTop)) - before)
+          ).toBeLessThanOrEqual(1);
+          expect(writes).toBe(1);
+          await expect(page.getByRole('group', { name: /Choose section|Choisir/ })).toHaveCount(0);
+
+          const normal = page.getByTestId('grocery-item-checkbox').filter({ hasText: 'Pasta' });
+          await normal.scrollIntoViewIfNeeded();
+          await normal.focus();
+          await normal.evaluate(
+            (element, eventType) => {
+              (window as any).__normalCheckNode = element;
+              element.addEventListener(
+                eventType,
+                () => {
+                  (window as any).__normalStartScroll = element
+                    .closest('[data-testid="grocery-checklist"]')!
+                    .querySelector('.overflow-y-auto')!.scrollTop;
+                },
+                { capture: true, once: true }
+              );
+            },
+            action === 'Enter' || action === 'Space' ? 'keydown' : 'click'
+          );
+          const normalSaved = page.waitForResponse(
+            (response) =>
+              response.request().method() === 'PATCH' &&
+              /\/grocery\/item$/.test(new URL(response.url()).pathname)
+          );
+          if (action === 'pointer') await normal.click();
+          else if (action === 'touch') await normal.tap();
+          else await normal.press(action);
+          await normalSaved;
+          await expect(normal).toHaveAttribute('aria-checked', 'true');
+          if (action === 'Enter' || action === 'Space') await expect(normal).toBeFocused();
+          expect(
+            await normal.evaluate((element) => element === (window as any).__normalCheckNode)
+          ).toBe(true);
+          const normalBefore = await page.evaluate(
+            () => (window as any).__normalStartScroll as number
+          );
+          expect(
+            Math.abs((await scroll.evaluate((element) => element.scrollTop)) - normalBefore)
+          ).toBeLessThanOrEqual(1);
+          expect(
+            await page
+              .getByTestId('aisle-section-Pantry')
+              .getByTestId('grocery-item-label')
+              .allTextContents()
+          ).toEqual(['Tomato Sauce', 'Pasta']);
+        });
+      }
+    }
+
+    test('category tags share placement while normal and extra scopes stay distinct', async ({
+      page,
+    }, testInfo) => {
+      const { groceryExtras } = await setupGroceryPage(page);
+      for (const suffix of ['31', '32'])
+        groceryExtras.push({
+          ...builders.groceryExtra({
+            id: `05000000-0000-4000-8000-0000000000${suffix}`,
+            name: 'Pasta',
+            normalizedKey: 'pasta',
+            grocerySection: 'Pantry',
+            checked: false,
+          }),
+        });
+      await page.reload();
+      await page.getByTestId('grocery-tab').click();
+      const normal = page
+        .getByTestId('reclassify-btn')
+        .filter({ has: page.locator('svg') })
+        .and(page.locator('[data-item-name="Pasta"]'));
+      const extra = page.locator('[data-extra-id="05000000-0000-4000-8000-000000000031"]');
+      const other = page.locator('[data-extra-id="05000000-0000-4000-8000-000000000032"]');
+      const label = appLocale === 'en' ? 'Change section for Pasta' : 'Changer le rayon pour Pasta';
+      const extraTag = extra.getByRole('button', { name: label });
+      await expect(normal).toHaveAccessibleName(label);
+      for (const tag of [normal, extraTag]) {
+        const box = await tag.evaluate((element) => {
+          const button = element.getBoundingClientRect();
+          const icon = element.querySelector('svg')!.getBoundingClientRect();
+          const check = element
+            .parentElement!.querySelector('[role="checkbox"] svg')!
+            .getBoundingClientRect();
+          return {
+            width: icon.width,
+            offset: Math.abs(icon.x + icon.width / 2 - button.x - button.width / 2),
+            target: button.width,
+            alignment: Math.abs(check.y + check.height / 2 - icon.y - icon.height / 2),
+          };
+        });
+        expect(box.width).toBe(16);
+        expect(box.offset).toBeLessThanOrEqual(1);
+        expect(box.target).toBeGreaterThanOrEqual(44);
+        expect(box.alignment).toBeLessThanOrEqual(1);
+      }
+      const writes: string[] = [];
+      page.on('request', (request) => {
+        if (request.method() === 'PATCH') writes.push(new URL(request.url()).pathname);
+      });
+      await normal.click();
+      await page.getByTestId('section-picker').getByTestId('section-option-Pantry').click();
+      await expect(page.getByTestId('section-picker')).toHaveCount(0);
+      await extraTag.click();
+      await page
+        .getByRole('group', { name: appLocale === 'en' ? 'Choose section' : 'Choisir le rayon' })
+        .getByRole('button', { name: appLocale === 'en' ? 'Pantry' : 'Épicerie', exact: true })
+        .click();
+      expect(writes).toHaveLength(0);
+      await normal.click();
+      await page.getByTestId('section-option-Produce').click();
+      await expect(
+        page.getByTestId('aisle-section-Produce').getByTestId('grocery-item-label')
+      ).toHaveText('Pasta');
+      await expect(page.getByTestId('aisle-section-Pantry').locator('[data-extra-id]')).toHaveCount(
+        2
+      );
+      await extraTag.click();
+      await page.getByRole('group').getByRole('button', { name: 'Produce', exact: true }).click();
+      await expect(
+        page.getByTestId('aisle-section-Produce').locator('[data-extra-id]')
+      ).toHaveCount(1);
+      await expect(other).toBeVisible();
+      expect(writes).toEqual([
+        '/api/ingredients/pasta/category',
+        '/api/grocery-extras/05000000-0000-4000-8000-000000000031',
+      ]);
+      await page.screenshot({ path: testInfo.outputPath('category-parity.png') });
+    });
+
+    for (const empty of [false, true]) {
+      for (const key of ['Enter', 'Space'] as const) {
+        test(`future disappearance keeps local ${empty ? 'empty-list' : 'adjacent-row'} focus with ${key}`, async ({
+          page,
+        }) => {
+          const { groceryExtras } = await setupGroceryPage(page, { empty });
+          const coffee = builders.groceryExtra({
+            id: '05000000-0000-4000-8000-000000000021',
+            name: 'Coffee',
+            normalizedKey: 'coffee',
+            checked: false,
+          });
+          groceryExtras.push({ ...coffee });
+          if (!empty)
+            groceryExtras.push({
+              ...builders.groceryExtra({
+                id: '05000000-0000-4000-8000-000000000022',
+                name: 'Tea',
+                normalizedKey: 'tea',
+                checked: false,
+              }),
+            });
+          await page.reload();
+          await page.getByTestId('grocery-tab').click();
+          const checklist = page.getByTestId('grocery-checklist');
+          const close = checklist.getByRole('button', {
+            name: appLocale === 'en' ? 'Close grocery list' : 'Fermer la liste de courses',
+          });
+          await close.click();
+          await expect(checklist).toHaveCount(0);
+          await page.getByTestId('next-week').click();
+          await expect(page).toHaveURL(/weekOffset=1/);
+          await page.getByTestId('grocery-tab').click();
+          const check = page.locator(`[data-extra-id="${coffee.id}"]`).getByRole('checkbox');
+          await check.focus();
+          const scroll = checklist.locator('.overflow-y-auto').first();
+          const before = await scroll.evaluate((element) => element.scrollTop);
+          const saved = page.waitForResponse(
+            (response) =>
+              response.request().method() === 'PATCH' &&
+              new URL(response.url()).pathname === `/api/grocery-extras/${coffee.id}`
+          );
+          await check.press(key);
+          await saved;
+          await expect(check).toHaveCount(0);
+          const fallback = empty
+            ? checklist.getByRole('heading', { level: 2 })
+            : page
+                .locator('[data-extra-id="05000000-0000-4000-8000-000000000022"]')
+                .getByRole('checkbox');
+          await expect(fallback).toBeFocused();
+          expect(
+            Math.abs((await scroll.evaluate((element) => element.scrollTop)) - before)
+          ).toBeLessThanOrEqual(1);
+        });
+      }
+    }
+  });
 }
 
 test.describe('Grocery List — everyday extras', () => {
@@ -891,7 +1418,8 @@ test.describe('Grocery List — PATCH failure behaviour', () => {
     await setupGroceryPage(page);
 
     // Override the per-item grocery PATCH endpoint to fail
-    await page.route('**/api/schedule/*/grocery/item', async (route) => {
+    await page.route('**/api/schedule/*/grocery/item**', async (route) => {
+      if (route.request().method() !== 'PATCH') return route.fallback();
       await route.fulfill({ status: 500, body: 'Internal Server Error' });
     });
 
@@ -948,12 +1476,24 @@ test.describe('Grocery List — SSE sync', () => {
 
     // Mock SSE to emit grocery_updated with Pasta checked — registered AFTER
     // setupCommonRoutes so LIFO gives this handler priority over the default stream route.
-    const { triggerGroceryUpdated } = await mockSseWithGroceryUpdated(page, 1, {
-      Pasta: true,
+    const groceryState = fixtureGroceryChecks({
+      Pasta: false,
       Beef: true,
       'Tomato Sauce': false,
       Cheese: false,
     });
+    const publishedState = { ...groceryState, [fixtureGroceryId('Pasta')]: true };
+    let publishedVersion = '1';
+    const { triggerGroceryUpdated } = await mockSseWithGroceryUpdated(
+      page,
+      1,
+      publishedState,
+      builders.groceryItems(['Pasta', 'Beef', 'Tomato Sauce', 'Cheese']).map((row) => ({
+        ...row,
+        weekStartDate: '2026-05-11' as any,
+        rowVersion: row.rowId === fixtureGroceryId('Pasta') ? '2' : '1',
+      }))
+    );
 
     // Override schedule to return a week with one recipe that has known ingredients
     const monday = currentMonday();
@@ -998,7 +1538,8 @@ test.describe('Grocery List — SSE sync', () => {
                 weekOffset: 1,
                 calendar: builders.deploymentCalendar() as any,
                 weekStartDate: '2026-05-11' as any,
-                groceryState: { Pasta: false, Beef: true, 'Tomato Sauce': false, Cheese: false },
+                groceryListVersion: publishedVersion,
+                groceryState,
                 locked: false,
                 status: 0,
                 days,
@@ -1038,10 +1579,19 @@ test.describe('Grocery List — SSE sync', () => {
     const received = page.waitForEvent('console', {
       predicate: (message) => message.text() === '[SSE] Received "grocery_updated" event',
     });
+    // A committed event and subsequent reads must describe the same persisted state.
+    Object.assign(groceryState, publishedState);
+    publishedVersion = '2';
     await triggerGroceryUpdated();
     await received;
     await expect(pastaItem).toBeVisible();
     await expect(pastaItem).toHaveAttribute('aria-checked', 'true');
+    const persisted = await page.evaluate(
+      async () =>
+        (await (await fetch('/api/schedule?referenceWeekStartDate=2026-05-04&weekOffset=1')).json())
+          .data
+    );
+    expect(persisted.groceryState[fixtureGroceryId('Pasta')]).toBe(true);
     await expect(beefItem).toHaveAttribute('aria-checked', 'true');
     await expect(cheeseItem).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByTestId('grocery-item-checkbox')).toHaveCount(4);
@@ -1102,12 +1652,18 @@ test.describe('Grocery List — SSE sync', () => {
       weekOffset: 0,
       calendar: builders.deploymentCalendar() as any,
       weekStartDate: '2026-05-04' as any,
+      groceryListVersion: '2',
       locked: false,
       status: 0,
       days,
       groceryItems: builders.groceryItems(GROCERY_INGREDIENTS_WEEK, GROCERY_SECTION_MAP_WEEK),
       groceryState: {
-        additionalData: { Pasta: true, Beef: false, 'Tomato Sauce': false, Cheese: false },
+        additionalData: fixtureGroceryChecks({
+          Pasta: true,
+          Beef: false,
+          'Tomato Sauce': false,
+          Cheese: false,
+        }),
       },
     };
 
@@ -1135,6 +1691,13 @@ test.describe('Grocery List — SSE sync', () => {
                 weekOffset: 0,
                 calendar: builders.deploymentCalendar() as any,
                 weekStartDate: '2026-05-04' as any,
+                groceryListVersion: '2',
+                groceryState: fixtureGroceryChecks({
+                  Pasta: true,
+                  Beef: false,
+                  'Tomato Sauce': false,
+                  Cheese: false,
+                }),
                 locked: false,
                 status: 0,
                 days,

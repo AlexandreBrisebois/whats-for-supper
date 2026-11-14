@@ -11,6 +11,14 @@ import test_ops
 
 
 class OpenSpecClassificationTests(unittest.TestCase):
+    def test_ci_browser_command_owners_are_harness_inputs_without_narrowing_mixed_checks(self):
+        for path in ['scripts/ci/production-browser.cjs', 'scripts/ci/production-browser.test.cjs',
+                     'scripts/ci/select-e2e.cjs', 'scripts/ci/e2e-suites.cjs']:
+            with self.subTest(path=path):
+                self.assertEqual(finish.classes_for([path]), {'harness'})
+                self.assertEqual(finish.classes_for([path, 'pwa/src/components/recipes/RecipeDetailSheet.tsx']),
+                                 {'harness', 'application'})
+
     def test_planning_metadata_and_empty_directory_markers_need_only_documentation(self):
         for path in ['openspec/changes/example/.openspec.yaml',
                      'openspec/changes/archive/2026-10-14-example/.openspec.yaml',

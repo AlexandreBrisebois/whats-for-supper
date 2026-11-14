@@ -8,7 +8,11 @@ import {
   ChevronDown,
   Clock,
 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { getIngredientProjection, type IngredientContext } from '@/lib/api/recipes';
+import type { IngredientProjection } from '@/lib/api/generated/models';
+import { ingredientProjectionText } from '@/lib/ingredient-presentation';
+import { subscribeIngredientProjectionInvalidation } from '@/lib/ingredient-projection-invalidation';
 import { cn } from '@/lib/utils';
 import { TonightRecipeImage } from './TonightRecipeImage';
 import { t, tWithVars } from '@/locales';
@@ -46,6 +50,7 @@ interface TonightMenuCardProps {
   imageUrl?: string;
   totalTime?: string;
   ingredients?: string[];
+  ingredientContext?: IngredientContext | null;
   onCookMode?: (id: string) => void;
   onSkip?: (id: string) => void;
 }
@@ -57,6 +62,7 @@ export function TonightMenuCard({
   imageUrl,
   totalTime,
   ingredients = [],
+  ingredientContext,
   onCookMode,
   onSkip,
 }: TonightMenuCardProps) {
@@ -68,6 +74,48 @@ export function TonightMenuCard({
   }
   const expanded = disclosure.recipeId === recipeId && disclosure.expanded;
   const formattedTime = formatRecipeTime(totalTime);
+  const contextKey = ingredientContext ? JSON.stringify([recipeId, ingredientContext]) : null;
+  const [projectionRead, setProjectionRead] = useState<{
+    key: string;
+    data?: IngredientProjection;
+    error?: boolean;
+  } | null>(null);
+  const reloadProjection = useRef<() => void>(() => {});
+  const projection = projectionRead?.key === contextKey ? projectionRead?.data : undefined;
+  const projectionError =
+    ingredientContext === null || (projectionRead?.key === contextKey && projectionRead?.error);
+  const datedReading = ingredientContext !== undefined;
+  const displayedIngredients = datedReading
+    ? (projection?.lines ?? []).map(ingredientProjectionText)
+    : ingredients;
+
+  useEffect(() => {
+    if (!expanded || !contextKey) return;
+    let active = true;
+    let generation = 0;
+    const [id, context] = JSON.parse(contextKey);
+    const load = () => {
+      // Invalidation revokes the old read synchronously, before React renders.
+      const request = ++generation;
+      setProjectionRead(null);
+      void getIngredientProjection(id, context)
+        .then((data) => {
+          if (active && request === generation) setProjectionRead({ key: contextKey, data });
+        })
+        .catch(() => {
+          if (active && request === generation) setProjectionRead({ key: contextKey, error: true });
+        });
+    };
+    reloadProjection.current = load;
+    load();
+    const unsubscribe = subscribeIngredientProjectionInvalidation(context, load);
+    return () => {
+      active = false;
+      generation++;
+      reloadProjection.current = () => {};
+      unsubscribe();
+    };
+  }, [expanded, contextKey]);
 
   return (
     <div className="w-full min-w-0 [overflow-wrap:anywhere]" data-testid="tonight-menu-card">
@@ -131,7 +179,10 @@ export function TonightMenuCard({
           data-testid="tonight-ingredients-toggle"
           aria-expanded={expanded}
           aria-controls={detailsId}
-          onClick={() => setDisclosure({ recipeId, expanded: !expanded })}
+          onClick={() => {
+            if (!expanded) setProjectionRead(null);
+            setDisclosure({ recipeId, expanded: !expanded });
+          }}
           className="mt-1 flex min-h-12 min-w-12 items-center justify-start gap-2 self-start rounded-xl px-2 py-3 text-base font-medium leading-normal text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
         >
           {expanded
@@ -156,6 +207,8 @@ export function TonightMenuCard({
                   data-testid="ingredients-info-title"
                 >
                   {t('home.ingredientsAndInfo', 'Ingredients & info')}
+                  {projection?.targetServings != null &&
+                    ` · ${tWithVars('recipes.portionCount', '{{count}} portions', { count: projection.targetServings })}`}
                 </h4>
                 <Sparkles size={16} className="shrink-0 text-ochre-800" aria-hidden="true" />
               </div>
@@ -165,8 +218,36 @@ export function TonightMenuCard({
                 </p>
               )}
 
+              {datedReading && !projection && !projectionError && (
+                <p role="status" className="mb-4 text-sm text-charcoal-600">
+                  {t('recipes.projectionLoading', 'Loading ingredients for this date…')}
+                </p>
+              )}
+              {projectionError && (
+                <p role="alert" className="mb-4 text-sm text-charcoal">
+                  {t('recipes.projectionFailed', 'Could not confirm ingredients for this supper.')}{' '}
+                  {ingredientContext && (
+                    <button
+                      type="button"
+                      data-testid="tonight-ingredients-retry"
+                      className="min-h-12 min-w-12 rounded-xl px-3 font-semibold underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+                      onClick={() => reloadProjection.current()}
+                    >
+                      {t('common.retry', 'Retry')}
+                    </button>
+                  )}
+                </p>
+              )}
+              {(projection?.status === 'partial' || projection?.status === 'unresolved') && (
+                <p className="mb-4 text-sm text-charcoal-600">
+                  {t(
+                    'recipes.projectionReview',
+                    'Some amounts need review. Consult the original recipe.'
+                  )}
+                </p>
+              )}
               <div className="flex flex-wrap gap-2 mb-8">
-                {ingredients.map((ing, i) => (
+                {displayedIngredients.map((ing, i) => (
                   <span
                     key={i}
                     className="text-sm font-medium bg-charcoal/10 px-3 py-1.5 rounded-xl text-charcoal"
@@ -174,7 +255,7 @@ export function TonightMenuCard({
                     {ing}
                   </span>
                 ))}
-                {ingredients.length === 0 && (
+                {displayedIngredients.length === 0 && (!datedReading || projection) && (
                   <span className="text-sm text-charcoal-600 italic">
                     {t('home.noIngredients', 'No ingredients listed')}
                   </span>

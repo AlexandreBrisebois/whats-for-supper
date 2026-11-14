@@ -1,0 +1,197 @@
+import { describe, expect, it } from 'vitest';
+import { createGroceryRowState } from '../../e2e/grocery-row-state';
+import { scalarQuantity } from './grocery-fixtures';
+
+const range = (min: number, max: number) => ({
+  kind: 'range',
+  min: { n: String(min), d: '1' },
+  max: { n: String(max), d: '1' },
+});
+const week = '2026-10-05';
+function fixture() {
+  const state = createGroceryRowState();
+  const schedule = (amount: unknown) => ({
+    weekStartDate: week,
+    groceryItems: [
+      {
+        displayName: 'pasta',
+        normalizedKey: 'pasta',
+        quantity: amount,
+        quantityComplete: true,
+        unitText: 'g',
+        recipeIds: [],
+      },
+    ],
+  });
+  const project = (amount: unknown) => state.decorate(schedule(amount));
+  let sequence = 0;
+  const mutationId = () => `05000000-0000-4000-8000-${String(++sequence).padStart(12, '0')}`;
+  const check = (value: boolean) => {
+    const row = state.snapshot(week).groceryItems[0];
+    const body = {
+      rowId: row.rowId,
+      expectedRowVersion: row.rowVersion,
+      weekStartDate: week,
+      checked: value,
+      clientMutationId: mutationId(),
+    };
+    expect(state.mutate(week, 'item', body).status).toBe(200);
+    return body;
+  };
+  return {
+    state,
+    project,
+    check,
+    mutationId,
+    checked: () => Object.values(state.snapshot(week).groceryState)[0],
+  };
+}
+
+describe('stateful grocery mock retained demand', () => {
+  it('preserves the snapshot when the same source rows are decorated repeatedly', () => {
+    const state = createGroceryRowState();
+    const sourceRows = [
+      {
+        displayName: 'pasta',
+        normalizedKey: 'pasta',
+        quantity: 600,
+        quantityComplete: true,
+        unitText: 'g',
+        recipeIds: [],
+      },
+    ];
+    const decorate = () => state.decorate({ weekStartDate: week, groceryItems: sourceRows });
+    decorate();
+    const before = state.snapshot(week);
+    decorate();
+    decorate();
+    expect(state.snapshot(week)).toEqual(before);
+  });
+
+  it.each(['unchanged', 'true', 'bulk', 'replay'])(
+    'keeps the original range baseline across %s and cumulative overlap',
+    (action) => {
+      const f = fixture();
+      f.project(range(2, 3));
+      const receipt = f.check(true);
+      f.project(range(3, 4));
+      expect(f.checked()).toBe(true);
+      if (action === 'true') f.check(true);
+      if (action === 'replay') expect(f.state.mutate(week, 'item', receipt).status).toBe(200);
+      if (action === 'bulk') {
+        const snapshot = f.state.snapshot(week);
+        expect(
+          f.state.mutate(week, 'bulk', {
+            weekStartDate: week,
+            expectedListVersion: snapshot.groceryListVersion,
+            checks: snapshot.groceryState,
+            clientMutationId: f.mutationId(),
+          }).status
+        ).toBe(200);
+      }
+      f.project(range(4, 5));
+      expect(f.checked()).toBe(false);
+      f.check(true);
+      f.project(range(4, 5));
+      expect(f.checked()).toBe(true);
+      f.project(range(6, 7));
+      expect(f.checked()).toBe(false);
+    }
+  );
+  it('never promotes an unknown baseline to a known acknowledgement', () => {
+    const f = fixture();
+    f.project(null);
+    f.check(true);
+    f.project(scalarQuantity(5));
+    f.check(true);
+    f.project(scalarQuantity(10));
+    expect(f.checked()).toBe(true);
+    f.check(false);
+    f.check(true);
+    f.project(scalarQuantity(11));
+    expect(f.checked()).toBe(false);
+  });
+});
+
+it('updates server presentation without changing demand versions, checks or receipt history', () => {
+  const f = fixture();
+  f.project(scalarQuantity(50));
+  const receipt = f.check(true);
+  const original = f.state.mutate(week, 'item', receipt);
+  const before = f.state.snapshot(week);
+  f.state.decorate({
+    weekStartDate: week,
+    groceryItems: before.groceryItems.map((row) => ({
+      ...row,
+      displayLabels: { en: 'Onion', fr: 'Oignon' },
+      labelStatus: 'resolved',
+    })),
+    presentationVersion: '8',
+    presentationEpoch: before.presentationEpoch,
+  });
+  const after = f.state.snapshot(week);
+  expect(after.groceryListVersion).toBe(before.groceryListVersion);
+  expect(after.groceryState).toEqual(before.groceryState);
+  expect(after.groceryItems[0].rowVersion).toBe(before.groceryItems[0].rowVersion);
+  expect(after.presentationVersion).toBe('8');
+  expect(after.groceryItems[0].displayLabels.fr).toBe('Oignon');
+  const replay = f.state.mutate(week, 'item', receipt) as any;
+  expect(replay.status).toBe(200);
+  expect(replay.json.listVersion).toBe((original as any).json.listVersion);
+  expect(replay.json.presentationVersion).toBe('8');
+  expect(replay.json.rows[0].displayLabels.fr).toBe('Oignon');
+  expect((original as any).json.presentationVersion).toBe('0');
+});
+
+it.each(['item', 'bulk'] as const)(
+  'rejects a pre-generation %s request before retained receipt replay or a fresh write',
+  (kind) => {
+    const f = fixture();
+    f.project(scalarQuantity(50));
+    const before = f.state.snapshot(week);
+    const row = before.groceryItems[0];
+    const body =
+      kind === 'item'
+        ? {
+            rowId: row.rowId,
+            expectedRowVersion: row.rowVersion,
+            weekStartDate: week,
+            checked: true,
+            clientMutationId: f.mutationId(),
+            expectedPresentationEpoch: before.presentationEpoch,
+          }
+        : {
+            weekStartDate: week,
+            expectedListVersion: before.groceryListVersion,
+            checks: { [row.rowId]: true },
+            clientMutationId: f.mutationId(),
+            expectedPresentationEpoch: before.presentationEpoch,
+          };
+    expect(f.state.mutate(week, kind, body).status).toBe(200);
+    const current = f.state.snapshot(week);
+    const epoch = '09000000-0000-4000-8000-000000000005';
+    f.state.decorate({ ...current, presentationEpoch: epoch });
+    const restored = f.state.snapshot(week);
+    expect(f.state.mutate(week, kind, body)).toMatchObject({
+      status: 409,
+      json: { code: 'epoch_conflict' },
+    });
+    const fresh = {
+      ...body,
+      clientMutationId: f.mutationId(),
+      expectedRowVersion: restored.groceryItems[0].rowVersion,
+      expectedListVersion: restored.groceryListVersion,
+    };
+    expect(f.state.mutate(week, kind, fresh)).toMatchObject({
+      status: 409,
+      json: { code: 'epoch_conflict' },
+    });
+    expect(f.state.mutate(week, kind, { ...fresh, expectedPresentationEpoch: null })).toMatchObject(
+      { status: 409, json: { code: 'epoch_conflict' } }
+    );
+    expect(f.state.snapshot(week)).toEqual(restored);
+    expect(f.state.mutate(week, kind, { ...fresh, expectedPresentationEpoch: epoch }).status).toBe(
+      200
+    );
+  }
+);

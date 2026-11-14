@@ -185,22 +185,22 @@ For legacy swap and push intents, same-week saved movement SHALL attempt a sourc
 
 ### Requirement: Request Plan later from the selected Planner week
 
-Planner's recipe-backed Plan later action SHALL close its pivot and submit explicit source index, target offset selected offset plus one, target index zero and push intent. Completion SHALL initialize the selected week and sync Today for a week-zero source dated deployment-local today. Request failure SHALL be logged without a dedicated Plan later error toast.
+Planner's recipe-backed Next Week action SHALL defer the exact dated recipe starting at the captured source week plus one, continuing into later weeks when full without shifting other plans. Completion SHALL confirm the actual destination and refresh the selected source week and Today when affected. Failure or an uncertain outcome SHALL retain actionable feedback without claiming movement or blindly replaying it.
 
 #### Scenario: Committed Plan later has incomplete refresh
-- **WHEN** the response confirms moved=true and refreshComplete=false
+- **WHEN** the move is confirmed but its separate view refresh is incomplete
 - **THEN** Planner SHALL explain that the meal moved and some updates could not refresh, with guidance to refresh the plan rather than repeat movement
 
 #### Scenario: Plan later for next selected week
 - **WHEN** a person chooses Save for Next Week for a recipe in selected offset one
-- **THEN** movement targets offset two starting at Monday rather than deployment-current next week
+- **THEN** deferral starts at offset two Monday rather than deployment-current next week and can continue into later weeks
 
 #### Scenario: Movement request resolves or rejects
-- **WHEN** the Plan later request resolves, including a supported no-op, or rejects
-- **THEN** resolution proceeds to initialization while rejection is logged without success confirmation of relocation
+- **WHEN** the Plan later request returns a confirmed destination, rejects or has an uncertain outcome
+- **THEN** confirmed destination is reported and the source week refreshed; rejection or uncertainty shows recovery feedback without confirming relocation or repeating an uncertain write
 
 #### Scenario: Committed move has incomplete refresh
-- **WHEN** Plan later returns moved=true and refreshComplete=false
+- **WHEN** a committed Next Week result is followed by incomplete refresh
 - **THEN** Planner rereads the selected week and shows a warning that the meal moved and the plan should be refreshed, without resubmitting movement
 
 ### Requirement: Defer the exact dated recipe through a protected operation
@@ -281,18 +281,18 @@ Planner's recipe-backed pivot SHALL offer Remove recipe. Activation SHALL close 
 
 ### Requirement: Apply the shared date-delete lifecycle to recipe-backed entries
 
-Recipe-backed removal SHALL use the same protected date-only DELETE and persistence-before-follow-up lifecycle as the accepted Delete the recipe-free entry before clear follow-up work requirement. It SHALL remove the selected calendar entry rather than delete the recipe. It SHALL add no expected-recipe, day-status or week-status precondition. Removing a Cooked entry SHALL recalculate that recipe's last-cooked value from remaining Cooked calendar dates before refresh work.
+Recipe-backed removal SHALL follow Delete the recipe-free entry before clear follow-up work: protected date-only DELETE, persistence before follow-up, and recipe retention. Unguarded removal SHALL add no expected-recipe, day-status or week-status precondition; guarded callers SHALL follow conditional removal. Cooked removal SHALL recalculate last-cooked from remaining Cooked entries before refresh, using explicit actual preparation time when present, otherwise the legacy calendar date.
 
 #### Scenario: Recipe-backed date exists
 - **WHEN** the selected date contains a recipe-backed entry and deletion persistence succeeds
 - **THEN** that entry is removed, while the recipe remains available and the accepted recompute/publication sequence follows
 
 #### Scenario: No calendar entry exists
-- **WHEN** the date is already empty
+- **WHEN** the date is already empty and no expected-plan token is supplied
 - **THEN** deletion returns 204 without invoking the existing-entry follow-up sequence
 
 #### Scenario: Correct a cooked meal with earlier history
-- **WHEN** the latest Cooked assignment is removed and an earlier Cooked calendar entry remains for that recipe
+- **WHEN** the latest Cooked assignment is removed and an earlier legacy Cooked calendar entry remains for that recipe
 - **THEN** its last-cooked value becomes that earlier calendar date at midnight UTC
 - **AND** assigning and marking the actual replacement Cooked uses the existing completion operation independently
 
@@ -303,6 +303,10 @@ Recipe-backed removal SHALL use the same protected date-only DELETE and persiste
 #### Scenario: Remove an ordinary planned entry
 - **WHEN** a Planned entry is removed
 - **THEN** removal does not change its recipe's last-cooked value
+
+#### Scenario: Remaining occurrence was prepared ahead
+- **WHEN** removal leaves Friday lasagna that was explicitly prepared Tuesday
+- **THEN** recalculation uses Tuesday’s stored preparation time for that occurrence, not Friday’s planned date
 
 ### Requirement: Activate Planner dragging after a deliberate hold
 
@@ -561,3 +565,46 @@ An enabled Planner drag grip SHALL maintain at least 3:1 contrast against its ac
 - **WHEN** a recipe is dragged between past, today and future slots
 - **THEN** the existing source marker, destination date highlight/arrow and move/swap overlay remain distinguishable
 - **AND** dates and temporal emphasis stay fixed without changing preview, cancellation, persistence or reconciliation behavior
+### Requirement: Identify the original dated meal in disposition choices
+
+Replacement choices SHALL name the original recipe and source date. Following-day movement SHALL show the actual next date and explain that consecutive occupied plans shift forward. Next Week SHALL describe first availability starting the following week. Removal SHALL say it removes that dated plan while keeping the recipe in the library. These choices SHALL NOT claim ingredients are already owned.
+
+#### Scenario: Change a future Wednesday meal
+- **WHEN** a person replaces a meal planned for a future Wednesday
+- **THEN** the choice names that recipe and Wednesday, offers Thursday's actual date and does not call the source Tonight
+
+### Requirement: Use consistent Next Week disposition across planning callers
+
+Home, Planner and recipe-selection Next Week actions SHALL use exact-source deferral beginning the captured source week plus one. They SHALL use its confirmed scheduled date, preserve other dated plans and explain spillover beyond a full requested week. A no-op or missing destination SHALL NOT permit replacement assignment or success feedback.
+
+#### Scenario: Next two weeks are full
+- **WHEN** a replacement's Next Week disposition finds both the following and subsequent week full
+- **THEN** the original moves to the next available date after those weeks, other plans stay in place and confirmation identifies the actual date and spillover
+
+#### Scenario: Movement has no confirmed destination
+- **WHEN** disposition returns no movement or no usable destination
+- **THEN** replacement is not submitted and the selected recipe is retained with actionable feedback
+
+### Requirement: Expose a removal precondition for a dated supper plan
+
+Successful schedule reads SHALL expose a nullable opaque removalToken for each saved supper entry; empty supper dates SHALL have none. The token SHALL identify that entry and its persisted plan state without exposing that state in plaintext. A token from a different entry or changed state SHALL NOT authorise removal of the current plan.
+
+#### Scenario: Another household member changes the day
+- **WHEN** a read captures a removalToken and another member changes that dated plan
+- **THEN** the previous token is stale even if the date is unchanged
+
+### Requirement: Remove only the expected dated plan when guarded
+
+Date deletion SHALL accept optional expectedPlanToken, rejecting malformed supplied tokens with 400. Comparison and removal SHALL be atomic: only a matching current supper entry can be removed. A missing or different entry SHALL return 409 without calendar, grocery or publication mutation. A match SHALL follow existing persistence and follow-up semantics. Omitted tokens SHALL preserve the legacy operation.
+
+#### Scenario: Stale removal cannot delete a new plan
+- **WHEN** guarded deletion uses a token from Lasagna but the date now holds Curry or a changed non-cooking plan
+- **THEN** it returns 409 with no mutation and recovery asks the person to review the updated plan
+
+#### Scenario: Guarded non-cooking replacement
+- **WHEN** a person explicitly confirms replacing Take Out and its saved token still matches
+- **THEN** the confirmed plan can be removed and guarded recipe assignment can follow
+
+#### Scenario: Legacy deletion and later follow-up failure
+- **WHEN** deletion omits a token, or a matching guarded deletion commits before a follow-up fails
+- **THEN** omitted-token behavior remains compatible, and the latter failure does not imply restoration or authorise blind deletion replay

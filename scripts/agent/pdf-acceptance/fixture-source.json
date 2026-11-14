@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "kind": "pdf",
+  "operationId": "00000000-0000-4000-8000-000000000001",
+  "marker": "dvpackage-00000001",
+  "candidate": null,
+  "candidateApiImageId": null,
+  "document": {
+    "filename": "canonical-pasta-bilingual.pdf",
+    "multipartField": "file",
+    "contentType": "application/pdf",
+    "bytes": 1330,
+    "sha256": "20808885823da6870ff6dfd8b7408e35d0fc0de766491bdc0344b204df48916d"
+  },
+  "captureMetadata": {
+    "rating": "2",
+    "notes": "DV PDF fixture dvpackage-00000001"
+  },
+  "ingredientNames": {
+    "pasta": "pasta",
+    "sauce": "sauce",
+    "salt": "salt to taste"
+  },
+  "recipe": {
+    "name": "Pasta for four",
+    "recipeYield": "4 servings",
+    "recipeIngredient": [
+      "200 g pasta",
+      "100 ml sauce",
+      "salt to taste"
+    ],
+    "supply": [
+      {
+        "name": "pasta",
+        "requiredQuantity": {
+          "value": 200,
+          "unitText": "g"
+        }
+      },
+      {
+        "name": "sauce",
+        "requiredQuantity": {
+          "value": 100,
+          "unitText": "ml"
+        }
+      }
+    ],
+    "recipeInstructions": [
+      {
+        "text": "Cook the pasta."
+      },
+      {
+        "text": "Serve with the sauce."
+      }
+    ]
+  },
+  "description": "Pasta is cooked and served with sauce. Salt is added to taste.",
+  "recipeCategory": {
+    "cuisineType": "Italian",
+    "mealTypes": [
+      "Supper"
+    ],
+    "primaryMealType": "Supper",
+    "isVegetarian": true
+  },
+  "renderAdmissionFile": "pdf-render-admission.json",
+  "selectedCaptureCount": 1,
+  "proposedFixtureWeeks": [
+    "2027-02-08",
+    "2027-02-15"
+  ],
+  "categoryAdmission": null,
+  "status": "unadmitted-no-runtime"
+}

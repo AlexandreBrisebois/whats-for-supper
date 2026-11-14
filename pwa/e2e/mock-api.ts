@@ -1,4 +1,10 @@
+import { canonicalIngredientLines, cookingProjection } from './cooking-step-projection';
+import { applyCanonicalEditorPatch } from './canonical-editor';
+import { declaredPackageGroceryRows } from './declared-package-grocery';
+import { canonicalRecipePatchIsValid } from './canonical-content-input';
+import { createGroceryRowState } from './grocery-row-state';
 import { type Page, type Route } from '@playwright/test';
+import { createHash, randomUUID } from 'node:crypto';
 import type { CalendarContext } from '../src/lib/deployment-calendar';
 import {
   type RecipeDto,
@@ -255,10 +261,30 @@ export async function setupCommonRoutes(
   page: Page,
   calendarContext?: CalendarContext,
   recoveryOptions: {
+    canonicalEditor?: RecipeDto;
     busy?: boolean;
+    recoveryDestination?: () => {
+      version: number;
+      revision: string;
+      generation: string | null;
+      membershipSha256: string | null;
+      overridesSha256: string;
+      historySha256: string;
+      documents: Array<{ revision: string; sha256: string }>;
+    };
+    recoveryRequiresExpectedDestinationRevision?: boolean;
+    recipePublicationPending?: () => boolean;
+    schedulePostCommitFailure?: (
+      operation: 'assign' | 'defer' | 'move' | 'remove' | 'prepare'
+    ) => boolean;
+    scheduleRemovalReplyLost?: () => boolean;
+    schedulePreparationReplyLost?: () => boolean;
+    supperServings?: Omit<Parameters<typeof mockSupperServings>[2], 'readFamilyCount'>;
     demoMode?: boolean;
     demoManagementTaskIds?: string[];
     demoGeneration?: () => string;
+    /** Complete this finite fixture after one snapshot; unrelated reconnects are not under test. */
+    sseMode?: 'connected-once';
   } = {}
 ) {
   let gotoItems: any[] = [];
@@ -286,12 +312,38 @@ export async function setupCommonRoutes(
     });
   const scheduleEntries = new Map<
     string,
-    { recipe: ScheduleRecipeDto | null; status: number; nonCooking?: any }
+    { recipe: ScheduleRecipeDto | null; status: number; nonCooking?: any; preparation?: any }
   >();
+  const entryIds = new WeakMap<object, number>();
+  let entrySequence = 0;
+  const removalToken = (date: string, entry: object) => {
+    if (!entryIds.has(entry)) entryIds.set(entry, ++entrySequence);
+    return (
+      'v1.' +
+      createHash('sha256')
+        .update(JSON.stringify({ date, id: entryIds.get(entry), entry }))
+        .digest('base64url')
+    );
+  };
   const weekStatuses = new Map<string, number>();
   let roundSequence = 1;
   let historyGeneration = 1;
   const recipeUpdates = new Map<string, Partial<RecipeDto>>();
+  const importedShares = new Map<string, RecipeShareBundleDto>();
+  if (recoveryOptions.canonicalEditor?.id)
+    recipeUpdates.set(
+      String(recoveryOptions.canonicalEditor.id),
+      structuredClone(recoveryOptions.canonicalEditor)
+    );
+  const knownServingRecipe = recoveryOptions.supperServings?.knownRecipe;
+  if (knownServingRecipe)
+    recipeUpdates.set(knownServingRecipe.id, {
+      ...recipeUpdates.get(knownServingRecipe.id),
+      servings: knownServingRecipe.basis,
+      ingredients: knownServingRecipe.source?.ingredients ?? [
+        `${knownServingRecipe.quantity} ${knownServingRecipe.unit} ${knownServingRecipe.ingredient}`,
+      ],
+    });
   let activeRoundId: string = MOCK_IDS.VOTING_ROUND;
   let activeRoundWeek: string | null = null;
   const roundIds = new Map<string, string>();
@@ -317,6 +369,7 @@ export async function setupCommonRoutes(
     removed?: boolean;
   };
   const groceryChecks = new Map<string, Record<string, boolean>>();
+  const groceryRows = createGroceryRowState(groceryChecks);
   const groceryExtras = new Map<string, MockExtra>();
   const extraSubmissions = new Map<string, { id: string; name: string; week: string }>();
   const extraHistory: string[] = [];
@@ -334,7 +387,8 @@ export async function setupCommonRoutes(
   const addDays = (date: string, days: number) =>
     toDateStr(new Date(Date.parse(`${date}T00:00:00Z`) + days * 86400000));
   const makeSchedule = (weekOffset: number, reference: string) => {
-    const schedule = builders.scheduleDays(weekOffset, {
+    const schedule: ReturnType<typeof builders.scheduleDays> &
+      Pick<ScheduleDays, 'groceryRefresh' | 'groceryItems'> = builders.scheduleDays(weekOffset, {
       ...scheduleCalendar,
       referenceWeekStartDate: reference,
     });
@@ -347,8 +401,25 @@ export async function setupCommonRoutes(
       (!activeRoundWeek || activeRoundWeek === schedule.weekStartDate ? activeRoundId : null);
     for (const day of schedule.days) {
       const entry = scheduleEntries.get(day.date);
-      if (entry) Object.assign(day, entry);
+      if (entry)
+        Object.assign(day, entry, {
+          preparation: entry.preparation ?? null,
+          removalToken: removalToken(day.date, entry),
+          occurrenceId: `${MOCK_IDS.SUPPER_OCCURRENCE.slice(0, -6)}${String(entryIds.get(entry)).padStart(6, '0')}`,
+        });
     }
+    schedule.groceryItems = builders
+      .groceryItems([...new Set(schedule.days.flatMap((day) => day.recipe?.ingredients ?? []))])
+      .map((row) => ({
+        ...row,
+        recipeIds: [
+          ...new Set(
+            schedule.days.flatMap(({ recipe }) =>
+              recipe?.id && recipe.ingredients?.includes(row.displayName) ? [recipe.id] : []
+            )
+          ),
+        ],
+      }));
     const selectedMonday = addDays(reference, weekOffset * 7);
     const currentMonday = scheduleCalendar.currentWeekStartDate;
     (schedule as typeof schedule & { groceryExtras: MockExtra[] }).groceryExtras = [
@@ -446,6 +517,15 @@ export async function setupCommonRoutes(
       smartDefaults,
     };
   };
+  const droppedNotification = (error: unknown) => {
+    const message =
+      error instanceof Error ? error.message.split('\n', 1)[0].replace(/\.$/, '') : '';
+    return (
+      message ===
+        'page.evaluate: Execution context was destroyed, most likely because of a navigation' ||
+      message === 'page.evaluate: Target page, context or browser has been closed'
+    );
+  };
   const emitSession = async () => {
     sessionRevision++;
     const session = readSession();
@@ -461,28 +541,24 @@ export async function setupCommonRoutes(
     } catch (error) {
       // Navigation may drop a post-commit notification; the next session GET
       // still observes the saved state and revision, as on the real stream.
-      const message =
-        error instanceof Error ? error.message.split('\n', 1)[0].replace(/\.$/, '') : '';
-      if (
-        message !==
-          'page.evaluate: Execution context was destroyed, most likely because of a navigation' &&
-        message !== 'page.evaluate: Target page, context or browser has been closed'
-      )
-        throw error;
+      if (!droppedNotification(error)) throw error;
     }
   };
   const emitSchedule = async (weekOffset: number, reference: string) => {
-    await page.evaluate(
-      (schedule) => {
+    const schedule = makeSchedule(weekOffset, reference);
+    servingMock.decorateSchedule(schedule);
+    try {
+      await page.evaluate((schedule) => {
         const source = (window as any).__sseSource as EventSource | undefined;
         source?.dispatchEvent(
           new MessageEvent('week_updated', {
             data: JSON.stringify({ type: 'week_updated', schedule }),
           })
         );
-      },
-      makeSchedule(weekOffset, reference)
-    );
+      }, schedule);
+    } catch (error) {
+      if (!droppedNotification(error)) throw error;
+    }
     if (!activeRoundWeek || activeRoundWeek === addDays(reference, weekOffset * 7))
       await emitSession();
   };
@@ -505,7 +581,8 @@ export async function setupCommonRoutes(
       { week: weekStartDate, extras: visible }
     );
   };
-  let activeImportIssue: RecipeImportIssueDto | null = null;
+  let activeImportIssue: RecipeImportIssueDto | null =
+    recoveryOptions.canonicalEditor?.importIssue ?? null;
   let activeImportId: string | null = null;
   let importStatusReads = 0;
 
@@ -530,6 +607,11 @@ export async function setupCommonRoutes(
     } else if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON() as { name: string };
       const trimmed = (body.name || '').trim();
+      if (!trimmed)
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'Family member name must not be empty.' },
+        });
       const normalized = trimmed.toLowerCase();
       const duplicate = familyMembers.some(
         (m) => (m.name ?? '').trim().toLowerCase() === normalized
@@ -555,6 +637,7 @@ export async function setupCommonRoutes(
         preferredLanguage: null,
       });
       familyMembers.push(member);
+      await servingMock.membershipChanged();
       await fulfill(route, {
         status: 201,
         contentType: 'application/json',
@@ -625,6 +708,11 @@ export async function setupCommonRoutes(
         body: JSON.stringify({ data: builders.familyMember() }),
       });
     } else if (route.request().method() === 'DELETE') {
+      const id = new URL(route.request().url()).pathname.split('/')[3];
+      const index = familyMembers.findIndex((member) => member.id === id);
+      if (index < 0) return fulfill(route, { status: 404 });
+      familyMembers.splice(index, 1);
+      await servingMock.membershipChanged();
       await fulfill(route, { status: 204 });
     } else if (route.request().method() === 'GET') {
       await fulfill(route, {
@@ -674,7 +762,27 @@ export async function setupCommonRoutes(
     await emitSession();
   });
 
-  // GET /api/schedule (default empty week) — predicate used to match URLs with query strings (e.g. ?weekOffset=0)
+  const readFamilyCount = () => familyMembers.length;
+  const servingMock = await mockSupperServings(page, makeSchedule, {
+    rowState: groceryRows,
+    ...recoveryOptions.supperServings,
+    get delayed() {
+      return recoveryOptions.supperServings?.delayed;
+    },
+    get failRefresh() {
+      return recoveryOptions.supperServings?.failRefresh;
+    },
+    readFamilyCount,
+    readRecipe: (id) => builders.recipe({ id, ...recipeUpdates.get(id) }),
+    checkState: {
+      read: (week) => ({ ...(groceryChecks.get(week) ?? {}) }),
+      write: (week, checks) => {
+        groceryChecks.set(week, checks);
+      },
+    },
+  });
+
+  // GET /api/schedule (persisted mock assignments over an empty week) — predicate used to match URLs with query strings (e.g. ?weekOffset=0)
   await page.route(
     (url) => url.pathname === '/api/schedule',
     async (route) => {
@@ -688,6 +796,7 @@ export async function setupCommonRoutes(
           });
         const weekOffset = Number(url.searchParams.get('weekOffset') ?? 0);
         const schedule = makeSchedule(weekOffset, reference);
+        servingMock.decorateSchedule(schedule);
         await fulfill(route, { json: { data: schedule } });
       } else {
         await route.continue();
@@ -764,30 +873,43 @@ export async function setupCommonRoutes(
         json: { message: 'Search changed. Restart from the first page.' },
       });
     const membership = new Set(gotoItems.map((item) => item.recipeId));
-    const matches = browseRecipes.filter(
-      (recipe) =>
-        recipe.isReady &&
-        !recipe.deletedAt &&
-        (filters.gotoOnly !== true || membership.has(recipe.id)) &&
-        (filters.discoverableOnly !== true || recipe.isDiscoverable) &&
-        (filters.familyFavorite !== true ||
-          ((recipe.rating ?? 0) >= 2 && (recipe.isDiscoverable || recipe.notes))) &&
-        (!request.query?.trim() ||
-          recipe.name?.toLowerCase().includes(request.query.trim().toLowerCase())) &&
-        recipe.id !== request.similarToRecipeId
-    );
+    const reviewOnly = filters.reportedOnly === true || filters.readyToReviewOnly === true;
+    const matches = browseRecipes
+      .map((recipe) => ({ ...recipe, ...recipeUpdates.get(recipe.id!) }))
+      .filter(
+        (recipe) =>
+          (recipe.isReady || (reviewOnly && !request.query?.trim() && recipe.importIssue)) &&
+          (filters.readyToReviewOnly === true
+            ? recipe.importIssue?.status === 'readyToReview'
+            : filters.reportedOnly !== true || !!recipe.importIssue) &&
+          !recipe.deletedAt &&
+          (filters.gotoOnly !== true || membership.has(recipe.id)) &&
+          (filters.discoverableOnly !== true || recipe.isDiscoverable) &&
+          (filters.familyFavorite !== true ||
+            ((recipe.rating ?? 0) >= 2 && (recipe.isDiscoverable || recipe.notes))) &&
+          (!request.query?.trim() ||
+            recipe.name?.toLowerCase().includes(request.query.trim().toLowerCase())) &&
+          recipe.id !== request.similarToRecipeId
+      );
     const byId = new Map(matches.map((recipe) => [recipe.id!, recipe]));
     const ordered = previous
       ? previous.ids.filter((id) => byId.has(id))
       : matches.map((recipe) => recipe.id!);
-    const topId = previous ? undefined : ordered.shift();
+    const topId =
+      previous || reviewOnly ? undefined : ordered.find((id) => !byId.get(id)?.importIssue);
+    if (topId) ordered.splice(ordered.indexOf(topId), 1);
     const limit = Math.max(1, Math.min(50, request.limit ?? 12));
     const pageIds = ordered.slice(0, limit);
     const remaining = ordered.slice(limit);
     const nextCursor = remaining.length ? `mock-search-${++searchSequence}` : null;
     if (nextCursor)
       searchContinuations.set(nextCursor, { fingerprint, ids: remaining, filters, searchMode });
-    const result = (id: string) => ({ ...byId.get(id)!, isPromotionEligible: false, reasons: [] });
+    const result = (id: string) => ({
+      ...byId.get(id)!,
+      importIssueStatus: byId.get(id)?.importIssue?.status ?? null,
+      isPromotionEligible: false,
+      reasons: [],
+    });
     await fulfill(route, {
       json: {
         data: {
@@ -890,6 +1012,14 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/{id}/hero
   await page.route('**/api/recipes/*/hero', async (route) => {
+    const id = new URL(route.request().url()).pathname.split('/')[3];
+    const hero = importedShares.get(id)?.hero;
+    if (route.request().method() === 'GET' && hero?.base64)
+      return fulfill(route, {
+        status: 200,
+        contentType: hero.mimeType ?? 'image/jpeg',
+        body: Buffer.from(hero.base64, 'base64'),
+      });
     await fulfill(route, { status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
 
@@ -909,10 +1039,32 @@ export async function setupCommonRoutes(
   // POST /api/recipes/{id}/originals
   await page.route('**/api/recipes/*/originals', async (route) => {
     if (route.request().method() === 'POST') {
+      const id = new URL(route.request().url()).pathname.split('/')[3];
+      const recipe = builders.recipe({ id, ...recipeUpdates.get(id) });
+      if (recoveryOptions.recipePublicationPending?.() || recipe.contentSchemaVersion === 2)
+        return fulfill(route, {
+          status: 409,
+          json: {
+            code: 'recipe_content_conflict',
+            currentContentRevision: recipe.contentRevision ?? 'legacy.mock-media',
+            upgradeRequired: false,
+          },
+        });
+      const index = recipe.imageCount ?? 0;
+      if (index >= 20)
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'A maximum of 20 images may be uploaded per recipe.' },
+        });
+      recipeUpdates.set(id, {
+        ...recipeUpdates.get(id),
+        imageCount: index + 1,
+        images: [...(recipe.images ?? []), index],
+      });
       await fulfill(route, {
         status: 201,
         contentType: 'application/json',
-        body: JSON.stringify({ id: MOCK_IDS.PHOTO_NEW }),
+        body: JSON.stringify({ data: { id: index } }),
       });
     } else {
       await route.fallback();
@@ -940,14 +1092,74 @@ export async function setupCommonRoutes(
           .request()
           .url()
           .match(/\/recipes\/([0-9a-f-]+)\/share/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
+      const recipe = builders.recipe({ id, ...recipeUpdates.get(id) });
+      if (recoveryOptions.recipePublicationPending?.())
+        return fulfill(route, {
+          status: 409,
+          json: {
+            code: 'recipe_content_conflict',
+            currentContentRevision: recipe.contentRevision ?? 'legacy.mock-media',
+            upgradeRequired: false,
+          },
+        });
+      // Share only text from the same current DTO returned by detail. Explicitly
+      // project section/step fields so private IDs and provenance cannot escape.
+      const instructions: { name: string | null; itemListElement: { text: string }[] }[] = [];
+      let loose: { text: string }[] = [];
+      const flush = () => {
+        if (!loose.length) return;
+        instructions.push({
+          name: instructions.length ? 'Additional Steps' : 'Instructions',
+          itemListElement: loose,
+        });
+        loose = [];
+      };
+      if (recipe.contentSchemaVersion === 2) {
+        for (const section of recipe.instructionSections ?? [])
+          instructions.push({
+            name: section.name ?? null,
+            itemListElement: (section.steps ?? []).map((step) => ({ text: step.text ?? '' })),
+          });
+      } else if (Array.isArray(recipe.recipeInstructions)) {
+        for (const value of recipe.recipeInstructions as unknown as (
+          | string
+          | { '@type'?: string; name?: string; text?: string; itemListElement?: { text: string }[] }
+        )[]) {
+          if (typeof value === 'string') loose.push({ text: value });
+          else if (value['@type'] === 'HowToSection') {
+            flush();
+            instructions.push({
+              name: value.name ?? null,
+              itemListElement: (value.itemListElement ?? []).map((step) => ({ text: step.text })),
+            });
+          } else if (value.text ?? value.name) loose.push({ text: value.text ?? value.name! });
+        }
+        flush();
+      }
       await fulfill(route, {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: builders.recipeShareBundle({
+            ...(importedShares.has(id)
+              ? { hero: importedShares.get(id)!.hero, originals: importedShares.get(id)!.originals }
+              : {}),
             recipe: {
               ...builders.recipeShareBundle().recipe,
-              name: REALISTIC_RECIPES[id]?.name ?? 'Mock Recipe',
+              name: recipe.name ?? '',
+              description: recipe.description,
+              ingredients: recipe.ingredients ?? [],
+              instructions,
+              sourceUrl: recipe.sourceUrl ?? null,
+              category: recipe.category ?? null,
+              cuisineType: recipe.cuisineType ?? null,
+              mealTypes: recipe.mealTypes ?? null,
+              isSynthesized:
+                importedShares.get(id)?.recipe?.isSynthesized ??
+                recipe.sourceType === RecipeDto_sourceTypeObject.Synthesized,
+              servings: null,
+              notes: null,
+              rating: null,
             },
           }),
         }),
@@ -959,6 +1171,14 @@ export async function setupCommonRoutes(
 
   // GET /api/recipes/{recipeId}/original/{photoIndex}
   await page.route('**/api/recipes/*/original/*', async (route) => {
+    const [, , , id, , index] = new URL(route.request().url()).pathname.split('/');
+    const original = importedShares.get(id)?.originals?.[Number(index)];
+    if (route.request().method() === 'GET' && original?.base64)
+      return fulfill(route, {
+        status: 200,
+        contentType: original.mimeType ?? 'image/jpeg',
+        body: Buffer.from(original.base64, 'base64'),
+      });
     await fulfill(route, { status: 200, contentType: 'image/jpeg', body: Buffer.from([]) });
   });
 
@@ -1061,6 +1281,17 @@ export async function setupCommonRoutes(
     }
   );
 
+  // Method-sensitive read-only dated projection. Default household remains unconfigured.
+  await page.route('**/api/recipes/*/ingredient-projection*', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return servingMock.ingredientProjection(route);
+  });
+
+  await page.route('**/api/recipes/*/ingredient-preview*', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return servingMock.ingredientPreview(route);
+  });
+
   // GET /api/recipes/{id}, PATCH /api/recipes/{id}, DELETE /api/recipes/{id}
   await page.route('**/api/recipes/*', async (route) => {
     if (!/^\/api\/recipes\/[0-9a-f-]{36}$/.test(new URL(route.request().url()).pathname))
@@ -1082,6 +1313,45 @@ export async function setupCommonRoutes(
       const id = new URL(route.request().url()).pathname.split('/')[3];
       const changes = route.request().postDataJSON() as Partial<RecipeDto>;
       if (
+        (Object.hasOwn(changes, 'ingredientLines') ||
+          Object.hasOwn(changes, 'instructionSections')) &&
+        !canonicalRecipePatchIsValid(changes)
+      )
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'Invalid canonical recipe content. No fields were saved.' },
+        });
+      if (
+        (recoveryOptions.canonicalEditor?.id === id || importedShares.has(id)) &&
+        [
+          'ingredientLines',
+          'instructionSections',
+          'servings',
+          'ingredients',
+          'recipeInstructions',
+        ].some((key) => Object.hasOwn(changes, key))
+      ) {
+        const current = builders.recipe({ id, ...recipeUpdates.get(id) });
+        const result = applyCanonicalEditorPatch(current, changes);
+        if (result.status === 200) {
+          recipeUpdates.set(id, result.body.recipe);
+          await servingMock.recipeChanged(id, result.body.recipe);
+        }
+        return fulfill(route, { status: result.status, json: result.body });
+      }
+      if (
+        Object.hasOwn(changes, 'ingredientLines') ||
+        Object.hasOwn(changes, 'instructionSections')
+      )
+        return fulfill(route, {
+          status: 409,
+          json: {
+            code: 'recipe_content_conflict',
+            currentContentRevision: 'legacy.mock-not-activated',
+            upgradeRequired: true,
+          },
+        });
+      if (
         Object.hasOwn(changes, 'servings') &&
         (typeof changes.servings !== 'number' ||
           !Number.isInteger(changes.servings) ||
@@ -1102,6 +1372,7 @@ export async function setupCommonRoutes(
           json: { message: 'Choose Supper in meal types before turning on Ask the Family.' },
         });
       recipeUpdates.set(id, { ...recipeUpdates.get(id), ...changes });
+      await servingMock.recipeChanged(id, changes);
       await fulfill(route, {
         status: 200,
         contentType: 'application/json',
@@ -1123,8 +1394,8 @@ export async function setupCommonRoutes(
           recipe: builders.recipe({
             id,
             createdAt: new Date(FIXED_E2E_TIMESTAMP),
-            importIssue: activeImportIssue,
             ...recipeUpdates.get(id),
+            importIssue: activeImportIssue,
           }),
           updatedAt: FIXED_E2E_TIMESTAMP,
         }),
@@ -1168,12 +1439,18 @@ export async function setupCommonRoutes(
       return;
     }
 
+    recipeUpdates.set(id, { ...recipeUpdates.get(id), importIssue: activeImportIssue });
+    const reportedRecipe = builders.recipe({
+      id,
+      ...recipeUpdates.get(id),
+      importIssue: activeImportIssue,
+    });
     await fulfill(route, {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         updatedAt: FIXED_E2E_TIMESTAMP,
-        recipe: builders.recipe({ id, importIssue: activeImportIssue }),
+        recipe: reportedRecipe,
         reimportStarted: activeImportId !== null,
         ...(activeImportId ? { importId: activeImportId } : {}),
         reimportLaunchFailed: false,
@@ -1218,23 +1495,101 @@ export async function setupCommonRoutes(
   await page.route('**/api/recipes/import-bundle', async (route) => {
     if (route.request().method() === 'POST') {
       const body = route.request().postDataJSON() as RecipeShareBundleDto;
+      const source = body?.recipe;
+      if (
+        body?.version !== '1.0' ||
+        body.info?.bundleSource !== 'wfs-share' ||
+        !source?.name?.trim() ||
+        !Array.isArray(source.ingredients) ||
+        !source.ingredients.length ||
+        !Array.isArray(source.instructions) ||
+        !source.instructions.length ||
+        !Array.isArray(body.originals) ||
+        body.originals.length > 5 ||
+        (source.servings != null &&
+          (!Number.isInteger(source.servings) ||
+            source.servings < 1 ||
+            source.servings > 2147483647))
+      )
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'Malformed or unsupported shared recipe bundle.' },
+        });
+      let id = body.info.recipeId ?? randomUUID();
+      while (recipeUpdates.has(id) || browseRecipes.some((recipe) => recipe.id === id))
+        id = randomUUID();
+      const imported = builders.recipe({
+        id,
+        name: source.name,
+        description: source.description ?? null,
+        notes: source.notes ?? null,
+        rating: source.rating ?? 0,
+        ingredients: [...source.ingredients],
+        servings: source.servings ?? null,
+        contentSchemaVersion: 2,
+        contentRevision: randomUUID(),
+        ingredientLines: source.ingredients.map((text) => ({
+          id: randomUUID(),
+          description: text,
+          amount: null,
+          amountText: null,
+          unit: null,
+          scaling: 'proportional',
+          package: null,
+          shopping: { name: text, foodId: null, mappingRevision: null },
+          provenance: {
+            origin: 'legacy_unknown',
+            sourceRef: null,
+            protectedFields: [
+              'description',
+              'amount',
+              'amountText',
+              'unit',
+              'scaling',
+              'package',
+              'shopping',
+            ],
+          },
+        })),
+        instructionSections: source.instructions.map((section) => ({
+          id: randomUUID(),
+          name: section.name ?? null,
+          steps: (section.itemListElement ?? []).map((step) => ({
+            id: randomUUID(),
+            text: step.text ?? '',
+            textRevision: randomUUID(),
+            bindings: [],
+          })),
+        })),
+        recipeInstructions: structuredClone(source.instructions) as any,
+        sourceUrl: source.sourceUrl ?? null,
+        sourceType: source.sourceUrl
+          ? RecipeDto_sourceTypeObject.Url
+          : body.originals.length
+            ? RecipeDto_sourceTypeObject.Photos
+            : RecipeDto_sourceTypeObject.Synthesized,
+        canReimport: Boolean(source.sourceUrl || body.originals.length),
+        imageUrl: '/api/recipes/' + id + '/hero',
+        imageCount: body.originals.length,
+        images: body.originals.map((_, index) => index),
+        finishedDishIndex: -1,
+        category: source.category ?? null,
+        cuisineType: source.cuisineType ?? null,
+        mealTypes: source.mealTypes ?? null,
+        totalTime:
+          source.totalTimeMinutes != null && source.totalTimeMinutes > 0
+            ? 'PT' + source.totalTimeMinutes + 'M'
+            : null,
+        isDiscoverable: false,
+        isReady: true,
+      });
+      recipeUpdates.set(id, imported);
+      importedShares.set(id, structuredClone(body));
       await fulfill(route, {
-        status: 200,
+        status: 201,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: builders.recipe({
-            id: MOCK_IDS.RECIPE_GOTO_STUB,
-            name: body.recipe?.name ?? 'Imported Recipe',
-            description: body.recipe?.description ?? null,
-            imageUrl: null,
-            ingredients: body.recipe?.ingredients ?? [],
-            sourceUrl: body.recipe?.sourceUrl ?? null,
-            sourceType: body.recipe?.sourceUrl
-              ? RecipeDto_sourceTypeObject.Url
-              : RecipeDto_sourceTypeObject.Synthesized,
-            canReimport: false,
-            isReady: true,
-          }),
+          data: imported,
         }),
       });
     } else {
@@ -1299,7 +1654,8 @@ export async function setupCommonRoutes(
       referenceWeekStartDate: reference,
     });
     const day = schedule.days[body.dayIndex];
-    if (!day) return fulfill(route, { status: 400, json: { message: 'Invalid dayIndex.' } });
+    if (!Number.isSafeInteger(body.weekOffset) || !Number.isInteger(body.dayIndex) || !day)
+      return fulfill(route, { status: 400, json: { message: 'Invalid planning target.' } });
     const existing = scheduleEntries.get(day.date);
     if (
       body.requireEmpty &&
@@ -1317,7 +1673,11 @@ export async function setupCommonRoutes(
         ...scheduleCalendar,
         referenceWeekStartDate: reference,
       });
-      scheduleEntries.set(nextWeek.days[0].date, existing);
+      const destination = scheduleEntries.get(nextWeek.days[0].date);
+      const carried = { recipe: existing.recipe, status: 0 };
+      if (destination && entryIds.has(destination))
+        entryIds.set(carried, entryIds.get(destination)!);
+      scheduleEntries.set(nextWeek.days[0].date, carried);
       displacedRecipe = {
         id: existing.recipe.id,
         name: existing.recipe.name,
@@ -1325,24 +1685,27 @@ export async function setupCommonRoutes(
         movedToDayIndex: 0,
       };
     }
-    scheduleEntries.set(day.date, {
-      recipe: builders.scheduleRecipe({ id: body.recipeId }),
+    const replacement = {
+      recipe: builders.scheduleRecipe({
+        id: body.recipeId,
+        ingredients: builders.recipe({ id: body.recipeId, ...recipeUpdates.get(body.recipeId) })
+          .ingredients,
+        name:
+          builders.recipe({ id: body.recipeId, ...recipeUpdates.get(body.recipeId) }).name ??
+          'Planned recipe',
+      }),
       status: 0,
-    });
-    await fulfill(route, { json: { data: { message: 'Recipe assigned', displacedRecipe } } });
-    for (const slot of schedule.days) {
-      const entry = scheduleEntries.get(slot.date);
-      if (entry) Object.assign(slot, entry);
-    }
-    await page.evaluate((snapshot) => {
-      const source = (window as any).__sseSource as EventSource | undefined;
-      source?.dispatchEvent(
-        new MessageEvent('week_updated', {
-          data: JSON.stringify({ type: 'week_updated', schedule: snapshot }),
-        })
-      );
-    }, schedule);
-    await emitSession();
+    };
+    if (existing && entryIds.has(existing)) entryIds.set(replacement, entryIds.get(existing)!);
+    scheduleEntries.set(day.date, replacement);
+    servingMock.calendarChanged(
+      [day.date, ...(displacedRecipe ? [addDays(day.date, 1)] : [])],
+      reference
+    );
+    if (recoveryOptions.schedulePostCommitFailure?.('assign')) await route.abort('failed');
+    else await fulfill(route, { json: { data: { message: 'Recipe assigned', displacedRecipe } } });
+    await emitSchedule(body.weekOffset, reference);
+    if (displacedRecipe) await emitSchedule(body.weekOffset + 1, reference);
   });
 
   const setWeekStatus = (status: number) => async (route: Route) => {
@@ -1495,15 +1858,19 @@ export async function setupCommonRoutes(
           )
         ),
       ].sort((a, b) => a - b);
-      await fulfill(route, {
-        json: {
-          data: builders.tomorrowMoveResult(
-            sourceDate,
-            destination,
-            offsets.map((offset) => addDays(reference, offset * 7))
-          ),
-        },
-      });
+      const refreshComplete = servingMock.calendarChanged(changedDates, reference);
+      if (recoveryOptions.schedulePostCommitFailure?.('move')) await route.abort('failed');
+      else
+        await fulfill(route, {
+          json: {
+            data: builders.tomorrowMoveResult(
+              sourceDate,
+              destination,
+              offsets.map((offset) => addDays(reference, offset * 7)),
+              refreshComplete
+            ),
+          },
+        });
       for (const offset of offsets) {
         await emitSchedule(offset, reference);
         await page.evaluate(
@@ -1538,6 +1905,7 @@ export async function setupCommonRoutes(
           (targetOffset !== body.weekOffset || (date >= monday && date <= addDays(monday, 6)))
       )?.[0];
     const source = sourceDate ? scheduleEntries.get(sourceDate) : undefined;
+    const changedDates: string[] = [];
     if (sourceDate && source && source.recipe?.id === body.recipeId) {
       let destination = addDays(reference, targetOffset * 7 + body.toIndex);
       let canMove = true;
@@ -1555,25 +1923,42 @@ export async function setupCommonRoutes(
             const previous = addDays(monday, position - 1);
             const entry = scheduleEntries.get(previous);
             if (entry) {
+              changedDates.push(previous, addDays(monday, position));
               scheduleEntries.delete(previous);
               scheduleEntries.set(addDays(monday, position), entry);
             }
           }
         } else {
           const occupied = scheduleEntries.get(destination);
-          if (occupied) scheduleEntries.set(sourceDate, occupied);
+          if (occupied) {
+            removalToken(sourceDate, source);
+            removalToken(destination, occupied);
+            const sourceId = entryIds.get(source)!;
+            entryIds.set(source, entryIds.get(occupied)!);
+            entryIds.set(occupied, sourceId);
+            scheduleEntries.set(sourceDate, occupied);
+          }
         }
       } else {
         const occupied = scheduleEntries.get(destination);
-        if (occupied) scheduleEntries.set(sourceDate, occupied);
+        if (occupied) {
+          removalToken(sourceDate, source);
+          removalToken(destination, occupied);
+          const sourceId = entryIds.get(source)!;
+          entryIds.set(source, entryIds.get(occupied)!);
+          entryIds.set(occupied, sourceId);
+          scheduleEntries.set(sourceDate, occupied);
+        }
       }
       if (canMove) {
+        changedDates.push(sourceDate, destination);
         for (const [date, entry] of scheduleEntries)
           if (entry === source) scheduleEntries.delete(date);
         if (source.status === 3) {
           scheduleEntries.set(sourceDate, { ...source, recipe: null });
           scheduleEntries.set(destination, { recipe: source.recipe, status: 0 });
         } else scheduleEntries.set(destination, source);
+        const refreshComplete = servingMock.calendarChanged(changedDates, reference);
         if (targetOffset !== body.weekOffset) {
           await fulfill(route, {
             json: {
@@ -1583,7 +1968,7 @@ export async function setupCommonRoutes(
                 sourceDate,
                 destinationDate: destination,
                 affectedWeekStartDates: [monday, addDays(reference, targetOffset * 7)],
-                refreshComplete: true,
+                refreshComplete,
               },
             },
           });
@@ -1594,7 +1979,16 @@ export async function setupCommonRoutes(
       }
     }
     await fulfill(route, { json: { data: { message: 'Recipe moved' } } });
-    await emitSchedule(body.weekOffset, reference);
+    const offsets = changedDates.length
+      ? [
+          ...new Set(
+            changedDates.map((date) =>
+              Math.floor((Date.parse(date) - Date.parse(reference)) / 604800000)
+            )
+          ),
+        ]
+      : [body.weekOffset];
+    for (const offset of offsets) await emitSchedule(offset, reference);
   });
 
   await page.route('**/api/schedule/defer**', async (route) => {
@@ -1630,19 +2024,24 @@ export async function setupCommonRoutes(
     while (scheduleEntries.has(destination)) destination = addDays(destination, 1);
     if (source.status === 3) scheduleEntries.set(body.sourceDate, { ...source, recipe: null });
     else scheduleEntries.delete(body.sourceDate);
-    scheduleEntries.set(destination, { recipe: source.recipe, status: 0 });
+    const deferred = { recipe: source.recipe, status: 0 };
+    if (source.status !== 3 && entryIds.has(source)) entryIds.set(deferred, entryIds.get(source)!);
+    scheduleEntries.set(destination, deferred);
+    servingMock.calendarChanged([body.sourceDate, destination], reference);
     const destinationOffset = Math.floor(
       (Date.parse(destination) - Date.parse(reference)) / (7 * 86400000)
     );
-    await fulfill(route, {
-      json: {
-        data: {
-          scheduledDate: destination,
-          scheduledWeekOffset: destinationOffset,
-          message: `${destinationOffset > targetOffset ? 'Next week is full. ' : ''}Moved meal to ${destination}.`,
+    if (recoveryOptions.schedulePostCommitFailure?.('defer')) await route.abort('failed');
+    else
+      await fulfill(route, {
+        json: {
+          data: {
+            scheduledDate: destination,
+            scheduledWeekOffset: destinationOffset,
+            message: `${destinationOffset > targetOffset ? 'Next week is full. ' : ''}Moved meal to ${destination}.`,
+          },
         },
-      },
-    });
+      });
     await emitSchedule(
       Math.floor((Date.parse(body.sourceDate) - Date.parse(reference)) / (7 * 86400000)),
       reference
@@ -1692,11 +2091,31 @@ export async function setupCommonRoutes(
     });
   });
 
-  await page.route('**/api/schedule/day/*/remove', async (route) => {
+  await page.route('**/api/schedule/day/*/remove**', async (route) => {
     if (route.request().method() !== 'DELETE') return route.fallback();
-    const date = new URL(route.request().url()).pathname.split('/')[4];
+    const url = new URL(route.request().url());
+    const date = url.pathname.split('/')[4];
+    if (url.searchParams.has('expectedPlanToken')) {
+      const expected = url.searchParams.get('expectedPlanToken')!;
+      if (!/^v1\.[A-Za-z0-9_-]{43}$/.test(expected))
+        return fulfill(route, { status: 400, json: { message: 'Invalid expectedPlanToken.' } });
+      const entry = scheduleEntries.get(date);
+      if (!entry || removalToken(date, entry) !== expected)
+        return fulfill(route, {
+          status: 409,
+          json: { message: 'That supper plan changed. Refresh it before removing it.' },
+        });
+    }
     const removed = scheduleEntries.delete(date);
-    await fulfill(route, { status: 204 });
+    if (removed)
+      servingMock.calendarChanged(
+        [date],
+        scheduleCalendar.referenceWeekStartDate,
+        true,
+        recoveryOptions.schedulePostCommitFailure?.('remove')
+      );
+    if (removed && recoveryOptions.scheduleRemovalReplyLost?.()) await route.abort('failed');
+    else await fulfill(route, { status: 204 });
     if (removed)
       await emitSchedule(
         Math.floor(
@@ -1704,6 +2123,83 @@ export async function setupCommonRoutes(
         ),
         scheduleCalendar.referenceWeekStartDate
       );
+  });
+
+  await page.route('**/api/schedule/day/*/prepare', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const date = new URL(route.request().url()).pathname.split('/')[4];
+    const body = route.request().postDataJSON();
+    if (
+      !body?.recipeId ||
+      !body.expectedOccurrenceId ||
+      !/^v1\./.test(body.expectedPlanToken ?? '') ||
+      !/^[A-F0-9]{64}$/.test(body.expectedServingVersion ?? '')
+    )
+      return fulfill(route, {
+        status: 400,
+        json: { message: 'Capture the saved supper and displayed quantities.' },
+      });
+    const entry = scheduleEntries.get(date);
+    const snapshot = makeSchedule(
+      0,
+      addDays(date, -((new Date(date + 'T00:00:00Z').getUTCDay() + 6) % 7))
+    ).days.find((day) => day.date === date);
+    const conflict = () =>
+      fulfill(route, {
+        status: 409,
+        json: { message: 'This supper or its quantities changed.' },
+      });
+    if (
+      !entry ||
+      entry.recipe?.id !== body.recipeId ||
+      snapshot?.occurrenceId !== body.expectedOccurrenceId
+    )
+      return conflict();
+    const repeated = !!entry.preparation;
+    if (entry.preparation) {
+      if (
+        entry.preparation.planToken !== body.expectedPlanToken ||
+        entry.preparation.servingVersion !== body.expectedServingVersion
+      )
+        return conflict();
+    } else {
+      const displayed = servingMock.preparationContext(date, body.recipeId);
+      if (
+        ![0, 1].includes(entry.status) ||
+        displayed.preparationPlanToken !== body.expectedPlanToken ||
+        displayed.preparationServingVersion !== body.expectedServingVersion
+      )
+        return conflict();
+      entry.preparation = {
+        preparedOn: scheduleCalendar.today,
+        preparedAtUtc: scheduleCalendar.capturedAtUtc,
+        servings: displayed.targetServings,
+        originalServings: displayed.baseServings,
+        portionContext: displayed.targetServings == null ? 'original' : 'dated',
+        planToken: body.expectedPlanToken,
+        servingVersion: body.expectedServingVersion,
+      };
+      entry.status = 2;
+    }
+    const lostReply = recoveryOptions.schedulePreparationReplyLost?.() ?? false;
+    await fulfill(route, {
+      ...(lostReply ? { status: 504 } : {}),
+      json: {
+        data: {
+          occurrenceId: body.expectedOccurrenceId,
+          recipeId: body.recipeId,
+          supperDate: date,
+          preparation: entry.preparation,
+        },
+      },
+    });
+    if (repeated || recoveryOptions.schedulePostCommitFailure?.('prepare')) return;
+    await emitSchedule(
+      Math.floor(
+        (Date.parse(date) - Date.parse(scheduleCalendar.referenceWeekStartDate)) / 604800000
+      ),
+      scheduleCalendar.referenceWeekStartDate
+    );
   });
 
   await page.route(
@@ -1724,8 +2220,13 @@ export async function setupCommonRoutes(
           return fulfill(route, { status: 404, json: { message: 'Recipe not found' } });
       }
       const mealMarkedCooked = body.status === 2 && previous?.recipe?.id === viewedId;
+      if (mealMarkedCooked && previous?.preparation)
+        return fulfill(route, {
+          json: { data: { message: 'Cooking status updated', mealMarkedCooked: true } },
+        });
       if (body.status !== 2 || mealMarkedCooked) {
         const entry = {
+          ...(previous?.preparation ? { preparation: previous.preparation } : {}),
           recipe: previous?.recipe ?? null,
           status: body.status,
           nonCooking:
@@ -1733,7 +2234,9 @@ export async function setupCommonRoutes(
               ? (body.nonCooking ?? previous?.nonCooking ?? { kind: 'order_in', customLabel: null })
               : null,
         };
+        if (previous && entryIds.has(previous)) entryIds.set(entry, entryIds.get(previous)!);
         scheduleEntries.set(date, entry);
+        servingMock.calendarChanged([date], scheduleCalendar.referenceWeekStartDate);
       }
       await fulfill(route, {
         json: { data: { message: 'Cooking status updated', mealMarkedCooked } },
@@ -1752,6 +2255,12 @@ export async function setupCommonRoutes(
             recipe: entry?.recipe ?? null,
             status: body.status,
             nonCooking: entry?.nonCooking ?? null,
+            occurrenceId:
+              makeSchedule(
+                0,
+                addDays(date, -((new Date(date + 'T00:00:00Z').getUTCDay() + 6) % 7))
+              ).days.find((day) => day.date === date)?.occurrenceId ?? null,
+            preparation: entry?.preparation ?? null,
           }
         );
       await emitSession();
@@ -1777,52 +2286,47 @@ export async function setupCommonRoutes(
   };
   const groceryWeek = (route: Route) =>
     addDays(
-      scheduleCalendar.currentWeekStartDate,
+      new URL(route.request().url()).searchParams.has('referenceWeekStartDate')
+        ? readReference(new URL(route.request().url()))!
+        : scheduleCalendar.currentWeekStartDate,
       Number(new URL(route.request().url()).pathname.split('/')[3]) * 7
     );
-  const emitGroceryChecks = async (route: Route, checks: Record<string, boolean>) => {
+  const emitGroceryChecks = async (route: Route) => {
+    const captured = groceryRows.snapshot(groceryWeek(route));
     await page.evaluate(
-      ({ weekOffset, weekStartDate, groceryState }) => {
-        const source = (window as any).__sseSource as EventSource | undefined;
-        source?.dispatchEvent(
-          new MessageEvent('grocery_updated', {
-            data: JSON.stringify({
-              type: 'grocery_updated',
-              weekOffset,
-              weekStartDate,
-              groceryState,
-            }),
-          })
-        );
-      },
+      (payload) =>
+        (window as any).__sseSource?.dispatchEvent(
+          new MessageEvent('grocery_updated', { data: JSON.stringify(payload) })
+        ),
       {
+        type: 'grocery_updated',
         weekOffset: Number(new URL(route.request().url()).pathname.split('/')[3]),
-        weekStartDate: groceryWeek(route),
-        groceryState: checks,
+        ...captured,
       }
     );
   };
-  await page.route('**/api/schedule/*/grocery/item', async (route) => {
-    if (route.request().method() !== 'PATCH') return route.fallback();
-    await processGroceryWrite(async () => {
-      const body = route.request().postDataJSON() as { ingredientName: string; checked: boolean };
-      const week = groceryWeek(route);
-      const checks = { ...(groceryChecks.get(week) ?? {}), [body.ingredientName]: body.checked };
-      groceryChecks.set(week, checks);
-      await fulfill(route, { status: 204 });
-      await emitGroceryChecks(route, checks);
+  for (const kind of ['item', 'bulk'] as const) {
+    const suffix = kind === 'item' ? '/item' : '';
+    await page.route(`**/api/schedule/*/grocery${suffix}**`, async (route) => {
+      if (
+        route.request().method() !== 'PATCH' ||
+        !new RegExp(`^/api/schedule/[^/]+/grocery${suffix}$`).test(
+          new URL(route.request().url()).pathname
+        )
+      )
+        return route.fallback();
+      if (!readReference(new URL(route.request().url())))
+        return fulfill(route, { status: 400, json: { message: 'Invalid reference Monday.' } });
+      await processGroceryWrite(async () => {
+        const body = route.request().postDataJSON();
+        const week = groceryWeek(route);
+        const result = groceryRows.mutate(week, kind, body);
+        const committed = result.status === 200 && !groceryRows.replayed;
+        await fulfill(route, result);
+        if (committed) await emitGroceryChecks(route);
+      });
     });
-  });
-
-  await page.route('**/api/schedule/*/grocery', async (route) => {
-    if (route.request().method() !== 'PATCH') return route.fallback();
-    await processGroceryWrite(async () => {
-      const checks = { ...(route.request().postDataJSON() as Record<string, boolean>) };
-      groceryChecks.set(groceryWeek(route), checks);
-      await fulfill(route, { status: 200, json: { data: checks } });
-      await emitGroceryChecks(route, checks);
-    });
-  });
+  }
 
   // Stateful everyday grocery extras. These handlers intentionally preserve distinct
   // same-name occurrences and expose writes through subsequent schedule reads.
@@ -2010,6 +2514,7 @@ export async function setupCommonRoutes(
   // facts, not live round identities; ordinary reads observe restored membership.
   type SavedRecovery = {
     members: typeof familyMembers;
+    portions: ReturnType<typeof servingMock.captureSnapshot>;
     updates: Array<[string, Partial<RecipeDto>]>;
     schedule: Array<
       [string, { recipe: ScheduleRecipeDto | null; status: number; nonCooking?: any }]
@@ -2028,6 +2533,43 @@ export async function setupCommonRoutes(
       message: 'Recovery is coordinating household operations.',
     });
 
+  let recoveryDestinationSequence = 0;
+  let recoveryGeneration: string | null = null;
+  const fixtureHash = (value: unknown) =>
+    createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  const recoveryDestination = () =>
+    recoveryOptions.recoveryDestination?.() ?? {
+      version: 1,
+      revision: fixtureHash(['recovery-destination', recoveryDestinationSequence]),
+      generation: recoveryGeneration,
+      membershipSha256: null,
+      overridesSha256: fixtureHash([]),
+      historySha256: fixtureHash([]),
+      documents: [],
+    };
+  await page.route('**/api/management/recovery/restore/*/preflight', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    if (recoveryOptions.demoMode) return refuseDemoManagement(route);
+    if (recoveryOptions.busy) return recoveryBusy(route);
+    const id = new URL(route.request().url()).pathname.split('/').at(-2)!;
+    const saved = recoverySnapshots.get(id);
+    if (!saved)
+      return recoveryReply(route, 400, {
+        state: 'invalid',
+        message: 'Snapshot manifest is missing.',
+      });
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        snapshotId: id,
+        manifestSha256: fixtureHash(saved),
+        destination: recoveryDestination(),
+        requiresExpectedDestinationRevision:
+          recoveryOptions.recoveryRequiresExpectedDestinationRevision ?? false,
+      }),
+    });
+  });
   await page.route('**/api/management/recovery/snapshots', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     if (recoveryOptions.busy) return recoveryBusy(route);
@@ -2037,6 +2579,7 @@ export async function setupCommonRoutes(
       snapshotId,
       structuredClone({
         members: familyMembers,
+        portions: servingMock.captureSnapshot(),
         updates: [...recipeUpdates],
         schedule: [...scheduleEntries],
         weeks: [...weekStatuses],
@@ -2061,6 +2604,40 @@ export async function setupCommonRoutes(
         state: 'invalid',
         message: 'Snapshot manifest is missing.',
       });
+    let body: unknown;
+    try {
+      body = route.request().postDataJSON();
+    } catch {
+      return recoveryReply(route, 400, {
+        state: 'invalid',
+        message: 'Restore request is malformed.',
+      });
+    }
+    if (
+      body != null &&
+      (typeof body !== 'object' ||
+        Array.isArray(body) ||
+        Object.keys(body).some((key) => key !== 'expectedDestinationRevision'))
+    )
+      return recoveryReply(route, 400, {
+        state: 'invalid',
+        message: 'Restore request is malformed.',
+      });
+    const expected = (body as { expectedDestinationRevision?: unknown } | null)
+      ?.expectedDestinationRevision;
+    if (expected != null && (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected)))
+      return recoveryReply(route, 400, {
+        state: 'invalid',
+        message: 'Restore destination revision is malformed.',
+      });
+    if (
+      (recoveryOptions.recoveryRequiresExpectedDestinationRevision && expected == null) ||
+      (expected != null && expected !== recoveryDestination().revision)
+    )
+      return recoveryReply(route, 409, {
+        state: 'destination-conflict',
+        message: 'Restore destination authority changed.',
+      });
     const restored = structuredClone(saved);
     familyMembers.splice(0, familyMembers.length, ...restored.members);
     recipeUpdates.clear();
@@ -2071,6 +2648,7 @@ export async function setupCommonRoutes(
     restored.weeks.forEach(([key, value]) => weekStatuses.set(key, value));
     history.clear();
     restored.interest.forEach(([key, value]) => history.set(key, value));
+    servingMock.restoreSnapshot(restored.portions);
     liveVotes.clear();
     roundIds.clear();
     closeReceipts.clear();
@@ -2087,6 +2665,10 @@ export async function setupCommonRoutes(
       }
     }
     restoredSnapshot = id;
+    const generation = randomUUID();
+    recoveryGeneration = generation.replaceAll('-', '');
+    groceryRows.advanceGeneration(generation);
+    recoveryDestinationSequence++;
     return recoveryReply(route, 200, {
       state: 'completed',
       message: 'Exact state restored.',
@@ -2265,6 +2847,16 @@ export async function setupCommonRoutes(
   // POST /api/workflows/tasks/{taskId}/reset
   await page.route('**/api/workflows/tasks/*/reset', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
+    if (recoveryOptions.busy)
+      return fulfill(route, {
+        status: 503,
+        headers: { 'Retry-After': '5' },
+        contentType: 'application/json',
+        body: JSON.stringify({
+          errorCode: 'RECOVERY_BUSY',
+          message: 'Retry after recovery coordination.',
+        }),
+      });
     const taskId = new URL(route.request().url()).pathname.split('/').at(-2)!;
     if (recoveryOptions.demoMode && recoveryOptions.demoManagementTaskIds?.includes(taskId))
       return refuseDemoManagement(route);
@@ -2319,13 +2911,15 @@ export async function setupCommonRoutes(
   // GET /api/stream — SSE endpoint
   //
   // BS-10 NOTE: route.fulfill() closes the HTTP response immediately after the body is sent.
-  // This causes the browser's EventSource to see a dropped connection and automatically
-  // reconnect. The reconnect loop is harmless because every reconnect receives the same
-  // `connected` event with the same snapshot. Tests that assert on UI state MUST do so
-  // AFTER the `connected` event has been processed (use waitFor on the resulting DOM state,
-  // not on connection state). Do NOT assert on the EventSource being "open" — it will
-  // always be in a reconnecting state after fulfill() closes the response.
+  // This causes native EventSource to reconnect and reapply the snapshot. Default
+  // fixtures retain that behavior. Non-reconnect scenarios may opt into one snapshot
+  // followed by 204, which tells native EventSource to stop reconnecting. Explicit
+  // mutation events still dispatch to the same client object through emitSchedule.
+  let connectedSent = false;
   await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+    if (recoveryOptions.sseMode === 'connected-once' && connectedSent)
+      return fulfill(route, { status: 204 });
+    connectedSent = true;
     await fulfill(route, {
       status: 200,
       contentType: 'text/event-stream',
@@ -2337,10 +2931,34 @@ export async function setupCommonRoutes(
       body: buildSseBody([
         buildSseFrame('connected', {
           type: 'connected',
-          schedule: makeSchedule(0, scheduleCalendar.referenceWeekStartDate),
+          schedule: {
+            ...makeSchedule(0, scheduleCalendar.referenceWeekStartDate),
+            ...groceryRows.snapshot(scheduleCalendar.referenceWeekStartDate),
+          },
           demoGeneration: generation(),
         }),
       ]),
+    });
+  });
+
+  // Food corrections share the serialized writer and retain every affected week.
+  await page.route('**/api/foods/*/category', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.fallback();
+    await processGroceryWrite(async () => {
+      const foodId = new URL(route.request().url()).pathname.split('/')[3];
+      const result = groceryRows.reclassifyFood(foodId, route.request().postDataJSON());
+      await fulfill(route, {
+        status: result.status,
+        ...('json' in result ? { json: result.json } : {}),
+      });
+      for (const captured of result.affected)
+        await page.evaluate(
+          (payload) =>
+            (window as any).__sseSource?.dispatchEvent(
+              new MessageEvent('grocery_updated', { data: JSON.stringify(payload) })
+            ),
+          { type: 'grocery_updated', ...captured }
+        );
     });
   });
 
@@ -2415,7 +3033,17 @@ export async function setupCommonRoutes(
           body: JSON.stringify({ data: { key, value: settingsStore[key] } }),
         });
       }
-    } else {
+    } else if (route.request().method() === 'POST') {
+      if (key === 'supper_servings_default')
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'Use PUT /api/schedule/servings.' },
+        });
+      if (key === 'food_vocabulary_publication')
+        return fulfill(route, {
+          status: 400,
+          json: { message: 'Use the reviewed vocabulary publication owner.' },
+        });
       const body = route.request().postDataJSON();
       settingsStore[key] = body.value;
       await fulfill(route, {
@@ -2423,7 +3051,7 @@ export async function setupCommonRoutes(
         contentType: 'application/json',
         body: JSON.stringify({ data: { key, value: body.value } }),
       });
-    }
+    } else await route.fallback();
   });
 
   // GET /api/captures/failures (Task 18)
@@ -2521,6 +3149,7 @@ export async function setupCommonRoutes(
       return route.fallback();
     });
   }
+  return { ...servingMock, readFamilyCount, groceryRows };
 }
 
 // ---------------------------------------------------------------------------
@@ -2784,7 +3413,8 @@ export async function mockSseWithVoteUpdated(
 export async function mockSseWithGroceryUpdated(
   page: Page,
   weekOffset: number,
-  groceryState: Record<string, boolean>
+  groceryState: Record<string, boolean>,
+  groceryItems: import('../src/lib/api/generated/models').GroceryLineItemDto[]
 ): Promise<{ triggerGroceryUpdated: () => Promise<void> }> {
   let requested!: (route: Route) => void;
   const streamRequested = new Promise<Route>((resolve) => {
@@ -2812,6 +3442,8 @@ export async function mockSseWithGroceryUpdated(
           weekOffset,
           weekStartDate: builders.scheduleDays(weekOffset).weekStartDate,
           groceryState,
+          groceryListVersion: '2',
+          groceryItems,
         }),
       });
     },
@@ -2931,6 +3563,35 @@ export async function mockNonCookingSchedule(
   page: Page,
   schedule: import('../src/lib/api/generated/models').ScheduleDays
 ) {
+  const occurrences = new Map<string, number>();
+  let occurrenceSequence = 0;
+  const refreshTokens = () => {
+    for (const day of schedule.days ?? []) {
+      if (!day.date) continue;
+      if (day.recipe || day.status !== 0 || day.nonCooking) {
+        if (!occurrences.has(day.date)) occurrences.set(day.date, ++occurrenceSequence);
+        day.occurrenceId ??=
+          `${MOCK_IDS.SUPPER_OCCURRENCE.slice(0, -6)}${String(occurrences.get(day.date)).padStart(6, '0')}` as any;
+        day.removalToken =
+          'v1.' +
+          createHash('sha256')
+            .update(
+              JSON.stringify({
+                occurrence: occurrences.get(day.date),
+                date: day.date,
+                recipe: day.recipe,
+                status: day.status,
+                nonCooking: day.nonCooking,
+              })
+            )
+            .digest('base64url');
+      } else {
+        day.removalToken = null;
+        day.occurrenceId = null;
+      }
+    }
+  };
+  refreshTokens();
   await mockSseWithConnectedSchedule(page, schedule);
   await page.route('**/api/schedule**', async (route) => {
     const url = new URL(route.request().url());
@@ -2939,6 +3600,7 @@ export async function mockNonCookingSchedule(
     const date = url.pathname.match(/\/day\/([^/]+)\//)?.[1];
     const day = days.find((item) => item.date === date);
     if (url.pathname === '/api/schedule' && method === 'GET') {
+      refreshTokens();
       await route.fulfill({ json: { data: schedule } });
       return;
     }
@@ -2974,6 +3636,17 @@ export async function mockNonCookingSchedule(
       return;
     }
     if (url.pathname.endsWith('/remove') && method === 'DELETE' && day) {
+      refreshTokens();
+      if (url.searchParams.has('expectedPlanToken')) {
+        const expected = url.searchParams.get('expectedPlanToken')!;
+        if (!/^v1\.[A-Za-z0-9_-]{43}$/.test(expected))
+          return route.fulfill({ status: 400, json: { message: 'Invalid expectedPlanToken.' } });
+        if (!day.removalToken || day.removalToken !== expected)
+          return route.fulfill({ status: 409, json: { message: 'That supper plan changed.' } });
+      }
+      occurrences.delete(day.date!);
+      day.occurrenceId = null;
+      day.removalToken = null;
       day.status = 0;
       day.recipe = null;
       day.nonCooking = null;
@@ -2998,7 +3671,7 @@ export async function mockNonCookingSchedule(
       const source = days[body.fromIndex],
         target = days[body.toIndex];
       if (source && target) {
-        for (const field of ['recipe', 'status', 'nonCooking'] as const) {
+        for (const field of ['recipe', 'status', 'nonCooking', 'occurrenceId'] as const) {
           const value = source[field];
           (source as any)[field] = target[field];
           (target as any)[field] = value;
@@ -3035,4 +3708,755 @@ async function refuseDemoManagement(route: import('@playwright/test').Route) {
         'Baseline capture and manual household restores are unavailable in Demo Mode. Demo resets run on the automatic schedule.',
     },
   });
+}
+
+/** Stateful serving boundary. Explicit refresh controls let tests model durable work without timers. */
+export async function mockSupperServings(
+  page: Page,
+  scheduleFor: (offset: number, reference: string) => any,
+  options: {
+    delayed?: boolean;
+    failRefresh?: boolean;
+    knownRecipe?: {
+      id: string;
+      basis: number;
+      quantity: number;
+      ingredient: string;
+      unit: string;
+      source?: {
+        ingredients: string[];
+        supplies: { name: string; quantity: number; unitText: string | null }[];
+      };
+    };
+    readFamilyCount: () => number;
+    readRecipe?: (id: string) => RecipeDto;
+    rowState?: ReturnType<typeof createGroceryRowState>;
+    checkState?: {
+      read: (week: string) => Record<string, boolean>;
+      write: (week: string, checks: Record<string, boolean>) => void;
+    };
+  }
+) {
+  const overrides = new Map<string, number>();
+  const inherited = new Map<string, number | null>();
+  const schedules = new Map<string, any>();
+  const saved = new Map<string, any>();
+  const projected = new Map<string, { groceryItems: any }>();
+  const groceryRows = options.rowState ?? createGroceryRowState();
+  const decorateGrocery = (schedule: any) => {
+    const week = String(schedule.weekStartDate);
+    const state = saved.get(week);
+    if (state) schedule.groceryRefresh = state.groceryRefresh;
+    const projection = projected.get(week);
+    if (projection) schedule.groceryItems = projection.groceryItems;
+    groceryRows.decorate(schedule);
+  };
+
+  const known = options.knownRecipe;
+  const sourceText = known ? `${known.quantity} ${known.unit} ${known.ingredient}` : '';
+  const sourceTexts = known?.source?.ingredients ?? (known ? [sourceText] : []);
+  let currentTexts = [...sourceTexts];
+  const knownLines = (target: number | null) => {
+    const canonical = options.readRecipe?.(known!.id);
+    if (canonical?.contentSchemaVersion === 2) return canonicalIngredientLines(canonical, target);
+    const supplies =
+      known?.source?.supplies ??
+      (known ? [{ name: known.ingredient, quantity: known.quantity, unitText: known.unit }] : []);
+    const coherent =
+      JSON.stringify(currentTexts.map((text) => text.trim())) ===
+      JSON.stringify(sourceTexts.map((text) => text.trim()));
+    const normalize = (text: string) =>
+      text.normalize('NFC').toUpperCase().replace(/\s+/gu, ' ').trim();
+    const candidates = supplies.map((supply) => {
+      const name = normalize(supply.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(`(^|[^\\p{L}\\p{M}\\p{N}])${name}($|[^\\p{L}\\p{M}\\p{N}])`, 'u');
+      return currentTexts.flatMap((text, index) => (pattern.test(normalize(text)) ? [index] : []));
+    });
+    return currentTexts.map((text, index) => {
+      const bound = coherent
+        ? supplies.find(
+            (_, i) =>
+              candidates[i].length === 1 &&
+              candidates[i][0] === index &&
+              candidates.filter((matches) => matches.includes(index)).length === 1
+          )
+        : undefined;
+      const unquantified = !bound && /to taste|for frying|au goût|pour frire/i.test(text);
+      return {
+        originalText: text,
+        name: bound ? bound.name : text,
+        quantity: bound ? bound.quantity * ((target ?? known!.basis) / known!.basis) : null,
+        unitText: bound?.unitText ?? null,
+        status: unquantified
+          ? 'unquantified'
+          : bound
+            ? target == null
+              ? 'original'
+              : 'scaled'
+            : 'unresolved',
+        issues: bound || unquantified ? [] : [coherent ? 'unreliable_amount' : 'stale_source'],
+      };
+    });
+  };
+  // Generic sources share recipe GET/PATCH state. Text without coherent supply is never parsed into amounts.
+  const recipeSource = (id: string) => options.readRecipe?.(id) ?? builders.recipe({ id });
+  const basisFor = (id: string) =>
+    id === known?.id ? known.basis : (recipeSource(id).servings ?? null);
+  const linesFor = (id: string, target: number | null) =>
+    recipeSource(id).contentSchemaVersion === 2
+      ? canonicalIngredientLines(recipeSource(id), target)
+      : id === known?.id
+        ? knownLines(target)
+        : (recipeSource(id).ingredients ?? []).map((text) => {
+            const unquantified =
+              /to taste|for frying|au goût|au gout|pour la friture|pour frire/i.test(text);
+            return {
+              originalText: text,
+              name: text,
+              quantity: null,
+              unitText: null,
+              status: unquantified ? 'unquantified' : 'unresolved',
+              issues: unquantified
+                ? []
+                : target != null && !(basisFor(id)! > 0)
+                  ? ['missing_basis']
+                  : ['unreliable_amount'],
+            };
+          });
+  // Keep the stored choice separate from the effective automatic count for recovery and provenance.
+  let savedUsual: number | null = null;
+  const usual = () => {
+    if (savedUsual !== null) return savedUsual;
+    const count = options.readFamilyCount();
+    return count > 0 ? count : null;
+  };
+  let sequence = 0;
+  let loseSaveReply = false;
+  const referenceDefault = toDateStr(currentMonday());
+  const dateString = (value: unknown) => String(value ?? '');
+  const add = (date: string, count: number) =>
+    toDateStr(new Date(Date.parse(date + 'T00:00:00Z') + count * 86400000));
+  const read = (offset: number, reference: string): any => {
+    const schedule = scheduleFor(offset, reference);
+    const monday = dateString(schedule.weekStartDate);
+    const previous = saved.get(monday);
+    schedules.set(monday, schedule);
+    return {
+      referenceWeekStartDate: reference,
+      weekOffset: offset,
+      weekStartDate: monday,
+      defaultServings: usual(),
+      defaultServingsSource: savedUsual === null ? 'family' : 'explicit',
+      version: `${sequence}|${savedUsual === null ? `family:${usual()}` : `explicit:${savedUsual}`}|${JSON.stringify(
+        schedule.days
+          .filter((day: any) => day.preparation || day.status === 2 || day.status === 3)
+          .map((day: any) => [
+            dateString(day.date),
+            day.status,
+            day.id ?? null,
+            day.recipe?.id ?? null,
+            day.preparation?.preparedAtUtc ?? null,
+            day.preparation?.servings ?? null,
+          ])
+      )}`,
+      days: schedule.days.map((day: any) => ({
+        date: dateString(day.date),
+        servings: day.preparation
+          ? day.preparation.servings
+          : (overrides.get(dateString(day.date)) ??
+            (day.status === 2 || dateString(day.date) < dateString(schedule.calendar.today)
+              ? (inherited.get(dateString(day.date)) ?? null)
+              : usual())),
+        overrideServings: overrides.get(dateString(day.date)) ?? null,
+        editable:
+          (day.status !== 2 || dateString(day.date) === dateString(schedule.calendar.today)) &&
+          day.status !== 3 &&
+          !day.preparation &&
+          dateString(day.date) >= dateString(schedule.calendar.today),
+      })),
+      groceryRefresh: previous?.groceryRefresh ?? {
+        status: 'current',
+        version: String(sequence),
+        appliedVersion: String(sequence),
+        resetSummaryVersion: null,
+      },
+    };
+  };
+  const groceryInputVersion = (schedule: any, state: any) =>
+    JSON.stringify(
+      schedule.days
+        .filter((day: any) => day.recipe)
+        .map((day: any) => {
+          const target =
+            day.status === 3
+              ? null
+              : (state.days.find((item: any) => item.date === String(day.date))?.servings ?? null);
+          return [
+            String(day.date),
+            day.occurrenceId,
+            day.recipe.id,
+            day.status === 3 ? null : known?.basis,
+            target,
+            day.recipe.id === known?.id ? knownLines(target) : null,
+          ];
+        })
+    );
+  const complete = (state: any, fail = false) => {
+    const schedule = scheduleFor(state.weekOffset, state.referenceWeekStartDate);
+    const previousProjection = projected.get(state.weekStartDate);
+    const known = options.knownRecipe;
+    if (previousProjection && (fail || !known))
+      schedule.groceryItems = previousProjection.groceryItems;
+    if (!fail && known) {
+      const current = read(state.weekOffset, state.referenceWeekStartDate);
+      const occurrences = schedule.days.filter((day: any) => day.recipe?.id === known.id);
+      const quantity = occurrences.reduce(
+        (sum: number, day: any) =>
+          sum +
+          (knownLines(
+            day.status === 3
+              ? null
+              : (current.days.find((item: any) => item.date === dateString(day.date))?.servings ??
+                  null)
+          )[0]?.quantity ?? 0),
+        0
+      );
+      // The fixture's known unit is canonical; absent units share the unitless bucket.
+      const unrelated = (schedule.groceryItems ?? []).flatMap((item: any) => {
+        if (!item.recipeIds?.includes(known.id)) return [item];
+        const recipeIds = item.recipeIds.filter((id: string) => id !== known.id);
+        return recipeIds.length ? [{ ...item, recipeIds }] : [];
+      });
+      schedule.groceryItems = [
+        ...unrelated,
+        ...(occurrences.length === 0
+          ? []
+          : recipeSource(known.id).contentSchemaVersion === 2
+            ? declaredPackageGroceryRows(
+                knownLines(null).map((line, index) => ({
+                  displayName: line.name,
+                  normalizedKey: line.name,
+                  section: 'Pantry',
+                  quantity: occurrences.reduce(
+                    (sum: number, day: any) =>
+                      sum +
+                      (knownLines(
+                        day.status === 3
+                          ? null
+                          : (current.days.find((item: any) => item.date === dateString(day.date))
+                              ?.servings ?? null)
+                      )[index]?.quantity ?? 0),
+                    0
+                  ),
+                  quantityComplete: occurrences.every(
+                    (day: any) =>
+                      knownLines(
+                        day.status === 3
+                          ? null
+                          : (current.days.find((item: any) => item.date === dateString(day.date))
+                              ?.servings ?? null)
+                      )[index]?.quantity != null
+                  ),
+                  unitText: line.unitText,
+                  recipeIds: [known.id],
+                })),
+                recipeSource(known.id).ingredientLines ?? [],
+                occurrences.map((day: any) =>
+                  day.status === 3
+                    ? null
+                    : (current.days.find((item: any) => item.date === dateString(day.date))
+                        ?.servings ?? null)
+                ),
+                recipeSource(known.id).servings ?? null
+              )
+            : currentTexts.length !== 1 || currentTexts[0] !== sourceText
+              ? knownLines(null).map((line) => ({
+                  displayName: line.name,
+                  normalizedKey: line.name,
+                  section: 'Pantry',
+                  quantity: null,
+                  quantityComplete: line.status !== 'unresolved',
+                  unitText: null,
+                  recipeIds: [known.id],
+                }))
+              : [
+                  {
+                    displayName: known.ingredient,
+                    normalizedKey: known.ingredient,
+                    section: 'Pantry',
+                    quantity,
+                    quantityComplete: true,
+                    unitText: known.unit,
+                    recipeIds: [known.id],
+                  },
+                ]),
+      ];
+    }
+    state.groceryRefresh.status = fail ? 'failed' : 'current';
+    if (!fail) {
+      if (state.groceryRefresh.appliedVersion !== state.groceryRefresh.version)
+        state.groceryRefresh.resetSummaryVersion = null;
+      state.groceryRefresh.appliedVersion = state.groceryRefresh.version;
+    }
+    schedule.groceryRefresh = state.groceryRefresh;
+    projected.set(state.weekStartDate, {
+      groceryItems: schedule.groceryItems,
+    });
+  };
+  const materialize = (schedule: any) => {
+    let changed = false;
+    for (const day of schedule.days) {
+      const date = dateString(day.date);
+      if (
+        (!day.recipe && !day.removalToken) ||
+        day.preparation ||
+        overrides.has(date) ||
+        day.status === 2 ||
+        day.status === 3 ||
+        date < dateString(schedule.calendar.today)
+      )
+        continue;
+      if (!inherited.has(date) || inherited.get(date) !== usual()) {
+        inherited.set(date, usual());
+        changed = true;
+      }
+    }
+    if (changed) sequence++;
+  };
+  // Calendar handlers own movement policy. This owner only applies dated projection consequences.
+  const calendarChanged = (
+    dates: string[],
+    reference: string,
+    refreshNow = true,
+    fail = options.failRefresh
+  ) => {
+    const weeks = [
+      ...new Set(
+        dates.map((date) => add(date, -((new Date(date + 'T00:00:00Z').getUTCDay() + 6) % 7)))
+      ),
+    ];
+    for (const monday of weeks) {
+      const offset = Math.round((Date.parse(monday) - Date.parse(reference)) / 604800000);
+      const schedule = scheduleFor(offset, reference);
+      materialize(schedule);
+      const state = read(offset, reference);
+      const version = groceryInputVersion(schedule, state);
+      if (state.groceryRefresh.version === version) continue;
+      state.groceryRefresh = {
+        ...state.groceryRefresh,
+        status: 'updating',
+        version,
+        workflowId: randomUUID(),
+      };
+      saved.set(monday, state);
+      if (refreshNow && !options.delayed) complete(state, fail);
+    }
+    return weeks.every((week) => saved.get(week)?.groceryRefresh.status === 'current');
+  };
+  const membershipChanged = async () => {
+    if (savedUsual !== null) return;
+    sequence++;
+    for (const schedule of [...schedules.values()]) {
+      const reference = dateString(schedule.calendar.referenceWeekStartDate);
+      calendarChanged([dateString(schedule.weekStartDate)], reference, false);
+      const current = scheduleFor(schedule.weekOffset, reference);
+      decorateGrocery(current);
+      await page
+        .evaluate(
+          (snapshot) =>
+            (window as any).__sseSource?.dispatchEvent(
+              new MessageEvent('week_updated', { data: JSON.stringify({ schedule: snapshot }) })
+            ),
+          current
+        )
+        .catch(() => {});
+    }
+    if (!options.delayed) for (const state of saved.values()) complete(state, options.failRefresh);
+  };
+  const handleServings = async (route: Route) => {
+    const method = route.request().method();
+    const url = new URL(route.request().url());
+    const body = method === 'GET' ? null : route.request().postDataJSON();
+    if (url.pathname.endsWith('/refresh') && method === 'POST') {
+      if (
+        !Array.isArray(body?.weekStartDates) ||
+        body.weekStartDates.some((day: string) => new Date(day + 'T00:00:00Z').getUTCDay() !== 1)
+      )
+        return route.fulfill({ status: 400, json: { message: 'Choose Monday weeks.' } });
+      const refreshed: any[] = [];
+      for (const day of body.weekStartDates) {
+        const state = saved.get(day);
+        if (state) {
+          state.groceryRefresh = {
+            ...state.groceryRefresh,
+            status: 'updating',
+            workflowId: randomUUID(),
+          };
+          refreshed.push(state);
+        }
+      }
+      await route.fulfill({ status: 202 });
+      if (!options.delayed) for (const state of refreshed) complete(state, options.failRefresh);
+      return;
+    }
+    if (method !== 'GET' && method !== 'PUT') return route.fulfill({ status: 405 });
+    const reference =
+      body?.referenceWeekStartDate ??
+      url.searchParams.get('referenceWeekStartDate') ??
+      referenceDefault;
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(reference) ||
+      new Date(reference + 'T00:00:00Z').getUTCDay() !== 1
+    )
+      return route.fulfill({ status: 400 });
+    const offset = body?.weekOffset ?? Number(url.searchParams.get('weekOffset') ?? 0);
+    const state = read(offset, reference);
+    if (method === 'GET') return route.fulfill({ json: { data: state } });
+    if (body.expectedVersion !== state.version)
+      return route.fulfill({ status: 409, json: { message: 'Portions changed.' } });
+    const countValid = (value: unknown) =>
+      value === null ||
+      (Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 2147483647);
+    if (
+      !Array.isArray(body.days) ||
+      new Set(body.days.map((day: any) => day.date)).size !== body.days.length ||
+      body.days.some(
+        (day: any) =>
+          !countValid(day.servings) ||
+          !state.days.find((savedDay: any) => savedDay.date === day.date)?.editable
+      ) ||
+      ('defaultServings' in body && !countValid(body.defaultServings))
+    )
+      return route.fulfill({ status: 400 });
+    if ('defaultServings' in body) savedUsual = body.defaultServings;
+    for (const day of body.days) {
+      if (day.servings === null) overrides.delete(day.date);
+      else overrides.set(day.date, day.servings);
+      inherited.set(day.date, usual());
+    }
+    sequence++;
+    for (const schedule of schedules.values())
+      materialize(scheduleFor(schedule.weekOffset, schedule.calendar.referenceWeekStartDate));
+    const result = read(offset, reference);
+    result.affectedWeekStartDates = [result.weekStartDate];
+    result.groceryRefresh = {
+      ...result.groceryRefresh,
+      status: 'updating',
+      version: groceryInputVersion(scheduleFor(offset, reference), result),
+      workflowId: randomUUID(),
+    };
+    saved.set(result.weekStartDate, result);
+    const affected = new Set([result.weekStartDate]);
+    if ('defaultServings' in body) {
+      for (const schedule of [...schedules.values()]) {
+        calendarChanged([String(schedule.weekStartDate)], reference, false);
+        if (saved.get(String(schedule.weekStartDate))?.groceryRefresh.status === 'updating')
+          affected.add(String(schedule.weekStartDate));
+      }
+    }
+    result.affectedWeekStartDates = [...affected];
+    scheduleFor(offset, reference).groceryRefresh = result.groceryRefresh;
+    if (loseSaveReply) {
+      loseSaveReply = false;
+      if (!options.delayed)
+        for (const week of affected) complete(saved.get(week), options.failRefresh);
+      await route.abort('connectionreset');
+      return;
+    }
+    await route.fulfill({ json: { data: result } });
+    for (const changedWeek of saved.keys()) {
+      const changedOffset = Math.round(
+        (Date.parse(changedWeek) - Date.parse(referenceDefault)) / 604800000
+      );
+      const schedule = scheduleFor(changedOffset, referenceDefault);
+      await page
+        .evaluate(
+          (schedule) =>
+            (window as any).__sseSource?.dispatchEvent(
+              new MessageEvent('week_updated', { data: JSON.stringify({ schedule }) })
+            ),
+          schedule
+        )
+        .catch(() => {});
+    }
+    if (!options.delayed)
+      for (const week of affected) complete(saved.get(week), options.failRefresh);
+  };
+  const recipeChanged = async (id: string, changes: Partial<RecipeDto>) => {
+    if (
+      !known ||
+      known.id !== id ||
+      (!Object.hasOwn(changes, 'servings') && !Array.isArray(changes.ingredients))
+    )
+      return;
+    if (Object.hasOwn(changes, 'servings')) known.basis = changes.servings!;
+    if (Array.isArray(changes.ingredients)) currentTexts = changes.ingredients;
+    for (const previous of [...schedules.values()]) {
+      if (
+        !previous.days.some(
+          (day: any) => day.recipe?.id === id && String(day.date) >= String(previous.calendar.today)
+        )
+      )
+        continue;
+      const reference = previous.calendar.referenceWeekStartDate;
+      calendarChanged([String(previous.weekStartDate)], reference);
+      const schedule = scheduleFor(previous.weekOffset, reference);
+      const state = saved.get(String(previous.weekStartDate));
+      if (state) schedule.groceryRefresh = state.groceryRefresh;
+      const projection = projected.get(String(previous.weekStartDate));
+      if (projection) schedule.groceryItems = projection.groceryItems;
+      await page
+        .evaluate(
+          (snapshot) =>
+            (window as any).__sseSource?.dispatchEvent(
+              new MessageEvent('week_updated', { data: JSON.stringify({ schedule: snapshot }) })
+            ),
+          schedule
+        )
+        .catch(() => {});
+    }
+  };
+  await page.route('**/api/recipes/*', async (route) => {
+    const request = route.request();
+    const id = new URL(request.url()).pathname.split('/')[3];
+    if (request.method() !== 'PATCH' || !known || known.id !== id) return route.fallback();
+    const changes = request.postDataJSON();
+    // Let the common handler reject before publishing a mock projection update.
+    if (Object.hasOwn(changes, 'ingredientLines') || Object.hasOwn(changes, 'instructionSections'))
+      return route.fallback();
+    if (
+      Object.hasOwn(changes, 'servings') &&
+      (!Number.isInteger(changes.servings) || changes.servings < 1 || changes.servings > 2147483647)
+    )
+      return route.fulfill({
+        status: 400,
+        json: { message: 'Servings must be a positive whole number.' },
+      });
+    await route.fallback();
+    await recipeChanged(id, changes);
+  });
+  const preparationContext = (date: string, id: string) => {
+    const index = (new Date(date + 'T00:00:00Z').getUTCDay() + 6) % 7;
+    const monday = add(date, -index);
+    const offset = Math.round((Date.parse(monday) - Date.parse(referenceDefault)) / 604800000);
+    const occurrence = scheduleFor(offset, referenceDefault).days.find(
+      (day: any) => day.date === date
+    );
+    const day = read(offset, referenceDefault).days.find((day: any) => day.date === date);
+    const version = createHash('sha256')
+      .update(
+        JSON.stringify([
+          id,
+          date,
+          occurrence?.occurrenceId,
+          basisFor(id),
+          linesFor(id, day.servings),
+          day.servings,
+        ])
+      )
+      .digest('hex')
+      .toUpperCase();
+    return {
+      preparationPlanToken: occurrence?.removalToken ?? null,
+      preparationServingVersion: version,
+      preparation: occurrence?.preparation ?? null,
+      targetServings: day.servings,
+      baseServings: basisFor(id),
+    };
+  };
+  const ingredientPreview = async (route: Route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const url = new URL(route.request().url());
+    const id = url.pathname.split('/')[3];
+    const target = Number(url.searchParams.get('targetServings'));
+    if (![2, 4, 6].includes(target))
+      return route.fulfill({ status: 400, json: { message: 'Choose two, four or six portions.' } });
+    if (!Object.values(MOCK_IDS).includes(id as any))
+      return route.fulfill({ status: 404, json: { message: 'Recipe not found.' } });
+    const lines = linesFor(id, target);
+    const unresolved = !(basisFor(id)! > 0) || lines.some((line) => line.status === 'unresolved');
+    return route.fulfill({
+      json: {
+        contentRevision: recipeSource(id).contentRevision ?? 'legacy.mock',
+        contextKey: JSON.stringify([
+          id,
+          recipeSource(id).contentRevision,
+          route.request().url(),
+          basisFor(id),
+          target,
+          linesFor(id, target),
+        ]),
+        instructionProjection: cookingProjection(recipeSource(id), target),
+        recipeId: id,
+        baseServings: basisFor(id),
+        targetServings: target,
+        factor: basisFor(id)! > 0 ? target / basisFor(id)! : null,
+        version: JSON.stringify([id, basisFor(id), target, lines]),
+        status: unresolved
+          ? lines.some((line) => line.status === 'scaled')
+            ? 'partial'
+            : 'unresolved'
+          : 'scaled',
+        lines,
+      },
+    });
+  };
+  await page.route('**/api/recipes/*/ingredient-preview*', ingredientPreview);
+  const ingredientProjection = async (route: Route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const url = new URL(route.request().url());
+    const id = url.pathname.split('/')[3];
+    const date = url.searchParams.get('supperDate');
+    if (
+      !date ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !['proposed', 'assigned'].includes(url.searchParams.get('context') ?? '') ||
+      url.searchParams.has('targetServings')
+    )
+      return route.fulfill({ status: 400, json: { message: 'Capture a proposed supper date.' } });
+    const instant = new Date(`${date}T00:00:00Z`);
+    const index = (instant.getUTCDay() + 6) % 7;
+    const monday = add(date, -index);
+    const offset = Math.round((Date.parse(monday) - Date.parse(referenceDefault)) / 604800000);
+    const state = read(offset, referenceDefault);
+    const day = state.days.find((item: any) => item.date === date);
+    if (!day) return route.fulfill({ status: 400, json: { message: 'Date unavailable.' } });
+    const context = url.searchParams.get('context');
+    const occurrence = scheduleFor(offset, referenceDefault).days?.find(
+      (item: any) => item.date === date
+    );
+    if (
+      context === 'assigned' &&
+      (!url.searchParams.get('occurrenceId') ||
+        occurrence?.occurrenceId !== url.searchParams.get('occurrenceId') ||
+        occurrence?.recipe?.id !== id)
+    )
+      return route.fulfill({ status: 409, json: { message: 'That supper plan changed.' } });
+    const target = context === 'assigned' && occurrence?.status === 3 ? null : day.servings;
+    return route.fulfill({
+      json: {
+        ...(context === 'assigned'
+          ? preparationContext(date, id)
+          : { preparationPlanToken: null, preparationServingVersion: null, preparation: null }),
+        contentRevision: recipeSource(id).contentRevision ?? 'legacy.mock',
+        contextKey: JSON.stringify([
+          id,
+          recipeSource(id).contentRevision,
+          route.request().url(),
+          basisFor(id),
+          target,
+          linesFor(id, target),
+        ]),
+        instructionProjection: cookingProjection(recipeSource(id), target),
+        recipeId: id,
+        supperDate: date,
+        context,
+        occurrenceId: context === 'assigned' ? occurrence?.occurrenceId : null,
+        baseServings: basisFor(id),
+        targetServings: target,
+        factor: target == null || !(basisFor(id)! > 0) ? null : target / basisFor(id)!,
+        servingVersion: state.version,
+        version: JSON.stringify([
+          id,
+          date,
+          context,
+          context === 'assigned' ? occurrence?.occurrenceId : null,
+          basisFor(id),
+          linesFor(id, target),
+          target,
+        ]),
+        editable: day.editable,
+        status:
+          target == null
+            ? 'original'
+            : linesFor(id, target).some((line) => line.status === 'unresolved')
+              ? linesFor(id, target).some((line) => line.status === 'scaled')
+                ? 'partial'
+                : 'unresolved'
+              : 'scaled',
+        lines: linesFor(id, target),
+      },
+    });
+  };
+  await page.route('**/api/recipes/*/ingredient-projection*', ingredientProjection);
+  for (const suffix of ['grocery/item', 'grocery']) {
+    await page.route(
+      (url) => new RegExp(`^/api/schedule/[^/]+/${suffix}$`).test(url.pathname),
+      async (route) => {
+        if (route.request().method() !== 'PATCH') return route.fallback();
+        const url = new URL(route.request().url());
+        const offset = Number(url.pathname.split('/')[3]);
+        const reference = url.searchParams.get('referenceWeekStartDate') ?? referenceDefault;
+        const date = new Date(`${reference}T00:00:00Z`);
+        if (
+          !/^\d{4}-\d{2}-\d{2}$/.test(reference) ||
+          !Number.isFinite(date.getTime()) ||
+          date.toISOString().slice(0, 10) !== reference ||
+          date.getUTCDay() !== 1
+        )
+          return route.fulfill({ status: 400, json: { message: 'Invalid reference Monday.' } });
+        const schedule = scheduleFor(offset, reference);
+        decorateGrocery(schedule);
+        const body = route.request().postDataJSON();
+        const result = groceryRows.mutate(
+          String(schedule.weekStartDate),
+          suffix.endsWith('/item') ? 'item' : 'bulk',
+          body
+        );
+        if (result.status === 200) {
+          options.checkState?.write(
+            String(schedule.weekStartDate),
+            groceryRows.snapshot(String(schedule.weekStartDate)).groceryState
+          );
+        }
+        await route.fulfill(result);
+      }
+    );
+  }
+  await page.route('**/api/schedule/servings*', handleServings);
+  await page.route('**/api/schedule/servings/refresh*', handleServings);
+  return {
+    captureSnapshot: () =>
+      structuredClone({
+        savedUsual,
+        sequence,
+        overrides: [...overrides],
+        inherited: [...inherited],
+        saved: [...saved],
+        projected: [...projected],
+      }),
+    restoreSnapshot: (snapshot: {
+      savedUsual: number | null;
+      sequence: number;
+      overrides: [string, number][];
+      inherited: [string, number | null][];
+      saved: [string, any][];
+      projected: [string, { groceryItems: any }][];
+    }) => {
+      savedUsual = snapshot.savedUsual;
+      sequence = snapshot.sequence;
+      overrides.clear();
+      snapshot.overrides.forEach(([date, value]) => overrides.set(date, value));
+      inherited.clear();
+      snapshot.inherited.forEach(([date, value]) => inherited.set(date, value));
+      saved.clear();
+      snapshot.saved.forEach(([week, value]) => saved.set(week, value));
+      projected.clear();
+      snapshot.projected.forEach(([week, value]) => projected.set(week, value));
+      schedules.clear();
+    },
+    membershipChanged,
+    preparationContext,
+    recipeChanged,
+    ingredientProjection,
+    ingredientPreview,
+    calendarChanged,
+    loseNextSaveReply: () => {
+      loseSaveReply = true;
+    },
+    finishRefresh: (fail = false) => {
+      for (const state of saved.values()) complete(state, fail);
+    },
+    decorateSchedule: decorateGrocery,
+  };
 }

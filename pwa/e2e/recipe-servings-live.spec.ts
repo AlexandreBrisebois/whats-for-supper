@@ -53,11 +53,10 @@ test('real extraction persistence reaches the generated detail client and biling
       [1024, 2],
     ]) {
       await page.setViewportSize({ width, height: 1000 });
-      await page.goto(`/recipes?open=${id}`);
+      await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
       await page.addStyleTag({ content: `html { font-size: ${16 * scale}px !important; }` });
       const heading = page.getByRole('heading', {
-        name: locale === 'en' ? 'Ingredients 4 servings' : 'Ingrédients 4 portions',
-        exact: true,
+        name: locale === 'en' ? /^Ingredients/ : /^Ingrédients/,
       });
       await expect(heading).toBeVisible();
       await page.evaluate(async () => {
@@ -70,8 +69,9 @@ test('real extraction persistence reaches the generated detail client and biling
           node.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
       });
       const geometry = await heading.evaluate((node) => {
-        const title = node.children[0].getBoundingClientRect();
-        const badge = node.children[1].getBoundingClientRect();
+        const title = node.firstElementChild!.getBoundingClientRect();
+        const originalBasis = document.querySelector('[data-testid=recipe-servings]')!;
+        const badge = originalBasis.getBoundingClientRect();
         const bounds = node.getBoundingClientRect();
         const scroller = node.closest('div.overflow-y-auto')!;
         const clip = scroller.getBoundingClientRect();
@@ -85,8 +85,8 @@ test('real extraction persistence reaches the generated detail client and biling
           noScroll:
             panel.scrollWidth <= panel.clientWidth &&
             document.documentElement.scrollWidth <= innerWidth,
-          badgeColor: getComputedStyle(node.children[1]).color,
-          badgeBackground: getComputedStyle(node.children[1]).backgroundColor,
+          badgeColor: getComputedStyle(originalBasis).color,
+          badgeBackground: getComputedStyle(originalBasis).backgroundColor,
           panelBackground: getComputedStyle(panel).backgroundColor,
         };
       });
@@ -197,7 +197,7 @@ test('real extraction persistence reaches the generated detail client and biling
         servings: 3,
         ingredients: ['510 g beef', '340 g pasta'],
       });
-      await page.goto(`/recipes?open=${id}`);
+      await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
       await expect(page.getByTestId('recipe-servings')).toHaveText(
         locale === 'en' ? '3 servings' : '3 portions'
       );
@@ -212,7 +212,8 @@ test('real extraction persistence reaches the generated detail client and biling
     }
   }
   const unknownId = process.env.SERVINGS_UNKNOWN_ID!;
-  await page.goto(`/recipes?open=${unknownId}`);
+  await page.goto(`/recipes?open=${unknownId}&reviewAmounts=true`);
+  await expect(page.getByTestId('recipe-detail-name')).toHaveText('Unknown servings');
   await expect(page.getByTestId('recipe-servings')).toHaveCount(0);
   await page.getByTestId('action-gear-menu').click();
   await page.getByTestId('action-edit-recipe').click();
@@ -220,7 +221,7 @@ test('real extraction persistence reaches the generated detail client and biling
   await page.getByTestId('recipe-edit-servings-input').fill('2');
   await page.getByTestId('recipe-save-edits').click();
   await expect(page.getByTestId('recipe-servings')).toHaveText('2 portions');
-  await page.goto(`/recipes?open=${unknownId}`);
+  await page.goto(`/recipes?open=${unknownId}&reviewAmounts=true`);
   await expect(page.getByTestId('recipe-servings')).toHaveText('2 portions');
   for (const servings of [null, 0, -1, 1.5, 2147483648, '3'])
     expect(

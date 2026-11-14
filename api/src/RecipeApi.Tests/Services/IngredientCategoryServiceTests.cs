@@ -30,7 +30,7 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
         _recomputeMock = new Mock<GroceryRecomputeService>(_db, new AisleMapper(), logger,
             _scope.ServiceProvider.GetRequiredService<IClock>(),
             _scope.ServiceProvider.GetRequiredService<DeploymentCalendar>(),
-            _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), null)
+            _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), null, null)
 #pragma warning restore CS8625
         {
             CallBase = false

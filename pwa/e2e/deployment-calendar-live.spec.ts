@@ -52,7 +52,7 @@ test('real Home assigns deployment Sunday and persists the correct groceries on 
   await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
   await page.getByTestId('discover-btn').click();
   await expect(page).toHaveURL(
-    /\/recipes\?addToDay=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
+    /\/recipes\?focus=search&addToDay=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
   );
   await page.getByTestId('recipe-search-input').fill('Sunday Chicken');
   await page.getByTestId('recipe-search-input').press('Enter');
@@ -98,6 +98,7 @@ test('real Home assigns deployment Sunday and persists the correct groceries on 
     date: '2026-10-18',
     recipe: { id: MOCK_IDS.RECIPE_LASAGNA },
   });
+  await page.goto('/home');
   await page.reload();
   await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
   await expect(page.getByText('Sunday Chicken').first()).toBeVisible();
@@ -227,15 +228,17 @@ for (const origin of ['search', 'browse'] as const) {
           .filter({ hasText: 'Sunday Chicken' })
           .click();
       }
-      await page.getByTestId('action-cook-this').click();
+      if (action === 'later') {
+        await page.getByTestId('action-change-day').click();
+        await page.getByTestId('planning-week-next').click();
+        await page.getByTestId('planning-day-0').click();
+      }
       const assignment = page.waitForResponse(
         (response) =>
           response.request().method() === 'POST' &&
           new URL(response.url()).pathname === '/api/schedule/assign'
       );
-      await page
-        .getByTestId(action === 'tonight' ? 'action-cook-tonight' : 'action-plan-later')
-        .click();
+      await page.getByTestId('action-add-to-day').click();
       const response = await assignment;
       expect(response.status()).toBe(200);
       expect(response.request().postDataJSON()).toMatchObject({

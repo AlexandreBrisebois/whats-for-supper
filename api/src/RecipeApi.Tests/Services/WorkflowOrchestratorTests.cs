@@ -27,7 +27,7 @@ public class WorkflowOrchestratorTests : IDisposable
         _dbContext = TestDbContextFactory.Create();
         _storage = new InMemoryStorageProvider();
         _workflowRepository = new WorkflowRepository(_storage);
-        _orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), _workflowRepository, _dbContext);
+        _orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), _workflowRepository, _dbContext, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(_dbContext, _storage, new RecipeApi.Services.SystemClock()));
     }
 
     public void Dispose()
@@ -156,6 +156,9 @@ tasks:
 ";
         await _storage.SaveAsync("workflows", "contextual_import.yaml", yaml);
         var recipeId = Guid.NewGuid().ToString();
+        _dbContext.Recipes.Add(new Recipe { Id = Guid.Parse(recipeId) });
+        await _dbContext.SaveChangesAsync();
+        await new RecipeRepository(_storage).SaveInfoAsync(new RecipeInfo { Id = Guid.Parse(recipeId) }, default);
         var parameters = new Dictionary<string, string>
         {
             ["recipeId"] = recipeId,
@@ -189,19 +192,22 @@ tasks:
         // Arrange
         var yaml = @"
 name: recipe_import
-parameters: [recipe_id]
+parameters: [recipeId]
 tasks:
   - name: extract
     processor: ExtractRecipe
-    payload: { recipe_id: ""{{recipe_id}}"" }
+    payload: { recipeId: ""{{recipeId}}"" }
   - name: hero
     processor: GenerateHeroImage
     depends_on: [extract]
-    payload: { recipe_id: ""{{recipe_id}}"" }
+    payload: { recipeId: ""{{recipeId}}"" }
 ";
         await _storage.SaveAsync("workflows", "recipe_import.yaml", yaml);
         var recipeId = Guid.NewGuid().ToString();
-        var parameters = new Dictionary<string, string> { { "recipe_id", recipeId } };
+        _dbContext.Recipes.Add(new Recipe { Id = Guid.Parse(recipeId) });
+        await _dbContext.SaveChangesAsync();
+        await new RecipeRepository(_storage).SaveInfoAsync(new RecipeInfo { Id = Guid.Parse(recipeId) }, default);
+        var parameters = new Dictionary<string, string> { { "recipeId", recipeId } };
 
         // Act
         var instance = await _orchestrator.TriggerAsync("recipe_import", parameters);

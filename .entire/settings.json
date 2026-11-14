@@ -1,5 +1,6 @@
 {
-  "enabled": false,
+  "enabled": true,
+  "absolute_git_hook_path": true,
   "telemetry": true,
   "checkpoints": {
     "primary": {

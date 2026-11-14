@@ -1,3 +1,4 @@
+import { scalarQuantity, fixtureGroceryId, fixtureGroceryChecks } from '@/testing/grocery-fixtures';
 /**
  * Unit tests for GroceryList — section completion UI (task 7.5).
  *
@@ -10,8 +11,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
+import { DateOnly } from '@microsoft/kiota-abstractions';
 
 const {
+  mockReadSchedule,
+  mockGetSourceRecipe,
+  mockRefreshServings,
   mockToggleGroceryItem,
   mockCreateExtra,
   mockSuggestExtras,
@@ -19,6 +24,9 @@ const {
   mockDeleteExtra,
   mockAddToast,
 } = vi.hoisted(() => ({
+  mockReadSchedule: vi.fn(),
+  mockGetSourceRecipe: vi.fn(),
+  mockRefreshServings: vi.fn(),
   mockToggleGroceryItem: vi.fn(),
   mockCreateExtra: vi.fn(),
   mockSuggestExtras: vi.fn(),
@@ -27,22 +35,37 @@ const {
   mockAddToast: vi.fn(),
 }));
 
+vi.mock('@/lib/api/planner', () => ({ getSchedule: mockReadSchedule }));
+vi.mock('@/lib/api/recipes', () => ({ getRecipe: mockGetSourceRecipe }));
+
 // ── Store mock ────────────────────────────────────────────────────────────────
 
 let mockGroceryState: Record<string, boolean> = {};
 const mockSetGroceryItemToggle = vi.fn((ingredientName: string, isToggled: boolean) => {
-  mockGroceryState = { ...mockGroceryState, [ingredientName]: isToggled };
+  mockGroceryState = fixtureGroceryChecks({ ...mockGroceryState, [ingredientName]: isToggled });
 });
 
 vi.mock('@/store/plannerStore', () => ({
-  usePlannerStore: () => ({
-    groceryState: mockGroceryState,
-    setGroceryItemToggle: mockSetGroceryItemToggle,
-    setGroceryState: vi.fn(),
-  }),
+  usePlannerStore: Object.assign(
+    () => ({
+      groceryState: mockGroceryState,
+      setGroceryItemToggle: mockSetGroceryItemToggle,
+      setGroceryState: vi.fn(),
+    }),
+    {
+      getState: () => ({
+        groceryState: mockGroceryState,
+        setGroceryState: (value: Record<string, boolean>) => {
+          mockGroceryState = value;
+        },
+      }),
+    }
+  ),
 }));
 
 // ── API mock ──────────────────────────────────────────────────────────────────
+
+vi.mock('@/lib/api/supper-servings', () => ({ refreshSupperGroceries: mockRefreshServings }));
 
 vi.mock('@/lib/api/schedule', () => ({
   useSchedule: () => ({
@@ -54,6 +77,7 @@ vi.mock('@/lib/api/schedule', () => ({
 vi.mock('@/lib/api/ingredients', () => ({
   reclassifyIngredient: vi.fn(),
 }));
+vi.mock('@/lib/api/foods', () => ({ reclassifyFoodCategory: vi.fn() }));
 
 vi.mock('@/lib/api/grocery-extras', () => ({
   createGroceryExtra: mockCreateExtra,
@@ -92,6 +116,8 @@ vi.mock('framer-motion', () => ({
 // ── Locales mock ──────────────────────────────────────────────────────────────
 
 vi.mock('@/locales', () => ({
+  getLocale: () => 'en',
+  setLocale: vi.fn(),
   t: (_key: string, fallback: string) => fallback,
   tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
     Object.entries(vars).reduce(
@@ -103,8 +129,9 @@ vi.mock('@/locales', () => ({
 // ── Import component AFTER mocks ──────────────────────────────────────────────
 
 import { GroceryList } from './GroceryList';
-import type { GroceryLineItemDto } from '@/lib/api/generated/models';
+import type { GroceryExtraDto, GroceryLineItemDto } from '@/lib/api/generated/models';
 import { reclassifyIngredient } from '@/lib/api/ingredients';
+import { reclassifyFoodCategory } from '@/lib/api/foods';
 import { useWeekStore } from '@/store/weekStore';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -116,6 +143,11 @@ function makeItem(
   overrides?: Partial<GroceryLineItemDto>
 ): GroceryLineItemDto {
   return {
+    rowId: fixtureGroceryId(normalizedKey ?? displayName),
+    rowVersion: '1',
+    weekStartDate: DateOnly.parse('2025-01-06'),
+    source: 'recipe',
+    demandIdentity: `fixture:${normalizedKey ?? displayName}`,
     displayName,
     normalizedKey: normalizedKey ?? displayName.toLowerCase().replace(/\s+/g, '_'),
     section,
@@ -128,10 +160,62 @@ function makeItem(
 }
 
 const ITEMS = [makeItem('tomato', 'Produce'), makeItem('lettuce', 'Produce')];
+function seedChecks(values: Record<string, boolean>) {
+  mockGroceryState = fixtureGroceryChecks(values);
+  useWeekStore.setState({
+    groceryListVersion: '1',
+    groceryVersionWeek: '2025-01-06',
+    authoritativeGroceryChecks: mockGroceryState,
+  });
+}
 
 function renderList() {
   return render(<GroceryList weekOffset={0} items={ITEMS} />);
 }
+
+// Group 1 contract regression: IDs are deliberately unrelated to all labels.
+const WATER_ROWS = ['g', 'ml', 'bottle'].map((unitText, index) =>
+  Object.assign(makeItem('Water', 'Produce', 'water', { unitText, quantity: null }), {
+    rowId: `04000000-0000-4000-8000-00000000000${index + 1}`,
+    rowVersion: '1',
+    weekStartDate: DateOnly.parse('2025-01-06'),
+    source: 'recipe',
+  })
+);
+const WATER_EXTRA: GroceryExtraDto = {
+  id: '04000000-0000-4000-8000-000000000004',
+  lineageId: '04000000-0000-4000-8000-000000000005',
+  occurrenceWeekStartDate: DateOnly.parse('2025-01-06'),
+  name: 'Water',
+  normalizedKey: 'water',
+  grocerySection: 'Produce',
+  checked: false,
+  version: 1,
+  source: 'extra',
+  readOnly: false,
+};
+
+describe('independent grocery row contract (C26 / bounded C31)', () => {
+  it('reads one checked water identity without sharing it with the other water buckets', () => {
+    seedChecks({ [WATER_ROWS[0].rowId]: true });
+    render(<GroceryList weekOffset={0} items={WATER_ROWS} extras={[WATER_EXTRA]} />);
+
+    const controls = screen.getAllByTestId('grocery-item-checkbox');
+    expect(controls).toHaveLength(3);
+    expect(screen.getAllByRole('checkbox', { name: /Water/ })).toHaveLength(4);
+    expect(
+      controls.filter((control) => control.getAttribute('aria-checked') === 'true')
+    ).toHaveLength(1);
+  });
+
+  it('writes the selected opaque identity instead of its shared display label', async () => {
+    render(<GroceryList weekOffset={0} items={WATER_ROWS} />);
+    await act(async () => fireEvent.click(screen.getAllByTestId('grocery-item-checkbox')[1]));
+
+    expect(mockSetGroceryItemToggle).toHaveBeenCalledWith(WATER_ROWS[1].rowId, true);
+    expect(mockGroceryState).toEqual({ [WATER_ROWS[1].rowId]: true });
+  });
+});
 
 function StoreBackedGroceryList({ weekOffset = 0 }: { weekOffset?: number }) {
   const items = useWeekStore((state) => state.groceryItems);
@@ -146,10 +230,46 @@ function renderStoreBacked(items: GroceryLineItemDto[], weekOffset = 0) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  mockGroceryState = {};
+  mockReadSchedule.mockReset();
+  mockGetSourceRecipe.mockReset().mockRejectedValue(new Error('Recipe unavailable'));
+  useWeekStore.setState({ schedule: [] });
+  mockRefreshServings.mockReset();
+  useWeekStore.setState({ groceryRefresh: undefined });
+  seedChecks({});
   mockSetGroceryItemToggle.mockClear();
   mockToggleGroceryItem.mockReset();
-  mockToggleGroceryItem.mockResolvedValue(undefined);
+  mockToggleGroceryItem.mockImplementation(async (_offset, request) => {
+    const current = useWeekStore.getState();
+    const version = String(BigInt(request.expectedRowVersion) + 1n);
+    const rows = current.groceryItems.some((row) => row.rowId === request.rowId)
+      ? current.groceryItems
+      : [
+          {
+            rowId: request.rowId,
+            rowVersion: request.expectedRowVersion,
+            weekStartDate: request.weekStartDate,
+            displayName: 'Fixture row',
+            normalizedKey: 'fixture',
+            source: 'recipe',
+            demandIdentity: 'fixture',
+            section: 'Produce',
+            recipeIds: [],
+            quantity: null,
+          },
+        ];
+    return {
+      updatedAt: new Date(),
+      weekStartDate: request.weekStartDate,
+      listVersion: String(BigInt(current.groceryListVersion ?? '1') + 1n),
+      rowId: request.rowId,
+      rowVersion: version,
+      checked: request.checked,
+      checks: { additionalData: { ...mockGroceryState, [request.rowId]: request.checked } },
+      rows: rows.map((row) =>
+        row.rowId === request.rowId ? { ...row, rowVersion: version } : row
+      ),
+    };
+  });
   vi.mocked(reclassifyIngredient).mockReset();
   useWeekStore.setState({ weekOffset: 0, groceryItems: [] });
   useWeekStore.setState({
@@ -170,6 +290,142 @@ beforeEach(() => {
   mockUpdateExtra.mockReset();
   mockDeleteExtra.mockReset();
   mockAddToast.mockReset();
+});
+
+describe('quiet reset notices across absolute weeks', () => {
+  const showWeek = (week: string, summary: string) =>
+    useWeekStore.setState({
+      weekStartDate: week,
+      groceryRefresh: {
+        status: 'current',
+        version: summary,
+        appliedVersion: summary,
+        resetSummaryVersion: summary,
+      },
+    });
+
+  it('remembers each week after A dismiss, B dismiss and reopening A, but shows a new A reset', () => {
+    sessionStorage.clear();
+    showWeek('2025-01-06', 'reset-A');
+    let view = renderList();
+    fireEvent.click(
+      within(screen.getByTestId('grocery-portions-summary')).getByRole('button', {
+        name: 'Dismiss',
+      })
+    );
+    expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+    view.unmount();
+    showWeek('2025-01-13', 'reset-B');
+    view = renderList();
+    fireEvent.click(
+      within(screen.getByTestId('grocery-portions-summary')).getByRole('button', {
+        name: 'Dismiss',
+      })
+    );
+    view.unmount();
+    showWeek('2025-01-06', 'reset-A');
+    view = renderList();
+    expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+    act(() => showWeek('2025-01-06', 'reset-A-new'));
+    expect(screen.getByTestId('grocery-portions-summary')).toBeVisible();
+    fireEvent.click(
+      within(screen.getByTestId('grocery-portions-summary')).getByRole('button', {
+        name: 'Dismiss',
+      })
+    );
+    view.unmount();
+    showWeek('2025-01-06', 'reset-A-new');
+    renderList();
+    expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+  });
+
+  it('keeps the list usable when reading notice acknowledgements is denied', () => {
+    const storage = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage denied');
+    });
+    try {
+      showWeek('2025-01-06', 'denied-read');
+      expect(() => renderList()).not.toThrow();
+      expect(screen.getByTestId('grocery-portions-summary')).toBeVisible();
+    } finally {
+      storage.mockRestore();
+    }
+  });
+
+  it('dismisses locally when writing notice acknowledgements is denied', () => {
+    showWeek('2025-01-06', 'denied-write');
+    renderList();
+    const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage denied');
+    });
+    try {
+      fireEvent.click(
+        within(screen.getByTestId('grocery-portions-summary')).getByRole('button', {
+          name: 'Dismiss',
+        })
+      );
+      expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: /tomato/i })).toBeVisible();
+    } finally {
+      storage.mockRestore();
+    }
+  });
+});
+
+describe('serving refresh acknowledgement lifetime', () => {
+  it.each(['week', 'value'] as const)(
+    'does not roll an old recipe check failure into a newer %s',
+    async (change) => {
+      let fail!: (error: Error) => void;
+      mockToggleGroceryItem.mockReturnValue(new Promise((_, reject) => (fail = reject)));
+      renderList();
+      fireEvent.click(screen.getByRole('checkbox', { name: /tomato/i }));
+      if (change === 'week') useWeekStore.setState({ weekStartDate: '2025-01-13' });
+      else seedChecks({ tomato: false });
+      const calls = mockSetGroceryItemToggle.mock.calls.length;
+      await act(async () => fail(new Error('old check failed')));
+      expect(mockSetGroceryItemToggle).toHaveBeenCalledTimes(calls);
+    }
+  );
+  it.each(['different week', 'newer same-week freshness'] as const)(
+    'preserves %s after an old Retry reply',
+    async (change) => {
+      let resolve!: () => void;
+      mockRefreshServings.mockReturnValue(
+        new Promise<void>((done) => {
+          resolve = done;
+        })
+      );
+      useWeekStore.setState({
+        schedule: [{ date: '2025-01-06', day: 'Monday', status: 0 }] as any,
+        groceryRefresh: {
+          status: 'failed',
+          version: 'old',
+          appliedVersion: 'older',
+          resetSummaryVersion: 'old-summary',
+        },
+      });
+      renderList();
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+      expect(mockRefreshServings).toHaveBeenCalledWith('2025-01-06');
+      const newer = {
+        status: 'current' as const,
+        version: 'new',
+        appliedVersion: 'new',
+        resetSummaryVersion: 'new-summary',
+      };
+      act(() =>
+        useWeekStore.setState({
+          ...(change === 'different week'
+            ? { schedule: [{ date: '2025-01-13', day: 'Monday', status: 0 }] as any }
+            : {}),
+          groceryRefresh: newer,
+        })
+      );
+      await act(async () => resolve());
+      expect(useWeekStore.getState().groceryRefresh).toEqual(newer);
+    }
+  );
 });
 
 describe('GroceryList — everyday extras', () => {
@@ -626,7 +882,7 @@ describe('GroceryList — checked item ordering', () => {
     }));
 
   it('orders mixed extra and recipe rows by check state without changing source order', () => {
-    mockGroceryState = { Rice: false, Beans: true };
+    seedChecks({ Rice: false, Beans: true });
     render(
       <GroceryList
         weekOffset={0}
@@ -719,7 +975,7 @@ describe('GroceryList — checked item ordering', () => {
   });
 
   it('renders unchecked items before checked items while preserving order within each group', () => {
-    mockGroceryState = { tomato: true, lettuce: false, carrot: true, cucumber: false };
+    seedChecks({ tomato: true, lettuce: false, carrot: true, cucumber: false });
 
     render(
       <GroceryList
@@ -737,7 +993,7 @@ describe('GroceryList — checked item ordering', () => {
   });
 
   it('moves an item down when checked and back up when unchecked', async () => {
-    mockGroceryState = { tomato: false, lettuce: false, carrot: true };
+    seedChecks({ tomato: false, lettuce: false, carrot: true });
     const items = [
       makeItem('tomato', 'Produce'),
       makeItem('lettuce', 'Produce'),
@@ -766,31 +1022,33 @@ describe('GroceryList — checked item ordering', () => {
 });
 
 describe('GroceryList — duplicate display names', () => {
-  it('keeps every duplicate row rendered exactly once while toggling its shared grocery state', async () => {
+  it('keeps duplicate rows rendered exactly once while toggling only the selected identity', async () => {
     const duplicateItems = [
-      makeItem('Eau', 'Pantry', 'water-cup', { quantity: 0.25, unitText: 'tasse' }),
-      makeItem('Eau', 'Pantry', 'water-ml', { quantity: 250, unitText: 'ml' }),
-      makeItem('Eau', 'Pantry', 'water-litre', { quantity: 0.25, unitText: 'L' }),
+      makeItem('Eau', 'Pantry', 'water-cup', { quantity: scalarQuantity(0.25), unitText: 'tasse' }),
+      makeItem('Eau', 'Pantry', 'water-ml', { quantity: scalarQuantity(250), unitText: 'ml' }),
+      makeItem('Eau', 'Pantry', 'water-litre', { quantity: scalarQuantity(0.25), unitText: 'L' }),
     ];
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { rerender } = render(<GroceryList weekOffset={0} items={duplicateItems} />);
 
     const rows = () => screen.getAllByTestId('grocery-item-checkbox');
     const labels = () => screen.getAllByTestId('grocery-item-label');
+    const selected = () =>
+      rows().find((row) => row.getAttribute('data-row-id') === duplicateItems[0].rowId)!;
 
     expect(rows()).toHaveLength(3);
     expect(labels()).toHaveLength(3);
     expect(screen.getByText('0/3 items')).toBeInTheDocument();
 
-    fireEvent.click(rows()[0]);
+    fireEvent.click(selected());
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
 
     expect(rows()).toHaveLength(3);
     expect(labels()).toHaveLength(3);
-    expect(screen.getByText('3/3 items')).toBeInTheDocument();
-    expect(rows().every((row) => row.getAttribute('aria-checked') === 'true')).toBe(true);
+    expect(screen.getByText('1/3 items')).toBeInTheDocument();
+    expect(rows().filter((row) => row.getAttribute('aria-checked') === 'true')).toHaveLength(1);
 
-    fireEvent.click(rows()[0]);
+    fireEvent.click(selected());
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
 
     expect(rows()).toHaveLength(3);
@@ -798,12 +1056,12 @@ describe('GroceryList — duplicate display names', () => {
     expect(screen.getByText('0/3 items')).toBeInTheDocument();
     expect(rows().every((row) => row.getAttribute('aria-checked') === 'false')).toBe(true);
 
-    fireEvent.click(rows()[0]);
+    fireEvent.click(selected());
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
 
     expect(rows()).toHaveLength(3);
     expect(labels()).toHaveLength(3);
-    expect(screen.getByText('3/3 items')).toBeInTheDocument();
+    expect(screen.getByText('1/3 items')).toBeInTheDocument();
     expect(consoleError).not.toHaveBeenCalled();
 
     consoleError.mockRestore();
@@ -815,13 +1073,23 @@ describe('GroceryList — optimistic grocery state synchronization', () => {
   const rowCount = () => screen.getAllByTestId('grocery-item-checkbox').length;
 
   it('preserves row cardinality and ordering after a successful optimistic toggle', async () => {
-    mockGroceryState = { Tomato: false, Lettuce: false };
+    seedChecks({ Tomato: false, Lettuce: false });
     const { rerender } = render(<GroceryList weekOffset={0} items={items} />);
 
     fireEvent.click(screen.getByRole('checkbox', { name: /Tomato/ }));
     rerender(<GroceryList weekOffset={0} items={items} />);
 
-    expect(mockToggleGroceryItem).toHaveBeenCalledWith(0, 'Tomato', true);
+    await waitFor(() =>
+      expect(mockToggleGroceryItem).toHaveBeenCalledWith(
+        0,
+        expect.objectContaining({
+          rowId: fixtureGroceryId('Tomato'),
+          checked: true,
+          expectedRowVersion: '1',
+        }),
+        '2025-01-06'
+      )
+    );
     expect(rowCount()).toBe(2);
     expect(screen.getAllByTestId('grocery-item-label').map((label) => label.textContent)).toEqual([
       'Lettuce',
@@ -831,13 +1099,13 @@ describe('GroceryList — optimistic grocery state synchronization', () => {
   });
 
   it('rolls back a failed optimistic toggle without changing row cardinality', async () => {
-    mockGroceryState = { Tomato: false, Lettuce: false };
+    seedChecks({ Tomato: false, Lettuce: false });
     mockToggleGroceryItem.mockRejectedValueOnce(new Error('Network error'));
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { rerender } = render(<GroceryList weekOffset={0} items={items} />);
 
     fireEvent.click(screen.getByRole('checkbox', { name: /Tomato/ }));
-    await waitFor(() => expect(mockGroceryState.Tomato).toBe(false));
+    await waitFor(() => expect(mockGroceryState[fixtureGroceryId('Tomato')]).toBe(false));
     rerender(<GroceryList weekOffset={0} items={items} />);
 
     expect(rowCount()).toBe(2);
@@ -853,13 +1121,16 @@ describe('GroceryList — optimistic grocery state synchronization', () => {
 
   it('reconciles repeated remote states without changing duplicate-row cardinality', () => {
     const duplicateItems = [
-      makeItem('Flour', 'Pantry', 'flour-grams', { quantity: 200, unitText: 'g' }),
-      makeItem('Flour', 'Pantry', 'flour-volume', { quantity: 240, unitText: 'ml' }),
+      makeItem('Flour', 'Pantry', 'flour-grams', { quantity: scalarQuantity(200), unitText: 'g' }),
+      makeItem('Flour', 'Pantry', 'flour-volume', {
+        quantity: scalarQuantity(240),
+        unitText: 'ml',
+      }),
     ];
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { rerender } = render(<GroceryList weekOffset={0} items={duplicateItems} />);
 
-    mockGroceryState = { Flour: true };
+    seedChecks(Object.fromEntries(duplicateItems.map((item) => [item.rowId!, true])));
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
     rerender(<GroceryList weekOffset={0} items={duplicateItems} />);
 
@@ -874,8 +1145,8 @@ describe('GroceryList — optimistic grocery state synchronization', () => {
 describe('GroceryList — replacement and remount consistency', () => {
   it('renders the same duplicate rows after an equivalent replacement and remount', () => {
     const items = [
-      makeItem('Eau', 'Pantry', 'water-cup', { quantity: 0.25, unitText: 'tasse' }),
-      makeItem('Eau', 'Pantry', 'water-ml', { quantity: 250, unitText: 'ml' }),
+      makeItem('Eau', 'Pantry', 'water-cup', { quantity: scalarQuantity(0.25), unitText: 'tasse' }),
+      makeItem('Eau', 'Pantry', 'water-ml', { quantity: scalarQuantity(250), unitText: 'ml' }),
     ];
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { rerender, unmount } = render(<GroceryList weekOffset={0} items={items} />);
@@ -895,7 +1166,7 @@ describe('GroceryList — replacement and remount consistency', () => {
 describe('GroceryList — section completion UI', () => {
   it('shows percentage badge when section is not complete', () => {
     // Only one of two items checked
-    mockGroceryState = { tomato: true, lettuce: false };
+    seedChecks({ tomato: true, lettuce: false });
 
     renderList();
 
@@ -907,7 +1178,7 @@ describe('GroceryList — section completion UI', () => {
   });
 
   it('shows percentage badge when no items are checked', () => {
-    mockGroceryState = { tomato: false, lettuce: false };
+    seedChecks({ tomato: false, lettuce: false });
 
     renderList();
 
@@ -917,7 +1188,7 @@ describe('GroceryList — section completion UI', () => {
 
   it('shows checkmark icon when all items in a section are checked', () => {
     // All items checked
-    mockGroceryState = { tomato: true, lettuce: true };
+    seedChecks({ tomato: true, lettuce: true });
 
     renderList();
 
@@ -929,7 +1200,7 @@ describe('GroceryList — section completion UI', () => {
   });
 
   it('applies sage green header background when section is complete', () => {
-    mockGroceryState = { tomato: true, lettuce: true };
+    seedChecks({ tomato: true, lettuce: true });
 
     renderList();
 
@@ -938,7 +1209,7 @@ describe('GroceryList — section completion UI', () => {
   });
 
   it('applies gradient header background when section is not complete', () => {
-    mockGroceryState = { tomato: true, lettuce: false };
+    seedChecks({ tomato: true, lettuce: false });
 
     renderList();
 
@@ -948,7 +1219,7 @@ describe('GroceryList — section completion UI', () => {
 
   it('does not show completion state when section has zero items', () => {
     // No items → empty state, no section cards rendered
-    mockGroceryState = {};
+    seedChecks({});
 
     render(<GroceryList weekOffset={0} items={[]} />);
 
@@ -959,13 +1230,13 @@ describe('GroceryList — section completion UI', () => {
 
 describe('GroceryList — collapsible sections', () => {
   it('keeps a section open when its final ingredient is checked', () => {
-    mockGroceryState = { tomato: true, lettuce: false };
+    seedChecks({ tomato: true, lettuce: false });
     const { rerender } = renderList();
     const header = screen.getByRole('button', { name: /Produce/ });
 
     expect(header).toHaveAttribute('aria-expanded', 'true');
 
-    mockGroceryState = { tomato: true, lettuce: true };
+    seedChecks({ tomato: true, lettuce: true });
     rerender(<GroceryList weekOffset={0} items={ITEMS} />);
 
     expect(header).toHaveAttribute('aria-expanded', 'true');
@@ -973,7 +1244,7 @@ describe('GroceryList — collapsible sections', () => {
   });
 
   it('defaults completed sections to collapsed and re-collapses them when the app returns', () => {
-    mockGroceryState = { tomato: true, lettuce: true };
+    seedChecks({ tomato: true, lettuce: true });
     renderList();
     const header = screen.getByRole('button', { name: /Produce/ });
 
@@ -1035,7 +1306,7 @@ describe('GroceryList — quantity hints', () => {
         weekOffset={0}
         items={[
           makeItem('Potato', 'Produce', 'potato', {
-            quantity: 1500,
+            quantity: scalarQuantity(1500),
             unitText: 'g',
           }),
         ]}
@@ -1063,21 +1334,62 @@ describe('GroceryList — quantity hints', () => {
     expect(screen.queryByText(/piece/)).not.toBeInTheDocument();
   });
 
-  it('does not show the amount hint when unitText is missing', () => {
+  it.each([null, '', '   '])(
+    'shows a trusted scalar without inventing a blank unit (%j)',
+    (unitText) => {
+      render(
+        <GroceryList
+          weekOffset={0}
+          items={[
+            makeItem('Milk', 'Pantry', 'milk', {
+              quantity: scalarQuantity(2),
+              unitText,
+            }),
+          ]}
+        />
+      );
+      expect(screen.getByTestId('grocery-item-quantity-hint')).toHaveTextContent(/^\(2\)$/);
+    }
+  );
+
+  it.each([
+    { quantity: scalarQuantity(0), expected: '(0)' },
+    { quantity: scalarQuantity(0.5), expected: '(0.5)' },
+    {
+      quantity: { kind: 'range', min: { n: '2', d: '1' }, max: { n: '3', d: '1' } },
+      expected: '(2–3)',
+    },
+  ])('shows trusted unitless $expected', ({ quantity, expected }) => {
     render(
       <GroceryList
         weekOffset={0}
         items={[
           makeItem('Milk', 'Pantry', 'milk', {
-            quantity: 2,
+            quantity,
             unitText: null,
           }),
         ]}
       />
     );
+    expect(screen.getByTestId('grocery-item-quantity-hint').textContent).toBe(expected);
+  });
 
-    expect(screen.getByText('Milk')).toBeInTheDocument();
-    expect(screen.queryByText(/\(2/)).not.toBeInTheDocument();
+  it('preserves unit-bearing precision and hides genuinely missing or unreadable amounts', () => {
+    render(
+      <GroceryList
+        weekOffset={0}
+        items={[
+          makeItem('Milk', 'Pantry', 'milk', { quantity: scalarQuantity(1.23456), unitText: 'kg' }),
+          makeItem('Onion', 'Produce', 'onion', { quantity: null, unitText: null }),
+          makeItem('Rice', 'Pantry', 'rice', {
+            quantity: { kind: 'scalar', value: { n: '1', d: '0' } },
+            unitText: '',
+          }),
+        ]}
+      />
+    );
+    expect(screen.getAllByTestId('grocery-item-quantity-hint')).toHaveLength(1);
+    expect(screen.getByTestId('grocery-item-quantity-hint').textContent).toBe('(1.235 kg)');
   });
 });
 
@@ -1149,7 +1461,7 @@ describe('GroceryList — reclassify affordance', () => {
   });
 
   it('preserves checked state when the item moves sections', async () => {
-    mockGroceryState = { Tomato: true };
+    seedChecks({ Tomato: true });
     vi.mocked(reclassifyIngredient).mockResolvedValue(undefined);
     renderStoreBacked([makeItem('Tomato', 'Produce', 'tomato')]);
 
@@ -1162,8 +1474,11 @@ describe('GroceryList — reclassify affordance', () => {
   it('moves only the selected duplicate-display-name line without cloning either row', async () => {
     vi.mocked(reclassifyIngredient).mockResolvedValue(undefined);
     renderStoreBacked([
-      makeItem('Flour', 'Produce', 'flour-grams', { quantity: 200, unitText: 'g' }),
-      makeItem('Flour', 'Produce', 'flour-volume', { quantity: 240, unitText: 'ml' }),
+      makeItem('Flour', 'Produce', 'flour-grams', { quantity: scalarQuantity(200), unitText: 'g' }),
+      makeItem('Flour', 'Produce', 'flour-volume', {
+        quantity: scalarQuantity(240),
+        unitText: 'ml',
+      }),
     ]);
 
     fireEvent.click(screen.getAllByTestId('reclassify-btn')[0]);
@@ -1214,4 +1529,590 @@ describe('GroceryList — reclassify affordance', () => {
 
     expect(useWeekStore.getState().groceryItems).toEqual([makeItem('Rice', 'Pantry', 'rice')]);
   });
+});
+
+describe('authoritative grocery entry freshness', () => {
+  it.each(['updating', 'failed'] as const)(
+    'reads persisted %s state when groceries open',
+    async (status) => {
+      const current = useWeekStore.getState();
+      mockReadSchedule.mockResolvedValue({
+        calendar: current.calendar,
+        weekStartDate: current.weekStartDate,
+        weekOffset: 0,
+        status: 0,
+        days: [],
+        groceryItems: ITEMS,
+        groceryState: {},
+        groceryListVersion: '2',
+        groceryRefresh: { status, version: 'remote' },
+      });
+      renderList();
+      await waitFor(() => expect(mockReadSchedule).toHaveBeenCalledWith(0, '2025-01-06'));
+      if (status === 'updating')
+        expect(screen.getByTestId('grocery-portions-updating')).toBeInTheDocument();
+      else expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    }
+  );
+});
+
+describe('honest quantity completeness', () => {
+  it('identifies a known subtotal and unresolved row without warning for to-taste content', () => {
+    const partial = {
+      ...makeItem('pasta', 'Pantry'),
+      quantity: scalarQuantity(400),
+      unitText: 'g',
+      quantityComplete: false,
+    };
+    const unresolved = { ...makeItem('sauce', 'Pantry'), quantityComplete: false };
+    const toTaste = { ...makeItem('salt to taste', 'Pantry'), quantityComplete: true };
+    render(<GroceryList weekOffset={0} items={[partial, unresolved, toTaste]} />);
+    expect(screen.getByText(/400 g known/i)).toBeVisible();
+    expect(screen.queryByText(/Review amounts/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('grocery-amount-review')).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('grocery-item-quantity-hint')).toHaveLength(1);
+    expect(screen.getByText('salt to taste').parentElement).not.toHaveTextContent(/Review amounts/);
+  });
+});
+
+it('offers affected recipe review outside the shopping checkbox', async () => {
+  render(
+    <GroceryList
+      weekOffset={0}
+      items={[
+        {
+          ...makeItem('pasta', 'Pantry'),
+          quantityComplete: false,
+          recipeIds: ['660e8400-e29b-41d4-a716-446655440013'] as any,
+        },
+      ]}
+    />
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+  expect(await screen.findByRole('link', { name: 'Recipe title unavailable' })).toHaveAttribute(
+    'href',
+    '/recipes?open=660e8400-e29b-41d4-a716-446655440013&reviewAmounts=true&sourceGroceryWeekOffset=0&sourceGroceryReferenceWeekStartDate=2025-01-06'
+  );
+  expect(mockToggleGroceryItem).not.toHaveBeenCalled();
+});
+
+describe('prior checked amount review', () => {
+  it('keeps a complete current total truthful while reviewing an unknown prior check', async () => {
+    const item = {
+      ...makeItem('pasta', 'Pantry'),
+      quantity: scalarQuantity(600),
+      unitText: 'g',
+      recipeIds: ['11111111-1111-4111-8111-111111111111'],
+      quantityComplete: true,
+      checkReviewReason: 'prior_amount_unknown',
+    } as any;
+    renderStoreBacked([
+      item,
+      {
+        ...item,
+        rowId: fixtureGroceryId('tomato'),
+        displayName: 'tomato',
+        normalizedKey: 'tomato',
+      },
+    ]);
+    expect(screen.getAllByTestId('grocery-item-quantity-hint')[0]).toHaveTextContent('600');
+    expect(screen.queryByTestId('grocery-check-review')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('grocery-amount-review')).not.toBeInTheDocument();
+    expect(screen.queryByText(/600.*known/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+    expect(await screen.findByRole('link', { name: 'Recipe title unavailable' })).toBeVisible();
+  });
+});
+
+describe('recipe source titles', () => {
+  const id = '660e8400-e29b-41d4-a716-446655440013';
+  const sourceItem = (name = 'pasta') => ({
+    ...makeItem(name, 'Pantry'),
+    quantity: scalarQuantity(400),
+    unitText: 'g',
+    quantityComplete: true,
+    recipeIds: [id, id] as any,
+  });
+  it('discloses loaded Planner titles without another recipe GET or a shopping mutation', () => {
+    useWeekStore.setState({
+      schedule: [{ date: '2025-01-08', recipe: { id, name: 'Family pasta' } }] as any,
+    });
+    render(<GroceryList weekOffset={0} items={[sourceItem()]} />);
+    const control = screen.getByRole('button', { name: 'Source recipes for pasta' });
+    expect(control).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(control);
+    expect(screen.getAllByRole('link', { name: 'Family pasta' })).toHaveLength(1);
+    expect(
+      within(screen.getByTestId('grocery-recipe-sources-region')).getAllByRole('listitem')
+    ).toHaveLength(1);
+    expect(control).toHaveAttribute('aria-expanded', 'true');
+    expect(mockGetSourceRecipe).not.toHaveBeenCalled();
+    expect(mockToggleGroceryItem).not.toHaveBeenCalled();
+  });
+  it('deduplicates a missing lunch-only source across open ingredient rows', async () => {
+    let finish!: (value: unknown) => void;
+    mockGetSourceRecipe.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<GroceryList weekOffset={0} items={[sourceItem(), sourceItem('sauce')]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+    await waitFor(() => expect(mockGetSourceRecipe).toHaveBeenCalledExactlyOnceWith(id));
+    fireEvent.click(screen.getByRole('button', { name: 'Source recipes for sauce' }));
+    await act(async () => finish({ id, name: 'Lunch pasta' }));
+    expect(await screen.findByRole('link', { name: 'Lunch pasta' })).toHaveAttribute(
+      'href',
+      `/recipes?open=${id}&reviewAmounts=true&sourceGroceryWeekOffset=0&sourceGroceryReferenceWeekStartDate=2025-01-06`
+    );
+    expect(mockGetSourceRecipe).toHaveBeenCalledTimes(1);
+    expect(mockToggleGroceryItem).not.toHaveBeenCalled();
+  });
+  it('ignores a late title after week departure and retries unavailable titles on deliberate reopen', async () => {
+    let finish!: (value: unknown) => void;
+    mockGetSourceRecipe
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          })
+      )
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValue({ id, name: 'Recovered title' });
+    const view = render(<GroceryList weekOffset={0} items={[sourceItem()]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+    await waitFor(() => expect(mockGetSourceRecipe).toHaveBeenCalledTimes(1));
+    view.rerender(<GroceryList weekOffset={1} items={[sourceItem()]} />);
+    await act(async () => finish({ id, name: 'Old week title' }));
+    expect(screen.queryByText('Old week title')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+    expect(await screen.findByRole('link', { name: 'Recipe title unavailable' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+    expect(await screen.findByRole('link', { name: 'Recovered title' })).toBeVisible();
+  });
+});
+
+it('resolves new live grocery contributors and prefers a later loaded Planner name', async () => {
+  const first = '660e8400-e29b-41d4-a716-446655440013';
+  const second = '660e8400-e29b-41d4-a716-446655440016';
+  mockGetSourceRecipe
+    .mockResolvedValueOnce({ id: first, name: 'First source' })
+    .mockResolvedValueOnce({ id: second, name: 'Added lunch' });
+  const item = { ...makeItem('pasta', 'Pantry'), recipeIds: [first] } as any;
+  const view = render(<GroceryList weekOffset={0} items={[item]} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+  await screen.findByRole('link', { name: 'First source' });
+  view.rerender(<GroceryList weekOffset={0} items={[{ ...item, recipeIds: [second] }]} />);
+  await screen.findByRole('link', { name: 'Added lunch' });
+  expect(screen.queryByText('First source')).not.toBeInTheDocument();
+  act(() =>
+    useWeekStore.setState({
+      schedule: [{ date: '2025-01-08', recipe: { id: second, name: 'Renamed in Planner' } }] as any,
+    })
+  );
+  expect(screen.getByRole('link', { name: 'Renamed in Planner' })).toBeVisible();
+  expect(mockGetSourceRecipe).toHaveBeenCalledTimes(2);
+});
+it('retires pending contributor titles when the demo session resets', async () => {
+  const { demoSession } = await import('@/lib/api/demo-session');
+  const previous = { generation: demoSession.generation, resetRequired: demoSession.resetRequired };
+  demoSession.generation = null;
+  demoSession.resetRequired = false;
+  const id = '660e8400-e29b-41d4-a716-446655440013';
+  let finish!: (value: unknown) => void;
+  mockGetSourceRecipe.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const view = render(
+    <GroceryList
+      weekOffset={0}
+      items={[{ ...makeItem('pasta', 'Pantry'), recipeIds: [id] } as any]}
+    />
+  );
+  try {
+    fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+    await waitFor(() => expect(mockGetSourceRecipe).toHaveBeenCalledTimes(1));
+    act(() => {
+      demoSession.observe('one');
+      demoSession.observe('two');
+    });
+    await act(async () => finish({ id, name: 'Retired household title' }));
+    expect(screen.queryByText('Retired household title')).not.toBeInTheDocument();
+    expect(mockGetSourceRecipe).toHaveBeenCalledTimes(1);
+  } finally {
+    view.unmount();
+    Object.assign(demoSession, previous);
+  }
+});
+
+it.each([false, true])(
+  'retires a departed pending lookup when its old reply arrives after return: %s',
+  async (lateReply) => {
+    const first = '660e8400-e29b-41d4-a716-446655440013';
+    const second = '660e8400-e29b-41d4-a716-446655440016';
+    let finishOld!: (value: unknown) => void;
+    mockGetSourceRecipe
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishOld = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ id: second, name: 'Other lunch' })
+      .mockResolvedValueOnce({ id: first, name: 'Current returning source' });
+    const item = { ...makeItem('pasta', 'Pantry'), recipeIds: [first] } as any;
+    const view = render(<GroceryList weekOffset={0} items={[item]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+    await waitFor(() => expect(mockGetSourceRecipe).toHaveBeenCalledTimes(1));
+    view.rerender(<GroceryList weekOffset={0} items={[{ ...item, recipeIds: [second] }]} />);
+    await screen.findByRole('link', { name: 'Other lunch' });
+    if (!lateReply) await act(async () => finishOld({ id: first, name: 'Retired source title' }));
+    expect(screen.queryByText('Retired source title')).not.toBeInTheDocument();
+    view.rerender(<GroceryList weekOffset={0} items={[item]} />);
+    expect(await screen.findByRole('link', { name: 'Current returning source' })).toBeVisible();
+    expect(mockGetSourceRecipe).toHaveBeenCalledTimes(3);
+    if (lateReply) await act(async () => finishOld({ id: first, name: 'Retired source title' }));
+    expect(screen.getByRole('link', { name: 'Current returning source' })).toBeVisible();
+    expect(screen.queryByText('Retired source title')).not.toBeInTheDocument();
+  }
+);
+
+it.each([
+  { id: '660e8400-e29b-41d4-a716-446655440013', name: '   ' },
+  { id: '660e8400-e29b-41d4-a716-446655440016', name: 'Wrong recipe title' },
+])('keeps an honest source fallback for unusable detail metadata: %j', async (recipe) => {
+  const id = '660e8400-e29b-41d4-a716-446655440013';
+  mockGetSourceRecipe.mockResolvedValue(recipe);
+  render(
+    <GroceryList
+      weekOffset={0}
+      items={[{ ...makeItem('pasta', 'Pantry'), recipeIds: [id] } as any]}
+    />
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Source recipes for pasta' }));
+  expect(await screen.findByRole('link', { name: 'Recipe title unavailable' })).toHaveAttribute(
+    'href',
+    `/recipes?open=${id}&reviewAmounts=true&sourceGroceryWeekOffset=0&sourceGroceryReferenceWeekStartDate=2025-01-06`
+  );
+  expect(screen.queryByText('Wrong recipe title')).not.toBeInTheDocument();
+  expect(mockGetSourceRecipe).toHaveBeenCalledTimes(1);
+  expect(mockToggleGroceryItem).not.toHaveBeenCalled();
+});
+
+it('accepts a Retry acknowledgement after an equivalent same-week freshness reread', async () => {
+  let finish!: () => void;
+  mockRefreshServings.mockReturnValue(
+    new Promise<void>((resolve) => {
+      finish = resolve;
+    })
+  );
+  const freshness = {
+    status: 'failed' as const,
+    version: 'same-input',
+    appliedVersion: 'previous',
+    workflowId: '550e8400-e29b-41d4-a716-446655440001',
+    resetSummaryVersion: null,
+  };
+  useWeekStore.setState({
+    schedule: [{ date: '2025-01-06', day: 'Monday', status: 0 }] as any,
+    groceryRefresh: freshness,
+  });
+  renderList();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  act(() => useWeekStore.setState({ groceryRefresh: { ...freshness } }));
+  await act(async () => finish());
+  expect(useWeekStore.getState().groceryRefresh?.status).toBe('updating');
+  expect(mockRefreshServings).toHaveBeenCalledExactlyOnceWith('2025-01-06');
+});
+
+it('keeps a replacement workflow after an old Retry acknowledgement for the same input', async () => {
+  let finish!: () => void;
+  mockRefreshServings.mockReturnValue(
+    new Promise<void>((resolve) => {
+      finish = resolve;
+    })
+  );
+  const freshness = {
+    status: 'failed' as const,
+    version: 'same-input',
+    appliedVersion: 'previous',
+    workflowId: '550e8400-e29b-41d4-a716-446655440001',
+    resetSummaryVersion: null,
+  };
+  useWeekStore.setState({
+    schedule: [{ date: '2025-01-06', day: 'Monday', status: 0 }] as any,
+    groceryRefresh: freshness,
+  });
+  renderList();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  const replacement = { ...freshness, workflowId: '550e8400-e29b-41d4-a716-446655440002' };
+  act(() => useWeekStore.setState({ groceryRefresh: replacement }));
+  await act(async () => finish());
+  expect(useWeekStore.getState().groceryRefresh).toEqual(replacement);
+});
+
+describe('server-owned bilingual grocery labels', () => {
+  it('selects the current member locale without changing the saved row or checking by caption', async () => {
+    const { LocaleProvider } = await import('@/components/common/LocaleProvider');
+    const { useFamilyStore } = await import('@/store/familyStore');
+    const memberId = 'ed7a28dc-c54f-436d-a1a1-9e2b8c56e746';
+    useFamilyStore.setState({
+      familyMembers: [{ id: memberId, name: 'Member', preferredLanguage: 'fr' }],
+      selectedFamilyMemberId: memberId,
+    });
+    const item = {
+      ...makeItem('onion source', 'Produce'),
+      displayLabels: { en: 'Onion', fr: 'Oignon' },
+    };
+    const before = JSON.stringify(item);
+    render(
+      <LocaleProvider>
+        <GroceryList weekOffset={0} items={[item]} />
+      </LocaleProvider>
+    );
+    expect(screen.getByRole('checkbox', { name: /Oignon/ })).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByRole('checkbox', { name: /Oignon/ })));
+    expect(mockSetGroceryItemToggle).toHaveBeenCalledWith(item.rowId, true);
+    expect(JSON.stringify(item)).toBe(before);
+    useFamilyStore.setState({ familyMembers: [], selectedFamilyMemberId: null });
+  });
+});
+
+describe('qualified household food correction scope', () => {
+  it('uses the food revision instead of sending a merged row through one alias key', async () => {
+    const item = makeItem('Onion', 'Produce', 'onion', {
+      foodId: 'c5028c26-48ba-4845-a4bb-551db3575508',
+      categoryScope: 'food',
+      categoryRevision: 'category.7',
+      categoryStatus: 'resolved',
+    });
+    const refresh = vi.spyOn(useWeekStore.getState(), 'refreshGroceries').mockResolvedValue();
+    vi.mocked(reclassifyFoodCategory).mockResolvedValue();
+    vi.mocked(reclassifyIngredient).mockClear();
+    render(<GroceryList weekOffset={0} items={[item]} />);
+    fireEvent.click(screen.getByTestId('reclassify-btn'));
+    fireEvent.click(
+      within(screen.getByTestId('section-picker')).getByRole('button', { name: 'Pantry' })
+    );
+    await waitFor(() =>
+      expect(reclassifyFoodCategory).toHaveBeenCalledWith(item.foodId, 'Pantry', 'category.7')
+    );
+    expect(reclassifyIngredient).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalled();
+    refresh.mockRestore();
+  });
+});
+
+it('persists an explicit food choice even when a conflict currently falls back to that section', async () => {
+  const item = makeItem('Onion', 'Pantry', 'onion', {
+    foodId: 'c5028c26-48ba-4845-a4bb-551db3575508',
+    categoryScope: 'food',
+    categoryRevision: null,
+    categoryStatus: 'conflict',
+    categoryChoices: [{ normalizedKey: 'oignon', grocerySection: 'Produce', source: 'legacy' }],
+  });
+  const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+  const { createGroceryLineItemDtoFromDiscriminatorValue } =
+    await import('@/lib/api/generated/models');
+  const { normalizeGroceryItems } = await import('@/lib/api/grocery-quantities');
+  const decoded = new JsonParseNode(item).getObjectValue(
+    createGroceryLineItemDtoFromDiscriminatorValue
+  )!;
+  const normalized = normalizeGroceryItems([decoded])![0];
+  expect(normalized.categoryRevision).toBeNull();
+  vi.mocked(reclassifyFoodCategory).mockClear().mockResolvedValue();
+  const refresh = vi.spyOn(useWeekStore.getState(), 'refreshGroceries').mockResolvedValue();
+  render(<GroceryList weekOffset={0} items={[normalized]} />);
+  fireEvent.click(screen.getByTestId('reclassify-btn'));
+  expect(
+    screen.getByText('Different saved sections apply. Choose one for this food.')
+  ).toBeVisible();
+  expect(screen.getByTestId('category-prior-choices')).toHaveTextContent('Produce');
+  fireEvent.click(
+    within(screen.getByTestId('section-picker')).getByRole('button', { name: 'Pantry' })
+  );
+  await waitFor(() =>
+    expect(reclassifyFoodCategory).toHaveBeenCalledWith(item.foodId, 'Pantry', null)
+  );
+  refresh.mockRestore();
+});
+
+it('does not send a queued pre-restore check after a new generation is accepted', async () => {
+  const oldEpoch = 'c87604be-598c-4a36-9c38-9f04a248dc73';
+  const nextEpoch = 'bc34397f-b8b6-487f-9d4d-74da9b7cbf66';
+  const item = makeItem('onion', 'Produce');
+  let finish!: (value: unknown) => void;
+  const previous = {
+    groceryPresentationEpoch: useWeekStore.getState().groceryPresentationEpoch,
+    groceryPresentationVersion: useWeekStore.getState().groceryPresentationVersion,
+  };
+  useWeekStore.setState({
+    groceryPresentationEpoch: oldEpoch,
+    groceryPresentationVersion: '9',
+    groceryListVersion: '9',
+    groceryVersionWeek: '2025-01-06',
+    authoritativeGroceryChecks: { [item.rowId!]: false },
+  });
+  mockToggleGroceryItem.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const view = renderStoreBacked([item]);
+  try {
+    fireEvent.click(screen.getByTestId('grocery-item-checkbox'));
+    await waitFor(() => expect(mockToggleGroceryItem).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByTestId('grocery-item-checkbox'));
+    act(() => {
+      expect(
+        useWeekStore.getState().applyGrocerySnapshot(
+          {
+            weekStartDate: '2025-01-06',
+            groceryListVersion: '1',
+            groceryItems: [item],
+            groceryState: { [item.rowId!]: false },
+            presentationVersion: '1',
+            presentationEpoch: nextEpoch,
+          },
+          { expectedPresentationEpoch: oldEpoch }
+        )
+      ).toBe(true);
+    });
+    await act(async () =>
+      finish({
+        rowId: item.rowId,
+        rowVersion: '10',
+        listVersion: '10',
+        rows: [item],
+        checks: { [item.rowId!]: true },
+        weekStartDate: '2025-01-06',
+        presentationVersion: '10',
+        presentationEpoch: oldEpoch,
+      })
+    );
+    expect(mockToggleGroceryItem).toHaveBeenCalledTimes(1);
+    expect(useWeekStore.getState().groceryListVersion).toBe('1');
+  } finally {
+    view.unmount();
+    useWeekStore.setState(previous);
+  }
+});
+
+it('sends a new-generation intent without waiting for an old in-flight reply or using its version floor', async () => {
+  const oldEpoch = 'c87604be-598c-4a36-9c38-9f04a248dc73';
+  const nextEpoch = 'bc34397f-b8b6-487f-9d4d-74da9b7cbf66';
+  const item = makeItem('onion', 'Produce');
+  let finish!: (value: unknown) => void;
+  const previous = {
+    groceryPresentationEpoch: useWeekStore.getState().groceryPresentationEpoch,
+    groceryPresentationVersion: useWeekStore.getState().groceryPresentationVersion,
+  };
+  useWeekStore.setState({
+    groceryPresentationEpoch: oldEpoch,
+    groceryPresentationVersion: '9',
+    groceryListVersion: '9',
+    groceryVersionWeek: '2025-01-06',
+    authoritativeGroceryChecks: { [item.rowId!]: false },
+  });
+  const oldReply = {
+    rowId: item.rowId,
+    rowVersion: '10',
+    listVersion: '10',
+    rows: [item],
+    checks: { [item.rowId!]: true },
+    weekStartDate: '2025-01-06',
+    presentationVersion: '10',
+    presentationEpoch: oldEpoch,
+  };
+  mockToggleGroceryItem
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    )
+    .mockResolvedValueOnce({
+      ...oldReply,
+      rowVersion: '2',
+      listVersion: '2',
+      presentationVersion: '1',
+      presentationEpoch: nextEpoch,
+    });
+  const view = renderStoreBacked([item]);
+  try {
+    fireEvent.click(screen.getByTestId('grocery-item-checkbox'));
+    await waitFor(() => expect(mockToggleGroceryItem).toHaveBeenCalledTimes(1));
+    act(() => {
+      expect(
+        useWeekStore.getState().applyGrocerySnapshot(
+          {
+            weekStartDate: '2025-01-06',
+            groceryListVersion: '1',
+            groceryItems: [item],
+            groceryState: { [item.rowId!]: false },
+            presentationVersion: '1',
+            presentationEpoch: nextEpoch,
+          },
+          { expectedPresentationEpoch: oldEpoch }
+        )
+      ).toBe(true);
+    });
+    fireEvent.click(screen.getByTestId('grocery-item-checkbox'));
+    await waitFor(() => expect(mockToggleGroceryItem).toHaveBeenCalledTimes(2));
+    expect(mockToggleGroceryItem.mock.calls[1][1].expectedRowVersion).toBe('1');
+    expect(mockToggleGroceryItem.mock.calls[0][1].expectedPresentationEpoch).toBe(oldEpoch);
+    expect(mockToggleGroceryItem.mock.calls[1][1].expectedPresentationEpoch).toBe(nextEpoch);
+    const readsBeforeOldReply = mockReadSchedule.mock.calls.length;
+    await act(async () => finish(oldReply));
+    expect(useWeekStore.getState().groceryListVersion).toBe('2');
+    expect(mockReadSchedule).toHaveBeenCalledTimes(readsBeforeOldReply);
+  } finally {
+    if (finish) await act(async () => finish(oldReply));
+    view.unmount();
+    useWeekStore.setState(previous);
+  }
+});
+
+it('establishes the freshly read generation after a stale grocery write is refused', async () => {
+  const oldEpoch = 'c87604be-598c-4a36-9c38-9f04a248dc73';
+  const nextEpoch = 'bc34397f-b8b6-487f-9d4d-74da9b7cbf66';
+  const item = makeItem('onion', 'Produce');
+  const previous = {
+    groceryPresentationEpoch: useWeekStore.getState().groceryPresentationEpoch,
+    groceryPresentationVersion: useWeekStore.getState().groceryPresentationVersion,
+  };
+  useWeekStore.setState({
+    groceryPresentationEpoch: oldEpoch,
+    groceryPresentationVersion: '9',
+    groceryListVersion: '9',
+    groceryVersionWeek: '2025-01-06',
+    authoritativeGroceryChecks: { [item.rowId!]: false },
+  });
+  const view = renderStoreBacked([item]);
+  try {
+    mockToggleGroceryItem.mockRejectedValueOnce({ code: 'epoch_conflict' });
+    mockReadSchedule.mockResolvedValue({
+      weekStartDate: '2025-01-06',
+      groceryListVersion: '1',
+      groceryItems: [item],
+      groceryState: { [item.rowId!]: false },
+      presentationVersion: '1',
+      presentationEpoch: nextEpoch,
+    });
+    await act(async () => fireEvent.click(screen.getByTestId('grocery-item-checkbox')));
+    expect(mockToggleGroceryItem).toHaveBeenCalledTimes(1);
+    expect(useWeekStore.getState().groceryPresentationEpoch).toBe(nextEpoch);
+    expect(useWeekStore.getState().groceryListVersion).toBe('1');
+    expect(mockGroceryState[item.rowId!]).toBe(false);
+  } finally {
+    view.unmount();
+    useWeekStore.setState(previous);
+  }
 });

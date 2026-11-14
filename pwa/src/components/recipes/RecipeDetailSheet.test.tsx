@@ -1,14 +1,18 @@
+import { useWeekStore } from '@/store/weekStore';
 import { StrictMode } from 'react';
+vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => false }));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/recipes',
   useRouter: () => ({ push: vi.fn() }),
 }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useRecipeNotesStore } from '@/store/recipeNotesStore';
 import { RecipeDetailSheet } from './RecipeDetailSheet';
 
 const mockGetRecipe = vi.fn();
+const mockGetIngredientProjection = vi.fn();
+const mockGetIngredientPreview = vi.fn();
 const mockGetRecipeShareBundle = vi.fn();
 const mockDownloadRecipeBundleFile = vi.fn();
 const mockUpdateRecipe = vi.fn();
@@ -25,6 +29,8 @@ let mockGotoItems: any[] = [];
 
 vi.mock('@/lib/api/recipes', () => ({
   getRecipe: (...args: unknown[]) => mockGetRecipe(...args),
+  getIngredientProjection: (...args: unknown[]) => mockGetIngredientProjection(...args),
+  getIngredientPreview: (...args: unknown[]) => mockGetIngredientPreview(...args),
   getRecipeShareBundle: (...args: unknown[]) => mockGetRecipeShareBundle(...args),
   downloadRecipeBundleFile: (...args: unknown[]) => mockDownloadRecipeBundleFile(...args),
   updateRecipe: (...args: unknown[]) => mockUpdateRecipe(...args),
@@ -63,6 +69,10 @@ vi.mock('@/store/familyStore', () => ({
 vi.mock('@/lib/imageUtils', () => ({
   getImageUrl: (value: string | null | undefined) => value ?? '',
 }));
+
+// Each independent test begins in a fresh browser tab. Individual recovery
+// scenarios deliberately remount within their test to retain session storage.
+beforeEach(() => sessionStorage.clear());
 
 describe('RecipeDetailSheet', () => {
   beforeEach(() => {
@@ -118,6 +128,36 @@ describe('RecipeDetailSheet', () => {
     onUseForDay: vi.fn(),
     onFindSimilar: vi.fn(),
   };
+  it('exposes the dated action directly, suppresses duplicates and retains visible failure', async () => {
+    let reject!: (error: Error) => void;
+    const onUseForDay = vi.fn(
+      () =>
+        new Promise<void>((_, fail) => {
+          reject = fail;
+        })
+    );
+    render(
+      <RecipeDetailSheet
+        {...editProps}
+        plannerDayLabel="Wednesday, May 13"
+        onUseForDay={onUseForDay}
+      />
+    );
+    const action = await screen.findByTestId('action-add-to-day');
+    expect(action).toHaveAccessibleName('Plan for Wednesday, May 13');
+    expect(screen.queryByTestId('action-cook-tonight')).not.toBeInTheDocument();
+    fireEvent.click(action);
+    fireEvent.click(action);
+    expect(action).toBeDisabled();
+    expect(onUseForDay).toHaveBeenCalledTimes(1);
+    await act(async () => reject(new Error('Your plan changed. Review Wednesday.')));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your plan changed. Review Wednesday.'
+    );
+    expect(action).toBeEnabled();
+    expect(screen.getByTestId('recipe-detail-sheet')).toBeInTheDocument();
+  });
+
   async function enterServingsEdit() {
     fireEvent.click(await screen.findByTestId('action-gear-menu'));
     fireEvent.click(await screen.findByTestId('action-edit-recipe'));
@@ -176,6 +216,9 @@ describe('RecipeDetailSheet', () => {
     await screen.findByText('Could not save changes. Try again.');
     expect(input).toHaveValue('3');
     expect(screen.getByTestId('recipe-servings')).toHaveTextContent('4 servings');
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    await waitFor(() => expect(screen.getByTestId('recipe-save-edits')).toBeEnabled());
     mockUpdateRecipe.mockResolvedValueOnce(undefined);
     fireEvent.click(screen.getByTestId('recipe-save-edits'));
     await waitFor(() => expect(screen.queryByTestId('recipe-edit-servings-input')).toBeNull());
@@ -237,7 +280,10 @@ describe('RecipeDetailSheet', () => {
     await screen.findByRole('heading', { name: 'Ingredients' });
     mockGetRecipe.mockResolvedValue(known);
     view.rerender(<RecipeDetailSheet {...editProps} />);
-    const input = await enterServingsEdit();
+    // Returning to this tab's recipe recovers the pending original draft.
+    const input = await screen.findByTestId('recipe-edit-servings-input');
+    expect(input).toHaveValue('3');
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
     fireEvent.change(input, { target: { value: '2' } });
     await act(async () => finish());
     expect(input).toBeInTheDocument();
@@ -246,7 +292,7 @@ describe('RecipeDetailSheet', () => {
   });
 
   it.each([4, 1])(
-    'shows the read-only %s serving basis inside the Ingredients heading',
+    'shows the read-only %s original serving basis once beside portion controls',
     async (servings) => {
       const recipe = await mockGetRecipe();
       mockGetRecipe.mockResolvedValue({
@@ -264,12 +310,17 @@ describe('RecipeDetailSheet', () => {
         />
       );
       const heading = await screen.findByRole('heading', {
-        name: `Ingredients ${servings} ${servings === 1 ? 'serving' : 'servings'}`,
+        name: new RegExp(`Ingredients.*${servings} ${servings === 1 ? 'serving' : 'servings'}`),
       });
       expect(heading.querySelector('button, input, [tabindex]')).toBeNull();
+      expect(screen.getByTestId('recipe-servings')).toHaveTextContent(
+        `${servings} ${servings === 1 ? 'serving' : 'servings'}`
+      );
       expect(
-        screen.getAllByText(`${servings} ${servings === 1 ? 'serving' : 'servings'}`)
-      ).toHaveLength(1);
+        screen.queryByText(
+          `Original recipe: ${servings} ${servings === 1 ? 'serving' : 'servings'}`
+        )
+      ).not.toBeInTheDocument();
       expect(screen.getByText('510 g beef')).toBeInTheDocument();
       expect(screen.getByText('340 g pasta')).toBeInTheDocument();
     }
@@ -286,7 +337,7 @@ describe('RecipeDetailSheet', () => {
       onFindSimilar: vi.fn(),
     };
     const view = render(<RecipeDetailSheet {...props} />);
-    await screen.findByRole('heading', { name: 'Ingredients 4 servings' });
+    await screen.findByTestId('recipe-servings');
     let finish!: (value: unknown) => void;
     mockGetRecipe.mockImplementationOnce(
       () =>
@@ -363,6 +414,29 @@ describe('RecipeDetailSheet', () => {
     expect(await screen.findByTestId('recipe-detail-name')).toHaveTextContent('Shareable Pasta');
   });
 
+  it('opens a confirmed Planner source day without a second occurrence shortcut', async () => {
+    const onOpenPlannedDay = vi.fn();
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        sourceDayLabel="Wednesday, May 6"
+        plannedDayLabel="Wednesday, May 6"
+        onOpenPlannedDay={onOpenPlannedDay}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+    expect(await screen.findByTestId('recipe-planning-actions')).toHaveTextContent(
+      'Wednesday, May 6'
+    );
+    expect(screen.getByTestId('action-cooks-mode')).toHaveAccessibleName('Cook');
+    fireEvent.click(screen.getByTestId('action-planned'));
+    expect(onOpenPlannedDay).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('action-plan-another-day')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('action-cook-this')).not.toBeInTheDocument();
+  });
   it('hides old content when a replacement identity fails', async () => {
     const props = {
       recipeId: '550e8400-e29b-41d4-a716-446655440111',
@@ -520,7 +594,7 @@ describe('RecipeDetailSheet', () => {
       />
     );
 
-    expect(await screen.findByLabelText('Recipe updated — ready to review')).toHaveClass(
+    expect(await screen.findByLabelText('Recipe ready for review')).toHaveClass(
       'shrink-0',
       'whitespace-nowrap'
     );
@@ -634,7 +708,7 @@ describe('RecipeDetailSheet', () => {
       );
       expect(mockGetRecipe).toHaveBeenCalledTimes(2);
       expect(mockGetRecipe).toHaveBeenLastCalledWith('550e8400-e29b-41d4-a716-446655440111');
-      expect(screen.getByLabelText('Recipe updated — ready to review')).toBeVisible();
+      expect(screen.getByLabelText('Recipe ready for review')).toBeVisible();
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(2000);
@@ -645,6 +719,16 @@ describe('RecipeDetailSheet', () => {
       view.unmount();
       vi.useRealTimers();
     }
+  });
+
+  it('keeps a failed hero out of the original recipe photo editor', async () => {
+    render(<RecipeDetailSheet {...editProps} />);
+    const photo = await screen.findByRole('img', { name: 'Shareable Pasta' });
+    fireEvent.error(photo);
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-edit-recipe'));
+    expect(screen.queryByRole('img', { name: 'Shareable Pasta' })).toBeNull();
+    expect(screen.getByTestId('hero-action-regenerate')).toBeVisible();
   });
 
   it('hides the share button if the recipe has no hero image', async () => {
@@ -746,14 +830,14 @@ describe('RecipeDetailSheet', () => {
     render(
       <RecipeDetailSheet
         recipeId="550e8400-e29b-41d4-a716-446655440111"
-        plannerDayLabel={null}
+        plannerDayLabel="Wednesday, May 13"
         onClose={vi.fn()}
         onUseForDay={vi.fn()}
         onFindSimilar={vi.fn()}
       />
     );
 
-    expect(await screen.findByTestId('action-cook-this')).toBeVisible();
+    expect(await screen.findByTestId('action-add-to-day')).toBeVisible();
     expect(screen.getByTestId('action-find-similar')).toBeVisible();
     expect(screen.getByTestId('action-toggle-discovery')).toBeVisible();
 
@@ -762,13 +846,13 @@ describe('RecipeDetailSheet', () => {
 
     expect(screen.getByTestId('recipe-save-edits')).toBeVisible();
     expect(screen.getByTestId('recipe-cancel-edits')).toBeVisible();
-    expect(screen.queryByTestId('action-cook-this')).toBeNull();
+    expect(screen.queryByTestId('action-add-to-day')).toBeNull();
     expect(screen.queryByTestId('action-find-similar')).toBeNull();
     expect(screen.queryByTestId('action-toggle-discovery')).toBeNull();
 
     fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
 
-    expect(screen.getByTestId('action-cook-this')).toBeVisible();
+    expect(screen.getByTestId('action-add-to-day')).toBeVisible();
     expect(screen.getByTestId('action-find-similar')).toBeVisible();
     expect(screen.getByTestId('action-toggle-discovery')).toBeVisible();
   });
@@ -898,7 +982,7 @@ describe('RecipeDetailSheet', () => {
     expect(viewBtn.querySelector('[data-testid="view-original-icon"]')).not.toBeNull();
   });
 
-  it('renders COOK entry points on hero and beside time pill', async () => {
+  it('renders one contextual Cook entry with the current label', async () => {
     render(
       <RecipeDetailSheet
         recipeId="550e8400-e29b-41d4-a716-446655440111"
@@ -909,8 +993,8 @@ describe('RecipeDetailSheet', () => {
       />
     );
 
-    expect(await screen.findByTestId('time-cook-btn')).toBeVisible();
-    expect(screen.getByTestId('time-cook-btn')).toHaveTextContent(/STEPS/i);
+    expect(await screen.findByTestId('action-cooks-mode')).toBeVisible();
+    expect(screen.getByTestId('action-cooks-mode')).toHaveTextContent(/Cook/i);
   });
 
   it('shows cuisine and meal-type badges cluster above description in view mode', async () => {
@@ -1266,5 +1350,788 @@ describe('issue Save response handling', () => {
     await waitFor(() => expect(mockResolveRecipeImportIssue).toHaveBeenCalledTimes(1));
 
     view.unmount();
+  });
+});
+
+describe('complete recipe reading', () => {
+  const props = {
+    recipeId: '550e8400-e29b-41d4-a716-446655440111',
+    plannerDayLabel: 'Wednesday, May 13',
+    onClose: vi.fn(),
+    onUseForDay: vi.fn(),
+    onFindSimilar: vi.fn(),
+  };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.scrollTo = vi.fn();
+    useRecipeNotesStore.setState({ drafts: {} });
+    mockGetRecipe.mockResolvedValue({
+      id: props.recipeId,
+      name: 'Family pasta',
+      ingredients: ['Pasta', 'Sauce'],
+      recipeInstructions: ['Boil water', 'Stir sauce'],
+      notes: 'Less chilli for children',
+      rating: 2,
+      imageCount: 2,
+      finishedDishIndex: 0,
+      sourceType: 'photos',
+      isReady: true,
+    });
+  });
+  it.each([
+    [['Boil water', 'Stir sauce']],
+    [
+      [
+        { '@type': 'HowToStep', text: 'Boil water' },
+        { '@type': 'HowToStep', text: 'Stir sauce' },
+      ],
+    ],
+    [
+      [
+        {
+          '@type': 'HowToSection',
+          name: 'Cook the pasta',
+          itemListElement: [{ text: 'Boil water' }],
+        },
+        {
+          '@type': 'HowToSection',
+          name: 'Finish the sauce',
+          itemListElement: [{ text: 'Stir sauce' }],
+        },
+      ],
+    ],
+  ])(
+    'reads ordered steps inline without planning, editing or cooking side effects: %j',
+    async (instructions) => {
+      const fixture = await mockGetRecipe();
+      mockGetRecipe.mockResolvedValue({ ...fixture, recipeInstructions: instructions });
+      render(<RecipeDetailSheet {...props} />);
+      const steps = await screen.findByRole('region', { name: 'Instructions' });
+      expect(
+        within(steps)
+          .getAllByRole('listitem')
+          .map((x) => x.querySelector('p')?.textContent)
+      ).toEqual(['Boil water', 'Stir sauce']);
+      if (
+        instructions[0] &&
+        typeof instructions[0] === 'object' &&
+        'itemListElement' in instructions[0]
+      ) {
+        expect(
+          within(steps)
+            .getAllByRole('heading')
+            .map((x) => x.textContent)
+        ).toEqual(['Instructions', 'Cook the pasta', 'Finish the sauce']);
+      }
+      expect(mockUpdateRecipe).not.toHaveBeenCalled();
+      expect(props.onUseForDay).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('cooks-mode')).not.toBeInTheDocument();
+    }
+  );
+  it.each([{ ingredients: ['Pasta', 'Sauce'] }, { ingredients: [] }])(
+    'keeps the Ingredients heading and returned ingredient order $ingredients',
+    async ({ ingredients }) => {
+      const fixture = await mockGetRecipe();
+      mockGetRecipe.mockResolvedValue({ ...fixture, ingredients });
+      render(<RecipeDetailSheet {...props} />);
+      const heading = await screen.findByRole('heading', { name: /^Ingredients$/ });
+      const rows = heading.parentElement!.querySelectorAll('ul > li');
+      expect(Array.from(rows, (row) => row.textContent)).toEqual(ingredients);
+      expect(heading).toBeVisible();
+      expect(mockUpdateRecipe).not.toHaveBeenCalled();
+      expect(props.onUseForDay).not.toHaveBeenCalled();
+    }
+  );
+  it('explains missing instructions and retains original, reporting and planning access', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({ ...fixture, recipeInstructions: [] });
+    render(<RecipeDetailSheet {...props} />);
+    expect(await screen.findByText('Instructions are unavailable for this recipe.')).toBeVisible();
+    expect(screen.getByTestId('action-view-original')).toBeVisible();
+    expect(screen.getByTestId('action-add-to-day')).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Recipe actions' }));
+    expect(screen.getByTestId('action-report-import-issue')).toBeVisible();
+  });
+  it('ends recipe reading with appreciation, writable notes and the unchanged family toggle', async () => {
+    render(<RecipeDetailSheet {...props} />);
+    const title = await screen.findByTestId('recipe-detail-name');
+    const rating = screen.getByTestId('recipe-rating-selector');
+    const ingredients = screen.getByRole('heading', { name: 'Ingredients' });
+    const instructions = screen.getByRole('region', { name: 'Instructions' });
+    const notes = screen.getByRole('region', { name: 'Family notes' });
+    const before = (a: Element, b: Element) =>
+      expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    before(title, rating);
+    before(ingredients, instructions);
+    before(instructions, rating);
+    before(rating, notes);
+    before(screen.getByTestId('action-set-goto'), ingredients);
+    before(notes, screen.getByTestId('action-toggle-discovery'));
+    expect(screen.getByText('Ask the Family')).toBeVisible();
+    before(instructions, notes);
+    expect(within(rating).getByRole('button', { name: 'Like' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    fireEvent.click(within(rating).getByRole('button', { name: 'Love' }));
+    expect(mockUpdateRecipe).toHaveBeenCalledWith(props.recipeId, { rating: 3 });
+  });
+  const previewFixture = (target = 6, name = 'pasta', basis = 2) => ({
+    recipeId: props.recipeId,
+    baseServings: basis,
+    targetServings: target,
+    factor: target / basis,
+    version: `${name}-${basis}-${target}`,
+    status: 'scaled',
+    lines: [
+      {
+        originalText: `200 g ${name}`,
+        name,
+        quantity: (200 * target) / basis,
+        unitText: 'g',
+        status: 'scaled',
+        issues: [],
+      },
+    ],
+  });
+
+  it('keeps early preview intent when the automatic planning context first resolves', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({ ...fixture, servings: 2, ingredients: ['200 g pasta'] });
+    mockGetIngredientPreview.mockResolvedValue(previewFixture(2));
+    mockGetIngredientProjection.mockResolvedValue({
+      ...previewFixture(4),
+      supperDate: '2026-10-14',
+      context: 'proposed',
+    });
+    const { rerender } = render(<RecipeDetailSheet {...props} planningLoading />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 2 portions' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('200 g pasta')
+    );
+    rerender(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+      />
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Preview 2 portions' })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
+    );
+    expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('200 g pasta');
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+
+  it('retains preview intent through equivalent schedule and resume, retiring stale reads on source changes', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({ ...fixture, servings: 2, ingredients: ['200 g pasta'] });
+    mockGetIngredientPreview.mockResolvedValue(previewFixture());
+    mockGetIngredientProjection.mockResolvedValue({
+      ...previewFixture(4),
+      supperDate: '2026-10-14',
+      context: 'proposed',
+    });
+    render(
+      <RecipeDetailSheet
+        {...props}
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+      />
+    );
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('600 g pasta')
+    );
+    act(() => useWeekStore.setState({ schedule: [...useWeekStore.getState().schedule] }));
+    await waitFor(() => expect(mockGetIngredientPreview).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('button', { name: 'Preview 6 portions' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('600 g pasta')
+    );
+    let finishOld!: (data: unknown) => void;
+    mockGetIngredientPreview.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishOld = resolve;
+        })
+    );
+    act(() => window.dispatchEvent(new Event('focus')));
+    await waitFor(() => expect(mockGetIngredientPreview).toHaveBeenCalledTimes(3));
+    expect(screen.getByText('Loading preview…')).toBeVisible();
+    expect(screen.queryByText('600 g pasta')).not.toBeInTheDocument();
+    mockGetIngredientPreview.mockResolvedValueOnce(previewFixture(6, 'sauce', 4));
+    mockGetRecipe.mockResolvedValue({ ...fixture, servings: 4, ingredients: ['200 g sauce'] });
+    act(() =>
+      useWeekStore.setState({
+        ingredientProjectionUpdate: { weekStartDate: '2026-10-12', sequence: 123 },
+      })
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('300 g sauce')
+    );
+    await act(async () => finishOld(previewFixture()));
+    expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('300 g sauce');
+    mockGetIngredientPreview.mockRejectedValueOnce(new Error('Refresh unavailable'));
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    expect(await screen.findByText('Preview could not load.')).toBeVisible();
+    expect(screen.queryByText('300 g sauce')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Preview 6 portions' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    mockGetIngredientPreview.mockResolvedValueOnce(previewFixture(6, 'sauce', 4));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('300 g sauce')
+    );
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    expect(props.onUseForDay).not.toHaveBeenCalled();
+  });
+
+  it('resets preview on deliberate date and recipe replacement and never restores late retired requests', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({ ...fixture, servings: 2, ingredients: ['200 g pasta'] });
+    mockGetIngredientProjection.mockResolvedValue({
+      ...previewFixture(4),
+      supperDate: '2026-10-14',
+      context: 'proposed',
+    });
+    let finish!: (data: unknown) => void;
+    mockGetIngredientPreview.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const context = { context: 'proposed' as const, supperDate: '2026-10-14' };
+    const { rerender } = render(<RecipeDetailSheet {...props} ingredientContext={context} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await waitFor(() => expect(mockGetIngredientPreview).toHaveBeenCalled());
+    rerender(
+      <RecipeDetailSheet {...props} ingredientContext={{ ...context, supperDate: '2026-10-15' }} />
+    );
+    await act(async () => finish(previewFixture()));
+    expect(screen.getByRole('button', { name: 'Preview 6 portions' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+    expect(screen.queryByTestId('recipe-ingredient-preview')).not.toBeInTheDocument();
+    rerender(<RecipeDetailSheet {...props} ingredientContext={context} />);
+    expect(screen.getByRole('button', { name: 'Preview 6 portions' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+    mockGetIngredientPreview.mockResolvedValue(previewFixture());
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('600 g pasta')
+    );
+    const newId = '550e8400-e29b-41d4-a716-446655440333';
+    mockGetRecipe.mockResolvedValue({ ...fixture, id: newId, servings: 2 });
+    rerender(<RecipeDetailSheet {...props} recipeId={newId} ingredientContext={context} />);
+    await screen.findByTestId('recipe-detail-name');
+    expect(screen.getByRole('button', { name: 'Preview 6 portions' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('discards preview intent when editing is entered and cancelled', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({ ...fixture, servings: 2, ingredients: ['200 g pasta'] });
+    mockGetIngredientPreview.mockResolvedValue(previewFixture());
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('600 g pasta')
+    );
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByTestId('action-edit-recipe'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Preview 6 portions' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('previews four portions independently and returns to original quantities', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({ ...fixture, servings: 2, ingredients: ['200 g pasta'] });
+    mockGetIngredientPreview.mockResolvedValue({
+      recipeId: props.recipeId,
+      baseServings: 2,
+      targetServings: 4,
+      factor: 2,
+      version: 'preview-four',
+      status: 'scaled',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 400,
+          unitText: 'g',
+          status: 'scaled',
+          issues: [],
+        },
+      ],
+    });
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 4 portions' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('400 g pasta')
+    );
+    expect(mockGetIngredientPreview).toHaveBeenCalledWith(props.recipeId, 4);
+    expect(props.onUseForDay).not.toHaveBeenCalled();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByTestId('action-original-quantities'));
+    expect(screen.queryByTestId('recipe-ingredient-preview')).not.toBeInTheDocument();
+    expect(screen.getByText('200 g pasta')).toBeVisible();
+    let finishRefresh!: (data: unknown) => void;
+    mockGetIngredientPreview.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishRefresh = resolve;
+        })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 4 portions' }));
+    expect(screen.getByText('Loading preview…')).toBeVisible();
+    expect(screen.queryByText('400 g pasta')).not.toBeInTheDocument();
+    await act(async () => finishRefresh(previewFixture(4, 'sauce', 4)));
+    expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('200 g sauce');
+  });
+  it('ignores late preview responses and offers explicit retry without a write', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({ ...fixture, servings: 2, ingredients: ['200 g pasta'] });
+    let finishSix!: (data: unknown) => void;
+    const data = (target: number) => ({
+      recipeId: props.recipeId,
+      baseServings: 2,
+      targetServings: target,
+      factor: target / 2,
+      version: `preview-${target}`,
+      status: 'scaled',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: target * 100,
+          unitText: 'g',
+          status: 'scaled',
+          issues: [],
+        },
+      ],
+    });
+    mockGetIngredientPreview
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishSix = resolve;
+          })
+      )
+      .mockRejectedValueOnce(new Error('Preview read failed'))
+      .mockResolvedValue(data(4));
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await waitFor(() => expect(mockGetIngredientPreview).toHaveBeenCalledWith(props.recipeId, 6));
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 4 portions' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Preview could not load.');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('400 g pasta')
+    );
+    await act(async () => finishSix(data(6)));
+    expect(screen.getByTestId('recipe-ingredient-preview')).toHaveTextContent('400 g pasta');
+    expect(screen.getByRole('button', { name: 'Preview 4 portions' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+  it('offers honest original-yield editing and does not preview an unsaved basis', async () => {
+    render(<RecipeDetailSheet {...props} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Set recipe portions' }));
+    await waitFor(() => expect(screen.getByTestId('recipe-edit-servings-input')).toHaveFocus());
+    fireEvent.change(screen.getByTestId('recipe-edit-servings-input'), { target: { value: '2' } });
+    fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
+    expect(screen.getByRole('button', { name: 'Set recipe portions' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Preview 4 portions' })).not.toBeInTheDocument();
+  });
+  it('places GOTO in the toolbar and known readiness and original access on the hero', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({ ...fixture, totalTime: 'PT30M', imageUrl: '/food.webp' });
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    expect(
+      within(screen.getByTestId('recipe-detail-toolbar')).getByTestId('action-set-goto')
+    ).toBeVisible();
+    const hero = screen.getByTestId('recipe-detail-hero');
+    expect(within(hero).getByTestId('recipe-ready-in')).toHaveTextContent('30');
+    expect(within(hero).getByTestId('action-view-original')).toBeVisible();
+    expect(screen.queryByTestId('time-cook-btn')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Cook' })).toHaveLength(1);
+    expect(
+      within(screen.getByTestId('action-add-to-day')).queryByTestId('plan-day-icon')
+    ).not.toBeInTheDocument();
+  });
+  it('omits original access when neither an original URL nor photos exist', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({
+      ...fixture,
+      sourceType: 'url',
+      sourceUrl: null,
+      imageCount: 0,
+    });
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    expect(screen.queryByTestId('action-view-original')).not.toBeInTheDocument();
+  });
+  it('keeps original access on a neutral hero without inventing missing duration', async () => {
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    expect(screen.getByTestId('recipe-detail-hero')).toBeVisible();
+    expect(screen.queryByTestId('recipe-ready-in')).not.toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('recipe-detail-hero')).getByTestId('action-view-original')
+    ).toBeVisible();
+  });
+  it('keeps Find Similar visible in the overview while family participation ends reading', async () => {
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    expect(screen.getByTestId('action-find-similar')).toBeVisible();
+    fireEvent.click(screen.getByTestId('action-find-similar'));
+    expect(props.onFindSimilar).toHaveBeenCalledWith(props.recipeId);
+  });
+  it('jumps to saved notes with focus while keeping their content', async () => {
+    render(<RecipeDetailSheet {...props} />);
+    const shortcut = await screen.findByRole('button', { name: 'Family notes' });
+    fireEvent.click(shortcut);
+    expect(screen.getByTestId('recipe-notes-input')).toHaveFocus();
+    expect(screen.getByTestId('recipe-notes-input')).toHaveValue('Less chilli for children');
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+  it('offers directly writable empty notes without an Add button and retains a failed draft shortcut', async () => {
+    const fixture = await mockGetRecipe();
+    mockGetRecipe.mockResolvedValue({ ...fixture, notes: null });
+    const view = render(<RecipeDetailSheet {...props} />);
+    expect(await screen.findByTestId('recipe-notes-input')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Add a note' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Family notes' })).not.toBeInTheDocument();
+    view.unmount();
+    useRecipeNotesStore.setState({
+      drafts: {
+        [props.recipeId]: {
+          text: 'Retained draft',
+          acknowledged: '',
+          status: 'error',
+          revision: 1,
+        },
+      },
+    } as any);
+    render(<RecipeDetailSheet {...props} />);
+    expect(await screen.findByRole('button', { name: 'Family notes' })).toBeVisible();
+    expect(screen.getByTestId('recipe-notes-input')).toHaveValue('Retained draft');
+    expect(screen.getByTestId('recipe-notes-retry')).toBeVisible();
+  });
+  it('opens originals as the active modal and restores source focus without closing detail', async () => {
+    render(<RecipeDetailSheet {...props} />);
+    const original = await screen.findByTestId('action-view-original');
+    original.focus();
+    fireEvent.click(original);
+    const viewer = screen.getByRole('dialog', { name: 'View Original' });
+    expect(viewer).toContainElement(screen.getByTestId('action-close-viewer'));
+    expect(screen.getByTestId('action-close-viewer')).toHaveFocus();
+    fireEvent.keyDown(viewer, { key: 'Escape' });
+    expect(screen.queryByTestId('action-close-viewer')).not.toBeInTheDocument();
+    expect(original).toHaveFocus();
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('dated ingredient projection', () => {
+  beforeEach(() => vi.clearAllMocks());
+  it('retries an initially unavailable proposed projection without stale quantities or writes', async () => {
+    const id = '550e8400-e29b-41d4-a716-446655440111';
+    mockGetRecipe.mockResolvedValue({
+      id,
+      name: 'Pasta',
+      servings: 2,
+      ingredients: ['200 g pasta'],
+    });
+    mockGetIngredientProjection.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({
+      recipeId: id,
+      supperDate: '2026-10-16',
+      context: 'proposed',
+      baseServings: 2,
+      targetServings: 6,
+      factor: 3,
+      version: 'six',
+      status: 'scaled',
+      editable: true,
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 600,
+          unitText: 'g',
+          status: 'scaled',
+          issues: [],
+        },
+      ],
+    });
+    const onUseForDay = vi.fn();
+    render(
+      <RecipeDetailSheet
+        recipeId={id}
+        plannerDayLabel="Friday, October 16"
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-16' }}
+        onClose={vi.fn()}
+        onUseForDay={onUseForDay}
+        onFindSimilar={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('Could not confirm ingredients for this supper.')).toBeVisible();
+    expect(screen.queryByText('200 g pasta')).not.toBeInTheDocument();
+    expect(screen.queryByText('600 g pasta')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Retry$/ }));
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+    expect(mockGetIngredientProjection).toHaveBeenCalledTimes(2);
+    expect(mockGetIngredientProjection).toHaveBeenLastCalledWith(id, {
+      context: 'proposed',
+      supperDate: '2026-10-16',
+    });
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    expect(onUseForDay).not.toHaveBeenCalled();
+  });
+
+  it('shows the chosen date and target from the server without changing the original basis', async () => {
+    mockGetRecipe.mockResolvedValue({
+      id: '550e8400-e29b-41d4-a716-446655440111',
+      name: 'Pasta',
+      ingredients: ['200 g pasta'],
+      servings: 2,
+      recipeInstructions: ['Add 200 g pasta.'],
+    });
+    mockGetIngredientProjection.mockResolvedValue({
+      recipeId: '550e8400-e29b-41d4-a716-446655440111',
+      supperDate: '2026-10-14',
+      context: 'proposed',
+      targetServings: 4,
+      baseServings: 2,
+      factor: 2,
+      version: 'four',
+      status: 'scaled',
+      editable: true,
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 400,
+          unitText: 'g',
+          status: 'scaled',
+          issues: [],
+        },
+      ],
+    });
+    const props = {
+      recipeId: '550e8400-e29b-41d4-a716-446655440111',
+      plannerDayLabel: 'Wednesday, October 14',
+      ingredientContext: { context: 'proposed', supperDate: '2026-10-14' },
+      onClose: vi.fn(),
+      onUseForDay: vi.fn(),
+      onFindSimilar: vi.fn(),
+    };
+    render(<RecipeDetailSheet {...(props as any)} />);
+    expect(await screen.findByTestId('recipe-servings')).toHaveTextContent('4 servings');
+    expect(screen.getByTestId('recipe-ingredient-projection')).toHaveTextContent('400 g pasta');
+    expect(screen.queryByTestId('recipe-portion-context')).not.toBeInTheDocument();
+    expect(mockGetIngredientProjection).toHaveBeenCalledWith(
+      props.recipeId,
+      props.ingredientContext
+    );
+    expect(screen.queryByTestId('recipe-instruction-limitation')).not.toBeInTheDocument();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+  });
+  it('offers a basis correction even when an incomplete recipe has no ingredient lines', async () => {
+    mockGetRecipe.mockResolvedValue({
+      id: '550e8400-e29b-41d4-a716-446655440111',
+      name: 'Incomplete',
+      ingredients: [],
+      servings: null,
+      recipeInstructions: [],
+    });
+    mockGetIngredientProjection.mockResolvedValue({
+      recipeId: '550e8400-e29b-41d4-a716-446655440111',
+      supperDate: '2026-10-14',
+      context: 'proposed',
+      targetServings: 4,
+      baseServings: null,
+      factor: null,
+      version: 'incomplete',
+      status: 'unresolved',
+      editable: true,
+      lines: [],
+    });
+    render(
+      <RecipeDetailSheet
+        plannerDayLabel="Wednesday, October 14"
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+    expect(await screen.findByRole('button', { name: 'Set recipe portions' })).toBeVisible();
+  });
+  it('retires an open dated projection on invalidation and shows current text or failure', async () => {
+    const id = '550e8400-e29b-41d4-a716-446655440111';
+    mockGetRecipe.mockResolvedValue({
+      id,
+      name: 'Pasta',
+      servings: 2,
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Add 200 g pasta.'],
+      mealTypes: ['Supper'],
+    });
+    const four = {
+      recipeId: id,
+      supperDate: '2026-10-14',
+      context: 'assigned',
+      occurrenceId: '550e8400-e29b-41d4-a716-446655440222',
+      baseServings: 2,
+      targetServings: 4,
+      version: 'four',
+      status: 'scaled',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 400,
+          unitText: 'g',
+          status: 'scaled',
+          issues: [],
+        },
+      ],
+    };
+    mockGetIngredientProjection.mockResolvedValue(four);
+    render(
+      <RecipeDetailSheet
+        recipeId={id}
+        plannerDayLabel="Wednesday, October 14"
+        ingredientContext={{
+          context: 'assigned',
+          supperDate: '2026-10-14',
+          occurrenceId: four.occurrenceId,
+        }}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('400 g pasta')).toBeVisible();
+    let resolve!: (value: unknown) => void;
+    mockGetIngredientProjection.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        })
+    );
+    act(() => useWeekStore.setState({ schedule: [...useWeekStore.getState().schedule] }));
+    await waitFor(() => expect(mockGetIngredientProjection).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('400 g pasta')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    expect(screen.getByTestId('action-edit-recipe')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    await act(async () =>
+      resolve({
+        ...four,
+        version: 'corrected',
+        baseServings: 1,
+        lines: [
+          {
+            originalText: 'current sauce',
+            name: 'current sauce',
+            quantity: null,
+            status: 'unresolved',
+            issues: ['stale_source'],
+          },
+        ],
+        status: 'unresolved',
+      })
+    );
+    expect(
+      await within(screen.getByTestId('recipe-ingredient-projection')).findByText('current sauce')
+    ).toBeVisible();
+    expect(screen.queryByText('400 g pasta')).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-edit-recipe'));
+    expect(await screen.findByTestId('recipe-edit-servings-input')).toHaveValue('1');
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('1 serving');
+    expect(screen.getByDisplayValue('current sauce')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    mockGetIngredientProjection.mockRejectedValueOnce(new Error('Captured supper changed'));
+    act(() => useWeekStore.setState({ schedule: [...useWeekStore.getState().schedule] }));
+    expect(await screen.findByText('Could not confirm ingredients for this supper.')).toBeVisible();
+    expect(screen.queryByText('current sauce')).not.toBeInTheDocument();
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+  });
+  it('identifies original night-away quantities without claiming the configured usual portions are unset', async () => {
+    const id = '550e8400-e29b-41d4-a716-446655440111';
+    mockGetIngredientProjection.mockResolvedValue({
+      recipeId: id,
+      supperDate: '2026-10-14',
+      context: 'assigned',
+      occurrenceId: '550e8400-e29b-41d4-a716-446655440222',
+      baseServings: 2,
+      targetServings: null,
+      factor: null,
+      status: 'original',
+      editable: false,
+      version: 'original-night-away',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 200,
+          unitText: 'g',
+          status: 'original',
+          issues: [],
+        },
+      ],
+    });
+    render(
+      <RecipeDetailSheet
+        recipeId={id}
+        plannerDayLabel="Wednesday, October 14"
+        ingredientContext={{
+          context: 'assigned',
+          supperDate: '2026-10-14',
+          occurrenceId: '550e8400-e29b-41d4-a716-446655440222',
+        }}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('Original recipe quantities are shown.')).toBeVisible();
+    expect(
+      screen.queryByText('Usual portions are not set. Original quantities are shown.')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('recipe-servings')).toHaveTextContent('2 servings');
+    expect(screen.getByTestId('recipe-ingredient-projection')).toHaveTextContent('200 g pasta');
   });
 });

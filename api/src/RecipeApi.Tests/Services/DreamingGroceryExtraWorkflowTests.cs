@@ -17,7 +17,7 @@ public class DreamingGroceryExtraWorkflowTests
         var storage = new InMemoryStorageProvider();
         await storage.SaveAsync("workflows", "dreaming.yaml", await File.ReadAllTextAsync(FindDreamingWorkflow()));
         await using var db = TestDbContextFactory.Create();
-        var definition = await new WorkflowOrchestrator(new SystemClock(), new WorkflowRepository(storage), db)
+        var definition = await new WorkflowOrchestrator(new SystemClock(), new WorkflowRepository(storage), db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(db, storage, new SystemClock()))
             .GetDefinitionAsync("dreaming");
 
         var rollover = Assert.Single(definition.Tasks, task => task.Name == "rollover-grocery-extras");

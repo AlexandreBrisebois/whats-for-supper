@@ -167,17 +167,22 @@ public sealed class LocalRecipeStore(RecipesRootResolver resolver, ILogger<Local
 
     public Task DeleteAsync(Guid recipeId, CancellationToken ct = default)
     {
-        var dir = RecipeDir(recipeId);
-        if (Directory.Exists(dir))
-        {
-            logger.LogInformation("Deleting files for recipe {RecipeId} at {Directory}", recipeId, dir);
-            Directory.Delete(dir, recursive: true);
-        }
-        else
-        {
-            logger.LogWarning("Delete requested for recipe {RecipeId} but directory does not exist", recipeId);
-        }
+        var existed = DeleteDirectory(Root, recipeId);
+        if (existed) logger.LogInformation("Deleted files for recipe {RecipeId}", recipeId);
+        else logger.LogWarning("Delete requested for recipe {RecipeId} but directory does not exist", recipeId);
         return Task.CompletedTask;
+    }
+
+    // Shared physical primitive. The lifecycle owner captures/coordinates authority;
+    // a returned call alone is not its durable database delivery receipt.
+    internal static bool DeleteDirectory(string root, Guid recipeId)
+    {
+        var directory = Path.Combine(root, recipeId.ToString());
+        var existed = Directory.Exists(directory);
+        if (existed) Directory.Delete(directory, recursive: true);
+        // Flush even on absent retries after a possible lost unlink acknowledgement.
+        if (OperatingSystem.IsLinux() && Directory.Exists(root)) RecoveryDurability.Flush(root);
+        return existed;
     }
 
     public Task<IReadOnlyList<Guid>> ListRecipeIdsAsync(CancellationToken ct = default)

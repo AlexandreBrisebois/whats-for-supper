@@ -10,6 +10,27 @@ namespace RecipeApi.Dto;
 /// </summary>
 public class UpdateRecipeDto
 {
+    [JsonPropertyName("expectedContentRevision")]
+    public string? ExpectedContentRevision { get; set; }
+
+    // Capture presence, including explicit null, so unsupported current-content
+    // input cannot be silently ignored while other fields in the PATCH commit.
+    private System.Text.Json.JsonElement ingredientLines;
+    private System.Text.Json.JsonElement instructionSections;
+    [JsonIgnore] public bool HasCanonicalContent { get; private set; }
+    [JsonPropertyName("ingredientLines"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public System.Text.Json.JsonElement IngredientLines
+    {
+        get => ingredientLines;
+        set { ingredientLines = value; HasCanonicalContent = true; }
+    }
+    [JsonPropertyName("instructionSections"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public System.Text.Json.JsonElement InstructionSections
+    {
+        get => instructionSections;
+        set { instructionSections = value; HasCanonicalContent = true; }
+    }
+
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 

@@ -1,4 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { uploadRecipeOriginal } from './recipes';
+
+it('reads the authoritative zero image index from the upload response envelope', async () => {
+  mockGetState.mockReturnValue({ selectedFamilyMemberId: 'member-id' });
+  vi.stubGlobal('fetch', fetchMock);
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ data: { id: 0 } }) });
+  try {
+    expect(
+      await uploadRecipeOriginal(
+        'recipe-id',
+        new File(['image'], 'photo.png', { type: 'image/png' })
+      )
+    ).toEqual({ id: 0 });
+  } finally {
+    fetchMock.mockReset();
+    vi.unstubAllGlobals();
+  }
+});
 
 const { mockGetState, fetchMock } = vi.hoisted(() => ({
   mockGetState: vi.fn(),
@@ -8,6 +26,8 @@ const { mockGetState, fetchMock } = vi.hoisted(() => ({
 const recipesApiMocks = vi.hoisted(() => {
   const searchPost = vi.fn();
   const byIdGet = vi.fn();
+  const projectionGet = vi.fn();
+  const previewGet = vi.fn();
   const byIdDelete = vi.fn();
   const byIdPatch = vi.fn();
   const recipesGet = vi.fn();
@@ -17,6 +37,8 @@ const recipesApiMocks = vi.hoisted(() => {
   return {
     searchPost,
     byIdGet,
+    projectionGet,
+    previewGet,
     byIdDelete,
     byIdPatch,
     recipesGet,
@@ -47,6 +69,8 @@ vi.mock('./api-client', () => ({
       recipes: {
         byId: () => ({
           get: recipesApiMocks.byIdGet,
+          ingredientProjection: { get: recipesApiMocks.projectionGet },
+          ingredientPreview: { get: recipesApiMocks.previewGet },
           delete: recipesApiMocks.byIdDelete,
           patch: recipesApiMocks.byIdPatch,
         }),
@@ -64,6 +88,8 @@ vi.mock('./api-client', () => ({
 
 import {
   getRecipe,
+  getIngredientProjection,
+  getIngredientPreview,
   createRecipe,
   updateRecipe,
   searchRecipes,
@@ -600,5 +626,269 @@ describe('recipe servings detail mapping', () => {
     const recipe = await getRecipe('recipe-1');
     expect(recipe).toHaveProperty('servings', servings ?? null);
     expect(recipe.ingredients).toEqual(['510 g beef', '340 g pasta']);
+  });
+});
+
+it('rejects an assigned projection for a different recreated occurrence', async () => {
+  const context = {
+    context: 'assigned' as const,
+    supperDate: '2026-05-06',
+    occurrenceId: 'captured',
+  };
+  recipesApiMocks.projectionGet.mockResolvedValue({
+    recipeId: 'recipe',
+    supperDate: '2026-05-06',
+    context: 'assigned',
+    occurrenceId: 'recreated',
+    version: 'new',
+    lines: [],
+  });
+  await expect(getIngredientProjection('recipe', context)).rejects.toThrow(
+    'Could not confirm ingredients'
+  );
+});
+
+it('does not treat an empty decoded nullable preparation as an observed preparation', async () => {
+  const context = {
+    supperDate: '2026-10-16',
+    context: 'assigned' as const,
+    occurrenceId: 'captured',
+  };
+  recipesApiMocks.projectionGet.mockResolvedValue({
+    recipeId: 'recipe',
+    ...context,
+    version: 'displayed',
+    preparation: {},
+    lines: [],
+  });
+  expect((await getIngredientProjection('recipe', context)).preparation).toBeNull();
+});
+
+it('normalizes a decoded null instruction projection without hiding original-step feedback', async () => {
+  const context = { supperDate: '2026-10-16', context: 'proposed' as const };
+  recipesApiMocks.projectionGet.mockResolvedValue({
+    recipeId: 'recipe',
+    ...context,
+    version: 'v',
+    lines: [],
+    instructionProjection: {},
+  });
+  expect((await getIngredientProjection('recipe', context)).instructionProjection).toBeNull();
+});
+
+it('reads an explicit preview through the generated client and rejects mismatched targets', async () => {
+  const data = {
+    recipeId: MOCK_PREVIEW_ID,
+    baseServings: 2,
+    targetServings: 4,
+    factor: 2,
+    status: 'scaled',
+    version: 'current-ingredients',
+    lines: [],
+  };
+  recipesApiMocks.previewGet.mockResolvedValue(data);
+  expect(await getIngredientPreview(MOCK_PREVIEW_ID, 4)).toEqual(data);
+  expect(recipesApiMocks.previewGet).toHaveBeenCalledWith({
+    queryParameters: { targetServings: 4 },
+  });
+  recipesApiMocks.previewGet.mockResolvedValue({ ...data, targetServings: 6 });
+  await expect(getIngredientPreview(MOCK_PREVIEW_ID, 4)).rejects.toThrow(
+    'Could not confirm ingredient preview.'
+  );
+});
+const MOCK_PREVIEW_ID = '550e8400-e29b-41d4-a716-446655440111';
+
+it('retains exact server fraction and range display through the generated preview reader and wrapper', async () => {
+  const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+  const { createIngredientPreviewFromDiscriminatorValue } = await import('./generated/models');
+  const { ingredientProjectionText } = await import('../ingredient-presentation');
+  const parsed = new JsonParseNode({
+    recipeId: MOCK_PREVIEW_ID,
+    baseServings: 3,
+    targetServings: 6,
+    factor: 2,
+    status: 'scaled',
+    version: 'exact-server-context',
+    lines: [
+      {
+        originalText: '⅓ cup saved flour wording',
+        displayText: '2/3 cup flour',
+        name: 'flour',
+        quantity: 2 / 3,
+        unitText: 'cup',
+        status: 'scaled',
+        issues: [],
+      },
+      {
+        originalText: '2–3 cloves garlic',
+        displayText: '4–6 cloves garlic',
+        name: 'garlic',
+        quantity: null,
+        unitText: 'cloves',
+        status: 'scaled',
+        issues: [],
+      },
+    ],
+  }).getObjectValue(createIngredientPreviewFromDiscriminatorValue)!;
+  recipesApiMocks.previewGet.mockResolvedValueOnce(parsed);
+  const result = await getIngredientPreview(MOCK_PREVIEW_ID, 6);
+  expect(result.lines).toHaveLength(2);
+  expect(result.lines!.map(ingredientProjectionText)).toEqual([
+    '2/3 cup flour',
+    '4–6 cloves garlic',
+  ]);
+  expect(result.lines![0].originalText).toBe('⅓ cup saved flour wording');
+});
+
+it('normalizes Kiota nullable package objects before an original ingredient is edited', async () => {
+  const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+  const { createRecipeDtoFromDiscriminatorValue } = await import('./generated/models');
+  const parsed = new JsonParseNode({
+    id: '550e8400-e29b-41d4-a716-446655440212',
+    contentSchemaVersion: 2,
+    ingredientLines: [
+      {
+        id: '550e8400-e29b-41d4-a716-446655440213',
+        description: 'sauce',
+        amount: null,
+        amountText: null,
+        unit: null,
+        package: null,
+        scaling: 'proportional',
+        shopping: { name: 'sauce', foodId: null, mappingRevision: null },
+      },
+    ],
+  }).getObjectValue(createRecipeDtoFromDiscriminatorValue)!;
+  recipesApiMocks.byIdGet.mockResolvedValueOnce({ recipe: parsed });
+  const recipe = await getRecipe('550e8400-e29b-41d4-a716-446655440212');
+  expect(recipe.ingredientLines![0].packageEscaped).toBeNull();
+  expect(recipe.ingredientLines![0].unit).toBeNull();
+});
+
+describe('generated package quantity operands survive editor reopen and untouched Save', () => {
+  beforeEach(() => {
+    recipesApiMocks.byIdGet.mockReset();
+    recipesApiMocks.byIdPatch.mockReset();
+  });
+
+  const packageCases = [
+    { name: 'scalar400', amount: { kind: 'scalar', value: { n: '400', d: '1' } }, text: '400' },
+    { name: 'exactFraction', amount: { kind: 'scalar', value: { n: '1', d: '3' } }, text: '1/3' },
+    {
+      name: 'range',
+      amount: { kind: 'range', min: { n: '1', d: '3' }, max: { n: '1', d: '2' } },
+      text: '1/3–1/2',
+    },
+    { name: 'nullPackage', amount: null, text: '' },
+  ];
+
+  it.each(packageCases)(
+    'preserves $name through generated decode, editable draft and generated PATCH',
+    async ({ amount, text }) => {
+      const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+      const { createRecipeDtoFromDiscriminatorValue } = await import('./generated/models');
+      const { ingredientDraft, prepareIngredientDrafts } =
+        await import('../recipes/ingredient-draft');
+      const id = '550e8400-e29b-41d4-a716-446655440212';
+      const pack =
+        amount === null
+          ? null
+          : {
+              countUnit: { text: 'cans', definitionId: null },
+              capacity: { amount, unit: { text: 'g', definitionId: null } },
+              basis: 'net',
+            };
+      // Use the real generated reader. A hand-built client model would hide Kiota's additionalData union representation.
+      const parsed = new JsonParseNode({
+        id,
+        contentSchemaVersion: 2,
+        contentRevision: 'captured-package',
+        servings: 4,
+        ingredientLines: [
+          {
+            id: '550e8400-e29b-41d4-a716-446655440213',
+            description: 'tomatoes',
+            amount: { kind: 'scalar', value: { n: '2', d: '1' } },
+            amountText: '2',
+            unit: { text: 'cans', definitionId: null },
+            scaling: 'proportional',
+            package: pack,
+            shopping: { name: 'tomatoes', foodId: null, mappingRevision: null },
+          },
+        ],
+      }).getObjectValue(createRecipeDtoFromDiscriminatorValue)!;
+      recipesApiMocks.byIdGet.mockResolvedValueOnce({ recipe: parsed });
+      const recipe = await getRecipe(id);
+      const draft = ingredientDraft(recipe.ingredientLines![0]);
+      expect(draft.packageEnabled).toBe(pack !== null);
+      expect(draft.packageCapacityAmount).toBe(text);
+      const prepared = prepareIngredientDrafts([draft]);
+      expect(prepared.invalid).toBe(false);
+      expect(prepared.lines[0].packageEscaped).toEqual(pack);
+      recipesApiMocks.byIdPatch.mockResolvedValueOnce({ recipe: parsed });
+      await updateRecipe(id, {
+        expectedContentRevision: recipe.contentRevision!,
+        ingredientLines: prepared.lines,
+      });
+      const writer = new JsonSerializationWriter();
+      writer.writeObjectValue(
+        undefined,
+        recipesApiMocks.byIdPatch.mock.calls[0][0],
+        serializeUpdateRecipeDto
+      );
+      const wire = JSON.parse(new TextDecoder().decode(writer.getSerializedContent()));
+      expect(wire.expectedContentRevision).toBe('captured-package');
+      expect(wire.ingredientLines[0].package).toEqual(pack);
+      expect(wire.ingredientLines[0].amount).toEqual({ kind: 'scalar', value: { n: '2', d: '1' } });
+    }
+  );
+
+  it('retains a top-level exact count with amountText null without inventing notation to decode it', async () => {
+    const { JsonParseNode } = await import('@microsoft/kiota-serialization-json');
+    const { createRecipeDtoFromDiscriminatorValue } = await import('./generated/models');
+    const { ingredientDraft, prepareIngredientDrafts } =
+      await import('../recipes/ingredient-draft');
+    const id = '550e8400-e29b-41d4-a716-446655440212';
+    const exact = { kind: 'scalar', value: { n: '1', d: '3' } };
+    const parsed = new JsonParseNode({
+      id,
+      contentSchemaVersion: 2,
+      contentRevision: 'captured-count',
+      ingredientLines: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440213',
+          description: 'tomatoes',
+          amount: exact,
+          amountText: null,
+          unit: null,
+          scaling: 'proportional',
+          package: null,
+          shopping: { name: 'tomatoes', foodId: null, mappingRevision: null },
+        },
+      ],
+    }).getObjectValue(createRecipeDtoFromDiscriminatorValue)!;
+    recipesApiMocks.byIdGet.mockResolvedValueOnce({ recipe: parsed });
+    const recipe = await getRecipe(id);
+    expect(recipe.ingredientLines![0].amountText ?? null).toBeNull();
+    expect(recipe.ingredientLines![0].amount).toEqual(exact);
+    const draft = ingredientDraft(recipe.ingredientLines![0]);
+    expect(draft.amount).toBe('1/3');
+    const prepared = prepareIngredientDrafts([draft]);
+    expect(prepared.invalid).toBe(false);
+    recipesApiMocks.byIdPatch.mockResolvedValueOnce({ recipe: parsed });
+    await updateRecipe(id, {
+      expectedContentRevision: recipe.contentRevision!,
+      ingredientLines: prepared.lines,
+    });
+    const writer = new JsonSerializationWriter();
+    writer.writeObjectValue(
+      undefined,
+      recipesApiMocks.byIdPatch.mock.calls[0][0],
+      serializeUpdateRecipeDto
+    );
+    const wire = JSON.parse(new TextDecoder().decode(writer.getSerializedContent()));
+    expect(wire.ingredientLines[0].amount).toEqual(exact);
+    expect(wire.ingredientLines[0].unit).toBeNull();
+    expect(wire.ingredientLines[0].package).toBeNull();
   });
 });

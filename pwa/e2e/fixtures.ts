@@ -1,16 +1,19 @@
 import { test as base, type Page, type APIRequestContext } from '@playwright/test';
 import { generateSecretToken } from './auth-utils';
+import { pinCivilDate } from './date-only-clock';
 
 export type { Page, APIRequestContext };
 
-export const test = base.extend<{ appLocale: 'en' | 'fr' }>({
+export const test = base.extend<{ appLocale: 'en' | 'fr'; dateOnlyClock: boolean }>({
   appLocale: ['en', { option: true }],
+  dateOnlyClock: [false, { option: true }],
   // Extend the page fixture to clear cookies before each test and inject auth
-  page: async ({ page, appLocale }, use) => {
+  page: async ({ page, appLocale, dateOnlyClock }, use) => {
     const fixedTestDate = '2026-05-04T12:00:00Z';
 
     // Pin time to 2026-05-04 12:00:00 UTC (a Monday) to match ADR-029 fixed reference date
-    await page.clock.setFixedTime(new Date(fixedTestDate));
+    if (dateOnlyClock) await pinCivilDate(page, fixedTestDate);
+    else await page.clock.setFixedTime(new Date(fixedTestDate));
 
     await page.context().clearCookies();
 

@@ -50,6 +50,22 @@ def installed_runtime():
 
 
 class HarnessIdentityTests(unittest.TestCase):
+    def test_vitest_execution_cache_does_not_mutate_full_identity_but_dependencies_do(self):
+        with installed_runtime() as (root, tools):
+            modules = root / 'repo/pwa/node_modules'
+            dependency = modules / 'example/index.js'
+            dependency.parent.mkdir(parents=True)
+            dependency.write_text('installed dependency')
+            cache = modules / '.vitest-cache/_metadata.json'
+            cache.parent.mkdir()
+            cache.write_text('first execution')
+            with mock.patch.object(Path, 'home', return_value=root / 'home'):
+                before = test_ops.runtime_identity()
+                cache.write_text('next execution')
+                self.assertEqual(before, test_ops.runtime_identity())
+                dependency.write_text('changed dependency')
+                self.assertNotEqual(before, test_ops.runtime_identity())
+
     def test_discovered_runtime_dependency_bytes_change_identity(self):
         with installed_runtime() as (root, tools):
             baseline = harness_identity.runtime_identity(['test:agent', 'spec:check'])

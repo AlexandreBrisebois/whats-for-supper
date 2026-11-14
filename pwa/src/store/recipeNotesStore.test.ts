@@ -21,6 +21,22 @@ describe('ordered recipe notes saves', () => {
     vi.useRealTimers();
   });
 
+  it('waits for the pause, persists empty notes and acknowledges only the saved text', async () => {
+    update.mockResolvedValue(undefined);
+    initializeRecipeNotes('a', 'Less chilli');
+    editRecipeNotes('a', '');
+    await vi.advanceTimersByTimeAsync(799);
+    expect(update).not.toHaveBeenCalled();
+    expect(useRecipeNotesStore.getState().drafts.a.status).toBe('pending');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(update).toHaveBeenCalledExactlyOnceWith('a', { notes: '' });
+    expect(useRecipeNotesStore.getState().drafts.a).toMatchObject({
+      text: '',
+      acknowledged: '',
+      status: 'saved',
+    });
+  });
+
   it('serializes a newer draft behind a delayed save and preserves exact text', async () => {
     let finish!: () => void;
     update

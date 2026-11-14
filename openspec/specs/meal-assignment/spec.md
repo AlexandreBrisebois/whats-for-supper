@@ -58,7 +58,7 @@ Quick Find SHALL offer Select for an available recipe card and pass that recipe 
 
 ### Requirement: Present the targeted recipe-detail planning action
 
-Search with addToDay and weekOffset SHALL retain that target while opening recipe detail under recipe-library requirements. It SHALL offer Plan for the resolved day label using the loaded detail recipe. Assignment SHALL parse the two query values as base-ten integers and pass them as day index and week offset.
+Search with valid addToDay, weekOffset and captured reference SHALL retain its dated target while detail opens. An unassigned target action SHALL name that destination and use the loaded recipe without another day prompt. A confirmed identical dated meal SHALL use Planned navigation instead of assignment. Invalid/incomplete context SHALL show correction feedback rather than assign Tonight. Changing a proposed day SHALL be explicit and preserve the recipe.
 
 #### Scenario: Open detail in planning context
 - **WHEN** a recipe detail is opened from Search targeting a specific planner day
@@ -68,16 +68,20 @@ Search with addToDay and weekOffset SHALL retain that target while opening recip
 - **WHEN** a person activates that planning action with a loaded recipe
 - **THEN** the chosen recipe and parsed target are passed into assignment
 
+#### Scenario: Another occurrence does not replace an explicit target
+- **WHEN** a recipe is saved on Wednesday and Search explicitly targets an unassigned Friday
+- **THEN** Friday remains the visible planning destination; Wednesday does not silently retarget or label Friday Planned
+
 ### Requirement: Read the explicit Search target before assignment
 
-The targeted Search path SHALL request the target week's schedule and inspect the indexed day's normalized recipe before posting. A usable ordinary empty target SHALL proceed to assignment; a target with a normalized recipe SHALL enter the occupied-slot recovery boundary instead. This read SHALL NOT establish an atomic empty-slot precondition.
+Before assignment, recipe selection SHALL read the captured target and classify its recipe, status and non-cooking plan. An ordinary empty supper SHALL use guarded assignment. A different recipe SHALL enter replacement recovery; a non-cooking plan SHALL require explicit replacement confirmation. A failed or unusable read SHALL block submission. The read SHALL NOT reserve the slot.
 
 #### Scenario: Ordinary empty target is returned
 - **WHEN** the target read returns a dated ordinary day without a normalized recipe
-- **THEN** Search proceeds to post the chosen recipe to that explicit week and index
+- **THEN** Search posts the chosen recipe to that explicit week and index with requireEmpty true and its captured reference
 
 #### Scenario: Target now has a recipe
-- **WHEN** the target read returns a normalized recipe
+- **WHEN** the target read returns a different movable recipe rather than a Cooked or AwaitingConsensus target
 - **THEN** the initial selection enters recovery rather than posting the new assignment directly
 
 ### Requirement: Submit chosen-recipe assignment through the protected operation
@@ -190,7 +194,7 @@ After Planner assignment and its follow-up read resolve, the planner SHALL close
 
 ### Requirement: Show pending targeted detail submission and allow another attempt
 
-During the awaited recipe-detail planning action, the detail sheet SHALL disable its primary planning action. When the callback settles it SHALL release that pending state. A targeted Search assignment failure SHALL retain the loaded detail and clear the page's assignment state so the person can activate the action again.
+During detail planning, pending state SHALL suppress duplicate submission and expose saving feedback. Failure SHALL retain the selected recipe and date with visible recovery. A confirmed rejection SHALL permit a safe retry; an uncertain write SHALL require an authoritative check before another write. Settling a callback alone SHALL NOT establish success or permission to repeat it.
 
 #### Scenario: Detail planning action is pending
 - **WHEN** the targeted detail callback has not settled
@@ -198,19 +202,18 @@ During the awaited recipe-detail planning action, the detail sheet SHALL disable
 
 #### Scenario: Targeted assignment fails
 - **WHEN** the targeted Search read or assignment rejects while detail remains open
-- **THEN** detail remains available and the planning action becomes available for another attempt
+- **THEN** detail remains available with visible failure feedback; a confirmed no-write rejection permits another attempt, while an uncertain write requires checking first
 
 ### Requirement: Return targeted Search assignment to Planner
-
-After its explicit-target assignment POST resolves, Search SHALL request navigation to /planner with success=1, dayIndex and weekOffset for that target. Planner SHALL use a truthy success query and supplied dayIndex to request scrolling to that card and display a temporary success ring. Reading the returned week SHALL follow the promoted initialization requirements; the ring SHALL NOT establish persistence or freshness.
+After confirmed recipe-detail assignment, Search SHALL return to the captured Planner week/day and reference Monday. Planner SHALL read that week, bring the day into view and provide one accessible, transient recipe/date confirmation. Routine success SHALL leave no persistent banner or Refresh control. A success query or temporary ring alone SHALL NOT establish persistence. If refresh fails after confirmed save, Planner SHALL report saved-but-not-refreshed without repeating assignment.
 
 #### Scenario: Search assignment resolves
 - **WHEN** explicit-target Search assignment resolves for index two in week one
-- **THEN** navigation targets /planner?success=1&dayIndex=2&weekOffset=1
+- **THEN** navigation targets Planner index two in week one with the captured reference and transient accessible recipe/date confirmation after authoritative reading, without a persistent success banner or Refresh
 
 #### Scenario: Planner receives success feedback parameters
 - **WHEN** Planner receives a truthy success value and a dayIndex
-- **THEN** it requests smooth centered scrolling to the matching card if present and clears its highlight after approximately three seconds
+- **THEN** it reads the captured week and brings the matching card into view with reduced-motion support; any temporary highlight supplements the transient accessible confirmed-result text
 
 ### Requirement: Advance Quick Find suggestions without changing the plan
 
@@ -226,7 +229,7 @@ Quick Find SHALL use Skip to advance from a returned recipe to the next card, th
 
 ### Requirement: Enter recovery before replacing an occupied Planner day
 
-When a selected Quick Find recipe targets a displayed day with a recipe ID and date, Planner SHALL close Quick Find and retain the old slot and new recipe for recovery. Recovery SHALL offer Move to Tomorrow, Save for Next Week and Just Drop Tonight, plus Back and Close. Dismissal before action SHALL clear the pending choice without submitting replacement.
+Selecting a replacement for a dated recipe-backed Planner day SHALL retain the original slot and chosen recipe before posting. Recovery SHALL name the original and source date and offer its following day, Next Week or removal from that day, plus Back and Close. Before mutation, dismissal SHALL preserve the original and allow return to the selected replacement without submitting assignment.
 
 #### Scenario: Occupied Quick Find target
 - **WHEN** a person selects a replacement for a displayed dated recipe-backed day
@@ -234,7 +237,7 @@ When a selected Quick Find recipe targets a displayed day with a recipe ID and d
 
 #### Scenario: Dismiss the recovery choice
 - **WHEN** Back or Close is activated before an action starts
-- **THEN** pending recovery clears without submitting a replacement through that dismissal
+- **THEN** no mutation is submitted, the original remains and the selected replacement can be resumed
 
 ### Requirement: Resolve the previous Planner meal before replacement
 
@@ -295,15 +298,15 @@ After replacement assignment and its store follow-up resolve, Planner SHALL clea
 
 ### Requirement: Preserve caller-specific Search and Browse recovery routes
 
-Search and Browse SHALL enter occupied-slot recovery after their target schedule read returns a normalized recipe. Their recovery SHALL await the explicit Tomorrow operation, next-offset first-open movement or date deletion, then assign the new recipe. Successful completion SHALL navigate to the captured planner target; Search's Home-target variant SHALL return to Home.
+Search and Browse SHALL retain the original slot and selected replacement through recovery. They SHALL await committed Tomorrow movement, exact-source deferral beginning the source's following week, or confirmed removal before guarded assignment. Confirmed completion SHALL open the captured Planner target and explain both outcomes. Unknown disposition SHALL block replacement until reconciled.
 
 #### Scenario: Search or Browse uses Save for Next Week
 - **WHEN** one of these callers resolves an occupied slot with the next-week action
-- **THEN** it uses movement to the captured offset plus one, while Planner uses deferral starting at its captured offset plus one
+- **THEN** it uses exact-source deferral beginning at the captured source offset plus one, consistently with Planner, including spill into a later week when necessary
 
 #### Scenario: Recovery completes
 - **WHEN** the prior operation and replacement resolve
-- **THEN** the caller clears pending recovery and navigates to its captured planner success target or Search Home target
+- **THEN** the recipe-selection caller clears completed recovery and opens its captured Planner day with confirmation of the new recipe and the original meal's disposition
 
 ### Requirement: Replace a stored assignment at the resolved date
 
@@ -371,31 +374,51 @@ A nonterminal recipe card SHALL toggle between name/image/time and description/i
 
 ### Requirement: Find first-open placement after deployment-local today
 
-Search and Browse Plan for Later SHALL start scanning after the deployment-local current weekday, advancing to offset one/index zero on Sunday. They SHALL inspect returned weeks in order for a day at or after the starting index with status other than Skipped and no normalized recipe. The default scan SHALL stop after 520 relative weeks and return no target if none is found.
+Without an explicit day, recipe detail SHALL suggest the first ordinary empty supper on or after authoritative deployment-local today, including with a historical reference Monday: Tonight first, then future dates in order. Non-cooking, Cooked, AwaitingConsensus and recipe-backed days SHALL be skipped. The date SHALL be shown before saving. Scanning SHALL stop after 520 relative weeks; missing or failed schedule data SHALL block recommendation rather than imply emptiness.
 
 #### Scenario: Next date is non-cooking
 - **WHEN** the first candidate date is recipe-free Skipped and a later ordinary empty date exists
 - **THEN** placement skips the non-cooking date and chooses the later ordinary empty index
 
 #### Scenario: Today is Sunday
-- **WHEN** Plan for Later starts on deployment-local Sunday
+- **WHEN** an untargeted recipe opens on deployment-local Sunday and Tonight is occupied
 - **THEN** scanning begins at offset one, index zero rather than offset-zero Monday
 
 #### Scenario: Scan finds no target
 - **WHEN** all 520 inspected relative weeks contain no eligible returned date
-- **THEN** the helper returns no target and the caller does not submit assignment through that result
+- **THEN** no target is offered, no assignment is submitted and a visible Choose day alternative is available
+
+#### Scenario: Tonight is genuinely empty
+- **WHEN** an untargeted recipe opens and authoritative Tonight has no persisted supper entry
+- **THEN** Tonight is the visible suggested date and no write occurs until the dated action is activated
+
+#### Scenario: Historical scan reference
+- **WHEN** an automatic scan uses an older reference Monday or a stale starting index
+- **THEN** it skips every returned date before the authoritative deployment-local today and retains the correct date/week/reference mapping
+
+#### Scenario: Browser timezone differs
+- **WHEN** the browser civil date differs from the deployment-local date
+- **THEN** automatic eligibility uses returned deployment calendar today rather than browser-local midnight
 
 ### Requirement: Assign first-open placement through the shared assignment operation
 
-After first-open scanning returns a target, Search and Browse SHALL assign the chosen recipe through the accepted assignment operation and navigate to that planner offset/index with success=1 after the request resolves. The separate read SHALL NOT reserve an empty date. Missing schedule data SHALL allow scanning to continue; request rejection SHALL interrupt the scan.
+Activating the dated action SHALL use guarded assignment for the chosen recipe and captured date after a fresh authoritative calendar/date check. An automatic date now in the past SHALL refresh and require another activation without writing either date. Suggestions SHALL NOT reserve or mutate plans. Conflict SHALL retain recipe/date, explain the changed plan and offer another day or explicit replacement without silently retargeting. Confirmed completion SHALL return to that Planner date.
 
 #### Scenario: First-open assignment resolves
-- **WHEN** a target is returned and the assignment request resolves
+- **WHEN** a shown target is chosen and its guarded assignment is confirmed
 - **THEN** navigation identifies that returned offset/index with planner success feedback parameters
 
 #### Scenario: Week read is absent or rejects
 - **WHEN** a scanned week has no usable days or its request rejects
-- **THEN** absent data advances scanning while rejection stops that invocation without reserving a target
+- **THEN** both cases block automatic recommendation and show retry without reserving or assigning any target
+
+#### Scenario: Automatic target becomes yesterday before save
+- **WHEN** deployment-local midnight passes after the suggestion was shown and before activation
+- **THEN** the old date receives no new assignment, the refreshed eligible date is shown, and saving it requires another activation
+
+#### Scenario: Calendar recheck fails
+- **WHEN** the fresh calendar or target read fails during automatic save validation
+- **THEN** no new assignment occurs and recipe/context remain available with read retry or Choose day
 
 ### Requirement: Gate every Tomorrow recovery caller on committed movement
 
@@ -564,3 +587,124 @@ The planner suggestion action SHALL display “Browse up to 5 recipe suggestions
 - **WHEN** the suggestion request returns zero, one or fewer than five recipes
 - **THEN** the existing deck handles the returned count without fabricating additional suggestions
 - **AND** the planner supporting text continues to describe up to five recipes
+### Requirement: Offer an explicit change of planning day
+
+For an unplanned target, recipe selection SHALL show the proposed destination with a Change day action. The chooser SHALL retain the recipe and display dated current plans so empty, recipe-backed and non-cooking days are distinguishable. Opening, changing or cancelling the chooser SHALL NOT mutate the schedule. Cancellation SHALL restore the previous destination; choosing another day SHALL update it before saving.
+
+#### Scenario: Choose another date without searching again
+- **WHEN** a person changes a suggested Thursday to Saturday
+- **THEN** the same recipe is retained, Saturday becomes the visible destination and no assignment occurs until the dated primary action is activated
+
+#### Scenario: Non-cooking date is chosen explicitly
+- **WHEN** a person chooses a date with Take Out, Eating Out or another saved non-cooking plan
+- **THEN** the flow explains that plan and asks before removing it and saving the recipe
+- **AND** declining retains both the existing plan and selected recipe
+
+### Requirement: Preserve completed replacement stages across callers
+
+Home, Planner and recipe-selection recovery SHALL retain the captured original, date/reference, replacement and acknowledged disposition while recovery remains mounted. Pending work SHALL suppress duplicate submissions. A replacement-save failure SHALL NOT repeat completed movement or removal. Unknown disposition or save outcomes SHALL require authoritative reconciliation before dependent writes.
+
+#### Scenario: Original moved but replacement rejected
+- **WHEN** the original is confirmed moved and guarded replacement receives a known no-write rejection
+- **THEN** the selected replacement remains and retry attempts only the safe unfinished assignment stage
+
+#### Scenario: Reply is lost after saving
+- **WHEN** replacement persistence may have succeeded but the reply is lost
+- **THEN** the flow checks the captured date, recognises an already-saved replacement and does not move or assign it again
+
+#### Scenario: Outcome cannot be checked
+- **WHEN** an authoritative reconciliation read fails
+- **THEN** the UI says the result is unconfirmed and offers Retry check or Review plan without enabling blind replay
+
+#### Scenario: Leave partially completed recovery
+- **WHEN** a person closes recovery after original disposition but before confirmed replacement
+- **THEN** it explains completed changes and the unsaved or unknown replacement before allowing departure
+
+### Requirement: Confirm completed planning without inventing work
+Recipe detail SHALL confirm the new recipe and Planner date. Replacement SHALL state the original's confirmed removal or actual moved date, including Next Week spillover. Ordinary completion SHALL use transient accessible feedback. Replacement/spillover feedback SHALL stay readable until dismissal or context departure. Success SHALL offer no Refresh and require no further acceptance, rating or planning task. Saved-but-unrefreshed feedback SHALL distinguish persistence from unavailable refresh.
+
+#### Scenario: Replacement and deferred original complete
+- **WHEN** Curry is saved to Wednesday and Lasagna was deferred past a full next week to the following Monday
+- **THEN** Planner confirms Curry's Wednesday date and Lasagna's actual Monday date and explains the full-week spillover
+
+### Requirement: Avoid reassigning an identical dated meal
+
+A confirmed identical recipe at the selected ordinary supper SHALL show Planned for that date and navigate to its Planner destination without assignment. The Planned state SHALL have no change arrows or direct plan-changing controls. Cooked or AwaitingConsensus targets SHALL retain review in Planner rather than reset completion or consensus. A missing, failed or changed target read SHALL not establish Planned.
+
+#### Scenario: Same recipe or completed target
+- **WHEN** the target already has the chosen recipe, or is Cooked or AwaitingConsensus
+- **THEN** an ordinary confirmed match offers Planned navigation; completed or consensus state offers its existing applicable review without mutation
+- **AND** no change arrow is attached to a confirmed saved occurrence or repurposed as movement/navigation
+
+
+#### Scenario: Navigate to the captured planned date
+- **WHEN** Planned is activated for a confirmed saved occurrence
+- **THEN** Planner opens the exact captured absolute date/reference week and makes that day identifiable, including across Sunday, later weeks or deployment-calendar rollover
+- **AND** navigation does not assign, move, delete, complete, change portions or claim a new save
+
+#### Scenario: Saved Planner entry and changed occurrence
+- **WHEN** detail was entered from a saved Planner occurrence
+- **THEN** Planned navigation returns to that source date rather than recommending another target
+- **AND** if the occurrence changed or cannot be confirmed, review/error state replaces the stale Planned claim without silently choosing another date or overwriting the plan
+
+#### Scenario: Date arrows retain their original meaning
+- **WHEN** an unplanned recipe's target-date arrows are activated
+- **THEN** the existing chooser changes only its proposed destination; opening, choosing or cancelling does not navigate to Planner or move a saved occurrence
+- **AND** a separate permitted dated Plan activation is required before assignment
+
+### Requirement: Refresh automatic suggestions across deployment date rollover
+
+Automatic recommendation SHALL expire at authoritative deployment-local day rollover. Open detail SHALL refresh at rollover and on resumed visibility/focus when freshness cannot be established. Pending refresh SHALL block new automatic assignment; obsolete results SHALL NOT replace current recipe/date context. A late or failed read SHALL NOT revive an expired recommendation as actionable.
+
+#### Scenario: Detail stays open overnight
+- **WHEN** an automatic suggestion remains open as the deployment date rolls over
+- **THEN** detail rereads the authoritative calendar and eligible date before enabling a new automatic save
+
+#### Scenario: Resume after sleep
+- **WHEN** a suspended tab resumes after its calendar freshness boundary
+- **THEN** it refreshes automatic placement before permitting assignment, even if no midnight timer fired
+
+#### Scenario: Rollover during scan or response race
+- **WHEN** a calendar generation changes while automatic reads are pending, or the recipe/target context changes
+- **THEN** stale results cannot enable save or overwrite current context and the active automatic scan uses a coherent fresh calendar
+
+### Requirement: Preserve explicit dated planning during automatic-date correction
+
+The today-or-future restriction SHALL apply only to automatic recommendations. Explicit Planner dates and deliberately selected historical dates SHALL retain existing assignment, completion and conflict behavior. Checking an uncertain earlier write SHALL retain its captured date/reference and SHALL NOT replace it with a newly recommended date or repeat a completed mutation.
+
+#### Scenario: Explicit historical Planner target
+- **WHEN** a person explicitly selects an otherwise eligible past Planner supper
+- **THEN** the automatic-date lower bound does not prohibit that dated assignment or reinterpret it as today's recommendation
+
+#### Scenario: Unknown automatic write after midnight
+- **WHEN** an automatic assignment lost its reply before rollover
+- **THEN** recovery checks the original captured date for its result before any new recommendation can cause a new write
+
+### Requirement: Keep planning-return recovery actionable
+
+A failed reconciliation after confirmed save SHALL retain saved-but-not-refreshed feedback with read retry. A mismatching reread SHALL show changed-plan guidance without asserting the old assignment is current. Retry SHALL only reread; it SHALL NOT repeat assignment or prior-meal disposition. Navigation and retained plan content SHALL remain usable.
+
+#### Scenario: Saved assignment cannot refresh
+- **WHEN** assignment was acknowledged and the Planner reconciliation read fails
+- **THEN** Planner distinguishes saved state from unavailable refresh and offers a read-only retry
+- **AND** retry does not submit assignment, move, defer or removal
+
+#### Scenario: Another household member changes the saved day
+- **WHEN** reconciliation returns another recipe or an incompatible day
+- **THEN** Planner shows current schedule and changed-plan guidance rather than the old success confirmation
+
+### Requirement: Retire obsolete planning-return confirmation
+
+Planner SHALL reconcile a matching captured planning return independently of whether routine success is visibly rendered. Once its confirmed outcome is consumed or dismissed, returning to an old success URL SHALL NOT replay it. A URL alone SHALL NOT create confirmation. Late reads SHALL NOT apply feedback or schedule snapshots after departure from their captured week/date/reference context.
+
+#### Scenario: Routine success is consumed
+- **WHEN** a matching return is reconciled and its transient confirmation completes
+- **THEN** later render, Back navigation or reload of the old success URL does not resurrect that confirmation
+
+#### Scenario: Leave while a read is pending
+- **WHEN** the selected week/reference or return context changes before reconciliation completes
+- **THEN** the old read does not overwrite the new context or show stale feedback
+
+#### Scenario: Replacement outcome is dismissed
+- **WHEN** the user dismisses confirmed replacement/spillover feedback
+- **THEN** no write or acceptance step occurs and the old receipt does not reappear

@@ -2,7 +2,8 @@
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { requestPortionsDeparture } from '@/lib/planner/portionsNavigation';
 import { Home, UserCircle, BookOpen, Calendar, Compass, LucideIcon } from 'lucide-react';
 import type { Route } from 'next';
 
@@ -37,6 +38,7 @@ interface NavigationProps {
 
 export function Navigation({ className = '' }: NavigationProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { hasPendingCards, setHasPendingCards } = useDiscoveryStore();
 
   // Background check for pending cards on app load
@@ -69,6 +71,9 @@ export function Navigation({ className = '' }: NavigationProps) {
             <Link
               key={item.href}
               href={item.href}
+              onNavigate={(event) => {
+                if (requestPortionsDeparture(() => router.push(item.href))) event.preventDefault();
+              }}
               data-testid={`nav-item-${item.href.replace('/', '') || 'home'}`}
               className="relative -top-4 flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 active:scale-95 z-40"
               aria-current={active ? 'page' : undefined}
@@ -92,6 +97,9 @@ export function Navigation({ className = '' }: NavigationProps) {
           <Link
             key={item.href}
             href={item.href}
+            onNavigate={(event) => {
+              if (requestPortionsDeparture(() => router.push(item.href))) event.preventDefault();
+            }}
             data-testid={`nav-item-${item.href.replace('/', '') || 'home'}`}
             className={[
               'flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-bold transition-all z-40 uppercase tracking-tighter',

@@ -7,7 +7,10 @@ public record ScheduleDayDto(
     [property: JsonPropertyName("date")] string Date,
     [property: JsonPropertyName("recipe")] ScheduleRecipeDto? Recipe,
     [property: JsonPropertyName("status")] int Status = 0,
-    [property: JsonPropertyName("nonCooking")] NonCookingPlanDto? NonCooking = null);
+    [property: JsonPropertyName("nonCooking")] NonCookingPlanDto? NonCooking = null,
+    [property: JsonPropertyName("removalToken")] string? RemovalToken = null,
+    [property: JsonPropertyName("occurrenceId")] Guid? OccurrenceId = null,
+    [property: JsonPropertyName("preparation")] SupperPreparationDto? Preparation = null);
 
 public record ScheduleRecipeDto(
     [property: JsonPropertyName("id")] Guid Id,
@@ -28,4 +31,10 @@ public record ScheduleDays(
     [property: JsonPropertyName("groceryState")] Dictionary<string, bool>? GroceryState = null,
     [property: JsonPropertyName("groceryItems")] List<GroceryLineItemDto>? GroceryItems = null,
     [property: JsonPropertyName("votingRoundId")] Guid? VotingRoundId = null,
-    [property: JsonPropertyName("groceryExtras")] List<GroceryExtraDto>? GroceryExtras = null);
+    [property: JsonPropertyName("groceryExtras")] List<GroceryExtraDto>? GroceryExtras = null,
+    [property: JsonPropertyName("groceryRefresh")] ServingGroceryRefreshDto? GroceryRefresh = null,
+    [property: JsonPropertyName("groceryListVersion")] string? GroceryListVersion = null)
+{
+    [JsonPropertyName("presentationVersion")] public string PresentationVersion { get; init; } = "0";
+    [JsonPropertyName("presentationEpoch")] public Guid PresentationEpoch { get; init; }
+}

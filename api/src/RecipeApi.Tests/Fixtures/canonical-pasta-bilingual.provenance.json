@@ -1,0 +1,24 @@
+{
+  "source": "Public synthetic one-recipe EN/FR document, English page then French page; no household data",
+  "generator": "scripts/pdf/qualify.py:pdf",
+  "generatorSha256": "b8f0a150ad1772b73f777cb25f7543cb81e73c7c130ce2a357fadf2200fa41cb",
+  "sha256": "20808885823da6870ff6dfd8b7408e35d0fc0de766491bdc0344b204df48916d",
+  "bytes": 1330,
+  "facts": {
+    "servings": 4,
+    "ingredients": [
+      "200 g pasta",
+      "100 ml sauce",
+      "salt to taste"
+    ],
+    "steps": [
+      "Cook the pasta.",
+      "Serve with the sauce."
+    ]
+  },
+  "pages": [
+    "English source wording",
+    "French source wording for the same recipe"
+  ],
+  "qualification": "Fixture provenance only; executed renderer, pipeline and provider accuracy are separately recorded."
+}

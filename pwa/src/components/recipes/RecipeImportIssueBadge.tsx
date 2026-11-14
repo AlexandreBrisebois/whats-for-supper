@@ -16,7 +16,7 @@ export function RecipeImportIssueBadge({
     ? t('recipes.importIssueReview', 'Review')
     : t('recipes.importIssueReported', 'Reported');
   const accessibleLabel = ready
-    ? t('recipes.importIssueReadyToReviewDescription', 'Recipe updated — ready to review')
+    ? t('recipes.importIssueReadyToReviewDescription', 'Recipe ready for review')
     : t('recipes.importIssueReportedDescription', 'Recipe reported');
   const compact = variant === 'compact';
 

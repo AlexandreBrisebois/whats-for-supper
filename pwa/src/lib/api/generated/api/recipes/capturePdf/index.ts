@@ -29,7 +29,7 @@ import {
  */
 export interface CapturePdfRequestBuilder extends BaseRequestBuilder<CapturePdfRequestBuilder> {
   /**
-   * Requires household authentication and an established member. Stores unchangedsource bytes and a pending recipe before returning. Conversion is a separate recipe-import task; 202establishes persistence, not readiness or verified workflow launch.Corrupt, encrypted and over-10-page documents fail the workflow and remainin Settings for Retry/Delete. No page truncation or PDF download.
+   * Requires household authentication and an established member. Stores unchangedsource bytes and a pending recipe before returning. Conversion is a separate recipe-import task; 202establishes persistence, not readiness or verified workflow launch.Corrupt, encrypted and over-10-page documents fail the workflow and remainin Settings for Retry/Delete. No page truncation or PDF download.A witnessed fresh PDF extraction that can preserve its supported originalfacts losslessly publishes canonical ingredients and steps through itsguarded publication before readiness. Usable content requiring reviewretains the existing unready review behavior. Rendered pages retain theirPDF conversion ancestry; later reimports do not inherit fresh-intake authority.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<PdfCaptureAccepted>}
@@ -44,7 +44,7 @@ export interface CapturePdfRequestBuilder extends BaseRequestBuilder<CapturePdfR
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<PdfCaptureAccepted | undefined>;
   /**
-   * Requires household authentication and an established member. Stores unchangedsource bytes and a pending recipe before returning. Conversion is a separate recipe-import task; 202establishes persistence, not readiness or verified workflow launch.Corrupt, encrypted and over-10-page documents fail the workflow and remainin Settings for Retry/Delete. No page truncation or PDF download.
+   * Requires household authentication and an established member. Stores unchangedsource bytes and a pending recipe before returning. Conversion is a separate recipe-import task; 202establishes persistence, not readiness or verified workflow launch.Corrupt, encrypted and over-10-page documents fail the workflow and remainin Settings for Retry/Delete. No page truncation or PDF download.A witnessed fresh PDF extraction that can preserve its supported originalfacts losslessly publishes canonical ingredients and steps through itsguarded publication before readiness. Usable content requiring reviewretains the existing unready review behavior. Rendered pages retain theirPDF conversion ancestry; later reimports do not inherit fresh-intake authority.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

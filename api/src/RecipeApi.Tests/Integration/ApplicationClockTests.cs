@@ -88,8 +88,9 @@ public class ApplicationClockTests
                 actual = (await db.Recipes.SingleAsync(x => x.Id == created.Id)).CreatedAt;
                 break;
             case "recipe-ready":
+                await services.GetRequiredService<RecipeRepository>().SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = recipe.Name }, default);
                 await ActivatorUtilities.CreateInstance<RecipeReadyProcessor>(services).ExecuteAsync(new WorkflowTask
-                { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, default);
+                { TaskId = Guid.NewGuid(), Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, default);
                 actual = recipe.UpdatedAt;
                 break;
             case "workflow-reset":
@@ -169,7 +170,7 @@ public class ApplicationClockTests
         await using var db = TestDbContextFactory.Create();
         var storage = new InMemoryStorageProvider();
         await storage.SaveAsync("workflows", "clock.yaml", "name: clock\ntasks:\n  - name: work\n    processor: Clock\n");
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(db, storage, clock));
         var due = clock.UtcNow.AddHours(1);
         var instance = await orchestrator.TriggerAsync("clock", new(), due);
         Assert.Equal(clock.UtcNow, instance.CreatedAt);

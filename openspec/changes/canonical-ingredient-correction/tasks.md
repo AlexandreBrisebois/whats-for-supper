@@ -1,0 +1,539 @@
+# Tasks
+
+## Current coordinated release policy — 2026-11-11
+
+The user authorized completing the remaining accepted dependable-portions release
+after predecessor C05 at `74f0a48b47ffd6eccb52d3710de58c384c2b6aaa`.
+Local tests and exact-candidate data-preserving DV acceptance gate runtime slices;
+applicable checks gate documentation slices. Commit accepted owned work locally
+and continue the dependency queue without per-slice pushes. After full integrated
+local/DV qualification, make one consolidated push, resolve required hosted CI
+failures with justified repairs/follow-up pushes, then sync/archive only fully
+completed in-scope changes. Required exact-final-candidate hosted acceptance stays
+open until observed. Historical single-slice stopping and hosted-before-DV rules
+below describe their original operations and are superseded prospectively by this
+policy; historical failures/retries/limits remain unchanged. No production, reset,
+reseed, force push, unrelated merge, garlic-placeholder implementation or Similar
+UI work. Selective repair remains superseded. The 2026-11-12 user amendment includes
+bilingual identity with a reviewed model-authored vocabulary, durable versioned JSON
+on disk and full backup/restore; no external dataset or runtime AI regeneration.
+Migration preserves all planned meals/events and rebuilds every grocery list;
+checks and checked-demand baselines may reset only in that fenced rebuild.
+Manual extras/corrections/history and ordinary later check continuity remain.
+Task IDs/checklists remain authoritative; partial slices do not close aggregates.
+The operational navigation record is `.task/dependable-portions-coordinator/continuation.md`.
+
+
+## Current execution map
+
+Use the [accepted release baseline](proposal.md), [scenario dispositions](acceptance-corpus.md)
+and [shared contract intent](contracts.md). Existing task IDs remain stable. An
+unchecked aggregate means some acceptance is outstanding, not that its code is absent.
+The coordinator selects a bounded slice, assigns one writer per shared file and
+records implementation state separately from evidence. The earlier documentation consolidation performed no runtime work; the
+[current coordinated slice](proposal.md#coordinated-slice-1--selected-2026-11-10)
+records current delivery scope separately.
+
+| Area / task | Implementation at a666a64f | Evidence / remaining boundary |
+| --- | --- | --- |
+| Exact content, guards, editing (1–2) | Canonical store, DTO/client, original editor and draft recovery exist | `.task/canonical-existing-flows-20261110/outcome.json` and `.task/flagged-correction-20261110/outcome.json`; reconcile all required cases, especially ordinary package/definition input and final upgrade acceptance |
+| Fresh URL (3.1) | Implemented, including retained-review correction and exact facts | `.task/canonical-fresh-retention-20261110/handoff.md`; locally qualified, not every source channel |
+| Fresh original photo (3.1) | Implemented in a666a64f, including retained-review repair and ancestry guards | `.task/photo-canonical-20261111/handoff.md`; focused PostgreSQL 3/3, native live 1/1, browser 3/3 and combined local verifier passed; hosted not run |
+| Common projections (3.2) | Canonical ingredient inputs and much of Cook/prepared/context behavior exist | Reuse step companion evidence; ordinary relationship producer remains missing |
+| PDF/synthesis/share/general repair (3.3–3.6) | Not fully canonical | Separate later increments; do not reopen URL/photo merely because 3.1 is unchecked |
+| Ordinary relationship production | Missing | Step companion tasks 0.1–0.3 own import/post-edit proposal and evidence validation; A supplies canonical Save/publication hooks |
+| Library conversion/recovery | Primitives and bounded backup/seed/sync exist | Migration companion owns operational conversion, maintenance and rehearsal |
+| Bilingual catalogue/merging | Included, implementation pending under its companion | Reviewed model-authored durable JSON, saved mapping/grouping/corrections and full recovery/cutover qualification |
+
+First increment: reuse URL/photo and manual correction, then close the ordinary
+instruction-scaling connection. Workstream A owns canonical store/RecipeService/
+publication changes; B requests these hooks through A instead of writing them
+concurrently. C can inventory and prepare conversion/recovery in parallel. Later
+intake channels remain separate. Product scope is settled; task 0.1 in the step
+companion must design and test the bounded evidence rules without treating an AI
+label or confidence as proof.
+
+## 1. Read exact original facts through the existing stack
+
+**Outcomes:** C01, C07–C14, C46–C47 under the release disposition.
+**Owners:** canonical store, existing projector, OpenAPI/generated client and exact
+quantity/conversion tests. This is existing foundation plus remaining qualification.
+
+- [ ] 1.1 Reconcile the implemented contentRevision, exact scalar/range, nullable amount/unit, stable row/step and basis contracts against current OpenAPI/client/mocks and the corpus. Reuse `CanonicalIngredientConversionPostgresTests`, exact-quantity tests and fresh-URL exact-facts cases. Add intended-red cases only for demonstrated missing behavior: unknown basis, duplicate/missing associations, explicit null/empty, exact notation/overflow, units/packages and no phrase whitelist. Run the real database owner plus `task test:unit -- src/testing/mock-api.test.ts`; record actual case coverage rather than recreating existing shapes.
+- [ ] 1.2 Close only gaps demonstrated by 1.1 through the existing per-recipe canonical owner. Run its affected checks and `task gen:client:check` where applicable; prove exact facts through the generated-client/API/PostgreSQL path. Preserve deferred legacy readability, evidence and human clears. Do not add implicit ordinary-read conversion or routine old-backup adapters.
+- [x] 1.3 Qualify an ordinary supported input path for structured unit/package facts required by C07/C47, including scaled package count with fixed capacity and no purchase rounding. Inspect current input validation first: reserved DTO fields or seeded records are not a producer. Define the smallest explicit evidence/definition inlet without guessing regional conversions, package sizes or food equivalence. The accepted package checkpoint did not adopt bilingual identity; that feature is now included through its own companion and is not qualified by this package task.
+
+## 2. Correct original facts and retain drafts
+
+**Outcomes:** C01, C10, C14–C16, C36 and the step companion's post-edit reevaluation.
+**Owners:** existing detail editor, canonical PATCH, draft recovery and method-sensitive
+GET/PATCH mocks. Reuse the locally qualified editor rather than rebuilding it.
+
+- [ ] 2.1 Map current `CanonicalIngredientEditPostgresTests`, RecipeDetailSheet units and existing canonical live/browser owners to the required cases: 200→250 original/500 dated, unchanged sauce, fractions/ranges/zero/null/unit-only, invalid input, Cancel/failure, concurrent basis/step edits, lost reply and every draft field. Add focused regressions for remaining gaps. An old ingredient/instruction string payload must conflict atomically on a canonical record even with its current revision; the supported refreshed current editor retains/reconciles recoverable drafts. No legacy-write adapter.
+- [ ] 2.2 Finish only demonstrated editor/guard gaps and the canonical Save hooks needed by step tasks 0.1–0.3. Revalidate affected relationships, preserve safe unrelated proof and human originals, and hand any required reevaluation to the existing workflow owner. Run focused unit, actual API/PostgreSQL and generated-client/browser checks; protect unconverted and retained-review material editing, no-op feedback, explicit clears and delayed-writer rejection. Confirm no partial save or invented draft recovery from mocked-only evidence.
+
+## 3. Publish capture/reprocessing through protected current facts
+
+**Outcomes:** C16, baseline protection/fallback portions of C22–C25, C43–C44.
+**Owners:** RecipeAgent/publication/SyncRecipe and common projector inputs. Depend only
+on persisted contracts included in the selected slice; full portions includes step
+acceptance. Each channel preserves reporting eligibility, deduplication, quotas,
+human protection, source/media and journal/replay boundaries.
+
+- [ ] 3.1 Reconcile the producer matrix and qualify integration across the implemented URL/photo channels and later 3.3–3.6 channels. Reuse `CanonicalIngredientPublicationPostgresTests` and producer-backed live owners. Confirm guarded staged publication, explicit human clears, stale source/content, file-before-DB races, retry/failure/cancel and derived obligations with actual DB/files/workflow; double only external providers. This is aggregate closure, not an instruction to implement completed URL/photo again.
+- [ ] 3.2 Reconcile canonical inputs across existing SupperServings/PostgreSQL, Home/detail/Cook, prepared and cooked-baseline owners (C17–C21, C49). Run affected actual database and `recipe-ingredient-preview.spec.ts`, `quiet-portions-layout.spec.ts`, `supper-servings-context.spec.ts` checks where their behavior changes. Confirm pending derived work is distinct from saved facts and active Cook installs semantic changes only through coherent explicit refresh. Coordinate with the step companion; do not duplicate its producer tasks.
+- [ ] 3.3 In a later bounded increment, qualify fresh PDF canonical publication through its actual PDF/bootstrap/conversion ancestry. Add intended-red producer cases before implementing the missing path; PDF page images cannot borrow original-photo authority. Include usable review retention, source/media, stale work, replay and an ordinary read/edit/grocery seam.
+- [ ] 3.4 In a later bounded increment, qualify synthesized-recipe canonical publication through its existing workflow and captured inputs. Preserve source/provenance distinctions and human protection, and exercise exact/unknown facts, failure/retry and normal edit/projection/grocery reads.
+- [ ] 3.5 In a later bounded increment, qualify shared-recipe import into the canonical owner. Keep lower-fidelity sharing distinct from full backup recovery; establish fresh stable identities and preserve supported wording/facts without inventing bindings or provenance. Exercise ordinary edit/read and one-demand behavior through real seams.
+- [ ] 3.6 In a later bounded increment, qualify general existing-recipe reimport/repair with explicit captured source/content and protected-field authority. Reuse eligible Report/Review issue workflows, preserving human edits/clears, media, failure/cancel and retry semantics. Do not relax the canonical publication fence globally or treat later work as fresh intake. Narrow URL/photo retained-review repair is already implemented and does not prove this general merge.
+
+**Pending bounded display regression under 3.2 — approved 2026-11-11:** Add the
+[legacy garlic placeholder scenario](specs/supper-servings/spec.md#scenario-legacy-garlic-count-exposes-a-placeholder-unit-when-scaled)
+to the next selected ingredient-display slice, separate from step-producer work.
+DV inspection found original `2 Gousses d'ail` represented with both `unit` and
+`Gousses` in different legacy recipes. Use synthetic fixtures reproducing those
+facts, not edits to the user's DV recipes. First prove the unwanted
+`4 unit Gousses d'ail` rendering, then qualify `4 Gousses d'ail`, original/reset
+round-trip, canonical null-unit parity and genuine-unit preservation through the
+existing formatter/detail browser owners and actual API/PostgreSQL projection seam.
+Assert saved content/evidence/revisions are unchanged by reads. Check grocery
+contribution amounts, independent row/check identities and no duplicate demand
+separately: display suppression is not evidence of unit equivalence or a merge.
+Preserve C47's no-generic-count-merge boundary; bilingual equivalence, bulk legacy
+repair and migration activation remain outside this slice. Implementation and
+qualification are pending; prior slice passes do not cover this example and no
+aggregate checkbox closes from this planning addition.
+
+## 4. Final integration and verification
+
+- [ ] 4.1 Reconcile scenario coverage and actual evidence for the selected delivery milestone, review the complete integrated diff and affected contracts/mocks, then run applicable preparation and `task verify -- <reviewed paths>`. Record candidate/configuration and invocation-specific record_path plus passed/failed/blocked/skipped/not-run results. Required real database/live seams have zero required skips; local and hosted-candidate gates are distinct. First-increment acceptance does not close later channel tasks or the entire change. Migration activation and production deployment remain separate operator actions.
+
+## Preserved publication and correction decisions
+
+URL/photo freshness comes from immutable bootstrap/follow-up and captured destination
+proof, not recipe name, image presence or current readiness. PDF pages and later
+reimports cannot borrow photo authority. A committed producer operation resumes its
+own delivery and cannot reinstall old facts over newer edits. Sync confirms/resumes
+that operation; it is not a second conversion commit.
+
+Usable unsafe extraction remains editable, unready review material with a distinct
+failed receipt and existing system review flag. Unknown measurements are valid.
+Manual Save/Resolve is not import completion. A changed eligible Ingredients/Steps
+comment can launch the narrowly witnessed repair using captured human wording;
+unchanged feedback is a no-op. Image/transport/category failures do not become content
+reports. Keep existing reports, generic explanation, clear protection and no automatic
+report resolution. Detailed requirements and original acceptance are in [design](design.md)
+and the capability deltas.
+
+The original grocery prerequisite extraction remains documented in
+[grocery-prerequisite-review.md](grocery-prerequisite-review.md). Its historical
+unimplemented wording does not override the current implementation/evidence map.
+
+## Coordinated slice 1 checkpoint
+
+Tasks 2.1–2.2/3.2 contribute the guarded Save and fresh-publication integration to
+step 0.1–0.3's producer. Source-aligned original facts and independently validated
+relationships publish together; reviewed-source and empty staged-export fences
+remain intact. No public DTO or client shape changed. Actual tests/evidence and
+unfinished async/role obligations remain with the [step task owner](../scale-cooking-step-ingredients/tasks.md#coordinated-slice-1-checkpoint).
+The coordinator's `.task/dependable-portions-slice1/` keeps implementation, local,
+hosted and DV evidence separate. Aggregate tasks and later intake channels remain
+unfinished; URL/photo foundations were extended, not rebuilt.
+
+### Slice 1 qualification evidence
+
+Task 4.1 owns the integrated gate; this evidence does not close its aggregate scope.
+The signed first candidate `d24565641a4ae165ffd042af83a7157f9261348c` passed local repository verification (`655791c005474d948634bc1b18463a1c`), 106 required PostgreSQL cases and the three fresh URL/photo browser journeys. Its [hosted run](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/42943231361) exposed fixture failures: a synthetic performance/native animation clock mismatch after navigation retained exiting toast/prepared overlays, and finite mocked SSE reconnects disabled a French keyboard target during activation.
+
+The bounded fixture repairs preserve the real interaction and quantity/focus assertions: opt-in Date-only calendar pinning for the prepared-meal suite and canonical live journey, preserving the existing default clock contract, accessible toast dismissal in `canonical-ingredient-live.spec.ts`, and an unrelated SSE 204 response in the layout-only `quiet-portions-layout.spec.ts`. Intended failure diagnostics and focused green records are retained under the isolated slice worktree's `.task/canonical-toast-{repair,diagnostic,green}/` and `.task/quiet-hosted-fix-owned.log` (one native/browser journey, six EN/FR layout runs and 15 prepared-meal cases, zero required skips/retries; six opt-in prepared rendering cases were not selected). Final follow-up candidate verification, hosted acceptance and DV remain separate gates; no production behavior, public contract or task checkbox is changed by these fixture repairs.
+
+The follow-up combined gate `5d087bcb9cc749b4b4bc8be4e4ec2255` retained stable source but failed two browser cases (995 passed, 55 skipped). Planner reconciliation counted a late initial grocery-panel read as a movement read: controlled delayed scheduling reproduced both failures, and awaiting that initial response preserved the zero/one reconciliation-read assertions and passed both controlled cases plus all eight owner cases (`.task/planner-delayed-{red,green}.log`, `.task/planner-owner-green.log`). The separate 320px/200% prepared-detail containment timeout remains an intermittent qualification limitation: five instrumented repeats and a controlled pre-navigation delay passed without reproducing it (`.task/supper-geometry/`); no speculative production or assertion change was made. A new combined gate and exact-commit hosted/DV acceptance remain required.
+
+Combined gate `552e66fd22f84ebfa34de55347e5635e` passed the repaired planner and unchanged 320px/200% layouts, but exposed a distinct grocery-check test race (996 passed, 55 skipped): the test asserted mock server state immediately after clicking, before PATCH settlement. A controlled 350ms request delay reproduced the exact failure; polling the same authoritative checked-state assertion passed with that delay, preserving quantities, unrelated checks and write counts (`.task/supper-check-settlement/`). This bounded assertion repair requires a fresh combined and hosted gate; earlier failures remain retained.
+
+### Slice 1 DV-discovered publication-chain gap
+
+Candidate `d7997b69e7de8875511e65291234e2cfd370b72f` passed local gate `cd3cce7b38384ad1bc65fb4a52b1f96c` and [hosted CI 42951622360](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/42951622360), including 18 required live native cases and three fresh-intake browser journeys without required skips. Planning retained one configured-retry navigation flake; broader CI qualification remains unfinished. Actual DV workflow acceptance then failed at RecipeReady: CategorizeRecipe directly changed category, cuisine, meal types and vegetarian status outside the captured publication chain. The earlier live fixture manually skipped categorization, so its pass did not qualify the full workflow. Tasks 2.1/3.2 own this inseparable fresh URL/photo consumer correction; task 4.1 owns expanded actual-processor acceptance. Preserve full stale-content guards, bind category-only publication to its captured task and extraction ancestry, and keep unrelated standalone/legacy behavior unchanged.
+
+The failed deployment operation `c9d595f8-d889-46cb-b384-a82c609004ec` is retained in `.task/dependable-portions-slice1/c/deployment-d799.json`. Verified backup, held startup and independent preservation checks passed; the two newly created test recipes were soft-deleted through ordinary API cleanup. All original data/files were preserved except 195 individually verified derived search timestamps also changed by the old image. Original DV images/provider/public access were restored, without database reset/restore. The slice is not DV-accepted; a new verified commit and complete deployment/acceptance remain required.
+
+The bounded correction journals only the four classification fields and their recipe.info metadata against original task/extraction ancestry; it preserves canonical facts, full row/revision/file guards and idempotent replay. The actual PostgreSQL regression first failed at the same readiness fence (`8f6f414653bf45b6a4d14cd124dce786`), then 136 publication/edit/recovery cases passed with zero skips (`9e8e934ab91042c49e4fc88913ea2860`), including concurrent human edits/clears and forbidden metadata. An intermediate test-scaffolding compile failure is retained separately. Expanded actual-category native acceptance passed 1/1 and generated-client/browser URL/photo/reviewed-import journeys passed 3/3 (`.task/category-live-green/`), with zero required skips/retries and the disposable database removed. These local results do not supersede the failed DV attempt: exact-commit hosted and deployed acceptance must run again.
+
+## Coordinated absolute-use slice 2
+
+Selected by the current execution prompt: step tasks 0.1–0.3 (absolute-use subset),
+2.1, 2.3 and 4.1; canonical tasks 2.2, 3.2 and 4.1 (integration/qualification subsets).
+Prerequisite accepted commit `0ee175e45b38407b87c8a562c2d2f086292464e0` and DV
+operation `7efa8202-e5d9-463d-802e-cd26ccc561d6` are preserved by starting commit
+`b7054b601c94af4e2a79aba41f0d6f213b5d892d` on recipe-view-redesign.
+
+B owns the bounded producer/unit tests; A owns canonical Save/publication and real
+PostgreSQL integration tests; C independently reviews preservation and existing DV
+recovery without shared-source writes. Coordinator owns browser/contracts integration,
+lifecycle, final verification, commit and exact-commit DV acceptance. This slice reuses
+whole-use, all-role projection, categorization journals and the durable RecoveryBoundary
+hold; it does not rebuild those foundations.
+
+The explicit measured-use clause binds a positive scalar use below a known scalar total
+to one unique saved ingredient, its exact declared unit and current step/source revisions.
+A closed affirmative Add/Use/Cook/Boil/Mix clause (bounded French equivalents included)
+provides use semantics; numeric/name equality alone cannot prove whole use. Fresh
+publication strips supplied proof and independently derives the expected relationship.
+Guarded Save revalidates dependencies; total 200→250 retains explicit 50 original,
+which renders 75 at six portions from basis four, with one ingredient-derived 375 demand.
+Changed step wording replaces proof without rewriting saved facts. Conditional, repeated,
+ambiguous, incompatible, package and unsupported clauses abstain quietly. Reduction below
+the explicit use invalidates that proof without redistribution or a cooking block.
+
+Primary C03/C45 acceptance crosses ordinary URL/photo extraction, both real categorization
+processors, readiness, guarded ingredient/step Save, generated-client Cook explicit refresh
+and one grocery demand. Preservation C01–C06, C12–C19/C46 remains assigned to existing
+allocation, canonical edit/publication, Cook, prepared and recovery owners. Whole and
+absolute live variants remain separate. No public contract/client shape change is needed;
+existing role/payload support and stateful mocks remain authoritative. The hosted workflow
+requires the new absolute native/browser variant with zero required skips or retries.
+
+Implementation and qualification evidence is recorded separately under
+`.task/dependable-portions-slice2/`: producer red/green, real database, browser, integrated
+repository gate, hosted exact commit, and DV deployment/recovery. Implementation is in
+progress until all required current-candidate gates are reconciled; no result is implied
+by this checkpoint. Aggregate checkboxes remain open because other roles, asynchronous
+reevaluation, later intake and full-release acceptance are unfinished.
+
+Lifecycle dispositions: canonical correction and step scaling active; migration/recovery
+foundation reused with no library conversion; grocery and local/hosted CI qualification
+remain active and unfinished; bilingual-shopping-identity and similar-search-filter deferred;
+selective-ingredient-repair superseded and unimplemented, with its existing replacement
+links retained. No main-spec promotion, synchronization or whole-change archive. Preserve
+prior failed DV attempts, soft-deleted fixture histories, failed-capture notices, optional
+embedding HTTP422 and French focus/prepared containment/Search navigation limitations.
+Stop after one accepted exact-commit DV slice and integration into recipe-view-redesign;
+provide one successor prompt but do not launch it. Production/reset/reseed are excluded.
+
+## Coordinated multiple-absolute-use slice 3
+
+Selected 2.2, 3.2 and 4.1 integration/qualification subsets build on accepted
+`780327550ebbe9e34afa13ccbfb07cec46d0b4e5` / DV
+`b4e031e6-54ab-4398-9b1c-0dcafcb9a4c4`. Existing canonical hooks already invoke
+the shared producer; new actual guarded Save/publication and categorization/native
+workflow fixtures qualify multiple uses without duplicating production logic.
+C02: total 2 tbsp/two 1 tbsp uses at basis four → two 2 tbsp uses/one 4 tbsp demand
+at eight; correction to 3 retains absolute uses/one 6 tbsp demand. C03/C45 and
+C01–C06/C12–C19/C46 remain required preservation. Source/evidence and separate
+local/hosted/DV gates are recorded under `.task/dependable-portions-slice3/`.
+Aggregate checkboxes remain open for broader unqualified requirements. Next action:
+complete stable-source local gates, exact-commit hosted and data-preserving DV
+acceptance, then integrate this slice and stop without launching its successor.
+
+Local slice qualification: focused 3/3 PostgreSQL cases passed with zero skips
+(`19ae3815cdb14160b907c0623a348c06`); canonical/edit/publication/recovery 143/143
+(`51ad2e29aae24493a365b088baaeec13`); prepared/servings 94/94
+(`b3b74d2ece0d4d5ab7dac45319937f24`). Source-stable native 3/3 and browser 9/9
+passed without required skips/retries in
+`.task/dependable-portions-slice3/a/live-attempt2/`. The first native browser
+attempt used the wrong mocked-build API origin and was cancelled after its first
+failure; it remains retained. Compilation-only skips are not database acceptance.
+Final repository, exact-commit hosted and DV evidence are separately authoritative
+under `.task/dependable-portions-slice3/`; this local evidence does not establish
+them or close unfinished aggregate tasks.
+
+
+## Coordinated annotated-half slice 4
+
+Selected step tasks 0.1–0.3 (explicit annotated-half producer subset), 2.1, 2.3
+and 4.1; canonical tasks 2.2, 3.2 and 4.1 (integration/qualification subsets).
+Prerequisites: accepted `6cc6ead66378f6b1763ba251ca94fbd6859fe08a` and DV operation
+`9948fe35-0400-465f-9335-a1debb16cf58`, verified before implementation.
+
+The bounded inlet admits a closed affirmative explicit half clause for one unique
+saved ingredient with a compatible parenthesized numeric annotation. Exact source,
+UTF-16 relative/annotation spans and current revisions are independently validated;
+numeric equality alone is not fractional intent. It reuses the fraction projector,
+retains relative wording and saved original text, and replaces only the existing
+proven numeric annotation. Basis four/total 200 g/half (100 g) at six projects150 g;
+guarded total correction to250 retains original100 g wording, projects187.5 g and
+one375 g ingredient-derived grocery demand. Step edits replace affected proof;
+clears/no-ops/unrelated saves retain existing semantics. Unsupported, contradictory,
+ambiguous, overlapping and conditional evidence abstains quietly.
+
+B owns producer/projector units; A owns guarded Save/publication/PostgreSQL/native
+fixtures; C independently reviews preservation and existing DV recovery with no
+shared-source writes. Coordinator owns contracts/client/mocks/browser, lifecycle,
+source freeze/resources, complete preparation/verification, commit, hosted and DV.
+No integrated checks run before explicit RUN on prepared stable source. Evidence
+is under `.task/dependable-portions-slice4/`; local, hosted and DV remain separate.
+No acceptance is implied until their fresh required gates pass.
+
+C04/C45 is primary; preserve C02 two independent1 tbsp uses at doubled portions,
+correction2→3 yielding two2 tbsp uses and one6 tbsp demand, C03/C45 absolute50→75
+with corrected250 total/one375 demand, C01–C06/C12–C19/C46 and all existing roles,
+prepared/serving/recovery seams. No exhaustive allocation inference, asynchronous
+AI, new remainder/fixed/per-item producers or later intake is selected.
+
+Canonical/step/recovery preparation/grocery/CI qualification remain active;
+bilingual-shopping-identity and Similar UI deferred; selective-ingredient-repair
+superseded and unimplemented. Aggregate checkboxes stay open. No main-spec
+promotion/archive, library conversion/list cutover, resets/reseeds or production.
+Preserve all prior failed DV/fixture/backup histories and first failures/retries,
+including slice3 French geometry/Retry/SSE reread evidence and public version
+viewport failures whose root cause remains unknown. Later passes are not repairs.
+No real-provider quality or semantic-search qualification is claimed.
+
+Stop after one exact-commit hosted/DV-accepted slice integrated into
+recipe-view-redesign; provide exactly one successor prompt and do not launch it.
+
+
+### Slice 4 local qualification checkpoint
+
+Producer/projector/allocation green179/179, zero skips; intended missing-producer,
+annotation and malformed-neighbor reds retained in `b/evidence.json`. Exact fraction
+annotation rendering uses bounded integer long division with rational fallback;
+other role formatting is unchanged. Stateful mock/contract companions pass89/89
+and CI guard regression owners21/21. Generated client documentation follows the
+approved optional existing-annotation projection contract.
+
+Actual PostgreSQL focused4/4 (`0108bf0943c24744b0d824a508d7779b`), canonical/edit/
+publication/recovery147/147 (`31a008c6b5dc44498934423b72e26c79`) and prepared/servings
+94/94 (`6d000275aaf9426887061787ef9d7f4e`) passed with zero required skips. First
+focused3/4 failed an invalid direct-identical-PATCH revision oracle; corrected to
+existing semantics while retaining original-text/binding and unrelated-save checks.
+This was a test correction, not a product repair; original failure remains retained.
+
+The owned same-origin production native run passed17/18 owners; the new photo
+browser incorrectly assumed a second instruction. The source-preservation oracle
+now compares all unaffected steps with saved content. A fresh focused fraction
+native1/1 and URL/photo/retained-review browser3/3 passed without skips or retries,
+using rebuilt isolated current production outputs. All prior role native owners
+in the first run passed. Exact first/retry source/build/config/runtime identities,
+logs and artifacts remain separately under `a/live-attempt1/` and `a/live-attempt2/`.
+Port3000 and its existing server were preserved. Task-owned build metadata capture
+first failed from an undefined local variable after a successful build; corrected
+metadata capture and fresh rebuilt outputs are recorded, with no product change.
+
+Complete final repository verification, exact-commit hosted and DV acceptance
+remain separate gates in `.task/dependable-portions-slice4/final-evidence/`.
+No current local result closes aggregate checkboxes or establishes release acceptance.
+The accepted-slice record there and `completed-slice.md` own subsequent gate outcomes;
+first failures/retries and all previously recorded limitations remain retained.
+
+
+Cross-row preservation review then found a required producer gap: an annotated
+half for pasta could remove an unrelated sauce whole-use proof. EN/FR regressions
+first failed2/2, then the minimal independent-other-row clause recognition passed
+producer/projector/allocation181/181 with zero skips. Initial179 evidence is
+retained separately. The first combined gate was deliberately interrupted while
+source remained unchanged; only its owned child groups/API/browser/PG resources
+were stopped and removed. Its partial results are not acceptance. Fresh full
+verification follows the correction; no optional review suggestion released source.
+
+
+### Annotated-half slice 4 — local DV acceptance, 2026-11-11
+
+Candidate `fc6769c41db1843cdc0df4d4d9bdb861cb5a695e` is accepted on DV under
+operation `c8e77683-30da-4d2f-938d-7eb29ecbe35b`. User directed moving forward
+locally using completed verification; hosted CI remains failed on Ubuntu package
+DNS, explicitly waived only as this slice's deployment prerequisite. It is not a
+hosted pass or broader CI closure. Exact local candidate images and completed stable
+repository verification `34aa0977b0e24a3084a8162a780de35b` were independently rechecked;
+no application source changed or broad local suites were repeated on handoff.
+
+Fresh snapshot/rehearsal/migration and independently verified held backup/read-back
+passed. Actual deployed URL/photo workflows completed both real categorization
+processors before Ready (84 audit checks); generated-client/browser correction and
+coherent Cook refresh retained the half wording/original100 g, projected187.5 g at
+six after total200→250, retained the sauce check and one375 g grocery demand.
+Guarded fixture cleanup passed. All2094original rows/1457files remain;195fresh finite
+startup transitions and two separately reviewed normal fixture-control metadata
+transitions are retained, with0unexpected differences. All64newrows/15files were
+independently traced; no blanket exclusions or concurrency-version rollback.
+Original provider/environment/ports/PostgreSQL/data mount/public routing restored,
+hold absent, exact version/health/rendered behavior passed. Maintenance377.449s.
+First public version viewport failure, diagnostic pass and unchanged-original retry
+pass remain separate; no repair/root-cause claim. Every earlier failure/backup and
+soft-deleted fixture remains. Owned temporary resources removed; port3000 preserved.
+
+Evidence: `.task/dependable-portions-slice4/local-acceptance-20261111/acceptance.json`,
+`release/`, and `c/` beneath that directory. These newer receipts supersede blocked
+acceptance status only; historical blocked/first-attempt receipts remain unchanged.
+Selected step0.1–0.3 explicit-half subset/2.1/2.3/4.1 and canonical2.2/3.2/4.1
+integration/qualification subsets only. Aggregate checkboxes remain open. Canonical,
+step, recovery preparation, grocery and CI qualification remain active; bilingual
+shopping identity/Similar UI deferred; selective ingredient repair superseded and
+unimplemented. No later role/intake/library conversion, main-spec sync/archive or
+production action. No real-provider or semantic-search claim. Candidate already
+belongs to recipe-view-redesign; subsequent documentation/harness commits preserved.
+Stop after this accepted slice; supply one successor prompt without launching it.
+
+
+## C05 explicit final-remainder slice 5 progress
+
+Selected step0.1–0.3 explicit-final-remainder subset/2.1/2.3/4.1 and
+canonical2.2/3.2/4.1 integration/qualification subsets only. Aggregate boxes remain
+open. The new write-time producer uses existing guarded Save/publication hooks and
+existing remainder arithmetic. Exact source-bound EN/FR final exhaustive intent,
+positive independent extra-step admission and complete graph identity validation
+are specified in the step design. Other roles/intakes and aggregate closure remain
+outside this slice.
+
+Implementation and focused unit evidence are recorded in
+`.task/dependable-portions-slice5/b/unit-evidence.json`. The initial five missing-
+producer failures, six branch-cue failures, split-group identity failure and three
+positive-admission failures precede their fixes. Focused runs and exact source hashes remain invocation-specific in that
+receipt, including the subsequent alternative-subject regression and correction. The first PostgreSQL red retained an invalidated source-stability
+record, followed by fresh stable intended red in database invocation
+`3f650a0fcad24dc79bd3f5ba8ea2aafe`. Stateful mock tests separately exercise ordinary
+Save, subsequent GET/projection, correction, replacement, stale replay and quiet
+abstention. No new public payload shape or generated-client field is required.
+
+Prepared integrated database/native browser, complete repository verification,
+owned commit, hosted observation and exact-image data-preserving DV acceptance
+remain separately recorded under the slice evidence owner. C freshly checked the
+accepted baseline before work. The later user instruction to complete without
+waiting for CI is a successor-specific authorization, retained in
+`local-authorization.json`; hosted results retain their observed status.
+
+Canonical/step/recovery/grocery/CI remain active, bilingual/Similar deferred,
+selective repair superseded and unimplemented. Preserve all prior provider/UI/
+public viewport limitations and failure histories. No main-spec sync/archive,
+resets/reseeds or production. Stop after this one accepted slice and one unlaunched
+bounded successor prompt.
+
+
+## Coordinated explicit package input checkpoint — 2026-11-12 UTC
+
+Current release policy at the top of this file supersedes earlier single-slice
+stopping/push boundaries prospectively. Selected tasks are 1.1–1.3, with C07/C14/C47
+primary and the applicable existing quantity/unknown-basis preservation cases.
+The committed accepted baseline is per-item candidate `ad32726`; package work
+is still uncommitted and has not been deployed at this checkpoint.
+
+The ordinary literal package inlet, fixed-capacity presentation, conservative
+purchase grouping and semantic-version fences are implemented in the isolated
+release checkout. Focused backend union: 143 passed, zero skips. Actual PostgreSQL
+package union: eight passed, zero skips, runner `0e4ab4b45efc4623968e1dd0a5242d89`.
+Earlier admission, display/grouping and semantic-refresh reds remain distinct;
+fixture-only and compile-only failures are retained separately. Evidence lives
+under `.task/dependable-portions-coordinator/a-structured/`,
+`b-package-admission/` and `a-structured-prep/`. These paths are operational evidence,
+not replacement task authority.
+
+`LiveBrowser_CanonicalDeclaredPackages` supplies two fresh EN/FR human-Save
+fixtures through the real generated client/API/PostgreSQL and current consumers.
+Its source and CI owner/never-skip guard are implemented; native and production
+browser execution, prepared final verification, local commit and exact-candidate
+data-preserving DV acceptance remain outstanding here. Hosted acceptance stays
+pending the final consolidated campaign. All aggregate checkboxes remain open.
+
+Retain the separate non-package exact public scalar/range display reconciliation,
+later intake channels, protected reimport, current full recovery, client fencing,
+selected library conversion and final release gates. Bilingual/Similar remain
+deferred, selective repair superseded and garlic-placeholder work excluded.
+
+### Package sibling-purchase regression and corrective qualification
+
+Package candidate `a8303cb98d129f39126963d7fbf5a9c784bfe701` was committed after
+the stable 43-path local gate passed, including 621 PostgreSQL cases and the fresh
+22-owner/37-case native campaign. These results remain scoped to that source and
+their recorded coverage; they did not cover clearing one of two same-subject
+package sizes while preserving the other size's acknowledgement.
+
+Exact-image DV operation `c43d1928-f9c9-4972-a75d-904973c2a123` demonstrated that
+clearing the 400 g qualifier replaced the unchanged 800 g grocery row despite its
+unchanged purchase identity and amount. The earlier plural-versus-singular fixture
+assertion failure and reviewed five-write continuation are retained separately.
+The package candidate is **not accepted**. Four guarded cleanup writes completed;
+strict preservation and independent review covered all 2,482 original rows,
+1,519 original files, 195 exact existing-startup transitions and the operation's
+87 new rows/15 files. The previous accepted `ad32726` runtime, environment, ports
+and public access were recovered and verified. Nine owned disposable resources
+were removed; backups, images and evidence remain retained under
+`.task/dependable-portions-coordinator/package/release/`.
+
+The corrective subset of 1.1–1.3/4.1 preserves the unchanged sibling purchase
+without weakening genuine split/merge or changed-purchase fences. Actual database
+runner `813101cf471e4bd780796a02ba803d60` is the stable intended red: ordinary
+authenticated Save clearing only 400 g replaced the 800 g row, reset its check and
+lost its full baseline. The preceding compile-only attempt is not behavior red.
+The bounded correction and added service/native/mock guards require fresh green
+database, native and final local gates, a new commit and images, and a new DV
+operation. Current implementation or historical local passes do not establish
+those results. Hosted acceptance and all aggregate checkboxes remain outstanding.
+
+### Accepted package milestone and exact-display successor — 2026-11-12
+
+The declared-package inlet and sibling-purchase correction are accepted locally
+and on DV at `6d98d673aba16b7cf6f7d7c23cf43fadef5def15`, integrated into
+`recipe-view-redesign`. This closes the bounded ordinary-input criterion in 1.3;
+it does not close the broader reconciliation or final release tasks. Local
+qualification includes 622 PostgreSQL cases with zero skips, a fresh 22-owner /
+37-case native campaign with zero required skips or retries, and the complete
+applicable formal gate. Evidence is retained under
+`.task/dependable-portions-coordinator/package-lineage-fix/`.
+
+Fresh exact-image DV operation `5d1635bb-cd62-48f5-bd5e-55ce6bd1c707`
+completed both ordinary URL/photo workflows, the two-capacity clear regression,
+all 24 confirmed campaign/cleanup intents, strict independent preservation of
+2,569 original rows and 1,534 original files, and exact review of 120 new rows /
+15 new files. Only the independently rehearsed 195 startup timestamp transitions
+were permitted. Public access, original provider/environment/ports and the
+original PostgreSQL/data mounts were restored and independently verified; seven
+owned disposable resources were removed. Backups, images and failed history are
+retained. The first metadata audit failure is preserved separately: a reviewed,
+pure-tested sibling audit decoded the journal's serialized metadata before exact
+object/source-URL comparison and passed all 145 live read-only checks. This is
+not a retry of recipe capture or a waiver of source preservation. Real-provider
+accuracy and semantic search remain unqualified; hosted acceptance awaits the
+final consolidated campaign.
+
+The selected successor under 1.1–1.2, affected 3.2 and 4.1 supplies exact
+non-package scalar/range presentation through the existing optional `displayText`
+field. It retains original notation and descriptions, scaled shopping labels,
+independent units, honest unknown/overflow fallback, package semantics and the
+semantic-version exclusion for derived presentation. Intended pure and actual
+authenticated Save/API/PostgreSQL reds demonstrated null public text despite exact
+internal operands; the separate compile-only attempt remains distinct. Focused
+green evidence covers 87 backend cases, 19 PostgreSQL cases and 83 frontend/mock
+cases with zero skips. The real database tracer separately verifies the exact
+compatible range subtotal with an unknown contributor and unchanged persisted
+state during reads. Its dated fixture changes are not ordinary UI evidence.
+Native EN/FR journeys and their strict CI receipt guard are implemented; complete
+native/integrated gates, a new commit and fresh exact-candidate DV acceptance are
+still required. Grocery hint precision is a separate existing policy; no complete
+C08/C09 or broader-task closure is implied by these focused results. Garlic
+placeholder work, bilingual catalogue adoption and Similar remain excluded.
+
+### Exact-display acceptance and selected PDF successor — 2026-11-12
+
+The preceding focused display checkpoint is now completed at
+`7a502eff4e805bad939e9f909bb2c83350e9ba81`: all 13 applicable formal checks,
+623 real PostgreSQL cases and a fresh 23-owner / 39-case native campaign passed,
+with zero required PostgreSQL/native skips or native retries. Exact-candidate DV
+operation `d7d5f310-b15d-44ed-8834-854532bf4df6` completed 12 exercise and six
+guarded cleanup writes, EN/FR settled reads and 137 workflow audit checks. Strict
+independent preservation covered all 2,689 original rows and 1,549 original files,
+195 individually qualified startup timestamp transitions, and exact attribution
+of 98 new rows / 15 files. Public original provider/environment/ports and the
+original PostgreSQL/data mounts were restored and independently verified. Seven
+owned temporary resources were removed; backups, images and failure records remain.
+Evidence: `.task/dependable-portions-coordinator/exact-display/slice-acceptance.json`.
+
+The first rehearsal helper lacked curl, and the first read-only public smoke
+invocation failed its local pinned-npm preflight before network requests. Those
+failures remain separate from the corrected unchanged-helper passes. One owned
+search-index child remains failed with HTTP 422 and no retry; both required import
+roots and categorization processors passed. Semantic search and real-provider
+accuracy remain unqualified. The user pushed earlier commit `6d98d673` while this
+candidate was built. Hosted acceptance remains open; saved older `ad32726` planning
+browser failures and current run identities are retained under
+`.task/dependable-portions-coordinator/hosted-user-push-readonly/`.
+
+The next selected slice is task 3.3, with affected 3.1–3.2/4.1 seams: witnessed fresh
+PDF canonical publication through accepted PDF/bootstrap/conversion ancestry.
+Producer-backed PostgreSQL red must precede implementation. PDF pages retain their
+own authority proof, using the existing returned-result, journal, captured dependency
+and file-chain validators; they do not borrow original-photo eligibility. Qualify
+usable retained review, the existing guarded changed-comment correction path,
+source/media, stale work, interruption/replay, actual native rendering and the
+ordinary edit/read/grocery seam. Task 3.3 and the broader aggregates remain unchecked
+until their required acceptance passes. Synthesis, share, general protected reimport,
+recovery/library cutover and final integrated/hosted acceptance remain separate work.

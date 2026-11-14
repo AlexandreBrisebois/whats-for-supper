@@ -1,0 +1,10 @@
+{
+  "api/src/RecipeApi/Services/FoodVocabularyStore.Presentation.cs": {
+    "beforeSha256": "e158ab8d4bb557c0132cbfe29b3973e495672eaf5e2e621739677e82f5cd1075",
+    "afterSha256": "2c62445171aa2921790ea5791385290a9a58170c0212ecda1187a0fb97e54b4a"
+  },
+  "api/src/RecipeApi.Tests/Services/FoodVocabularyPresentationEpochTests.cs": {
+    "beforeSha256": null,
+    "afterSha256": "c247e7029ae720ba761e8d6fc62450477b7f311ba2198e00ea2c2101ff8440cb"
+  }
+}

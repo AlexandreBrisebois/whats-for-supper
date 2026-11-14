@@ -11,7 +11,7 @@ task hooks:setup
 ```
 
 `hooks:setup` installs the pinned OpenSpec CLI and Python/PWA/browser dependencies, restores the API test project,
-and installs both Git hooks. Use `task hooks:install` when hooks are missing or the adapter itself changes;
+and installs the commit hook. Push validation is manual. Use `task hooks:install` when hooks are missing or the adapter itself changes;
 an installed adapter reads the current repository configuration on each invocation. Docker must be running for API integration tests; the
 push check does not reset the development stack or kill an existing dev server.
 
@@ -21,11 +21,12 @@ Before staging, format or generate only the files required by your change:
 task prepare -- <reviewed-paths>
 ```
 
-Review and stage the diff, then use ordinary Git commands:
+Review and stage the diff, then run the manual push check after committing:
 
 ```sh
 git add <paths>
 git commit -m "Describe the change"
+task check:push
 git push
 ```
 
@@ -34,7 +35,7 @@ harness tests, static contracts/mocks, client freshness and PWA formatting. It d
 not generate or stage files, build the application, or run integration/E2E suites.
 Use `task check:commit` to run the staged checks manually.
 
-Push selects checks from the complete committed range being pushed. Markdown-only
+The manual push check selects checks from the complete committed range being pushed. Markdown-only
 changes run committed whitespace and introduced-link checks; OpenSpec planning also
 runs spec validation. Harness changes run existing tooling tests. API changes run
 API checks, PWA changes run production checks with affected E2E capability suites,
@@ -59,12 +60,41 @@ worktree, but still considers committed source only. No success cache is used.
 
 The existing `check:push:pwa` builds once and reuses the CI capability selector;
 `task check:push:pwa SUITES="planning household"` runs those suites, while its
-default remains all E2E. It keeps the fixed CI auth/build flags and never reuses an
+default covers the four disjoint mocked capability suites, excluding live-service qualification. It keeps the fixed CI auth/build flags and never reuses an
 external `BASE_URL`. Push-triggered database smoke calls the existing
 `task test:smoke -- --isolated`, with unique project/container/network/volume names
 and dynamic loopback ports. Its teardown only removes its owned resources. The
 legacy explicit `task test:smoke` retains its development-stack reset behavior.
-No hook reinstall is needed for an already installed pre-commit adapter.
+No automatic pre-push hook is installed.
+
+Use these distinct browser scopes with Node from `.nvmrc` and npm 11.21.1:
+
+```sh
+task test:e2e -- quiet-portions-layout.spec.ts  # Ordinary development-mode feedback
+task agent:test:impact                        # Current dirty source, shared capability inventory
+task check:push -- --plan --base origin/main  # Committed range only; no checks or writes
+task test:e2e:ci -- prepared-supper.spec.ts --workers=4 --retries=0
+task check:push:pwa SUITES='planning recipes'
+task check:push:pwa SUITES='tonight planning recipes household'
+```
+
+Both CI-named task/npm aliases and `check:push:pwa` use
+`scripts/ci/production-browser.cjs`. They build fresh production output and start an
+owned server. Inherited `BASE_URL` and suite selectors cannot redirect the run.
+Port 3000 must be free; an occupied port fails without stopping its owner. When DV
+already owns that port, run in an isolated task-owned runtime/network. A source copy
+alone does not isolate ports. No production API, household or database is a browser
+test target; these suites use mocked HTTP.
+
+CI uses the same owner's separate `build` and `run --suites <suite>` operations,
+retaining one build and the capability matrix. Build metadata travels inside `.next`;
+source/configuration/runtime or artifact mismatches require rebuilding. Invocation
+records live under `.task/production-browser/runs/<id>/`, with a copy in browser
+test results for CI artifact transfer. Records include source/build identity,
+allowlisted settings, runtime/browser versions and first-attempt/retry/skip outcomes.
+Retries are visible and do not establish a repaired first-attempt failure. Local
+Mac/ARM results and hosted Ubuntu x64 results are separate qualifications; complete
+parity requires hosted CI on the same final committed candidate.
 
 Both gates stop on failure. Fix, prepare, stage and commit again before retrying a
 push. CI repeats platform/build tests and adds Docker/security validation. A local

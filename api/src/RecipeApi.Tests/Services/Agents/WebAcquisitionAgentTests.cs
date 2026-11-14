@@ -37,12 +37,18 @@ public class WebAcquisitionAgentTests
     }
 
     private static (WebAcquisitionAgent agent, InMemoryStorageProvider storage, RecipeRepository repo) CreateSut(
+        Guid recipeId,
         string htmlContent,
         string aiJsonResponse,
         string targetUrl = "https://example.com/recipe")
     {
         var storage = new InMemoryStorageProvider();
         var repo = new RecipeRepository(storage);
+        var db = RecipeApi.Tests.Infrastructure.TestDbContextFactory.Create();
+        var publications = RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(db, storage, new SystemClock());
+        db.Recipes.Add(new Recipe { Id = recipeId });
+        db.SaveChanges();
+        repo.SaveInfoAsync(new RecipeInfo { Id = recipeId }, default).GetAwaiter().GetResult();
 
         // Mock IChatClient — GetResponseAsync is called internally by AsAIAgent.RunAsync
         var chatClientMock = new Mock<IChatClient>();
@@ -76,7 +82,7 @@ public class WebAcquisitionAgentTests
 
         var agent = new WebAcquisitionAgent(
             chatClientMock.Object,
-            repo,
+            publications,
             promptRepoMock.Object,
             httpClient,
             new Mock<ILogger<WebAcquisitionAgent>>().Object);
@@ -86,13 +92,6 @@ public class WebAcquisitionAgentTests
 
     private static WorkflowTask MakeTask(Guid recipeId, string url)
         => new() { Payload = $"{{\"recipeId\": \"{recipeId}\", \"url\": \"{url}\"}}" };
-
-    private static async Task PreCreateRecipeInfo(InMemoryStorageProvider storage, Guid recipeId)
-    {
-        var info = new RecipeInfo { Id = recipeId };
-        var json = JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
-        await storage.SaveAsync("recipes", $"{recipeId}/recipe.info", json);
-    }
 
     // ── Unit tests ────────────────────────────────────────────────────────────
 
@@ -105,8 +104,7 @@ public class WebAcquisitionAgentTests
         const string html = "<html><body><h1>Test Recipe</h1></body></html>";
         const string aiResponse = "{\"name\": \"Test Recipe\", \"heroImageUrl\": null}";
 
-        var (agent, storage, _) = CreateSut(html, aiResponse, url);
-        await PreCreateRecipeInfo(storage, recipeId);
+        var (agent, storage, _) = CreateSut(recipeId, html, aiResponse, url);
 
         // Act
         await agent.ExecuteAsync(MakeTask(recipeId, url), CancellationToken.None);
@@ -125,8 +123,7 @@ public class WebAcquisitionAgentTests
         const string html = "<html><body><h1>Test Recipe</h1></body></html>";
         const string aiResponse = "{\"name\": \"Test Recipe\", \"heroImageUrl\": null}";
 
-        var (agent, storage, _) = CreateSut(html, aiResponse, url);
-        await PreCreateRecipeInfo(storage, recipeId);
+        var (agent, storage, _) = CreateSut(recipeId, html, aiResponse, url);
 
         // Act
         await agent.ExecuteAsync(MakeTask(recipeId, url), CancellationToken.None);
@@ -146,8 +143,7 @@ public class WebAcquisitionAgentTests
         const string html = "<html><body><h1>Test Recipe</h1></body></html>";
         const string aiResponse = "{\"name\": \"Test Recipe\", \"heroImageUrl\": null}";
 
-        var (agent, storage, repo) = CreateSut(html, aiResponse, url);
-        await PreCreateRecipeInfo(storage, recipeId);
+        var (agent, storage, repo) = CreateSut(recipeId, html, aiResponse, url);
 
         // Act
         await agent.ExecuteAsync(MakeTask(recipeId, url), CancellationToken.None);
@@ -184,12 +180,8 @@ public class WebAcquisitionAgentTests
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default
             });
 
-        var (agent, storage, _) = CreateSut(htmlContent.Get, aiResponse, url);
+        var (agent, storage, _) = CreateSut(recipeId, htmlContent.Get, aiResponse, url);
 
-        // Pre-create recipe.info synchronously
-        var info = new RecipeInfo { Id = recipeId };
-        var infoJson = JsonSerializer.Serialize(info, JsonDefaults.CamelCase);
-        storage.SaveAsync("recipes", $"{recipeId}/recipe.info", infoJson).GetAwaiter().GetResult();
 
         // Run the agent
         agent.ExecuteAsync(MakeTask(recipeId, url), CancellationToken.None).GetAwaiter().GetResult();

@@ -180,6 +180,8 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
           await page.route('**/api/schedule/assign**', async (route) => {
             if (route.request().method() !== 'POST') return route.fallback();
             assignments.push(route.request().postDataJSON());
+            today.status = 0;
+            Object.assign(today, { nonCooking: null });
             today.recipe = builders.scheduleRecipe({
               id: MOCK_IDS.RECIPE_LASAGNA,
               name,
@@ -613,85 +615,116 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
   });
 
   test('Confirming GOTO plans the meal', async ({ page }) => {
-    // 1. Mock active GOTO
-    await page.route(
-      (url) => url.pathname.includes('/api/goto/active'),
-      async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            data: {
-              description: 'Family GOTO',
-              recipeId: MOCK_IDS.RECIPE_LASAGNA,
-              status: 'ready',
+    // Seed original detail through the shared recipe owner. Assignment, REST,
+    // projection and every SSE reconnect then use the same persisted fixture.
+    await page.evaluate(async (id) => {
+      const response = await fetch(`/api/recipes/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Family Lasagna',
+          description: 'E2E Hydrated Description',
+          ingredients: ['Pasta', 'Cheese'],
+          totalTime: 'PT45M',
+        }),
+      });
+      if (!response.ok) throw new Error('Could not seed coherent GOTO detail');
+    }, MOCK_IDS.RECIPE_LASAGNA);
+    await page.route('**/api/goto/active', (route) =>
+      route.request().method() === 'GET'
+        ? route.fulfill({
+            json: {
+              data: {
+                description: 'Family GOTO',
+                recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                status: 'ready',
+              },
             },
-          }),
-        });
-      }
+          })
+        : route.fallback()
     );
-
-    // 2. Mock SSE to emit recipe_ready — drives the ready transition (no polling)
-    await mockSseWithRecipeReady(page, MOCK_IDS.RECIPE_LASAGNA);
-
-    // 3. Mock assign API
-    let assignCalled = false;
-    await page.route(
-      (url) => url.pathname.includes('/api/schedule/assign'),
-      async (route) => {
-        assignCalled = true;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: true }),
-        });
-      }
-    );
-
-    // 4. Mock recipe detail fetch (triggered by eager hydration)
+    // Hold the eager detail read until the authoritative assignment echo is
+    // installed: that sparse schedule read is not the recipe-detail owner.
+    let releaseHydration!: () => void;
+    const hydrationGate = new Promise<void>((resolve) => {
+      releaseHydration = resolve;
+    });
+    await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`, async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      await hydrationGate;
+      return route.fallback();
+    });
+    const assignments: unknown[] = [];
     let recipeFetched = false;
-    await page.route(
-      (url) => url.pathname.endsWith(`/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}`),
-      async (route) => {
-        if (route.request().method() !== 'GET') {
-          return route.continue();
-        }
+    const projectionQueries: string[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === '/api/schedule/assign' && request.method() === 'POST')
+        assignments.push(request.postDataJSON());
+      if (url.pathname === `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}` && request.method() === 'GET')
         recipeFetched = true;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            updatedAt: new Date().toISOString(),
-            recipe: builders.recipe({
-              id: MOCK_IDS.RECIPE_LASAGNA,
-              name: 'Family Lasagna',
-              description: 'E2E Hydrated Description',
-              ingredients: ['Pasta', 'Cheese'],
-              totalTime: 'PT45M',
-            }),
-          }),
-        });
-      }
-    );
-
+      if (url.pathname.endsWith('/ingredient-projection') && request.method() === 'GET')
+        projectionQueries.push(url.search);
+    });
     await page.goto('/home');
     await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
-
     const confirmBtn = page.getByTestId('confirm-goto-btn');
     await expect(confirmBtn).toBeEnabled();
     await expect(confirmBtn).toHaveText('Make this tonight');
     await confirmBtn.click();
-
-    await expect.poll(() => assignCalled).toBe(true);
-    await expect(page.getByTestId('tonight-menu-card')).toBeVisible({ timeout: 3000 });
+    await expect.poll(() => assignments.length).toBe(1);
+    expect(assignments[0]).toMatchObject({
+      recipeId: MOCK_IDS.RECIPE_LASAGNA,
+      weekOffset: 0,
+      dayIndex: 0,
+    });
+    const card = page.getByTestId('tonight-menu-card');
+    await expect(card).toBeVisible({ timeout: 3000 });
     await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
-
-    // Verify hydration through explicit ingredient disclosure
-    // The eager fetch should have completed by now (or will shortly)
+    await expect(card.getByRole('heading', { name: 'Family Lasagna', exact: true })).toBeVisible();
+    releaseHydration();
     await page.getByTestId('tonight-ingredients-toggle').click();
-    await expect(page.getByText('E2E Hydrated Description')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Pasta')).toBeVisible();
+    await expect(card.getByText('E2E Hydrated Description', { exact: true })).toBeVisible();
+    await expect(card.getByText('Pasta', { exact: true })).toBeVisible();
+    await expect(card.getByText('Cheese', { exact: true })).toBeVisible();
     expect(recipeFetched).toBe(true);
+    const planned = await page.evaluate(
+      async () =>
+        (await (await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-05-04')).json())
+          .data
+    );
+    const today = planned.days.find((day: { date: string }) => day.date === '2026-05-04');
+    expect(today).toMatchObject({
+      date: '2026-05-04',
+      status: 0,
+      preparation: null,
+      recipe: { id: MOCK_IDS.RECIPE_LASAGNA, name: 'Family Lasagna' },
+    });
+    expect(today.nonCooking ?? null).toBeNull();
+    expect(today.occurrenceId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    );
+    expect(
+      planned.days.filter(
+        (day: { recipe?: { id: string } }) => day.recipe?.id === MOCK_IDS.RECIPE_LASAGNA
+      )
+    ).toHaveLength(1);
+    expect(projectionQueries.length).toBeGreaterThan(0);
+    for (const query of projectionQueries) {
+      const params = new URLSearchParams(query);
+      expect(params.get('context')).toBe('assigned');
+      expect(params.get('supperDate')).toBe('2026-05-04');
+      expect(params.get('occurrenceId')).toBe(today.occurrenceId);
+    }
+    // A full reload/reconnect must retain the actual assignment, not only its optimistic card.
+    await page.reload();
+    await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+    await expect(page.getByTestId('tonight-pivot-card')).not.toBeVisible();
+    await page.getByTestId('tonight-ingredients-toggle').click();
+    await expect(
+      page.getByTestId('tonight-menu-card').getByText('Pasta', { exact: true })
+    ).toBeVisible();
+    expect(assignments).toHaveLength(1);
   });
 
   test('Menu card stays after GOTO confirm when schedule re-sync returns empty', async ({
