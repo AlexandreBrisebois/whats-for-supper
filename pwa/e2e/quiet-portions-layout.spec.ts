@@ -305,6 +305,9 @@ for (const locale of ['en', 'fr'] as const) {
         readFamilyCount: common.readFamilyCount,
         knownRecipe: { id, basis: 2, quantity: 200, unit: 'g', ingredient: 'pasta' },
       });
+      // This HTTP error/focus journey does not exercise transport reconnects.
+      // A finite SSE fixture would replay its snapshot and replace the Retry control.
+      await page.route(/\/(?:backend\/)?api\/stream/, (route) => route.fulfill({ status: 204 }));
       await page.route(`**/api/recipes/${id}`, (route) =>
         route.request().method() === 'GET'
           ? route.fulfill({
@@ -394,6 +397,8 @@ for (const locale of ['en', 'fr'] as const) {
           },
         },
       });
+      // Keep the error draft stable while checking geometry and keyboard recovery.
+      await page.route(/\/(?:backend\/)?api\/stream/, (route) => route.fulfill({ status: 204 }));
       await page.setViewportSize({ width: 320, height: 740 });
       await page.goto(`/recipes?open=${MOCK_IDS.RECIPE_SPAGHETTI}&reviewAmounts=true`);
       await page.evaluate(() => {

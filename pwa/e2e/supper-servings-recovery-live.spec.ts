@@ -238,6 +238,7 @@ test('real lost portions, failed worker, guarded checks, baselines and movement 
       rowId: groceryRow(firstCurrent).rowId,
       weekStartDate: '2026-10-12',
       expectedRowVersion: groceryRow(firstCurrent).rowVersion,
+      expectedPresentationEpoch: firstCurrent.presentationEpoch,
       checked: true,
       clientMutationId: expect.any(String),
     });

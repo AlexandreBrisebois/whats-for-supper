@@ -484,7 +484,16 @@ test('real dated detail, cooking and groceries share inputs across two independe
     console.log('LIVE foreign card');
     await foreign.getByTestId('stack-card-front').click();
     await foreign.getByRole('button', { name: 'Change day', exact: true }).click();
+    await expect(foreign.getByTestId('planning-day-2')).toContainText('October 21');
+    const nextWeek = foreign.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === '/api/schedule' &&
+        new URL(response.url()).searchParams.get('weekOffset') === '2' &&
+        new URL(response.url()).searchParams.get('referenceWeekStartDate') === '2026-10-12'
+    );
     await foreign.getByTestId('planning-week-next').click();
+    expect((await nextWeek).ok()).toBe(true);
     await expect(foreign.getByTestId('planning-day-2')).toContainText('October 28');
     await foreign.getByTestId('planning-day-2').click();
     await expect(foreign.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
