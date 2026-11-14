@@ -192,11 +192,17 @@ jobs:
           path: api/test-results/*.trx
 
   cooking-step-live:
-    name: Cooking steps — real API & PostgreSQL browser
+    name: Cooking steps — real API & PostgreSQL browser (${{ matrix.suite }})
     needs: changes
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.pwa == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Keep the growing live suite inside independent budgets and retain every
+    # partition's diagnostics when another partition fails.
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [cooking, canonical, pdf]
     services:
       postgres:
         image: pgvector/pgvector@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
@@ -257,6 +263,7 @@ jobs:
         run: npm run build -- --webpack
         working-directory: pwa
       - name: Run required cooking live scenarios
+        if: matrix.suite == 'cooking'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName~LiveBrowser_CookingStep|FullyQualifiedName~LiveBrowser_CookingReportRefresh"
@@ -265,6 +272,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/cooking-live
       - name: Require all cooking live results
+        if: matrix.suite == 'cooking'
         run: |
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
@@ -275,6 +283,7 @@ jobs:
           assert all(result.get('outcome') == 'Passed' for result in results), 'Cooking live cases must pass without skips'
           PY
       - name: Run required prepared context live
+        if: matrix.suite == 'cooking'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.PreparedSupperPostgresTests.LiveBrowser_PreparedSupperGeneratedClientAndTwoClientUpdates"
@@ -282,6 +291,7 @@ jobs:
         env:
           WFS_LIVE_ARTIFACT_ROOT: ${{ github.workspace }}/.task/cooking-context-live/prepared
       - name: Run required servings context live
+        if: matrix.suite == 'cooking'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.SupperServingsPostgresTests.LiveBrowser_SupperServingsGeneratedClientAndTwoClientUpdates"
@@ -289,6 +299,7 @@ jobs:
         env:
           WFS_LIVE_ARTIFACT_ROOT: ${{ github.workspace }}/.task/cooking-context-live/servings
       - name: Require all cooking context live results
+        if: matrix.suite == 'cooking'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -333,6 +344,7 @@ jobs:
           print('Required context acceptance: 2 native owners, 9 browser passes, 1 explicitly gated canonical branch; zero required skips/retries.')
           PYGUARD
       - name: Run required grocery checks live
+        if: matrix.suite == 'cooking'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.GroceryCheckConcurrencyPostgresTests.LiveBrowser_IndependentWaterRowsConvergeAndRejectOlderSnapshot"
@@ -340,6 +352,7 @@ jobs:
         env:
           WFS_LIVE_ARTIFACT_ROOT: ${{ github.workspace }}/.task/grocery-live/checks
       - name: Require grocery checks live results
+        if: matrix.suite == 'cooking'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -367,6 +380,7 @@ jobs:
           print('Required grocery checks: 1 native owner, 1 browser journey; zero skips/retries.')
           PYGUARD
       - name: Run required grocery canonical dependencies
+        if: matrix.suite == 'cooking'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.LiveBrowser_CanonicalIngredientCorrection|FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.LiveBrowser_CanonicalMixedIncompleteBaseline"
@@ -375,6 +389,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/canonical
       - name: Require grocery canonical dependency results
+        if: matrix.suite == 'cooking'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -405,6 +420,7 @@ jobs:
           print('Required grocery canonical dependencies: 2 native owners, 2 browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required fresh URL canonical journey
+        if: matrix.suite == 'canonical'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshUrlCanonicalGroceries"
@@ -413,6 +429,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/fresh-url
       - name: Require fresh URL canonical journey results
+        if: matrix.suite == 'canonical'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -442,6 +459,7 @@ jobs:
           print('Required fresh URL/photo checks: 1 native owner, 3 browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required absolute-use canonical journey
+        if: matrix.suite == 'canonical'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshAbsoluteCanonicalGroceries"
@@ -450,6 +468,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/absolute
       - name: Require absolute-use canonical journey results
+        if: matrix.suite == 'canonical'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -479,6 +498,7 @@ jobs:
           print('Required absolute-use URL/photo checks: 1 native owner, 3 browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required multiple-absolute-use canonical journey
+        if: matrix.suite == 'canonical'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshMultipleAbsoluteCanonicalGroceries"
@@ -487,6 +507,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/multiple-absolute
       - name: Require multiple-absolute-use canonical journey results
+        if: matrix.suite == 'canonical'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -516,6 +537,7 @@ jobs:
           print('Required multiple-absolute-use URL/photo checks: 1 native owner, 3 browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required fraction-use canonical journey
+        if: matrix.suite == 'canonical'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshFractionCanonicalGroceries"
@@ -524,6 +546,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/fraction
       - name: Require fraction-use canonical journey results
+        if: matrix.suite == 'canonical'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -553,6 +576,7 @@ jobs:
           print('Required fraction-use URL/photo checks: 1 native owner, 3 browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required remainder-use canonical journey
+        if: matrix.suite == 'canonical'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshRemainderCanonicalGroceries"
@@ -561,6 +585,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/remainder
       - name: Require remainder-use canonical journey results
+        if: matrix.suite == 'canonical'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -590,6 +615,7 @@ jobs:
           print('Required remainder-use URL/photo checks: 1 native owner, 3 browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required fixed-use canonical journey
+        if: matrix.suite == 'canonical'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshFixedCanonicalGroceries"
@@ -598,6 +624,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/fixed
       - name: Require fixed-use canonical journey results
+        if: matrix.suite == 'canonical'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -627,6 +654,7 @@ jobs:
           print('Required fixed-use URL/photo checks: 1 native owner, 3 browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required per-item-use canonical journey
+        if: matrix.suite == 'canonical'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshPerItemCanonicalGroceries"
@@ -635,6 +663,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/per-item
       - name: Require per-item-use canonical journey results
+        if: matrix.suite == 'canonical'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -664,6 +693,7 @@ jobs:
           print('Required per-item-use URL/photo checks: 1 native owner, 3 browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required declared-package canonical journey
+        if: matrix.suite == 'canonical'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.LiveBrowser_CanonicalDeclaredPackages"
@@ -672,6 +702,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/package-input
       - name: Require declared-package canonical journey results
+        if: matrix.suite == 'canonical'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -700,6 +731,7 @@ jobs:
           print('Required declared-package checks: 1 native owner, 2 fresh locale browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required exact-display canonical journey
+        if: matrix.suite == 'canonical'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientEditPostgresTests.LiveBrowser_CanonicalExactDisplay"
@@ -708,6 +740,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/exact-display-input
       - name: Require exact-display canonical journey results
+        if: matrix.suite == 'canonical'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -736,6 +769,7 @@ jobs:
           print('Required exact-display checks: 1 native owner, 2 fresh locale browser journeys; zero skips/retries.')
           PYGUARD
       - name: Run required fresh PDF canonical journey
+        if: matrix.suite == 'pdf'
         run: >-
           dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
           --filter "FullyQualifiedName=RecipeApi.Tests.Integration.CanonicalIngredientPublicationPostgresTests.LiveBrowser_FreshPdfCanonicalGroceries"
@@ -744,6 +778,7 @@ jobs:
           WFS_CANONICAL_BROWSER_ROOT: ${{ github.workspace }}
           WFS_CANONICAL_EVIDENCE: ${{ github.workspace }}/.task/grocery-live/fresh-pdf-input
       - name: Require fresh PDF canonical journey results
+        if: matrix.suite == 'pdf'
         run: |
           python3 - <<'PYGUARD'
           import json
@@ -930,7 +965,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: cooking-live-results
+          name: cooking-live-results-${{ matrix.suite }}
           path: |
             .task/cooking-live/
             .task/cooking-context-live/

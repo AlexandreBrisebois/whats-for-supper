@@ -8,6 +8,54 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class PipelineTests(unittest.TestCase):
+    def test_live_browser_partitions_keep_every_owner_and_guard_required(self):
+        jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
+        job = jobs['cooking-step-live']
+        strategy = job.get('strategy', {})
+        suites = strategy.get('matrix', {}).get('suite', [])
+        self.assertEqual(set(suites), {'cooking', 'canonical', 'pdf'},
+                         'The accumulated live suite needs independent job time budgets')
+        self.assertEqual(len(suites), 3)
+        self.assertFalse(strategy['fail-fast'], 'One failed partition must not cancel the other evidence')
+        self.assertEqual(job['timeout-minutes'], 20)
+        self.assertIn('${{ matrix.suite }}', job['name'])
+        owners = {
+            'cooking': ['cooking live scenarios', 'prepared context live', 'servings context live',
+                        'grocery checks live', 'grocery canonical dependencies'],
+            'canonical': ['fresh URL canonical journey', 'absolute-use canonical journey',
+                          'multiple-absolute-use canonical journey', 'fraction-use canonical journey',
+                          'remainder-use canonical journey', 'fixed-use canonical journey',
+                          'per-item-use canonical journey', 'declared-package canonical journey',
+                          'exact-display canonical journey'],
+            'pdf': ['fresh PDF canonical journey'],
+        }
+        expected = {'Run required ' + name: suite for suite, names in owners.items() for name in names}
+        observed = set()
+        guards = {suite: 0 for suite in suites}
+        suite = None
+        for step in job['steps']:
+            name = step.get('name', '')
+            if name.startswith('Run required '):
+                self.assertIn(name, expected, 'Every new live owner needs an explicit partition')
+                suite = expected[name]
+                observed.add(name)
+            elif name.startswith('Require '):
+                self.assertIsNotNone(suite, 'A result guard must follow its live owner')
+                guards[suite] += 1
+            else:
+                continue
+            self.assertEqual(step.get('if'), f"matrix.suite == '{suite}'",
+                             'Each owner and its fail-closed result guard must run in the same partition')
+            self.assertNotIn('continue-on-error', step)
+        self.assertEqual(observed, set(expected))
+        self.assertEqual(guards, {'cooking': 4, 'canonical': 9, 'pdf': 1})
+        upload = next(step for step in job['steps'] if step.get('name') == 'Upload cooking live results')
+        self.assertEqual(upload['if'], 'always()')
+        artifact = upload['with']['name']
+        self.assertIn('${{ matrix.suite }}', artifact, 'Parallel artifact uploads must not collide')
+        self.assertEqual(len({artifact.replace('${{ matrix.suite }}', suite) for suite in suites}), 3)
+        self.assertNotIn('continue-on-error', job)
+
     def test_public_demo_welcome_is_household_only_and_keeps_private_artifacts(self):
         jobs = yaml.safe_load((ROOT / '.github/workflows/validate.yml').read_text())['jobs']
         job = jobs['pwa-e2e']

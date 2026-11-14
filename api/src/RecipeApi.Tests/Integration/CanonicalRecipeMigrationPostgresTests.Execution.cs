@@ -3,6 +3,7 @@ using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
@@ -218,24 +219,29 @@ public sealed partial class CanonicalRecipeMigrationPostgresTests
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public Task Executor_MutationHoldsExistingRecoveryWriteLease() => WithExecution(async (services, inventory, commit, hash) =>
     {
+        services.GetRequiredService<IConfiguration>()["Recovery:WaitSeconds"] = "1";
         var pause = new PauseMigration();
         var execution = Execute(services, inventory, commit, hash, pause);
-        await pause.Entered.Task.WaitAsync(TimeSpan.FromSeconds(20));
         using var other = services.CreateScope();
-        var waiting = other.ServiceProvider.GetRequiredService<RecoveryBoundary>().EnterAsync(RecoveryAccess.Snapshot, default);
-        IAsyncDisposable? acquired = null;
+        var boundary = other.ServiceProvider.GetRequiredService<RecoveryBoundary>();
         try
         {
-            await Task.WhenAny(waiting, Task.Delay(250));
-            Assert.False(waiting.IsCompleted, "Snapshot entered while migration mutation was in progress.");
+            await pause.Entered.Task.WaitAsync(TimeSpan.FromSeconds(20));
+            // Exhaust the competing snapshot's bounded wait while mutation is
+            // deliberately paused; migration speed must not decide the result.
+            await Assert.ThrowsAsync<RecoveryBusyException>(async () =>
+            {
+                await using var unexpected = await boundary.EnterAsync(RecoveryAccess.Snapshot, default);
+            });
         }
         finally
         {
             pause.Release.TrySetResult();
-            if (waiting.IsCompletedSuccessfully) { acquired = await waiting; await acquired.DisposeAsync(); }
             await execution;
-            if (acquired is null) await (await waiting).DisposeAsync();
         }
+        // A timed-out acquisition is finished. A fresh snapshot must enter after
+        // the complete migration has released its write lease.
+        await using var acquired = await boundary.EnterAsync(RecoveryAccess.Snapshot, default);
     });
 
     private sealed class PauseMigration : IRecoveryCheckpoint
