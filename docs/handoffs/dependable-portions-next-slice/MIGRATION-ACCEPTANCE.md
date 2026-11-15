@@ -1,5 +1,68 @@
 # Portions coverage and copied-library admission
 
+## Exact-source V1 attestation implementation — 2026-11-14
+
+Entered clean at expected local/remote `78fba6dc8b863d6e9e15f6f0ed939cfde2c550e9`.
+The continuation supplies separate implementation authorization; signed normal
+commits/pushes are authorized and Alex owns CI monitoring. The approved policy,
+approval, membership and historical evidence remain byte-identical. Historical
+writer/build/serializer identity and original result wire bytes remain unproven.
+
+The internal version-1 validator reconstructs captured V1 edits without V2
+preparation or today's facts. It verifies exact original/input/result bytes,
+identities, hashes, baseline/revisions, all 140 listed identical duplicate sites,
+recorded fresh allocations at independently derived creation sites, complete
+result/created-ID comparison and the exact PostgreSQL 18.6 `result::text` hash.
+Ordinary V1/public parsing remains strict. Shared domain checks are reused only
+after the isolated reader's exact-byte/duplicate checks.
+
+The reviewed [admission intent](V1-ADMISSION-INTENT.json) binds the one-time
+operation `5238fbe6-1dca-4ec5-9eaf-b17d3db945a7`, target generation
+`bc305bf36d804aa493f119cf2e5fe1e77`, policy/extraction and exact request digest.
+A task-owned generation descriptor is outside copied source files; no live
+recovery pointer is activated. The read-only PostgreSQL owner verifies pinned
+approval/package, all four backup artifacts, complete receipt membership and
+all restored table/file lineage before returning a historical context. Caller
+hashes or flags cannot confer authority. Replay revalidates immutable evidence,
+returns only frozen validated outcomes and never applies old edits to live facts.
+Separate lineage retains exact approval/package/policy and all original receipts.
+
+**Attestation gate accepted:** a fresh task-owned PostgreSQL 18.6 restore validates
+all 46 original receipts; ordinary strict readers still reject all 46. The 27
+negative controls reject altered/missing authority, foreign operation/generation/
+source destination, changed file lineage/membership/input/baseline/result, coherent
+ID substitution, conflicting/additional duplicates, unknown versions and
+interrupted preflight. Fresh-context replay with retained lineage preserves newer
+human notes and original receipts in a separate restored target. All source table
+digests before/after match. Evidence: `.task/v1-attestation-20261114/qualification.json`
+and `recovery-lineage.json`; originals and backups are never mutated.
+
+**Complete source admission remains blocked:** the next existing strict inventory
+owner reports `PostgreSQL 42703: column r.food_mapping_evidence does not exist` on
+the untouched 31-table source schema. No schema adaptation, conversion, vocabulary
+publication or migration was attempted. This is a distinct source-admission blocker;
+attestation acceptance does not qualify a current-format preconversion snapshot.
+Stop this slice here without weakening or expanding source admission.
+
+Test-first derivation, policy and admission RED/GREEN logs are under
+`.task/v1-attestation-20261114/`. Focused native history/public controls passed 37
+with zero skips. A PostgreSQL fixture initially depended on excluded handoff docs;
+that failed invocation also detected concurrent content mutation and is not success.
+The corrected self-contained extraction regression passed one real PostgreSQL case,
+zero skips (`.task/database-tests/runs/53584b88a7774596b644e35682879368/result.json`).
+Independent immutable review, final preparation/full PostgreSQL/repository checks,
+exact content identities, signed pushed commits and ownership-bound cleanup have
+their invocation-specific terminal records in
+`.task/v1-attestation-20261114/delivery.json`. Checks pending at this document's
+cutoff are not asserted as passed here; consult that terminal record.
+
+No aggregate boxes close (migration 3/8, bilingual 8/10, release family 33/68).
+Migration/conversion, all-week rebuild, vocabulary adoption, activation, deployment,
+DV/production, later intake, Similar, garlic, adjacent UI and archival remain excluded.
+Port 3000, preexisting containers, source files/databases, backups and original
+receipts remain protected. Earlier sections below retain their historical scope.
+
+
 This is the current handoff for the November 14 selection on local
 `recipe-view-redesign`, entered clean at local/remote
 `6589c18a7073afc3aeacb94dd6a4a6506030eb5a`. The

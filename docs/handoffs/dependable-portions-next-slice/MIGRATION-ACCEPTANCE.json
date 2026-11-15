@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "state": "blocked-before-conversion",
+  "state": "attestation-gate-accepted-complete-source-admission-blocked",
   "entryCommit": "6589c18a7073afc3aeacb94dd6a4a6506030eb5a",
   "branch": "recipe-view-redesign",
   "ciMonitoringOwner": "Alex",
@@ -184,7 +184,7 @@
     "eligible": [],
     "reason": "All six changes retain incomplete aggregate acceptance."
   },
-  "nextBoundedSelection": "Policy B approved; await separate bounded implementation authorization. No runtime selection started.",
+  "nextBoundedSelection": "Stop after attestation/read-only admission delivery; source schema blocker retained, no migration or expansion.",
   "exclusions": [
     "Shared-environment vocabulary adoption",
     "Migration activation",
@@ -263,5 +263,26 @@
     "approvalRecord": "docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-APPROVAL.json",
     "approvalRecordSha256": "6eef7a175751927f26fb41950f94d7c60de8b69acfab0a31148e8f5c5c78e0a7",
     "approvalEvidenceOwner": ".task/v1-authority-approval-20261114/delivery.json"
+  },
+  "retainedV1AttestationImplementation": {
+    "entryCommit": "78fba6dc8b863d6e9e15f6f0ed939cfde2c550e9",
+    "runtimeImplementationAuthorized": true,
+    "policyVersion": 1,
+    "intentPath": "docs/handoffs/dependable-portions-next-slice/V1-ADMISSION-INTENT.json",
+    "intentSha256": "fb54c5660b0f9b0f6f89369f85cef9334943d854427b9f36b84aaa77a1ad0a1c",
+    "attestationGate": "accepted",
+    "completeSourceAdmission": "blocked",
+    "sourceBlocker": "PostgreSQL 42703: column r.food_mapping_evidence does not exist",
+    "originalReceiptsAccepted": 46,
+    "ordinaryStrictRejected": 46,
+    "negativeRejected": 27,
+    "freshContextReplayWithChangedCurrentHumanFact": "passed; current notes and original receipts preserved in separate detached restore",
+    "originalSourceTablesUnchanged": true,
+    "qualificationRecord": ".task/v1-attestation-20261114/qualification.json",
+    "evidenceOwner": ".task/v1-attestation-20261114/delivery.json",
+    "immutableCorePackageAndApprovalChanged": false,
+    "historicalWriterOrResultWireProofEstablished": false,
+    "aggregateTasksClosed": [],
+    "migrationConversionPublicationRebuildActivationDeployment": "not-run; excluded"
   }
 }

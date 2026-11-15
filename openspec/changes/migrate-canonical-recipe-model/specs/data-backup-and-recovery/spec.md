@@ -431,3 +431,26 @@ is required.
 **Reason**: Routine recovery supports only the declared current format after cutover.
 
 **Migration**: Use explicit bounded one-time forward conversion of approved recipe source files before cutover; unsupported old backups fail routine preflight without mutation.
+
+## ADDED Requirements
+
+### Requirement: Bound approved historical V1 source attestation
+
+The internal read-only admission owner SHALL enforce the approved one-time
+exact-source V1 exception defined in the bilingual storage and operation contract,
+bound to its immutable approval/package and separately reviewed admission intent.
+It SHALL retain ordinary strict V1 and public duplicate rejection unchanged.
+
+#### Scenario: Exact approved restored source
+- **WHEN** every approved artifact, complete receipt membership, copy lineage and reviewed operation/generation/request binding validates
+- **THEN** the versioned historical validator reconstructs all 46 saved outcomes from captured V1 facts, permits only the enumerated duplicate sites and proven allocation sites, and compares complete results plus exact attested PostgreSQL-text hashes
+- **AND** acceptance of this gate does not imply complete source admission, current-format recovery or migration authority
+
+#### Scenario: Changed or incomplete authority
+- **WHEN** approval, package, source, generation, membership, input, baseline, result, duplicate structure or policy/extraction version differs or evidence is missing
+- **THEN** admission fails closed before writes, with no receipt rewriting, live baseline substitution or V2 preparation
+
+#### Scenario: Historical replay and interrupted preflight
+- **WHEN** the same reviewed source/operation/generation/policy/request is replayed with complete retained lineage
+- **THEN** only the validated historical outcome is returned without applying edits to current live facts
+- **AND** interrupted or missing-evidence preflight grants no authority; other admission blockers remain strict and stop the slice

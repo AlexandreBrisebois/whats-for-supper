@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "policyVersion": 1,
+  "extractionVersion": "postgresql-18.6-result-text-utf8-v1",
+  "recoveryOperationId": "5238fbe6-1dca-4ec5-9eaf-b17d3db945a7",
+  "targetGeneration": "bc305bf36d804aa493f119cf2e5fe1e77",
+  "databaseName": "wfs_v1_attestation_20261114",
+  "copyDataRelativePath": ".task/v1-attestation-20261114/copy-data",
+  "packageSha256": "bb40457ca9b1ed47b79b2165d855b40f2970083c260de91d8055a1ee5f369827",
+  "approvalSha256": "6eef7a175751927f26fb41950f94d7c60de8b69acfab0a31148e8f5c5c78e0a7",
+  "sourceDumpSha256": "25eab5f9bdc4f35b8385f05c86a0c384fe0b3da89c2576f04f89566d96cc9ecc",
+  "scope": "read-only exact-source attestation qualification; no migration, conversion, vocabulary publication or activation",
+  "targetGenerationMarkerRelativePath": ".task/v1-attestation-20261114/target-generation"
+}

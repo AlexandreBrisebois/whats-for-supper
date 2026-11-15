@@ -1,5 +1,24 @@
 # Active resume checkpoints
 
+## Exact-source V1 attestation (2026-11-14)
+
+Task/spec: bounded migration 2.1–2.2/3.1–3.2 and bilingual 4.2, aggregate boxes open.
+Worktree/branch: clean entry `78fba6dc`, local `recipe-view-redesign`.
+Authorized scope/source: separately authorized implementation/qualification of the
+approved finite V1 exception; normal signed commits/pushes, Alex owns CI.
+Checkpoint: all46 originals accepted by the internal attestation gate on a fresh
+PostgreSQL18.6 restore; ordinary strict readers reject46. Replay,27negative controls
+and separate changed-current-fact preservation qualify the bounded path. Original
+policy/approval/membership/backup/receipt bytes are unchanged; no historical writer
+or result-wire identity is claimed. Complete source admission is blocked by the
+existing inventory owner: PostgreSQL42703, `recipes.food_mapping_evidence` absent
+from the unchanged source schema. Stop without schema adaptation or migration.
+Evidence/identity: [current handoff](docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md),
+`.task/v1-attestation-20261114/qualification.json` and terminal `delivery.json` own
+immutable independent review, actual final checks, signatures, refs and cleanup.
+No migration/conversion, publication, rebuild, activation, deployment or archive.
+
+
 ## Cooking instruction Save repair (2026-11-14)
 
 Selected on clean local/remote `recipe-view-redesign` at `c65b799b`; user chose the

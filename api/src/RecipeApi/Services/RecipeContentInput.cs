@@ -21,6 +21,14 @@ internal static class RecipeContentInput
         if (!input.HasCanonicalContent) return;
         RequireUniqueProperties(input.IngredientLines);
         RequireUniqueProperties(input.InstructionSections);
+        ValidateFacts(input);
+    }
+
+    // Shared domain checks only. The isolated exact-source V1 validator has
+    // already checked exact bytes and its exhaustive historical duplicate sites.
+    internal static void ValidateFacts(UpdateRecipeDto input)
+    {
+        if (!input.HasCanonicalContent) return;
         if (input.Ingredients is not null || input.RecipeInstructions is not null)
             throw Invalid();
         var savedIds = new HashSet<Guid>();

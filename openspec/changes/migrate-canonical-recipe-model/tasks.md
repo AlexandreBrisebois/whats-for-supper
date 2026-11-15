@@ -2,30 +2,36 @@
 
 ## Current selected delivery — 2026-11-14
 
-The current bounded selection is the retained V1 authority decision beneath open
-2.1–2.2/3.1–3.2 and contingent bilingual 4.2. Signed documentation delivery is
-authorized; Alex owns CI monitoring. The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)
-and [concrete policy proposal](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-DECISION.md)
-retain all established findings: 46 matching input hashes, 33 duplicate inputs
-with 140 identical sites and 13 generated-binding identity/reference mismatches;
-strict readers reject all 46. Targeted historical records correlate all 46 with
-ten campaigns and reproduce historical whole-row hashes for 42, without proving
-authenticated per-operation writer/build/serializer identity or original result
-wire bytes. Source-family resemblance remains distinct from demonstrated proof.
-Alex approved the independently reviewed option B policy for exact package
-`bb40457ca9b1ed47b79b2165d855b40f2970083c260de91d8055a1ee5f369827`
-by a direct `yes` reply; [the durable approval record](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-APPROVAL.json)
-binds the decision and acknowledged missing guarantees. Option A remains
-unestablished; all 46 remain rejected by the current runtime. The frozen package
-and evidence are unchanged. Implementation/migration/activation still require
-separate authorization; this documentation records policy approval only.
-The approved V1 derivation
-contract is unchanged; no runtime mechanism, receipt rewrite, vocabulary publication
-or migration was performed. Evidence owner `.task/v1-authority-decision-20261114/`
-retains the immutable package, review and invocation-specific documentation checks.
-Approval-recording evidence is `.task/v1-authority-approval-20261114/delivery.json`.
-No selected aggregate task is complete; progress remains 33/68. Historical policies
-and receipts below retain their original scope and remaining acceptance.
+Using change `migrate-canonical-recipe-model` (wfs schema, 3/8 complete).
+The 2026-11-14 user continuation separately authorizes implementation and
+qualification of the approved exact-source V1 validator and bounded internal
+read-only source admission beneath open 2.1–2.2/3.1–3.2 and bilingual 4.2.
+Normal signed commits/pushes are authorized; Alex owns CI.
+
+The frozen proposal, approval, membership and historical evidence remain immutable.
+The [approved package](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-PACKAGE.json)
+and [approval](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-APPROVAL.json)
+replace missing historical provenance only for the exact four-artifact backup and
+46 receipt/result pairs. The active bilingual storage contract and recovery delta
+now state the finite exception; ordinary V1/public parsing remains strict.
+
+Selected acceptance: test-first RED/GREEN; exact-byte historical validation; fresh
+task-owned restore of all 46 originals; fail-closed negative detached copies;
+operation/generation/request-bound replay and missing/interrupted evidence;
+independent read-only implementation/evidence review; focused history, public
+duplicate, publication/recovery and real PostgreSQL checks; full PostgreSQL and
+repository preparation/verification. Evidence owner `.task/v1-attestation-20261114/`.
+Report the attestation gate separately from complete source admission. A new
+source-admission blocker remains a blocker and stops expansion. No aggregate
+checkbox closes in this slice. No migration/conversion, vocabulary publication,
+all-week rebuild, activation, deployment or adjacent work.
+
+Current checkpoint: attestation gate accepted46/46 on a fresh exact PostgreSQL18.6
+restore; ordinary readers still reject46. The existing strict source inventory
+then blocks on PostgreSQL42703 (`recipes.food_mapping_evidence` absent). No schema
+fix or migration follows. Exact qualification, independent immutable review and
+final verification/delivery records remain under the selected evidence owner;
+no aggregate checkbox changes.
 
 ## Historical coordinated release policy — 2026-11-11
 

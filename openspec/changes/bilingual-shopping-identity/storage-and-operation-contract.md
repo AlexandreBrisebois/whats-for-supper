@@ -28,3 +28,34 @@ Pure mapping preparation accepts an already losslessly prepared canonical export
 Npgsql RecoveryBoundary Read/Publish must coordinate even before Enabled; middleware enrollment must agree, respecting publication244001 then writes244002. Consistent settings/presentation lock precedes supper/recipe/week locks; no reverse ordering. Manual constructors must use real scoped vocabulary store sharing their actual DB/storage generation.
 
 First GREEN extends the actual input-seeded producer RED with real store publication tests, mapped source/evidence/result checks and captured-A-after-head-B replay. Add meaningful negative/history tests BEFORE each corresponding implementation increment: old V1/V3 exact replay after adoption; sidecar/rawSHA/revision tamper; delayed old/new application; same op/different input; source-qualifier shortening; missing history-only file; publication interruption/lost reply; first-install cross-process coordination. These do not close grocery labels/corrections/recovery or release acceptance.
+
+## Approved one-time exact-source V1 exception
+
+The separately approved `WFS-V1-EXACT-SOURCE-ATTESTATION-1` package
+`bb40457ca9b1ed47b79b2165d855b40f2970083c260de91d8055a1ee5f369827`
+and approval record `6eef7a175751927f26fb41950f94d7c60de8b69acfab0a31148e8f5c5c78e0a7`
+authorize present-day trust only in the four exact backup artifacts and 46 listed
+V1 receipt/result pairs. Historical writer/build/serializer identity and original
+result wire bytes remain unproven. Ordinary V1 derivation and public parsing remain
+unchanged. This exception is isolated in an internal version-1 attestation validator;
+V2 preparation cannot interpret V1.
+
+Before returning an admission context, verify the pinned approval/package, complete
+membership, all four backup artifacts and complete restored table/file lineage.
+Bind the separately reviewed read-only intent, recovery operation, target generation,
+policy/extraction versions and request digest. Caller hashes and environment flags
+are insufficient. Use exact PostgreSQL 18.6 `result::text` UTF-8; never reserialize
+to obtain a hash match. Permit only the 140 enumerated identical duplicate sites
+in the 33 listed inputs and recorded fresh allocations at independently derived
+creation sites, retaining reserved-ID, uniqueness and graph checks. Validate every
+original identity, byte/hash, baseline/revision, full derived result and created-ID
+map. Coherent ID substitutions still fail the exact attested result hash.
+
+Replay returns only the validated frozen outcome and never applies historical edits
+to live facts. Retain exact approval/package and receipt bytes as separate lineage
+with the existing recovery evidence. Missing/corrupt evidence, interrupted preflight
+or changed source/operation/generation/policy/request gives no write authority.
+Other history, full-source/schema/file admission and current-format recovery retain
+their existing strict owners. Attestation-gate acceptance is separate from complete
+source admission; a subsequent blocker stops this slice. No migration, publication,
+conversion, all-week rebuild, activation or deployment is authorized here.
