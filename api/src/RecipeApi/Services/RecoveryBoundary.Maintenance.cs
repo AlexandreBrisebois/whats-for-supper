@@ -3,11 +3,18 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using RecipeApi.Infrastructure;
 
 namespace RecipeApi.Services;
 
 public sealed partial class RecoveryBoundary
 {
+    internal void RequireMigrationTarget(RecipeApi.Data.RecipeDbContext expectedDb, RecipesRootResolver expectedRoots)
+    {
+        if (!ReferenceEquals(db, expectedDb) || !ReferenceEquals(recipes, expectedRoots))
+            throw new InvalidDataException("Migration fence does not own the observation database and execution roots.");
+    }
+
     private static readonly AsyncLocal<MaintenanceCapability?> Operator = new();
     private sealed record MaintenanceHold(int Version, Guid OperationId, string Candidate,
         DateTimeOffset CreatedAt, string ApiImage, string DatabaseContainer);

@@ -28,9 +28,12 @@ public partial class RecoverySnapshotService
     internal async Task<InspectedRecoverySnapshotIdentity> InspectSnapshotIdentityAsync(Guid snapshotId, CancellationToken ct)
     {
         var source = await ReadCurrentSnapshotAsync(Path.Combine(BackupRoot, snapshotId.ToString("N")), snapshotId, false, ct);
-        return new(snapshotId, FoodVocabularyDefinitions.Sha256(source.ManifestBytes), source.Index.Generation,
-            FoodVocabularyDefinitions.Sha256(source.IndexBytes), Array.AsReadOnly(source.Documents.Select(x => x.Reference).ToArray()));
+        return ProjectSnapshotIdentity(source);
     }
+
+    private static InspectedRecoverySnapshotIdentity ProjectSnapshotIdentity(CurrentSnapshotSource source)
+        => new(source.Manifest.Id, FoodVocabularyDefinitions.Sha256(source.ManifestBytes), source.Index.Generation,
+            FoodVocabularyDefinitions.Sha256(source.IndexBytes), Array.AsReadOnly(source.Documents.Select(x => x.Reference).ToArray()));
 
     private static bool IsSnapshotMedia(string path)
     {

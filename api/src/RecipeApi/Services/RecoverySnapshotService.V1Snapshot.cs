@@ -42,17 +42,9 @@ public partial class RecoverySnapshotService
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
         await ScalarAsync(connection, "SET LOCAL search_path = pg_catalog, public, pg_temp", ct);
-        using var catalog = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(repositoryRoot,
-            intent.GetProperty("sourceSchema").GetProperty("path").GetString()!), ct));
-        var tables = catalog.RootElement.GetProperty("tables").EnumerateArray().Select(x => x[0].GetString()!)
-            .Concat(CurrentTables(false)).Concat(VocabularyObservationTables).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
-        var quoted = tables.Select(x => "public." + new NpgsqlCommandBuilder().QuoteIdentifier(x));
-        await ScalarAsync(connection, "LOCK TABLE " + string.Join(',', quoted) + " IN SHARE MODE", ct);
+        await LockAttestedSnapshotTablesAsync(repositoryRoot, intent, connection, ct);
         await using var admission = await OpenAsync(ct);
-        var attestation = await V1ExactSourceAdmission.InspectAsync(repositoryRoot, admission, copyDataRoot, request, checkpoint, ct);
-        var authority = attestation.RecoveryHistoryContext(request);
-        var observation = await vocabulary.ObserveRecoveryAsync("snapshot", authority.SnapshotId, authority.OperationId, ct, authority);
-        var source = new AttestedHistorySource(attestation, authority, observation);
+        var source = await ReconstructAttestedSnapshotSourceAsync(repositoryRoot, copyDataRoot, request, admission, ct);
         if (checkpoint is not null) await checkpoint.ReachedAsync("v1-snapshot-locked", ct);
         var result = await inspect(source, connection, intent, ct);
         await RevalidateSnapshotSourceAsync(source, repositoryRoot, copyDataRoot, request, admission, ct);
@@ -66,6 +58,26 @@ public partial class RecoverySnapshotService
         FoodVocabularyDefinitions.Require(observedRoot == recipes.Root && observedGeneration == recipes.Generation);
         await transaction.RollbackAsync(ct);
         return result.Identity;
+    }
+
+    private static async Task LockAttestedSnapshotTablesAsync(string repositoryRoot, JsonElement intent,
+        NpgsqlConnection connection, CancellationToken ct)
+    {
+        using var catalog = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(repositoryRoot,
+            intent.GetProperty("sourceSchema").GetProperty("path").GetString()!), ct));
+        var tables = catalog.RootElement.GetProperty("tables").EnumerateArray().Select(x => x[0].GetString()!)
+            .Concat(CurrentTables(false)).Concat(VocabularyObservationTables).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
+        var quoted = tables.Select(x => "public." + new NpgsqlCommandBuilder().QuoteIdentifier(x));
+        await ScalarAsync(connection, "LOCK TABLE " + string.Join(',', quoted) + " IN SHARE MODE", ct);
+    }
+
+    private async Task<AttestedHistorySource> ReconstructAttestedSnapshotSourceAsync(string repositoryRoot,
+        string copyDataRoot, byte[] request, NpgsqlConnection admission, CancellationToken ct)
+    {
+        var attestation = await V1ExactSourceAdmission.InspectAsync(repositoryRoot, admission, copyDataRoot, request, checkpoint, ct);
+        var authority = attestation.RecoveryHistoryContext(request);
+        var observation = await vocabulary.ObserveRecoveryAsync("snapshot", authority.SnapshotId, authority.OperationId, ct, authority);
+        return new AttestedHistorySource(attestation, authority, observation);
     }
 
     private async Task RevalidateSnapshotSourceAsync(AttestedHistorySource source, string repositoryRoot,

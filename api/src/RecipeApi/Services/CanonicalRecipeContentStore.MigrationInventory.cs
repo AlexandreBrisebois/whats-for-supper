@@ -10,6 +10,12 @@ namespace RecipeApi.Services;
 
 public sealed partial class CanonicalRecipeContentStore
 {
+    internal void RequireMigrationTarget(RecipeApi.Data.RecipeDbContext expectedDb, RecipesRootResolver roots, RecoveryBoundary boundary)
+    {
+        FoodVocabularyDefinitions.Require(ReferenceEquals(db, expectedDb) && db.Database.CurrentTransaction is not null);
+        vocabulary.RequireMigrationTarget(expectedDb, roots, boundary);
+    }
+
     internal async Task<CanonicalMigrationInventory> CaptureMigrationManifestAsync(CanonicalMigrationRequest request,
         RecoverySnapshotService snapshots, RecoveryBoundary boundary, RecipesRootResolver roots, CancellationToken ct = default)
     {
@@ -28,13 +34,31 @@ public sealed partial class CanonicalRecipeContentStore
         CanonicalRecipeMigrationManifest.Require(db.Database.CurrentTransaction is null, "Migration inventory requires its own read-only observation boundary.");
         await using var lease = await boundary.EnterAsync(RecoveryAccess.Snapshot, ct);
         var source = await snapshots.InspectSnapshotIdentityAsync(request.SnapshotId, ct);
-        var generation = roots.Generation;
-        var root = roots.Root; // Existing owner validates any generation pointer.
         // Raw table rows and typed-owner/recipe queries share one DB snapshot.
         // The caller's tracked entities are never saved or used as observations.
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
         await new NpgsqlCommand("SET TRANSACTION READ ONLY", connection).ExecuteNonQueryAsync(ct);
+        var observation = await ObserveMigrationManifestCoreAsync(request, roots, source, evaluationDate, snapshots, null, ct);
+        await transaction.CommitAsync(ct);
+        return observation;
+    }
+
+    internal Task<CanonicalMigrationInventory> ObserveAttestedMigrationManifestAsync(CanonicalMigrationRequest request,
+        RecipesRootResolver roots, V1MigrationSource source, DateOnly evaluationDate, CancellationToken ct)
+    {
+        source.RequireOwner(db, roots);
+        return ObserveMigrationManifestCoreAsync(CanonicalRecipeMigrationManifest.FreezeRequest(request), roots,
+            source.Identity, evaluationDate, null, source, ct);
+    }
+
+    private async Task<CanonicalMigrationInventory> ObserveMigrationManifestCoreAsync(CanonicalMigrationRequest request,
+        RecipesRootResolver roots, InspectedRecoverySnapshotIdentity source, DateOnly evaluationDate,
+        RecoverySnapshotService? snapshots, V1MigrationSource? continuation, CancellationToken ct)
+    {
+        var generation = roots.Generation;
+        var root = roots.Root;
+        var connection = (NpgsqlConnection)db.Database.GetDbConnection();
         var names = new List<string>();
         await using (var reader = await new NpgsqlCommand("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename", connection).ExecuteReaderAsync(ct))
             while (await reader.ReadAsync(ct)) names.Add(reader.GetString(0));
@@ -65,7 +89,9 @@ public sealed partial class CanonicalRecipeContentStore
             rawTables.Add(name, rows);
             tables.Add(CanonicalRecipeMigrationManifest.ObserveTable(name, keys, rows));
         }
-        var required = FoodVocabularyInventoryQualification.RequiredReferences(await vocabulary.ObserveInventoryFactsAsync(ct))
+        var facts = await vocabulary.ObserveInventoryFactsAsync(ct);
+        var required = (continuation is null ? FoodVocabularyInventoryQualification.RequiredReferences(facts)
+            : continuation.RequiredReferences(facts))
             .Select(x => x.Reference).Distinct().OrderBy(x => x.Revision, StringComparer.Ordinal).ThenBy(x => x.Sha256, StringComparer.Ordinal).ToArray();
         foreach (var reference in required) _ = await vocabulary.LoadCapturedAsync(reference, ct);
         var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking().ToArrayAsync(ct);
@@ -73,11 +99,11 @@ public sealed partial class CanonicalRecipeContentStore
         var selected = request.Selected.Select(selection => ObserveMigrationRecipe(selection,
             recipes.SingleOrDefault(x => x.Id == selection.RecipeId), files)).ToArray();
         var weeks = CanonicalRecipeMigrationManifest.ObserveWeeks(rawTables["weekly_plans"], rawTables["calendar_events"]);
-        var sourceAgain = await snapshots.InspectSnapshotIdentityAsync(request.SnapshotId, ct);
+        var sourceAgain = continuation is null ? await snapshots!.InspectSnapshotIdentityAsync(request.SnapshotId, ct) : continuation.Identity;
+        continuation?.RequireActive();
         CanonicalRecipeMigrationManifest.Require(source.ManifestSha256 == sourceAgain.ManifestSha256
             && source.VocabularyIndexSha256 == sourceAgain.VocabularyIndexSha256 && generation == roots.Generation
             && files.SequenceEqual(await ObserveMigrationFiles(root, ct)), "Source snapshot or live generation/files changed during observation.");
-        await transaction.CommitAsync(ct); // READ ONLY transaction; no owner rows or files are published.
         var observation = new CanonicalMigrationInventory(1, request,
             new(source.SnapshotId, source.ManifestSha256, source.Generation, source.VocabularyIndexSha256, Array.AsReadOnly(source.References.ToArray())),
             schema, generation, Array.AsReadOnly(required), tables.AsReadOnly(), files,

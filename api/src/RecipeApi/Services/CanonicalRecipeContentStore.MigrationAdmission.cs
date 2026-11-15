@@ -12,13 +12,15 @@ public sealed partial class CanonicalRecipeContentStore
     internal const string MigrationModelRevision = "canonical-v2/food-policy-1";
 
     private async Task RequireMigrationAdmissionAsync(RecipeDbContext observationDb, CanonicalMigrationInventory inventory,
-        MaintenanceCommand expected, RecoverySnapshotService snapshots, RecipesRootResolver roots, CancellationToken ct)
+        MaintenanceCommand expected, RecoverySnapshotService snapshots, RecipesRootResolver roots, CancellationToken ct,
+        V1MigrationSource? continuation = null)
     {
         static void Require(bool valid, string reason) => CanonicalRecipeMigrationManifest.Require(valid, "Migration admission: " + reason);
         Require(inventory.Request.ModelRevision == MigrationModelRevision, "executing model differs");
         Require(observationDb.Database.IsNpgsql(), "PostgreSQL required");
-        var source = await snapshots.InspectSourceProtectionAsync(inventory.Request.SnapshotId, ct);
-        var identity = await snapshots.InspectSnapshotIdentityAsync(inventory.Request.SnapshotId, ct);
+        continuation?.RequireOwner(observationDb, roots);
+        var source = continuation is null ? await snapshots.InspectSourceProtectionAsync(inventory.Request.SnapshotId, ct) : continuation.Protection;
+        var identity = continuation is null ? await snapshots.InspectSnapshotIdentityAsync(inventory.Request.SnapshotId, ct) : continuation.Identity;
         Require(source.ManifestSha256 == inventory.SourceSnapshot.ManifestSha256 && source.Generation == inventory.SourceSnapshot.Generation
             && identity.VocabularyIndexSha256 == inventory.SourceSnapshot.VocabularyIndexSha256
             && identity.References.SequenceEqual(inventory.SourceSnapshot.References), "protected snapshot binding differs");
@@ -68,14 +70,16 @@ public sealed partial class CanonicalRecipeContentStore
         var livePlans = await observationDb.WeeklyPlans.AsNoTracking().ToArrayAsync(ct);
         var allMutations = await observationDb.GroceryMutationOutcomes.AsNoTracking().ToArrayAsync(ct);
         var addedMutations = allMutations.Where(x => !inventory.Tables.Single(t => t.Name == "grocery_mutation_outcomes").Rows.Any(old => KeyId(old.Key) == x.Id)).ToArray();
-        var presentation = await vocabulary.CapturePresentationAsync([], ct);
+        // Only completed reset weeks need presentation continuity. Pre-write
+        // source admission has no completed weeks and must not enter adoption.
+        var presentation = weeks.Count == 0 ? null : await vocabulary.CapturePresentationAsync([], ct);
         foreach (var (monday, done) in weeks)
         {
             var state = livePlans.SingleOrDefault(x => x.Id == done.Result.PlanId && x.WeekStartDate == monday);
             Require(state is not null, "completed week plan identity differs");
             Require(done.Result.ProtectedWeekSha256 == MigrationProtectedWeekHash(inventory, inventory.Weeks.Single(x => x.WeekStart == monday), state!), "protected week digest differs");
             GroceryRowState.RequireMigrationCheckContinuity(state!, done.Result, addedMutations.Where(x => x.WeekStartDate == monday).ToArray(),
-                presentation.Epoch, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+                presentation!.Epoch, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
         }
         Require(addedMutations.All(x => weeks.ContainsKey(x.WeekStartDate)), "unowned human mutation receipt");
         var observedRecipes = await observationDb.Recipes.IgnoreQueryFilters().AsNoTracking().ToArrayAsync(ct);
@@ -204,10 +208,34 @@ public sealed partial class CanonicalRecipeContentStore
             }
         }
         // Typed owners independently validate current/retained history and authority.
-        var required = FoodVocabularyInventoryQualification.RequiredReferences(await vocabulary.ObserveInventoryFactsAsync(ct))
+        var facts = await vocabulary.ObserveInventoryFactsAsync(ct);
+        var required = (continuation is null ? FoodVocabularyInventoryQualification.RequiredReferences(facts) : continuation.RequiredReferences(facts))
             .Select(x => x.Reference).Distinct().OrderBy(x => x.Revision, StringComparer.Ordinal).ThenBy(x => x.Sha256, StringComparer.Ordinal).ToArray();
         Require(required.SequenceEqual(inventory.RequiredReferences), "vocabulary authority differs");
         Require(files.SequenceEqual(await ObserveMigrationFiles(roots.Root, ct)) && roots.Generation == inventory.LiveGeneration, "files changed during admission");
+        continuation?.RequireActive();
+    }
+
+    internal async Task RequireAttestedMigrationPrewriteAsync(CanonicalMigrationInventory inventory, string candidateCommit,
+        RecoverySnapshotService snapshots, RecoveryBoundary boundary, RecipesRootResolver roots,
+        V1MigrationSource source, DateTimeOffset capturedAt, CancellationToken ct)
+    {
+        source.RequireOwner(db, roots);
+        boundary.ValidateMaintenanceInvocation(inventory.Request.OperationId, candidateCommit, inventory.Request.CandidateSha256);
+        CanonicalRecipeMigrationManifest.Require(inventory.Version == 1 && inventory.EvaluationDate != default
+            && inventory.ObservationSha256 == CanonicalRecipeMigrationManifest.Hash(JsonSerializer.Serialize(inventory with { ObservationSha256 = "" }, Json)),
+            "Migration pre-write observation differs.");
+        var expected = CanonicalRecipeMigrationReceipt.Plan(inventory, candidateCommit, capturedAt);
+        CanonicalRecipeMigrationManifest.Require(await CanonicalRecipeMigrationReceipt.FindAsync(db, expected.Id, ct) is null,
+            "Pre-write boundary cannot consume a retained migration plan.");
+        foreach (var week in inventory.Weeks)
+            CanonicalRecipeMigrationManifest.Require(await CanonicalRecipeMigrationReceipt.FindAsync(db,
+                CanonicalRecipeMigrationReceipt.WeekReceiptId(expected.Id, week.WeekStart), ct) is null, "Pre-write boundary has a week receipt.");
+        foreach (var selection in inventory.Request.Selected)
+            CanonicalRecipeMigrationManifest.Require(!await db.CanonicalRecipeOperations.AsNoTracking().AnyAsync(x =>
+                x.RecipeId == selection.RecipeId && x.OperationId == selection.OperationId, ct), "Pre-write boundary has a conversion receipt.");
+        await RequireMigrationAdmissionAsync(db, inventory, expected, snapshots, roots, ct, source);
+        boundary.ValidateMaintenanceInvocation(inventory.Request.OperationId, candidateCommit, inventory.Request.CandidateSha256);
     }
 
     private static Guid KeyId(string key) => JsonSerializer.Deserialize<JsonElement[]>(key)![0].GetGuid();
