@@ -124,3 +124,17 @@ file/table dispositions do not imply restoration of omitted operational artifact
 The full request's trigger-row ordering comparison retains every catalog field and
 duplicate; no predecessor policy or receipt derivation changes. Migration4.2 and
 release5.1 remain open, with Alex owning hosted qualification.
+
+
+## Proposed source-coverage evidence only — 2026-11-15
+
+The full-snapshot [source-coverage successor](../../../docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-PLAN.md)
+is planning only. A finite coverage-only v5 owner must reconstruct unchanged v4
+source/history context, preserve exact46 raw pairs and full reference closure,
+and retain explicit existing source-protection projection plus durable read-back.
+New observation IDs cannot replace source history IDs or grant admission/write
+capabilities. Keep ordinary/public/demo strict and migration inventory/admission/
+execution unchanged. The selected recovery16 is distinct from original31/all1576
+protection. Fixed original46 authority cannot admit changed post-adoption data.
+No vocabulary generation/publication/adoption, source sidecar rewrite, restore,
+grocery reset/rebuild or migration runs. Existing aggregates and hosted gates remain open.

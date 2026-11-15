@@ -538,3 +538,28 @@ A proposed request SHALL NOT authorize execution, publication or restore.
 - **WHEN** the pinned full-snapshot continuation observes the same complete trigger tuples in another order because a self-referencing foreign key shares the catalog query's sort key
 - **THEN** only that continuation compares complete trigger rows independent of order while retaining every field and duplicate count
 - **AND** changed, missing or additional triggers and all other catalog mismatches reject; predecessor policies and approved descriptor bytes remain unchanged
+
+
+### Requirement: Keep task-owned source coverage separate from operational admission
+
+A separately selected coverage continuation SHALL pin its own request/identities
+while retaining unchanged full-snapshot source/history authority. It SHALL reuse
+existing full validation and source-protection projection, preserve all original
+facts, and retain a deterministic closed coverage observation for fresh-process
+source-dependent read-back. Coverage evidence SHALL NOT publish a snapshot or
+confer migration, maintenance, restore or write authority.
+
+#### Scenario: Distinct coverage and source identities
+- **WHEN** a proposed coverage-only v5 request consumes a delivered v4 snapshot package
+- **THEN** the coverage owner separately pins v5 and all predecessor bindings while schema/history owners consume unchanged v4 request/context and source operation/generation/snapshot
+- **AND** new coverage operation/generation identify only the observation; ordinary/public/demo and migration inventory/admission/execution stay strict and unchanged
+
+#### Scenario: Durable existing-owner projection
+- **WHEN** separately authorized fresh prepared source and the complete task-owned package are re-admitted under one bounded coherent observation
+- **THEN** existing source-protection facts and complete original31/all1576 preservation are validated, durably staged in the [closed coverage layout](../../../../../docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-PLAN.md), and reconstructed in a fresh process with exact46 receipt pairs
+- **AND** selected recovery16 is not relabeled complete source recovery; no BackupRoot registration, current pointer, persistent domain write or migration inventory is produced
+
+#### Scenario: Incomplete, altered or interrupted coverage
+- **WHEN** bound source/package/request/coverage inputs are missing/corrupt or identities, bytes, contexts or protected facts change, including during final re-admission
+- **THEN** incomplete state grants no authority and all retained before-image bytes are rechecked after the final source check
+- **AND** interruption/lost reply resumes only the same verified attempt/time/bytes; foreign pending state and divergent completed retry reject without overwriting facts

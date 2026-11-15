@@ -1,0 +1,245 @@
+{
+  "version": 5,
+  "status": "PROPOSED-NOT-AUTHORIZED-FOR-EXECUTION",
+  "executionAuthorized": false,
+  "purpose": "task-owned source-dependent read-only attested source coverage and independent fresh-process read-back only",
+  "coverageOperationId": "94b9e525-e068-4abb-a689-5a0280a4683f",
+  "coverageGeneration": "64d3e84b0a3b4eb3843f0c319cab9b4c",
+  "sourceSnapshotId": "64094478-a3f8-4019-8377-c27e3bc32d5d",
+  "sourceFullSnapshotRequestSha256": "8e4692096d14c4554622e6c6b3c9b659c985dbc2506651e6d3273124abbee299",
+  "preparedAllPublicTableSchemaSha256": "dfe9c60b6192026eb246cdbad77d9be8c615718d9469a9d8d67f512710ed3507",
+  "taskOutputRelativePath": ".task/v1-source-coverage-implementation",
+  "requiredIndependentCopyRelativePath": ".task/v1-source-coverage-implementation/independent-coverage",
+  "newMarkerCannotReuseFullSnapshotCompletion": true,
+  "aggregateTaskClosures": [],
+  "planningEntryCommit": "66f0feadce1ba857c378847c32589337bbf2211f",
+  "policyVersion": 1,
+  "extractionVersion": "postgresql-18.6-result-text-utf8-v1",
+  "planPath": "docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-PLAN.md",
+  "source": {
+    "request": {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-CONTINUATION.json",
+      "sha256": "8e4692096d14c4554622e6c6b3c9b659c985dbc2506651e6d3273124abbee299"
+    },
+    "producerCommit": "66f0feadce1ba857c378847c32589337bbf2211f",
+    "producerAssemblySha256": "ad943d5dec15d10924061d2141ed5938c45ac2b2fbfe925b5980eb22f9e71206",
+    "delivery": {
+      "path": ".task/v1-full-snapshot-implementation/delivery.json",
+      "sha256": "725d926798aa0b3eb8d9eef784166f7873276d531ec072361c8a1b24650d1407"
+    },
+    "gitDelivery": {
+      "path": ".task/v1-full-snapshot-implementation/git-delivery.json",
+      "sha256": "74eb4a17969b24bb5cbd3153ef82d79d32021b760906662a760a5b85ca8e7476"
+    },
+    "finalEvidenceReview": {
+      "path": ".task/v1-full-snapshot-implementation/review/final-evidence.json",
+      "sha256": "d981df571b00c0cc2d6c400418ab8835885d0f1f61bee6ca5d6f345681d9fb17"
+    },
+    "terminalReview": {
+      "path": ".task/v1-full-snapshot-implementation/review/terminal-delivery.json",
+      "sha256": "6e916266f838d65a1ba4ab2b5435c61538ae892bc6492e7e5f3ee1e6d1952230"
+    },
+    "runtime": {
+      "path": ".task/v1-full-snapshot-implementation/qualification-runtime-prepared.json",
+      "sha256": "a9b30789fd96c465d73962a4ee62f6ab8bb681e63593092ed5541a6cde957b85"
+    },
+    "snapshotId": "64094478-a3f8-4019-8377-c27e3bc32d5d",
+    "recoveryOperationId": "58847a7c-85a8-4fbf-861e-d5f4959b3571",
+    "generation": "ec6c4e6f569d4fb4be7055abb2c2227e",
+    "package": {
+      "manifest": {
+        "path": ".task/v1-full-snapshot-implementation/final-linux-package/staged-snapshot/manifest.json",
+        "sha256": "652a6a3c021639a6ea4320d3972ee19697699ddc455c6e5c7df2abcc705ffd47"
+      },
+      "history": {
+        "path": ".task/v1-full-snapshot-implementation/final-linux-package/staged-snapshot/vocabulary/history-observations.json",
+        "sha256": "e94ec9311b6b64e77b6fc825f6efab845de5b455ee4bc21af632ff3a338d15b2"
+      },
+      "index": {
+        "path": ".task/v1-full-snapshot-implementation/final-linux-package/staged-snapshot/vocabulary/index.json",
+        "sha256": "408ef9798ab81c6db0073376ceba40b94c47d0ca67efa84474ab95fa2f370e4e"
+      },
+      "lineage": {
+        "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/source-lineage.json",
+        "sha256": "d9e8bb999135f2d02f037fee74fd1d8a18a23613e0a0c48ea177bad8cd046312"
+      },
+      "sourceInventory": {
+        "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/source-inventory.json",
+        "sha256": "b2e99ac0412f7fc28441c3882220b3fd56dbe434577a10c748bb9fec1f10f2b9"
+      },
+      "attempt": {
+        "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/attempt.json",
+        "sha256": "89390b35019dcd1220f3bdfdbf433735686c964b6e5cd387a33ac15e2de5ea13"
+      },
+      "preparation": {
+        "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/preparation-complete",
+        "sha256": "de332d7e4e3ca57e3b45cca18c8682755f474168212cea2bed622e79ac48ddbd"
+      },
+      "completion": {
+        "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/complete.json",
+        "sha256": "d742e8fc956382f6c429b194c324f1586a30cfe0fd70cd8abfc217bcddf5d2ab"
+      }
+    },
+    "runtimeRootPolicy": "Fresh owned physical runtime root retains exact v4 root-relative source/independent-payload paths and logical source identities; no v4 request edits/rebinding. Copy bound existing package; no recapture."
+  },
+  "coverage": {
+    "payloadRelativePaths": [
+      "coverage-stage/payload/coverage.json",
+      "coverage-stage/payload/source-protection.json"
+    ],
+    "authorityRelativePaths": [
+      "coverage-stage/authority/attempt.json",
+      "coverage-stage/authority/source-lineage.json",
+      "coverage-stage/authority/source-inventory.json",
+      "coverage-stage/authority/preparation-complete",
+      "coverage-stage/authority/complete.json"
+    ],
+    "attemptTime": "Retain one chosen capture time and exact valid attempt bytes; deterministic same-attempt retry",
+    "independentLayout": [
+      "payload",
+      "authority"
+    ],
+    "authorityContext": "Coverage-only v5 wrapper; schema/history use unchanged pinned v4 request/context; new IDs never enter historical context",
+    "freezeSeconds": 600
+  },
+  "authorityBindings": [
+    {
+      "path": ".task/chromium-provisioning-20261114/delivery.json",
+      "sha256": "722343a228bd8985832dc5c60da2e0d171411af77281ead83a2f1e28413c3bf3"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/delivery.json",
+      "sha256": "725d926798aa0b3eb8d9eef784166f7873276d531ec072361c8a1b24650d1407"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/attempt.json",
+      "sha256": "89390b35019dcd1220f3bdfdbf433735686c964b6e5cd387a33ac15e2de5ea13"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/complete.json",
+      "sha256": "d742e8fc956382f6c429b194c324f1586a30cfe0fd70cd8abfc217bcddf5d2ab"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/preparation-complete",
+      "sha256": "de332d7e4e3ca57e3b45cca18c8682755f474168212cea2bed622e79ac48ddbd"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/source-inventory.json",
+      "sha256": "b2e99ac0412f7fc28441c3882220b3fd56dbe434577a10c748bb9fec1f10f2b9"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/final-linux-package/snapshot-authority/source-lineage.json",
+      "sha256": "d9e8bb999135f2d02f037fee74fd1d8a18a23613e0a0c48ea177bad8cd046312"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/final-linux-package/staged-snapshot/manifest.json",
+      "sha256": "652a6a3c021639a6ea4320d3972ee19697699ddc455c6e5c7df2abcc705ffd47"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/final-linux-package/staged-snapshot/vocabulary/history-observations.json",
+      "sha256": "e94ec9311b6b64e77b6fc825f6efab845de5b455ee4bc21af632ff3a338d15b2"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/final-linux-package/staged-snapshot/vocabulary/index.json",
+      "sha256": "408ef9798ab81c6db0073376ceba40b94c47d0ca67efa84474ab95fa2f370e4e"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/git-delivery.json",
+      "sha256": "74eb4a17969b24bb5cbd3153ef82d79d32021b760906662a760a5b85ca8e7476"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/qualification-runtime-prepared.json",
+      "sha256": "a9b30789fd96c465d73962a4ee62f6ab8bb681e63593092ed5541a6cde957b85"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/review/final-evidence.json",
+      "sha256": "d981df571b00c0cc2d6c400418ab8835885d0f1f61bee6ca5d6f345681d9fb17"
+    },
+    {
+      "path": ".task/v1-full-snapshot-implementation/review/terminal-delivery.json",
+      "sha256": "6e916266f838d65a1ba4ab2b5435c61538ae892bc6492e7e5f3ee1e6d1952230"
+    },
+    {
+      "path": ".task/v1-recovery-history-20261114/delivery.json",
+      "sha256": "f25a4d770db78e5dc597fd46436139611f04a7afbd582167ab5a9ba1ded9c10d"
+    },
+    {
+      "path": "api/database/compatibility.sql",
+      "sha256": "9680017eba34a68c5fa952dde2659aeffcb383a61814c5175d9e36582ad79f59"
+    },
+    {
+      "path": "api/database/migrate.sh",
+      "sha256": "4adf11745ac06acb9b22ff00c059eaa2acb6df39be042a6e39f2c186eec464ac"
+    },
+    {
+      "path": "api/database/schema.sql",
+      "sha256": "d14d9cad65bcbdfc24d7faad502de70e4ad138c6f239fa01bf98324e84dc2a5c"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-ADMISSION-INTENT.json",
+      "sha256": "fb54c5660b0f9b0f6f89369f85cef9334943d854427b9f36b84aaa77a1ad0a1c"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-ATTESTATION-SET.json",
+      "sha256": "4d26e372104da9dd8c0b14808862c706bfde924d4be52271c9f82bbcee171118"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-APPROVAL.json",
+      "sha256": "6eef7a175751927f26fb41950f94d7c60de8b69acfab0a31148e8f5c5c78e0a7"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-PACKAGE.json",
+      "sha256": "bb40457ca9b1ed47b79b2165d855b40f2970083c260de91d8055a1ee5f369827"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-CONTINUATION.json",
+      "sha256": "8e4692096d14c4554622e6c6b3c9b659c985dbc2506651e6d3273124abbee299"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-PREPARED-SCHEMA.json",
+      "sha256": "77ba2f6e036a8a6f66cbdaad8b601585a0f921fb10654dca1579b41f5c1808fc"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-RECOVERY-HISTORY-CONTINUATION.json",
+      "sha256": "a8aabc6e9f5b5e78a057328769119cb6bc3f8fcc3ca55f71d6b85f1b0bff202f"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-SCHEMA-CONTINUATION.json",
+      "sha256": "0bc8fc02687eeb74f93f099e3b08c58559bdc335f97508fc795c60f56652270b"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-SOURCE-SCHEMA.json",
+      "sha256": "d184ad2e3d2c1f3f69ab0247ffe3e52560513330f40ea8349bd43c89f75694f3"
+    }
+  ],
+  "protected": {
+    "exactOriginalReceipts": 46,
+    "originalTableProjections": 31,
+    "sourceFilesPerTree": 1576,
+    "plansAndCalendarEvents": "all exact IDs, dates, intent, status, recipe/serving/prepared/cooked and non-cooking facts",
+    "otherPersistentFacts": "all original values, memberships, relationships, human decisions, grocery checks/baselines/extras/history unchanged"
+  },
+  "permittedSuccessorWrites": [
+    "fresh task-owned pristine/descendant original restores and only qualified v4 two-addition preparation",
+    "new task-only seven-file coverage stage/authority/detached copy/evidence",
+    "rollback-only TEMP validation; no persistent domain/receipt/journal/sidecar writes after preparation"
+  ],
+  "requiredAcceptance": [
+    "old finite owner rejects v5 before new behavior; ordinary coverage remains strict/unregistered",
+    "fresh source/package admission and full existing source-protection projection under coherent bounded lease/transaction",
+    "closed durable deterministic coverage stage and fresh-process authority reconstruction/read-back",
+    "all46 exact pairs/all31 original projections/all1576 files and plans/events preserved, NULL evidence/empty overrides",
+    "missing/corrupt/foreign/mixed/rehash/mutation/deadline/interruption/exact-retry controls, ordinary/public/demo strict",
+    "focused and full zero-required-skip PostgreSQL, stable repository checks, independent frozen code/evidence review"
+  ],
+  "excluded": [
+    "execution in this planning slice",
+    "new snapshot capture/publication/BackupRoot registration/current or demo pointer",
+    "public/DI history or recovery exception/parallel snapshot format",
+    "restore/offline recovery or publication journal",
+    "canonical migration request/inventory/admission/receipt/capability/executor; MigrationInventory/Admission/Execution unchanged",
+    "conversion/vocabulary publication/adoption/grocery reset/rebuild/activation/deploy/DV/production/UI/archive/Entire repair"
+  ],
+  "historicalWriterBuildSerializerAndOriginalWireIdentity": "unproven",
+  "ciMonitoringOwner": "Alex"
+}

@@ -1,5 +1,27 @@
 # Migrate and recover canonical recipe content
 
+## Proposed source-coverage continuation — 2026-11-15
+
+The selected full-snapshot implementation is delivered at signed `66f0fead`:
+source-dependent stage/read-back,41primary+31supplement controls,853PostgreSQL
+passes/0skips and stable repository checks. Exact terminal evidence remains
+`.task/v1-full-snapshot-implementation/delivery.json`; native conditional skips,
+mocked browser checks and unrun opt-in live/hosted checks remain separate.
+
+The [next plan](../../../docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-PLAN.md)
+and [proposed request](../../../docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-CONTINUATION.json)
+select only a prospective private source-protection projection plus durable
+coverage observation/read-back. The full package remains unregistered. A coverage-only
+v5 wrapper consumes unchanged v4 source/history authority; new coverage identities
+never enter historical context or confer write/restore/migration authority. Reuse
+existing owners, keep ordinary/public/demo strict, and leave migration inventory/
+admission/execution unchanged. No implementation occurs in this planning slice.
+The fixed original46 context cannot validate post-conversion/adoption facts.
+All31 original projections/1576files and plans/events stay protected; selected
+recovery16 and complete original-source preservation remain distinct. No publication,
+restore, migration, adoption, grocery reset/rebuild, activation or deployment.
+Aggregate migration3/8, bilingual8/10 and family33/68 remain open; Alex owns hosted CI.
+
 > **Updated delivery authority — 2026-11-12:** Workstream C preserves every planned meal and calendar event and recalculates all grocery lists under the new model. Grocery checks and checked-demand baselines may reset only within the fenced migration rebuild; manual extras, corrections, history and all other facts remain protected. Bilingual shopping identity is included in this release: its model-authored, durable versioned UTF-8 JSON vocabulary and all saved references must survive full backup/restore without AI regeneration or external dataset/network dependencies. These amendments supersede prospective idle-list and bilingual-deferral gates, not historical evidence. See the [shared release scope](../canonical-ingredient-correction/proposal.md) and [rollout owner](../canonical-ingredient-correction/rollout.md).
 
 ## Why

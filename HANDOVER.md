@@ -1,3 +1,25 @@
+# Delivered full-snapshot slice; proposed source coverage
+
+Task/spec: migrate-canonical-recipe-model, bounded under2.1–2.2/3.1–3.2 and bilingual4.2.
+Branch: recipe-view-redesign. Alex selected next2 slices: the first implementation
+is delivered; the second defines its successor plan. Signed source commit
+66f0fead has853PostgreSQL passes/0skip,41primary+31supplement controls and stable
+repository verification; terminal `.task/v1-full-snapshot-implementation/delivery.json`.
+Native conditional skips and opt-in live/physical/deployed/hosted qualification remain
+separate.46exactpairs,31originalprojections and1576files per source tree preserved;
+owned runtimes/credentials cleaned, preexisting6containers and3000 preserved.
+
+Current checkpoint: [source-coverage plan](docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-PLAN.md),
+[proposed request](docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-CONTINUATION.json)
+and [implementation prompt](.agents/prompts/dependable-portions-source-coverage-next-slice.md).
+This second slice defines private existing-owner projection/durable coverage read-back;
+no coverage execution/publication/restore/migration/adoption/rebuild/activation runs.
+New coverage identities never replace unchanged v4 source/history identities.
+Evidence `.task/v1-source-coverage-planning/` owns final review/check/signed disposition;
+pending at this write cutoff. Separate user selection is required for implementation.
+All aggregates remain open (3/8,8/10,33/68); Alex owns hosted CI. Historical provenance
+limits remain. All predecessor authority/package/evidence bytes stay unchanged.
+
 # Selected full-snapshot staging and independent inspection
 
 Alex selected the reviewed continuation after clean d2c96228 on recipe-view-redesign.

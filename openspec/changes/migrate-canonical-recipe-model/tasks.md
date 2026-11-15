@@ -1,5 +1,27 @@
 # Tasks
 
+## Proposed source-coverage continuation — 2026-11-15
+
+The selected full-snapshot implementation is delivered at signed `66f0fead`:
+source-dependent stage/read-back,41primary+31supplement controls,853PostgreSQL
+passes/0skips and stable repository checks. Exact terminal evidence remains
+`.task/v1-full-snapshot-implementation/delivery.json`; native conditional skips,
+mocked browser checks and unrun opt-in live/hosted checks remain separate.
+
+The [next plan](../../../docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-PLAN.md)
+and [proposed request](../../../docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-CONTINUATION.json)
+select only a prospective private source-protection projection plus durable
+coverage observation/read-back. The full package remains unregistered. A coverage-only
+v5 wrapper consumes unchanged v4 source/history authority; new coverage identities
+never enter historical context or confer write/restore/migration authority. Reuse
+existing owners, keep ordinary/public/demo strict, and leave migration inventory/
+admission/execution unchanged. No implementation occurs in this planning slice.
+The fixed original46 context cannot validate post-conversion/adoption facts.
+All31 original projections/1576files and plans/events stay protected; selected
+recovery16 and complete original-source preservation remain distinct. No publication,
+restore, migration, adoption, grocery reset/rebuild, activation or deployment.
+Aggregate migration3/8, bilingual8/10 and family33/68 remain open; Alex owns hosted CI.
+
 ## Current selected full-snapshot implementation — 2026-11-15
 
 Alex selected the reviewed continuation after d2c96228. Its [delivery handoff](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-DELIVERY.md)
