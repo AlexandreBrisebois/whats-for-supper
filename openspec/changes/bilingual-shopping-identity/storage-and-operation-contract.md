@@ -155,3 +155,23 @@ afterward. No dictionary regeneration/adoption, migration, publication, offline
 restore or operational source-admission authority follows. Bilingual4.2 stays open;
 see the [coverage checkpoint](../../../docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-DELIVERY.md)
 for actual qualification and remaining blockers.
+
+## Selected migration inventory and pre-write continuation
+
+The migration companion's [finite continuation](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-PLAN.md)
+extends only the directly dependent part of open4.2. Fresh original authority
+reaches existing inventory, typed references and fenced admission through an
+invocation-local internal context. Schema/history still consume unchanged v4;
+v5 remains coverage-only. Ordinary/public/demo readers remain strict. Original
+sources retain their hold bytes; the separately checked execution descendant has
+only the exact bound coordinator delta. No vocabulary creation, adoption or
+publication occurs, and absent mappings/references remain honest.
+
+The result certifies only the tested pre-write boundary. It is no persisted
+capability and does not permit a later mutator to skip fresh admission. The fixed
+original46 authority cannot validate changed post-conversion/adoption facts; that
+authority transition remains a later blocker. No migration receipt, executor,
+conversion, grocery rebuild/reset, registration, restore or activation follows.
+See the [delivery checkpoint](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-DELIVERY.md)
+and its terminal task evidence for exact qualification. Bilingual8/10 and its4.2
+remain open, with migration3/8 and family33/68 unchanged. Alex owns hosted CI.

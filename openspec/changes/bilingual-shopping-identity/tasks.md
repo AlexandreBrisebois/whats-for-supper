@@ -174,3 +174,14 @@ all protected facts, exact receipts, reference closure and strict ordinary/publi
 demo behavior. No checkboxes change:8/10, with4.2 and5.1 still open. Completed4.1
 ordinary recovery evidence remains candidate-specific and unchanged. Alex owns CI;
 Tonight tests in the failed original Chromium provisioning job never ran.
+
+## Selected migration inventory and pre-write checkpoint
+
+Only the directly dependent part of open4.2 is selected by the
+[finite companion continuation](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-PLAN.md).
+Its [delivery owner](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-DELIVERY.md)
+separates no-write inventory and tested fenced pre-write admission from execution,
+adoption, all-week rebuilding, restore and activation. No aggregate checkbox
+closes: bilingual8/10, migration3/8 and family33/68 remain open. Fixed original46
+authority cannot be widened to validate later changed facts; fresh mutator
+admission and a separately reviewed authority transition remain required.

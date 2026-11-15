@@ -306,3 +306,11 @@ complete stable-content record rather than reusing the failed/blocked run.
 ## Selected attested inventory and fenced pre-write continuation
 
 Alex selects the two sequential slices in [the finite continuation plan](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-PLAN.md): source-dependent no-write CanonicalMigrationInventory and actual fenced admission ending before the first persistent migration write. Reuse existing owners, unchanged v4 source/schema/history and coverage-only v5. The execution descendant has a separately reviewed exact hold-only lineage; untouched sources stay independently admissible. Require independently retained request/attempt bytes, fresh-process reconstruction, current-date admission, exact preservation and frozen independent reviews. No executor, receipts, conversion, adoption, rebuild, registration, restore or activation. Aggregate migration3/8, bilingual8/10 and family33/68 remain open.
+
+The [delivery checkpoint](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-DELIVERY.md)
+records signed code candidate9627c767, separate assembly/runtime/source bindings,
+complete inventory and tested fenced pre-write admission. Existing owners are
+shared through an invocation-local context; ordinary readers and the executor stay
+strict. Terminal task evidence owns actual controls, preservation, reviews,
+verification and signed delivery. No aggregate checkbox changes; the post-conversion/
+adoption authority transition and fresh later-mutator admission remain separate.
