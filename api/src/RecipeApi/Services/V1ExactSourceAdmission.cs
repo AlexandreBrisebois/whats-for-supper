@@ -83,6 +83,21 @@ internal sealed partial class V1ExactSourceAdmission
                 resultPostgresTextUtf8 = Utf8.GetBytes(x.Result)
             }).ToArray()
         });
+        if (IsSchemaContinuation(intent))
+        {
+            var continuation = Document(intent);
+            _lineage = JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                version = 2,
+                originalLineage = _lineage,
+                predecessorIntent = ExactFile(Path.Combine(repositoryRoot, PolicyDirectory, "V1-ADMISSION-INTENT.json"), IntentSha256),
+                sourceSchema = BoundArtifact(repositoryRoot, continuation.GetProperty("sourceSchema")),
+                preparedSchema = BoundArtifact(repositoryRoot, continuation.GetProperty("preparedSchema")),
+                schemaInputs = continuation.GetProperty("schemaInputs").EnumerateArray()
+                    .Select(x => new { path = x.GetProperty("path").GetString(), bytes = BoundArtifact(repositoryRoot, x) }).ToArray(),
+                transitionUtf8 = Utf8.GetBytes(SchemaTransition(repositoryRoot, continuation))
+            });
+        }
     }
 
     internal byte[] LineageBytes => _lineage.ToArray();
@@ -94,8 +109,9 @@ internal sealed partial class V1ExactSourceAdmission
         ct.ThrowIfCancellationRequested();
         Require(intentBytes.AsSpan().SequenceEqual(_intent) && lineageBytes is not null
             && lineageBytes.AsSpan().SequenceEqual(_lineage), "missing or changed recovery lineage/request");
-        var set = LoadPolicy(_repositoryRoot, intentBytes);
+        var set = LoadAdmissionPolicy(_repositoryRoot, intentBytes);
         VerifyGeneration(_repositoryRoot, Document(intentBytes));
+        if (IsSchemaContinuation(intentBytes)) VerifyPreparationReceipt(_repositoryRoot, Document(intentBytes));
         await VerifyBackupAsync(_repositoryRoot, set, ct);
         Require(_operations.TryGetValue((recipeId, operationId), out var operation)
             && operation.InputHash == inputHash, "historical replay binding differs");
@@ -143,7 +159,7 @@ internal sealed partial class V1ExactSourceAdmission
     {
         // Own the read-only transaction: an existing transaction cannot confer authority.
         var intent = Document(intentBytes);
-        var set = LoadPolicy(repositoryRoot, intentBytes);
+        var set = LoadAdmissionPolicy(repositoryRoot, intentBytes);
         Require(connection.Database == intent.GetProperty("databaseName").GetString()
             && Path.GetFullPath(copyDataRoot) == Path.GetFullPath(Path.Combine(repositoryRoot, intent.GetProperty("copyDataRelativePath").GetString()!)),
             "unreviewed copy destination");
@@ -151,21 +167,27 @@ internal sealed partial class V1ExactSourceAdmission
         await VerifyBackupAsync(repositoryRoot, set, ct);
         await using var transaction = await connection.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct);
         await RecoverySnapshotService.ScalarAsync(connection, "SET TRANSACTION READ ONLY", ct);
+        await RecoverySnapshotService.ScalarAsync(connection, "SET LOCAL search_path = pg_catalog, public, pg_temp", ct);
         Require(await RecoverySnapshotService.ScalarAsync(connection, "SHOW server_version_num", ct) == "180006"
             && await RecoverySnapshotService.ScalarAsync(connection, "SHOW server_encoding", ct) == "UTF8"
             && await RecoverySnapshotService.ScalarAsync(connection, "SHOW client_encoding", ct) == "UTF8", "unsupported extraction profile");
         var backup = set.GetProperty("backup").GetProperty("files");
         var readback = Document(ExactFile(Path.Combine(repositoryRoot, backup[3].GetProperty("path").GetString()!), backup[3].GetProperty("sha256").GetString()!));
-        var tables = readback.GetProperty("tables");
-        var names = (await RecoverySnapshotService.ScalarAsync(connection,
-            "SELECT string_agg(tablename,',' ORDER BY tablename) FROM pg_tables WHERE schemaname='public'", ct)).Split(',');
-        Require(names.SequenceEqual(tables.EnumerateObject().Select(x => x.Name).Order(StringComparer.Ordinal)), "source table membership differs");
-        foreach (var table in tables.EnumerateObject())
+        if (IsSchemaContinuation(intentBytes))
+            await VerifySchemaDescendantAsync(repositoryRoot, connection, intent, readback, requireCompletion: true, ct);
+        else
         {
-            // Table identifiers come only from the immutable reviewed readback.
-            var digest = await RecoverySnapshotService.ScalarAsync(connection,
-                $"SELECT count(*)::text||'|'||md5(coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text)::text,'[]')) FROM public.\"{table.Name}\" t", ct);
-            Require(digest == table.Value.GetString(), "copy lineage differs: " + table.Name);
+            var tables = readback.GetProperty("tables");
+            var names = (await RecoverySnapshotService.ScalarAsync(connection,
+                "SELECT string_agg(tablename,',' ORDER BY tablename) FROM pg_tables WHERE schemaname='public'", ct)).Split(',');
+            Require(names.SequenceEqual(tables.EnumerateObject().Select(x => x.Name).Order(StringComparer.Ordinal)), "source table membership differs");
+            foreach (var table in tables.EnumerateObject())
+            {
+                // Table identifiers come only from the immutable reviewed readback.
+                var digest = await RecoverySnapshotService.ScalarAsync(connection,
+                    $"SELECT count(*)::text||'|'||md5(coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text)::text,'[]')) FROM public.\"{table.Name}\" t", ct);
+                Require(digest == table.Value.GetString(), "copy lineage differs: " + table.Name);
+            }
         }
         await VerifyCopyFilesAsync(repositoryRoot, copyDataRoot, backup[2], ct);
         if (checkpoint is not null) await checkpoint.ReachedAsync("v1-attestation-lineage-observed", ct);
@@ -175,7 +197,7 @@ internal sealed partial class V1ExactSourceAdmission
         ct.ThrowIfCancellationRequested();
         await VerifyCopyFilesAsync(repositoryRoot, copyDataRoot, backup[2], ct);
         // Evidence cannot change between qualification and context construction.
-        _ = LoadPolicy(repositoryRoot, intentBytes);
+        _ = LoadAdmissionPolicy(repositoryRoot, intentBytes);
         await VerifyBackupAsync(repositoryRoot, set, ct);
         VerifyGeneration(repositoryRoot, intent);
         var result = new V1ExactSourceAdmission(repositoryRoot, set, intentBytes, operations);

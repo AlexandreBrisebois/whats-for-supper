@@ -59,3 +59,21 @@ Other history, full-source/schema/file admission and current-format recovery ret
 their existing strict owners. Attestation-gate acceptance is separate from complete
 source admission; a subsequent blocker stops this slice. No migration, publication,
 conversion, all-week rebuild, activation or deployment is authorized here.
+
+
+## Selected schema-only descendant continuation
+
+The separately authorized November14 continuation permits only the exact nullable
+`recipes.food_mapping_evidence` column (all SQL NULL) and the empty
+`household_food_overrides` table plus reviewed constraints/indexes on a task-owned
+disposable descendant. Its pinned intent binds the immutable predecessor,
+approval/package/source, operation/generation/request and reviewed schema inputs.
+Every original column/value, row membership, identity/relationship and file remains
+protected against the original authority. Expected schema differences are declared
+from the pristine source and existing DDL owners before descendant modification;
+whole-row recapture cannot create new authority. Transactional preparation and
+exact revalidation gate completion and retry. Missing/corrupt/interrupted evidence,
+partial schema, unexpected new values or any protected change fails closed.
+Existing history/reference inventory stays strict. RemainingInventoryValidated is
+separate from complete source admission and current-format snapshot acceptance;
+no adoption, conversion, publication, rebuild, activation or deployment follows.

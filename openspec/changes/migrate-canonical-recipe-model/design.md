@@ -182,3 +182,20 @@ Alex reports no recipe edits through the UI and says Dreaming has kept disk and 
 Separate conversion status, committed facts, pending derived rebuild and completed verification. Record no sensitive raw recipe/provider payload in routine logs. A failure preserves prior usable content; a conflict is neither empty success nor forced replacement. Test current-format merge stale/divergent content, identical revision with different bytes, crash/restart, stale work, mixed old clients and media publication gaps before release.
 
 See the shared [dependency/conflict review](../canonical-ingredient-correction/review.md) for approval and release order, and [acceptance corpus](../canonical-ingredient-correction/acceptance-corpus.md) for preservation cases. Proposed API/schema details have one owner in [contracts.md](../canonical-ingredient-correction/contracts.md).
+
+
+## Bounded schema-only descendant continuation
+
+The November14 selection extends the existing internal V1 admission owner with a
+separately pinned continuation. The original intent/policy/approval and source
+readback remain unchanged. Preserve original-column row digests by explicit
+projection from the independently verified pristine catalog, while matching the
+entire resulting catalog to the independently assembled expected descriptor.
+Apply only extracted reviewed compatibility DDL in one transaction. Admission
+independently requires complete schema, unchanged original rows/files and exact
+receipts plus completion evidence; an interrupted or forged marker is insufficient.
+Exact retry recognizes only pristine or fully prepared state, never partial state.
+This avoids recapturing changed whole rows as authority or normalizing unrelated
+old constraints. A broad schema migration is excluded because it includes data
+rewrites and destructive transitions. The existing strict inventory remains the
+next owner, with schema/attestation/inventory/full recovery reported separately.

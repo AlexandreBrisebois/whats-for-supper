@@ -284,5 +284,31 @@
     "historicalWriterOrResultWireProofEstablished": false,
     "aggregateTasksClosed": [],
     "migrationConversionPublicationRebuildActivationDeployment": "not-run; excluded"
+  },
+  "selectedSchemaLineageContinuation": {
+    "entryCommit": "fc43971c47be366f5d9a157501ac27047654c2e3",
+    "intentPath": "docs/handoffs/dependable-portions-next-slice/V1-SCHEMA-CONTINUATION.json",
+    "intentSha256": "0bc8fc02687eeb74f93f099e3b08c58559bdc335f97508fc795c60f56652270b",
+    "sourceDatabase": "wfs_v1_schema_pristine",
+    "descendantDatabase": "wfs_v1_schema_descendant",
+    "schemaPreparation": "passed",
+    "originalTablesPreserved": 31,
+    "filesPreservedPerTree": 1576,
+    "attestationAccepted": 46,
+    "ordinaryStrictRejected": 46,
+    "negativeControlsRejected": 71,
+    "positiveControls": 2,
+    "remainingInventoryValidated": true,
+    "completeSourceAdmission": false,
+    "currentFormatRecovery": "blocked",
+    "nextBlocker": "Original canonical operation is inconsistent.",
+    "nextBlockerOwner": "FoodVocabularyStore.ObserveRecoveryAsync",
+    "evidenceOwner": ".task/v1-schema-20261114/",
+    "terminalDeliveryRecord": ".task/v1-schema-20261114/delivery.json",
+    "finalVerificationAtDocumentCutoff": "pending; consult invocation-specific terminal records",
+    "originalImmutableAuthorityChanged": false,
+    "historicalWriterOrWireProofEstablished": false,
+    "aggregateTasksClosed": [],
+    "excludedOperations": "migration/conversion,publication/adoption,rebuild,activation,deployment,DV/production,archival not-run"
   }
 }

@@ -25,6 +25,7 @@ public partial class RecoverySnapshotService
             // is returned separately from acceptance of the 46-receipt gate.
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct);
             await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY", ct);
+            await db.Database.ExecuteSqlRawAsync("SET LOCAL search_path = pg_catalog, public, pg_temp", ct);
             var facts = await vocabulary.ObserveInventoryFactsAsync(ct);
             _ = FoodVocabularyInventoryQualification.RequiredReferencesForAttestedSource(facts, attestation);
             await transaction.CommitAsync(ct);

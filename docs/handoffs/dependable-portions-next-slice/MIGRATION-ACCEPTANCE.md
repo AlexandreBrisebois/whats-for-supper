@@ -1,5 +1,94 @@
 # Portions coverage and copied-library admission
 
+## Schema-only descendant lineage and strict inventory — 2026-11-14
+
+Entered clean at expected local/remote `fc43971c47be366f5d9a157501ac27047654c2e3`.
+The user separately authorized this schema/lineage implementation and audited
+schema-only changes on owned disposable copies. Normal signed commits/pushes are
+authorized; Alex owns CI. Frozen policy, approval/package, predecessor intent,
+original backups, receipts and prior review/evidence bytes remain unchanged.
+Historical writer/build/serializer identity and original result wire bytes remain
+unproven; the approved exact source remains present-day authority.
+
+The [separate continuation](V1-SCHEMA-CONTINUATION.json), SHA256 `0bc8fc02687eeb74f93f099e3b08c58559bdc335f97508fc795c60f56652270b`,
+binds the immutable predecessor, approval/package/dump, new recovery operation,
+target generation/request, complete schema input hashes and independently
+established source/prepared catalogs. The source catalog was captured only after
+verifying the pristine restore against all original table/file authorities. The
+expected catalog was assembled from that unchanged source plus reviewed existing
+DDL exercised in a separate empty reference database, before modifying the
+descendant. The descendant was never recaptured as original authority.
+
+The entire permitted delta is nullable JSONB `recipes.food_mapping_evidence`
+(no default, all SQL NULL) plus an empty `household_food_overrides` table with
+13 columns, its primary key, four CHECKs and three additional unique indexes.
+PostgreSQL18 records 11 new constraint entries: five logical PK/CHECK constraints
+plus six NOT NULL entries. The primary-key index makes four new indexes in total.
+Exact compatibility sections are extracted by pinned offsets and hashes; broad
+`compatibility.sql`/`migrate.sh`/sqldef execution is excluded because those owners
+also perform unrelated destructive/data-changing work. No schema owner was
+changed. Original older constraints and unmapped columns remain protected.
+
+Preparation uses the existing PostgreSQL/recovery owners, one transaction and
+original-table locks; retry accepts only exact pristine or exact fully prepared
+state. The catalog checks original columns, ordinals/types/defaults/nullability/
+identity/collation, constraints, indexes, internal FK triggers, rules, policies,
+functions, namespaces, types/enums/operators/casts/collations, sequences and
+extension versions. Read paths use `pg_catalog, public, pg_temp`; public creation
+is selected only around the reviewed DDL after pristine validation. Every original
+column/value and row membership is compared through the pristine projection
+against the approved original digests; new evidence and override state are
+checked independently. Completion evidence is published only after commit and
+durable Linux flush. A marker alone cannot confer authority. Inspection and
+replay revalidate required completion/authority evidence; replay never rewrites
+current facts. Unsupported hosts reject preparation before DDL.
+
+**Schema preparation passed.** Fresh source `wfs_v1_schema_pristine` and separate
+descendant `wfs_v1_schema_descendant` ran on owned PostgreSQL18.6. Both preserve
+all31 original table projections and all1,576 original files; new evidence is SQL
+NULL and overrides empty. Original46 request/input/result/hash/timestamp/identity
+pairs are preserved using PostgreSQL18.6 `result::text` UTF-8 extraction.
+**Attestation accepted46/46; ordinary strict readers rejected46/46.**
+**RemainingInventoryValidated passed** through the existing read-only recovery
+inspection owner, including re-admission after its inventory read.
+
+**Complete source admission/current-format recovery remain blocked.** The next
+existing read-only prerequisite used by snapshot capture,
+`FoodVocabularyStore.ObserveRecoveryAsync`, rejects unchanged original V1 history
+with `Original canonical operation is inconsistent.` The exact stack is retained
+in `.task/v1-schema-20261114/next-recovery-blocker.txt`. No snapshot capture,
+migration, receipt rewrite or extension of the exception into current-format
+history followed. A successful remaining-inventory boolean is not complete source
+admission or a valid current-format recovery snapshot.
+
+Test-first boundary RED is `lineage-red.log` (the existing strict gate rejects the
+new continuation before implementation); initial GREEN is `lineage-green-v2.log`.
+Final Linux qualification retains 71 rejected controls and 2 positive
+controls, including transactional rollback, committed-before-marker interruption,
+exact retry/resume, foreign operation/generation, altered protected facts/receipt
+membership/schema/evidence, shadow schemas/types/FK triggers, missing/corrupt
+bound evidence and replay preserving later current facts/original receipts.
+Evidence owner `.task/v1-schema-20261114/`: `qualification-linux.log`,
+`negative-controls.json`, `receipts.json`, `recovery-lineage.json`,
+`qualification-runtime.json`, `inventory.json` and `preservation.json`.
+
+Failed invocations remain separate: missing durability namespace was a build
+failure; initial native preparation hit the existing Linux-only fsync owner;
+two detached negative fixture statements were invalid SQL; a focused PostgreSQL
+invocation detected concurrent content changes and is not final-identity success.
+Final independent frozen review, affected/full PostgreSQL, repository preparation/
+verification, signed delivery, ref/hash checks and owned cleanup have their exact
+terminal records in `.task/v1-schema-20261114/delivery.json`. They were pending at
+this document's write cutoff and are not asserted passed here. Browser checks use
+a task-owned isolated source/build/port; port3000 and preexisting resources remain
+protected. No aggregate checkbox closes (migration3/8, bilingual8/10).
+
+No migration/conversion, household changes, vocabulary publication/adoption,
+all-week rebuild, activation, deployment, DV/production, later intake, Similar,
+garlic, adjacent UI, archival or unrelated cleanup is authorized or performed.
+Predecessor sections below retain their historical scope and evidence.
+
+
 ## Exact-source V1 attestation implementation — 2026-11-14
 
 Entered clean at expected local/remote `78fba6dc8b863d6e9e15f6f0ed939cfde2c550e9`.

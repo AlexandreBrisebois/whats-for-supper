@@ -1,37 +1,44 @@
 # Tasks
 
-## Current selected delivery — 2026-11-14
+## Current selected schema/lineage delivery — 2026-11-14
 
-Using change `migrate-canonical-recipe-model` (wfs schema, 3/8 complete).
-The 2026-11-14 user continuation separately authorizes implementation and
-qualification of the approved exact-source V1 validator and bounded internal
-read-only source admission beneath open 2.1–2.2/3.1–3.2 and bilingual 4.2.
-Normal signed commits/pushes are authorized; Alex owns CI.
+Using change `migrate-canonical-recipe-model` (wfs, 3/8 complete). The user
+separately authorizes schema-only preparation and demonstrated lineage for a fresh
+disposable descendant of the approved exact source, then strict read-only inventory,
+beneath open 2.1–2.2/3.1–3.2 and bilingual 4.2. Normal signed commits/pushes are
+authorized; Alex owns CI. No aggregate checkbox closes.
 
-The frozen proposal, approval, membership and historical evidence remain immutable.
-The [approved package](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-PACKAGE.json)
-and [approval](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-APPROVAL.json)
-replace missing historical provenance only for the exact four-artifact backup and
-46 receipt/result pairs. The active bilingual storage contract and recovery delta
-now state the finite exception; ordinary V1/public parsing remains strict.
+Preserve the frozen policy/package/approval, original predecessor intent, all four
+backup artifacts, all 46 receipts and predecessor reviews/evidence. Source authority
+remains the approved original rows/files, never a recaptured descendant baseline.
+The separately reviewed [continuation](../../../docs/handoffs/dependable-portions-next-slice/V1-SCHEMA-CONTINUATION.json)
+binds the new operation/generation/request, predecessor, exact schema inputs and
+catalogs. Only the existing compatibility owner's nullable JSONB
+`recipes.food_mapping_evidence` and empty `household_food_overrides` table with its
+constraints/indexes may be added. New evidence stays SQL NULL. Do not execute the
+broad migration entrypoint, seed, convert or adopt data.
 
-Selected acceptance: test-first RED/GREEN; exact-byte historical validation; fresh
-task-owned restore of all 46 originals; fail-closed negative detached copies;
-operation/generation/request-bound replay and missing/interrupted evidence;
-independent read-only implementation/evidence review; focused history, public
-duplicate, publication/recovery and real PostgreSQL checks; full PostgreSQL and
-repository preparation/verification. Evidence owner `.task/v1-attestation-20261114/`.
-Report the attestation gate separately from complete source admission. A new
-source-admission blocker remains a blocker and stops expansion. No aggregate
-checkbox closes in this slice. No migration/conversion, vocabulary publication,
-all-week rebuild, activation, deployment or adjacent work.
+Selected acceptance: test-first RED/GREEN; independently verified pristine
+PostgreSQL18.6 restore; exhaustive original-column/row/relationship/file comparison;
+transactional preparation and exact retry/resume; rejection of foreign lineage,
+unreviewed SQL/schema, protected changes, missing/corrupt/interrupted evidence;
+all46 exact historical pairs and unchanged ordinary/public rejection; existing
+strict inventory with next independent blocker retained; independent read-only
+review of frozen implementation/evidence; focused and full PostgreSQL plus final
+repository preparation/verification on stable source. Evidence owner:
+`.task/v1-schema-20261114/`. Port3000 and preexisting resources remain protected;
+required browser checks use a task-owned source/build/port.
 
-Current checkpoint: attestation gate accepted46/46 on a fresh exact PostgreSQL18.6
-restore; ordinary readers still reject46. The existing strict source inventory
-then blocks on PostgreSQL42703 (`recipes.food_mapping_evidence` absent). No schema
-fix or migration follows. Exact qualification, independent immutable review and
-final verification/delivery records remain under the selected evidence owner;
-no aggregate checkbox changes.
+Schema preparation, attestation, remaining inventory and complete source admission
+are distinct results. Inventory success is not a current-format recovery snapshot.
+Stop at the next independent blocker without weakening owners or expanding into
+migration/conversion, vocabulary publication/adoption, all-week rebuild, activation,
+deployment, DV/production, later intake, Similar, garlic, adjacent UI or archival.
+
+Predecessor attestation checkpoint remains immutable under
+`.task/v1-attestation-20261114/`: accepted46/46, ordinary rejected46; strict inventory
+blocked on PostgreSQL42703 (`recipes.food_mapping_evidence` absent). Historical
+writer/build/serializer identity and original result wire bytes remain unproven.
 
 ## Historical coordinated release policy — 2026-11-11
 

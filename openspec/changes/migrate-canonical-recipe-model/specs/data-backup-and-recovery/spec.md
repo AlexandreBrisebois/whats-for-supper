@@ -454,3 +454,29 @@ It SHALL retain ordinary strict V1 and public duplicate rejection unchanged.
 - **WHEN** the same reviewed source/operation/generation/policy/request is replayed with complete retained lineage
 - **THEN** only the validated historical outcome is returned without applying edits to current live facts
 - **AND** interrupted or missing-evidence preflight grants no authority; other admission blockers remain strict and stop the slice
+
+
+### Requirement: Prove schema-only descendant lineage before source inspection
+
+An internal, separately pinned continuation SHALL bind the immutable predecessor,
+approval/package/source, new operation/generation/request and reviewed schema
+inputs/catalogs. Preparation SHALL preserve every original fact, file and receipt.
+It SHALL add only SQL NULL `recipes.food_mapping_evidence` and empty
+`household_food_overrides` with declared constraints/indexes. Expected differences
+SHALL come from the pristine source and reviewed DDL. Ordinary V1/public readers
+SHALL remain strict.
+
+#### Scenario: Complete transactional schema preparation and exact retry
+- **WHEN** a verified fresh descendant receives precisely the reviewed schema transition
+- **THEN** all original projected rows/files and all46 exact receipts remain unchanged and new storage has its declared initial state
+- **AND** an exact retry verifies the complete authoritative state before returning completion, with no new data adoption
+
+#### Scenario: Interrupted or altered preparation
+- **WHEN** SQL/schema, source/generation/request, original facts, membership, required evidence or new initial state differs, or preparation stops partway
+- **THEN** admission fails closed; a marker alone cannot grant authority and partial preparation cannot become a new original baseline
+- **AND** interrupted transactional DDL rolls back or exact committed state is independently revalidated before completion evidence is published
+
+#### Scenario: Strict remaining inventory after prepared admission
+- **WHEN** schema prerequisites and exact-source attestation pass
+- **THEN** the existing read-only inventory and all other history/reference owners remain strict and any next independent blocker is retained
+- **AND** remaining-inventory success does not establish complete source admission or a valid current-format recovery snapshot

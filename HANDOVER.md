@@ -1,5 +1,28 @@
 # Active resume checkpoints
 
+## Schema-only V1 descendant lineage (2026-11-14)
+
+Task/spec: bounded migration2.1–2.2/3.1–3.2, bilingual4.2; aggregate boxes open.
+Worktree/branch: clean entry `fc43971c`, local `recipe-view-redesign`.
+Authorized scope/source: schema-only disposable descendant and strict read-only
+inventory; normal signed commits/pushes; Alex owns CI. Original frozen authority
+and all prior receipt/evidence bytes stay unchanged.
+Checkpoint: independently verified pristine PostgreSQL18.6 source; exact reviewed
+nullable evidence column and empty overrides table only; original31 table
+projections and1,576 files preserved. Attestation46/46 and remaining inventory pass;
+ordinary readers reject46. Transactional interruption/exact retry and71negative
+controls pass; historical current-fact replay stays read-only. Complete source
+admission/current-format recovery are blocked by existing read-only
+`ObserveRecoveryAsync`: `Original canonical operation is inconsistent.`
+Evidence/identity: [handoff](docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md),
+separate pinned continuation `0bc8fc02687eeb74f93f099e3b08c58559bdc335f97508fc795c60f56652270b`;
+`.task/v1-schema-20261114/delivery.json` owns final independent frozen review,
+checks, signatures/refs and cleanup (pending at this document cutoff).
+Stop: no migration/conversion, publication/adoption, all-week rebuild, activation,
+deployment, DV/production or archival; port3000/preexisting resources protected.
+Predecessor checkpoint below remains historical and unchanged.
+
+
 ## Exact-source V1 attestation (2026-11-14)
 
 Task/spec: bounded migration 2.1–2.2/3.1–3.2 and bilingual 4.2, aggregate boxes open.
