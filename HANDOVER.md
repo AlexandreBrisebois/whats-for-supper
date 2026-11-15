@@ -1,3 +1,25 @@
+# Selected source-coverage observation
+
+Task/spec: migrate-canonical-recipe-model under open2.1–2.2/3.1–3.2 and bilingual4.2.
+Worktree/branch: recipe-view-redesign, clean entry `11c87157`.
+Authorized scope/source: reviewed coverage continuation selected by Alex; bounded
+implementation, fresh disposable copies/evidence/reviews, signed commit/push and
+owned cleanup. Hosted CI monitoring/reruns remain Alex's.
+Current checkpoint: [coverage delivery](docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-DELIVERY.md),
+terminal evidence `.task/v1-source-coverage-implementation/delivery.json`.
+Source/package admission, seven-file coverage stage and fresh-process read-back
+passed. Exact control/preservation/review/repository/signed delivery and cleanup
+outcomes belong to that terminal evidence. Full PostgreSQL857/0skips, OpenSpec44
+and the harness passed on prepared code; hosted/live qualification stays separate.
+Caller-retained attempt bytes precede observation and
+anchor exact detached time/representation; self-consistent time replacement was
+reproduced before correction. Existing v4 authority and predecessor evidence stay
+unchanged; no aggregate tasks close (3/8,8/10,33/68).
+Next strict boundary: ordinary unregistered BackupRoot lookup and strict original
+history remain independent of coverage evidence. No publication, restore/offline
+recovery, complete operational source admission, migration/conversion/adoption,
+grocery reset/rebuild, activation/deploy/DV/production/UI/archive or Entire repair.
+
 # Delivered full-snapshot slice; proposed source coverage
 
 Task/spec: migrate-canonical-recipe-model, bounded under2.1–2.2/3.1–3.2 and bilingual4.2.

@@ -14,7 +14,7 @@ internal sealed record V1SnapshotStageInspection(Guid SnapshotId, Guid Operation
 public partial class RecoverySnapshotService
 {
     private sealed record AttestedSnapshotInspection(V1SnapshotStageInspection Identity, CurrentSnapshotSource Snapshot,
-        string Envelope, IReadOnlyDictionary<string, byte[]> AuthorityBytes);
+        string Envelope, IReadOnlyDictionary<string, byte[]> AuthorityBytes, AttestedCoverageInspection? Coverage = null);
     private sealed record V1SnapshotAttempt(int Version, string RequestSha256, DateTimeOffset CapturedAt);
     private static readonly string[] SnapshotAuthorityFiles = ["attempt.json", "source-lineage.json", "source-inventory.json", "preparation-complete"];
 
@@ -34,6 +34,8 @@ public partial class RecoverySnapshotService
         duration.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(configuration.GetValue("Recovery:MaxFreezeSeconds", 30), 1, 3600)));
         ct = duration.Token;
         RequireAttestedHistoryConfiguration(copyDataRoot);
+        var observedRoot = recipes.Root;
+        var observedGeneration = recipes.Generation;
         var intent = V1ExactSourceAdmission.FullSnapshotPolicy(repositoryRoot, request);
         await using var lease = await boundary.EnterAsync(RecoveryAccess.Snapshot, ct);
         using var binding = boundary.BindLease(lease);
@@ -59,6 +61,9 @@ public partial class RecoverySnapshotService
         await RequireUnchangedSnapshotAsync(result.Snapshot, ct);
         RequireSnapshotEnvelope(result.Envelope, complete: true);
         await RequireRetainedHistoryArtifactsAsync(result.Envelope, result.AuthorityBytes, ct);
+        if (result.Coverage is not null)
+            await RequireRetainedCoverageAsync(result.Coverage, ct);
+        FoodVocabularyDefinitions.Require(observedRoot == recipes.Root && observedGeneration == recipes.Generation);
         await transaction.RollbackAsync(ct);
         return result.Identity;
     }

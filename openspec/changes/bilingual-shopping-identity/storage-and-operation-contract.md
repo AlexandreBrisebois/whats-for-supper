@@ -138,3 +138,20 @@ execution unchanged. The selected recovery16 is distinct from original31/all1576
 protection. Fixed original46 authority cannot admit changed post-adoption data.
 No vocabulary generation/publication/adoption, source sidecar rewrite, restore,
 grocery reset/rebuild or migration runs. Existing aggregates and hosted gates remain open.
+
+
+## Selected task-owned source-coverage observation
+
+The separately selected coverage observer consumes the unchanged v4 full snapshot
+and finite original46 context through existing source/snapshot/projection owners.
+Its coverage-only v5 request and operation/generation never enter schema/history
+context. Caller-retained request-bound attempt bytes are invocation input, chosen
+and retained before observation; stage/retry/detached read-back compare those exact
+bytes independently of the envelope's own timestamp/hashes. The closed seven-file
+coverage format and complete original31/all1576 preservation remain separate from
+the selected16 recovery projection. Missing/foreign/mutated authority fails closed,
+including mutations during final source re-admission; retained bytes are checked
+afterward. No dictionary regeneration/adoption, migration, publication, offline
+restore or operational source-admission authority follows. Bilingual4.2 stays open;
+see the [coverage checkpoint](../../../docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-DELIVERY.md)
+for actual qualification and remaining blockers.

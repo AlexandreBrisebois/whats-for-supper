@@ -563,3 +563,9 @@ confer migration, maintenance, restore or write authority.
 - **WHEN** bound source/package/request/coverage inputs are missing/corrupt or identities, bytes, contexts or protected facts change, including during final re-admission
 - **THEN** incomplete state grants no authority and all retained before-image bytes are rechecked after the final source check
 - **AND** interruption/lost reply resumes only the same verified attempt/time/bytes; foreign pending state and divergent completed retry reject without overwriting facts
+
+
+#### Scenario: Coverage attempt continuity across process boundaries
+- **WHEN** the task-owned caller retains one exact request-bound attempt input before observation and later retries or reads a detached completed envelope
+- **THEN** the internal observer requires those independently retained exact bytes before source/history observation and compares all staged/detached attempt bytes to them
+- **AND** changed time or representation rejects even if all detached hashes are recomputed; both envelopes remain the same closed seven-file format without new migration or restore authority

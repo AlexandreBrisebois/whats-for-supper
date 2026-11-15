@@ -1,5 +1,34 @@
 # Tasks
 
+## Selected source-coverage observation — 2026-11-15
+
+Alex selected the reviewed coverage-only continuation on `recipe-view-redesign`
+after `11c87157`. The [delivery checkpoint](../../../docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-DELIVERY.md)
+records this bounded implementation beneath open2.1–2.2/3.1–3.2 and bilingual4.2.
+Immutable v5 request bytes select only the task-owned observer; unchanged v4 bytes
+still own schema preparation and original source/history identities. Existing full
+snapshot validation and `ProjectSourceProtection` supply the projection. The
+source package is consumed unchanged, without recapture or registration.
+
+The caller independently retains exact attempt input bytes before observation.
+The internal observer requires that same input for staging, retry and detached
+read-back, and retains it before entering the shared source/history observation.
+A staged or detached time cannot become its own retry authority, even after
+self-consistent rehashing. Both coverage envelopes retain exactly seven files;
+caller invocation evidence grants no source, migration or restore authority.
+Original31 projections/all1576 files/exact46 receipt pairs remain distinct from
+selected recovery16. Independent read-only admission remains separate from the
+outer SHARE-lock/read transaction; TEMP validation rolls back. Final source
+re-admission precedes retained package and coverage before-image comparison.
+
+No aggregate checkbox closes: migration3/8, bilingual8/10 and family33/68 stay open.
+Ordinary/public/demo readers and migration inventory/admission/execution remain
+strict. Publication, pointer selection, offline recovery, complete operational
+source admission, restore, conversion/adoption/rebuild, activation/deployment/UI
+and archival are excluded. Historical writer/build/serializer/original wire
+identity remains unproven. Alex owns hosted CI monitoring and reruns.
+
+
 ## Proposed source-coverage continuation — 2026-11-15
 
 The selected full-snapshot implementation is delivered at signed `66f0fead`:
