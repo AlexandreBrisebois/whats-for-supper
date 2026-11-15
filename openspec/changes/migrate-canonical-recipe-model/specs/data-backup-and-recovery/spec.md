@@ -584,3 +584,26 @@ The separately selected [finite continuation](../../../../../docs/handoffs/depen
 - **WHEN** the actual operator session and revocable maintenance Write capability admit the inventory
 - **THEN** all source/baseline/selection/week/reference facts are reconstructed under the real fence and retained bytes are reread after final source validation
 - **AND** stale date, foreign bindings, revoked ownership, changed facts or interruption fail before every migration receipt/conversion/rebuild; success grants no later mutator capability
+
+
+### Requirement: Separate original and single-recipe successor authority
+
+The prospective [finite transition](../../../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-CONTRACT.md)
+SHALL keep unchanged v4 source authority separate from execution, original46
+membership fixed and ordinary readers strict. Exact new plan/V2 authority SHALL
+use existing typed owners. This planning selection SHALL NOT authorize execution.
+
+#### Scenario: Fresh baseline to one converted recipe
+- **WHEN** a later separately selected implementation admits fresh candidate-bound source, corpus221 and selected1 inventories and proves existing-converter eligibility before any receipt write
+- **THEN** its separate complete source/execution service/database/root graphs and actual maintenance/session/lease/transaction owners may retain one ordinary inert plan and commit exactly one converter V2/recipe/search delta
+- **AND** source/database/roots/schema/date/selection and independently retained producer bytes are explicit; no original receipt or other protected fact changes
+
+#### Scenario: New process reconciles exact successor state
+- **WHEN** a new process reads the exact retained request/attempt/inventory/producer witnesses and freshly re-admits original source
+- **THEN** it validates fixed46 plus exact authorized typed successor closure, raw PostgreSQL representations and only the declared execution delta
+- **AND** it stops before all week receipts/rebuilds, vocabulary adoption, snapshot publication, restore, reopening or activation
+
+#### Scenario: Incomplete or divergent transition authority
+- **WHEN** a request, candidate, schema, root/database, date, inventory, selection, receipt text, producer witness or protected fact differs, authority is missing/mixed/foreign/rehashed, ownership is lost or execution is interrupted
+- **THEN** no journal or old pre-write observation grants authority; fresh-process classification precedes exact retry and divergent state rejects without historical edits or repeated conversion
+- **AND** final original re-admission precedes retained-byte checks before commit; postcommit divergence blocks acceptance rather than claiming rollback

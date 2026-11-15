@@ -1,3 +1,27 @@
+# First single-recipe authority-transition planning
+
+Task/spec: migrate-canonical-recipe-model beneath open2.1–2.2/3.1–3.2 and
+dependent bilingual4.2. Worktree/branch: recipe-view-redesign; clean entry/local/
+remote `f38d92677e2fd1dcaca16779de6958aa8d258eab`.
+Authorized scope/source: Alex's pasted planning/read-only request; bounded planning
+artifacts/evidence/independent reviews and normal signed commits/pushes only.
+Current checkpoint: [finite contract](docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-CONTRACT.md),
+[source map](docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-SOURCE-MAP.md),
+[acceptance plan](docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-IMPLEMENTATION.md)
+and [future prompt](.agents/prompts/dependable-portions-authority-transition-implementation.md).
+Verification/evidence: `.task/v1-authority-transition-20261115/` owns retained
+prerequisite audit, frozen planning reviews, exact check records and signed delivery.
+Final delivery/check/review records there own observed status; this note grants no
+runtime qualification. Prerequisites independently verified as retained evidence;
+removed pre-write runtimes and delivered candidate remain historical.
+Next: separately select implementation of A/B/C/D only, after verifying final
+planning evidence/refs. Separate complete original source/execution graphs, fixed46
+plus exact successor typed authority, converter eligibility before plan, independent
+producer bytes and fresh-process reconciliation are required. Stop before every
+week rebuild; all grocery/plan/event/human/history facts stay unchanged.
+No aggregate closure (3/8,8/10,33/68), sync/archive, activation or Entire repair.
+Alex owns hosted CI/reruns; historical writer/build/serializer/wire remain unproven.
+
 # Selected source-coverage observation
 
 Task/spec: migrate-canonical-recipe-model under open2.1–2.2/3.1–3.2 and bilingual4.2.

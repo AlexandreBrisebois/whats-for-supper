@@ -314,3 +314,23 @@ shared through an invocation-local context; ordinary readers and the executor st
 strict. Terminal task evidence owns actual controls, preservation, reviews,
 verification and signed delivery. No aggregate checkbox changes; the post-conversion/
 adoption authority transition and fresh later-mutator admission remain separate.
+
+
+## Selected authority-transition planning checkpoint — 2026-11-15
+
+Only planning under open2.1–2.2/3.1–3.2 and directly dependent bilingual4.2 is
+selected. The [finite contract](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-CONTRACT.md)
+and [test-first acceptance matrix](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-IMPLEMENTATION.md)
+define future A original/execution admission, B one plan, C one selected converter
+V2 commit and D fresh-process reconciliation ending before rebuilding. The
+[implementation prompt](../../../.agents/prompts/dependable-portions-authority-transition-implementation.md)
+requires separate source/execution graphs, fixed46 plus exact typed successor
+authority, actual converter eligibility before B, independent raw producer/PG
+witnesses, maintenance/session/transaction ownership and all interruption/retry/
+rehash/protected-fact controls. No execution or behavior tests run in this slice.
+
+Preserve complete221/198/23 corpus and36week accounting; every grocery/plan/event/
+human/history fact stays exact at this boundary. Preconditions remain blockers
+until future real producer/commit/read-back evidence passes, separately from
+source/synthetic/TEMP evidence. All existing task IDs/check states remain intact:
+migration3/8, bilingual8/10 and family33/68. No sync/archive or aggregate closure.

@@ -131,3 +131,19 @@ provisioning failed; Alex owns CI monitoring/reruns.
 ## Selected attested inventory and fenced pre-write continuation
 
 Alex selects the two sequential slices in [the finite continuation plan](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-PLAN.md): source-dependent no-write CanonicalMigrationInventory and actual fenced admission ending before the first persistent migration write. Reuse existing owners, unchanged v4 source/schema/history and coverage-only v5. The execution descendant has a separately reviewed exact hold-only lineage; untouched sources stay independently admissible. Require independently retained request/attempt bytes, fresh-process reconstruction, current-date admission, exact preservation and frozen independent reviews. No executor, receipts, conversion, adoption, rebuild, registration, restore or activation. Aggregate migration3/8, bilingual8/10 and family33/68 remain open.
+
+
+## Selected first single-recipe authority-transition planning — 2026-11-15
+
+The [finite successor contract](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-CONTRACT.md)
+refines open2.1–2.2/3.1–3.2 and dependent bilingual4.2 only. This selection is
+planning/read-only, not implementation or permission to convert. Delivered
+pre-write success and removed runtimes remain historical. Unchanged v4 source
+needs a complete independently configured service/DB/root graph, distinct from
+execution. Original46 membership/bytes stay fixed; exact new plan and selected V2
+receipt use their ordinary typed owners under finite successor authority.
+Prospective A→B→C→D means freshly bound baseline, one plan, exactly one converter
+commit, then fresh-process read-back before every grocery rebuild. All221 recipe
+outcomes/23deferred and36weeks remain accounted; all grocery/human/history facts
+stay unchanged. The existing converter and inventory own derivation; no public
+bypass or parallel engine. Migration3/8, bilingual8/10 and family33/68 stay open.

@@ -60,3 +60,17 @@ Migration SHALL retain the write/worker fence until each inventoried week has a 
 - **WHEN** the final release rebuild uses saved validated food mappings and the durable versioned vocabulary
 - **THEN** it retains exact package/unit distinctions, saved human choices and every referenced identity while using conservative fallback for unmapped or ambiguous lines
 - **AND** it performs no AI translation, vocabulary regeneration or speculative cross-language merge during recomputation
+
+
+### Requirement: Stop the first conversion tracer before grocery mutation
+
+The prospective [single-recipe stage](../../../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-CONTRACT.md)
+SHALL retain complete corpus/plan/event and36week accounting while leaving all
+grocery checks, baselines, row/list versions, extras, corrections and history
+unchanged. Its successful return SHALL precede every grocery rebuild/receipt/reset
+and queued refresh; an interrupted batch executor SHALL NOT constitute that stage.
+
+#### Scenario: Single conversion awaits later grocery qualification
+- **WHEN** the future selected tracer has one validated plan and one converter commit followed by fresh-process reconciliation
+- **THEN** every stored or assignment-implied week and all plan/event/serving/prepared facts remain accounted and unchanged
+- **AND** the hold remains installed, search may be pending, and no completed migration or reopening is claimed

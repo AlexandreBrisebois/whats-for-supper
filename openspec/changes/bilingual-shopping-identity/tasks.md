@@ -185,3 +185,16 @@ adoption, all-week rebuilding, restore and activation. No aggregate checkbox
 closes: bilingual8/10, migration3/8 and family33/68 remain open. Fixed original46
 authority cannot be widened to validate later changed facts; fresh mutator
 admission and a separately reviewed authority transition remain required.
+
+
+## Dependent single-recipe transition planning — 2026-11-15
+
+Only dependent open4.2 is reconciled to the migration
+[finite successor contract](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-CONTRACT.md).
+Original46 stay fixed; exact new strict V2/plan authority must reach actual vocabulary
+capture/absence and all retained typed reference/history owners. The prospective
+selected recipe retains NULL mapping evidence and empty authority without vocabulary
+publication/adoption. This slice is planning/read-only; runtime eligibility, producer/
+commit/new-process evidence and later all-week rebuild remain unqualified.
+Bilingual8/10, migration3/8 and family33/68 stay open, with no changed checkboxes,
+sync or archive. Alex owns hosted CI/reruns.

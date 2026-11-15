@@ -323,3 +323,33 @@ Final qualification and operational exclusions remain separately recorded.
 ## Selected attested inventory and fenced pre-write continuation
 
 Alex selects the two sequential slices in [the finite continuation plan](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-PLAN.md): source-dependent no-write CanonicalMigrationInventory and actual fenced admission ending before the first persistent migration write. Reuse existing owners, unchanged v4 source/schema/history and coverage-only v5. The execution descendant has a separately reviewed exact hold-only lineage; untouched sources stay independently admissible. Require independently retained request/attempt bytes, fresh-process reconstruction, current-date admission, exact preservation and frozen independent reviews. No executor, receipts, conversion, adoption, rebuild, registration, restore or activation. Aggregate migration3/8, bilingual8/10 and family33/68 remain open.
+
+
+## Planned first single-recipe authority transition — 2026-11-15
+
+The [contract](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-CONTRACT.md),
+[source map](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-SOURCE-MAP.md)
+and [acceptance plan](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-TRANSITION-IMPLEMENTATION.md)
+are the prospective finite design beneath open2.1–2.2/3.1–3.2 and bilingual4.2.
+Unchanged original source reconstructs v4 using its own service/vocabulary/DB/roots;
+execution is a separately identified descendant. The original46 exception is
+never enlarged. A finite private typed context partitions original46, one ordinary
+inert plan and the exact selected ordinary strict V2 pair, while all remaining
+formats retain ordinary typed validation, including real converter vocabulary
+capture/absence and retained history. No public/ordinary reader is weakened.
+
+Fresh candidate-bound corpus221 and selected1 observations come from the existing
+inventory owner and preserve23deferred/36week accounting. Eligibility and frozen
+producer preparation use the same converter rules before the first plan write.
+Create-once independently retained producer/expected PostgreSQL text bytes bind
+generated identities/times against journal rehashing. Separate plan/converter
+transactions bind fresh authority and complete protected locks under actual
+maintenance+Write ownership; no cached pre-write capability or nested transaction.
+Between-stage divergence rejects; table locks do not span commits.
+
+The successful internal tracer returns after one conversion and new-process exact
+read-back, before any week rebuild, reset or refresh scheduling. Only exact plan,
+V2 row, selected recipe fields and existing search-status delta are allowed; files,
+all grocery checks/baselines/extras/corrections/history and plan/event facts stay
+unchanged. This plans future code; implementation/runtime qualification remains
+separately selected. No aggregate task closes, activation, sync or archive follows.

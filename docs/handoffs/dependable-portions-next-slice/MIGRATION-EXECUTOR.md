@@ -184,3 +184,19 @@ grocery completion does not certify search/index release readiness.
 Task and lifecycle reconciliation is recorded in the selected tasks and shared
 rollout owner. Fully completed qualified changes alone may sync/archive; open
 aggregate release/producer/cutover requirements retain their changes.
+
+
+## Planned successor boundary — 2026-11-15
+
+The [first single-recipe authority contract](V1-AUTHORITY-TRANSITION-CONTRACT.md)
+plans a separate finite internal stage before all grocery rebuilding. It does not
+change this executor's historical behavior or authorize invoking it. The old221
+selection includes23deferred outcomes; do not rewrite it as one-recipe authority.
+Original v4 reconstruction uses a separate complete source-bound service graph,
+original46 remain fixed, and exact new plan/V2 receipts use ordinary typed owners.
+Fresh candidate/runtime/inventories, converter eligibility before any plan write,
+independent producer/PG text witnesses and per-transaction admission are required.
+See the [source map](V1-AUTHORITY-TRANSITION-SOURCE-MAP.md) and
+[test-first plan](V1-AUTHORITY-TRANSITION-IMPLEMENTATION.md). No application changes,
+migration writes, conversion, reset/rebuild, activation or aggregate closure occur
+in this planning slice.
