@@ -184,7 +184,7 @@
     "eligible": [],
     "reason": "All six changes retain incomplete aggregate acceptance."
   },
-  "nextBoundedSelection": "Alex approve/reject exact V1 authority policy package only; no runtime selection started",
+  "nextBoundedSelection": "Policy B approved; await separate bounded implementation authorization. No runtime selection started.",
   "exclusions": [
     "Shared-environment vocabulary adoption",
     "Migration activation",
@@ -238,9 +238,9 @@
   },
   "retainedV1AuthorityDecision": {
     "proposalId": "WFS-V1-EXACT-SOURCE-ATTESTATION-1",
-    "status": "proposed-unapproved-inert",
+    "status": "policy-approved-runtime-unimplemented",
     "recommendation": "B-one-time-exact-source-attestation",
-    "currentDisposition": "C-continued-strict-rejection-of-all46",
+    "currentDisposition": "continued-strict-rejection-of-all46-until-separately-authorized-qualified-implementation",
     "optionA": "not-established; missing authenticated per-operation writer/build/serializer and original-result binding",
     "packagePath": "docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-PACKAGE.json",
     "packageSha256": "bb40457ca9b1ed47b79b2165d855b40f2970083c260de91d8055a1ee5f369827",
@@ -258,6 +258,10 @@
     "aggregateTaskChanges": [],
     "reviewPath": "docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-REVIEW.json",
     "evidenceOwner": ".task/v1-authority-decision-20261114/delivery.json",
-    "approvalQuestion": "Approve B bound to the exact package and source dump digests despite stated missing historical guarantees, or reject and continue C?"
+    "approvalQuestion": "Approve B bound to the exact package and source dump digests despite stated missing historical guarantees, or reject and continue C?",
+    "selectedOption": "B-one-time-exact-source-attestation",
+    "approvalRecord": "docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-APPROVAL.json",
+    "approvalRecordSha256": "6eef7a175751927f26fb41950f94d7c60de8b69acfab0a31148e8f5c5c78e0a7",
+    "approvalEvidenceOwner": ".task/v1-authority-approval-20261114/delivery.json"
   }
 }

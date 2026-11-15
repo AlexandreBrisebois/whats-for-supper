@@ -12,12 +12,18 @@ strict readers reject all 46. Targeted historical records correlate all 46 with
 ten campaigns and reproduce historical whole-row hashes for 42, without proving
 authenticated per-operation writer/build/serializer identity or original result
 wire bytes. Source-family resemblance remains distinct from demonstrated proof.
-The independently reviewed exact-source attestation proposal recommends option B
-for Alex's explicit policy decision; option A is not established and option C
-remains current/default rejection. Approval is pending. The approved V1 derivation
+Alex approved the independently reviewed option B policy for exact package
+`bb40457ca9b1ed47b79b2165d855b40f2970083c260de91d8055a1ee5f369827`
+by a direct `yes` reply; [the durable approval record](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-APPROVAL.json)
+binds the decision and acknowledged missing guarantees. Option A remains
+unestablished; all 46 remain rejected by the current runtime. The frozen package
+and evidence are unchanged. Implementation/migration/activation still require
+separate authorization; this documentation records policy approval only.
+The approved V1 derivation
 contract is unchanged; no runtime mechanism, receipt rewrite, vocabulary publication
 or migration was performed. Evidence owner `.task/v1-authority-decision-20261114/`
 retains the immutable package, review and invocation-specific documentation checks.
+Approval-recording evidence is `.task/v1-authority-approval-20261114/delivery.json`.
 No selected aggregate task is complete; progress remains 33/68. Historical policies
 and receipts below retain their original scope and remaining acceptance.
 

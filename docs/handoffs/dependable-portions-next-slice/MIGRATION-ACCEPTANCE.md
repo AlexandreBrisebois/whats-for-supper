@@ -181,26 +181,35 @@ inspected representation. No authenticated per-operation writer/build/serializer
 or original result wire binding was recovered. This is stronger historical
 correlation, not recovered admission authority.
 
-The recommendation is **B: a one-time exact-source attestation requiring Alex's
-explicit approval**. The alternative A (admission from recovered historical
-authority) is not established; C (continued rejection) remains the current/default
-behavior and the fallback if B is rejected. The proposal names the exact four-file
+Alex **approved B: the one-time exact-source attestation policy** in a direct
+`yes` reply to the exact package approval question; the durable decision is
+[V1-AUTHORITY-APPROVAL.json](V1-AUTHORITY-APPROVAL.json). The alternative A
+(admission from recovered historical authority) remains unestablished. All 46
+remain strictly rejected by the current runtime pending separately authorized,
+qualified implementation. The proposal names the exact four-file
 backup, all recipe/operation IDs, request/input/baseline/result hashes, the exact
 140 allowed duplicate sites, and fail-closed approval/replay/recovery rules. Its
 result hashes bind retained PostgreSQL 18.6 JSONB `result::text` UTF-8, not
-unavailable original writer/HTTP wire bytes. Alex would designate this retained
+unavailable original writer/HTTP wire bytes. Alex designated this retained
 source as present-day authority despite the missing historical provenance; no
 historical writer identity is asserted.
 
 The approval object is proposal `WFS-V1-EXACT-SOURCE-ATTESTATION-1`, package SHA256
 `bb40457ca9b1ed47b79b2165d855b40f2970083c260de91d8055a1ee5f369827`,
-[V1-AUTHORITY-PACKAGE.json](V1-AUTHORITY-PACKAGE.json). Approval is **pending**.
-It would approve only the finite proposed integrity-policy exception, with later
-implementation separately authorized and qualified. The approved V1 contract,
+[V1-AUTHORITY-PACKAGE.json](V1-AUTHORITY-PACKAGE.json). Approval covers **only this
+finite integrity-policy exception**; later implementation remains separately
+authorized and qualified. The frozen proposal/package and review remain
+byte-identical, including their historical pending/unapproved labels; the separate
+approval record supplies the current decision without changing the approved text.
+It acknowledges unavailable historical writer/build/serializer and original result
+wire proof, and the inability to detect alteration already present before capture.
+The approved V1 contract,
 strict rejection of all 46, all original receipts and aggregate task checkboxes
 remain unchanged. Independent review and invocation-specific documentation
 verification are recorded in [V1-AUTHORITY-REVIEW.json](V1-AUTHORITY-REVIEW.json)
 and `.task/v1-authority-decision-20261114/delivery.json`; neither grants approval.
+The approval-recording verification and signed delivery have their separate owner
+`.task/v1-authority-approval-20261114/delivery.json`.
 
 Focused existing public-duplicate and V1/V2 retained-history controls passed
 **17 tests, zero skips**. Fresh original PostgreSQL read-back, current build and
@@ -250,12 +259,14 @@ archived changes are empty. Parity cooking 4.1–4.2, complete local 6.2 and mat
 hosted 6.3 remain open. The grocery design now reflects the already accepted
 plan-preserving all-list policy; its historical empty-list gate is superseded.
 
-The selected authority-decision slice stops at the explicit approval question in
-[V1-AUTHORITY-DECISION.md](V1-AUTHORITY-DECISION.md). Await Alex's approve/reject
-decision on its exact package digest. No compatibility/attestation mechanism is
+Alex's approval of the exact policy package is recorded in
+[V1-AUTHORITY-APPROVAL.json](V1-AUTHORITY-APPROVAL.json). This records the decision
+and stops before implementation. A new bounded implementation selection still
+requires separate authorization; no compatibility/attestation mechanism is
 implemented. This source still has no valid current-format preconversion snapshot;
 source admission, migration/conversion and all later runtime/recovery gates remain
-blocked or not-run. Do not remove history, substitute synthetic records or change
+blocked on separately authorized implementation and qualification, or not-run.
+Do not remove history, substitute synthetic records or change
 source membership to obtain a passing migration.
 
 Shared-environment vocabulary adoption, migration activation, DV/production,
