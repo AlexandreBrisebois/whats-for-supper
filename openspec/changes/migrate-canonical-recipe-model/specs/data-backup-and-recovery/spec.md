@@ -504,3 +504,32 @@ full snapshot or grant restore authority.
 #### Scenario: Later recovery boundary remains independent
 - **WHEN** staged history/index read-back passes
 - **THEN** the next existing read-only recovery inspection remains strict and its independent blocker is retained without full snapshot publication, restore, vocabulary adoption or migration
+
+### Requirement: Bound proposed full-snapshot capture and independent inspection
+
+A separately selected continuation SHALL bind fresh identities to approved source,
+qualified schema lineage and delivered history. Existing snapshot/history owners
+SHALL retain complete validation and strict ordinary/public/demo behavior.
+A proposed request SHALL NOT authorize execution, publication or restore.
+
+#### Scenario: Separate successor authority
+- **WHEN** a successor request is proposed
+- **THEN** new operation/generation/snapshot/request/staging/completion identities bind immutable source/package/approval, qualified schema transition and predecessor history delivery without reusing old completion
+- **AND** the [successor contract](../../../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-PLAN.md) governs finite internal history authority, existing manifest3/history1/index1 formats and full acceptance
+
+#### Scenario: Complete capture staged without publication
+- **WHEN** a separately authorized fresh verified prepared descendant is captured under the existing coherent snapshot boundary
+- **THEN** every required table/household/recipe/media/vocabulary/history artifact and closed manifest inventory is durably staged and reread, with operation-bound lineage/completion outside the closed payload
+- **AND** all46 exact original receipts, all31 original table projections, all1576 source files per tree and every planned meal/calendar event and other protected fact remain unchanged; source dispositions are accounted separately from the selected recovery payload
+- **AND** neither stage completion nor its manifest publishes/registers a snapshot, selects a pointer, invokes restore or grants complete source admission
+
+#### Scenario: Fresh-process source-dependent inspection
+- **WHEN** an independent process inspects the detached complete stage and sibling authority envelope
+- **THEN** it reconstructs pinned authority from originals and fresh prepared source, validates exact receipt representations and full existing file/schema/row/constraint/FK/weekly-history/vocabulary requirements, and rechecks source/artifact stability
+- **AND** database validation uses only rollback transaction-local TEMP writes; it performs no persistent restore or publication
+- **AND** success is reported only as source-dependent stage/read-back acceptance, not offline restore, complete source admission or operational migration
+
+#### Scenario: Missing, conflicting or interrupted continuation
+- **WHEN** any required authority/artifact/reference is absent/corrupt, protected facts or exact receipt text change, identities/contexts disagree, old markers are supplied or capture/completion/read-back is interrupted or mutated
+- **THEN** no partial state grants authority and detached controls fail closed; exact retry reconciles only the same verified request/bytes without overwriting conflicts, replaying historical edits or resetting later human facts
+- **AND** a manifest alone, self-consistent hashes or identity-only inspection cannot satisfy full acceptance; the next strict blocker stops the slice

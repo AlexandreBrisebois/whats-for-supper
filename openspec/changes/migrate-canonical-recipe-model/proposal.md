@@ -62,3 +62,16 @@ all-list rebuild with a migration-only reset epoch, durable vocabulary integrati
 stale-client refresh and maintenance/rollback rehearsal.
 The authoritative checklist is [tasks.md](tasks.md); all combined tasks remain
 open until their own evidence is complete. Production execution is separate.
+
+## Proposed full-snapshot continuation — 2026-11-15
+
+The delivered history stage passed durable source-dependent read-back, but complete
+source admission/full snapshot recovery stopped at `Snapshot manifest is missing.`
+The [successor contract](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-PLAN.md)
+and separate proposed request define fresh-copy capture, task-owned staging and
+independent fresh-process inspection through existing owners. This is planning
+only. It grants no execution, snapshot publication, restore or migration authority.
+All predecessor authority and exact46 receipts/original31 table projections/1576
+files per tree/plans/events remain protected. Ordinary/public/demo paths stay strict;
+aggregate tasks remain open. Hosted Tonight tests never ran after dependency
+provisioning failed; Alex owns CI monitoring/reruns.

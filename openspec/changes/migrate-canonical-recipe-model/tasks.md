@@ -1,6 +1,35 @@
 # Tasks
 
-## Current selected recovery-history delivery — 2026-11-14
+## Proposed full-snapshot continuation — 2026-11-15
+
+Planning/read-only investigation only; this header supersedes the predecessor's
+prospective selection, not its authority or evidence. Under open2.1–2.2/3.1–3.2 and
+bilingual4.2, the [contract](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-PLAN.md)
+and [implementation prompt](../../../.agents/prompts/dependable-portions-full-snapshot-next-slice.md)
+define the exact next slice. No checkbox changes (3/8, bilingual8/10, family33/68).
+The request is PROPOSED and execution requires a separate user selection.
+
+If selected: extend finite request/marker dispatch; verify fresh original restores;
+prepare only the qualified schema delta; reuse complete existing-v3 capture into
+task-owned staging without publication; flush/reread closed payload plus sibling
+lineage/completion; independently inspect a detached copy in a fresh process with
+new source admission context and full existing file/database validation. Preserve
+all46 exact receipts, original31 projected tables,1576files per tree and all plans/
+events/human/grocery facts; stage-only metadata is derived. Keep ordinary/public/demo
+strict. Explicitly permit only rollback TEMP validation writes beyond separately
+selected fresh restore/schema preparation. No implementation is performed by this
+planning revision.
+
+The contract's RED/GREEN/control matrix, named existing source/test owners, zero-skip
+actual focused/full PostgreSQL, stable complete-path verification and independent
+frozen implementation/evidence reviews gate that successor. Capture/staging,
+independent source-dependent read-back, publication, source admission, restore,
+operational migration and hosted acceptance are separate claims. Stop before all
+publication/current-pointer/restore/migration/adoption/rebuild/activation/deployment/
+DV/production/archival. Original Tonight tests never ran after Chromium provisioning
+failed; Alex owns matching hosted CI evidence and reruns.
+
+## Delivered predecessor recovery-history scope — 2026-11-14
 
 Using change `migrate-canonical-recipe-model` (wfs, 3/8 complete), beneath open
 2.1–2.2/3.1–3.2 and bilingual4.2. The user authorizes attestation-bound history

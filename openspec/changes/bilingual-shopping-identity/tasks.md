@@ -162,3 +162,15 @@ Current progress is 8/10 bilingual and 33/68 release-family. Migration 4.2 and f
 release 5.1 remain open. No owner has complete whole-change acceptance, so no
 main-spec synchronization or archival is eligible. Historical 6/10 grocery and
 prior source/runtime/CI evidence above retain their original qualification.
+
+## Proposed dependent recovery continuation — 2026-11-15
+
+Only the directly dependent part of open4.2 is reconciled with the migration
+[full-snapshot proposal](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-PLAN.md).
+Planning is not execution. Fresh-copy capture/staging plus source-dependent
+independent inspection may form one later selected slice; publication, restore,
+complete source admission, adoption and all-week rebuild stay separate. Preserve
+all protected facts, exact receipts, reference closure and strict ordinary/public/
+demo behavior. No checkboxes change:8/10, with4.2 and5.1 still open. Completed4.1
+ordinary recovery evidence remains candidate-specific and unchanged. Alex owns CI;
+Tonight tests in the failed original Chromium provisioning job never ran.

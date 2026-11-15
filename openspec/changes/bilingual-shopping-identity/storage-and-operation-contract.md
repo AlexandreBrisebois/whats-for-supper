@@ -92,3 +92,23 @@ Separate durable lineage and completion bind operation/generation/snapshot/reque
 staging and history/index hashes. Partial staging, foreign/mixed contexts or altered
 facts fail closed. Exact retry verifies existing state without historical mutation.
 This authorizes no full snapshot publication/restore, vocabulary adoption or migration.
+
+## Proposed full-snapshot continuation boundary — 2026-11-15
+
+The [separate proposed continuation](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-CONTINUATION.json)
+and [acceptance contract](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-PLAN.md)
+are planning authority only. A later selected internal capture/staging/read-back
+slice must bind fresh identities/markers to the original approval/package/source,
+qualified schema transition and delivered history. It must preserve exact46 receipt
+representations independently of normalized table JSON, original31 projections,
+all1576files and all plans/events. Finite authority reaches existing history and
+reference validation only; no global parser flag or ordinary/public/demo exception.
+
+Retain manifest3/history1/index1 and complete current/retained/history-only reference
+closure. Keep lineage/completion in a sibling envelope outside the closed payload.
+No source/vocabulary sidecar rewrite, adoption, regeneration or implicit seed.
+Fresh-process inspection re-admits originals/fresh prepared source and runs existing
+file and database validation with rollback-only TEMP writes. It proves neither
+self-contained offline restore nor publication, complete source admission or
+migration acceptance. All predecessor authority documents remain unchanged; old
+markers cannot authorize the new proposal and no aggregate task closes.

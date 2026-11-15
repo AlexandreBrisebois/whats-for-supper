@@ -73,3 +73,16 @@ Crosslink the [migration companion](../migrate-canonical-recipe-model/design.md)
 ## Qualification and limits
 
 Keep model-authoring/review, deterministic resolver units, actual producer/API/PostgreSQL, locale/check browsers, durable restart, full backup/restore and migration evidence separate. Test collision/false-merge/qualifier cases, unsupported units/packages, private/global scope, stale revisions/clears, missing/corrupt/stale JSON, interrupted publication and file/DB snapshot races. All tasks remain unchecked until their actual acceptance. Existing external research is historical/not adopted; no source download, model runtime, implementation, schema application or deployment occurs in this planning revision.
+
+## Dependent proposed full-snapshot continuation — 2026-11-15
+
+The migration companion's [successor contract](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-PLAN.md)
+defines planning-only capture/staging and source-dependent fresh-process inspection
+for the exact approved V1 source. Its separate proposed request binds predecessor
+history and schema delivery; no execution authority or aggregate completion follows.
+Require every current/retained/history-only vocabulary document and exact reference
+closure; captured absence is valid only under the existing no-reference contract.
+No vocabulary installation/adoption/generation occurs on this preadoption source.
+Lineage/completion stay outside the closed v3 payload; ordinary/public/demo checks
+and final full offline restore requirements remain strict. This dependency neither
+reopens completed ordinary recovery4.1 nor closes migration4.2/release5.1.

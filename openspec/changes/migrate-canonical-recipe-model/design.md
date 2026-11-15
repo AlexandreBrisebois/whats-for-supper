@@ -219,3 +219,34 @@ source and regenerates a protected observation to compare every staged fact befo
 existing history/reference/authority/index validation. This source dependency is
 explicit; hashes from an untrusted envelope are insufficient. No offline full snapshot
 acceptance, full snapshot publication, restore or historical mutation is introduced.
+
+## Proposed attestation-bound full-snapshot staging and inspection
+
+The [full-snapshot contract](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-PLAN.md)
+now owns the prospective continuation beyond delivered history staging. Its
+[separate proposed request](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-CONTINUATION.json)
+binds fresh operation/generation/snapshot/paths and completion to the immutable
+original authority, qualified schema transition and predecessor history delivery.
+Current runtime request dispatch must reject it until separately selected and
+implemented. Old markers and predecessor approval do not authorize execution.
+
+Reuse CaptureToAsync artifact construction under the Snapshot/table-lock boundary,
+but stage internally without its final BackupRoot rename/publication. Retain
+manifest3/history1/index1, exact ordered current table set and closed file inventory.
+Keep lineage/completion in a sibling authority envelope because the ordinary payload
+allowlist rejects those history-stage files. Only the qualified internal reader may
+carry finite V1 history authority; ordinary/public/demo readers and restore stay strict.
+Fresh-process inspection must reconstruct authority from pinned originals and fresh
+prepared source, validate complete artifacts plus existing schema/closed-row/FK/
+weekly-history checks (rollback-only TEMP writes), and reread source/artifacts around
+completion. Identity-only inspection is insufficient. It remains source-dependent.
+
+Protect all46 exact PostgreSQL-text receipts, all31 original table projections and
+all1576 source files separately from the selected recovery payload; enumerate each
+file/table disposition. Normalized table JSON cannot prove result::text identity.
+No persistent validation writes, source sidecar changes, vocabulary adoption,
+grocery reset/rebuild, publication, restore, complete source admission, activation
+or deployment. Missing representation is a blocker, not permission to discard facts.
+The successor contract fixes RED/GREEN, interruption/exact-retry, independent review,
+actual PostgreSQL and acceptance/exclusion claims. Historical provenance remains
+unproven and aggregate tasks remain open.

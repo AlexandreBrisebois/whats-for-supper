@@ -399,3 +399,9 @@ Full backup SHALL retain exact vocabulary JSON and all referenced revisions, sav
 #### Scenario: Vocabulary changes during capture
 - **WHEN** dictionary bytes and saved mapping/content revisions change during a backup capture
 - **THEN** capture either retains one coherent versioned set or rejects/retries under its existing fence; it cannot publish a valid-looking archive with dangling references
+
+#### Scenario: Proposed attested preadoption snapshot inspection
+- **WHEN** the migration companion later selects its separately pinned attestation-bound full-snapshot continuation
+- **THEN** internal capture/staging and fresh-process inspection retain complete current/retained/history-only vocabulary reference closure and exact receipts without installing or regenerating vocabulary
+- **AND** captured absence is accepted only under the existing no-reference rule; ordinary/public/demo paths remain strict
+- **AND** source-dependent stage/read-back success is not publication, offline full restore, source admission, adoption or migration acceptance and does not close aggregate tasks
