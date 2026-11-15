@@ -102,25 +102,9 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
             await using var connection = await OpenAsync(ct);
             await using var transaction = await connection.BeginTransactionAsync(ct);
             await ScalarAsync(connection, "LOCK TABLE " + string.Join(',', tables.Concat(VocabularyObservationTables).Distinct(StringComparer.Ordinal)) + " IN SHARE MODE", ct);
-            Directory.CreateDirectory(Path.Combine(stage, "tables"));
             if (checkpoint is not null) await checkpoint.ReachedAsync("capture-locked", ct);
             if (demo) await ValidateDemoInventoryAsync(connection, ct, currentFormat: true);
-            Directory.CreateDirectory(Path.Combine(stage, "recipes"));
-            foreach (var table in tables)
-            {
-                var rows = await ScalarAsync(connection, $"SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]')::text FROM {table} t", ct);
-                if (demo) rows = NormalizeDemoRows(table, rows, currentFormat: true);
-                await File.WriteAllTextAsync(Path.Combine(stage, "tables", table + ".json"), rows, ct);
-            }
-            var household = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(stage, "tables", "recipes.json"), ct));
-            using (household)
-            {
-                foreach (var row in household.RootElement.EnumerateArray()) await CopyRecipeAsync(row, stage, ct);
-            }
-            var history = demo ? new List<WeeklyHouseholdInterest>() : await db.WeeklyHouseholdInterests.AsNoTracking().OrderBy(r => r.WeekStartDate).ThenBy(r => r.RecipeId).ToListAsync(ct);
-            var state = await db.VotingRoundStates.AsNoTracking().SingleOrDefaultAsync(ct);
-            await WriteAsync(Path.Combine(stage, "weekly-household-interest.json"), new { version = 1, generation = state?.HistoryGeneration ?? Guid.NewGuid(), rows = history }, ct);
-            if (demo) await WriteAsync(Path.Combine(stage, "dispositions.json"), CurrentDemoDispositions, ct);
+            await CaptureSnapshotContentAsync(connection, stage, tables, demo, null, ct);
             await CaptureVocabularyAsync(stage, id, demo, ct);
             var files = new List<RecoveryFile>();
             foreach (var path in SafeFiles(stage).Order())
@@ -136,6 +120,28 @@ public partial class RecoverySnapshotService(RecipeDbContext db, RecipesRootReso
             return new("completed", "Independent snapshot published; copy to a separate failure domain for disk-loss protection.", id);
         }
         finally { if (Directory.Exists(stage)) Directory.Delete(stage, true); }
+    }
+
+    private async Task CaptureSnapshotContentAsync(NpgsqlConnection connection, string stage, string[] tables,
+        bool demo, Guid? fallbackHistoryGeneration, CancellationToken ct)
+    {
+        Directory.CreateDirectory(Path.Combine(stage, "tables"));
+        Directory.CreateDirectory(Path.Combine(stage, "recipes"));
+        foreach (var table in tables)
+        {
+            var rows = await ScalarAsync(connection, $"SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]')::text FROM {table} t", ct);
+            if (demo) rows = NormalizeDemoRows(table, rows, currentFormat: true);
+            await File.WriteAllTextAsync(Path.Combine(stage, "tables", table + ".json"), rows, ct);
+        }
+        var household = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(stage, "tables", "recipes.json"), ct));
+        using (household)
+        {
+            foreach (var row in household.RootElement.EnumerateArray()) await CopyRecipeAsync(row, stage, ct);
+        }
+        var history = demo ? new List<WeeklyHouseholdInterest>() : await db.WeeklyHouseholdInterests.AsNoTracking().OrderBy(r => r.WeekStartDate).ThenBy(r => r.RecipeId).ToListAsync(ct);
+        var state = await db.VotingRoundStates.AsNoTracking().SingleOrDefaultAsync(ct);
+        await WriteAsync(Path.Combine(stage, "weekly-household-interest.json"), new { version = 1, generation = state?.HistoryGeneration ?? fallbackHistoryGeneration ?? Guid.NewGuid(), rows = history }, ct);
+        if (demo) await WriteAsync(Path.Combine(stage, "dispositions.json"), CurrentDemoDispositions, ct);
     }
 
     private async Task CopyRecipeAsync(JsonElement row, string stage, CancellationToken ct)

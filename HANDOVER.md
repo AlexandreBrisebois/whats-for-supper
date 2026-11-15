@@ -1,3 +1,18 @@
+# Selected full-snapshot staging and independent inspection
+
+Alex selected the reviewed continuation after clean d2c96228 on recipe-view-redesign.
+The [delivery handoff](docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-DELIVERY.md)
+and `.task/v1-full-snapshot-implementation/delivery.json` own exact terminal status.
+Observed stage/read-back covers16 recovery tables,818listed artifacts and46exact
+receipt pairs, preserving original31 projections/1576files and plans/events. Final
+controls, frozen review, full PostgreSQL/repository verification and signed delivery
+remain pending at this write cutoff. No aggregate task closes. Ordinary/public/demo
+remain strict; no snapshot publication, restore, complete source admission,
+migration/adoption/rebuild/activation or deployment. Original Tonight tests never
+ran after provisioning failure; Alex owns CI. A second continuation planning slice
+follows unless Alex steers the pending second-slice clarification to implementation.
+Port3000, preexisting resources and all predecessor authority remain protected.
+
 # Selected recovery-history continuation
 
 Current selection: attestation-bound recovery-history observation, serialization,

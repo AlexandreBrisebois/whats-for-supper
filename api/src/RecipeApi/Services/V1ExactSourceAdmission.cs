@@ -105,6 +105,18 @@ internal sealed partial class V1ExactSourceAdmission
                 preparedLineage = _lineage,
                 schemaContinuation = ExactFile(Path.Combine(repositoryRoot, PolicyDirectory, "V1-SCHEMA-CONTINUATION.json"), SchemaContinuationSha256)
             });
+        if (IsFullSnapshotContinuation(intent))
+        {
+            var continuation = Document(intent);
+            _lineage = JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                version = 4,
+                preparedLineage = _lineage,
+                schemaContinuation = ExactFile(Path.Combine(repositoryRoot, PolicyDirectory, "V1-SCHEMA-CONTINUATION.json"), SchemaContinuationSha256),
+                historyContinuation = BoundArtifact(repositoryRoot, continuation.GetProperty("historyContinuation")),
+                historyDelivery = BoundArtifact(repositoryRoot, continuation.GetProperty("historyDelivery"))
+            });
+        }
     }
 
     internal byte[] LineageBytes => _lineage.ToArray();
@@ -181,7 +193,7 @@ internal sealed partial class V1ExactSourceAdmission
         var backup = set.GetProperty("backup").GetProperty("files");
         var readback = Document(ExactFile(Path.Combine(repositoryRoot, backup[3].GetProperty("path").GetString()!), backup[3].GetProperty("sha256").GetString()!));
         if (IsPreparedContinuation(intentBytes))
-            await VerifySchemaDescendantAsync(repositoryRoot, connection, intent, readback, requireCompletion: true, ct);
+            await VerifySchemaDescendantAsync(repositoryRoot, connection, intentBytes, readback, requireCompletion: true, ct);
         else
         {
             var tables = readback.GetProperty("tables");
@@ -267,7 +279,8 @@ internal sealed partial class V1ExactSourceAdmission
 {
     internal V1RecoveryHistoryContext RecoveryHistoryContext(byte[] request)
     {
-        Require(IsHistoryContinuation(request) && request.AsSpan().SequenceEqual(_intent), "foreign recovery-history request");
+        Require((IsHistoryContinuation(request) || IsFullSnapshotContinuation(request))
+            && request.AsSpan().SequenceEqual(_intent), "foreign recovery-history request");
         _ = LoadAdmissionPolicy(_repositoryRoot, request);
         VerifyGeneration(_repositoryRoot, Document(request));
         VerifyPreparationReceipt(_repositoryRoot, Document(request));

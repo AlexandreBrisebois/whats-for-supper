@@ -1,5 +1,28 @@
 # Tasks
 
+## Current selected full-snapshot implementation — 2026-11-15
+
+Alex selected the reviewed continuation after d2c96228. Its [delivery handoff](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-DELIVERY.md)
+records bounded attestation-bound complete capture, durable task-owned staging and
+source-dependent fresh-process independent inspection. All aggregate tasks remain
+open (3/8; bilingual8/10; family33/68). The immutable proposed request is not changed
+or promoted into execution authority; the separate user selection owns this slice.
+
+Reuse existing manifest3/history1/index1 and full file/database validators with
+finite internal history authority. Preserve all46 exact receipt pairs, all31
+original projections,1576files per tree and every plan/event/human/grocery fact.
+Completion is neither publication nor source/migration/restore authority. The new
+source inventory explicitly accounts for every copied/typed-history/derived/excluded
+item and owner; canonical trigger-row ordering preserves every tuple/duplicate only
+for the pinned full-snapshot request. Other catalog checks and predecessor policy
+remain strict. Actual ordinary/public/demo readers remain strict.
+
+At the handoff's cutoff, final detached controls, prepared immutable review, full
+PostgreSQL/repository gates and signed delivery remain pending; consult the terminal
+task evidence, not this paragraph, for their outcomes. No publication/current
+pointer/restore/source admission/conversion/adoption/rebuild/activation/deployment/
+DV/production/archival follows. Alex owns hosted CI; original Tonight tests did not run.
+
 ## Proposed full-snapshot continuation — 2026-11-15
 
 Planning/read-only investigation only; this header supersedes the predecessor's

@@ -11,9 +11,15 @@ internal sealed partial class V1ExactSourceAdmission
     internal const string SchemaContinuationSha256 = "0bc8fc02687eeb74f93f099e3b08c58559bdc335f97508fc795c60f56652270b";
     internal const string HistoryContinuationSha256 = "a8aabc6e9f5b5e78a057328769119cb6bc3f8fcc3ca55f71d6b85f1b0bff202f";
     private static bool IsHistoryContinuation(byte[] bytes) => Sha(bytes) == HistoryContinuationSha256;
-    private static bool IsPreparedContinuation(byte[] bytes) => Sha(bytes) == SchemaContinuationSha256 || IsHistoryContinuation(bytes);
-    private static string PreparationSha(JsonElement intent) => intent.GetProperty("version").GetInt32() == 3
-        ? HistoryContinuationSha256 : SchemaContinuationSha256;
+    private static bool IsPreparedContinuation(byte[] bytes) => Sha(bytes) == SchemaContinuationSha256
+        || IsHistoryContinuation(bytes) || IsFullSnapshotContinuation(bytes);
+    private static string PreparationSha(JsonElement intent) => intent.GetProperty("version").GetInt32() switch
+    {
+        2 => SchemaContinuationSha256,
+        3 => HistoryContinuationSha256,
+        4 => FullSnapshotContinuationSha256,
+        _ => throw new InvalidDataException("Unsupported schema preparation request.")
+    };
     private static byte[] BoundArtifact(string root, JsonElement artifact)
         => ExactFile(Path.Combine(root, artifact.GetProperty("path").GetString()!), artifact.GetProperty("sha256").GetString()!);
 
@@ -22,6 +28,7 @@ internal sealed partial class V1ExactSourceAdmission
         if (!IsPreparedContinuation(request)) return LoadPolicy(root, request);
         _ = ExactFile(Path.Combine(root, PolicyDirectory, "V1-SCHEMA-CONTINUATION.json"), SchemaContinuationSha256);
         var intent = Document(request);
+        if (IsFullSnapshotContinuation(request)) LoadFullSnapshotBindings(root, intent);
         if (IsHistoryContinuation(request))
         {
             _ = ExactFile(Path.Combine(root, PolicyDirectory, "V1-RECOVERY-HISTORY-CONTINUATION.json"), HistoryContinuationSha256);
@@ -104,10 +111,19 @@ internal sealed partial class V1ExactSourceAdmission
     }
 
     private static async Task VerifySchemaDescendantAsync(string root, NpgsqlConnection connection,
-        JsonElement intent, JsonElement readback, bool requireCompletion, CancellationToken ct)
+        byte[] request, JsonElement readback, bool requireCompletion, CancellationToken ct)
     {
+        var intent = Document(request);
         var expected = Document(BoundArtifact(root, intent.GetProperty("preparedSchema")));
-        Require(JsonElement.DeepEquals(await ObserveSchemaAsync(connection, ct), expected), "unreviewed or incomplete descendant schema");
+        var observed = await ObserveSchemaAsync(connection, ct);
+        if (!(IsFullSnapshotContinuation(request) ? SameFullSnapshotCatalog(observed, expected) : JsonElement.DeepEquals(observed, expected)))
+        {
+            var error = new InvalidDataException("Exact-source V1 attestation: unreviewed or incomplete descendant schema");
+            // Internal qualification may retain the exact observation without
+            // emitting schema contents into ordinary application logs.
+            error.Data["ObservedSourceCatalog"] = observed.GetRawText();
+            throw error;
+        }
         await VerifyOriginalRowsAsync(connection, Document(BoundArtifact(root, intent.GetProperty("sourceSchema"))), readback, ct);
         Require(await RecoverySnapshotService.ScalarAsync(connection,
             "SELECT count(*) FROM recipes WHERE food_mapping_evidence IS NOT NULL", ct) == "0", "new evidence must remain SQL NULL");
@@ -160,9 +176,11 @@ internal sealed partial class V1ExactSourceAdmission
             var original = Document(BoundArtifact(root, intent.GetProperty("sourceSchema")));
             var prepared = Document(BoundArtifact(root, intent.GetProperty("preparedSchema")));
             var current = await ObserveSchemaAsync(connection, ct);
-            Require(JsonElement.DeepEquals(current, original) || JsonElement.DeepEquals(current, prepared), "partial or foreign preparation state");
+            bool SameCatalog(JsonElement expected) => IsFullSnapshotContinuation(request)
+                ? SameFullSnapshotCatalog(current, expected) : JsonElement.DeepEquals(current, expected);
+            Require(SameCatalog(original) || SameCatalog(prepared), "partial or foreign preparation state");
             await VerifyOriginalRowsAsync(connection, original, readback, ct);
-            if (JsonElement.DeepEquals(current, original))
+            if (SameCatalog(original))
             {
                 if (checkpoint is not null) await checkpoint.ReachedAsync("v1-schema-before-ddl", ct);
                 // CREATE targets public; only the already-verified pristine schema
@@ -172,7 +190,7 @@ internal sealed partial class V1ExactSourceAdmission
                 await RecoverySnapshotService.ScalarAsync(connection, "SET LOCAL search_path = pg_catalog, public, pg_temp", ct);
                 if (checkpoint is not null) await checkpoint.ReachedAsync("v1-schema-after-ddl", ct);
             }
-            await VerifySchemaDescendantAsync(root, connection, intent, readback, requireCompletion: false, ct);
+            await VerifySchemaDescendantAsync(root, connection, request, readback, requireCompletion: false, ct);
             ValidateReceiptSet(set, await ExtractOperationsAsync(connection, ct));
             await VerifyCopyFilesAsync(root, copyDataRoot, backup[2], ct);
             _ = LoadAdmissionPolicy(root, request);

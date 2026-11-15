@@ -112,3 +112,15 @@ file and database validation with rollback-only TEMP writes. It proves neither
 self-contained offline restore nor publication, complete source admission or
 migration acceptance. All predecessor authority documents remain unchanged; old
 markers cannot authorize the new proposal and no aggregate task closes.
+
+## Selected full-snapshot implementation checkpoint — 2026-11-15
+
+Alex separately selected the migration companion's [bounded staging and inspection](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-DELIVERY.md).
+The proposed request/authority bytes remain unchanged. Finite internal history
+validation retains exact46 receipts and complete reference closure while ordinary/
+public/demo paths stay strict. Source-dependent read-back is separate from offline
+restore, publication, complete source admission and adoption. Explicit source
+file/table dispositions do not imply restoration of omitted operational artifacts.
+The full request's trigger-row ordering comparison retains every catalog field and
+duplicate; no predecessor policy or receipt derivation changes. Migration4.2 and
+release5.1 remain open, with Alex owning hosted qualification.

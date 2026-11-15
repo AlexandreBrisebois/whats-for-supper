@@ -533,3 +533,8 @@ A proposed request SHALL NOT authorize execution, publication or restore.
 - **WHEN** any required authority/artifact/reference is absent/corrupt, protected facts or exact receipt text change, identities/contexts disagree, old markers are supplied or capture/completion/read-back is interrupted or mutated
 - **THEN** no partial state grants authority and detached controls fail closed; exact retry reconciles only the same verified request/bytes without overwriting conflicts, replaying historical edits or resetting later human facts
 - **AND** a manifest alone, self-consistent hashes or identity-only inspection cannot satisfy full acceptance; the next strict blocker stops the slice
+
+#### Scenario: Catalog trigger rows share an observation sort key
+- **WHEN** the pinned full-snapshot continuation observes the same complete trigger tuples in another order because a self-referencing foreign key shares the catalog query's sort key
+- **THEN** only that continuation compares complete trigger rows independent of order while retaining every field and duplicate count
+- **AND** changed, missing or additional triggers and all other catalog mismatches reject; predecessor policies and approved descriptor bytes remain unchanged

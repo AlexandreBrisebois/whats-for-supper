@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "completedAtUtc": "2026-11-15T04:51:28.298655+00:00",
+  "state": "independently-reviewed-infrastructure-only-disposition",
+  "sourceRepair": false,
+  "trackedChanges": [],
+  "commitCreated": false,
+  "pushPerformed": false,
+  "head": "070d9801f135062762f72dc668c13b41f6e15069",
+  "tracking": "070d9801f135062762f72dc668c13b41f6e15069",
+  "remote": "070d9801f135062762f72dc668c13b41f6e15069",
+  "worktreeClean": true,
+  "run": 43676429700,
+  "attempt": 1,
+  "prMerge": "6171c2e01bb05605b0fa218b80583c7fe92b4554",
+  "failedProvisioningJob": 132698166560,
+  "failedAggregateJob": 132701306773,
+  "disposition": "No source repair justified; effective host APT package candidates unavailable; exact source/config/index defect unresolved.",
+  "checks": {
+    "task test:agent": {
+      "status": "passed",
+      "exitCode": 0,
+      "pythonTotal": 261,
+      "pythonPassed": 259,
+      "pythonSkipped": 2,
+      "pythonSkipReason": "Two opt-in WFS_TEST_SQLDEF Docker migration qualification tests",
+      "nodePassed": 21,
+      "nodeSkipped": 0,
+      "evidence": "test-agent.log"
+    },
+    "task verify:plan": {
+      "status": "passed",
+      "changedPaths": [],
+      "selectedChecks": [],
+      "evidence": "verify-plan.json"
+    },
+    "task prepare/task verify": {
+      "status": "not-applicable",
+      "reason": "No source/documentation/harness changes; repository review-only rule"
+    },
+    "independentReview": {
+      "status": "passed",
+      "blockingFindings": 0,
+      "evidence": "independent-review.json",
+      "manifestSha256": "ce49d8415bd58c877a7cc52a83f1b40ff152d4f78854b2e4df6f5f801e03d0a1"
+    },
+    "frozenIdentity": {
+      "status": "passed",
+      "items": 32
+    },
+    "localMatchingLinuxChromiumInstallLaunch": {
+      "status": "not-run",
+      "reason": "No source repair or matching hosted APT-state reproduction; no local provisioning claim"
+    },
+    "hostedTonight": {
+      "status": "not-run",
+      "reason": "Original attempt capability step skipped; rerun/monitoring belongs to Alex"
+    },
+    "hostedPlanning": {
+      "status": "passed",
+      "testsPassed": 353,
+      "testsSkipped": 6,
+      "scope": "Comparison host only"
+    },
+    "hostedAggregate": {
+      "status": "failed",
+      "job": 132701306773,
+      "scope": "Original attempt1; propagated provisioning failure correctly"
+    },
+    "databaseOperationalAcceptance": {
+      "status": "not-applicable",
+      "reason": "No application/persistence/operational change"
+    }
+  },
+  "preservation": {
+    "predecessorHashesUnchanged": true,
+    "containers": 6,
+    "containerIdentityAndPortsUnchanged": true,
+    "port3000ListenerUnchanged": true,
+    "noSourceOrDatabaseMutations": true
+  },
+  "entire": {
+    "changeUrl": "https://entire.com/gh/alexandrebrisebois/-/trails/1/changes/whats-for-supper/1",
+    "descriptionUpdatedAndReadBack": true,
+    "priorDescriptionPreservedExactly": true,
+    "findingId": "01M7ERP9WRJFZ06KC2VWFPFXZA",
+    "findingReadBack": true,
+    "findingStatus": "open"
+  },
+  "nextActionOwner": "Alex",
+  "nextActionCommand": "gh run rerun 43676429700 --failed --repo AlexandreBrisebois/whats-for-supper",
+  "rerunPerformed": false,
+  "aggregateOpenSpecTasksUnchanged": true,
+  "recoveryBlockerUnchanged": "Snapshot manifest is missing."
+}

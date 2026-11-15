@@ -250,3 +250,20 @@ or deployment. Missing representation is a blocker, not permission to discard fa
 The successor contract fixes RED/GREEN, interruption/exact-retry, independent review,
 actual PostgreSQL and acceptance/exclusion claims. Historical provenance remains
 unproven and aggregate tasks remain open.
+
+## Selected full-snapshot implementation checkpoint
+
+The [delivery handoff](../../../docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-DELIVERY.md)
+records Alex's separate selection and observed bounded staging/inspection. Existing
+owners now share construction while the internal attested path holds one coherent
+observation transaction; ordinary capture still owns its separate publication step.
+The sibling envelope binds exact source receipts, attempt/preparation, explicit
+source dispositions and completion. Final artifact expectations survive source
+re-admission and are reread afterward. Pending-attempt retry preserves the same
+validated time/request and never overwrites divergent completed artifacts.
+
+The approved catalog's self-FK trigger query has a tied sort key. Only the pinned
+full request compares complete trigger tuples independent of row order, retaining
+all fields and duplicate multiplicity. This changes no source/prepared descriptor
+bytes or predecessor validation policy; all other catalog domains remain exact.
+Final qualification and operational exclusions remain separately recorded.
