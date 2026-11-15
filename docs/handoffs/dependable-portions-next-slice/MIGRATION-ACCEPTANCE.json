@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "state": "attestation-gate-accepted-complete-source-admission-blocked",
+  "state": "attestation-history-readback-passed-complete-source-admission-blocked",
   "entryCommit": "6589c18a7073afc3aeacb94dd6a4a6506030eb5a",
   "branch": "recipe-view-redesign",
   "ciMonitoringOwner": "Alex",
@@ -310,5 +310,27 @@
     "historicalWriterOrWireProofEstablished": false,
     "aggregateTasksClosed": [],
     "excludedOperations": "migration/conversion,publication/adoption,rebuild,activation,deployment,DV/production,archival not-run"
+  },
+  "selectedRecoveryHistoryContinuation": {
+    "entryCommit": "7c89865954435c22e10abe486a6eb9ec04f194f8",
+    "intentPath": "docs/handoffs/dependable-portions-next-slice/V1-RECOVERY-HISTORY-CONTINUATION.json",
+    "intentSha256": "a8aabc6e9f5b5e78a057328769119cb6bc3f8fcc3ca55f71d6b85f1b0bff202f",
+    "sourceDependentFreshProcessReadBack": true,
+    "schemaPreparation": "passed",
+    "attestation": 46,
+    "ordinaryStrictRejected": 46,
+    "remainingInventory": "passed",
+    "recoveryObservation": "passed",
+    "durableStaging": "passed",
+    "independentReadback": "passed",
+    "completeSourceAdmission": false,
+    "fullSnapshotRecoveryAcceptance": false,
+    "nextIndependentBlocker": "Snapshot manifest is missing.",
+    "nextBlockerOwner": "RecoverySnapshotService.ReadCurrentSnapshotAsync",
+    "evidenceOwner": ".task/v1-recovery-history-20261114/",
+    "terminalDeliveryRecord": ".task/v1-recovery-history-20261114/delivery.json",
+    "finalGatesAtDocumentCutoff": "pending; consult terminal invocation records",
+    "aggregateTasksClosed": [],
+    "excludedOperations": "fullsnapshotpublication,restore,migration,conversion,vocabularypublication/adoption,rebuild,activation,deployment,DV/production,archival not-run"
   }
 }

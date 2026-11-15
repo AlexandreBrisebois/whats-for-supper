@@ -36,7 +36,17 @@ public static partial class FoodVocabularyInventoryQualification
         => RequiredReferences(facts, prospectiveDemoInvalidation: false, attestation);
 
     internal static IReadOnlyList<FoodVocabularyReferenceOrigin> ContextReferences(FoodVocabularyContextFacts context) =>
-        context.Context.Kind == "demo-destination" ? RequiredReferencesForDemoInvalidation(context.Facts) : RequiredReferences(context.Facts);
+        ContextReferences(context, null);
+
+    internal static IReadOnlyList<FoodVocabularyReferenceOrigin> ContextReferences(FoodVocabularyContextFacts context,
+        V1RecoveryHistoryContext? authority)
+    {
+        if (authority is null)
+            return context.Context.Kind == "demo-destination" ? RequiredReferencesForDemoInvalidation(context.Facts) : RequiredReferences(context.Facts);
+        authority.RequireContext(context.Context);
+        authority.RequireFacts(context.Facts);
+        return RequiredReferencesForAttestedSource(context.Facts, authority.Attestation);
+    }
 
     internal static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferencesForDemoInvalidation(FoodVocabularyInventoryFacts facts)
         => RequiredReferences(facts, prospectiveDemoInvalidation: true);

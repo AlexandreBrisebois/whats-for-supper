@@ -199,3 +199,23 @@ This avoids recapturing changed whole rows as authority or normalizing unrelated
 old constraints. A broad schema migration is excluded because it includes data
 rewrites and destructive transitions. The existing strict inventory remains the
 next owner, with schema/attestation/inventory/full recovery reported separately.
+
+
+## Selected attestation-bound recovery-history continuation
+
+Reuse existing history v1 and index v1 formats. A bounded internal context carries
+only the reviewed operation/generation/snapshot and exact-source attestation through
+all history owners. Its canonical receipt checks require exact46 membership and
+bytes, not semantic equality. Other owners retain ordinary validators. Ordinary
+public entrypoints never obtain this context. No global parsing switch is added.
+
+A separately pinned history continuation preserves both prior intents and binds the
+same reviewed schema inputs/catalogs to a fresh disposable descendant. Preparation
+completion binds this request hash, so old markers cannot authorize it. Stage only
+history/index and separate attestation lineage with deterministic completion metadata
+through Linux recovery durability. Exact retry accepts only matching existing bytes;
+partial files cannot authorize reads. Fresh-process read-back requires the verified
+source and regenerates a protected observation to compare every staged fact before
+existing history/reference/authority/index validation. This source dependency is
+explicit; hashes from an untrusted envelope are insufficient. No offline full snapshot
+acceptance, full snapshot publication, restore or historical mutation is introduced.

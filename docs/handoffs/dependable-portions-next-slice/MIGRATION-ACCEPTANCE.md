@@ -1,5 +1,66 @@
 # Portions coverage and copied-library admission
 
+## Attestation-bound recovery-history staging and read-back — 2026-11-14
+
+Entered clean at expected local/remote `7c89865954435c22e10abe486a6eb9ec04f194f8`.
+The user authorizes this bounded implementation, the previously reviewed schema
+preparation on fresh owned copies, staged metadata/evidence, signed commits/pushes
+and independent review. Alex owns CI. Both predecessor intents, approved source,
+package/approval, original receipts and predecessor evidence remain immutable.
+Historical writer/build/serializer identity and original result wire bytes remain
+unproven; the original exact retained source is present-day authority.
+
+The [history continuation](V1-RECOVERY-HISTORY-CONTINUATION.json), SHA256
+`a8aabc6e9f5b5e78a057328769119cb6bc3f8fcc3ca55f71d6b85f1b0bff202f`, binds fresh
+operation `f63b5d7c-20e3-42ab-9760-7a3d13b65edf`, generation
+`e2aa64b737244f8eb7fb9dd1794e2a55`, snapshot
+`b9b11dc0-0d62-48db-8e96-6c49334664a3`, task-owned staging and request to the
+original approval/package/source and exact qualified schema transition/catalogs.
+Old generation/preparation markers cannot authorize the new operation. Preparation
+uses only the two prior reviewed schema additions, with SQL NULL evidence and
+empty override storage. No broad migration or live schema operation runs.
+
+An explicit internal context carries exact receipt membership and representation
+checks through existing observation, history write/read/merge, context compatibility,
+reference/authority and recovery-index owners. Every other history/reference owner
+and ordinary/public/demo entrypoint retains strict validation. The existing history
+v1/index v1 formats and paths are reused; separate versioned lineage and completion
+retain original authority. No receipt is rewritten, deduplicated, remapped or
+upgraded through V2. JSON envelopes preserve PostgreSQL18.6 result::text UTF-8,
+not merely semantic JSON equality or newly computed envelope hashes.
+
+**Schema preparation, attestation and remaining inventory passed. Recovery-history
+observation, durable staging and independent fresh-process read-back passed.**
+The independent process reconstructs authority from durable pinned policy/schema/
+backup and the re-admitted prepared source, compares the complete regenerated
+observation to staged history/index/lineage, then invokes existing reference,
+authority, merge and index validation. This is deliberately source-dependent;
+the staged history is not an offline recovery package. All46 original receipt
+request/input/result hashes, identities and timestamps survive; ordinary readers
+reject all46. All31 original table projections and1,576files per tree are checked
+against the original approved authority before/after the tracer.
+
+**Complete source admission and full snapshot/recovery acceptance remain blocked.**
+The next existing read-only `ReadCurrentSnapshotAsync` boundary rejects this bounded
+stage with `Snapshot manifest is missing.` No full snapshot was published or
+restore invoked, and that check was not weakened. History staging does not supply
+full snapshot table/recipe/household/media acceptance. No migration, conversion,
+vocabulary adoption/publication, all-week rebuild, restore, activation, deployment,
+DV/production, later intake, Similar, garlic, adjacent UI or archival follows.
+
+Evidence owner `.task/v1-recovery-history-20261114/`: policy/history intended
+RED logs, `readback-qualified.log`, `readback-receipts.json`, staged history/index/
+lineage/completion, `next-recovery-blocker.txt`, independent review manifests,
+`negative-controls.json`, preservation/runtime and terminal `delivery.json`.
+At this document's write cutoff, final negative/interruption controls, stable
+focused/full PostgreSQL, repository preparation/verification, frozen final review,
+signed delivery and ownership-bound cleanup remain pending; consult terminal
+invocation records for their actual status. Earlier compile failures and the
+observed pre-fix completion-boundary mutation acceptance remain retained.
+No aggregate checkbox closes (migration3/8, bilingual8/10). Port3000 and preexisting
+resources remain protected; browser checks use an owned source/build/port.
+
+
 ## Schema-only descendant lineage and strict inventory — 2026-11-14
 
 Entered clean at expected local/remote `fc43971c47be366f5d9a157501ac27047654c2e3`.

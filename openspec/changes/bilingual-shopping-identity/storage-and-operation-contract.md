@@ -77,3 +77,18 @@ partial schema, unexpected new values or any protected change fails closed.
 Existing history/reference inventory stays strict. RemainingInventoryValidated is
 separate from complete source admission and current-format snapshot acceptance;
 no adoption, conversion, publication, rebuild, activation or deployment follows.
+
+
+## Selected recovery-history continuation
+
+A separately pinned continuation may carry approved exact-source authority through
+existing recovery-history write/read/merge/context/reference/authority/index owners
+using an explicit bounded internal context. Require all46 original receipts with
+exact bytes/identities/timestamps; enclosing JSON must restore original PostgreSQL18.6
+result::text UTF-8. Keep both predecessor intents and ordinary/public/demo readers
+unchanged. Re-admit approved source/schema lineage at observation and fresh-process
+read-back boundaries; compare full staged observations to the newly verified source.
+Separate durable lineage and completion bind operation/generation/snapshot/request,
+staging and history/index hashes. Partial staging, foreign/mixed contexts or altered
+facts fail closed. Exact retry verifies existing state without historical mutation.
+This authorizes no full snapshot publication/restore, vocabulary adoption or migration.

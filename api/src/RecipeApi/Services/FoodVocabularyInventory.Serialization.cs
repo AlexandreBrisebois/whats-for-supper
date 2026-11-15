@@ -79,8 +79,15 @@ public static partial class FoodVocabularyInventoryQualification
 
     public static byte[] WriteHistoryObservations(FoodVocabularyInventoryFacts facts, string kind, Guid? snapshotId,
         Guid? recoveryOperationId, string? generation)
+        => WriteHistoryObservations(facts, kind, snapshotId, recoveryOperationId, generation, null);
+
+    internal static byte[] WriteHistoryObservations(FoodVocabularyInventoryFacts facts, string kind, Guid? snapshotId,
+        Guid? recoveryOperationId, string? generation, V1RecoveryHistoryContext? authority)
     {
-        _ = kind == "demo-destination" ? RequiredReferencesForDemoInvalidation(facts) : RequiredReferences(facts);
+        authority?.RequireContext(kind, snapshotId, recoveryOperationId, generation);
+        authority?.RequireFacts(facts);
+        _ = authority is null ? kind == "demo-destination" ? RequiredReferencesForDemoInvalidation(facts) : RequiredReferences(facts)
+            : RequiredReferencesForAttestedSource(facts, authority.Attestation);
         var context = new FoodVocabularyObservationContext("", kind, snapshotId, recoveryOperationId, generation);
         var rows = new List<FoodVocabularyRetainedObservation>();
         void Add<T>(string owner, IEnumerable<T> values, Func<T, string> key, Func<T, object>? observe = null)
@@ -122,7 +129,9 @@ public static partial class FoodVocabularyInventoryQualification
             sorted.Select(x => x with { Context = context }).ToArray()), HistoryJson);
     }
 
-    public static IReadOnlyList<FoodVocabularyContextFacts> ReadHistoryObservations(byte[] rawBytes)
+    public static IReadOnlyList<FoodVocabularyContextFacts> ReadHistoryObservations(byte[] rawBytes) => ReadHistoryObservations(rawBytes, null);
+
+    internal static IReadOnlyList<FoodVocabularyContextFacts> ReadHistoryObservations(byte[] rawBytes, V1RecoveryHistoryContext? authority)
     {
         string text;
         try { text = new UTF8Encoding(false, true).GetString(rawBytes); }
@@ -136,6 +145,7 @@ public static partial class FoodVocabularyInventoryQualification
             var rows = SortObservations(group);
             var context = rows[0].Context;
             ValidateContext(context);
+            authority?.RequireContext(context);
             FoodVocabularyDefinitions.Require(rows.All(x => x.Context == context) && ContextHash(context, rows) == context.ContextId
                 && rows.Select(x => (x.OwnerKind, x.OwnerKey)).Distinct().Count() == rows.Length);
             foreach (var row in rows)
@@ -185,9 +195,10 @@ public static partial class FoodVocabularyInventoryQualification
                 new(workflows, launches, children, resets, attempts, retirements, repairs, physical, maintenance, stages, commands),
                 new(header.OverrideCoverage, header.Counts["household-override"] is null ? null : overrides));
             var observed = new FoodVocabularyContextFacts(context, facts);
-            _ = ContextReferences(observed);
+            _ = ContextReferences(observed, authority);
             result.Add(observed);
         }
+        authority?.RequireSingleContext(result);
         return result;
     }
 

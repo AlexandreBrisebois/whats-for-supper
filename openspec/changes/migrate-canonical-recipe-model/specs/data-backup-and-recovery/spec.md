@@ -480,3 +480,27 @@ SHALL remain strict.
 - **WHEN** schema prerequisites and exact-source attestation pass
 - **THEN** the existing read-only inventory and all other history/reference owners remain strict and any next independent blocker is retained
 - **AND** remaining-inventory success does not establish complete source admission or a valid current-format recovery snapshot
+
+
+### Requirement: Retain attested source authority through recovery history
+
+A pinned internal continuation SHALL bind new operation, generation,
+snapshot, staging and request to the approved source and schema transition.
+Existing history owners SHALL preserve exact original receipt bytes and validate
+bounded authority through observation, write/read/merge, references and index.
+Fresh-process read-back SHALL re-admit source and durable lineage.
+Ordinary/public/demo readers SHALL remain strict. Staging SHALL NOT publish a
+full snapshot or grant restore authority.
+
+#### Scenario: Exact staged history independently read back
+- **WHEN** the approved fresh prepared descendant is observed and history/index plus separate lineage are durably staged
+- **THEN** a fresh process revalidates source, approval/package/request/schema and exact staged observations through existing reference/authority/index owners
+- **AND** all46 original request/input/result representations, hashes, identities and timestamps survive unchanged; result hashes use PostgreSQL18.6 result::text UTF-8
+
+#### Scenario: Incomplete or conflicting authority
+- **WHEN** authority/source/lineage is missing or corrupt, operation/generation/snapshot/context/request differs, receipts/membership/protected facts change, hashes mismatch, contexts conflict or staging/read-back is interrupted
+- **THEN** no partial staging grants authority; detached negative copies fail closed and exact retry reconciles verified state without historical edits or overwriting later facts
+
+#### Scenario: Later recovery boundary remains independent
+- **WHEN** staged history/index read-back passes
+- **THEN** the next existing read-only recovery inspection remains strict and its independent blocker is retained without full snapshot publication, restore, vocabulary adoption or migration

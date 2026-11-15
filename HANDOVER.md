@@ -1,3 +1,15 @@
+# Selected recovery-history continuation
+
+Current selection: attestation-bound recovery-history observation, serialization,
+staging and independent source-dependent read-back on fresh prepared copies.
+See [migration acceptance](docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)
+and `.task/v1-recovery-history-20261114/delivery.json` for exact terminal evidence.
+History/read-back passed at this write cutoff; final qualification/review/delivery
+remain pending there. Complete source admission/full snapshot recovery are blocked
+at the strict snapshot reader: `Snapshot manifest is missing.` No full snapshot
+publication, restore, migration, conversion, adoption, activation or deployment.
+Signed commits/pushes authorized; Alex owns CI. No aggregate task closes.
+
 # Active resume checkpoints
 
 ## Schema-only V1 descendant lineage (2026-11-14)

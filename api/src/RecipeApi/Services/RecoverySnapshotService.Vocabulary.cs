@@ -16,23 +16,34 @@ public partial class RecoverySnapshotService
             x.DictionaryRevision, x.Document, x.FallbackKey, x.ShoppingName, x.GrocerySection, x.ProtectedFields,
             x.PresentationSequence, x.CreatedAt, x.UpdatedAt)).ToArray();
         FoodVocabularyDefinitions.Require(JsonSerializer.Serialize(feed, Json) == JsonSerializer.Serialize(observation.Live.Overrides.Rows, Json));
-        var historyPath = Path.Combine(stage, "vocabulary", "history-observations.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(historyPath)!);
-        await File.WriteAllBytesAsync(historyPath, observation.HistoryBytes, ct);
+        foreach (var (path, bytes) in VocabularyArtifacts(observation, snapshotId, recipes.Generation, demo ? "demo" : "snapshot", null))
+        {
+            var destination = Path.Combine(stage, path);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            await File.WriteAllBytesAsync(destination, bytes, ct);
+        }
+    }
+
+    private static IReadOnlyDictionary<string, byte[]> VocabularyArtifacts(FoodVocabularyRecoveryObservation observation,
+        Guid snapshotId, string? generation, string kind, V1RecoveryHistoryContext? authority)
+    {
+        var artifacts = new Dictionary<string, byte[]>(StringComparer.Ordinal)
+        {
+            ["vocabulary/history-observations.json"] = observation.HistoryBytes
+        };
         var documents = new List<FoodVocabularyRecoveryDocument>();
         foreach (var capture in observation.Documents)
         {
             var path = "recipes/" + FoodVocabularyStore.PathFor(capture.Reference);
-            var destination = Path.Combine(stage, path);
-            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            await File.WriteAllBytesAsync(destination, capture.RawBytes, ct);
+            artifacts.Add(path, capture.RawBytes);
             documents.Add(new(capture.Reference, path, capture.RawBytes.Length));
         }
-        var index = new FoodVocabularyRecoveryIndex(1, snapshotId, recipes.Generation, observation.Live.Membership.RawJson,
+        var index = new FoodVocabularyRecoveryIndex(1, snapshotId, generation, observation.Live.Membership.RawJson,
             FoodVocabularyDefinitions.Sha256(observation.HistoryBytes), observation.Live.Overrides.Coverage, documents.ToArray(), observation.Origins);
         var indexBytes = FoodVocabularyInventoryQualification.WriteRecoveryIndex(index);
         _ = FoodVocabularyInventoryQualification.ValidateRecoveryArtifacts(indexBytes, observation.HistoryBytes,
-            observation.Documents, demo ? "demo" : "snapshot");
-        await File.WriteAllBytesAsync(Path.Combine(stage, "vocabulary", "index.json"), indexBytes, ct);
+            observation.Documents, kind, authority);
+        artifacts.Add("vocabulary/index.json", indexBytes);
+        return artifacts;
     }
 }

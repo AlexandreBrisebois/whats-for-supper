@@ -83,7 +83,7 @@ internal sealed partial class V1ExactSourceAdmission
                 resultPostgresTextUtf8 = Utf8.GetBytes(x.Result)
             }).ToArray()
         });
-        if (IsSchemaContinuation(intent))
+        if (IsPreparedContinuation(intent))
         {
             var continuation = Document(intent);
             _lineage = JsonSerializer.SerializeToUtf8Bytes(new
@@ -98,6 +98,13 @@ internal sealed partial class V1ExactSourceAdmission
                 transitionUtf8 = Utf8.GetBytes(SchemaTransition(repositoryRoot, continuation))
             });
         }
+        if (IsHistoryContinuation(intent))
+            _lineage = JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                version = 3,
+                preparedLineage = _lineage,
+                schemaContinuation = ExactFile(Path.Combine(repositoryRoot, PolicyDirectory, "V1-SCHEMA-CONTINUATION.json"), SchemaContinuationSha256)
+            });
     }
 
     internal byte[] LineageBytes => _lineage.ToArray();
@@ -111,7 +118,7 @@ internal sealed partial class V1ExactSourceAdmission
             && lineageBytes.AsSpan().SequenceEqual(_lineage), "missing or changed recovery lineage/request");
         var set = LoadAdmissionPolicy(_repositoryRoot, intentBytes);
         VerifyGeneration(_repositoryRoot, Document(intentBytes));
-        if (IsSchemaContinuation(intentBytes)) VerifyPreparationReceipt(_repositoryRoot, Document(intentBytes));
+        if (IsPreparedContinuation(intentBytes)) VerifyPreparationReceipt(_repositoryRoot, Document(intentBytes));
         await VerifyBackupAsync(_repositoryRoot, set, ct);
         Require(_operations.TryGetValue((recipeId, operationId), out var operation)
             && operation.InputHash == inputHash, "historical replay binding differs");
@@ -173,7 +180,7 @@ internal sealed partial class V1ExactSourceAdmission
             && await RecoverySnapshotService.ScalarAsync(connection, "SHOW client_encoding", ct) == "UTF8", "unsupported extraction profile");
         var backup = set.GetProperty("backup").GetProperty("files");
         var readback = Document(ExactFile(Path.Combine(repositoryRoot, backup[3].GetProperty("path").GetString()!), backup[3].GetProperty("sha256").GetString()!));
-        if (IsSchemaContinuation(intentBytes))
+        if (IsPreparedContinuation(intentBytes))
             await VerifySchemaDescendantAsync(repositoryRoot, connection, intent, readback, requireCompletion: true, ct);
         else
         {
@@ -253,5 +260,23 @@ internal sealed partial class V1ExactSourceAdmission
             await using var stream = File.OpenRead(path);
             Require(Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, ct)) == sha, "copy file bytes differ: " + relative);
         }
+    }
+}
+
+internal sealed partial class V1ExactSourceAdmission
+{
+    internal V1RecoveryHistoryContext RecoveryHistoryContext(byte[] request)
+    {
+        Require(IsHistoryContinuation(request) && request.AsSpan().SequenceEqual(_intent), "foreign recovery-history request");
+        _ = LoadAdmissionPolicy(_repositoryRoot, request);
+        VerifyGeneration(_repositoryRoot, Document(request));
+        VerifyPreparationReceipt(_repositoryRoot, Document(request));
+        return new(this, Document(request));
+    }
+
+    internal void RequireReceiptMembership(FoodVocabularyInventoryFacts facts)
+    {
+        ValidateReceiptSet(_set, facts.CanonicalOperations.ToArray());
+        foreach (var operation in facts.CanonicalOperations) _ = References(operation);
     }
 }

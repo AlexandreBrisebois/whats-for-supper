@@ -5,21 +5,23 @@ namespace RecipeApi.Services;
 
 public static partial class FoodVocabularyInventoryQualification
 {
-    public static byte[] MergeHistoryObservations(params byte[][] packages)
+    public static byte[] MergeHistoryObservations(params byte[][] packages) => MergeHistoryObservations(null, packages);
+
+    internal static byte[] MergeHistoryObservations(V1RecoveryHistoryContext? authority, params byte[][] packages)
     {
         FoodVocabularyDefinitions.Require(packages is not null && packages.Length > 0 && packages.All(x => x is not null));
-        var contexts = packages.SelectMany(ReadHistoryObservations).ToArray();
-        ValidateObservationCompatibility(contexts);
+        var contexts = packages.SelectMany(bytes => ReadHistoryObservations(bytes, authority)).ToArray();
+        ValidateObservationCompatibility(contexts, authority);
         var observations = packages.SelectMany(bytes => ReadObservation<FoodVocabularyHistoryObservationsV1>(System.Text.Encoding.UTF8.GetString(bytes)).Observations)
             .DistinctBy(x => (x.Context.ContextId, x.OwnerKind, x.OwnerKey, x.RawSha256))
             .OrderBy(x => x.Context.ContextId, StringComparer.Ordinal).ThenBy(x => x.OwnerKind, StringComparer.Ordinal)
             .ThenBy(x => x.OwnerKey, StringComparer.Ordinal).ThenBy(x => x.RawSha256, StringComparer.Ordinal).ToArray();
         var result = JsonSerializer.SerializeToUtf8Bytes(new FoodVocabularyHistoryObservationsV1(1, observations), HistoryJson);
-        _ = ReadHistoryObservations(result);
+        _ = ReadHistoryObservations(result, authority);
         return result;
     }
 
-    private static void ValidateObservationCompatibility(IReadOnlyList<FoodVocabularyContextFacts> contexts)
+    private static void ValidateObservationCompatibility(IReadOnlyList<FoodVocabularyContextFacts> contexts, V1RecoveryHistoryContext? authority = null)
     {
         static string? JsonValue(string? raw) => raw is null ? null : CanonicalRecipeContentStore.NormalizeJson(raw);
         static string Shape(object value) => JsonSerializer.Serialize(value, HistoryJson);
@@ -33,9 +35,20 @@ public static partial class FoodVocabularyInventoryQualification
                     FoodVocabularyDefinitions.Require(group.Select(observe).Where(x => x is not null).Distinct(StringComparer.Ordinal).Count() <= 1);
             }
         }
+        if (authority is not null)
+            foreach (var context in contexts)
+            {
+                authority.RequireContext(context.Context);
+                authority.RequireFacts(context.Facts);
+            }
         var facts = contexts.Select(x => x.Facts).ToArray();
         Consistent(facts.SelectMany(x => x.CanonicalOperations), x => (x.RecipeId, x.OperationId), x => new
-        { x.InputHash, OriginalRequest = JsonValue(x.OriginalRequest), Result = JsonValue(x.Result), x.CreatedAt });
+        {
+            x.InputHash,
+            OriginalRequest = authority is null ? JsonValue(x.OriginalRequest) : x.OriginalRequest,
+            Result = authority is null ? JsonValue(x.Result) : x.Result,
+            x.CreatedAt
+        });
         Consistent(facts.SelectMany(x => x.Publications), x => (x.RecipeId, x.OperationId), x => new
         { x.InputHash, Payload = JsonValue(x.Payload), x.ResultHash, x.CreatedAt });
         Consistent(facts.SelectMany(x => x.History.Launches), x => x.Id, x => new

@@ -1,44 +1,39 @@
 # Tasks
 
-## Current selected schema/lineage delivery — 2026-11-14
+## Current selected recovery-history delivery — 2026-11-14
 
-Using change `migrate-canonical-recipe-model` (wfs, 3/8 complete). The user
-separately authorizes schema-only preparation and demonstrated lineage for a fresh
-disposable descendant of the approved exact source, then strict read-only inventory,
-beneath open 2.1–2.2/3.1–3.2 and bilingual 4.2. Normal signed commits/pushes are
-authorized; Alex owns CI. No aggregate checkbox closes.
+Using change `migrate-canonical-recipe-model` (wfs, 3/8 complete), beneath open
+2.1–2.2/3.1–3.2 and bilingual4.2. The user authorizes attestation-bound history
+observation, serialization, task-owned durable staging and independent fresh-process
+read-back on a fresh prepared descendant. Signed commits/pushes are authorized;
+Alex owns CI. No aggregate checkbox closes.
 
-Preserve the frozen policy/package/approval, original predecessor intent, all four
-backup artifacts, all 46 receipts and predecessor reviews/evidence. Source authority
-remains the approved original rows/files, never a recaptured descendant baseline.
-The separately reviewed [continuation](../../../docs/handoffs/dependable-portions-next-slice/V1-SCHEMA-CONTINUATION.json)
-binds the new operation/generation/request, predecessor, exact schema inputs and
-catalogs. Only the existing compatibility owner's nullable JSONB
-`recipes.food_mapping_evidence` and empty `household_food_overrides` table with its
-constraints/indexes may be added. New evidence stays SQL NULL. Do not execute the
-broad migration entrypoint, seed, convert or adopt data.
+Preserve both predecessor intents, approved package/approval/source and all prior
+evidence. The separately reviewed [history continuation](../../../docs/handoffs/dependable-portions-next-slice/V1-RECOVERY-HISTORY-CONTINUATION.json)
+binds new operation/generation/snapshot/staging/request and the exact qualified
+schema transition. Reuse only its two reviewed schema additions. Existing history
+owners must carry bounded internal authority through write/read/merge/context,
+reference/authority/index validation. Preserve every original receipt byte/hash,
+timestamp and identity, including PostgreSQL18.6 result::text UTF-8 through envelopes.
+Ordinary/public/demo/other history owners remain strict. No rewriting, deduplication,
+blanket empty-reference exception, V2 preparation for V1 or global parser flag.
 
-Selected acceptance: test-first RED/GREEN; independently verified pristine
-PostgreSQL18.6 restore; exhaustive original-column/row/relationship/file comparison;
-transactional preparation and exact retry/resume; rejection of foreign lineage,
-unreviewed SQL/schema, protected changes, missing/corrupt/interrupted evidence;
-all46 exact historical pairs and unchanged ordinary/public rejection; existing
-strict inventory with next independent blocker retained; independent read-only
-review of frozen implementation/evidence; focused and full PostgreSQL plus final
-repository preparation/verification on stable source. Evidence owner:
-`.task/v1-schema-20261114/`. Port3000 and preexisting resources remain protected;
-required browser checks use a task-owned source/build/port.
+Selected acceptance: test-first RED/GREEN; fresh verified four-artifact PostgreSQL18.6
+restore with pristine source; prepared descendant with all31 original table projections
+and1576files preserved; one real observation→history/index/separate-lineage staging→
+fresh-process read-back tracer; source re-admission at observation boundaries;
+negative detached-copy controls for authority/source/context/bytes/membership/facts,
+hashes/mixed contexts and interruption; exact retry/resume without replaying old edits;
+next strict read-only recovery inspection blocker; independent frozen implementation/
+evidence review; focused and full PostgreSQL then stable repository preparation/
+verification using owned browser source/build/port. Evidence owner
+`.task/v1-recovery-history-20261114/`; port3000 and preexisting resources protected.
 
-Schema preparation, attestation, remaining inventory and complete source admission
-are distinct results. Inventory success is not a current-format recovery snapshot.
-Stop at the next independent blocker without weakening owners or expanding into
-migration/conversion, vocabulary publication/adoption, all-week rebuild, activation,
-deployment, DV/production, later intake, Similar, garlic, adjacent UI or archival.
-
-Predecessor attestation checkpoint remains immutable under
-`.task/v1-attestation-20261114/`: accepted46/46, ordinary rejected46; strict inventory
-blocked on PostgreSQL42703 (`recipes.food_mapping_evidence` absent). Historical
-writer/build/serializer identity and original result wire bytes remain unproven.
+Report attestation, remaining inventory, observation, durable staging, independent
+read-back, complete source admission and full snapshot/recovery separately. Stop
+before full snapshot publication/restore, migration/conversion, vocabulary adoption,
+all-week rebuild, activation/deployment, DV/production, later intake, Similar, garlic,
+adjacent UI, archival or unrelated cleanup. Historical provenance limits persist.
 
 ## Historical coordinated release policy — 2026-11-11
 

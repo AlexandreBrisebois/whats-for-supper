@@ -18,22 +18,26 @@ public sealed partial class FoodVocabularyStore
     }
 
     internal async Task<FoodVocabularyRecoveryObservation> ObserveRecoveryAsync(string kind, Guid? snapshotId,
-        Guid? operationId, CancellationToken ct)
+        Guid? operationId, CancellationToken ct) => await ObserveRecoveryAsync(kind, snapshotId, operationId, ct, null);
+
+    internal async Task<FoodVocabularyRecoveryObservation> ObserveRecoveryAsync(string kind, Guid? snapshotId,
+        Guid? operationId, CancellationToken ct, V1RecoveryHistoryContext? authority)
     {
+        authority?.RequireContext(kind, snapshotId, operationId, authority.Generation);
         var facts = await ObserveInventoryFactsAsync(ct);
         if (facts.Membership.RawJson is { } raw && InspectMembership(raw).HasPrepared)
             throw new RecoveryBusyException("Reconcile prepared vocabulary publication before recovery.");
-        var current = FoodVocabularyInventoryQualification.WriteHistoryObservations(facts, kind, snapshotId, operationId, recipes.Generation);
+        var current = FoodVocabularyInventoryQualification.WriteHistoryObservations(facts, kind, snapshotId, operationId, authority?.Generation ?? recipes.Generation, authority);
         var retained = await storage.LoadAsync("recipes", RetainedHistoryPath);
-        var history = retained is null ? current : FoodVocabularyInventoryQualification.MergeHistoryObservations(retained, current);
-        var contexts = FoodVocabularyInventoryQualification.ReadHistoryObservations(history);
-        var origins = contexts.SelectMany(FoodVocabularyInventoryQualification.ContextReferences).Distinct().ToArray();
+        var history = retained is null ? current : FoodVocabularyInventoryQualification.MergeHistoryObservations(authority, retained, current);
+        var contexts = FoodVocabularyInventoryQualification.ReadHistoryObservations(history, authority);
+        var origins = contexts.SelectMany(x => FoodVocabularyInventoryQualification.ContextReferences(x, authority)).Distinct().ToArray();
         if (facts.Membership.RawJson is null && origins.Length != 0)
             throw new InvalidDataException("Absent live vocabulary membership cannot admit retained vocabulary authority.");
         var documents = new List<FoodVocabularyCapture>();
         foreach (var reference in origins.Select(x => x.Reference).Distinct().OrderBy(x => x.Revision, StringComparer.Ordinal).ThenBy(x => x.Sha256, StringComparer.Ordinal))
             documents.Add(await LoadCapturedAsync(reference, ct));
-        _ = FoodVocabularyInventoryQualification.ValidateHistoryAuthority(history, documents);
+        _ = FoodVocabularyInventoryQualification.ValidateHistoryAuthority(history, documents, authority);
         return new(facts, history, documents.ToArray(), origins);
     }
 }

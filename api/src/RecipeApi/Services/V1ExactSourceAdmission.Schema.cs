@@ -9,15 +9,24 @@ namespace RecipeApi.Services;
 internal sealed partial class V1ExactSourceAdmission
 {
     internal const string SchemaContinuationSha256 = "0bc8fc02687eeb74f93f099e3b08c58559bdc335f97508fc795c60f56652270b";
-    private static bool IsSchemaContinuation(byte[] bytes) => Sha(bytes) == SchemaContinuationSha256;
+    internal const string HistoryContinuationSha256 = "a8aabc6e9f5b5e78a057328769119cb6bc3f8fcc3ca55f71d6b85f1b0bff202f";
+    private static bool IsHistoryContinuation(byte[] bytes) => Sha(bytes) == HistoryContinuationSha256;
+    private static bool IsPreparedContinuation(byte[] bytes) => Sha(bytes) == SchemaContinuationSha256 || IsHistoryContinuation(bytes);
+    private static string PreparationSha(JsonElement intent) => intent.GetProperty("version").GetInt32() == 3
+        ? HistoryContinuationSha256 : SchemaContinuationSha256;
     private static byte[] BoundArtifact(string root, JsonElement artifact)
         => ExactFile(Path.Combine(root, artifact.GetProperty("path").GetString()!), artifact.GetProperty("sha256").GetString()!);
 
     private static JsonElement LoadAdmissionPolicy(string root, byte[] request)
     {
-        if (!IsSchemaContinuation(request)) return LoadPolicy(root, request);
+        if (!IsPreparedContinuation(request)) return LoadPolicy(root, request);
         _ = ExactFile(Path.Combine(root, PolicyDirectory, "V1-SCHEMA-CONTINUATION.json"), SchemaContinuationSha256);
         var intent = Document(request);
+        if (IsHistoryContinuation(request))
+        {
+            _ = ExactFile(Path.Combine(root, PolicyDirectory, "V1-RECOVERY-HISTORY-CONTINUATION.json"), HistoryContinuationSha256);
+            Require(intent.GetProperty("schemaContinuationSha256").GetString() == SchemaContinuationSha256, "foreign schema predecessor");
+        }
         Require(intent.GetProperty("predecessorIntentSha256").GetString() == IntentSha256, "foreign predecessor");
         var set = LoadPolicy(root, ExactFile(Path.Combine(root, PolicyDirectory, "V1-ADMISSION-INTENT.json"), IntentSha256));
         foreach (var input in intent.GetProperty("schemaInputs").EnumerateArray()) _ = BoundArtifact(root, input);
@@ -112,7 +121,7 @@ internal sealed partial class V1ExactSourceAdmission
     {
         var marker = Path.Combine(root, intent.GetProperty("preparationReceiptRelativePath").GetString()!);
         RecoverySnapshotService.RejectLinks(marker);
-        Require(File.ReadAllText(marker) == SchemaContinuationSha256 + "\n", "missing or changed preparation completion");
+        Require(File.ReadAllText(marker) == PreparationSha(intent) + "\n", "missing or changed preparation completion");
     }
 
     // Task-owned disposable target only. No service registration, CLI/public route,
@@ -123,7 +132,7 @@ internal sealed partial class V1ExactSourceAdmission
         // Fail before DDL or completion publication on an unsupported storage host.
         if (!OperatingSystem.IsLinux())
             throw new PlatformNotSupportedException("Schema preparation requires the existing Linux recovery durability owner.");
-        Require(IsSchemaContinuation(request), "unreviewed schema preparation request");
+        Require(IsPreparedContinuation(request), "unreviewed schema preparation request");
         var set = LoadAdmissionPolicy(root, request);
         var intent = Document(request);
         Require(connection.Database == intent.GetProperty("databaseName").GetString()
@@ -137,7 +146,7 @@ internal sealed partial class V1ExactSourceAdmission
         var completionPath = Path.Combine(root, intent.GetProperty("preparationReceiptRelativePath").GetString()!);
         RecoverySnapshotService.RejectLinks(completionPath);
         if (File.Exists(completionPath))
-            Require(File.ReadAllText(completionPath) == SchemaContinuationSha256 + "\n", "changed preparation completion");
+            Require(File.ReadAllText(completionPath) == PreparationSha(intent) + "\n", "changed preparation completion");
         await using (var transaction = await connection.BeginTransactionAsync(IsolationLevel.Serializable, ct))
         {
             Require(await RecoverySnapshotService.ScalarAsync(connection, "SHOW server_version_num", ct) == "180006"
@@ -177,7 +186,7 @@ internal sealed partial class V1ExactSourceAdmission
         var marker = Path.Combine(root, intent.GetProperty("preparationReceiptRelativePath").GetString()!);
         RecoverySnapshotService.RejectLinks(marker);
         if (File.Exists(marker))
-            Require(File.ReadAllText(marker) == SchemaContinuationSha256 + "\n", "changed preparation completion");
+            Require(File.ReadAllText(marker) == PreparationSha(intent) + "\n", "changed preparation completion");
         else
         {
             var temporary = marker + ".pending-" + Guid.NewGuid().ToString("N");
@@ -185,7 +194,7 @@ internal sealed partial class V1ExactSourceAdmission
             {
                 await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 {
-                    await stream.WriteAsync(Utf8.GetBytes(SchemaContinuationSha256 + "\n"), ct);
+                    await stream.WriteAsync(Utf8.GetBytes(PreparationSha(intent) + "\n"), ct);
                     stream.Flush(true);
                 }
                 File.Move(temporary, marker, overwrite: false);
