@@ -569,3 +569,18 @@ confer migration, maintenance, restore or write authority.
 - **WHEN** the task-owned caller retains one exact request-bound attempt input before observation and later retries or reads a detached completed envelope
 - **THEN** the internal observer requires those independently retained exact bytes before source/history observation and compares all staged/detached attempt bytes to them
 - **AND** changed time or representation rejects even if all detached hashes are recomputed; both envelopes remain the same closed seven-file format without new migration or restore authority
+
+
+### Requirement: Bound attested migration inventory and pre-write admission
+
+The separately selected [finite continuation](../../../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-PLAN.md) SHALL reuse existing inventory, maintenance and migration admission owners. Unchanged v4 SHALL own schema/history; v5 SHALL remain coverage-only. Original sources SHALL stay untouched. The execution descendant SHALL admit only the exact reviewed hold delta.
+
+#### Scenario: Independently reconstructed migration inventory
+- **WHEN** fresh qualified source and delivered package/coverage are admitted
+- **THEN** the existing model records complete keyed rows/columns, files, selected revisions/outcomes, references, plans/events and every persisted or assignment-implied week
+- **AND** independently retained request/attempt bytes bind candidate/assembly/config/schema/model/date and fresh-process exact read-back; divergent retries fail without replacing evidence
+
+#### Scenario: Fenced admission ends before writes
+- **WHEN** the actual operator session and revocable maintenance Write capability admit the inventory
+- **THEN** all source/baseline/selection/week/reference facts are reconstructed under the real fence and retained bytes are reread after final source validation
+- **AND** stale date, foreign bindings, revoked ownership, changed facts or interruption fail before every migration receipt/conversion/rebuild; success grants no later mutator capability

@@ -126,3 +126,8 @@ All predecessor authority and exact46 receipts/original31 table projections/1576
 files per tree/plans/events remain protected. Ordinary/public/demo paths stay strict;
 aggregate tasks remain open. Hosted Tonight tests never ran after dependency
 provisioning failed; Alex owns CI monitoring/reruns.
+
+
+## Selected attested inventory and fenced pre-write continuation
+
+Alex selects the two sequential slices in [the finite continuation plan](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-PLAN.md): source-dependent no-write CanonicalMigrationInventory and actual fenced admission ending before the first persistent migration write. Reuse existing owners, unchanged v4 source/schema/history and coverage-only v5. The execution descendant has a separately reviewed exact hold-only lineage; untouched sources stay independently admissible. Require independently retained request/attempt bytes, fresh-process reconstruction, current-date admission, exact preservation and frozen independent reviews. No executor, receipts, conversion, adoption, rebuild, registration, restore or activation. Aggregate migration3/8, bilingual8/10 and family33/68 remain open.

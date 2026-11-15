@@ -301,3 +301,8 @@ The repaired Tomorrow and migration browser files passed 16/16 across two
 repetitions with zero retries in `focused-browser-v6.log`. All 18 existing
 relational-runner unit/cleanup controls passed. The final gate retains its own
 complete stable-content record rather than reusing the failed/blocked run.
+
+
+## Selected attested inventory and fenced pre-write continuation
+
+Alex selects the two sequential slices in [the finite continuation plan](../../../docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-PLAN.md): source-dependent no-write CanonicalMigrationInventory and actual fenced admission ending before the first persistent migration write. Reuse existing owners, unchanged v4 source/schema/history and coverage-only v5. The execution descendant has a separately reviewed exact hold-only lineage; untouched sources stay independently admissible. Require independently retained request/attempt bytes, fresh-process reconstruction, current-date admission, exact preservation and frozen independent reviews. No executor, receipts, conversion, adoption, rebuild, registration, restore or activation. Aggregate migration3/8, bilingual8/10 and family33/68 remain open.
