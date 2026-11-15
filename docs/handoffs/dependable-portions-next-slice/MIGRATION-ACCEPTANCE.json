@@ -184,7 +184,7 @@
     "eligible": [],
     "reason": "All six changes retain incomplete aggregate acceptance."
   },
-  "nextBoundedSelection": "Resolve the retained V1 writer/result authority and unchanged-derivation integrity-policy dependency documented in the current handoff. Do not implement recorded-ID or duplicate admission until the exact rule and trusted evidence are approved; preserve all 46 strict rejections.",
+  "nextBoundedSelection": "Alex approve/reject exact V1 authority policy package only; no runtime selection started",
   "exclusions": [
     "Shared-environment vocabulary adoption",
     "Migration activation",
@@ -235,5 +235,29 @@
     "affectedPublicationRecoveryAndFullPostgres": "not-run at unresolved-authority boundary; required for later runtime reconciliation",
     "vocabularyPublication": false,
     "migrationExecuted": false
+  },
+  "retainedV1AuthorityDecision": {
+    "proposalId": "WFS-V1-EXACT-SOURCE-ATTESTATION-1",
+    "status": "proposed-unapproved-inert",
+    "recommendation": "B-one-time-exact-source-attestation",
+    "currentDisposition": "C-continued-strict-rejection-of-all46",
+    "optionA": "not-established; missing authenticated per-operation writer/build/serializer and original-result binding",
+    "packagePath": "docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-PACKAGE.json",
+    "packageSha256": "bb40457ca9b1ed47b79b2165d855b40f2970083c260de91d8055a1ee5f369827",
+    "historicalCampaigns": 10,
+    "campaignCorrelatedReceipts": 46,
+    "matchingHistoricalWholeRowHashReceipts": 42,
+    "otherOperationRevisionReviewedReceipts": 4,
+    "authenticatedPerOperationWriterBindings": 0,
+    "originalResultWireBindings": 0,
+    "resultHashMeaning": "retained PostgreSQL18.6 result::text UTF-8 of JSONB, not original wire bytes",
+    "approvedV1ContractChanged": false,
+    "runtimeImplementationAuthorized": false,
+    "runtimeChanges": [],
+    "originalReceiptChanges": [],
+    "aggregateTaskChanges": [],
+    "reviewPath": "docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-REVIEW.json",
+    "evidenceOwner": ".task/v1-authority-decision-20261114/delivery.json",
+    "approvalQuestion": "Approve B bound to the exact package and source dump digests despite stated missing historical guarantees, or reject and continue C?"
   }
 }

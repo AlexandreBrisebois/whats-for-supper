@@ -2,17 +2,22 @@
 
 ## Current selected delivery — 2026-11-14
 
-The current bounded selection is retained V1 authority diagnosis beneath open
-2.1–2.2/3.1–3.2 and contingent bilingual 4.2. Signed evidence delivery is authorized;
-Alex owns CI monitoring. The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)
-and `.task/v1-history-20261114/receipt-authority.json` distinguish exact retained
-bytes and component reproduction from actual source admission. All 46 input hashes
-reproduce; 33 inputs have duplicate properties and 13 results differ in generated
-binding identities/references. Strict readers still reject all 46. Independent
-review blocks the proposed recorded-ID/duplicate reconciliation on missing
-receipt-level writer/result authority and the unchanged V1 derivation contract.
-No runtime rule, receipt rewrite, vocabulary publication or migration was performed.
-The earlier Portions amendment and copied-library evidence retain their own scope.
+The current bounded selection is the retained V1 authority decision beneath open
+2.1–2.2/3.1–3.2 and contingent bilingual 4.2. Signed documentation delivery is
+authorized; Alex owns CI monitoring. The [current handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)
+and [concrete policy proposal](../../../docs/handoffs/dependable-portions-next-slice/V1-AUTHORITY-DECISION.md)
+retain all established findings: 46 matching input hashes, 33 duplicate inputs
+with 140 identical sites and 13 generated-binding identity/reference mismatches;
+strict readers reject all 46. Targeted historical records correlate all 46 with
+ten campaigns and reproduce historical whole-row hashes for 42, without proving
+authenticated per-operation writer/build/serializer identity or original result
+wire bytes. Source-family resemblance remains distinct from demonstrated proof.
+The independently reviewed exact-source attestation proposal recommends option B
+for Alex's explicit policy decision; option A is not established and option C
+remains current/default rejection. Approval is pending. The approved V1 derivation
+contract is unchanged; no runtime mechanism, receipt rewrite, vocabulary publication
+or migration was performed. Evidence owner `.task/v1-authority-decision-20261114/`
+retains the immutable package, review and invocation-specific documentation checks.
 No selected aggregate task is complete; progress remains 33/68. Historical policies
 and receipts below retain their original scope and remaining acceptance.
 

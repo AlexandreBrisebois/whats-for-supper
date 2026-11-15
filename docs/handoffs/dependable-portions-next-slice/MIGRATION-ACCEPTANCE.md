@@ -170,15 +170,37 @@ recognizable serializer shape and self-consistency cannot establish a known writ
 Continued strict rejection is therefore the selected disposition. No runtime or
 test implementation was made, and no aggregate task closed.
 
-The unresolved decision is whether independently trusted historical evidence can
-bind each exact recipe/operation, original-request/input hash and saved JSONB result
-to its writer/build/serializer, or whether a separately approved one-time exact
-source attestation may replace that missing provenance. The latter would be a new
-integrity-policy mechanism, not routine compatibility work. Only after that decision
-could a versioned rule reuse recorded allocation and, if separately justified,
-recognize the exact historical duplicate representation. Unknown writers, foreign
-sources, conflicting duplicates and changed attested bytes/results must reject.
-No such attestation or rule was installed.
+The successor authority decision is now concrete in
+[V1-AUTHORITY-DECISION.md](V1-AUTHORITY-DECISION.md), with the exhaustive
+[V1-ATTESTATION-SET.json](V1-ATTESTATION-SET.json) and
+[historical investigation](V1-HISTORICAL-AUTHORITY.json). Targeted retained
+campaign/deployment/request-result inspection correlates all 46 receipts with ten
+campaigns and reproduces historical whole-row hashes for 42; the other four have
+operation/revision review but no recovered equivalent whole-row hash match in the
+inspected representation. No authenticated per-operation writer/build/serializer
+or original result wire binding was recovered. This is stronger historical
+correlation, not recovered admission authority.
+
+The recommendation is **B: a one-time exact-source attestation requiring Alex's
+explicit approval**. The alternative A (admission from recovered historical
+authority) is not established; C (continued rejection) remains the current/default
+behavior and the fallback if B is rejected. The proposal names the exact four-file
+backup, all recipe/operation IDs, request/input/baseline/result hashes, the exact
+140 allowed duplicate sites, and fail-closed approval/replay/recovery rules. Its
+result hashes bind retained PostgreSQL 18.6 JSONB `result::text` UTF-8, not
+unavailable original writer/HTTP wire bytes. Alex would designate this retained
+source as present-day authority despite the missing historical provenance; no
+historical writer identity is asserted.
+
+The approval object is proposal `WFS-V1-EXACT-SOURCE-ATTESTATION-1`, package SHA256
+`bb40457ca9b1ed47b79b2165d855b40f2970083c260de91d8055a1ee5f369827`,
+[V1-AUTHORITY-PACKAGE.json](V1-AUTHORITY-PACKAGE.json). Approval is **pending**.
+It would approve only the finite proposed integrity-policy exception, with later
+implementation separately authorized and qualified. The approved V1 contract,
+strict rejection of all 46, all original receipts and aggregate task checkboxes
+remain unchanged. Independent review and invocation-specific documentation
+verification are recorded in [V1-AUTHORITY-REVIEW.json](V1-AUTHORITY-REVIEW.json)
+and `.task/v1-authority-decision-20261114/delivery.json`; neither grants approval.
 
 Focused existing public-duplicate and V1/V2 retained-history controls passed
 **17 tests, zero skips**. Fresh original PostgreSQL read-back, current build and
@@ -228,12 +250,13 @@ archived changes are empty. Parity cooking 4.1–4.2, complete local 6.2 and mat
 hosted 6.3 remain open. The grocery design now reflects the already accepted
 plan-preserving all-list policy; its historical empty-list gate is superseded.
 
-Next select retained V1 history reconciliation: establish exact old-writer,
-request-hash, baseline and result authority for these identified receipts, preserve
-all original bytes, and review any precisely versioned compatibility rule before
-retrying source admission. This source has no valid current-format preconversion
-snapshot yet. Do not remove history, substitute synthetic records or change source
-membership to obtain a passing migration.
+The selected authority-decision slice stops at the explicit approval question in
+[V1-AUTHORITY-DECISION.md](V1-AUTHORITY-DECISION.md). Await Alex's approve/reject
+decision on its exact package digest. No compatibility/attestation mechanism is
+implemented. This source still has no valid current-format preconversion snapshot;
+source admission, migration/conversion and all later runtime/recovery gates remain
+blocked or not-run. Do not remove history, substitute synthetic records or change
+source membership to obtain a passing migration.
 
 Shared-environment vocabulary adoption, migration activation, DV/production,
 final release 5.1, later intake, Similar, garlic and adjacent UI remain subsequent
