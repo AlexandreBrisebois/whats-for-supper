@@ -1,16 +1,60 @@
 # Coordinated rollout and recovery gates
 
-This is the coordinated rollout gate owner. The current November 14 selection is
-recorded in the [Portions/copied-library handoff](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.md)
-and [exact operator packet](../../../docs/handoffs/dependable-portions-next-slice/MIGRATION-ACCEPTANCE.json).
-It qualifies the authorized normal-text Portions matrix and an actual historical
-old recovery pair; retained V1 receipt admission blocks current-format capture and
-migration. No selected aggregate task is complete. Alex owns CI monitoring.
-Shared adoption, activation and DV/production retain later operator selection.
-Earlier operation-specific authority remains attached to its original receipts.
+This is the coordinated rollout gate and completion-checklist owner. On November
+15 Alex selected completion of canonical correction, cooking scaling, grocery
+interactions, bilingual identity, canonical migration and browser parity together.
+Entry local/remote candidate is `1090c7f33a9b8c64cb8bc16d84d40bbca292c1b9` on
+`recipe-view-redesign`, with a clean working tree. Implementation, bounded planning
+reconciliation, disposable rehearsals, independent reviews, signed commits/pushes
+and sync/archive of fully accepted changes are authorized. Historical one-slice
+stops and permanently open aggregate policies do not govern this selection.
+Production and unidentified shared mutations remain outside scope. Prepare an exact
+shared/DV action and establish its authorization at that operational boundary.
+Alex retains hosted CI monitoring and reruns. Earlier operation-specific authority
+and hash-bound evidence remain attached to their original receipts.
 The [migration companion](../migrate-canonical-recipe-model/design.md) owns the
 executor/recovery. The 2026-11-12 amendment preserves all plans/events and rebuilds
 all stored/implied grocery weeks; only the fenced migration epoch may reset checks.
+
+## Current completion checklist — 2026-11-15
+
+The evidence index is `.task/dependable-portions-release-20261115/`; its
+`review/existing-evidence.json` maps unchanged behavior to actual predecessor test
+names and invocation records. Predecessor source `9627c767` passed repository
+`44d78735ae8b48e0930827de1a9837f1` and PostgreSQL
+`b1cd8bebc7e843468ddabc116114c7b5` (857 passed, zero required skips).
+Those records qualify their covered implementation, not new writes, live browsers
+or the final release. Current progress is 39/68: canonical 3.3–3.6 and cooking 0.1–0.2 have
+actual product acceptance. Final integration and operational gates remain open.
+The product requirement map and exact receipts are under
+`.task/dependable-portions-release-20261115/product-live/`.
+
+| Requirement | Present implementation/evidence | Genuine gap | Owner | Acceptance check |
+| --- | --- | --- | --- | --- |
+| Canonical editing and ordinary cooking relationships | Guarded editor and ordinary producers; 29 real PostgreSQL import/edit cases plus actual intake → edits → coherent Cook refresh; current guarded delayed-workflow controls | Final integrated consumer/contract acceptance | Product worker | Existing real API/PostgreSQL owners plus ordinary import → edits → coherent Cook refresh; stale/failure/duplicate inputs preserve human facts |
+| PDF, synthesis, sharing and general repair | Actual PDF worker/live EN/FR, synthesis and sharing producer seams; protected general repair with independent repeat-step lineage; 69 unit and 83 focused PostgreSQL passes, 41 production-live browser cases | Final integrated release gates; no demonstrated remaining channel implementation gap | Product worker | Actual source workflow/publication/DB tests; preserved wording/human edits; late and duplicate publication rejected; required live cases |
+| Grocery interactions | Eight of nine tasks accepted; existing mutation/check/row-continuity coverage | Final integrated acceptance only unless a regression is demonstrated | Lead/reviewer | Complete grocery browser/real DB checks on integrated candidate |
+| Bilingual identity | Eight of ten tasks accepted; durable vocabulary, saved references and independent recovery qualified | Actual migration preservation and integrated release | Migration worker/lead | Exact durable JSON/references across conversion, all weeks, backup, restore and re-export |
+| Migration tracer | Real copied source admission and fenced prewrite; original46, 221 recipes, 23 retired/deferred and 36 weeks inventoried | Finite successor authority, eligibility/frozen producer, durable plan and conversion, fresh-process reconciliation | Migration worker | Latest authority-transition contract A→B→C→D on disposable copies, exact input/producer/commit/raw read-back and failure controls |
+| Remaining migration/recovery | Existing batch executor, once-only week receipts and recovery owners | Finite authority for subsequent effects, representative portions cases, interrupted batch, all-week rebuild, independent post-conversion recovery and held restart/reopening | Migration worker/lead | Complete 221/23/36 accounting, all plans/events/extras/corrections/history, later checks survive retry, durable bilingual restore/re-export and stale draft/client protection |
+| Browser parity and final validation | Shared production runner; menu/measurement and cooking Save repairs; historical completion cause remains unestablished | Integrated production/full/live gates and exact committed hosted result | Reviewer/lead; Alex hosts | One matching production artifact covers affected cases repeated three times and complete disjoint suite union; required real seams/full PostgreSQL/repository/client checks; first-attempt hosted results |
+| Lifecycle and cleanup | Six active changes; parity has no delta specs | Evidence-backed closure, semantic sync, validation/archive, current navigation and owned-resource cleanup | Lead | No incomplete archive; preserve immutable authority/backups/unrelated work; signatures, remote refs and final worktree verified |
+
+Run focused checks for new behavior, then one stable integrated verification union.
+Reuse a qualifying run wherever candidate and coverage agree; a full suite covering
+a smaller selection on the same artifact need not be repeated as another ceremony.
+Missing behavior requires meaningful RED before the smallest fix. Unreproduced
+historical failures remain documented; a later pass does not establish their cause.
+Use existing retained controls for unchanged invariants, and retain distinct atomicity,
+concurrency, lost-session, cancellation, abrupt-interruption, unknown-commit and exact/
+divergent-retry evidence at changed boundaries. Freeze shared files before broad gates.
+The tracer is an internal checkpoint, followed in this selection by separately bound
+finite successor effects; it never widens original46 or makes the old221 request
+authority for new writes. Required missing hosted or operational acceptance keeps
+the release incomplete while independent work continues.
+
+The operation-specific records below are historical evidence, not current blocker
+lists or authorization for a different target/candidate.
 
 Alex accepts planned downtime and confirms frontend/backend/database deploy as one
 release. Reuse the demo/online-recovery coordination mechanism, with migration's

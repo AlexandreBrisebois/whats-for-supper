@@ -4,7 +4,7 @@
 
 Current `CooksMode`, stepParser/instructionPresentation, RecipeService instruction PATCH and shared serving projection own reading/editing. `CookingStepProjection` already validates revision-bound spans and projects supported allocation forms; `IngredientProjectionService` supplies coherent ingredient/step context. `CanonicalRecipeContentStore` guards original edits and revalidates prior bindings. Reuse those owners, stable original sections/steps and the foundation's contentRevision; no separate step quantity store or replacement projection engine.
 
-Ordinary binding production is still missing: conversion creates empty bindings and instruction Save retains only prior bindings. The existing `CanonicalIngredientEditPostgresTests` step/allocation partials and `LiveBrowser_Cooking*` fixtures exercise consumer behavior with seeded relationships. Their passing evidence cannot establish that an ordinary imported or edited recipe acquires trusted relationships. Group 0 supplies this missing connection; groups 1–3 reconcile and extend existing owners only where their acceptance is absent or affected.
+Ordinary deterministic binding production now exists in `CookingStepRelationshipProducer` and the `OrdinaryWholeUse`, `OrdinaryAbsoluteUse`, `OrdinaryFractionUse`, `OrdinaryRemainderUse`, `OrdinaryFixedUse` and `OrdinaryPerItemUse` PostgreSQL owners. Fresh publication and guarded Saves share this producer and its independent evidence validation. Seeded `LiveBrowser_Cooking*` relationships still establish only consumer behavior; group 0 requires ordinary import/edit and generated-client evidence as well. Groups 1–3 reconcile existing coverage and extend owners only for a demonstrated gap.
 
 ## Decisions and Tradeoffs
 
@@ -76,11 +76,16 @@ Explicit clears never reconstruct quantities. Own duplicate/malformed proof abst
 existing allocation-role proof retains its current owner. No producer/AI runs on read,
 projection or grocery recomputation.
 
-This slice uses synchronous deterministic reevaluation, so there is no delayed
-relationship job to deliver. Async proposal capture, provider failure and stale
-completion obligations remain open in 0.1–0.3 rather than being declared covered by
-ordinary PATCH conflicts. Exact role arithmetic and existing seeded consumers remain
-regressions; this tracer does not qualify ordinary production for every role.
+The implementation uses synchronous deterministic reevaluation under guarded Save
+and asynchronous source-workflow publication. AI relationship proposals are optional
+in the accepted requirement; adding a second proposal workflow is not a completion
+prerequisite. The stale/failure/duplicate obligations remain mandatory: qualify
+captured source-workflow results arriving after a human edit, external extraction
+failure/cancellation, rejected forged proof, duplicate publication and coherent Cook
+refresh through their actual owners. Ordinary PATCH conflicts alone do not cover a
+late workflow result. Unsupported relationships abstain without rewriting originals.
+Use current role-producer evidence to qualify whole, absolute, fraction, remainder,
+fixed and per-item behavior; seeded arithmetic fixtures remain separate regressions.
 
 ## State, Concurrency and Recovery
 

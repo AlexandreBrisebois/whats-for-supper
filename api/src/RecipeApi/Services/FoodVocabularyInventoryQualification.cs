@@ -35,6 +35,10 @@ public static partial class FoodVocabularyInventoryQualification
         FoodVocabularyInventoryFacts facts, V1ExactSourceAdmission attestation)
         => RequiredReferences(facts, prospectiveDemoInvalidation: false, attestation);
 
+    internal static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferencesForTransition(
+        FoodVocabularyInventoryFacts facts, V1AuthorityTransitionContext transition)
+        => RequiredReferences(facts, prospectiveDemoInvalidation: false, transition: transition);
+
     internal static IReadOnlyList<FoodVocabularyReferenceOrigin> ContextReferences(FoodVocabularyContextFacts context) =>
         ContextReferences(context, null);
 
@@ -52,7 +56,7 @@ public static partial class FoodVocabularyInventoryQualification
         => RequiredReferences(facts, prospectiveDemoInvalidation: true);
 
     private static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferences(FoodVocabularyInventoryFacts facts, bool prospectiveDemoInvalidation,
-        V1ExactSourceAdmission? attestation = null)
+        V1ExactSourceAdmission? attestation = null, V1AuthorityTransitionContext? transition = null)
     {
         FoodVocabularyDefinitions.Require(facts is not null && facts.Membership is not null && facts.Recipes is not null
             && facts.CanonicalOperations is not null && facts.Publications is not null && facts.History is not null
@@ -88,7 +92,8 @@ public static partial class FoodVocabularyInventoryQualification
             Add(FoodVocabularyStore.MembershipReferences(membership), "membership", "food_vocabulary_publication");
         foreach (var recipe in facts.Recipes) Add(RecipeReferences(recipe), "recipe", recipe.RecipeId.ToString("D"));
         foreach (var operation in facts.CanonicalOperations)
-            Add(attestation is null ? CanonicalRecipeContentStore.VocabularyReferences(operation) : attestation.References(operation),
+            Add(transition is not null ? transition.References(operation)
+                : attestation is null ? CanonicalRecipeContentStore.VocabularyReferences(operation) : attestation.References(operation),
                 "canonical-operation", $"{operation.RecipeId:D}/{operation.OperationId:D}");
         foreach (var publication in facts.Publications)
             Add(RecipeFilePublicationStore.VocabularyReferences(publication), "publication", $"{publication.RecipeId:D}/{publication.OperationId:D}");

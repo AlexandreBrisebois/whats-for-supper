@@ -4,8 +4,13 @@ namespace RecipeApi.Services;
 
 // Invocation-local validated facts, never a durable mutator capability.
 internal sealed class V1MigrationSource(RecoverySourceProtection protection, InspectedRecoverySnapshotIdentity identity,
-    V1ExactSourceAdmission attestation, RecipeApi.Data.RecipeDbContext observationDb, RecipesRootResolver executionRoots) : IDisposable
+    V1ExactSourceAdmission attestation, RecipeApi.Data.RecipeDbContext observationDb, RecipesRootResolver executionRoots,
+    V1AuthorityTransitionContext? transition) : IDisposable
 {
+    public V1MigrationSource(RecoverySourceProtection protection, InspectedRecoverySnapshotIdentity identity,
+        V1ExactSourceAdmission attestation, RecipeApi.Data.RecipeDbContext observationDb, RecipesRootResolver executionRoots)
+        : this(protection, identity, attestation, observationDb, executionRoots, null) { }
+
     private volatile bool active = true;
     private readonly Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = observationDb?.Database.CurrentTransaction;
     internal RecoverySourceProtection Protection { get { RequireActive(); return protection; } }
@@ -20,7 +25,8 @@ internal sealed class V1MigrationSource(RecoverySourceProtection protection, Ins
     internal IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferences(FoodVocabularyInventoryFacts facts)
     {
         RequireActive();
-        return FoodVocabularyInventoryQualification.RequiredReferencesForAttestedSource(facts, attestation);
+        return transition is null ? FoodVocabularyInventoryQualification.RequiredReferencesForAttestedSource(facts, attestation)
+            : transition.RequiredReferences(facts);
     }
     public void Dispose() => active = false;
 }

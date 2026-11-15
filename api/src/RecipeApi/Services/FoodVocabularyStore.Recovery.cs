@@ -9,12 +9,12 @@ public sealed partial class FoodVocabularyStore
 {
     internal const string RetainedHistoryPath = ".household/food-vocabulary/history-observations.json";
 
-    private async Task RequireRetainedAbsenceAsync(CancellationToken ct)
+    private async Task RequireRetainedAbsenceAsync(CancellationToken ct, V1AuthorityTransitionContext? transition = null)
     {
         var retained = await storage.LoadAsync("recipes", RetainedHistoryPath);
         if (retained is not null)
-            FoodVocabularyDefinitions.Require(FoodVocabularyInventoryQualification.ReadHistoryObservations(retained)
-                .SelectMany(FoodVocabularyInventoryQualification.ContextReferences).Any() == false);
+            FoodVocabularyDefinitions.Require(FoodVocabularyInventoryQualification.ReadHistoryObservations(retained, transition?.HistoryAuthority)
+                .SelectMany(x => FoodVocabularyInventoryQualification.ContextReferences(x, transition?.HistoryAuthority)).Any() == false);
     }
 
     internal async Task<FoodVocabularyRecoveryObservation> ObserveRecoveryAsync(string kind, Guid? snapshotId,

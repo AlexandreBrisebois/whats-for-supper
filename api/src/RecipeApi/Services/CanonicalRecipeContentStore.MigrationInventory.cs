@@ -44,6 +44,17 @@ public sealed partial class CanonicalRecipeContentStore
         return observation;
     }
 
+    internal static async Task RequireOriginalTransitionRecipesAsync(RecipeApi.Data.RecipeDbContext originalDb,
+        CanonicalMigrationInventory original, CancellationToken ct)
+    {
+        var recipes = await originalDb.Recipes.IgnoreQueryFilters().AsNoTracking().ToArrayAsync(ct);
+        foreach (var item in original.Recipes)
+        {
+            var observed = ObserveMigrationRecipe(new(item.RecipeId, item.OperationId), recipes.SingleOrDefault(x => x.Id == item.RecipeId), original.Files);
+            FoodVocabularyDefinitions.Require(JsonSerializer.Serialize(observed, Json) == JsonSerializer.Serialize(item, Json));
+        }
+    }
+
     internal Task<CanonicalMigrationInventory> ObserveAttestedMigrationManifestAsync(CanonicalMigrationRequest request,
         RecipesRootResolver roots, V1MigrationSource source, DateOnly evaluationDate, CancellationToken ct)
     {

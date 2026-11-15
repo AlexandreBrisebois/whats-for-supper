@@ -12,9 +12,21 @@ public sealed record CanonicalMigrationExecutionReport(Guid OperationId, string 
 
 public sealed partial class CanonicalRecipeContentStore
 {
-    internal async Task<CanonicalMigrationExecutionReport> ExecuteMigrationAsync(CanonicalMigrationInventory inventory, string candidateCommit,
+    internal Task<CanonicalMigrationExecutionReport> ExecuteMigrationAsync(CanonicalMigrationInventory inventory, string candidateCommit,
         RecoverySnapshotService snapshots, RecoveryBoundary boundary, RecipesRootResolver roots,
         GroceryRecomputeService groceries, IRecoveryCheckpoint? checkpoint = null, CancellationToken ct = default)
+        => ExecuteMigrationCoreAsync(inventory, candidateCommit, snapshots, boundary, roots, groceries, checkpoint, ct);
+
+    // A successful internal checkpoint: no grocery owner is supplied or invoked.
+    // Completed remains false because the migration has not rebuilt its weeks.
+    internal Task<CanonicalMigrationExecutionReport> ExecuteMigrationRecipeStageAsync(CanonicalMigrationInventory inventory, string candidateCommit,
+        RecoverySnapshotService snapshots, RecoveryBoundary boundary, RecipesRootResolver roots,
+        IRecoveryCheckpoint? checkpoint = null, CancellationToken ct = default)
+        => ExecuteMigrationCoreAsync(inventory, candidateCommit, snapshots, boundary, roots, null, checkpoint, ct);
+
+    private async Task<CanonicalMigrationExecutionReport> ExecuteMigrationCoreAsync(CanonicalMigrationInventory inventory, string candidateCommit,
+        RecoverySnapshotService snapshots, RecoveryBoundary boundary, RecipesRootResolver roots,
+        GroceryRecomputeService? groceries, IRecoveryCheckpoint? checkpoint, CancellationToken ct)
     {
         void Validate() => boundary.ValidateMaintenanceInvocation(inventory.Request.OperationId, candidateCommit, inventory.Request.CandidateSha256);
         Validate();
@@ -35,6 +47,7 @@ public sealed partial class CanonicalRecipeContentStore
         using var binding = boundary.BindLease(writeLease);
         await RequireMigrationAdmissionAsync(db, inventory, expected, snapshots, roots, ct);
         var outcomes = new List<CanonicalMigrationRecipeOutcome>();
+        var prepared = new Dictionary<Guid, RecipeApi.Models.CanonicalRecipeOperation>();
         foreach (var item in inventory.Recipes)
         {
             Validate();
@@ -46,13 +59,8 @@ public sealed partial class CanonicalRecipeContentStore
                 var prior = await db.CanonicalRecipeOperations.AsNoTracking().SingleOrDefaultAsync(x => x.RecipeId == item.RecipeId && x.OperationId == item.OperationId, ct);
                 try
                 {
-                    if (prior is null && Read(recipe) is null)
-                    {
-                        var content = new CanonicalRecipeContent(2, NewRevision(), item.SourceRevision!, recipe.Servings,
-                            ConvertLines(recipe, Guid.NewGuid), ConvertInstructions(recipe.RawMetadata, Guid.NewGuid, Guid.NewGuid, NewRevision));
-                        var authority = await vocabulary.CaptureAuthorityAsync(recipe.FoodMappingEvidence, ct);
-                        _ = FoodMappingQualification.Prepare(new(recipe.Id, content, recipe.RawMetadata), authority, item.OperationId);
-                    }
+                    if (prior is null)
+                        prepared.Add(item.RecipeId, await PrepareMigrationConversionAsync(item, expected.CreatedAt, ct));
                     outcomes.Add(new(item.RecipeId, item.OperationId, prior is null ? "admitted" : "retained", null));
                 }
                 catch (Exception error) when (error is InvalidDataException or InvalidOperationException or JsonException or ArgumentException) { outcomes.Add(new(item.RecipeId, item.OperationId, "deferred", error.Message)); }
@@ -80,8 +88,16 @@ public sealed partial class CanonicalRecipeContentStore
         {
             Validate();
             await ConvertCoreAsync(item.RecipeId, item.ContentRevision!, item.SourceRevision!, item.OperationId, ct,
-                async token => { Validate(); await RequireMigrationAdmissionAsync(db, inventory, expected, snapshots, roots, token); Validate(); });
+                async token => { Validate(); await RequireMigrationAdmissionAsync(db, inventory, expected, snapshots, roots, token); Validate(); },
+                prepared.GetValueOrDefault(item.RecipeId));
             if (checkpoint is not null) await checkpoint.ReachedAsync("migration-recipe-committed", ct);
+        }
+        if (groceries is null)
+        {
+            Validate();
+            await RequireMigrationAdmissionAsync(db, inventory, expected, snapshots, roots, ct);
+            return new(inventory.Request.OperationId, inventory.ObservationSha256, false,
+                Array.AsReadOnly(outcomes.Select(x => x with { Outcome = "converted-or-retained" }).ToArray()), [], inventory.EvaluationDate);
         }
         var weeks = new List<CanonicalMigrationWeekOutcome>();
         foreach (var week in inventory.Weeks)

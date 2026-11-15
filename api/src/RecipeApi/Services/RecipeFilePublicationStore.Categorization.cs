@@ -75,7 +75,7 @@ public sealed partial class RecipeFilePublicationStore
             throw new InvalidDataException("Categorization has no captured extraction ancestor.");
         var publication = await db.RecipeFilePublications.AsNoTracking()
             .SingleOrDefaultAsync(x => x.RecipeId == recipeId && x.OperationId == extraction.TaskId, ct);
-        if (publication is { Delivered: true } && ReadEnvelope(publication).Candidate.SourceKind == "photo-ingredient-repair")
+        if (publication is { Delivered: true } && ReadEnvelope(publication).Candidate.SourceKind is "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")
         {
             await ValidatePhotoRepairFollowupAsync(workflow, task, recipeId, ct);
             return;

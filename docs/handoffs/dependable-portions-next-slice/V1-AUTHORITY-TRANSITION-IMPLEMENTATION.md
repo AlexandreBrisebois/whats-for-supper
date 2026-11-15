@@ -1,6 +1,41 @@
 # First tracer implementation and acceptance plan
 
-This document plans implementation; it does not select or run it. The
+## Current selected implementation — 2026-11-15
+
+Alex's accepted six-change release now authorizes this implementation and the
+finite successor sequence in [migration design](../../../openspec/changes/migrate-canonical-recipe-model/design.md).
+The historical stop below is superseded as a task boundary; the one-recipe
+contract remains unchanged as the tracer's exact authority. Its C/D checkpoint
+does not authorize another effect or mean the release is complete.
+
+Current source implements separate actual source/execution graphs, frozen ordinary
+producer witnesses, complete PostgreSQL receipt-row projections, short B/C
+transactions and independent D reconciliation. The source lease protects both the
+prepared and pristine databases, rechecks both source file trees and the original
+generation/completion/backup artifacts after the final-source checkpoint, and
+keeps the unchanged original46 exception transaction-local.
+
+Observed evidence remains separate:
+
+- Actual original-source strict RED rejected the ordinary converter at original46
+  history; source preservation passed. See
+  `.task/v1-authority-transition-execution/actual-source-red-v2.log`.
+- Recipe-only stage and exact retry passed two real PostgreSQL tests, including
+  rejection of a changed physical `child_launch_intent_id` after meaningful RED.
+  Stable GREEN record:
+  `.task/database-tests/runs/1a208c7804514b66a6317753fb1cd9cf/result.json`.
+- Actual capture accepted a pristine hold-file mutation after the final-source
+  checkpoint, establishing the preservation-gap RED. The new pristine lease and
+  final before-image checks compile; actual checkpoint GREEN is still pending.
+  Evidence: `runs/pristine-checkpoint-red-v3` beneath the execution bundle.
+- Durable actual tracer C/D, adversarial acceptance controls, successor batch,
+  36-week rebuild, vocabulary adoption and full recovery remain unqualified.
+
+The remainder records the original tracer implementation plan. It must not be
+read as a current completion or a prohibition on the separately selected finite
+successor work.
+
+The
 [finite contract](V1-AUTHORITY-TRANSITION-CONTRACT.md) and
 [planning envelope](V1-AUTHORITY-TRANSITION-CONTRACT.json) define authority/deltas.
 The [copy-pasteable prompt](../../../.agents/prompts/dependable-portions-authority-transition-implementation.md)

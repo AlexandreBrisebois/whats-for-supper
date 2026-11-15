@@ -143,11 +143,13 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
                     await ValidateFreshReviewMaterialAsync(capture, candidate, operationId, recipe, ct);
                 if (candidate.SourceKind == "synthesized-canonical")
                     await ValidateSynthesizedCanonicalAsync(capture, candidate, operationId, ct);
-                if (candidate.SourceKind == "photo-ingredient-repair")
+                if (candidate.SourceKind == "canonical-content-repair")
+                    await ValidateContentRepairAsync(capture, candidate, operationId, ct);
+                if (candidate.SourceKind is "photo-ingredient-repair" or "canonical-ingredient-repair")
                 {
                     var task = await db.WorkflowTasks.AsNoTracking().SingleOrDefaultAsync(x => x.TaskId == operationId, ct);
                     if (task is null || candidate.ProducerInput != "ExtractRecipe\n" + CanonicalRecipeContentStore.NormalizeJson(task.Payload)
-                        || !await CanRepairCanonicalPhotoAsync(capture, operationId, ct))
+                        || !await CanRepairCanonicalSourceAsync(capture, operationId, ct, candidate.SourceKind == "photo-ingredient-repair", ingredientsOnly: true))
                         throw new InvalidDataException("Photo ingredient repair requires its original accepted report capture.");
                 }
                 if (candidate.SourceKind == "review-canonical")
@@ -157,7 +159,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
                 if (candidate.SourceKind == "categorization")
                     await ValidateCategorizationTaskAsync(recipe.Id, operationId, candidate.ProducerInput, ct);
                 // Readiness selects metadata only; it never reopens canonical facts.
-                if (!IsBootstrap(candidate) && ((capture.FieldHashVersion != 4 && recipe.FoodMappingEvidence is not null) || (recipe.CanonicalContent is not null && candidate.SourceKind is not ("canonical-export" or "readiness" or "hero" or "categorization" or "photo-ingredient-repair")) || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
+                if (!IsBootstrap(candidate) && ((capture.FieldHashVersion != 4 && recipe.FoodMappingEvidence is not null) || (recipe.CanonicalContent is not null && candidate.SourceKind is not ("canonical-export" or "readiness" or "hero" or "categorization" or "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")) || capture.FieldHash != Fields(recipe, capture.FieldHashVersion)
                     || capture.ContentRevision != CanonicalRecipeContentStore.InspectContentRevision(recipe)
                     || capture.SourceRevision != CanonicalRecipeContentStore.InspectSourceRevision(recipe)
                     || await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipe.Id && !x.Delivered, ct)))
@@ -214,7 +216,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         if (envelope.Capture.FieldHashVersion != 4 && recipe.FoodMappingEvidence is not null) throw Conflict(recipe);
         if (envelope.Capture.FieldHashVersion == 4) await vocabulary.ValidateLiveAuthorityAsync(envelope.Capture.FoodAuthority!, ct);
         if (envelope.Candidate.SourceKind == "readiness" && !recipe.IsReady) throw Conflict(recipe);
-        if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind is not ("canonical-export" or "readiness" or "fresh-canonical" or "review-canonical" or "shared-canonical" or "synthesized-canonical" or "hero" or "categorization" or "photo-ingredient-repair")) || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
+        if ((recipe.CanonicalContent is not null && envelope.Candidate.SourceKind is not ("canonical-export" or "readiness" or "fresh-canonical" or "review-canonical" or "shared-canonical" or "synthesized-canonical" or "hero" or "categorization" or "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")) || Fields(recipe, envelope.Capture.FieldHashVersion) != publication.ResultHash) throw Conflict(recipe);
         // Validate every file before the first replacement, accepting the exact
         // candidate for already delivered files after an interrupted attempt.
         await CheckFiles(envelope.Capture, envelope.Output, recipe, ct);
@@ -341,7 +343,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
     {
         if (capture.FieldHashVersion == 4) return PrepareV4(capture, candidate, operationId);
         if (candidate.SourceKind is "shared-canonical" or "synthesized-canonical") throw new InvalidDataException("New canonical intake requires V4 authority.");
-        if (candidate.SourceKind == "photo-ingredient-repair") throw new InvalidDataException("Photo ingredient repair requires V4 authority.");
+        if (candidate.SourceKind is "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair") throw new InvalidDataException("Photo ingredient repair requires V4 authority.");
         if (capture.FoodEvidence is not null || capture.FoodAuthority is not null || candidate.MappingEvidence is not null)
             throw new InvalidDataException("Historical publication cannot gain vocabulary authority.");
         if (candidate.SourceKind == "canonical-export")
@@ -533,7 +535,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
         if (candidate.RecipeJson is null) return;
         using var document = JsonDocument.Parse(candidate.RecipeJson);
         var root = document.RootElement;
-        if (candidate.SourceKind is "fresh-canonical" or "review-canonical" or "synthesized-canonical" or "photo-ingredient-repair")
+        if (candidate.SourceKind is "fresh-canonical" or "review-canonical" or "synthesized-canonical" or "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")
         {
             var current = RecipeExportContent.ReadCurrent(root, recipe.Id);
             recipe.CanonicalContent = JsonSerializer.Serialize(current.Content, Json);
@@ -542,7 +544,7 @@ public sealed partial class RecipeFilePublicationStore(RecipeDbContext db, Recip
             recipe.Servings = current.Content.Servings;
             // Ingredient repair owns no metadata fields. A prior metadata sync
             // failure can leave recipe.info older than captured current DB facts.
-            if (candidate.SourceKind == "photo-ingredient-repair") return;
+            if (candidate.SourceKind is "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair") return;
             if (candidate.SourceKind == "synthesized-canonical") recipe.IsSynthesized = true;
             if (info.Name is not null) recipe.Name = info.Name;
             if (info.Description is not null) recipe.Description = info.Description;

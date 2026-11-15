@@ -97,9 +97,9 @@ public class RecipeAgent(
         }
         Require(publications.Length == 1 && publications[0].RecipeId == recipeId);
         var (capture, candidate) = RecipeFilePublicationStore.ReadOriginalPublication(publications[0]);
-        Require(candidate.RecipeJson is not null && candidate.SourceFiles is null && candidate.SourceContext is null
+        Require(candidate.RecipeJson is not null && candidate.SourceFiles is null && (candidate.SourceContext is null || candidate.SourceKind == "canonical-content-repair")
             && (candidate.SourceKind is null || processor == "ExtractRecipe"
-                && (candidate.SourceKind == "fresh-canonical" || candidate.SourceKind == "review-canonical" || candidate.SourceKind == "photo-ingredient-repair")
+                && (candidate.SourceKind == "fresh-canonical" || candidate.SourceKind == "review-canonical" || candidate.SourceKind is "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")
                 || processor == "SynthesizeRecipe" && candidate.SourceKind == "synthesized-canonical"));
         var info = CapturedInfo(capture);
         switch (processor)
@@ -107,15 +107,17 @@ public class RecipeAgent(
             case "ExtractRecipe":
                 Require(capture.Files.GetValueOrDefault("original/content.html") is not null || CapturedImages(capture, info).Count > 0);
                 var extractedJson = candidate.RecipeJson!;
-                if (candidate.SourceKind is "fresh-canonical" or "review-canonical" or "photo-ingredient-repair")
+                if (candidate.SourceKind is "fresh-canonical" or "review-canonical" or "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")
                 {
                     using var document = JsonDocument.Parse(extractedJson);
                     extractedJson = RecipeExportContent.ReadCurrent(document.RootElement, recipeId).RawMetadata
                         ?? throw new InvalidDataException("Fresh extraction has no selected source.");
                 }
+                if (candidate.SourceKind == "canonical-content-repair")
+                    extractedJson = RecipeFilePublicationStore.ContentRepairGeneratedMetadata(candidate);
                 var extraction = RecipeExtractionParser.ParseAndNormalize(extractedJson);
                 Require(extraction.IsSemanticallyComplete && extraction.Recipe is not null);
-                if (candidate.SourceKind != "photo-ingredient-repair") info.Name = extraction.Recipe!.Name;
+                if (candidate.SourceKind is not ("photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")) info.Name = extraction.Recipe!.Name;
                 break;
             case "GenerateDescription":
                 Require(capture.Files.GetValueOrDefault("recipe.json") is { } bytes
@@ -312,11 +314,10 @@ RULES:
         var normalizedJson = JsonSerializer.Serialize(finalRecipe, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
 
         if (operationId is { } repairOperation && producerInput is not null
-            && await publications.CanRepairCanonicalPhotoAsync(capture, repairOperation, ct))
+            && await publications.CanRepairCanonicalSourceAsync(capture, repairOperation, ct))
         {
-            var repaired = publications.PreparePhotoIngredientRepair(capture, normalizedJson, repairOperation);
-            await publications.PublishAsync(capture, new(RecipeExportContent.WriteCurrent(repaired.Export), info,
-                producerInput, SourceKind: "photo-ingredient-repair", MappingEvidence: repaired.Evidence), repairOperation, ct);
+            var repaired = await publications.PrepareAcceptedRepairAsync(capture, normalizedJson, info, producerInput, repairOperation, ct);
+            await publications.PublishAsync(capture, repaired, repairOperation, ct);
             return;
         }
         info.Name = finalRecipe.Name;

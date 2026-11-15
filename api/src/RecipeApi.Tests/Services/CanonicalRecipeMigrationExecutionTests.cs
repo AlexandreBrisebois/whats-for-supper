@@ -15,6 +15,63 @@ namespace RecipeApi.Tests.Services;
 public sealed class CanonicalRecipeMigrationExecutionTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PreparedConverter_PreservesLiteralWordingAndFrozenIdentities_OrRejectsChangedBaseline(bool changeBaseline)
+    {
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var store = scope.ServiceProvider.GetRequiredService<CanonicalRecipeContentStore>();
+        var recipe = new Recipe { Name = "Literal tracer", Servings = 2,
+            Ingredients = "[\"1/4 cup milk\",\"broccoli\"]",
+            RawMetadata = "{\"recipeInstructions\":[{\"name\":\"Prepare\",\"itemListElement\":[{\"text\":\"Warm the milk.\"}]},{\"name\":\"Finish\",\"itemListElement\":[{\"text\":\"Add broccoli.\"}]}]}" };
+        db.Recipes.Add(recipe); await db.SaveChangesAsync();
+        var operationId = Guid.NewGuid();
+        var item = new CanonicalMigrationRecipe(recipe.Id, operationId, "requires-forward-assessment", null,
+            CanonicalRecipeContentStore.InspectContentRevision(recipe), CanonicalRecipeContentStore.InspectSourceRevision(recipe),
+            "not-an-inventory-authority", 2, 2, 0, []);
+        var at = DateTimeOffset.Parse("2026-11-15T16:00:00.123456Z");
+        var before = JsonSerializer.Serialize(recipe);
+        var prepared = await InvokeStore<CanonicalRecipeOperation>(store, "PrepareMigrationConversionAsync", item, at, CancellationToken.None, null!);
+        Assert.Equal(before, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id)));
+        Assert.False(await db.CanonicalRecipeOperations.AnyAsync(x => x.OperationId == operationId));
+        Assert.False(await db.MaintenanceCommands.AnyAsync());
+        var retainedBytes = JsonSerializer.Serialize(prepared);
+        if (changeBaseline)
+        {
+            recipe.Name = "Later human title"; await db.SaveChangesAsync();
+            var changed = JsonSerializer.Serialize(recipe);
+            await Assert.ThrowsAsync<InvalidDataException>(() => InvokeStore<CanonicalRecipeWriteResult>(store, "ConvertCoreAsync",
+                recipe.Id, item.ContentRevision!, item.SourceRevision!, operationId, CancellationToken.None, null!, prepared));
+            Assert.Equal(changed, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id)));
+            Assert.False(await db.CanonicalRecipeOperations.AnyAsync(x => x.OperationId == operationId));
+        }
+        else
+        {
+            var result = await InvokeStore<CanonicalRecipeWriteResult>(store, "ConvertCoreAsync", recipe.Id,
+                item.ContentRevision!, item.SourceRevision!, operationId, CancellationToken.None, null!, prepared);
+            var committed = await db.CanonicalRecipeOperations.AsNoTracking().SingleAsync(x => x.OperationId == operationId);
+            Assert.Equal(retainedBytes, JsonSerializer.Serialize(committed));
+            Assert.Equal(at, (await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id)).UpdatedAt);
+            Assert.Equal("1/4 cup milk", result.Content.IngredientLines[0].Description);
+            Assert.Null(result.Content.IngredientLines[0].Amount);
+            Assert.Null(result.Content.IngredientLines[0].Unit);
+            Assert.Equal(new[] { "Warm the milk.", "Add broccoli." }, result.Content.InstructionSections.SelectMany(x => x.Steps).Select(x => x.Text));
+            var replay = await store.ConvertAsync(recipe.Id, item.ContentRevision!, item.SourceRevision!, operationId);
+            Assert.Equal(JsonSerializer.Serialize(result), JsonSerializer.Serialize(replay));
+        }
+        Assert.Equal(retainedBytes, JsonSerializer.Serialize(prepared));
+    }
+
+    private static async Task<T> InvokeStore<T>(CanonicalRecipeContentStore store, string method, params object[] args)
+    {
+        try { return await (Task<T>)typeof(CanonicalRecipeContentStore).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(store, args)!; }
+        catch (TargetInvocationException error) when (error.InnerException is not null)
+        { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
+    }
+
+    [Theory]
     [InlineData("live")]
     [InlineData("pruned")]
     [InlineData("missing-link")]

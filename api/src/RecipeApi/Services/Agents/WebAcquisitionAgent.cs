@@ -42,6 +42,7 @@ public class WebAcquisitionAgent(
         if (!await publications.TryResumeAsync(recipeId, operation, input, ct))
         {
             var capture = await publications.CaptureForTaskAsync(task, recipeId, ct);
+            if (capture.Fields?.CanonicalContent is not null) return new { skipped = true };
             await ProcessUrlAsync(capture, url, operation, input, ct);
         }
 
@@ -80,6 +81,12 @@ public class WebAcquisitionAgent(
         var url = urlValue.GetString()!;
         using var receipt = JsonDocument.Parse(returned ?? "null");
         UniqueObject(receipt.RootElement);
+        if (receipt.RootElement.TryGetProperty("skipped", out var skipped))
+        {
+            Require(skipped.ValueKind == JsonValueKind.True && publications.Length == 0
+                && receipt.RootElement.EnumerateObject().Count() == 1);
+            return recipeId; // Records only the skipped invocation, never an acquisition claim.
+        }
         Require(receipt.RootElement.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String
             && message.GetString() == CompletionMessage(url) && publications.Length == 1 && publications[0].RecipeId == recipeId);
         var (capture, candidate) = RecipeFilePublicationStore.ReadOriginalPublication(publications[0]);

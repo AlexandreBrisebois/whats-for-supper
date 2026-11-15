@@ -294,6 +294,7 @@ public sealed partial class CurrentRecoveryHouseholdState
                 // Delivered means selected files arrived, never extraction, indexing,
                 // report repair or the workflow as a whole completed.
             }
+            RecipeFilePublicationStore.ValidateRecoveryRepairSources(linkedPublications);
             foreach (var workflow in value.Workflows)
                 RecipeFilePublicationStore.ValidateRecoveryPublicationChain(new WorkflowInstance
                 {

@@ -7,13 +7,15 @@ using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
+internal sealed record V1MigrationPredecessor(CanonicalMigrationRecipe Recipe, MaintenanceCommand Plan, CanonicalRecipeOperation Conversion);
+
 public sealed partial class CanonicalRecipeContentStore
 {
     internal const string MigrationModelRevision = "canonical-v2/food-policy-1";
 
     private async Task RequireMigrationAdmissionAsync(RecipeDbContext observationDb, CanonicalMigrationInventory inventory,
         MaintenanceCommand expected, RecoverySnapshotService snapshots, RecipesRootResolver roots, CancellationToken ct,
-        V1MigrationSource? continuation = null)
+        V1MigrationSource? continuation = null, V1MigrationPredecessor? predecessor = null)
     {
         static void Require(bool valid, string reason) => CanonicalRecipeMigrationManifest.Require(valid, "Migration admission: " + reason);
         Require(inventory.Request.ModelRevision == MigrationModelRevision, "executing model differs");
@@ -56,7 +58,22 @@ public sealed partial class CanonicalRecipeContentStore
             raw.Add(table.Name, json.RootElement.Clone());
         }
         var plan = await CanonicalRecipeMigrationReceipt.FindAsync(observationDb, expected.Id, ct);
-        if (plan is not null) CanonicalRecipeMigrationReceipt.RequireBinding(plan, expected);
+        if (plan is not null)
+        {
+            CanonicalRecipeMigrationReceipt.RequireBinding(plan, expected);
+            var live = raw["maintenance_commands"].EnumerateArray().SingleOrDefault(x => x.GetProperty("id").GetGuid() == plan.Id);
+            if (live.ValueKind != JsonValueKind.Undefined)
+                Require(JsonElement.DeepEquals(live, await MigrationCommandRowAsync(connection, plan, ct)), "plan physical row differs from its typed producer");
+        }
+        if (predecessor is not null)
+        {
+            var retainedPlan = await CanonicalRecipeMigrationReceipt.FindAsync(observationDb, predecessor.Plan.Id, ct);
+            Require(retainedPlan is not null, "missing independently bound predecessor plan");
+            CanonicalRecipeMigrationReceipt.RequireBinding(retainedPlan!, predecessor.Plan);
+            var row = raw["maintenance_commands"].EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == predecessor.Plan.Id);
+            Require(JsonElement.DeepEquals(row, await MigrationCommandRowAsync(connection, retainedPlan!, ct)), "predecessor physical plan row differs");
+            Require(!inventory.Recipes.Any(x => x.RecipeId == predecessor.Recipe.RecipeId), "predecessor overlaps successor selection");
+        }
         var weeks = new Dictionary<DateOnly, (MaintenanceCommandObservation Receipt, CanonicalMigrationReceiptResult Result)>();
         foreach (var week in inventory.Weeks)
         {
@@ -64,6 +81,9 @@ public sealed partial class CanonicalRecipeContentStore
             if (receipt is null) continue;
             Require(plan is not null, "week without retained plan");
             CanonicalRecipeMigrationReceipt.RequireWeekBinding(receipt, plan!, week.WeekStart);
+            var live = raw["maintenance_commands"].EnumerateArray().SingleOrDefault(x => x.GetProperty("id").GetGuid() == receipt.Id);
+            if (live.ValueKind != JsonValueKind.Undefined)
+                Require(JsonElement.DeepEquals(live, await MigrationCommandRowAsync(connection, receipt, ct)), "week physical row differs from its typed producer");
             var result = CanonicalRecipeMigrationReceipt.Read(receipt).Result;
             weeks.Add(week.WeekStart, (receipt, result));
         }
@@ -85,17 +105,21 @@ public sealed partial class CanonicalRecipeContentStore
         var observedRecipes = await observationDb.Recipes.IgnoreQueryFilters().AsNoTracking().ToArrayAsync(ct);
         var operations = await observationDb.CanonicalRecipeOperations.AsNoTracking().ToArrayAsync(ct);
         var converted = new Dictionary<Guid, CanonicalRecipeOperation>();
-        foreach (var item in inventory.Recipes)
+        var selectedRecipes = inventory.Recipes.Concat(predecessor is null ? [] : new[] { predecessor.Recipe }).ToArray();
+        foreach (var item in selectedRecipes)
         {
             var operation = operations.SingleOrDefault(x => x.RecipeId == item.RecipeId && x.OperationId == item.OperationId);
             if (operation is null)
             {
+                Require(predecessor is null || item.RecipeId != predecessor.Recipe.RecipeId, "missing predecessor conversion");
                 var actual = ObserveMigrationRecipe(new(item.RecipeId, item.OperationId), observedRecipes.SingleOrDefault(x => x.Id == item.RecipeId), inventory.Files);
                 Require(NormalizeJson(JsonSerializer.Serialize(actual, Json)) == NormalizeJson(JsonSerializer.Serialize(item, Json)),
                     "selected recipe facts differ before first write");
                 continue;
             }
-            Require(plan is not null, "conversion without retained plan");
+            var isPredecessor = predecessor is not null && item.RecipeId == predecessor.Recipe.RecipeId;
+            Require(isPredecessor || plan is not null, "conversion without retained plan");
+            if (isPredecessor) Require(JsonSerializer.Serialize(operation, Json) == JsonSerializer.Serialize(predecessor!.Conversion, Json), "predecessor conversion differs");
             _ = ReadValidatedRetainedResult(operation);
             var request = ReadOriginal<OriginalRequestV2>(operation.OriginalRequest!);
             Require(request.Kind == "convert" && request.CallerInputHash == Hash(new { Kind = "convert", expectedContentRevision = item.ContentRevision, expectedSourceRevision = item.SourceRevision })
@@ -123,7 +147,7 @@ public sealed partial class CanonicalRecipeContentStore
             Require(actual.StoredPlanIds.SequenceEqual(expectedIds), "stored plan membership differs");
             if (weeks.ContainsKey(week.WeekStart))
             {
-                Require(converted.Count == inventory.Recipes.Count, "week committed before all selected conversion outputs");
+                Require(converted.Count == selectedRecipes.Length, "week committed before all selected conversion outputs");
                 var row = raw["weekly_plans"].EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == done.Result.PlanId);
                 // Digests in the receipt are historical committed facts. Later
                 // human checks also advance row versions; never compare them to
@@ -133,6 +157,7 @@ public sealed partial class CanonicalRecipeContentStore
             }
         }
         var receipts = inventory.Weeks.Select(x => CanonicalRecipeMigrationReceipt.WeekReceiptId(expected.Id, x.WeekStart)).Append(expected.Id).ToHashSet();
+        if (predecessor is not null) receipts.Add(predecessor.Plan.Id);
         var retained = await observationDb.MaintenanceCommandLifecycleRecords.AsNoTracking().ToArrayAsync(ct);
         var workflows = await observationDb.WorkflowLifecycleRecords.AsNoTracking().ToArrayAsync(ct);
         var physical = await observationDb.RecipePhysicalDeletions.AsNoTracking().ToArrayAsync(ct);
@@ -216,6 +241,24 @@ public sealed partial class CanonicalRecipeContentStore
         continuation?.RequireActive();
     }
 
+    internal async Task RequireTransitionAdmissionAsync(CanonicalMigrationInventory inventory, RecipeApi.Models.MaintenanceCommand expected,
+        RecoverySnapshotService snapshots, RecipesRootResolver roots, V1MigrationSource source, CancellationToken ct)
+    {
+        source.RequireOwner(db, roots);
+        foreach (var week in inventory.Weeks)
+            CanonicalRecipeMigrationManifest.Require(await CanonicalRecipeMigrationReceipt.FindAsync(db,
+                CanonicalRecipeMigrationReceipt.WeekReceiptId(expected.Id, week.WeekStart), ct) is null,
+                "The recipe transition cannot admit week receipts.");
+        CanonicalRecipeMigrationManifest.Require(inventory.Recipes.Count == 1 && inventory.Recipes[0].Status == "requires-forward-assessment"
+            && inventory.Tables.Single(x => x.Name == "recipe_search_documents").Rows.Any(x => KeyId(x.Key) == inventory.Recipes[0].RecipeId),
+            "The transition requires its exact eligible recipe and existing search row.");
+        await RequireMigrationAdmissionAsync(db, inventory, expected, snapshots, roots, ct, source);
+    }
+
+    internal Task RequireRemainingTransitionAdmissionAsync(CanonicalMigrationInventory inventory, MaintenanceCommand expected,
+        RecoverySnapshotService snapshots, RecipesRootResolver roots, V1MigrationSource source, V1MigrationPredecessor predecessor, CancellationToken ct)
+        => RequireMigrationAdmissionAsync(db, inventory, expected, snapshots, roots, ct, source, predecessor);
+
     internal async Task RequireAttestedMigrationPrewriteAsync(CanonicalMigrationInventory inventory, string candidateCommit,
         RecoverySnapshotService snapshots, RecoveryBoundary boundary, RecipesRootResolver roots,
         V1MigrationSource source, DateTimeOffset capturedAt, CancellationToken ct)
@@ -258,7 +301,7 @@ public sealed partial class CanonicalRecipeContentStore
         };
     }
 
-    private static async Task<JsonElement> MigrationCommandRowAsync(NpgsqlConnection connection, MaintenanceCommandObservation command, CancellationToken ct)
+    internal static async Task<JsonElement> MigrationCommandRowAsync(NpgsqlConnection connection, MaintenanceCommandObservation command, CancellationToken ct)
     {
         var value = JsonSerializer.Serialize(new
         {

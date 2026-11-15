@@ -538,7 +538,6 @@ for (const appLocale of ['en', 'fr'] as const) {
         await page.getByTestId('day-card-4').getByTestId('edit-recipe-button').click();
         const sheet = page.getByTestId('recipe-detail-sheet');
         await expect(sheet.getByTestId('preparation-status')).toBeVisible();
-        await sheet.getByTestId('preparation-status').scrollIntoViewIfNeeded();
         await capture('detail', 'recipe-detail-sheet');
         const detailReading = page.getByTestId('recipe-detail-reading');
         const detailReach = await detailReading.evaluate((element) => {

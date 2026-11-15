@@ -22,9 +22,11 @@ public sealed partial class CanonicalRecipeContentStore
         {
             var original = old.IngredientLines[index];
             var next = generated.Content.IngredientLines[index];
+            // Human and unknown facts are retained as a whole. Their description
+            // need not still match extraction text to repair another source row.
+            if (saved.Provenance.Origin != "source" || saved.Provenance.ProtectedFields.Count != 0) return saved;
             if (saved.Description != original.Description || next.Description != original.Description)
                 throw new RecipeContentReviewException("Changed ingredient identity requires explicit reconciliation.", ["ingredients"]);
-            if (saved.Provenance.Origin != "source" || saved.Provenance.ProtectedFields.Count != 0) return saved;
             if (saved.Provenance.SourceRef != current.SourceRevision || saved.Amount != original.Amount
                 || saved.AmountText != original.AmountText || saved.Unit != original.Unit || saved.Scaling != original.Scaling
                 || saved.Package != original.Package || saved.Shopping.Name != original.Shopping.Name)

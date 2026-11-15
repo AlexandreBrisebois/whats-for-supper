@@ -1,5 +1,17 @@
 # Tasks
 
+## Current completion selection — 2026-11-15
+
+Alex selected all six dependable-portions changes through accepted completion. The
+[single completion checklist](../canonical-ingredient-correction/rollout.md#current-completion-checklist--2026-11-15)
+owns current gaps, responsibility and evidence. Reuse passing behavior; add meaningful
+RED only for missing behavior. Historical slice stops and instructions to keep
+aggregate tasks open are superseded prospectively; immutable authority and original
+receipts are not. Complete checkboxes only when all their acceptance is evidenced.
+The migration tracer is an internal checkpoint before separately bound finite
+successors. Alex owns hosted monitoring/reruns; production and unidentified shared
+mutations remain excluded. Historical entries below retain their original limits.
+
 ## Selected source-coverage observation — 2026-11-15
 
 Alex selected the reviewed coverage-only continuation on `recipe-view-redesign`

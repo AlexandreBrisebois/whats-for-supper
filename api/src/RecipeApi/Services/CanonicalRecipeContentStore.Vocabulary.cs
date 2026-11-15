@@ -43,6 +43,12 @@ public sealed partial class CanonicalRecipeContentStore
 
     private void RecordV2(Recipe recipe, Guid operationId, string kind, string callerInputHash, RecipePublicationFields baseline,
         string? priorEvidence, FoodVocabularyAuthority authority, UpdateRecipeDto? input, CanonicalRecipeWriteResult result, string? evidence, DateTimeOffset? recordedAt = null)
+        => db.CanonicalRecipeOperations.Add(CreateV2(recipe, operationId, kind, callerInputHash, baseline, priorEvidence,
+            authority, input, result, evidence, recordedAt ?? clock.UtcNow));
+
+    private static CanonicalRecipeOperation CreateV2(Recipe recipe, Guid operationId, string kind, string callerInputHash,
+        RecipePublicationFields baseline, string? priorEvidence, FoodVocabularyAuthority authority, UpdateRecipeDto? input,
+        CanonicalRecipeWriteResult result, string? evidence, DateTimeOffset recordedAt)
     {
         authority.Validate();
         FoodMappingQualification.Validate(result.Content, evidence, authority, recipe.Id);
@@ -51,15 +57,15 @@ public sealed partial class CanonicalRecipeContentStore
             input is null ? null : JsonSerializer.Serialize(input, Json), input?.HasServings ?? false,
             baseline, Hash(baseline), observation, Hash(observation), authority);
         var decisions = evidence is null ? [] : FoodVocabularyDefinitions.ReadStrict<RecipeFoodMappingEvidence>(evidence).NameDecisions;
-        db.CanonicalRecipeOperations.Add(new()
+        return new()
         {
             RecipeId = recipe.Id,
             OperationId = operationId,
             InputHash = Hash(request),
             OriginalRequest = JsonSerializer.Serialize(request, Json),
             Result = JsonSerializer.Serialize(new CanonicalResultV2(2, result, new(evidence), decisions), Json),
-            CreatedAt = recordedAt ?? clock.UtcNow
-        });
+            CreatedAt = recordedAt
+        };
     }
 
     private static CanonicalRecipeWriteResult ReplayV2(CanonicalRecipeOperation operation, string callerHash, Recipe recipe)

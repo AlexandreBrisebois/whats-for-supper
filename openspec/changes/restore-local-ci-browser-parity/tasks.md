@@ -1,5 +1,17 @@
 # Tasks
 
+## Current completion selection — 2026-11-15
+
+Alex selected all six dependable-portions changes through accepted completion. The
+[single completion checklist](../canonical-ingredient-correction/rollout.md#current-completion-checklist--2026-11-15)
+owns current gaps, responsibility and evidence. Reuse passing behavior; add meaningful
+RED only for missing behavior. Historical slice stops and instructions to keep
+aggregate tasks open are superseded prospectively; immutable authority and original
+receipts are not. Complete checkboxes only when all their acceptance is evidenced.
+The migration tracer is an internal checkpoint before separately bound finite
+successors. Alex owns hosted monitoring/reruns; production and unidentified shared
+mutations remain excluded. Historical entries below retain their original limits.
+
 ## Cooking instruction Save repair — selected 2026-11-14
 
 The user selected the attachment's cooking Save diagnosis on `recipe-view-redesign`
@@ -87,8 +99,8 @@ Implementation progress and observed evidence are recorded in evidence.md. This 
 **Dependencies and prerequisites:** Group 1 confirmed cause per selected family, group 2 reproducible production runtime. Coordinate the independent cooked-portions owner before overlapping changes.
 **Acceptance boundary:** Actual production React/Kiota execution with method-sensitive boundary mocks; keep real database evidence separate.
 
-- [ ] 4.1 Add/update the smallest focused regression for each confirmed cause and observe intended red before application changes, using `task test:unit -- src/components/planner/CooksMode.test.tsx` and `task test:unit -- src/components/planner/CooksMode.sse.test.tsx` as applicable, plus the exact failing prepared-supper case. Record whether the repair belongs in application code or fixture/readiness, and why approved intent supports it.
-- [ ] 4.2 Apply the smallest repair and run `CI=true task test:e2e -- prepared-supper.spec.ts --workers=4 --retries=0 --repeat-each=3` against a rebuilt matching artifact, plus affected unit tests. Completion evidence: lost response/publication failure confirms one original write/receipt; negative/unavailable outcomes retain work until explicit review; successful completion closes after celebration; future/generic/prepared contexts and all existing responsive variants pass. No blind retries, removed assertions or blanket timeout increases. Publish cause and red/green evidence with this group.
+- [ ] 4.1 Reconcile the retained completion diagnostics and delivered cooking Save regression against current behavior. For each currently reproducible defect, add/update the smallest focused regression and observe intended red before application changes, using the existing CooksMode unit/SSE owners and exact failing prepared-supper case. If the original failure remains unreproduced, retain its unknown cause and prior discriminating experiments; do not invent another RED or claim a later pass repaired it. Record whether each demonstrated repair belongs in application code or fixture/readiness and why approved intent supports it.
+- [ ] 4.2 Apply only demonstrated missing repairs and run `task test:e2e:ci -- prepared-supper.spec.ts --workers=4 --retries=0 --repeat-each=3` against a matching production artifact, plus affected unit tests. The equivalent repeated affected-file selection in 6.2 may supply this evidence. Completion evidence: lost response/publication failure confirms one original write/receipt; negative/unavailable outcomes retain work until explicit review; successful completion closes after celebration; future/generic/prepared contexts and all existing responsive variants pass. No blind retries, removed assertions or blanket timeout increases. Publish confirmed cause and red/green evidence where a repair exists; preserve historical unexplained failures separately from current qualification.
 
 ## 5. Repair confirmed menu and measurement causes
 
@@ -103,5 +115,5 @@ Implementation progress and observed evidence are recorded in evidence.md. This 
 ## 6. Final integration and candidate qualification
 
 - [x] 6.1 Review the complete task-owned diff, reconcile concurrent cooked-portions work without silently including it, run `task prepare -- <complete-reviewed-changed-paths>`, then `task verify -- <complete-reviewed-changed-paths>` on stable content. Completion evidence: all applicable statuses and invocation-specific record_path; record source identity and limitations. Planning validation alone does not complete these tasks.
-- [ ] 6.2 On the final isolated candidate, run the three affected files at four workers with zero retries, then `task check:push:pwa SUITES='planning recipes'`, then `task check:push:pwa SUITES='tonight planning recipes household'` so full qualification uses CI's actual disjoint inventory rather than an accidental default including live-only files. Record all first-attempt failures, retry passes and intentional skips; reported families require zero failures/retry passes. Run the supplementary welcome/demo/beta scenarios using workflow-equivalent configuration. Completion evidence: fresh production build/config/source identity and complete per-suite results; unexpected unrelated failures remain visible blockers or explicitly scoped follow-up, never an unqualified full pass.
+- [ ] 6.2 On the final isolated candidate, use one matching production artifact for the three affected files repeated three times at four workers with zero retries and `task check:push:pwa SUITES='tonight planning recipes household'` (or its shared build-once/run owner). The full disjoint inventory covers the smaller planning/recipes selection without another run of that subset. Record all first-attempt failures, retry passes and intentional skips; reported families require zero failures/retry passes. Run the supplementary welcome/demo/beta scenarios using workflow-equivalent configuration. Completion evidence: production build/config/source identity and complete per-suite results; unexpected unrelated failures remain visible blockers or explicitly scoped follow-up, never an unqualified full pass.
 - [ ] 6.3 Reconcile final local records with an authorized hosted CI run on the same committed candidate. Compare suite inventory, effective flags, build identity and first-attempt/retry outcomes; require every selected required CI job green and the reported families clean on first attempt. Completion evidence: hosted run/job/artifact URLs tied to the final commit, local record references, and no later source mutation. If a push/rerun is not yet authorized or hosted execution is unavailable, leave this task incomplete and report hosted qualification as pending.

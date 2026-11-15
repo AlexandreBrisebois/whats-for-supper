@@ -1,5 +1,17 @@
 # Tasks
 
+## Current completion selection — 2026-11-15
+
+Alex selected all six dependable-portions changes through accepted completion. The
+[single completion checklist](../canonical-ingredient-correction/rollout.md#current-completion-checklist--2026-11-15)
+owns current gaps, responsibility and evidence. Reuse passing behavior; add meaningful
+RED only for missing behavior. Historical slice stops and instructions to keep
+aggregate tasks open are superseded prospectively; immutable authority and original
+receipts are not. Complete checkboxes only when all their acceptance is evidenced.
+The migration tracer is an internal checkpoint before separately bound finite
+successors. Alex owns hosted monitoring/reruns; production and unidentified shared
+mutations remain excluded. Historical entries below retain their original limits.
+
 > **Selected — 2026-11-12:** Alex included bilingual identity in this release and selected app-owned model-authored durable JSON with full backup/restore. **Historical, superseded — 2026-11-10:** this feature was deferred from the first portions baseline. No external-dataset/licence adoption or separate scope-confirmation gate remains.
 
 All implementation boxes remain unchecked until actual acceptance. Use the shared [contracts](../canonical-ingredient-correction/contracts.md), [corpus](../canonical-ingredient-correction/acceptance-corpus.md) and [review](../canonical-ingredient-correction/review.md); Root owns those artifacts. For actual API changes, update OpenAPI first, regenerate the client, then synchronize consumers and method-sensitive mocks, conflicts, reads and SSE. Preserve accepted PDF/portions/package/step/check behavior; no bilingual code enters PDF freshness.

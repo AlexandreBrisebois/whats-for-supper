@@ -18,6 +18,7 @@ public sealed class PdfConversionProcessor(RecipeFilePublicationStore publicatio
         var input = ProcessorName + "\n" + CanonicalRecipeContentStore.NormalizeJson(task.Payload);
         if (await publications.TryResumeAsync(id, operation, input, ct)) return new { recipeId = id, recovered = true };
         var capture = await publications.CaptureForTaskAsync(task, id, ct);
+        if (capture.Fields?.CanonicalContent is not null) return new { skipped = true };
         if (capture.Files["original/source.pdf"] is not { } pdf) return new { skipped = true };
         var info = JsonSerializer.Deserialize<RecipeInfo>(capture.Files["recipe.info"]!, JsonDefaults.CamelCase)
             ?? throw new InvalidDataException("PDF metadata is missing.");

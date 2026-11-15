@@ -48,14 +48,17 @@ public sealed partial class FoodVocabularyStore(RecipeDbContext db, IStorageProv
         return captured;
     }
 
-    public async Task<FoodVocabularyCapture?> CaptureActiveAsync(CancellationToken ct = default)
+    public Task<FoodVocabularyCapture?> CaptureActiveAsync(CancellationToken ct = default) => CaptureActiveAsync(ct, null);
+
+    internal async Task<FoodVocabularyCapture?> CaptureActiveAsync(CancellationToken ct, V1AuthorityTransitionContext? transition)
     {
+        transition?.RequireOwner(db, recipes);
         await using var lease = await boundary.EnterAsync(RecoveryAccess.Read, ct);
         await using var readConnection = await DatabaseReadConnection.RetainAsync(db, ct);
         var member = await db.FamilySettings.AsNoTracking().SingleOrDefaultAsync(x => x.Key == Key, ct);
         if (member is null)
         {
-            await RequireUnreferencedAbsence(ct);
+            await RequireUnreferencedAbsence(ct, transition);
             return null;
         }
         var membership = ReadMembership(member.Value.GetRawText());
@@ -66,9 +69,14 @@ public sealed partial class FoodVocabularyStore(RecipeDbContext db, IStorageProv
             : throw new InvalidDataException("Vocabulary membership has no committed active head.");
     }
 
-    public async Task<FoodVocabularyAuthority> CaptureAuthorityAsync(string? priorEvidence, CancellationToken ct = default)
+    public Task<FoodVocabularyAuthority> CaptureAuthorityAsync(string? priorEvidence, CancellationToken ct = default)
+        => CaptureAuthorityAsync(priorEvidence, ct, null);
+
+    internal async Task<FoodVocabularyAuthority> CaptureAuthorityAsync(string? priorEvidence, CancellationToken ct,
+        V1AuthorityTransitionContext? transition)
     {
-        var active = await CaptureActiveAsync(ct);
+        transition?.RequireOwner(db, recipes);
+        var active = await CaptureActiveAsync(ct, transition);
         var captures = new Dictionary<FoodVocabularyReference, FoodVocabularyCapture>();
         if (active is not null) captures.Add(active.Reference, active);
         if (priorEvidence is not null)
@@ -242,11 +250,12 @@ public sealed partial class FoodVocabularyStore(RecipeDbContext db, IStorageProv
             state.PresentationVersion, state.PresentationEpoch, FoodVocabularyDefinitions.Sha256(Encoding.UTF8.GetBytes(raw)));
     }
 
-    private async Task RequireUnreferencedAbsence(CancellationToken ct)
+    private async Task RequireUnreferencedAbsence(CancellationToken ct, V1AuthorityTransitionContext? transition = null)
     {
         var facts = await ObserveInventoryFactsAsync(ct);
-        FoodVocabularyDefinitions.Require(FoodVocabularyInventoryQualification.RequiredReferences(facts).Count == 0);
-        await RequireRetainedAbsenceAsync(ct);
+        FoodVocabularyDefinitions.Require((transition is null ? FoodVocabularyInventoryQualification.RequiredReferences(facts)
+            : transition.RequiredReferences(facts)).Count == 0);
+        await RequireRetainedAbsenceAsync(ct, transition);
 
     }
 }

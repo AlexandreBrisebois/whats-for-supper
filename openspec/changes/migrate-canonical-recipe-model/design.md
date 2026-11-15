@@ -1,5 +1,68 @@
 # Design
 
+## Selected complete release — 2026-11-15
+
+Alex's current six-change selection supersedes the historical bounded stops below.
+The [single completion checklist](../canonical-ingredient-correction/rollout.md)
+owns progress and acceptance. Existing hash-bound predecessor contracts remain
+unchanged. The reviewed one-recipe A→B→C→D tracer is the first internal checkpoint;
+its receipt is not authority for another effect or a completed migration.
+
+After independent D read-back, extend the same existing migration owners with
+finite successor inputs, retained by the caller before each new effect set:
+
+- Bind original A's complete tables/files, original46 authority and exact tracer
+  request, attempt, inventories, producer witnesses, write input and read-back.
+  Preserve original A as the baseline; observed C is never its own authority.
+- Select the remaining 197 identities with fresh operation IDs and a fresh plan.
+  Prepare each through the ordinary converter before any new plan write. Freeze
+  strict V2 producer bytes and full PostgreSQL projections for each eligible item;
+  independently bind the exact eligible set and explicit unsupported outcomes.
+  Keep all 221 accounted for, including the original 23 retired/deferred recipes.
+- Reuse the batch executor with exact predecessor and successor typed receipt
+  maps. The transaction-local context dispatches original46 to unchanged source
+  attestation and only the explicitly bound new receipts to their ordinary owners.
+  Preserve every protected original row/column/file; do not broaden V1 membership.
+- Admit the complete 36-week reset/rebuild separately, after conversion read-back.
+  Bind exact plan/event membership, vocabulary authority, deterministic receipt
+  identities and permitted derived changes. Existing atomic week receipts and
+  continuity checks own interrupted resume and protect later human checks.
+- Bind reviewed vocabulary publication and subsequent complete backup, independent
+  restore and re-export as separate effects through their existing typed owners.
+  The exact finite history union must remain independently source-admissible in
+  recovery; a generic relaxed history reader is not permitted. Preserve durable
+  bilingual bytes/references and prove held restart, stale clients/drafts and
+  reopening freshness before release acceptance.
+
+The accepted complete recovery outcome requires an additive durable authority for
+the exact original 46 receipts: an active vocabulary alone does not make ordinary
+history capture accept those records. Extend the existing vocabulary publication,
+history and recovery owners with a closed, narrowly typed original-history proof.
+Its immutable policy/package/set hashes are independently compiled pins; it retains
+the accepted exact receipt bytes and interpretation, not caller-selected digests.
+Creation requires fresh complete source admission and independently retained caller,
+candidate and operation bindings before publication. Normal inventory/backup/restore
+may consume only the complete validated publication, proof files and exact raw46
+closure. All other records remain with their ordinary strict owners; unqualified
+readers, copied proof files and self-rehashed journals grant no exception. Keep the
+original tracer authority unchanged. Include the proof footprint and referenced
+terminal publication history in independent offline backup, restore and re-export;
+pruning cannot discard required authority. This implements the current selected
+recovery outcome, not an expansion of original membership or a generic V1 adapter.
+
+Each successor request binds its actual candidate/build, runtime, database/roots,
+schema domains, date, selection and operation identities. A changed candidate or
+effect set requires its own reviewed input, not editing an earlier envelope.
+Within one batch invocation, the independently admitted pristine and prepared
+source transactions may retain their complete SHARE locks. Reconstruct source at
+entry and final read-back; at every execution transaction's commit boundary reread
+the exact source files, markers, package/backup bytes and schema, all independent
+caller/producer inputs and the complete allowed execution delta. Each transaction
+still constructs and revokes its own context. Held source locks avoid reconstructing
+the same immutable rows for every recipe; no capability survives an invocation.
+Disposable rehearsal is authorized. A shared/DV target requires its fully prepared
+target-specific packet and any missing operational authorization before mutation.
+
 ## Selected source-coverage observation — 2026-11-15
 
 Alex selected the reviewed coverage-only continuation on `recipe-view-redesign`

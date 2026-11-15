@@ -137,6 +137,8 @@ internal sealed partial class V1ExactSourceAdmission
         return CanonicalRecipeContentStore.ValidateAttestedV1(operation!, Member(recipeId, operationId));
     }
 
+    internal bool ContainsReceipt(CanonicalRecipeOperation operation) => _operations.ContainsKey((operation.RecipeId, operation.OperationId));
+
     internal FoodVocabularyReference[] References(CanonicalRecipeOperation operation)
     {
         Require(_operations.TryGetValue((operation.RecipeId, operation.OperationId), out var saved)

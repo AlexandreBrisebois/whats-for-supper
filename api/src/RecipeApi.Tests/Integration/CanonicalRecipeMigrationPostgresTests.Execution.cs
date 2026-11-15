@@ -16,6 +16,60 @@ namespace RecipeApi.Tests.Integration;
 public sealed partial class CanonicalRecipeMigrationPostgresTests
 {
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public Task RecipeStage_CommitsOnlyPlanAndConversions_AndExactRetryNeverRebuildsWeeks() => WithExecution(async (services, inventory, commit, hash) =>
+    {
+        var db = services.GetRequiredService<RecipeDbContext>();
+        var before = await Capture(services, inventory.Request);
+        var report = await ExecuteRecipeStage(services, inventory, commit, hash);
+        Assert.False(report.Completed);
+        Assert.Empty(report.Weeks);
+        db.ChangeTracker.Clear();
+        var after = await Capture(services, inventory.Request);
+        Assert.Equal(before.Tables.Single(x => x.Name == "weekly_plans").Sha256,
+            after.Tables.Single(x => x.Name == "weekly_plans").Sha256);
+        AssertProtectedTables(before, after);
+        Assert.Equal(1, await db.MaintenanceCommands.CountAsync(x => x.CommandType == "canonical-recipe-migration-receipt-v1"));
+        var selected = inventory.Recipes.Single(x => x.Status == "requires-forward-assessment");
+        Assert.NotNull(CanonicalRecipeContentStore.Read(await db.Recipes.SingleAsync(x => x.Id == selected.RecipeId)));
+        var retained = await DatabaseDigest(services);
+        await ExecuteRecipeStage(services, inventory, commit, hash);
+        Assert.Equal(retained, await DatabaseDigest(services));
+    });
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public Task RecipeStage_RejectsUnmodeledPlanColumnWithoutFurtherWrites() => WithExecution(async (services, inventory, commit, hash) =>
+    {
+        await ExecuteRecipeStage(services, inventory, commit, hash);
+        var db = services.GetRequiredService<RecipeDbContext>();
+        var planId = inventory.Request.OperationId;
+        var foreignLink = Guid.NewGuid();
+        await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE maintenance_commands SET child_launch_intent_id={foreignLink} WHERE id={planId}");
+        db.ChangeTracker.Clear();
+        var before = await DatabaseDigest(services);
+        await Assert.ThrowsAsync<InvalidDataException>(() => ExecuteRecipeStage(services, inventory, commit, hash));
+        Assert.Equal(before, await DatabaseDigest(services));
+    });
+
+    private static Task<CanonicalMigrationExecutionReport> ExecuteRecipeStage(IServiceProvider services,
+        CanonicalMigrationInventory inventory, string commit, string markerHash)
+    {
+        var boundary = services.GetRequiredService<RecoveryBoundary>();
+        return boundary.RunMaintenanceAsync(inventory.Request.OperationId, commit, markerHash, async ct =>
+        {
+            var owner = typeof(CanonicalRecipeContentStore);
+            var method = owner.GetMethod("ExecuteMigrationRecipeStageAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            try
+            {
+                return await (Task<CanonicalMigrationExecutionReport>)method.Invoke(services.GetRequiredService<CanonicalRecipeContentStore>(),
+                    [inventory, commit, services.GetRequiredService<RecoverySnapshotService>(), boundary,
+                     services.GetRequiredService<RecipesRootResolver>(), null, ct])!;
+            }
+            catch (TargetInvocationException error) when (error.InnerException is not null)
+            { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
+        });
+    }
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public Task Executor_RebuildsEveryWeekAndCompletedReplayPreservesLaterHumanChecks() => WithExecution(async (services, inventory, commit, hash) =>
     {
         var db = services.GetRequiredService<RecipeDbContext>();

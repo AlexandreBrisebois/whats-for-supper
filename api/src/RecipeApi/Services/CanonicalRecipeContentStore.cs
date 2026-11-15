@@ -84,7 +84,7 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
     // and V2 replay owner run without scheduling redundant refresh workflows.
     private async Task<CanonicalRecipeWriteResult> ConvertCoreAsync(Guid id, string expectedContentRevision,
         string expectedSourceRevision, Guid operationId, CancellationToken ct,
-        Func<CancellationToken, Task>? migrationAdmission = null)
+        Func<CancellationToken, Task>? migrationAdmission = null, CanonicalRecipeOperation? prepared = null)
     {
         if (migrationAdmission is not null) await migrationAdmission(ct);
         RequireOperation(operationId);
@@ -99,32 +99,8 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         Guard(recipe, expectedContentRevision, expectedSourceRevision);
         if (EvidenceValue(recipe) != EvidenceValue(before)) throw Conflict(recipe);
         await vocabulary.ValidateLiveAuthorityAsync(authority, ct);
-        var baseline = RecipeFilePublicationStore.Observe(recipe);
-        var priorEvidence = EvidenceValue(recipe);
-        if (Read(recipe) is { } existing)
-        {
-            // A new inspection of already converted content never reallocates identities.
-            var unchanged = new CanonicalRecipeWriteResult(existing, new Dictionary<string, Guid>());
-            RecordV2(recipe, operationId, "convert", hash, baseline, priorEvidence, authority, null, unchanged, priorEvidence);
-            await db.SaveChangesAsync(ct);
-            if (migrationAdmission is not null) await migrationAdmission(ct);
-            if (transaction is not null) await transaction.CommitAsync(ct);
-            return unchanged;
-        }
-        // Prepare and validate the entire candidate before changing the tracked owner.
-        var lines = ConvertLines(recipe, Guid.NewGuid);
-        var sections = ConvertInstructions(recipe.RawMetadata, Guid.NewGuid, Guid.NewGuid, NewRevision);
-        var content = new CanonicalRecipeContent(2, NewRevision(), expectedSourceRevision, recipe.Servings, lines, sections);
-        var mapped = FoodMappingQualification.Prepare(new(id, content, recipe.RawMetadata), authority, operationId);
-        content = mapped.Export.Content;
-        var result = new CanonicalRecipeWriteResult(content, new Dictionary<string, Guid>());
-        recipe.FoodMappingEvidence = mapped.Evidence;
-        recipe.CanonicalContent = JsonSerializer.Serialize(content, Json);
-        recipe.Ingredients = JsonSerializer.Serialize(lines.Select(Render));
-        recipe.UpdatedAt = clock.UtcNow;
-        RecordV2(recipe, operationId, "convert", hash, baseline, priorEvidence, authority, null, result, recipe.FoodMappingEvidence,
-            migrationAdmission is null ? null : recipe.UpdatedAt);
-        await Invalidate(recipe, ct, deferGroceryRefresh: migrationAdmission is not null);
+        var result = await ApplyPreparedConversionAsync(recipe, authority, operationId, hash, prepared,
+            deferGroceryRefresh: migrationAdmission is not null, ct);
         if (migrationAdmission is not null) await migrationAdmission(ct);
         if (transaction is not null) await transaction.CommitAsync(ct);
         return result;

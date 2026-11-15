@@ -75,7 +75,7 @@ public sealed partial class RecipeFilePublicationStore
     private static void ApplyFoodEvidence(Recipe recipe, RecipePublicationCapture capture, RecipePublicationCandidate candidate)
     {
         if (capture.FieldHashVersion != 4) return;
-        if (candidate.SourceKind is "fresh-canonical" or "review-canonical" or "shared-canonical" or "synthesized-canonical" or "photo-ingredient-repair") recipe.FoodMappingEvidence = candidate.MappingEvidence;
+        if (candidate.SourceKind is "fresh-canonical" or "review-canonical" or "shared-canonical" or "synthesized-canonical" or "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair") recipe.FoodMappingEvidence = candidate.MappingEvidence;
         ValidateRecipeEvidence(recipe, capture.FoodAuthority!);
     }
 
@@ -84,7 +84,8 @@ public sealed partial class RecipeFilePublicationStore
         ValidateV4Capture(capture);
         if (candidate.SourceKind == "shared-canonical") return PrepareSharedBootstrap(capture, candidate, operationId);
         if (candidate.SourceKind == "synthesized-canonical") return PrepareSynthesizedCanonical(capture, candidate, operationId);
-        if (candidate.SourceKind == "photo-ingredient-repair") return PreparePhotoRepair(capture, candidate, operationId);
+        if (candidate.SourceKind == "canonical-content-repair") return PrepareContentRepair(capture, candidate, operationId);
+        if (candidate.SourceKind is "photo-ingredient-repair" or "canonical-ingredient-repair") return PreparePhotoRepair(capture, candidate, operationId);
         var legacyCapture = capture with
         {
             FieldHashVersion = 3,

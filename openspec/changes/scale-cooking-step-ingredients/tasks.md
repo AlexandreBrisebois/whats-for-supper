@@ -1,5 +1,26 @@
 # Tasks
 
+## Current completion selection — 2026-11-15
+
+Alex selected all six dependable-portions changes through accepted completion. The
+[single completion checklist](../canonical-ingredient-correction/rollout.md#current-completion-checklist--2026-11-15)
+owns current gaps, responsibility and evidence. Reuse passing behavior; add meaningful
+RED only for missing behavior. Historical slice stops and instructions to keep
+aggregate tasks open are superseded prospectively; immutable authority and original
+receipts are not. Complete checkboxes only when all their acceptance is evidenced.
+The migration tracer is an internal checkpoint before separately bound finite
+successors. Alex owns hosted monitoring/reruns; production and unidentified shared
+mutations remain excluded. Historical entries below retain their original limits.
+
+Current product acceptance: 0.1, 0.2 is qualified by the exact
+requirement/test map at `.task/dependable-portions-release-20261115/product-live/requirement-map.md`
+and its invocation-specific receipts: 69 unit, 83 focused PostgreSQL, 24
+production-live wrappers (41 browser cases), plus three supplementary native
+wrappers. One fixture-specific supplementary skip is separately covered by both
+prepared production scenarios. Independent source and raw-evidence review passed.
+These records describe frozen API v2/component inputs; final integrated checks,
+hosted/DV and migration/recovery acceptance remain in their open aggregate tasks.
+
 ## Cooking instruction Save repair — selected 2026-11-14
 
 The user selected the attachment's instruction-save/coherent-refresh diagnosis on
@@ -54,8 +75,8 @@ No special markup or mandatory linking UI. Recorded deterministic producer subse
 and saved-edit revalidation now supply the foundation. The aggregate tasks retain
 their broader reevaluation, stale/failure and integrated acceptance criteria.
 
-- [ ] 0.1 Define the bounded relationship evidence/validator contract and existing workflow entry points for import and committed ingredient/step edits. Specify affected-dependency revalidation, saved input revisions, stale-result rejection, duplicate delivery, failure and quiet abstention. Explain what proves whole versus partial use without provider-certified labels or numeric/name/position matching alone. Assign canonical Save/publication hooks to workstream A and proposal/validation to B before edits. No public API change is presumed; use the shared contract owner if one is needed.
-- [ ] 0.2 Add intended-red ordinary-producer tests through real API/workflow/PostgreSQL with provider doubles only at the external boundary; implement the smallest accepted whole-use path and run green. Cover import, ingredient edit, step edit, human clear, no-op/unrelated edit, stale completion after another edit, duplicate delivery and provider failure. Reuse deterministic validation before scheduling AI. Publish only server-validated current-revision relationships, preserve saved originals and prove groceries count once. Name actual test owners and evidence rather than claiming seeded projection fixtures cover production.
+- [x] 0.1 Define the bounded relationship evidence/validator contract and existing workflow entry points for import and committed ingredient/step edits. Specify affected-dependency revalidation, saved input revisions, stale-result rejection, duplicate delivery, failure and quiet abstention. Explain what proves whole versus partial use without provider-certified labels or numeric/name/position matching alone. Assign canonical Save/publication hooks to workstream A and proposal/validation to B before edits. No public API change is presumed; use the shared contract owner if one is needed.
+- [x] 0.2 Reconcile the existing ordinary whole/absolute/fraction/remainder/fixed/per-item producer tests through real API/workflow/PostgreSQL, with provider doubles only at the external boundary. Add intended-red coverage and the smallest fix only for missing behavior. Cover import, ingredient edit, step edit, human clear, no-op/unrelated edit, stale source-workflow completion after another edit, duplicate delivery and provider failure/cancellation. Deterministic reevaluation is synchronous under the guarded Save/publication owner; the specification's optional AI proposal workflow need not be added. Preserve all delayed-result/failure safeguards in the actual asynchronous extraction/publication path. Publish only server-validated current-revision relationships, preserve saved originals and prove groceries count once. Name actual tests/evidence; seeded projection fixtures and PATCH conflicts alone do not qualify ordinary production or delayed workflows.
 - [ ] 0.3 Qualify a real generated-client/browser journey: import → ingredient correction → eligible reevaluation → step correction → reevaluation → coherent Cook refresh at changed portions, with unchanged original user text and one ingredient demand. Include uncertain fallback, retained cooking state and delayed-result rejection. Reconcile existing supported allocation coverage under groups 1–3 and run the affected checks plus group 4.1 on the integrated candidate; report hosted acceptance separately.
 
 Groups 1–3 retain their task IDs and acceptance obligations, but now reconcile existing implementation rather than prescribe rebuilding it. The original proposed `CookingStepScalingPostgresTests` class was realized by `CookingStepScalingPostgres_*` methods in `CanonicalIngredientEditPostgresTests` partials; use those actual owners. `CookingStepProjectionTests`, `CookingStepAllocationTests`, `LiveBrowser_Cooking*`, CooksMode units and the named browser suites already exist. Add intended-red coverage only for a demonstrated missing behavior or demonstrated gaps in group 0 production; retain original red/green evidence for implemented behavior.

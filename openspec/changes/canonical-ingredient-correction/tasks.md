@@ -1,5 +1,26 @@
 # Tasks
 
+## Current completion selection — 2026-11-15
+
+Alex selected all six dependable-portions changes through accepted completion. The
+[single completion checklist](rollout.md#current-completion-checklist--2026-11-15)
+owns current gaps, responsibility and evidence. Reuse passing behavior; add meaningful
+RED only for missing behavior. Historical slice stops and instructions to keep
+aggregate tasks open are superseded prospectively; immutable authority and original
+receipts are not. Complete checkboxes only when all their acceptance is evidenced.
+The migration tracer is an internal checkpoint before separately bound finite
+successors. Alex owns hosted monitoring/reruns; production and unidentified shared
+mutations remain excluded. Historical entries below retain their original limits.
+
+Current product acceptance: 3.3, 3.4, 3.5, 3.6 is qualified by the exact
+requirement/test map at `.task/dependable-portions-release-20261115/product-live/requirement-map.md`
+and its invocation-specific receipts: 69 unit, 83 focused PostgreSQL, 24
+production-live wrappers (41 browser cases), plus three supplementary native
+wrappers. One fixture-specific supplementary skip is separately covered by both
+prepared production scenarios. Independent source and raw-evidence review passed.
+These records describe frozen API v2/component inputs; final integrated checks,
+hosted/DV and migration/recovery acceptance remain in their open aggregate tasks.
+
 ## Cooking instruction Save repair — selected 2026-11-14
 
 The user selected the attachment's instruction-save/coherent-refresh diagnosis on
@@ -102,10 +123,10 @@ human protection, source/media and journal/replay boundaries.
 
 - [ ] 3.1 Reconcile the producer matrix and qualify integration across the implemented URL/photo channels and later 3.3–3.6 channels. Reuse `CanonicalIngredientPublicationPostgresTests` and producer-backed live owners. Confirm guarded staged publication, explicit human clears, stale source/content, file-before-DB races, retry/failure/cancel and derived obligations with actual DB/files/workflow; double only external providers. This is aggregate closure, not an instruction to implement completed URL/photo again.
 - [ ] 3.2 Reconcile canonical inputs across existing SupperServings/PostgreSQL, Home/detail/Cook, prepared and cooked-baseline owners (C17–C21, C49). Run affected actual database and `recipe-ingredient-preview.spec.ts`, `quiet-portions-layout.spec.ts`, `supper-servings-context.spec.ts` checks where their behavior changes. Confirm pending derived work is distinct from saved facts and active Cook installs semantic changes only through coherent explicit refresh. Coordinate with the step companion; do not duplicate its producer tasks.
-- [ ] 3.3 In a later bounded increment, qualify fresh PDF canonical publication through its actual PDF/bootstrap/conversion ancestry. Add intended-red producer cases before implementing the missing path; PDF page images cannot borrow original-photo authority. Include usable review retention, source/media, stale work, replay and an ordinary read/edit/grocery seam.
-- [ ] 3.4 In a later bounded increment, qualify synthesized-recipe canonical publication through its existing workflow and captured inputs. Preserve source/provenance distinctions and human protection, and exercise exact/unknown facts, failure/retry and normal edit/projection/grocery reads.
-- [ ] 3.5 In a later bounded increment, qualify shared-recipe import into the canonical owner. Keep lower-fidelity sharing distinct from full backup recovery; establish fresh stable identities and preserve supported wording/facts without inventing bindings or provenance. Exercise ordinary edit/read and one-demand behavior through real seams.
-- [ ] 3.6 In a later bounded increment, qualify general existing-recipe reimport/repair with explicit captured source/content and protected-field authority. Reuse eligible Report/Review issue workflows, preserving human edits/clears, media, failure/cancel and retry semantics. Do not relax the canonical publication fence globally or treat later work as fresh intake. Narrow URL/photo retained-review repair is already implemented and does not prove this general merge.
+- [x] 3.3 In a later bounded increment, qualify fresh PDF canonical publication through its actual PDF/bootstrap/conversion ancestry. Add intended-red producer cases before implementing the missing path; PDF page images cannot borrow original-photo authority. Include usable review retention, source/media, stale work, replay and an ordinary read/edit/grocery seam.
+- [x] 3.4 In a later bounded increment, qualify synthesized-recipe canonical publication through its existing workflow and captured inputs. Preserve source/provenance distinctions and human protection, and exercise exact/unknown facts, failure/retry and normal edit/projection/grocery reads.
+- [x] 3.5 In a later bounded increment, qualify shared-recipe import into the canonical owner. Keep lower-fidelity sharing distinct from full backup recovery; establish fresh stable identities and preserve supported wording/facts without inventing bindings or provenance. Exercise ordinary edit/read and one-demand behavior through real seams.
+- [x] 3.6 In a later bounded increment, qualify general existing-recipe reimport/repair with explicit captured source/content and protected-field authority. Reuse eligible Report/Review issue workflows, preserving human edits/clears, media, failure/cancel and retry semantics. Do not relax the canonical publication fence globally or treat later work as fresh intake. Narrow URL/photo retained-review repair is already implemented and does not prove this general merge.
 
 **Pending bounded display regression under 3.2 — approved 2026-11-11:** Add the
 [legacy garlic placeholder scenario](specs/supper-servings/spec.md#scenario-legacy-garlic-count-exposes-a-placeholder-unit-when-scaled)

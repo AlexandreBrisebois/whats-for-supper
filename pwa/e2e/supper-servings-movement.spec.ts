@@ -71,21 +71,27 @@ async function saveCounts(
   days: { date: string; servings: number | null }[]
 ) {
   const state = await counts(page, offset);
-  expect(
-    (
-      await mutate(
-        page,
-        '/api/schedule/servings',
-        {
-          referenceWeekStartDate: reference,
-          weekOffset: offset,
-          expectedVersion: state.version,
-          days,
-        },
-        'PUT'
-      )
-    ).status
-  ).toBe(200);
+  const result = await mutate(
+    page,
+    '/api/schedule/servings',
+    {
+      referenceWeekStartDate: reference,
+      weekOffset: offset,
+      expectedVersion: state.version,
+      days,
+    },
+    'PUT'
+  );
+  expect(result.status).toBe(200);
+  const version = result.data.data.groceryRefresh.version;
+  // The write acknowledges saved portions before derived grocery work settles.
+  // Later test-owned checks must capture a guard from that completed revision.
+  await expect
+    .poll(async () => {
+      const refresh = (await readWeek(page, offset)).groceryRefresh;
+      return [refresh.status, refresh.version, refresh.appliedVersion];
+    })
+    .toEqual(['current', version, version]);
 }
 
 const check = checkGrocery;

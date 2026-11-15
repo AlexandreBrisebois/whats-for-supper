@@ -84,11 +84,11 @@ public static class FoodMappingQualification
     // unchanged shopping decision against its captured dictionary proof; it
     // never reruns matching for a private name, identity clear or override.
     internal static FoodMappingPreparation PrepareCapturedPhotoRepair(CanonicalRecipeExport export, FoodVocabularyAuthority authority,
-        Guid operationId, CanonicalRecipeContent priorContent, string? priorEvidence)
+        Guid operationId, CanonicalRecipeContent priorContent, string? priorEvidence, string? sourceUrl = null)
     {
         FoodVocabularyDefinitions.Require(export.RawMetadata is not null
             && export.Content.SourceRevision == CanonicalRecipeContentStore.InspectSourceRevision(new Models.Recipe
-            { Id = export.RecipeId, RawMetadata = export.RawMetadata })
+            { Id = export.RecipeId, RawMetadata = export.RawMetadata, SourceUrl = sourceUrl })
             && priorContent.IngredientLines.Select(x => x.Id).SequenceEqual(export.Content.IngredientLines.Select(x => x.Id)));
         foreach (var line in export.Content.IngredientLines)
         {
