@@ -21,7 +21,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             RecipeIngredientLineInput Added(string clientId, string description, string shopping, string? amount, string unit) => new()
             {
                 ClientId = clientId, Description = description,
-                Amount = amount is null ? null : LegacyGroceryQuantity.Parse(amount), AmountText = amount,
+                Amount = amount is null ? null : QuantityMath.Parse(amount), AmountText = amount,
                 Unit = new(unit, null), Package = null, Scaling = "proportional",
                 Shopping = new(shopping, null, null)
             };
@@ -47,7 +47,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 Assert.Equal(JsonSerializer.Serialize(before.IngredientLines[index], Json), JsonSerializer.Serialize(current.IngredientLines[index], Json));
             var fraction = current.IngredientLines[2];
             var firstRange = current.IngredientLines[3];
-            Assert.Equal(LegacyGroceryQuantity.Parse("1/3"), fraction.Amount);
+            Assert.Equal(QuantityMath.Parse("1/3"), fraction.Amount);
             Assert.Equal("⅓", fraction.AmountText);
             Assert.Null(fraction.Package);
             Assert.Equal("finely chopped walnuts", fraction.Description);
@@ -123,7 +123,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var garlic = Assert.Single(schedule.GetProperty("groceryItems").EnumerateArray(),
                     row => row.GetProperty("normalizedKey").GetString() == "garlic");
                 Assert.False(garlic.GetProperty("quantityComplete").GetBoolean());
-                Assert.Equal(LegacyGroceryQuantity.Parse(target == 5 ? "5–25/3" : "3–5"),
+                Assert.Equal(QuantityMath.Parse(target == 5 ? "5–25/3" : "3–5"),
                     garlic.GetProperty("quantity").Deserialize<GroceryQuantity>(Json));
                 output.WriteLine(JsonSerializer.Serialize(new { target, projected, preview,
                     garlic = garlic.Clone(), readOnlyPersistenceUnchanged = true }, Json));

@@ -12,7 +12,7 @@ public sealed partial class CanonicalRecipeReadTests
         string? unit = "cup", string scaling = "proportional", string? shoppingName = null) => new()
         {
             Id = Guid.NewGuid(), Description = description,
-            Amount = amount is null ? null : LegacyGroceryQuantity.Parse(amount), AmountText = amount,
+            Amount = amount is null ? null : QuantityMath.Parse(amount), AmountText = amount,
             Unit = unit is null ? null : new(unit, null), Scaling = scaling, Package = null,
             Shopping = new(shoppingName ?? description, null, null), Provenance = new("human", null, ["amount", "unit"])
         };
@@ -48,8 +48,8 @@ public sealed partial class CanonicalRecipeReadTests
         var recipe = ExactDisplayRecipe(3, ExactDisplayLine("flour", "⅓"));
         var five = Assert.Single(ExactDisplayRead(recipe, 5));
         var three = Assert.Single(ExactDisplayRead(recipe, 3));
-        Assert.Equal(LegacyGroceryQuantity.Parse("5/9"), five.GroceryObservation.Quantity);
-        Assert.Equal(LegacyGroceryQuantity.Parse("1/3"), three.GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("5/9"), five.GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("1/3"), three.GroceryObservation.Quantity);
         Assert.Equal("⅓ cup flour", five.OriginalText);
         Assert.Equal(five.OriginalText, three.OriginalText);
         Assert.Equal("scaled", five.Status);
@@ -63,7 +63,7 @@ public sealed partial class CanonicalRecipeReadTests
     {
         var recipe = ExactDisplayRecipe(3, ExactDisplayLine("oil", "2–3"));
         var line = Assert.Single(ExactDisplayRead(recipe, 5));
-        Assert.Equal(LegacyGroceryQuantity.Parse("10/3–5"), line.GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("10/3–5"), line.GroceryObservation.Quantity);
         Assert.Null(line.Quantity); // Compatibility scalar cannot represent this exact range.
         Assert.Equal("2–3 cup oil", line.OriginalText);
         AssertExactDisplayWireText(line, "10/3–5 cup oil");
@@ -74,7 +74,7 @@ public sealed partial class CanonicalRecipeReadTests
     {
         var recipe = ExactDisplayRecipe(null, ExactDisplayLine("oil", "1/3", scaling: "fixed"));
         var line = Assert.Single(ExactDisplayRead(recipe, 5));
-        Assert.Equal(LegacyGroceryQuantity.Parse("1/3"), line.GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("1/3"), line.GroceryObservation.Quantity);
         Assert.Equal("scaled", line.Status);
         Assert.Empty(line.Issues);
         AssertExactDisplayWireText(line, "1/3 cup oil");
@@ -88,7 +88,7 @@ public sealed partial class CanonicalRecipeReadTests
     {
         var line = Assert.Single(ExactDisplayRead(ExactDisplayRecipe(3, ExactDisplayLine("salt", amount, unit)), 5));
         Assert.Equal(unit, line.UnitText);
-        Assert.Equal(LegacyGroceryQuantity.Parse(amount == "0" ? "0" : "10/3"), line.GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse(amount == "0" ? "0" : "10/3"), line.GroceryObservation.Quantity);
         AssertExactDisplayWireText(line, expected);
     }
 
@@ -102,7 +102,7 @@ public sealed partial class CanonicalRecipeReadTests
         Assert.Equal(expected, line.OriginalText);
         Assert.Equal(line.OriginalText, line.DisplayText ?? line.OriginalText);
         Assert.Equal("original", line.Status);
-        Assert.Equal(LegacyGroceryQuantity.Parse(amount), line.GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse(amount), line.GroceryObservation.Quantity);
         Assert.Empty(line.Issues);
     }
 
@@ -162,11 +162,11 @@ public sealed partial class CanonicalRecipeReadTests
     {
         var row = ExactDisplayLine("tomatoes", "2", "cans", shoppingName: "tomato") with
         {
-            Package = new(new("cans", null), new(LegacyGroceryQuantity.Parse("400")!, new("g", null)), "net")
+            Package = new(new("cans", null), new(QuantityMath.Parse("400")!, new("g", null)), "net")
         };
         var recipe = ExactDisplayRecipe(3, row);
         var line = Assert.Single(ExactDisplayRead(recipe, 5));
-        Assert.Equal(LegacyGroceryQuantity.Parse("10/3"), line.GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("10/3"), line.GroceryObservation.Quantity);
         Assert.Equal(row.Package, line.GroceryPackage);
         Assert.Equal("tomato", line.Name);
         Assert.Equal("2 cans tomatoes (400 g / cans; net)", line.OriginalText);

@@ -20,7 +20,7 @@ public sealed class SupperProjectionVersionPackageTests
             RawMetadata = "{\"recipeIngredient\":[\"2 cans tomatoes\"],\"supply\":[{\"name\":\"tomatoes\",\"quantity\":2,\"unitText\":\"cans\"}]}" };
         if (canonical)
         {
-            var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes", Amount = LegacyGroceryQuantity.Parse("2"),
+            var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes", Amount = QuantityMath.Parse("2"),
                 AmountText = "2", Unit = new("cans", null), Scaling = "proportional", Package = package,
                 Shopping = new("tomatoes", null, null), Provenance = new("human", "source", []) };
             recipe.CanonicalContent = JsonSerializer.Serialize(new CanonicalRecipeContent(2, "content", "source", 4, [row], []), Json);
@@ -28,7 +28,7 @@ public sealed class SupperProjectionVersionPackageTests
         return recipe;
     }
     private static RecipePackageDto Package() => new(new("cans", "saved-count-definition"),
-        new(LegacyGroceryQuantity.Parse("400")!, new("g", "saved-capacity-definition")), "net");
+        new(QuantityMath.Parse("400")!, new("g", "saved-capacity-definition")), "net");
 
     private static string OldIngredientVersion(Recipe recipe, IReadOnlyList<IngredientProjectionLineDto> lines) =>
         Hash(new { RecipeId = recipe.Id, Basis = recipe.Servings, Target = 8,
@@ -82,8 +82,8 @@ public sealed class SupperProjectionVersionPackageTests
         {
             "clearCountDefinition" => package with { CountUnit = package.CountUnit with { DefinitionId = null } },
             "clearCapacityDefinition" => package with { Capacity = package.Capacity with { Unit = package.Capacity.Unit with { DefinitionId = null } } },
-            "capacity" => package with { Capacity = package.Capacity with { Amount = LegacyGroceryQuantity.Parse("800")! } },
-            "capacityRange" => package with { Capacity = package.Capacity with { Amount = LegacyGroceryQuantity.Parse("350–450")! } },
+            "capacity" => package with { Capacity = package.Capacity with { Amount = QuantityMath.Parse("800")! } },
+            "capacityRange" => package with { Capacity = package.Capacity with { Amount = QuantityMath.Parse("350–450")! } },
             "capacityUnit" => package with { Capacity = package.Capacity with { Unit = package.Capacity.Unit with { Text = "ml", DefinitionId = null } } },
             "countLabel" => package with { CountUnit = package.CountUnit with { Text = "boxes", DefinitionId = null } },
             "basis" => package with { Basis = "drained" },

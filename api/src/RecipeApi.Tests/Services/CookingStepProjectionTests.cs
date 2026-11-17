@@ -14,7 +14,7 @@ public sealed class CookingStepProjectionTests
             validatedContentRevision = revision, validatedTextRevision = "text", span = new { start, end, expectedText = expected },
             role = "whole", payload, status = "validated" });
     private static CanonicalRecipeContent Content(string text, params JsonElement[] uses) => new(2, "content", "source", 4,
-        [new RecipeIngredientLineDto { Id = RowId, Description = "pasta", Amount = LegacyGroceryQuantity.Parse("200"),
+        [new RecipeIngredientLineDto { Id = RowId, Description = "pasta", Amount = QuantityMath.Parse("200"),
             AmountText = "200", Unit = new("g", null), Scaling = "proportional", Package = null,
             Shopping = new("pasta", null, null), Provenance = new("human", null, []) }],
         [new(Guid.NewGuid(), "Pasta", [new(StepId, text, "text", uses)])]);

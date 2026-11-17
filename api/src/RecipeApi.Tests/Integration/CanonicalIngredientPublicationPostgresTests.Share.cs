@@ -34,7 +34,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             {
                 var id = Guid.NewGuid();
                 var line = new RecipeIngredientLineDto {
-                    Id = Guid.NewGuid(), Description = "flour", Amount = LegacyGroceryQuantity.Parse("⅓"), AmountText = "⅓",
+                    Id = Guid.NewGuid(), Description = "flour", Amount = QuantityMath.Parse("⅓"), AmountText = "⅓",
                     Unit = new("cup", null), Scaling = "proportional", Package = null, Shopping = new("private shopping alias", null, null),
                     Provenance = new("human", "private-evidence-ref", ["amount"]) };
                 db.Recipes.Add(new Recipe { Id = id, Name = "Current recipe", Notes = "private note", Rating = RecipeRating.Love,
@@ -78,7 +78,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             var db = services.GetRequiredService<RecipeDbContext>();
             var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
             var line = new RecipeIngredientLineDto {
-                Id = Guid.NewGuid(), Description = "flour", Amount = LegacyGroceryQuantity.Parse("⅓"), AmountText = "⅓",
+                Id = Guid.NewGuid(), Description = "flour", Amount = QuantityMath.Parse("⅓"), AmountText = "⅓",
                 Unit = new("cup", null), Scaling = "proportional", Package = null, Shopping = new("private shopping alias", null, null),
                 Provenance = new("human", "private-evidence-ref", ["amount"]) };
             var stepId = Guid.NewGuid();

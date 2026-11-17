@@ -20,7 +20,7 @@ public sealed class CurrentRecipeExportTests
     private static RecipeIngredientLineDto Line(string description, string? amount, string? unit) => new()
     {
         Id = Guid.NewGuid(), Description = description,
-        Amount = amount is null ? null : LegacyGroceryQuantity.Parse(amount), AmountText = amount,
+        Amount = amount is null ? null : QuantityMath.Parse(amount), AmountText = amount,
         Unit = unit is null ? null : new(unit, null), Scaling = "proportional", Package = null,
         Shopping = new(description, null, null), Provenance = new("unknown", "evidence:retained", ["amount", "description"])
     };
@@ -48,10 +48,10 @@ public sealed class CurrentRecipeExportTests
         Assert.Equal(JsonSerializer.Serialize(input, Json), JsonSerializer.Serialize(decoded, Json));
         Assert.Null(decoded.Content.Servings);
         Assert.Equal("⅓", decoded.Content.IngredientLines[0].AmountText);
-        Assert.Equal(LegacyGroceryQuantity.Parse("1/3"), decoded.Content.IngredientLines[0].Amount);
-        Assert.Equal(LegacyGroceryQuantity.Parse("2–3"), decoded.Content.IngredientLines[1].Amount);
+        Assert.Equal(QuantityMath.Parse("1/3"), decoded.Content.IngredientLines[0].Amount);
+        Assert.Equal(QuantityMath.Parse("2–3"), decoded.Content.IngredientLines[1].Amount);
         Assert.Null(decoded.Content.IngredientLines[2].Amount);
-        Assert.Equal(LegacyGroceryQuantity.Parse("0"), decoded.Content.IngredientLines[3].Amount);
+        Assert.Equal(QuantityMath.Parse("0"), decoded.Content.IngredientLines[3].Amount);
         Assert.Equal(4, decoded.Content.IngredientLines.Select(x => x.Id).Distinct().Count());
     }
 
@@ -187,8 +187,8 @@ public sealed class CurrentRecipeExportTests
         var input = Example();
         var row = input.Content.IngredientLines[0] with
         {
-            Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2", Unit = new("cans", "count:can"),
-            Package = new(new("can", "count:can"), new(LegacyGroceryQuantity.Parse("400")!, new("g", "mass:g")), "net"),
+            Amount = QuantityMath.Parse("2"), AmountText = "2", Unit = new("cans", "count:can"),
+            Package = new(new("can", "count:can"), new(QuantityMath.Parse("400")!, new("g", "mass:g")), "net"),
             Shopping = new("tomates", Guid.NewGuid(), "dictionary-captured"),
             Provenance = new("human", null, ["amount", "shopping"])
         };

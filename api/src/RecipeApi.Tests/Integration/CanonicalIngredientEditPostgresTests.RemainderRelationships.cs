@@ -34,7 +34,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             };
             var oil = new RecipeIngredientLineInput
             {
-                Id = before.IngredientLines[0].Id, Description = "oil", Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2",
+                Id = before.IngredientLines[0].Id, Description = "oil", Amount = QuantityMath.Parse("2"), AmountText = "2",
                 Unit = new("tbsp", null), Scaling = "proportional", Package = null, Shopping = new("oil", null, null)
             };
             Assert.Equal(HttpStatusCode.OK, (await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
@@ -83,7 +83,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
                 var groceries = JsonSerializer.Deserialize<List<GroceryLineItemDto>>((await db.WeeklyPlans.AsNoTracking()
                     .SingleAsync(x => x.WeekStartDate == monday)).GroceryItems)!;
-                Assert.Equal(LegacyGroceryQuantity.Parse("6"), Assert.Single(groceries,
+                Assert.Equal(QuantityMath.Parse("6"), Assert.Single(groceries,
                     row => row.NormalizedKey == "oil" && row.RecipeIds.Contains(Id)).ExactQuantity);
             }
 

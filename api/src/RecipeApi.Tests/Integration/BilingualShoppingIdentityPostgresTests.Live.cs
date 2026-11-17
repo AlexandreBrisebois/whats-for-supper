@@ -168,7 +168,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                 var rows = JsonSerializer.Deserialize<List<RecipeApi.Dto.GroceryLineItemDto>>(plan.GroceryItems, Json)!;
                 var onion = Assert.Single(rows, row => row.FoodId == BoundedVocabularyInput.Onion);
-                Assert.Equal(LegacyGroceryQuantity.Parse("100"), onion.ExactQuantity);
+                Assert.Equal(QuantityMath.Parse("100"), onion.ExactQuantity);
                 Assert.Equal("Pantry", onion.Section);
                 Assert.Equal("Pantry", (await db.HouseholdFoodOverrides.AsNoTracking().SingleAsync()).GrocerySection);
                 Assert.True(JsonDocument.Parse(plan.GroceryState).RootElement.GetProperty(onion.RowId).GetBoolean());

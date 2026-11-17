@@ -34,11 +34,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             {
                 ClientId = "declared-package-tomatoes",
                 Description = "tomatoes",
-                Amount = LegacyGroceryQuantity.Parse("2"),
+                Amount = QuantityMath.Parse("2"),
                 AmountText = "2",
                 Unit = new("cans", null),
                 Scaling = "proportional",
-                Package = new(new("cans", null), new(LegacyGroceryQuantity.Parse("400")!, new("g", null)), "net"),
+                Package = new(new("cans", null), new(QuantityMath.Parse("400")!, new("g", null)), "net"),
                 Shopping = new("tomatoes", null, null)
             };
             using var response = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
@@ -71,7 +71,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Equal("cans", packageWire.GetProperty("countUnit").GetProperty("text").GetString());
             Assert.Equal(JsonValueKind.Null, packageWire.GetProperty("countUnit").GetProperty("definitionId").ValueKind);
             Assert.Equal("net", packageWire.GetProperty("basis").GetString());
-            Assert.Equal(LegacyGroceryQuantity.Parse("400"), packageWire.GetProperty("capacity").GetProperty("amount").Deserialize<GroceryQuantity>(Json));
+            Assert.Equal(QuantityMath.Parse("400"), packageWire.GetProperty("capacity").GetProperty("amount").Deserialize<GroceryQuantity>(Json));
             Assert.Equal("g", packageWire.GetProperty("capacity").GetProperty("unit").GetProperty("text").GetString());
             Assert.Equal(JsonValueKind.Null, packageWire.GetProperty("capacity").GetProperty("unit").GetProperty("definitionId").ValueKind);
 
@@ -102,9 +102,9 @@ public sealed partial class CanonicalIngredientEditPostgresTests
 
     private static RecipeIngredientLineInput DeclaredPackageRow(string clientId, string capacity = "400", string basis = "net") => new()
     {
-        ClientId = clientId, Description = "tomatoes", Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2",
+        ClientId = clientId, Description = "tomatoes", Amount = QuantityMath.Parse("2"), AmountText = "2",
         Unit = new("cans", null), Scaling = "proportional",
-        Package = new(new("cans", null), new(LegacyGroceryQuantity.Parse(capacity)!, new("g", null)), basis),
+        Package = new(new("cans", null), new(QuantityMath.Parse(capacity)!, new("g", null)), basis),
         Shopping = new("tomatoes", null, null)
     };
 
@@ -158,7 +158,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             {
                 var old = current;
                 var row = current.IngredientLines.Single(row => row.Id == packageId);
-                var package = row.Package! with { Capacity = row.Package.Capacity with { Amount = LegacyGroceryQuantity.Parse(amount)! }, Basis = basis };
+                var package = row.Package! with { Capacity = row.Package.Capacity with { Amount = QuantityMath.Parse(amount)! }, Basis = basis };
                 current = await SaveDeclaredPackageRows(factory, current,
                     Row(current.IngredientLines[0]), Row(current.IngredientLines[1]), Row(row) with { Package = package });
                 Assert.NotEqual(old.ContentRevision, current.ContentRevision);
@@ -185,7 +185,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 current.IngredientLines.Select(row => row.Id == packageId ? Row(row) with { Package = null } : Row(row)).ToArray());
             Assert.Null(current.IngredientLines[0].Package);
             Assert.Null(current.IngredientLines[0].Unit);
-            Assert.Equal(LegacyGroceryQuantity.Parse("3"), current.IngredientLines[0].Amount);
+            Assert.Equal(QuantityMath.Parse("3"), current.IngredientLines[0].Amount);
             AssertDeclaredPackageUnrelatedFacts(before, current);
             using var client = factory.CreateAuthenticatedClient();
             var state = await DeclaredPackageState(factory);
@@ -240,9 +240,9 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             var packageId = Guid.NewGuid();
             var retainedRow = new RecipeIngredientLineDto
             {
-                Id = packageId, Description = "tomatoes", Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2",
+                Id = packageId, Description = "tomatoes", Amount = QuantityMath.Parse("2"), AmountText = "2",
                 Unit = new("cans", "count:can"), Scaling = "proportional",
-                Package = new(new("cans", "count:can"), new(LegacyGroceryQuantity.Parse("400")!, new("g", "mass:g")), "net"),
+                Package = new(new("cans", "count:can"), new(QuantityMath.Parse("400")!, new("g", "mass:g")), "net"),
                 Shopping = new("tomatoes", null, null), Provenance = new("source", before.SourceRevision, [])
             };
             var seeded = before with { ContentRevision = Guid.NewGuid().ToString("N"), IngredientLines = [.. before.IngredientLines, retainedRow] };
@@ -259,14 +259,14 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 {
                     Package = retainedRow.Package! with
                     {
-                        Capacity = retainedRow.Package.Capacity with { Amount = LegacyGroceryQuantity.Parse("350–450")! }, Basis = "drained"
+                        Capacity = retainedRow.Package.Capacity with { Amount = QuantityMath.Parse("350–450")! }, Basis = "drained"
                     }
                 });
             var selected = current.IngredientLines[2];
             Assert.Equal(retainedRow.Unit, selected.Unit);
             Assert.Equal(retainedRow.Package!.CountUnit, selected.Package!.CountUnit);
             Assert.Equal(retainedRow.Package.Capacity.Unit, selected.Package.Capacity.Unit);
-            Assert.Equal(LegacyGroceryQuantity.Parse("350–450"), selected.Package.Capacity.Amount);
+            Assert.Equal(QuantityMath.Parse("350–450"), selected.Package.Capacity.Amount);
             Assert.Equal("drained", selected.Package.Basis);
             Assert.Equal("human", selected.Provenance.Origin);
             Assert.Equal(before.SourceRevision, selected.Provenance.SourceRef);
@@ -366,7 +366,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 "tomato", "tomato (400 g / cans; drained)", "tomato (400 g / cans; net)",
                 "tomato (400 g / cans; unspecified)", "tomato (800 g / cans; net)"
             }.Order(StringComparer.Ordinal), rows.Select(row => row.DisplayName).Order(StringComparer.Ordinal));
-            Assert.Equal(LegacyGroceryQuantity.Parse("8"), rows.Single(row => row.DisplayName == "tomato (400 g / cans; net)").ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("8"), rows.Single(row => row.DisplayName == "tomato (400 g / cans; net)").ExactQuantity);
         });
     }
 
@@ -432,7 +432,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var line = await ReadDeclaredPackageDatedLine(factory, packageId, 8);
                 Assert.Equal($"{display} cans tomatoes (400 g / cans; net)", line.GetProperty("displayText").GetString());
                 Assert.Equal(amount + " cans tomatoes (400 g / cans; net)", line.GetProperty("originalText").GetString());
-                Assert.Equal(LegacyGroceryQuantity.Parse("400"), current.IngredientLines[2].Package!.Capacity.Amount);
+                Assert.Equal(QuantityMath.Parse("400"), current.IngredientLines[2].Package!.Capacity.Amount);
                 Assert.Equal(state, await DeclaredPackageState(factory));
                 AssertDeclaredPackageUnrelatedFacts(before, current);
             }
@@ -482,9 +482,9 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             var packageId = Guid.NewGuid();
             var retained = new RecipeIngredientLineDto
             {
-                Id = packageId, Description = "tomatoes", Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2",
+                Id = packageId, Description = "tomatoes", Amount = QuantityMath.Parse("2"), AmountText = "2",
                 Unit = new("cans", null), Scaling = "proportional",
-                Package = new(new("cans", "count:can"), new(LegacyGroceryQuantity.Parse("400")!, new("g", "mass:g")), "net"),
+                Package = new(new("cans", "count:can"), new(QuantityMath.Parse("400")!, new("g", "mass:g")), "net"),
                 Shopping = new("tomatoes", null, null), Provenance = new("source", before.SourceRevision, [])
             };
             var baseline = before with { ContentRevision = Guid.NewGuid().ToString("N"), IngredientLines = [.. before.IngredientLines, retained] };

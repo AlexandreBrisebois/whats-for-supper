@@ -49,7 +49,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
         { Id = id, RawMetadata = source, SourceUrl = sourceUrl });
         RecipeIngredientLineDto Line(string description, string quantity, string unit) => new()
         {
-            Id = Guid.NewGuid(), Description = description, Amount = LegacyGroceryQuantity.Parse(quantity), AmountText = quantity,
+            Id = Guid.NewGuid(), Description = description, Amount = QuantityMath.Parse(quantity), AmountText = quantity,
             Unit = new(unit, null), Scaling = "proportional", Package = null,
             Shopping = new(description, null, null), Provenance = new("source", sourceRevision, [])
         };
@@ -99,7 +99,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
                 var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                 var groceries = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!;
-                Assert.Equal(LegacyGroceryQuantity.Parse("400"), Assert.Single(groceries,
+                Assert.Equal(QuantityMath.Parse("400"), Assert.Single(groceries,
                     x => x.NormalizedKey == "pasta" && x.RecipeIds.Contains(id)).ExactQuantity);
             });
     }

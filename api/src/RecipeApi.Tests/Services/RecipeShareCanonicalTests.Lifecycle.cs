@@ -57,7 +57,7 @@ public sealed partial class RecipeShareCanonicalTests
             ingredientLines = baseline.IngredientLines.Select((line, index) => new
             {
                 id = line.Id, description = index == 0 ? "pasta" : line.Description,
-                amount = index == 0 && !clear ? LegacyGroceryQuantity.Parse("250") : null,
+                amount = index == 0 && !clear ? QuantityMath.Parse("250") : null,
                 amountText = index == 0 && !clear ? "250" : null,
                 unit = index == 0 ? new RecipeUnitDto("g", null) : null,
                 scaling = line.Scaling, package = line.Package,
@@ -69,7 +69,7 @@ public sealed partial class RecipeShareCanonicalTests
         db.ChangeTracker.Clear();
         var corrected = CanonicalRecipeContentStore.Read(await db.Recipes.SingleAsync(x => x.Id == id))!;
         Assert.Equal(originalLines, corrected.IngredientLines.Select(x => x.Id));
-        Assert.Equal(LegacyGroceryQuantity.Parse("250"), corrected.IngredientLines[0].Amount);
+        Assert.Equal(QuantityMath.Parse("250"), corrected.IngredientLines[0].Amount);
         Assert.Equal("human", corrected.IngredientLines[0].Provenance.Origin);
         Assert.Equal(original.SourceRevision, corrected.SourceRevision);
         Assert.Equal(originalStep.Text, Assert.Single(Assert.Single(corrected.InstructionSections).Steps).Text);

@@ -295,7 +295,7 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
                 // Split only a losslessly representable exact prefix; never scan arbitrary prose.
                 var suffix = string.IsNullOrWhiteSpace(observation.UnitText) ? observation.Name : $"{observation.UnitText} {observation.Name}";
                 if (!text.EndsWith(" " + suffix, StringComparison.Ordinal) ||
-                    LegacyGroceryQuantity.Parse(text[..^(suffix.Length + 1)]) != amount)
+                    QuantityMath.Parse(text[..^(suffix.Length + 1)]) != amount)
                     throw new InvalidDataException("Trusted legacy facts cannot be represented losslessly; conversion deferred.");
                 notation = text[..^(suffix.Length + 1)];
                 description = observation.Name;

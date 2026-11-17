@@ -16,7 +16,10 @@ public static partial class CookingStepRelationshipProducer
     private static PerItemClause? ParsePerItem(string text, RecipeIngredientLineDto count,
         RecipeIngredientLineDto ingredient)
     {
-        if (text.IndexOfAny(['\r', '\n']) >= 0 || count.Unit is null) return null;
+        if (text.IndexOfAny(['\r', '\n']) >= 0 || count.Unit is null
+            || string.IsNullOrWhiteSpace(count.Description) || string.IsNullOrWhiteSpace(ingredient.Description)
+            || !text.Contains(count.Description, StringComparison.OrdinalIgnoreCase)
+            || !text.Contains(ingredient.Description, StringComparison.OrdinalIgnoreCase)) return null;
         const string number = @"[0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞][0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞/.,–\- \t]*";
         var countMeasurement = @"(?<count>(?<countAmount>" + number + @")[ \t]+" + Regex.Escape(count.Unit.Text) + ")";
         var doseMeasurement = @"(?<dose>(?<doseAmount>" + number + @")[ \t]+(?<doseUnit>[\p{L}][\p{L}.]*(?:[ \t]+[\p{L}][\p{L}.]*)*))";
@@ -32,10 +35,10 @@ public static partial class CookingStepRelationshipProducer
         if (pattern is null) return null;
         var match = Regex.Match(text, pattern, Options, MatchTimeout);
         if (!match.Success) return null;
-        var countAmount = LegacyGroceryQuantity.Parse(match.Groups["countAmount"].Value.Trim());
-        var doseAmount = LegacyGroceryQuantity.Parse(match.Groups["doseAmount"].Value.Trim());
+        var countAmount = QuantityMath.Parse(match.Groups["countAmount"].Value.Trim());
+        var doseAmount = QuantityMath.Parse(match.Groups["doseAmount"].Value.Trim());
         if (countAmount is not { Kind: "scalar" } || doseAmount is not { Kind: "scalar" } ||
-            !LegacyGroceryQuantity.IsCanonical(countAmount) || !LegacyGroceryQuantity.IsCanonical(doseAmount)) return null;
+            !QuantityMath.IsCanonical(countAmount) || !QuantityMath.IsCanonical(doseAmount)) return null;
         var sourceUnit = match.Groups["doseUnit"].Value;
         if (PartialOrConditional.IsMatch(sourceUnit)) return null;
         // The literal token identifies source wording, not a current ingredient
@@ -122,11 +125,11 @@ public static partial class CookingStepRelationshipProducer
             if (prior is not { Role: "whole", Status: "validated", Payload.RelationshipEvidence: { Version: 1, Rule: PerItemRule } evidence } ||
                 prior.Id == Guid.Empty || prior.StepId != step.Id || prior.ValidatedContentRevision != previous.ContentRevision ||
                 prior.ValidatedTextRevision != step.TextRevision || evidence.SourceRevision != content.SourceRevision ||
-                evidence.OriginalAmount is not { Kind: "scalar" } || !LegacyGroceryQuantity.IsCanonical(evidence.OriginalAmount)) continue;
+                evidence.OriginalAmount is not { Kind: "scalar" } || !QuantityMath.IsCanonical(evidence.OriginalAmount)) continue;
             var oldRows = previous.IngredientLines.Where(row => row.Id == prior.IngredientLineId).ToArray();
             var rows = content.IngredientLines.Where(row => row.Id == prior.IngredientLineId).ToArray();
             if (oldRows.Length != 1 || rows.Length != 1 || !PerItemNamedRow(content, rows[0]) ||
-                !PerItemSameRow(oldRows[0], rows[0]) || rows[0].Amount is null || !LegacyGroceryQuantity.IsCanonical(rows[0].Amount) ||
+                !PerItemSameRow(oldRows[0], rows[0]) || rows[0].Amount is null || !QuantityMath.IsCanonical(rows[0].Amount) ||
                 rows[0].Unit?.Text is not ("pieces" or "morceaux")) continue;
             var row = rows[0];
             var prefix = row.Unit.Text == "pieces" ? @"For[ \t]+all" : @"Pour[ \t]+tous[ \t]+les";
@@ -136,7 +139,7 @@ public static partial class CookingStepRelationshipProducer
                 Regex.Escape(row.Unit.Text) + @")[ \t]+" + article + @"[ \t]+" + Regex.Escape(row.Description) + @",[ \t]+" + action + @"[ \t]+";
             var measurement = Regex.Match(step.Text, pattern, Options, MatchTimeout).Groups["count"];
             if (!measurement.Success || prior.Span != new Span(measurement.Index, measurement.Index + measurement.Length, measurement.Value) ||
-                LegacyGroceryQuantity.Parse(measurement.Value[..^(row.Unit.Text.Length)].Trim()) != evidence.OriginalAmount) continue;
+                QuantityMath.Parse(measurement.Value[..^(row.Unit.Text.Length)].Trim()) != evidence.OriginalAmount) continue;
             var mention = new Regex(@"(?<![\p{L}\p{N}])" + Regex.Escape(row.Description) + @"(?![\p{L}\p{N}])", Options, MatchTimeout);
             if (steps.Sum(other => mention.Matches(other.Text).Count) != 1) continue;
             var original = prior with { Payload = new(evidence) };
@@ -206,7 +209,7 @@ public static partial class CookingStepRelationshipProducer
                 supplied.Any(binding => binding!.Payload?.RelationshipEvidence?.Rule != PerItemRule))) return [];
         var clause = clauses[0];
         if (clause.Count.Package is not null || clause.Ingredient.Package is not null ||
-            clause.Count.Amount is null || !LegacyGroceryQuantity.IsCanonical(clause.Count.Amount) ||
+            clause.Count.Amount is null || !QuantityMath.IsCanonical(clause.Count.Amount) ||
             clause.Count.Scaling is not ("proportional" or "fixed")) return [];
         foreach (var row in new[] { clause.Count, clause.Ingredient })
         {

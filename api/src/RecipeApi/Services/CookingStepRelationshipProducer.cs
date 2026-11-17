@@ -78,14 +78,14 @@ public static partial class CookingStepRelationshipProducer
                     if (step.Bindings.Count > 1) return step with { Bindings = [] };
                     if (remainders.TryGetValue(step.Id, out var remainder)) return step with { Bindings = [remainder] };
                     var candidates = content.IngredientLines
-                        .Where(row => Unambiguous(content, steps, row, previous))
                         .Select(row => (Row: row, Clause: Parse(step.Text, row)))
-                        .Where(x => x.Clause is not null).ToArray();
+                        .Where(x => x.Clause is not null && Unambiguous(content, steps, x.Row, previous))
+                        .ToArray();
                     if (candidates.Length != 1) return step with { Bindings = [] };
                     var (row, clause) = candidates[0];
                     // A corrected total below its explicit use is contradictory;
                     // retain the wording without redistribution or numeric proof.
-                    if (clause!.Role == "absolute" && LegacyGroceryQuantity.SubtractScalar(row.Amount, clause.Amount) is null)
+                    if (clause!.Role == "absolute" && QuantityMath.SubtractScalar(row.Amount, clause.Amount) is null)
                         return step with { Bindings = [] };
                     var prior = Carry(previous, content, step, row, clause);
                     if (prior is not null)
@@ -243,6 +243,7 @@ public static partial class CookingStepRelationshipProducer
             row.Amount is not { Kind: "scalar" } || row.Unit is null ||
             GroceryUnit.Read(row.Unit.Text).Bucket is not ("g" or "ml" or "cup" or "tsp" or "tbsp") ||
             string.IsNullOrEmpty(content.SourceRevision) || string.IsNullOrEmpty(content.ContentRevision)) return null;
+        if (steps.Count(step => step.Text.Contains(row.Description, StringComparison.OrdinalIgnoreCase)) < 2) return null;
         var mention = new Regex(@"(?<![\p{L}\p{N}])" + Regex.Escape(row.Description) + @"(?![\p{L}\p{N}])", Options, MatchTimeout);
         var mentions = steps.Where(step => mention.IsMatch(step.Text)).ToArray();
         if (mentions.Length != 2 || mentions.Any(step => mention.Matches(step.Text).Count != 1 || step.Id == Guid.Empty ||
@@ -251,7 +252,7 @@ public static partial class CookingStepRelationshipProducer
         var prior = Parse(mentions[0].Text, row);
         var final = ParseFinalRemainder(mentions[1].Text, row);
         if (prior is not { Role: "absolute", Amount.Kind: "scalar", Amount.Value.N: not "0" } || final is null ||
-            LegacyGroceryQuantity.SubtractScalar(row.Amount, prior.Amount) is null ||
+            QuantityMath.SubtractScalar(row.Amount, prior.Amount) is null ||
             steps.Any(step => step.Id != mentions[0].Id && step.Id != mentions[1].Id &&
                 !IndependentRemainderStep(content, row, step.Text, previous))) return null;
         return new(row, mentions[0], prior, mentions[1], final);
@@ -280,13 +281,14 @@ public static partial class CookingStepRelationshipProducer
 
     private static bool UsableRow(CanonicalRecipeContent content, RecipeIngredientLineDto row) =>
         row.Id != Guid.Empty && content.IngredientLines.Count(other => other.Id == row.Id) == 1 &&
-        row.Amount is not null && LegacyGroceryQuantity.IsCanonical(row.Amount) && row.Scaling == "proportional" && row.Package is null &&
+        row.Amount is not null && QuantityMath.IsCanonical(row.Amount) && row.Scaling == "proportional" && row.Package is null &&
         !string.IsNullOrWhiteSpace(row.Description) && row.Description.IndexOfAny(['\r', '\n', '.', ';', ':', '!', '?']) < 0 &&
         content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1;
 
     private static bool Unambiguous(CanonicalRecipeContent content, RecipeInstructionStepDto[] steps, RecipeIngredientLineDto row, CanonicalRecipeContent? previous)
     {
         if (!UsableRow(content, row) && !UsableFixedRow(content, row)) return false;
+        if (!steps.Any(step => step.Text.Contains(row.Description, StringComparison.OrdinalIgnoreCase))) return false;
         var mention = new Regex(@"(?<![\p{L}\p{N}])" + Regex.Escape(row.Description) + @"(?![\p{L}\p{N}])", Options, MatchTimeout);
         var mentions = steps.Select(step => (Step: step, Count: mention.Matches(step.Text).Count))
             .Where(item => item.Count != 0).ToArray();
@@ -315,7 +317,8 @@ public static partial class CookingStepRelationshipProducer
 
     private static Clause? Parse(string text, RecipeIngredientLineDto row)
     {
-        if (text.IndexOfAny(['\r', '\n']) >= 0) return null;
+        if (string.IsNullOrWhiteSpace(row.Description) || text.IndexOfAny(['\r', '\n']) >= 0
+            || !text.Contains(row.Description, StringComparison.OrdinalIgnoreCase)) return null;
         var fixedClause = ParseFixed(text, row);
         if (fixedClause is not null) return fixedClause;
         const string amount = @"(?<amount>[0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞][0-9¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞/.,–\- \t]*)";
@@ -330,8 +333,8 @@ public static partial class CookingStepRelationshipProducer
         {
             var match = Regex.Match(text, pattern, Options, MatchTimeout);
             if (!match.Success) continue;
-            var quantity = LegacyGroceryQuantity.Parse(match.Groups["amount"].Value.Trim());
-            if (quantity is null || !LegacyGroceryQuantity.IsCanonical(quantity)) return null;
+            var quantity = QuantityMath.Parse(match.Groups["amount"].Value.Trim());
+            if (quantity is null || !QuantityMath.IsCanonical(quantity)) return null;
             var relative = match.Groups["relative"];
             var annotation = match.Groups["measurement"];
             return new(new(relative.Index, relative.Index + relative.Length, relative.Value), quantity, "fraction",
@@ -348,8 +351,8 @@ public static partial class CookingStepRelationshipProducer
         {
             var match = Regex.Match(text, pattern, Options, MatchTimeout);
             if (!match.Success) continue;
-            var quantity = LegacyGroceryQuantity.Parse(match.Groups["amount"].Value.Trim());
-            if (quantity is null || !LegacyGroceryQuantity.IsCanonical(quantity)) return null;
+            var quantity = QuantityMath.Parse(match.Groups["amount"].Value.Trim());
+            if (quantity is null || !QuantityMath.IsCanonical(quantity)) return null;
             var span = match.Groups["measurement"];
             return new(new(span.Index, span.Index + span.Length, span.Value), quantity, role);
         }
@@ -364,11 +367,11 @@ public static partial class CookingStepRelationshipProducer
     private static bool HalfAmount(RecipeIngredientLineDto row, GroceryQuantity amount) =>
         row.Unit is not null && row.Amount is { Kind: "scalar", Value.N: not "0" } &&
         amount is { Kind: "scalar", Value.N: not "0" } &&
-        LegacyGroceryQuantity.Multiply(row.Amount, Half) == amount;
+        QuantityMath.Multiply(row.Amount, Half) == amount;
 
     private static bool PartialAmount(RecipeIngredientLineDto row, GroceryQuantity amount) =>
         row.Unit is not null && row.Amount is { Kind: "scalar" } && amount is { Kind: "scalar", Value.N: not "0" } &&
-        LegacyGroceryQuantity.SubtractScalar(row.Amount, amount) is { Value.N: not "0" };
+        QuantityMath.SubtractScalar(row.Amount, amount) is { Value.N: not "0" };
 
     private static Binding? Carry(CanonicalRecipeContent? previous, CanonicalRecipeContent content,
         RecipeInstructionStepDto step, RecipeIngredientLineDto row, Clause clause, bool allocation = false)

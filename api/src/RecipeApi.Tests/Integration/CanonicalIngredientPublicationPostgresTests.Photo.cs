@@ -63,7 +63,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 canonical.IngredientLines.Select(CanonicalRecipeContentStore.Render));
             Assert.All(canonical.IngredientLines, line => Assert.Equal("source", line.Provenance.Origin));
             Assert.Empty(canonical.InstructionSections.SelectMany(x => x.Steps).SelectMany(x => x.Bindings));
-            Assert.Equal(LegacyGroceryQuantity.Parse("400"), SupperIngredientProjection.Read(saved, 8)[0].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("400"), SupperIngredientProjection.Read(saved, 8)[0].GroceryObservation.Quantity);
             Assert.Equal(new byte[] { 4, 5, 6 }, await repository.GetOriginalImageAsync(id, 0, default));
             using var json = JsonDocument.Parse(await repository.GetRecipeJsonAsync(id, default));
             Assert.Equal(id, RecipeExportContent.ReadCurrent(json.RootElement, id).RecipeId);
@@ -153,7 +153,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.Equal("250 g pasta", CanonicalRecipeContentStore.Render(canonical.IngredientLines[0]));
             Assert.Equal("human", canonical.IngredientLines[0].Provenance.Origin);
             Assert.Equal("Cook gently.", Assert.Single(Assert.Single(canonical.InstructionSections).Steps).Text);
-            Assert.Equal(LegacyGroceryQuantity.Parse("500"), SupperIngredientProjection.Read(saved, 8)[0].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("500"), SupperIngredientProjection.Read(saved, 8)[0].GroceryObservation.Quantity);
             var hero = repair.Tasks.Single(x => x.ProcessorName == "GenerateHero");
             await store.PublishAsync(await store.CaptureForTaskAsync(hero, id),
                 new(null, await repository.GetInfoAsync(id, default),

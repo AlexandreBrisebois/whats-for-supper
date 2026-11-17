@@ -101,7 +101,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             {
                 var line = canonical.IngredientLines[index];
                 Assert.NotEqual(Guid.Empty, line.Id);
-                Assert.Equal(LegacyGroceryQuantity.Parse(quantities[index]), line.Amount);
+                Assert.Equal(QuantityMath.Parse(quantities[index]), line.Amount);
                 Assert.Equal(quantities[index], line.AmountText);
                 Assert.Equal("g", line.Unit?.Text);
                 Assert.Null(line.Unit?.DefinitionId);

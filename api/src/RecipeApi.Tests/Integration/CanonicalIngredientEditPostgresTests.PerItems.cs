@@ -16,9 +16,9 @@ public sealed partial class CanonicalIngredientEditPostgresTests
     private static async Task<CanonicalRecipeContent> SeedCookingPerItem(TestWebApplicationFactory factory, CanonicalRecipeContent before)
     {
         var revision = Guid.NewGuid().ToString("N"); var countId = Guid.NewGuid();
-        var count = before.IngredientLines[0] with { Description = "pieces", Amount = LegacyGroceryQuantity.Parse("4"), AmountText = "4",
+        var count = before.IngredientLines[0] with { Description = "pieces", Amount = QuantityMath.Parse("4"), AmountText = "4",
             Unit = new("pieces", null), Shopping = new("pieces", null, null) };
-        var oil = before.IngredientLines[1] with { Description = "oil", Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2",
+        var oil = before.IngredientLines[1] with { Description = "oil", Amount = QuantityMath.Parse("2"), AmountText = "2",
             Unit = new("tsp", null), Shopping = new("oil", null, null) };
         var step = new RecipeInstructionStepDto(Guid.NewGuid(),
             "Spread 1/2 tsp on each of 4 pieces from a 400 g package; cook 20 minutes at 180 °C in a 20 cm pan.", Guid.NewGuid().ToString("N"), []);
@@ -28,7 +28,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), ingredientLineId = oil.Id, stepId = step.Id,
             validatedContentRevision = revision, validatedTextRevision = step.TextRevision,
             span = new { start = 7, end = 14, expectedText = "1/2 tsp" }, role = "perItem",
-            payload = new { dose = new { amount = LegacyGroceryQuantity.Parse("1/2"), unit = oil.Unit }, countBindingId = countId }, status = "validated" }, Json)] };
+            payload = new { dose = new { amount = QuantityMath.Parse("1/2"), unit = oil.Unit }, countBindingId = countId }, status = "validated" }, Json)] };
         var seeded = before with { ContentRevision = revision, IngredientLines = [count, oil],
             InstructionSections = [before.InstructionSections[0] with { Steps = [step] }] };
         using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
@@ -55,7 +55,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     var projection = preview.GetProperty("instructionProjection");
                     Assert.Equal(2, projection.GetProperty("validatedUses").GetInt32());
                     Assert.Equal(0, projection.GetProperty("uncertainUses").GetInt32());
-                    var expectedCount = CanonicalRecipeContentStore.Render(current.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Scale(current.IngredientLines[0].Amount, target, 4), Description = "", AmountText = null }).TrimEnd();
+                    var expectedCount = CanonicalRecipeContentStore.Render(current.IngredientLines[0] with { Amount = QuantityMath.Scale(current.IngredientLines[0].Amount, target, 4), Description = "", AmountText = null }).TrimEnd();
                     Assert.Equal(before.InstructionSections[0].Steps[0].Text.Replace("4 pieces", expectedCount), projection.GetProperty("sections")[0].GetProperty("steps")[0].GetProperty("text").GetString());
                 }
                 Assert.Equal(before.InstructionSections[0].Steps[0].Text, current.InstructionSections[0].Steps[0].Text);

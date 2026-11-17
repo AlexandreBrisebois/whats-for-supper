@@ -55,7 +55,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     ExpectedContentRevision = sourceContent.ContentRevision, Notes = "Private retained recovery note",
                     IngredientLines = JsonSerializer.SerializeToElement(new[] { new RecipeIngredientLineInput
                     {
-                        Id = line.Id, Description = line.Description, Amount = LegacyGroceryQuantity.Parse("50"), AmountText = "50",
+                        Id = line.Id, Description = line.Description, Amount = QuantityMath.Parse("50"), AmountText = "50",
                         Unit = line.Unit, Scaling = line.Scaling, Package = line.Package, Shopping = line.Shopping
                     } }, JsonDefaults.CamelCase)
                 };

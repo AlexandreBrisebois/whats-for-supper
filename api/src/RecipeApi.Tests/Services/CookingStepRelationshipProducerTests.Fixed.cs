@@ -37,7 +37,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         Assert.Equal(measurement, text[span.GetProperty("start").GetInt32()..span.GetProperty("end").GetInt32()]);
         Assert.Equal(measurement, span.GetProperty("expectedText").GetString());
         var payload = binding.GetProperty("payload");
-        Assert.Equal(LegacyGroceryQuantity.Parse(amount), payload.GetProperty("amount").Deserialize<GroceryQuantity>(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Equal(QuantityMath.Parse(amount), payload.GetProperty("amount").Deserialize<GroceryQuantity>(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         Assert.Equal(original.IngredientLines[0].Unit, payload.GetProperty("unit").Deserialize<RecipeUnitDto>(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         Assert.Equal("explicit-fixed-portions-clause", payload.GetProperty("relationshipEvidence").GetProperty("rule").GetString());
         Assert.Equal(original.SourceRevision, payload.GetProperty("relationshipEvidence").GetProperty("sourceRevision").GetString());
@@ -68,7 +68,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         var before = CookingStepRelationshipProducer.Discover(original);
         var binding = Assert.Single(before.InstructionSections[0].Steps[0].Bindings);
         var changed = before with { ContentRevision = "after", IngredientLines = [before.IngredientLines[0] with
-            { Amount = LegacyGroceryQuantity.Parse(total), AmountText = total }] };
+            { Amount = QuantityMath.Parse(total), AmountText = total }] };
         var result = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, changed), before);
         var retained = Assert.Single(result.InstructionSections[0].Steps[0].Bindings);
         Assert.Equal(binding.GetProperty("id").GetGuid(), retained.GetProperty("id").GetGuid());
@@ -136,10 +136,10 @@ public sealed partial class CookingStepRelationshipProducerTests
         var row = content.IngredientLines[0];
         var step = content.InstructionSections[0].Steps[0];
         if (fault == "unknownTotal") row = row with { Amount = null, AmountText = null };
-        if (fault == "rangeTotal") row = row with { Amount = LegacyGroceryQuantity.Parse("2–3"), AmountText = "2–3" };
-        if (fault == "zeroTotal") row = row with { Amount = LegacyGroceryQuantity.Parse("0"), AmountText = "0" };
+        if (fault == "rangeTotal") row = row with { Amount = QuantityMath.Parse("2–3"), AmountText = "2–3" };
+        if (fault == "zeroTotal") row = row with { Amount = QuantityMath.Parse("0"), AmountText = "0" };
         if (fault == "unknownUnit") { row = row with { Unit = new("mystery", null) }; step = step with { Text = step.Text.Replace("tbsp", "mystery") }; }
-        if (fault == "package") row = row with { Package = new(new("can", null), new(LegacyGroceryQuantity.Parse("400")!, new("g", null)), "net") };
+        if (fault == "package") row = row with { Package = new(new("can", null), new(QuantityMath.Parse("400")!, new("g", null)), "net") };
         if (fault == "sourceRevision") content = content with { SourceRevision = "" };
         if (fault == "contentRevision") content = content with { ContentRevision = "" };
         if (fault == "textRevision") step = step with { TextRevision = "" };
@@ -190,7 +190,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void FixedStepSaveAndClearPreserveIndependentWholeProof()
     {
         var content = FixedUse();
-        var sauce = content.IngredientLines[0] with { Id = Guid.NewGuid(), Description = "sauce", Amount = LegacyGroceryQuantity.Parse("100"),
+        var sauce = content.IngredientLines[0] with { Id = Guid.NewGuid(), Description = "sauce", Amount = QuantityMath.Parse("100"),
             AmountText = "100", Unit = new("ml", null), Shopping = new("sauce", null, null) };
         content = content with { IngredientLines = [content.IngredientLines[0], sauce], InstructionSections = [content.InstructionSections[0] with
             { Steps = [content.InstructionSections[0].Steps[0], new(Guid.NewGuid(), "Add all 100 ml sauce.", "sauce-text", [])] }] };

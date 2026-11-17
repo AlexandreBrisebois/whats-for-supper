@@ -97,7 +97,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
                 var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                 var groceries = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!;
-                Assert.Equal(LegacyGroceryQuantity.Parse("4"), Assert.Single(groceries,
+                Assert.Equal(QuantityMath.Parse("4"), Assert.Single(groceries,
                     x => x.NormalizedKey == "oil" && x.RecipeIds.Contains(id)).ExactQuantity);
             });
     }
@@ -130,7 +130,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 var wireSteps = envelope["content"]!["instructionSections"]![0]!["steps"]!;
                 var forged = wireSteps[1]!["bindings"]![0]!;
                 if (fault == "amount") forged["payload"]!["amount"] = JsonSerializer.SerializeToNode(
-                    LegacyGroceryQuantity.Parse("2"), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    QuantityMath.Parse("2"), new JsonSerializerOptions(JsonSerializerDefaults.Web));
                 if (fault == "duplicate-id") forged["id"] = section.Steps[0].Bindings[0].GetProperty("id").GetGuid();
                 if (fault == "source-text")
                 {

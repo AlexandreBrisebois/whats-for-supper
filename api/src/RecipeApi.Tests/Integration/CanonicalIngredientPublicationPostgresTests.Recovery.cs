@@ -51,7 +51,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 Assert.NotNull(sourceRecipe.FoodMappingEvidence);
                 var changed = new RecipeIngredientLineInput
                 {
-                    Id = line.Id, Description = line.Description, Amount = LegacyGroceryQuantity.Parse("50"), AmountText = "50",
+                    Id = line.Id, Description = line.Description, Amount = QuantityMath.Parse("50"), AmountText = "50",
                     Unit = line.Unit, Scaling = line.Scaling, Package = line.Package, Shopping = line.Shopping
                 };
                 // Actual guarded canonical owner, not a fabricated mapping or

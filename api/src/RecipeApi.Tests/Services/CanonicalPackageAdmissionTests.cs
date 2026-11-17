@@ -18,7 +18,7 @@ public sealed class CanonicalPackageAdmissionTests
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static RecipePackageDto Package(string capacity = "400", bool definitions = false, string basis = "net") =>
         new(new("cans", definitions ? "saved-count-definition" : null),
-            new(LegacyGroceryQuantity.Parse(capacity)!, new("g", definitions ? "saved-capacity-definition" : null)), basis);
+            new(QuantityMath.Parse(capacity)!, new("g", definitions ? "saved-capacity-definition" : null)), basis);
 
     private sealed class Fixture : IAsyncDisposable
     {
@@ -32,7 +32,7 @@ public sealed class CanonicalPackageAdmissionTests
             var clock = new SystemClock();
             Store = new(Db, clock, new SupperProjectionInvalidation(Db, clock, new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(Db, new InMemoryStorageProvider(), clock));
             var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes",
-                Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2", Unit = noLineUnit ? null : new("cans", definitions ? "saved-line-definition" : null),
+                Amount = QuantityMath.Parse("2"), AmountText = "2", Unit = noLineUnit ? null : new("cans", definitions ? "saved-line-definition" : null),
                 Scaling = "proportional", Package = package, Shopping = new("tomatoes", null, null), Provenance = new("source", "source", []) };
             Before = new(2, "before", "source", 4, [row], []);
             Recipe = new() { Id = Guid.NewGuid(), Name = "Tomatoes", Servings = 4, IsReady = true,
@@ -75,7 +75,7 @@ public sealed class CanonicalPackageAdmissionTests
     public async Task LiteralPackageSaveDoesNotRequirePositiveOrKnownLineCount(string? count)
     {
         await using var fixture = new Fixture(); await fixture.Seed();
-        var saved = await fixture.Save(fixture.Row() with { Amount = count is null ? null : LegacyGroceryQuantity.Parse(count), AmountText = count, Package = Package() });
+        var saved = await fixture.Save(fixture.Row() with { Amount = count is null ? null : QuantityMath.Parse(count), AmountText = count, Package = Package() });
         Assert.Equal(count, Assert.Single(saved.Content.IngredientLines).AmountText);
         Assert.Equal(Package(), saved.Content.IngredientLines[0].Package);
     }
@@ -85,7 +85,7 @@ public sealed class CanonicalPackageAdmissionTests
     {
         var old = Package(definitions: true);
         await using var fixture = new Fixture(old, definitions: true); await fixture.Seed();
-        var changed = old with { Capacity = old.Capacity with { Amount = LegacyGroceryQuantity.Parse("500")! }, Basis = "drained" };
+        var changed = old with { Capacity = old.Capacity with { Amount = QuantityMath.Parse("500")! }, Basis = "drained" };
         var saved = await fixture.Save(fixture.Row() with { Package = changed });
         Assert.Equal(changed, Assert.Single(saved.Content.IngredientLines).Package);
         Assert.Equal(fixture.Before.IngredientLines[0].Unit, saved.Content.IngredientLines[0].Unit);

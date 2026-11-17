@@ -34,7 +34,7 @@ public partial class GroceryRecomputeServiceTests
             supply = new[] { new { name, requiredQuantity = new { value = double.Parse(amount, System.Globalization.CultureInfo.InvariantCulture), unitText = unit } } } });
         var revision = "source-" + id.ToString("N");
         var line = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = name, AmountText = amount,
-            Amount = LegacyGroceryQuantity.Parse(amount), Unit = new(unit, null), Scaling = "proportional", Package = package,
+            Amount = QuantityMath.Parse(amount), Unit = new(unit, null), Scaling = "proportional", Package = package,
             Shopping = new(name, null, null), Provenance = new("source", revision, []) };
         source = JsonSerializer.Serialize(new { recipeIngredient = new[] { CanonicalRecipeContentStore.Render(line) },
             supply = new[] { new { name, requiredQuantity = new { value = double.Parse(amount, System.Globalization.CultureInfo.InvariantCulture), unitText = unit } } } });
@@ -58,7 +58,7 @@ public partial class GroceryRecomputeServiceTests
         Assert.NotEqual(IngredientNormalizer.Normalize("onion"), IngredientNormalizer.Normalize("oignon"));
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
-        Assert.Equal(LegacyGroceryQuantity.Parse("750"), row.ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("750"), row.ExactQuantity);
         using var identity = JsonDocument.Parse(row.DemandIdentity);
         Assert.Equal(OnionFood, identity.RootElement.GetProperty("foodId").GetGuid());
         Assert.Equal("g", row.UnitText);
@@ -149,7 +149,7 @@ public partial class GroceryRecomputeServiceTests
         Assert.Equal("conflict", shown.GetProperty("categoryStatus").GetString());
         Assert.Equal(2, shown.GetProperty("categoryChoices").GetArrayLength());
         Assert.Equal("Grocery", shown.GetProperty("section").GetString());
-        Assert.Equal(LegacyGroceryQuantity.Parse("2"), response.GroceryItems![0].ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("2"), response.GroceryItems![0].ExactQuantity);
     }
 
 

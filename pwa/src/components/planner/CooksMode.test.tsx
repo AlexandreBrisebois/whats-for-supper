@@ -155,7 +155,7 @@ describe('CooksMode', () => {
     expect(await screen.findByText('400 g pasta')).toBeVisible();
     for (const mode of ['step-by-step', 'all-steps']) {
       fireEvent.click(screen.getByTestId(`cooking-view-${mode}`));
-      if (screen.queryByTestId('ingredient-toggle'))
+      if (screen.queryAllByTestId('ingredient-toggle').length > 0)
         fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
       expect(await screen.findByText('Add 200 g pasta.')).toBeVisible();
       expect(screen.queryByTestId('cooking-step-uncertainty')).not.toBeInTheDocument();
@@ -170,6 +170,136 @@ describe('CooksMode', () => {
       expect(screen.getByTestId('cooks-mode-step-next')).toBeEnabled();
     }
     expect(cookingMocks.markCooked).not.toHaveBeenCalled();
+  });
+
+  it('projects dated step quantities across cooking views without altering fixed metrics, keeps uncertain references quiet, and falls back cleanly when instructionProjection has no sections', async () => {
+    getRecipeMock.mockResolvedValue({
+      id: 'dated-projected-steps',
+      ingredients: ['200 g pasta', '1 can (400 g) tomatoes', 'Salt to taste'],
+      recipeInstructions: [
+        {
+          name: 'Sauce',
+          itemListElement: [
+            {
+              text: 'Add 200 g pasta and 1 can (400 g) tomatoes; bake 20 minutes at 180 °C with a pinch of herbs and salt to taste.',
+            },
+          ],
+        },
+      ],
+    });
+    getIngredientProjectionMock.mockResolvedValue({
+      recipeId: 'dated-projected-steps',
+      factor: 3,
+      targetServings: 6,
+      version: 'six',
+      status: 'scaled',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 600,
+          unitText: 'g',
+          status: 'scaled',
+        },
+        {
+          originalText: '1 can (400 g) tomatoes',
+          name: 'tomatoes',
+          quantity: 3,
+          unitText: 'cans (400 g)',
+          status: 'scaled',
+        },
+        {
+          originalText: 'Salt to taste',
+          name: 'Salt to taste',
+          quantity: null,
+          status: 'unquantified',
+        },
+      ],
+      instructionProjection: {
+        validatedUses: 2,
+        uncertainUses: 2,
+        sections: [
+          {
+            sectionId: 'section-sauce',
+            name: 'Sauce',
+            steps: [
+              {
+                stepId: 'step-1',
+                originalText:
+                  'Add 200 g pasta and 1 can (400 g) tomatoes; bake 20 minutes at 180 °C with a pinch of herbs and salt to taste.',
+                text: 'Add 600 g pasta and 3 cans (400 g) tomatoes; bake 20 minutes at 180 °C with a pinch of herbs and salt to taste.',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const view = render(
+      <CooksMode
+        recipe={{ id: 'dated-projected-steps', name: 'Pasta', image: '' }}
+        ingredientContext={{ supperDate: '2026-10-16', context: 'proposed' }}
+        onClose={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+    for (const mode of ['step-by-step', 'all-steps']) {
+      fireEvent.click(screen.getByTestId(`cooking-view-${mode}`));
+      if (screen.queryAllByTestId('ingredient-toggle').length > 0)
+        fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+      expect(
+        await screen.findByText(
+          'Add 600 g pasta and 3 cans (400 g) tomatoes; bake 20 minutes at 180 °C with a pinch of herbs and salt to taste.'
+        )
+      ).toBeVisible();
+      expect(screen.queryByTestId('cooking-step-uncertainty')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('cooking-instruction-limitation')).not.toBeInTheDocument();
+    }
+    view.unmount();
+
+    usePlannerStore.setState({ cookProgress: {} });
+    setCookingView('all-steps');
+    getRecipeMock.mockResolvedValue({
+      id: 'dated-fallback-steps',
+      ingredients: ['200 g tomatoes'],
+      recipeInstructions: [
+        {
+          name: 'Sauce',
+          itemListElement: [{ text: 'Simmer 200 g tomatoes for 20 minutes at 180 °C.' }],
+        },
+      ],
+    });
+    getIngredientProjectionMock.mockResolvedValue({
+      recipeId: 'dated-fallback-steps',
+      factor: 2,
+      targetServings: 4,
+      version: 'four',
+      status: 'scaled',
+      lines: [
+        {
+          originalText: '200 g tomatoes',
+          name: 'tomatoes',
+          quantity: 400,
+          unitText: 'g',
+          status: 'scaled',
+        },
+      ],
+      instructionProjection: {},
+    });
+    render(
+      <CooksMode
+        recipe={{ id: 'dated-fallback-steps', name: 'Tomatoes', image: '' }}
+        ingredientContext={{ supperDate: '2026-10-16', context: 'proposed' }}
+        onClose={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('400 g tomatoes')).toBeVisible();
+    expect(screen.getByTestId('cooking-instruction-limitation')).toHaveTextContent(
+      'Ingredients are adjusted; step amounts remain original.'
+    );
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    const body = await screen.findByTestId('single-page-step-body-1');
+    expect(body).toHaveTextContent('Simmer 200 g tomatoes for 20 minutes at 180 °C.');
+    expect(body).not.toHaveTextContent('Sauce:');
   });
 
   it('uses one dated projection for ingredients and step wording while editing original text', async () => {

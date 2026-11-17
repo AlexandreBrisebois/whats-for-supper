@@ -118,7 +118,7 @@ public sealed partial class CurrentRecoveryHouseholdState
                         && rows.TryAdd(row.RowId, row) && GroceryRowState.IsVersion(row.RowVersion)
                         && row.WeekStartDate == plan.WeekStartDate && row.Source == "recipe" && Text(row.DemandIdentity)
                         && Text(row.DisplayName) && Text(row.NormalizedKey) && GrocerySections.IsCanonicalName(row.Section)
-                        && (row.Quantity is null || LegacyGroceryQuantity.IsCanonical(row.Quantity))
+                        && (row.Quantity is null || QuantityMath.IsCanonical(row.Quantity))
                         && row.RecipeIds is { Length: > 0 } && row.RecipeIds.Distinct().Count() == row.RecipeIds.Length
                         && row.RecipeIds.All(recipeIds.Contains));
                 }
@@ -134,7 +134,7 @@ public sealed partial class CurrentRecoveryHouseholdState
                         && GroceryRowState.IsVersion(baseline.AcknowledgedAtRowVersion)
                         && ulong.Parse(baseline.AcknowledgedAtRowVersion, CultureInfo.InvariantCulture)
                             <= ulong.Parse(row!.RowVersion, CultureInfo.InvariantCulture)
-                        && (baseline.Quantity is null || LegacyGroceryQuantity.IsCanonical(baseline.Quantity))
+                        && (baseline.Quantity is null || QuantityMath.IsCanonical(baseline.Quantity))
                         && (baseline.InputFingerprint is null || Fingerprint(baseline.InputFingerprint)));
                     // A continuing row can have incomparable units/identity after
                     // a separately proven change. Preserve the captured baseline.
@@ -190,7 +190,7 @@ public sealed partial class CurrentRecoveryHouseholdState
             if (row.TryGetProperty("quantity", out var quantity) && quantity.ValueKind != JsonValueKind.Null)
                 Check(quantity.ValueKind == JsonValueKind.Number
                     ? quantity.TryGetDouble(out var number) && double.IsFinite(number) && number >= 0
-                    : quantity.ValueKind == JsonValueKind.Object && LegacyGroceryQuantity.IsCanonical(quantity.Deserialize<GroceryQuantity>(Json)));
+                    : quantity.ValueKind == JsonValueKind.Object && QuantityMath.IsCanonical(quantity.Deserialize<GroceryQuantity>(Json)));
             foreach (var field in new[] { "unitText", "checkReviewReason" })
                 Check(!row.TryGetProperty(field, out var value) || value.ValueKind is JsonValueKind.String or JsonValueKind.Null);
             Check(!row.TryGetProperty("quantityComplete", out var complete) || complete.ValueKind is JsonValueKind.True or JsonValueKind.False or JsonValueKind.Null);

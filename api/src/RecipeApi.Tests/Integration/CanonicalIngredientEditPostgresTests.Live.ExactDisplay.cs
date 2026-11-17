@@ -42,7 +42,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Equal(description, row.Shopping.Name);
             Assert.Null(row.Shopping.FoodId);
             Assert.Null(row.Shopping.MappingRevision);
-            Assert.Equal(LegacyGroceryQuantity.Parse(amount), row.Amount);
+            Assert.Equal(QuantityMath.Parse(amount), row.Amount);
             Assert.Equal(amount, row.AmountText);
             Assert.Equal(new RecipeUnitDto(unit, null), row.Unit);
             Assert.Null(row.Package);
@@ -102,12 +102,12 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(row => row.WeekStartDate == monday);
         var rows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!;
         var lentils = Assert.Single(rows, row => row.NormalizedKey == "lentils" && row.RecipeIds.Contains(Id));
-        Assert.Equal(LegacyGroceryQuantity.Parse("3–5"), lentils.ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("3–5"), lentils.ExactQuantity);
         Assert.True(lentils.QuantityComplete);
         Assert.Equal("g", lentils.UnitText);
         Assert.Equal(new[] { Id }, lentils.RecipeIds);
         var flour = Assert.Single(rows, row => row.NormalizedKey == "flour" && row.RecipeIds.Contains(Id));
-        Assert.Equal(LegacyGroceryQuantity.Parse("2/3"), flour.ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("2/3"), flour.ExactQuantity);
         Assert.True(flour.QuantityComplete);
         var checks = JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)!;
         using var baselines = JsonDocument.Parse(plan.GroceryCheckedDemandBaselines);

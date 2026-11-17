@@ -78,7 +78,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     ExpectedContentRevision = content.ContentRevision,
                     IngredientLines = JsonSerializer.SerializeToElement(new[] { new
                     {
-                        id = line.Id, description = line.Description, amount = LegacyGroceryQuantity.Parse("50"), amountText = "50",
+                        id = line.Id, description = line.Description, amount = QuantityMath.Parse("50"), amountText = "50",
                         unit = line.Unit, scaling = line.Scaling, package = line.Package, shopping = line.Shopping
                     } }, new JsonSerializerOptions(JsonSerializerDefaults.Web))
                 };
@@ -100,7 +100,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 .Where(x => x.RecipeIds.Any(ids.Contains)).ToArray();
             // Domain RED: existing normalized-name grouping produces onion + oignon.
             var onion = Assert.Single(rows);
-            Assert.Equal(LegacyGroceryQuantity.Parse("100"), onion.ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("100"), onion.ExactQuantity);
             Assert.Equal(ids.OrderBy(x => x), onion.RecipeIds.OrderBy(x => x));
             Assert.Equal(beforeReads, chat.Invocations.Count);
         }, localRecipeStore: true);

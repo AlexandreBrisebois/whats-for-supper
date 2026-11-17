@@ -36,7 +36,7 @@ import {
   flushRecipeNotes,
   retryRecipeNotes,
 } from '@/store/recipeNotesStore';
-import { parseRecipeSteps } from '@/lib/cooking/stepParser';
+import { parseRecipeSteps, projectedCookingSteps } from '@/lib/cooking/stepParser';
 import { formatCookingInstruction } from '@/lib/cooking/instructionPresentation';
 import { AnimatePresence } from 'framer-motion';
 import {
@@ -948,7 +948,8 @@ export function RecipeDetailSheet({
   const primaryActionLabel = plannerDayLabel
     ? tWithVars('recipes.planForDay', 'Plan for {{day}}', { day: plannerDayLabel })
     : t('recipes.cookThis', 'Cook This');
-  const steps = parseRecipeSteps(recipe?.recipeInstructions);
+  const projectedSteps = projectedCookingSteps(displayedProjection);
+  const steps = projectedSteps ?? parseRecipeSteps(recipe?.recipeInstructions);
   const hasNotes = Boolean(notes.trim());
   const readyTime = formatRecipeTime(recipe?.totalTime);
   const hasDatedAction = Boolean(plannerDayLabel || planningEnabled || sourceDayLabel);
@@ -1850,6 +1851,7 @@ export function RecipeDetailSheet({
                   {t('recipes.instructions', 'Instructions')}
                 </h3>
                 {previewTarget &&
+                  !projectedSteps &&
                   displayedProjection?.factor != null &&
                   displayedProjection.factor !== 1 &&
                   displayedProjection.lines?.some((line) => line.status === 'scaled') && (
@@ -1956,7 +1958,9 @@ export function RecipeDetailSheet({
                           </span>
                           <div className="min-w-0 whitespace-pre-wrap break-words">
                             {formatCookingInstruction(
-                              step.editableInstruction ?? step.instruction
+                              projectedSteps
+                                ? step.instruction
+                                : (step.editableInstruction ?? step.instruction)
                             ).map((paragraph, part) => (
                               <p key={part} className={part ? 'mt-3' : undefined}>
                                 {paragraph}

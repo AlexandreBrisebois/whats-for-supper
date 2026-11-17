@@ -52,11 +52,11 @@ public sealed class CanonicalRecipePersistencePostgresTests(ITestOutputHelper ou
             Assert.Equal(5, result.Content.IngredientLines.Select(x => x.Id).Distinct().Count());
             Assert.DoesNotContain(Guid.Empty, result.Content.IngredientLines.Select(x => x.Id));
             Assert.Equal(new[] { "flour", "mystery garnish", "garlic", "salt", "salt" }, result.Content.IngredientLines.Select(x => x.Description));
-            Assert.Equal(LegacyGroceryQuantity.Parse("1/3"), result.Content.IngredientLines[0].Amount);
+            Assert.Equal(QuantityMath.Parse("1/3"), result.Content.IngredientLines[0].Amount);
             Assert.Equal("⅓", result.Content.IngredientLines[0].AmountText);
             Assert.Equal("cup", result.Content.IngredientLines[0].Unit!.Text);
             Assert.Null(result.Content.IngredientLines[0].Unit!.DefinitionId);
-            Assert.Equal(LegacyGroceryQuantity.Parse("2–3"), result.Content.IngredientLines[2].Amount);
+            Assert.Equal(QuantityMath.Parse("2–3"), result.Content.IngredientLines[2].Amount);
             Assert.All(result.Content.IngredientLines.Skip(3), x => Assert.Null(x.Amount));
             Assert.All(result.Content.IngredientLines, x => Assert.Contains("amount", x.Provenance.ProtectedFields));
             Assert.Equal(raw, recipe.RawMetadata);

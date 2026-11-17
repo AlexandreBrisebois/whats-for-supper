@@ -37,7 +37,7 @@ internal sealed record GroceryCheckedDemand(GroceryQuantity? Quantity, bool? Qua
     internal static GroceryCheckedDemand Capture(GroceryLineItemDto row, string acknowledgedAt, string? inputFingerprint) =>
         new(row.ExactQuantity, row.QuantityComplete, row.UnitText, row.DemandIdentity, acknowledgedAt, inputFingerprint);
 
-    internal bool IsValid => (Quantity is null || LegacyGroceryQuantity.IsCanonical(Quantity))
+    internal bool IsValid => (Quantity is null || QuantityMath.IsCanonical(Quantity))
         && GroceryRowState.IsVersion(AcknowledgedAtRowVersion) && !string.IsNullOrEmpty(DemandIdentity);
 
     internal bool ProvesIncrease(GroceryLineItemDto current, string persistedRowVersion, string? inputFingerprint)
@@ -53,8 +53,8 @@ internal sealed record GroceryCheckedDemand(GroceryQuantity? Quantity, bool? Qua
         var priorUnit = GroceryUnit.Read(Unit);
         var currentUnit = GroceryUnit.Read(current.UnitText);
         if (priorUnit.Bucket != currentUnit.Bucket) return false;
-        var baseline = LegacyGroceryQuantity.Scale(Quantity, priorUnit.Numerator, priorUnit.Denominator);
-        var demand = LegacyGroceryQuantity.Scale(current.ExactQuantity, currentUnit.Numerator, currentUnit.Denominator);
+        var baseline = QuantityMath.Scale(Quantity, priorUnit.Numerator, priorUnit.Denominator);
+        var demand = QuantityMath.Scale(current.ExactQuantity, currentUnit.Numerator, currentUnit.Denominator);
         if (baseline is null || demand is null) return false;
         var max = baseline.Value ?? baseline.Max!;
         var min = demand.Value ?? demand.Min!;

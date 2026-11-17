@@ -75,7 +75,7 @@ public partial class PreparedSupperPostgresTests
             var patch = await client.PatchAsJsonAsync($"/api/recipes/{recipeId}", new {
                 expectedContentRevision = content.ContentRevision,
                 ingredientLines = content.IngredientLines.Select((row, i) => new {
-                    row.Id, row.Description, amount = i == 0 ? LegacyGroceryQuantity.Parse("250") : row.Amount,
+                    row.Id, row.Description, amount = i == 0 ? QuantityMath.Parse("250") : row.Amount,
                     amountText = i == 0 ? "250" : row.AmountText, row.Unit, row.Scaling, row.Package, row.Shopping }).ToArray() });
             Assert.Equal(HttpStatusCode.OK, patch.StatusCode);
             var corrected = await Projection(client, recipeId, occurrenceId);

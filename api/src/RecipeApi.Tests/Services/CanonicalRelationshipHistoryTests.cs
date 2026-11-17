@@ -35,15 +35,15 @@ public sealed class CanonicalRelationshipHistoryTests
             "remainder" => new[] { "Add 50 g pasta.", "Finally, use all the remaining pasta." },
             _ => new[] { "Add all 200 g pasta." }
         };
-        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "pasta", Amount = LegacyGroceryQuantity.Parse("200"),
+        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "pasta", Amount = QuantityMath.Parse("200"),
             AmountText = "200", Package = null, Unit = new("g", null), Scaling = "proportional", Shopping = new("pasta", null, null),
             Provenance = new("unknown", null, []) };
-        if (role == "fixed") row = row with { Description = "oil", Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2", Unit = new("tbsp", null), Shopping = new("oil", null, null) };
+        if (role == "fixed") row = row with { Description = "oil", Amount = QuantityMath.Parse("2"), AmountText = "2", Unit = new("tbsp", null), Shopping = new("oil", null, null) };
         RecipeIngredientLineDto[] rows = [row];
         if (role == "perItem")
         {
-            row = row with { Description = "chicken", Amount = LegacyGroceryQuantity.Parse("4"), AmountText = "4", Unit = new("pieces", null), Shopping = new("chicken", null, null) };
-            rows = [row, row with { Id = Guid.NewGuid(), Description = "oil", Amount = LegacyGroceryQuantity.Parse("20"), AmountText = "20", Unit = new("ml", null), Shopping = new("oil", null, null) }];
+            row = row with { Description = "chicken", Amount = QuantityMath.Parse("4"), AmountText = "4", Unit = new("pieces", null), Shopping = new("chicken", null, null) };
+            rows = [row, row with { Id = Guid.NewGuid(), Description = "oil", Amount = QuantityMath.Parse("20"), AmountText = "20", Unit = new("ml", null), Shopping = new("oil", null, null) }];
         }
         var steps = texts.Select((_, index) => new RecipeInstructionStepDto(Guid.NewGuid(), "Mix." + index, "old-text-" + index, [])).ToArray();
         var before = new CanonicalRecipeContent(2, "before", "source", 4, rows, [new(Guid.NewGuid(), null, steps)]);
@@ -83,7 +83,7 @@ public sealed class CanonicalRelationshipHistoryTests
                 case "empty-id": binding["id"] = Guid.Empty; break;
                 case "row-id-reuse": binding["id"] = row.Id; break;
                 case "missing-use": uses.Clear(); break;
-                case "proof": binding["payload"]!["relationshipEvidence"]!["originalAmount"] = JsonSerializer.SerializeToNode(LegacyGroceryQuantity.Parse("999"), Json); break;
+                case "proof": binding["payload"]!["relationshipEvidence"]!["originalAmount"] = JsonSerializer.SerializeToNode(QuantityMath.Parse("999"), Json); break;
                 case "span": binding["span"]!["start"] = binding["span"]!["start"]!.GetValue<int>() + 1; break;
                 case "graph":
                     if (role == "perItem") uses[1]!["payload"]!["countBindingId"] = Guid.NewGuid();
@@ -102,7 +102,7 @@ public sealed class CanonicalRelationshipHistoryTests
         {
             ExpectedContentRevision = discovered.Content.ContentRevision,
             IngredientLines = JsonSerializer.SerializeToElement(rows.Select((line, index) => new { id = line.Id, description = line.Description,
-                amount = index == 0 ? LegacyGroceryQuantity.Parse(amount) : line.Amount, amountText = index == 0 ? amount : line.AmountText, unit = line.Unit, scaling = line.Scaling, package = line.Package, shopping = line.Shopping }), Json)
+                amount = index == 0 ? QuantityMath.Parse(amount) : line.Amount, amountText = index == 0 ? amount : line.AmountText, unit = line.Unit, scaling = line.Scaling, package = line.Package, shopping = line.Shopping }), Json)
         });
         Assert.Equal(amount, corrected.Content.IngredientLines[0].AmountText);
         var carriedOperation = await db.CanonicalRecipeOperations.AsNoTracking().SingleAsync(x => x.OperationId != operation);
@@ -164,7 +164,7 @@ public sealed class CanonicalRelationshipHistoryTests
         var clock = new SystemClock();
         var vocabulary = TestPublicationStore.Vocabulary(db, new InMemoryStorageProvider(), clock);
         var store = new CanonicalRecipeContentStore(db, clock, new SupperProjectionInvalidation(db, clock, new DeploymentCalendar(new ConfigurationManager())), vocabulary);
-        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "oil", Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2", Package = null,
+        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "oil", Amount = QuantityMath.Parse("2"), AmountText = "2", Package = null,
             Unit = new("tbsp", null), Scaling = "proportional", Shopping = new("oil", null, null), Provenance = new("unknown", null, []) };
         var steps = new[] { "Heat one tbsp oil from a 400 g package; cook 20 minutes at 180 °C.", "Finish with 1 tbsp oil." }.Select((text, index) =>
         {
@@ -174,14 +174,14 @@ public sealed class CanonicalRelationshipHistoryTests
             {
                 id = Guid.NewGuid(), ingredientLineId = row.Id, stepId, validatedContentRevision = "before", validatedTextRevision = textRevision,
                 span = new { start, end = start + expected.Length, expectedText = expected }, role = index == 0 ? "fixed" : "absolute",
-                payload = new { amount = LegacyGroceryQuantity.Parse("1"), unit = row.Unit }, status = "validated"
+                payload = new { amount = QuantityMath.Parse("1"), unit = row.Unit }, status = "validated"
             }, Json)]);
         }).ToArray();
         var before = new CanonicalRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
         var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Oil", Servings = 4, CanonicalContent = JsonSerializer.Serialize(before, Json) };
         db.Recipes.Add(recipe); await db.SaveChangesAsync();
         UpdateRecipeDto Input(string revision, string amount) => new() { ExpectedContentRevision = revision,
-            IngredientLines = JsonSerializer.SerializeToElement(new[] { new { id = row.Id, description = row.Description, amount = LegacyGroceryQuantity.Parse(amount),
+            IngredientLines = JsonSerializer.SerializeToElement(new[] { new { id = row.Id, description = row.Description, amount = QuantityMath.Parse(amount),
                 amountText = amount, unit = row.Unit, package = row.Package, shopping = row.Shopping, scaling = row.Scaling } }, Json) };
         var firstOperationId = Guid.NewGuid();
         var saved = await store.EditAsync(recipe.Id, before.SourceRevision, firstOperationId, Input(before.ContentRevision, "3"));
@@ -200,7 +200,7 @@ public sealed class CanonicalRelationshipHistoryTests
             {
                 var forged = JsonNode.Parse(accepted.Result)!;
                 var binding = forged["result"]!["content"]!["instructionSections"]![0]!["steps"]![0]!["bindings"]![0]!;
-                if (field == "proof") binding["payload"]!["amount"] = JsonSerializer.SerializeToNode(LegacyGroceryQuantity.Parse("999"), Json);
+                if (field == "proof") binding["payload"]!["amount"] = JsonSerializer.SerializeToNode(QuantityMath.Parse("999"), Json);
                 else if (field == "validation") binding["validatedContentRevision"] = "";
                 else binding["ingredientLineId"] = Guid.NewGuid();
                 Assert.Throws<InvalidDataException>(() => CanonicalRecipeContentStore.VocabularyReferences(new()
@@ -233,7 +233,7 @@ public sealed class CanonicalRelationshipHistoryTests
                 switch (corruption)
                 {
                     case "stale-token": use["validatedContentRevision"] = "invented-nonblank-old-token"; break;
-                    case "inactive-proof": use["payload"]!["amount"] = JsonSerializer.SerializeToNode(LegacyGroceryQuantity.Parse("999"), Json); break;
+                    case "inactive-proof": use["payload"]!["amount"] = JsonSerializer.SerializeToNode(QuantityMath.Parse("999"), Json); break;
                     case "inactive-span": use["span"]!["start"] = use["span"]!["start"]!.GetValue<int>() + 1; use["span"]!["end"] = use["span"]!["end"]!.GetValue<int>() + 1; break;
                     case "inactive-reference": use["ingredientLineId"] = Guid.NewGuid(); break;
                     case "activate": use["validatedContentRevision"] = retained.Content.ContentRevision; use["validatedTextRevision"] = retained.Content.InstructionSections[0].Steps[0].TextRevision; break;

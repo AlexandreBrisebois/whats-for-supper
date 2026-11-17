@@ -13,13 +13,13 @@ public partial class GroceryRecomputeServiceTests
 {
     private static readonly JsonSerializerOptions PackageJson = new(JsonSerializerDefaults.Web);
     private static RecipePackageDto DeclaredPackage(string capacity = "400", string basis = "net", string countUnit = "cans", string capacityUnit = "g") =>
-        new(new(countUnit, null), new(LegacyGroceryQuantity.Parse(capacity)!, new(capacityUnit, null)), basis);
+        new(new(countUnit, null), new(QuantityMath.Parse(capacity)!, new(capacityUnit, null)), basis);
 
     private async Task<Guid> SeedDeclaredPackage(DateOnly date, RecipePackageDto? package)
     {
         var id = await SeedRecipeWithSupplyAsync(date, [], basis: 4);
         var recipe = await _db.Recipes.SingleAsync(value => value.Id == id);
-        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes", Amount = LegacyGroceryQuantity.Parse("2"),
+        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes", Amount = QuantityMath.Parse("2"),
             AmountText = "2", Unit = new("cans", null), Scaling = "proportional", Package = package,
             Shopping = new("tomatoes", null, null), Provenance = new("human", "source", ["package"]) };
         recipe.CanonicalContent = JsonSerializer.Serialize(new CanonicalRecipeContent(2, "before", "source", 4, [row], []), PackageJson);
@@ -33,7 +33,7 @@ public partial class GroceryRecomputeServiceTests
         var recipe = await _db.Recipes.SingleAsync(value => value.Id == id);
         var content = CanonicalRecipeContentStore.Read(recipe)!;
         recipe.CanonicalContent = JsonSerializer.Serialize(content with { ContentRevision = Guid.NewGuid().ToString(), IngredientLines =
-            [content.IngredientLines[0] with { Package = package, Amount = LegacyGroceryQuantity.Parse(count), AmountText = count }] }, PackageJson);
+            [content.IngredientLines[0] with { Package = package, Amount = QuantityMath.Parse(count), AmountText = count }] }, PackageJson);
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
         _db.ChangeTracker.Clear();
@@ -53,7 +53,7 @@ public partial class GroceryRecomputeServiceTests
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var rows = await GetGroceryItemsAsync(TestMonday);
         Assert.Equal(2, rows.Count);
-        Assert.All(rows, row => Assert.Equal(LegacyGroceryQuantity.Parse("2"), row.ExactQuantity));
+        Assert.All(rows, row => Assert.Equal(QuantityMath.Parse("2"), row.ExactQuantity));
         Assert.Equal(2, rows.Select(row => row.DemandIdentity).Distinct().Count());
         Assert.Single(rows.Select(row => row.NormalizedKey).Distinct());
         Assert.Single(rows.Select(row => row.Section).Distinct());
@@ -67,7 +67,7 @@ public partial class GroceryRecomputeServiceTests
         var second = await SeedDeclaredPackage(TestMonday.AddDays(1), package);
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
-        Assert.Equal(LegacyGroceryQuantity.Parse("4"), row.ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("4"), row.ExactQuantity);
         Assert.Equal(row.NormalizedKey + " (400 g / cans; net)", row.DisplayName);
         Assert.DoesNotContain("400", row.NormalizedKey);
         Assert.Equal(new[] { first, second }.Order(), row.RecipeIds);
@@ -159,7 +159,7 @@ public partial class GroceryRecomputeServiceTests
         {
             ContentRevision = Guid.NewGuid().ToString("N"),
             IngredientLines = content.IngredientLines.Select(row => row.Id == lineId
-                ? row with { Package = package, Amount = LegacyGroceryQuantity.Parse(count), AmountText = count } : row).ToArray()
+                ? row with { Package = package, Amount = QuantityMath.Parse(count), AmountText = count } : row).ToArray()
         }, PackageJson);
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
@@ -194,7 +194,7 @@ public partial class GroceryRecomputeServiceTests
         var next = change switch
         {
             "clear" => null,
-            "capacity" => original with { Capacity = original.Capacity with { Amount = LegacyGroceryQuantity.Parse("600")! } },
+            "capacity" => original with { Capacity = original.Capacity with { Amount = QuantityMath.Parse("600")! } },
             "basis" => original with { Basis = "drained" },
             "countDefinition" => original with { CountUnit = original.CountUnit with { DefinitionId = null } },
             _ => original with { Capacity = original.Capacity with { Unit = original.Capacity.Unit with { DefinitionId = null } } }
@@ -228,7 +228,7 @@ public partial class GroceryRecomputeServiceTests
         await ChangePackageLine(recipe, selected, DeclaredPackage("800"));
         var merged = Assert.Single(await GetGroceryItemsAsync(TestMonday));
         Assert.DoesNotContain(merged.RowId, before.Select(row => row.RowId));
-        Assert.Equal(LegacyGroceryQuantity.Parse("4"), merged.ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("4"), merged.ExactQuantity);
         var plan = await GetWeeklyPlanAsync(TestMonday);
         Assert.False(JsonSerializer.Deserialize<Dictionary<string, bool>>(plan.GroceryState)![merged.RowId]);
         Assert.Equal("{}", plan.GroceryCheckedDemandBaselines);
@@ -246,7 +246,7 @@ public partial class GroceryRecomputeServiceTests
         var baseline = baselines.RootElement.GetProperty(large.RowId).Clone();
         await ChangePackageLine(recipe, selected, DeclaredPackage(), "3");
         var after = await GetGroceryItemsAsync(TestMonday);
-        Assert.Equal(LegacyGroceryQuantity.Parse("3"), after.Single(row => row.RowId == small.RowId).ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("3"), after.Single(row => row.RowId == small.RowId).ExactQuantity);
         Assert.True(JsonElement.DeepEquals(JsonSerializer.SerializeToElement(large),
             JsonSerializer.SerializeToElement(after.Single(row => row.RowId == large.RowId))));
         var plan = await GetWeeklyPlanAsync(TestMonday);

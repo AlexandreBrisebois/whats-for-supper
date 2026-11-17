@@ -16,7 +16,7 @@ References in preserved requirements to the former combined meal-planning owner 
 
 ### Requirement: Derive grocery needs from recipe-bearing entries in the selected week
 
-On successful recomputation, grocery needs SHALL include the supplies of recipe-bearing calendar entries within the selected Monday-through-Sunday interval. Each occurrence SHALL apply supper-servings scaling for its own date before aggregation. Repeated assignments SHALL contribute separately; contexts without an effective positive serving count SHALL retain original quantities.
+On successful recomputation, grocery needs SHALL include the canonical current ingredients of recipe-bearing calendar entries within the selected Monday-through-Sunday interval. Each occurrence SHALL apply supper-servings scaling for its own date before aggregation. Repeated assignments SHALL contribute separately; contexts without an effective positive serving count SHALL retain original quantities.
 
 #### Scenario: Recipe is scheduled twice
 - **WHEN** the same recipe with two eggs is assigned to two dates in the interval without an effective positive serving count
@@ -28,42 +28,50 @@ On successful recomputation, grocery needs SHALL include the supplies of recipe-
 
 ### Requirement: Prefer usable structured supply over ingredient text
 
-A recipe with named structured supplies coherent with its current ingredient basis SHALL use those entries for grocery derivation. Blank names SHALL be skipped. Ingredient text SHALL be used when there are no usable coherent supplies. Stale or unresolved contributions SHALL retain visible review feedback instead of claiming complete scaled quantities.
+Grocery derivation SHALL use each canonical current ingredient once, with its saved amount and description or original-text fallback with honest quantity completeness. Retained metadata SHALL NOT supply a competing live list. Legacy structured/text precedence SHALL apply only at ingestion or conversion boundaries. Incomplete contributions SHALL retain the established subtotal, source and prior-check behavior without claiming complete scaled quantities.
 
 #### Scenario: Structured supply exists
-- **WHEN** a recipe supplies named structured flour coherent with its current ingredient basis and also ingredient text
-- **THEN** the structured flour contributes without additionally appending the ingredient text
+- **WHEN** a canonical flour line has coherent trusted structured facts and original ingredient text
+- **THEN** the canonical flour contributes once without additionally appending its ingredient text
 
 #### Scenario: No named structured entry
-- **WHEN** structured supply is absent or empty, or all its names are blank, and ingredient strings exist
-- **THEN** each ingredient string contributes a name without an extracted numeric quantity or unit
+- **WHEN** a legacy input has absent, empty or blank-name supply and ingredient strings exist
+- **THEN** ingestion or conversion retains each string as a canonical text line with unknown numeric facts, and grocery derivation reads those lines without parsing quantities
+
+#### Scenario: Metadata disagrees after canonical cutover
+- **WHEN** retained metadata supply differs from a current canonical correction
+- **THEN** groceries use the current canonical facts and do not merge in or prefer the retained metadata supply
 
 ### Requirement: Read supported structured quantity representations
 
-Structured supply extraction SHALL prefer a numeric quantity and nonblank unitText, falling back independently to requiredQuantity.value and requiredQuantity.unitText when needed. Unreadable numeric quantity values SHALL leave the quantity unknown when no numeric fallback exists.
+Legacy ingestion and deterministic conversion SHALL prefer numeric quantity and nonblank unitText, falling back independently to requiredQuantity.value and requiredQuantity.unitText, or leaving unreadable quantities unknown without fallback. Converted groceries SHALL read finite nonnegative canonical amounts directly, keeping zero and unitless counts valid. Display SHALL preserve trusted amounts without inventing units or altering derivation, grouping or checks.
 
 #### Scenario: Nested quantity
-- **WHEN** garlic supply has requiredQuantity value four and unitText piece without top-level values
+- **WHEN** legacy garlic supply has requiredQuantity value four and unitText piece without top-level values
 - **THEN** the line contributes four pieces
 
 #### Scenario: Top-level values
-- **WHEN** supply has numeric quantity two and unitText g plus different nested values
+- **WHEN** legacy supply has numeric quantity two and unitText g plus different nested values
 - **THEN** two grams contribute
 
 #### Scenario: Unknown amount
-- **WHEN** a named supply has a nonnumeric quantity and no numeric fallback
-- **THEN** its name remains with unknown quantity
+- **WHEN** a named legacy supply has a nonnumeric quantity and no numeric fallback
+- **THEN** its description remains with unknown quantity
+
+#### Scenario: Zero or unitless canonical amount
+- **WHEN** a canonical line has a trusted zero amount or a trusted count without a display unit
+- **THEN** derivation retains that amount without inventing a unit or treating zero as missing, and display shows the trusted amount with no unit suffix under the grocery display rule; missing amounts remain hidden
 
 ### Requirement: Use ingredient text after invalid JSON syntax
 
-When raw recipe metadata has invalid JSON syntax and stored ingredient strings are available, successful grocery derivation SHALL use those ingredient strings as its fallback.
+Legacy ingestion or conversion SHALL retain stored ingredient strings as canonical unknown-amount lines when raw metadata has invalid JSON syntax. Once canonical current lines exist, grocery derivation SHALL use them independently of retained metadata syntax; malformed evidence SHALL NOT erase trusted current facts.
 
 #### Scenario: Invalid syntax with ingredients
-- **WHEN** metadata cannot be parsed as JSON and ingredients include onion
-- **THEN** onion contributes through text fallback
+- **WHEN** legacy metadata cannot be parsed as JSON and ingredients include onion
+- **THEN** onion is retained as a canonical text fallback and contributes without an invented numeric amount
 
 #### Scenario: No usable source
-- **WHEN** there are no extracted supplies and no ingredient strings
+- **WHEN** there are no canonical lines and legacy conversion has no usable supplies or ingredient strings
 - **THEN** the recipe contributes no grocery needs
 
 ### Requirement: Persist the recomputed list for subsequent schedule reads
@@ -80,99 +88,141 @@ Successful recomputation SHALL replace the week's persisted grocery lines, inclu
 
 ### Requirement: Normalize grocery names through supported mechanical transformations
 
-Grocery names SHALL be lowercased, stripped of decomposed nonspacing accents, trimmed and whitespace-collapsed, with supported apostrophe/dash typography, comma/semicolon/colon separators and registered-mark removal normalized. Empty normalized names SHALL be omitted.
+Grocery identity SHALL use saved validated food associations or conservative source-name fallback keys. Display labels SHALL preserve validated language spelling independently of grouping keys. Mechanical normalization SHALL NOT establish semantic equivalence or erase purchase qualifiers.
 
 #### Scenario: Accent and whitespace
-- **WHEN** a supply name is padded mixed-case Café with repeated whitespace
-- **THEN** its normalized key and emitted display name use cafe with collapsed whitespace
+- **WHEN** a saved validated label contains Café and repeated whitespace
+- **THEN** deterministic matching may normalize allowed whitespace but display preserves validated spelling and accents
 
 #### Scenario: Apostrophe and separator
-- **WHEN** supply uses a curly apostrophe in huile d’olive or comma-separated tomato, paste
-- **THEN** keys use huile d'olive and tomato paste respectively
+- **WHEN** a saved source name includes huile d’olive or tomato, paste
+- **THEN** approved typography normalization does not by itself prove equivalent food identity
 
 ### Requirement: Merge supported optional plurals while retaining descriptors
 
-Names SHALL normalize parenthesized optional s/es and the supported pita, tomato, zucchini and garlic-clove forms. Other written plurals and meaningful descriptors SHALL remain part of the key.
+Only approved exact aliases and validated same-food mappings SHALL merge language/preparation variants. Broader or ambiguous concepts SHALL remain separate. Purchase distinctions SHALL survive spelling/plural normalization.
 
 #### Scenario: Mechanical plural
-- **WHEN** supplies use zucchini(s) and zucchinis with compatible units
-- **THEN** both contribute to zucchini
+- **WHEN** zucchini(s) and zucchinis have an approved same-food association and compatible units
+- **THEN** they aggregate deterministically
 
 #### Scenario: Protected descriptors
-- **WHEN** supplies use salted butter and unsalted butter
-- **THEN** they remain separate keys
+- **WHEN** foods are salted/unsalted butter or fresh/canned tomato
+- **THEN** they retain separate purchase identities
 
 #### Scenario: No translation identity
-- **WHEN** supplies use ground beef and bœuf haché
-- **THEN** the names do not merge through translation
+- **WHEN** ground beef and bœuf haché have validated exact mappings
+- **THEN** they may group; without that evidence they remain separate
 
 ### Requirement: Aggregate only matching normalized names and unit buckets
 
-Grocery aggregation SHALL group a normalized name by recognized canonical unit family, with unknown units in separate raw-unit buckets. Different canonical families SHALL remain separate lines.
+Only matching saved shopping identities, purchase qualifiers and compatible explicit unit buckets SHALL aggregate. Incompatible dimensions, unsupported units and unverified mappings SHALL stay separate. Step uses SHALL never add demand.
 
 #### Scenario: Compatible weight
-- **WHEN** potato contributes 500 g and 1 kg
-- **THEN** one potato line has 1500 g
+- **WHEN** the same food contributes 500 g and 1 kg
+- **THEN** the exact aggregate is 1500 g
 
 #### Scenario: Incompatible families
-- **WHEN** flour contributes grams and cups
-- **THEN** weight and volume remain separate lines
+- **WHEN** flour contributes grams and cups without ingredient-specific conversion evidence
+- **THEN** they stay separate rows
 
 #### Scenario: Unknown unit
-- **WHEN** flour contributes a recognized weight and raw unit bag
-- **THEN** bag remains a separate bucket
+- **WHEN** flour contributes weight and a raw bag unit
+- **THEN** bag stays separate
+
+#### Scenario: Step repetition
+- **WHEN** an ingredient is referenced in multiple steps
+- **THEN** only its canonical recipe demand contributes once per scheduled occurrence
 
 ### Requirement: Convert supported quantities and retain unknown amounts
 
-Known units SHALL convert to g for weight, ml for volume and piece for count; null or blank units SHALL use piece. Each group SHALL sum numeric contributions after conversion and use null quantity if none are numeric.
+Exact quantities SHALL convert only under validated compatible unit definitions. Scalar/range totals SHALL add exactly; unknown contributions SHALL retain honest completeness. Undeclared culinary standards, null units and packages SHALL not gain invented conversions.
 
 #### Scenario: Culinary volume
-- **WHEN** the same name contributes one cup and one tablespoon
-- **THEN** the volume bucket totals 255 ml
+- **WHEN** cup and tablespoon have no evidenced regional standard
+- **THEN** they remain separate raw buckets rather than silently becoming 255 ml
 
 #### Scenario: Count and unknown amount
-- **WHEN** one contribution has quantity two with no unit and another has no quantity with unit piece
-- **THEN** the piece bucket totals two
+- **WHEN** two compatible explicit pieces combine with unknown piece quantity
+- **THEN** two is a known subtotal, not a complete total; null-unit quantities are not silently asserted as pieces
 
 #### Scenario: All amounts unknown
-- **WHEN** all contributions to a bucket have unknown amounts
-- **THEN** the line has null quantity
+- **WHEN** all amounts in one bucket are unknown
+- **THEN** quantity stays null
+
+#### Scenario: Range aggregation
+- **WHEN** compatible 2–3 and 1–2 contributions aggregate
+- **THEN** total is exact 3–5 and incomplete only if other contributions are unknown
 
 ### Requirement: Return deterministic grocery lines and contributors
 
-Recomputed grocery lines SHALL emit the normalized name as displayName and normalizedKey, the selected section, aggregate quantity, emitted unit and distinct sorted recipe IDs. Lines SHALL be ordered by normalized key then unit bucket.
+Grocery lines SHALL expose stable row identity, exact scalar/range or null total, completeness, unit, current-language label, section and distinct sorted contributor recipe IDs. Source order and locale changes SHALL NOT alter saved identity, check state or totals.
 
 #### Scenario: Repeat source ordering
-- **WHEN** equivalent supplies are recomputed after source order changes
-- **THEN** display, section, unit, contributors and persisted line order remain the same
+- **WHEN** equivalent inputs arrive in another source order
+- **THEN** aggregation, stable identity and source-independent ordering remain deterministic
 
 #### Scenario: Repeated recipe
-- **WHEN** one recipe contributes repeatedly to one bucket
-- **THEN** its ID appears once in recipeIds while quantities include each contribution
+- **WHEN** a recipe contributes on two dates
+- **THEN** totals include both occurrences and its contributor ID is listed once
 
-### Requirement: Show an amount hint only with quantity and unit
+#### Scenario: Locale change
+- **WHEN** a member changes EN to FR
+- **THEN** the reviewed label changes only, with saved source shopping spelling when unavailable
+- **AND** saved quantities, recipe originals/contentRevision, purchase identity, rowId, checks and checked baselines remain unchanged
 
-A displayed grocery row SHALL show a parenthesized amount hint only when quantity is non-null and unitText is nonempty. Noninteger amounts SHALL round to at most three decimal places with trailing zeros removed.
+#### Scenario: Two members use different languages
+- **WHEN** two members read the same persisted list in EN and FR concurrently
+- **THEN** each sees the reviewed label for that locale or source fallback without rewriting the shared row or the other member's view
+
+#### Scenario: Label-only vocabulary revision
+- **WHEN** an accepted release changes only a label for the same saved food/purchase identity
+- **THEN** its display updates without remapping saved associations or resetting row/check/baseline identity
+
+### Requirement: Show trusted grocery amounts without inventing units
+
+A grocery row SHALL show its trusted nonnegative scalar or range amount (including zero) even when its unit is null or blank, keeping the parenthesized hint with a supplied suffix or none when unitless. Nonintegers SHALL round to three decimals without trailing zeros; unreadable amounts SHALL NOT invent numbers, and incomplete subtotals SHALL show localized wording once. Rendering SHALL NOT infer units or alter math, grouping, checks, contributors or persistence.
+
+#### Scenario: Known scalar without a unit
+- **WHEN** a row has trusted scalar amount two with a null, empty or whitespace-only display unit
+- **THEN** its complete hint is `(2)`, with no fabricated unit or trailing unit space
+
+#### Scenario: Known zero without a unit
+- **WHEN** a row has trusted scalar amount zero and no display unit
+- **THEN** its complete hint is `(0)` rather than an omitted or unknown amount
+
+#### Scenario: Fraction and range without a unit
+- **WHEN** complete rows have trusted amount one half or range two through three with no display unit
+- **THEN** their hints are `(0.5)` and `(2–3)` under the existing display convention, without changing the exact supplied amounts
 
 #### Scenario: Amount shown
-- **WHEN** a row has quantity 1.23456 and unitText kg
-- **THEN** its hint is (1.235 kg)
+- **WHEN** a complete row has amount 1.23456 and display unit kg
+- **THEN** its hint remains `(1.235 kg)` with the existing rounding and unit presentation
 
 #### Scenario: Missing amount or unit
-- **WHEN** a row lacks quantity or has no unitText
-- **THEN** no amount hint is shown
+- **WHEN** a row lacks a known amount or has no usable display unit
+- **THEN** a genuinely missing amount has no numeric hint, while a trusted amount with only its unit missing remains visible without a unit suffix
+- **AND** neither case gains a guessed count/unit, replacement warning or reserved warning space
+
+#### Scenario: One honest incomplete subtotal in either locale
+- **WHEN** an incomplete row has known subtotal two and no unit, in English or French
+- **THEN** the amount position shows `2 known` or `2 connus` once using the existing localized subtotal wording, without claiming the full requirement or adding a duplicate hint/warning
+
+#### Scenario: Display preserves the shopping row and its sources
+- **WHEN** a checked row with a trusted unitless amount is rendered, reread or has its recipe sources expanded
+- **THEN** its amount, group, row identity, check/baseline and contributor identities remain unchanged, source disclosure remains usable, and no mutation or recomputation is sent merely to display or inspect it
 
 ### Requirement: Choose stored category before keyword fallback
 
-Grocery derivation SHALL prefer a category at the current normalized key, then a matching legacy key, before using keyword fallback. In a merged group, a current-key category SHALL outrank a legacy-key category.
+Category resolution SHALL prefer protected household food/fallback-key corrections before deterministic defaults. Equivalent food remapping SHALL preserve a proven prior manual override; conflicting prior overrides SHALL remain unresolved rather than choosing by source order.
 
 #### Scenario: Stored correction
-- **WHEN** garlic has a stored Deli category
-- **THEN** its grocery section is Deli even though keyword fallback would choose Produce
+- **WHEN** garlic has a human Deli override
+- **THEN** it remains Deli
 
 #### Scenario: Legacy correction
-- **WHEN** basil® has a legacy Deli category and basil has no current-key category
-- **THEN** the normalized basil line uses Deli without rewriting the category key
+- **WHEN** a uniquely mapped old category key has a human Deli override
+- **THEN** that correction survives with provenance; ambiguous mappings retain conflicts
 
 ### Requirement: Use supported keyword section defaults
 
@@ -204,7 +254,7 @@ The grocery view SHALL group by returned section using the configured aisle orde
 
 ### Requirement: Open and cancel an ingredient section picker
 
-Each grocery row SHALL offer a labeled change-section control opening the choices in the configured aisle order. Activating the same control again SHALL close its picker. Choosing its existing section SHALL close without issuing a category update.
+Regular grocery category controls SHALL match extra tag interaction and icon placement while retaining normal ingredient category scope. The labeled control SHALL open configured choices, toggle closed on repeat activation and close without mutation for the current section. It SHALL remain distinct from check and source controls.
 
 #### Scenario: Open picker
 - **WHEN** the member activates Change section for Tomato
@@ -216,7 +266,7 @@ Each grocery row SHALL offer a labeled change-section control opening the choice
 
 ### Requirement: Persist a supported category correction before success
 
-A valid category PATCH SHALL save a category override for the supplied normalized key and recompute affected stored weekly grocery lists before returning 204. An absent, blank or unsupported grocerySection SHALL return 400.
+A valid revision-guarded category PATCH SHALL save a household override for the supplied saved food identity or conservative fallback key and recompute affected stored weekly grocery lists before returning 204. An absent, blank or unsupported grocerySection SHALL return 400. Stale category revisions SHALL return 409 without mutation; normal food/fallback corrections SHALL NOT mutate extra occurrences or publish global aliases.
 
 #### Scenario: Valid correction
 - **WHEN** a valid Produce correction completes its save and affected recomputations
@@ -226,13 +276,21 @@ A valid category PATCH SHALL save a category override for the supplied normalize
 - **WHEN** grocerySection is NotARealSection
 - **THEN** the operation returns 400 without applying that correction
 
+#### Scenario: Stale category correction
+- **WHEN** a correction supplies a stale expected category revision
+- **THEN** it returns 409 without changing the saved category, rows or checks
+
+#### Scenario: Category scope remains household-owned
+- **WHEN** a food or unresolved fallback category correction succeeds
+- **THEN** it affects that household scope only, without modifying extra occurrences or adding a global alias
+
 ### Requirement: Update matching loaded grocery rows after correction success
 
-After a successful category response, the grocery view SHALL update rows matching the normalized key to the chosen section only if the loaded offset still equals the initiating offset. Other fields and check-state SHALL remain unchanged, and the picker SHALL close.
+After a successful category response, the grocery view SHALL update rows matching the saved food identity or conservative fallback key to the chosen section only if the loaded offset still equals the initiating offset. Other fields and check-state SHALL remain unchanged, and the picker SHALL close.
 
 #### Scenario: Matching rows
 - **WHEN** a correction succeeds in the still-loaded week for a key with several unit buckets
-- **THEN** all loaded rows with that key move section without duplication or check-state change
+- **THEN** all loaded rows with that identity move section without duplication or check-state change
 
 #### Scenario: Navigation during request
 - **WHEN** the loaded week offset changes before the correction response
@@ -240,7 +298,7 @@ After a successful category response, the grocery view SHALL update rows matchin
 
 ### Requirement: Bound correction pending and failure feedback to the ingredient
 
-While a correction is pending, that key's picker SHALL expose busy state and disable repeat section selection. A rejected correction SHALL retain its original local section and retryable picker, with an error indicator cleared after three seconds.
+While a correction is pending, that identity's picker SHALL expose busy state and disable repeat section selection. A rejected correction SHALL retain its original local section and retryable picker, with an error indicator cleared after three seconds.
 
 #### Scenario: Pending correction
 - **WHEN** the PATCH remains unresolved
@@ -252,87 +310,99 @@ While a correction is pending, that key's picker SHALL expose busy state and dis
 
 ### Requirement: Use display name as the shared check identity
 
-Recipe-derived grocery rows SHALL read and toggle checks by displayName within the loaded map. Recipe-derived rows sharing that display name SHALL share their checked state even when normalized keys or unit buckets differ. Extra rows SHALL use their stable occurrence identity instead, and all rendered rows SHALL retain their supplied cardinality.
+Recipe-derived grocery rows SHALL use stable displayed-row identity within the absolute week, independently of display name, locale, ingredient name or unit labels. Extra rows SHALL retain stable occurrence identity. An intentionally aggregated compatible demand row SHALL have one checkbox.
 
 #### Scenario: Duplicate names
 - **WHEN** three recipe-derived Eau rows have different unit buckets and one is checked
-- **THEN** all three show checked while three rows remain
+- **THEN** only that row becomes checked and all three remain
 
 #### Scenario: Uncheck duplicate
-- **WHEN** one checked recipe-derived Eau row is unchecked
-- **THEN** all recipe-derived rows sharing Eau show unchecked without deleting a row
+- **WHEN** one checked Eau row is unchecked
+- **THEN** other same-name rows retain their independent checks
 
 #### Scenario: Extra shares the display name
-- **WHEN** a recipe-derived Eau row and an extra Eau row coexist and the extra is checked
-- **THEN** the recipe-derived Eau check map is unchanged
+- **WHEN** a recipe-derived Eau row and an extra Eau coexist and the extra is checked
+- **THEN** only its occurrence check changes
 
 ### Requirement: Initialize an empty loaded check map from displayed names
 
-When recipe-derived rows exist and the loaded check map has no keys, the grocery view SHALL initialize their display names as unchecked. A nonempty map SHALL be retained; a missing recipe-derived key SHALL display as unchecked. Extra checked state SHALL come from each extra occurrence and SHALL NOT be added to the display-name map.
+Missing recipe-row check state SHALL display unchecked by row ID in its absolute week. A nonempty map SHALL retain other current row values. Extra checked state SHALL come from its occurrence and SHALL NOT enter the recipe-row map.
 
 #### Scenario: Empty map
-- **WHEN** recipe-derived rows first render with an empty check map
-- **THEN** their display names initialize to false
+- **WHEN** recipe rows render with no row checks
+- **THEN** each displays unchecked without creating name-level acknowledgements
 
 #### Scenario: Existing map
-- **WHEN** the map contains Tomato true but lacks Lettuce
-- **THEN** Tomato stays checked and Lettuce displays unchecked
+- **WHEN** one Tomato row ID is true but Lettuce ID is absent
+- **THEN** Tomato stays checked and Lettuce is unchecked
 
 #### Scenario: Extra row
-- **WHEN** an extra Coffee row renders beside recipe-derived rows
-- **THEN** Coffee's occurrence checked state is used without creating a Coffee key in the recipe check map
+- **WHEN** extra Coffee renders beside recipe rows
+- **THEN** its occurrence state is used independently
 
 ### Requirement: Submit one optimistic grocery check at a time
 
-A recipe-derived row activation SHALL immediately invert its local display-name check and submit only ingredientName and checked to the initiating week's item PATCH. Successful completion SHALL retain that optimistic check. Recipe-derived checkboxes SHALL expose aria-checked and support click, Enter and Space activation; extras SHALL use their identity-specific check requirement.
+A check SHALL optimistically change only the selected row and submit intended checked state with its stable identity, absolute week and current version. Same-row intentions SHALL reconcile in order. Checkboxes SHALL expose checked state and click, Enter and Space behavior; extras SHALL retain their occurrence contract.
 
 #### Scenario: Check succeeds
-- **WHEN** recipe-derived Tomato is unchecked and its activation request succeeds
-- **THEN** Tomato becomes checked and the body contains ingredientName Tomato and checked true
+- **WHEN** an unchecked Tomato row is activated successfully
+- **THEN** only its row ID becomes checked and its request carries the captured week/version
 
 #### Scenario: Uncheck succeeds
-- **WHEN** recipe-derived Tomato is checked and its activation request succeeds
-- **THEN** Tomato becomes unchecked with checked false
+- **WHEN** a checked Tomato row is activated successfully
+- **THEN** only its row becomes unchecked
+
+#### Scenario: Rapid intents
+- **WHEN** a row is toggled quickly while its first write is pending
+- **THEN** the final acknowledged intent agrees with a fresh read and late replies cannot invert another row or newer intent
 
 ### Requirement: Persist a sequential single-key check update
 
-For an existing weekly plan on a single-instance deployment, a successful item PATCH SHALL store the supplied check value while retaining other current persisted values, and return 204 after its save and publication attempt. Sequential and overlapping requests SHALL follow the shared check-map processing requirements below.
+A successful item mutation SHALL persist the intended value for an existing current row and retain other persisted checks. It SHALL return authoritative identity/version after commit and publication attempt. Stale or absent row/version SHALL conflict without creating phantom rows.
 
 #### Scenario: Set one key
-- **WHEN** the stored map has Tomato false and Lettuce true and Tomato is set true without overlapping writes
-- **THEN** both keys are true on a subsequent successful read
+- **WHEN** Tomato false and Lettuce true are stored and a current Tomato mutation sets true
+- **THEN** both are true on a fresh read
 
 #### Scenario: Set false
-- **WHEN** Tomato is set false in a sequential successful request
-- **THEN** Tomato is retained with false
+- **WHEN** a current row is set false
+- **THEN** its explicit false is retained
 
 #### Scenario: Two members check different items
-- **WHEN** Tomato and Lettuce begin unchecked and overlapping successful item PATCH requests set each true with no intervening replacement or supported rename
-- **THEN** a fresh successful read after both requests contains both keys true
+- **WHEN** two members concurrently check different current rows
+- **THEN** a fresh read after both successful mutations contains both true
+
+#### Scenario: Unknown row
+- **WHEN** a stale removed row ID or wrong absolute week is submitted
+- **THEN** conflict applies no check and creates no new row
 
 ### Requirement: Recover a rejected individual check locally
 
-When an item PATCH rejects, the view SHALL revert that display-name check to the inverse of the attempted value, retain other local keys, and show a per-item error indicator for three seconds. Other rows SHALL remain interactive.
+A known rejected check SHALL restore authoritative state only for the matching row/intention, retain other rows and show bounded retryable item error. An uncertain result SHALL be reread before replay. A late failure SHALL NOT overwrite newer acknowledged state.
 
 #### Scenario: Failed check
-- **WHEN** checking Tomato rejects while Lettuce is checked
-- **THEN** Tomato reverts to unchecked, Lettuce stays checked and an error appears for Tomato
+- **WHEN** checking Tomato fails before commit while Lettuce is checked
+- **THEN** Tomato returns unchecked and Lettuce stays checked with error bounded to Tomato
 
 #### Scenario: Retry
-- **WHEN** the member activates the reverted item again and that request succeeds
-- **THEN** the new optimistic state remains after success
+- **WHEN** a safe retry succeeds after reconciliation
+- **THEN** the authoritative intended row state remains
+
+#### Scenario: Lost reply
+- **WHEN** a check may have committed before its reply was lost
+- **THEN** the client rereads that absolute week before replaying and does not blindly invert it
 
 ### Requirement: Order unchecked rows before checked rows within an aisle
 
-Each displayed aisle SHALL place unchecked rows before checked rows, retaining supplied order within each group. Its count and completion indicator SHALL count rendered rows, including duplicate display names. This ordering SHALL include extra and recipe-derived rows together; within either check group, extras SHALL retain their supplied order before recipe-derived rows retain theirs.
+Each aisle SHALL sort unchecked before checked rows, retaining supplied order within groups and counting displayed rows independently. Within a group extras SHALL precede recipe rows in their respective supplied order. Reordering SHALL retain stable controls and SHALL NOT cause unsolicited viewport or focus movement.
 
 #### Scenario: Move down and back
 - **WHEN** an unchecked row is checked and then unchecked
 - **THEN** it moves after unchecked rows and returns to its source-relative unchecked position
 
 #### Scenario: Duplicate completion
-- **WHEN** every row shares one checked display name
-- **THEN** the checked count includes every rendered row
+- **WHEN** several rows share a display name and have independent checked states
+- **THEN** the checked count includes only independently checked rendered rows
 
 #### Scenario: Mixed rows in one aisle
 - **WHEN** one aisle receives checked and unchecked extras and checked and unchecked recipe-derived rows
@@ -446,55 +516,63 @@ Successful recipe synchronization SHALL recompute distinct weeks containing that
 
 ### Requirement: Carry forward supported predecessor checks during mechanical normalization
 
-When compatible previous grocery lines become one normalized line, recomputation SHALL mark it checked only when every matched predecessor was explicitly checked. A single renamed predecessor SHALL retain its prior check value or false if absent; obsolete predecessor display-name keys SHALL be replaced while unrelated keys remain.
+A proven one-to-one row continuation SHALL preserve its check across equivalent spelling, label, locale or compatible unit changes. Structural split, merge or semantic replacement SHALL receive new row identities and start unchecked without claiming purchase intent. Unrelated rows SHALL retain checks.
 
 #### Scenario: Mixed predecessor checks
-- **WHEN** two compatible prior names merge and one check is absent or false
-- **THEN** the merged name is unchecked and obsolete predecessor keys are removed
+- **WHEN** two formerly separate checked/unchecked rows merge structurally
+- **THEN** a new unchecked row replaces them and unrelated checks remain
 
 #### Scenario: All checked
-- **WHEN** all matched predecessors are explicitly true
-- **THEN** the merged normalized name is checked
+- **WHEN** two checked separate rows merge without a proven one-to-one continuation
+- **THEN** the new row starts unchecked rather than asserting they were one acknowledged purchase
 
 #### Scenario: Single rename
-- **WHEN** one prior display name is renamed mechanically and was checked
-- **THEN** the normalized display-name key is true and the old name key is removed
+- **WHEN** only a display label changes for a proven continuing row
+- **THEN** its identity/version continuity and check survive without name-key migration
 
 ### Requirement: Replace the weekly check map through the full-map API
 
-For an existing weekly plan and supported dictionary body, successful PATCH /api/schedule/{weekOffset}/grocery SHALL replace its stored check map with the supplied string-to-boolean entries, preserving explicit false values and removing omitted prior entries.
+A supported full-map replacement SHALL require the captured absolute week and current list version and address stable row IDs. It SHALL retain explicit false and clear omitted row checks. A stale list, old name dictionary or unknown row ID SHALL conflict atomically.
 
 #### Scenario: Replace populated map
-- **WHEN** a successful request supplies Tomato false and the prior map also had Lettuce true
-- **THEN** a subsequent successful read contains Tomato false without Lettuce
+- **WHEN** a current list replacement supplies only Tomato-ID false
+- **THEN** its prior Lettuce-ID check is removed
 
 #### Scenario: Clear map
-- **WHEN** a successful request supplies an empty dictionary
-- **THEN** the stored check map is empty
+- **WHEN** a current-version replacement supplies empty checks
+- **THEN** recipe-row checks clear without changing rows or extras
+
+#### Scenario: Stale map
+- **WHEN** an old name-level or stale-version dictionary is submitted
+- **THEN** no check changes and refresh is required
 
 ### Requirement: Return the full-map result in the declared success envelope
 
-After full-map persistence and its publication attempt complete, the bulk operation SHALL return 200 with the resulting dictionary under data. This operation SHALL leave the week's persisted grocery line items unchanged.
+After supported full-map persistence and publication attempt, the operation SHALL return 200 with authoritative checks, absolute week and list version under data. It SHALL leave persisted grocery demand and extra occurrences unchanged.
 
 #### Scenario: Successful response
-- **WHEN** a full-map replacement completes
-- **THEN** the response is 200 with data equal to the submitted dictionary
+- **WHEN** current-version replacement completes
+- **THEN** data identifies the saved week, list version and row-ID dictionary
 
 #### Scenario: Checks without line mutation
-- **WHEN** a full-map replacement completes for a week with existing grocery lines
-- **THEN** only its checks change and the grocery lines remain stored
+- **WHEN** replacement completes with existing lines
+- **THEN** amounts, identities and extras remain unchanged
 
 ### Requirement: Request category suggestions only for uncached structured names
 
-Ingredient categorization SHALL use distinct normalized structured supply names and request suggestions only for names absent from its category cache. With no uncached names it SHALL make no category-provider request.
+Ingredient categorization SHALL use distinct normalized names derived by the saved shopping identities and conservative fallback names and request suggestions only for names absent from its category cache. With no uncached names it SHALL make no category-provider request.
 
 #### Scenario: All names cached
-- **WHEN** all structured names have category entries
+- **WHEN** all usable canonical ingredient names have category entries
 - **THEN** no category-provider call is made
 
 #### Scenario: Partly cached
 - **WHEN** tomato is cached but chicken breast and heavy cream are not
 - **THEN** one batch asks for chicken breast and heavy cream without tomato
+
+#### Scenario: Retained supply has an obsolete name
+- **WHEN** a human changes the canonical ingredient description while retained extraction still has its prior name
+- **THEN** categorization uses the saved current shopping name/identity rather than independently reading obsolete supply
 
 ### Requirement: Store valid category suggestions while preserving manual corrections
 
@@ -514,7 +592,7 @@ For supported returned ingredient keys, category processing SHALL persist sugges
 
 ### Requirement: Keep category-provider failure from blocking the processor completion path
 
-For a valid recipe task payload, category-provider errors or unusable response JSON SHALL leave those suggestions unapplied and allow the categorization processor to return completion. Missing recipes or absent structured supply SHALL require no provider request.
+For a valid recipe task payload, category-provider errors or unusable response JSON SHALL leave those suggestions unapplied and allow the categorization processor to return completion. Missing recipes or no usable canonical ingredient names SHALL require no provider request.
 
 #### Scenario: Provider failure
 - **WHEN** the category provider throws during a valid task
@@ -863,43 +941,43 @@ The composer combobox, suggestion options, checkbox, tag button, edit icon, inli
 
 ### Requirement: Process normal check-map writes against current persisted state
 
-On one application instance, item updates, full-map replacements and recomputation transitions for a weekly recipe-derived check map SHALL take effect in one server processing order. Each operation SHALL use the persisted map resulting from its predecessors. Processing order SHALL NOT imply user-click order or FIFO request arrival.
+On the supported single application instance, item writes, version-guarded full-map replacements and recomputation SHALL use current persisted row checks in one server processing order. This SHALL NOT promise user-click or request-arrival order.
 
 #### Scenario: Conflicting values for one item
-- **WHEN** overlapping requests set Tomato true and false and the false request is processed last
-- **THEN** a fresh read contains Tomato false and unrelated keys retain their values
+- **WHEN** true and false requests compete for the same row version
+- **THEN** a stale intent conflicts and a fresh read exposes the committed version; unrelated rows retain their values
 
 #### Scenario: Repeat intended state
-- **WHEN** two successful item requests both set Tomato true
-- **THEN** Tomato remains true rather than being inverted twice
+- **WHEN** an identical accepted mutation ID and body are replayed
+- **THEN** the saved outcome is returned without applying twice
 
 #### Scenario: Stale whole-map replacement remains replacement
-- **WHEN** an item update saves Lettuce true and a later-processed full-map request supplies only Tomato false
-- **THEN** the stored map contains only Tomato false, even if the replacement body was prepared before the item update
+- **WHEN** a list changes after a bulk baseline was captured
+- **THEN** the stale full-map write conflicts rather than erasing later checks
 
 #### Scenario: Item update follows replacement
-- **WHEN** a full-map replacement supplying Tomato false is processed before an item update setting Lettuce true
-- **THEN** a fresh read contains Tomato false and Lettuce true
+- **WHEN** a valid item update follows a committed bulk replacement and uses current row state
+- **THEN** the item changes and other replacement checks remain
 
 #### Scenario: Clear and later check
-- **WHEN** an empty full-map replacement is processed before an item request setting Lettuce true
-- **THEN** the resulting map contains Lettuce true and no keys retained solely from before the clear
+- **WHEN** a current empty replacement is followed by a valid row check
+- **THEN** only that row is checked
 
 ### Requirement: Preserve current checks during overlapping recomputation
 
-Successful recomputation overlapping a recipe-derived check mutation SHALL preserve unrelated persisted check entries. The serving-driven increased-needs rule SHALL intentionally uncheck only affected increased requirements at that same processing position. Supported predecessor merge and rename transitions SHALL use the check state current at recomputation's processing position, without changing the existing mechanical-normalization rules.
+Recomputation SHALL compare demand and transition checks at the same coordinated position using current persisted row state. Only proven increases on continuing comparable rows SHALL clear their checks. Unrelated checks and extras SHALL remain; unchanged retries SHALL NOT undo later checks.
 
 #### Scenario: Check and unchanged-name recomputation
-- **WHEN** Tomato is checked while a recomputation retains its display name and neither operation intentionally replaces that key
-- **THEN** after both succeed a fresh read contains Tomato true and the recomputed grocery lines
+- **WHEN** a row is checked while its unchanged demand is recomputed
+- **THEN** fresh state retains that check and recomputed lines
 
 #### Scenario: Earlier request state is stale
-- **WHEN** a recomputation request previously observed Tomato false and another request commits Tomato true before recomputation processes its check-map transition
-- **THEN** recomputation uses Tomato true rather than restoring its earlier observed false
+- **WHEN** a check commits after recompute inspection but before its transition processes
+- **THEN** recompute uses current checked state rather than its earlier observed map
 
 #### Scenario: Supported predecessor merge
-- **WHEN** a check request commits one predecessor as true before two compatible predecessors merge and the other predecessor remains false
-- **THEN** the merged name is false under the existing all-predecessors-checked rule, obsolete predecessor keys are removed and unrelated checks remain
+- **WHEN** structural merge follows a predecessor check
+- **THEN** the new row starts unchecked under structural identity policy and unrelated current checks survive
 
 ### Requirement: Acknowledge check mutations only after persistence
 
@@ -924,6 +1002,7 @@ A check mutation SHALL NOT report success merely because in-memory work was acce
 #### Scenario: Publication fails after commit
 - **WHEN** a check is committed but its notification attempt fails
 - **THEN** the committed map remains readable and subsequent check mutations are not blocked indefinitely by the failed operation
+
 ### Requirement: Aggregate dated scaled contributions without mutating recipes
 
 For configured serving context each scheduled supper occurrence SHALL contribute its usable scaled amount using that date's count and recipe basis. Existing ingredient identity, unit-family separation and conversion SHALL apply after scaling. Recipe-free non-cooking dates SHALL contribute nothing. Recalculation SHALL use original quantities, preserve manual extras and produce the same totals on repeated execution.
@@ -938,23 +1017,51 @@ For configured serving context each scheduled supper occurrence SHALL contribute
 
 ### Requirement: Uncheck increased serving-driven grocery requirements
 
-After portions/default changes, assignment, replacement, movement or recipe corrections, recomputation SHALL compare requirements in the same normalized ingredient/unit bucket. A checked item whose known total increases SHALL become unchecked and show its updated total. Unchanged or decreased requirements SHALL retain their checks; a decrease SHALL NOT check an unchecked item. This transition SHALL be coordinated with concurrent grocery writes.
+Recomputation SHALL compare current demand with the requirement saved on the row’s unchecked-to-checked transition. It SHALL uncheck only when both requirements are complete/comparable and current minimum exceeds the baseline maximum; scalars are single-point intervals. Equivalent, decreased or unprovable changes SHALL preserve both check and baseline. Comparison SHALL precede rounding and coordinate with check writes.
 
 #### Scenario: More pasta is needed
-- **WHEN** checked pasta requires 400 g and a count increase raises the weekly requirement to 600 g
-- **THEN** pasta becomes unchecked with only the 600 g total on its row; unrelated checks remain and one brief list-level explanation says Shopping list updated. Items needing more are unchecked.
+- **WHEN** complete checked 400 g becomes complete 600 g on the same demand row
+- **THEN** only pasta unchecks and shows 600 g, with the existing one brief list-level increase explanation
 
 #### Scenario: Move to a larger-portion date
-- **WHEN** a move or replacement raises a checked ingredient requirement without changing any date count
-- **THEN** the same increase rule unchecks only the affected item and shows its new total
+- **WHEN** a move or correction provably increases continuing demand
+- **THEN** only that row resets regardless of the trigger
 
 #### Scenario: Recompute or decrease after the increase
-- **WHEN** the same saved counts are recomputed, or the count later decreases
-- **THEN** unchanged requirements do not trigger another check reset and decreases do not automatically mark anything purchased
+- **WHEN** saved demand is repeated or decreased
+- **THEN** no repeated reset or automatic purchase acknowledgement occurs
 
 #### Scenario: Shopper checks after the increase is applied
-- **WHEN** the increased requirement has been persisted and another member subsequently checks that updated ingredient
-- **THEN** the later check remains authoritative without a later unchanged recomputation clearing it or repeating the explanation
+- **WHEN** an increase was applied then the shopper checks it
+- **THEN** unchanged recomputation preserves that later check
+
+#### Scenario: Equivalent units and unknown changes
+- **WHEN** 500 g becomes 0.5 kg, or unknown becomes known, or incompatible units cannot be compared
+- **THEN** a proven continuing row keeps its check with no prior-unknown warning
+
+#### Scenario: Incompatible unit with stable contributor lineage
+- **WHEN** one continuing row changes from grams to an incompatible measure but retains a unique unchanged food/purchase and ingredient-occurrence lineage
+- **THEN** its identity/check are preserved because no demand increase is provable; a split/merge remains a separate structural transition
+
+#### Scenario: Ranges
+- **WHEN** complete 2–3 becomes 4–5 in a compatible continuing row
+- **THEN** the approved disjoint-interval proof resets it, while overlap 3–4 is unprovable and keeps its check
+
+#### Scenario: Cumulative overlaps do not advance baseline
+- **WHEN** a row checked at 2–3 changes to 3–4 and then 4–5 without a new unchecked-to-checked transition
+- **THEN** it stays checked at 3–4 with baseline 2–3 and unchecks at 4–5 because 4 exceeds original maximum 3
+
+#### Scenario: Redundant true and bulk writes do not acknowledge new demand
+- **WHEN** recomputation, repeated checked=true, retry or a full-map entry leaves an already checked row true
+- **THEN** its original checked-demand baseline remains unchanged; no overlapping update silently rebaselines it
+
+#### Scenario: Recheck captures a fresh requirement
+- **WHEN** a row is unchecked and then checked successfully at current 4–5
+- **THEN** its new baseline is 4–5 and repeated identical demand does not reset it
+
+#### Scenario: Unknown or decreased baseline journey
+- **WHEN** a checked demand decreases before rising again, or was unknown/incomplete when checked
+- **THEN** decreases do not lower its saved baseline and unknown baselines never become silently known from later demand; only a provable increase against the acknowledged baseline resets the check
 
 ### Requirement: Keep incomplete grocery scaling visible
 
@@ -975,8 +1082,9 @@ Known compatible partial totals SHALL appear once as known/incomplete subtotals 
 - **THEN** 400 g known appears once in the amount position, without a repeated subtotal, dot separator or separate warning row/margin
 
 #### Scenario: Quantity exists without a usable display unit
-- **WHEN** a numeric quantity lacks the usable unit needed by the existing amount-hint rule
-- **THEN** that display rule still applies, with no fabricated unit, total, Review amounts or replacement cue
+- **WHEN** a trusted numeric amount or known incomplete subtotal has no usable display unit
+- **THEN** that known amount appears once under the trusted-amount display rule, without a fabricated unit or claim that an incomplete subtotal is the full requirement
+- **AND** genuinely missing amounts remain without an invented number, Review amounts or replacement cue
 
 #### Scenario: Complete and intentionally unquantified rows
 - **WHEN** an amount is complete or content is intentionally unquantified such as salt to taste
@@ -1006,7 +1114,7 @@ Recipe-derived rows with contributors SHALL show a compact recipe-book control. 
 
 #### Scenario: No recipe contributors
 - **WHEN** an extra or legacy row has no contributor identity
-- **THEN** no book control, Used in heading, source title or fictitious link is shown, while any known-subtotal feedback and prior-check warning remain, without adding a cue for a wholly unknown current amount
+- **THEN** no book control, Used in heading, source title or fictitious link is shown, while any known-subtotal feedback and ordinary shopping state remain, without adding a cue for a wholly unknown current amount
 
 ### Requirement: Reuse loaded titles and resolve missing contributors lazily
 
@@ -1018,7 +1126,7 @@ Source disclosure SHALL use loaded Planner names first and resolve missing title
 
 #### Scenario: Lunch-only contributor is absent from supper cards
 - **WHEN** a grocery contributor has a recipe-bearing other-meal entry but no supper card in the loaded week
-- **THEN** expanding its sources resolves the missing name through the existing recipe GET while retaining the ingredient's quantity and warning state
+- **THEN** expanding its sources resolves the missing name through the existing recipe GET while retaining the ingredient's quantity and check state
 - **AND** duplicate references to that ID across rows or occurrences share one in-flight request
 
 #### Scenario: Grocery live refresh introduces another contributor
@@ -1041,25 +1149,23 @@ Source disclosure SHALL use loaded Planner names first and resolve missing title
 
 ### Requirement: Distinguish incomplete totals from prior unknown checked amounts
 
-A displayable numeric amount with quantityComplete=false SHALL remain a known subtotal; without a number no visible current-amount cue SHALL be added. prior_amount_unknown SHALL retain its distinct visible prior-check warning independently of completeness. A complete current amount remains a full total. Opening sources or recipes SHALL not acknowledge or clear either underlying state.
+Current completeness SHALL identify known subtotals independently of shopping checks. Prior-unknown checked-amount warnings and their special acknowledgement workflow SHALL be removed in both locales with no replacement cue. Unknown-to-known demand without a provable increase SHALL preserve a continuing row check.
 
 #### Scenario: Prior unknown amount is now complete
-- **WHEN** a checked row has prior_amount_unknown and a complete current 600 g total
-- **THEN** the row retains prior-check review feedback and displays 600 g as the full current amount rather than an incomplete subtotal
-- **AND** opening/closing sources or following a recipe link does not clear that marker
+- **WHEN** a checked continuing row changes from unknown to complete 600 g
+- **THEN** it remains checked, shows the full total and has no prior-check warning or acknowledgement
 
 #### Scenario: Both warning conditions occur
-- **WHEN** a row is incomplete and also has prior_amount_unknown
-- **THEN** the known subtotal, when present, appears once and the existing prior-check warning remains visible without Review amounts or duplicate generic calls to review
+- **WHEN** legacy data contains prior_amount_unknown and an incomplete current subtotal
+- **THEN** only the known subtotal appears once with no prior-check marker/copy or reserved warning space
 
 #### Scenario: Explicit shopping acknowledgement
-- **WHEN** the person explicitly submits a positive check for the affected name
-- **THEN** the existing check acknowledgement policy can clear its prior-unknown marker without falsely claiming incomplete quantities are resolved
-- **AND** unrelated checks and warnings retain their existing state
+- **WHEN** a shopper checks a row
+- **THEN** it is an ordinary check, with no additional acknowledgement state or claim that unknown quantities are resolved
 
 #### Scenario: Unknown current amount with prior-check warning
-- **WHEN** current quantity is unknown and prior_amount_unknown is present
-- **THEN** no current total or replacement cue is invented, while the existing prior-check row/list feedback remains and source consultation clears neither state
+- **WHEN** current amount is unknown and legacy prior_amount_unknown exists
+- **THEN** no numeric amount, warning, badge or replacement cue is shown
 
 ### Requirement: Preserve original quantity inspection from grocery sources
 
@@ -1077,11 +1183,11 @@ Each source link SHALL initially open original-quantity review independently of 
 #### Scenario: Choose Plan deliberately
 - **WHEN** Plan is activated in source review
 - **THEN** normal dated target checks and assignment/recovery protections apply before a subsequent assignment can be requested
-- **AND** merely transitioning neither clears quantity-warning markers nor acknowledges shopping checks
+- **AND** merely transitioning neither clears quantity state nor acknowledges shopping checks
 
 ### Requirement: Make source disclosure accessible and quiet
 
-The book control SHALL have a localized ingredient-specific name, expanded state and associated region, keyboard operation, visible focus and a 48 CSS px target. Collapsed source content SHALL be absent from reading/focus order. It SHALL stay distinct from checkboxes and aisle tags. Expanded titles and warnings SHALL wrap legibly at 320 CSS px, 200% text and English/French phone/tablet sizes.
+The book control SHALL have a localized ingredient-specific name, expanded state and associated region, keyboard operation, visible focus and a 48 CSS px target. Collapsed source content SHALL be absent from reading/focus order. It SHALL stay distinct from checkboxes and aisle tags. Expanded titles and known subtotals SHALL wrap legibly at 320 CSS px, 200% text and English/French phone/tablet sizes.
 
 #### Scenario: Keyboard and long French titles
 - **WHEN** a person expands sources by keyboard in a narrow French layout
@@ -1090,12 +1196,199 @@ The book control SHALL have a localized ingredient-specific name, expanded state
 
 ### Requirement: Keep quantity warnings outside collapsed sources
 
-Known-subtotal feedback and prior-unknown checked-amount review SHALL remain visible outside collapsed sources. A wholly unknown current amount SHALL carry no new visible cue after Review amounts is removed. Source expansion or Plan SHALL not clear quantity state or acknowledge checks. A complete total with prior_amount_unknown remains a full total plus its separate prior-check warning. Groceries SHALL gain no usual-portions setting/reset.
+Known-subtotal feedback SHALL remain outside collapsed sources when numeric partial totals exist. Wholly unknown amounts and prior-unknown check history SHALL add no warning or replacement clutter. Source consultation and Plan SHALL NOT acknowledge checks or change quantities. Groceries SHALL gain no usual-portions setting.
 
 #### Scenario: Incomplete and prior unknown together
-- **WHEN** a collapsed row has both incomplete quantities and prior_amount_unknown
-- **THEN** the known subtotal, if any, and prior-check warning remain outside expansion, independently of book and aisle controls; wholly unknown current amounts receive no replacement cue
+- **WHEN** a collapsed row has incomplete quantity and old prior-unknown state
+- **THEN** its known subtotal appears once, while prior-check feedback is absent
 
 #### Scenario: Complete amount with prior warning
-- **WHEN** current 600 g is complete but prior checked amount was unknown
-- **THEN** 600 g remains the full current amount with prior-check feedback, including after source consultation and Plan transition
+- **WHEN** current 600 g is complete and the old checked amount was unknown
+- **THEN** only the complete 600 g amount appears, and source consultation preserves checks
+
+### Requirement: Refresh derived groceries after canonical publication
+
+A committed canonical ingredient or basis correction SHALL retain the existing affected-week refresh obligation and freshness/retry behavior. Recalculation SHALL use unrounded current canonical quantities before normalization, conversion and aggregation, preserving manual extras and coordinated check transitions. Unsaved ingredient drafts and source inspection SHALL NOT publish grocery changes.
+
+#### Scenario: Correct a checked recipe requirement
+- **WHEN** a confirmed canonical Save raises a known weekly requirement
+- **THEN** its affected weeks follow the existing updating/current/failed journey and proven-increase-only row policy without changing unrelated checks or manual extras
+
+#### Scenario: Ingredient draft is not saved
+- **WHEN** a person changes an ingredient draft but no guarded Save publishes it
+- **THEN** current grocery quantities, freshness and checks remain derived from saved canonical facts
+
+#### Scenario: Repeat unchanged recomputation
+- **WHEN** current canonical facts and dated portions are recomputed again
+- **THEN** quantities do not compound and an already acknowledged increase does not reset checks again
+
+### Requirement: Preserve grocery uncertainty independently of repair flags
+
+Grocery completeness SHALL describe usable contributions rather than household report membership. Valid intentionally unquantified content SHALL remain ordinary; incomplete known subtotals, wholly unknown amounts, ordinary row checks and original-source inspection SHALL retain their established distinct behavior. Source consultation SHALL NOT clear validation or shopping state.
+
+#### Scenario: Incomplete contribution without a repair defect
+- **WHEN** a contribution is honestly unknown without an evidenced actionable recipe defect
+- **THEN** its grocery completeness remains honest without automatically flagging the recipe for human repair or adding a reading warning cue
+
+#### Scenario: Inspect a source after canonical correction
+- **WHEN** a shopper opens a contributor recipe
+- **THEN** it shows canonical original-basis evidence under the existing original-review context, not the dated subtotal
+- **AND** closing or entering Plan does not acknowledge checks, change ordinary checks or resolve household reports
+
+### Requirement: Keep bilingual grocery generation deterministic
+
+Grocery reads and recomputation SHALL use saved validated associations, labels, quantities and approved deterministic rules without AI or translation/provider calls. AI proposals SHALL be confined to import or explicitly requested reprocessing and SHALL not override protected corrections.
+
+#### Scenario: Provider unavailable
+- **WHEN** providers are unavailable after associations were saved
+- **THEN** groceries still compute and display deterministically
+
+#### Scenario: Uncertain alias
+- **WHEN** an ingestion proposal has ambiguous food or purchase meaning
+- **THEN** it remains unmapped with source spelling rather than merging speculatively
+
+### Requirement: Govern saved bilingual identity updates
+
+Accepted food labels and exact aliases SHALL reference app-owned release/food revisions and local model-authoring/review provenance. Model confidence SHALL NOT establish exact equivalence. A global release SHALL bind reviewed affected-set and reversal evidence; it SHALL NOT silently rewrite private corrections, saved meaning or checks.
+
+#### Scenario: Reviewed model-authored label revision
+- **WHEN** a proposed app-owned release renames a label without changing the reviewed food/purchase meaning
+- **THEN** stable IDs and saved corrections survive and only presentation changes
+
+#### Scenario: Private correction
+- **WHEN** one household corrects shopping name or category
+- **THEN** no global alias is automatically published
+
+#### Scenario: Release changes meaning
+- **WHEN** a proposed release changes an alias target or purchase qualifier
+- **THEN** the affected mappings, rows and manual-category conflicts are explicit in its reviewed transition/reversal evidence rather than silently migrated as labels
+
+### Requirement: Qualify a bounded model-authored vocabulary
+
+The app SHALL use a bounded model-authored vocabulary whose reviewed UTF-8 JSON format, release revision and raw hash are pinned. Accepted entries SHALL have stable app IDs, labels, exact aliases, purchase qualifiers and local provenance. No imported external dataset, licence/attribution package or download SHALL be required for this vocabulary.
+
+#### Scenario: Reviewed exact bilingual aliases
+- **WHEN** onion and oignon have individually reviewed exact aliases for the same fresh bulb-onion purchase
+- **THEN** qualified ingestion saves that food/release association rather than guessing from viewer locale
+
+#### Scenario: Active alias collision
+- **WHEN** a proposed release maps one exact match key to two different active purchase identities
+- **THEN** adoption rejects that collision before publishing the release or changing saved mappings
+
+#### Scenario: Model confidence without exact evidence
+- **WHEN** a model proposes a confident alias for an ambiguous term such as échalote
+- **THEN** it remains unmapped with source shopping spelling until its exact purchase meaning is reviewed
+
+#### Scenario: Purchase and unit distinctions
+- **WHEN** fresh/canned tomato or 400g/800g packages share a food name and a language alias
+- **THEN** purchase qualifiers/package facts remain separate and no capacity, regional-unit or mass-volume conversion is inferred
+
+### Requirement: Reload persisted vocabulary without inference
+
+The vocabulary SHALL persist as versioned UTF-8 JSON on disk with stable IDs, EN/FR labels or explicit missing labels, aliases, qualifiers, provenance and every referenced release. Reads, recomputation, restart and restore SHALL use persisted/restored bytes without AI, translation, external lookup, implicit reseed or regeneration.
+
+#### Scenario: Restart with providers unavailable
+- **WHEN** the app restarts with a valid persisted vocabulary and providers unavailable
+- **THEN** the same saved associations/labels load from disk without model/network calls or changed revision/hash
+
+#### Scenario: Missing referenced vocabulary
+- **WHEN** saved mappings require a missing or corrupt vocabulary file/release
+- **THEN** loading fails explicitly instead of substituting a seed, inventing labels or rewriting those mappings
+
+#### Scenario: Ordinary unmapped source
+- **WHEN** a source term has no accepted exact alias in the captured vocabulary
+- **THEN** it retains source shopping spelling and conservative fallback without a runtime translation request
+
+### Requirement: Guard vocabulary replacement by expected revision
+
+A vocabulary replacement SHALL validate its complete document and expected current revision/hash before publication. Stale or different valid existing data SHALL NOT be overwritten implicitly. Referenced prior releases SHALL remain available; interruption recovery SHALL retain the accepted operation/bytes rather than generate a new vocabulary.
+
+#### Scenario: Stale replacement
+- **WHEN** an update supplies an old expected revision/hash after another release commits
+- **THEN** it conflicts without replacing the current file or saved references
+
+#### Scenario: Existing valid vocabulary on installation
+- **WHEN** initial-install input encounters a different valid persisted/restored vocabulary
+- **THEN** it does not reseed or overwrite that file
+
+#### Scenario: Interrupted publication
+- **WHEN** publication commits accepted vocabulary bytes but delivery is interrupted
+- **THEN** recovery completes that retained operation without model regeneration or a new unreviewed revision
+
+### Requirement: Preserve protected shopping corrections
+
+Qualified mapping changes SHALL keep private human shopping names, explicit association clears and household category decisions protected. A changed or ambiguous purchase meaning SHALL clear or explicitly requalify its association, never retain an unrelated FoodId. Conflicting prior manual categories SHALL remain unresolved; private corrections SHALL NOT become global aliases.
+
+#### Scenario: Name changes purchase meaning
+- **WHEN** a person changes onion shopping meaning to canned tomato without a qualified same-food association
+- **THEN** the onion FoodId is cleared or explicitly requalified rather than retained behind the new name
+
+#### Scenario: Explicit mapping clear
+- **WHEN** a person saves a cleared mapping and delayed provider or reimport work completes
+- **THEN** the clear/protection survives and that work cannot revive the earlier association
+
+#### Scenario: Conflicting manual categories
+- **WHEN** aliases proposed for one food carry conflicting prior household aisle corrections
+- **THEN** all prior human decisions remain retained and the conflict is not resolved by source order, newest suggestion or model confidence
+
+### Requirement: Include vocabulary identities in full recovery
+
+Full backup SHALL retain exact vocabulary JSON and all referenced revisions, saved mapping/content links and protected household overrides/clears in one coherent captured set. Full restore SHALL validate format, hashes and complete reference membership before writes and restore those facts without network/model calls or bundled-seed substitution.
+
+#### Scenario: Full offline recovery round trip
+- **WHEN** a full backup is restored into an isolated destination and exported again offline
+- **THEN** IDs, JSON bytes/revisions, labels, aliases, qualifiers, provenance, saved references and private corrections remain exact
+
+#### Scenario: Invalid required identity artifact
+- **WHEN** restore encounters missing required JSON, unsupported format, checksum mismatch or unknown food/release reference
+- **THEN** it rejects before any destination write rather than partially restoring or replacing identity with fallback guesses
+
+#### Scenario: Vocabulary changes during capture
+- **WHEN** dictionary bytes and saved mapping/content revisions change during a backup capture
+- **THEN** capture either retains one coherent versioned set or rejects/retries under its existing fence; it cannot publish a valid-looking archive with dangling references
+
+### Requirement: Preserve check focus and viewport across sorting
+
+Checking or unchecking any row SHALL NOT focus Edit/category controls, open another action or scroll the viewport to the sorted destination. Keyboard focus SHALL remain useful on the same stable checkbox; if its row disappears, focus SHALL use a stable nearby list control without jumping.
+
+#### Scenario: Pointer and touch
+- **WHEN** an extra or normal row is checked by pointer/touch and moves in sort order
+- **THEN** scroll position is retained and Edit does not receive focus
+
+#### Scenario: Keyboard
+- **WHEN** Enter or Space toggles a row
+- **THEN** only that action fires and focus remains usable without scrolling to Edit
+
+#### Scenario: Projected extra disappears
+- **WHEN** checking a current extra removes it from a future-week shopping view
+- **THEN** focus moves to a stable adjacent list control only if needed without viewport jump
+
+### Requirement: Preserve culinary units without automatic metric conversion
+
+Cups, teaspoons and tablespoons SHALL remain independent quantity families. Equivalent English and French aliases SHALL normalize within each family; quantities SHALL NOT automatically convert to millilitres or between those families.
+
+#### Scenario: Bilingual cup and spoon aliases
+- **WHEN** current coherent ingredients declare cup/cups/tasse, tsp/teaspoon/c. à thé or tbsp/tablespoon/c. à soupe
+- **THEN** aliases aggregate within their own family with exact quantities preserved, independently of millilitres and the other families
+
+### Requirement: Preserve plans and rebuild every grocery list during migration
+
+Migration SHALL preserve every planned meal/calendar event and all protected household facts while recalculating grocery lists for every persisted list week and assignment-implied week. It SHALL preserve manual extras, corrections and history. An active list SHALL NOT require plan/event deletion or an empty-list gate.
+
+#### Scenario: Populated calendar at upgrade
+- **WHEN** migration starts with planned meals and cooking/non-cooking events in past, current and future weeks
+- **THEN** their IDs, dates, status, recipe links and serving/preparation facts remain unchanged
+- **AND** every persisted or assignment-implied grocery week is included in the rebuild inventory, without deleting events to obtain an empty-list state
+
+#### Scenario: Stored week has no current assignment
+- **WHEN** a persisted grocery-list week has no current recipe-bearing assignment
+- **THEN** migration still recalculates that week's recipe demand under the new model and preserves its manual extras and history
+
+#### Scenario: Assignment week has no stored grocery list
+- **WHEN** a preserved assignment implies a week without a persisted grocery list
+- **THEN** migration includes that week in the rebuild and creates its required derived list without duplicating the assignment or event
+
+#### Scenario: Bilingual identities in rebuilt lists
+- **WHEN** startup migration upgrades recipes and recomputes affected weeks using the persisted baseline vocabulary
+- **THEN** equivalent English and French ingredients resolve to unified `FoodId` buckets while retaining exact package/unit distinctions, saved overrides and conservative fallback for unmapped lines
+- **AND** recomputation performs no runtime AI or external translation calls

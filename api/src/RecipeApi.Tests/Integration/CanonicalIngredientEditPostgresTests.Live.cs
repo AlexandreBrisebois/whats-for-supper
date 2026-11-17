@@ -217,7 +217,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     Assert.Equal(preparedReceipt.Value.GetProperty("preparation").GetRawText(), projection.GetProperty("preparation").GetRawText());
                     var preparedPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                     var preparedRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(preparedPlan.GroceryItems)!;
-                    Assert.Equal(LegacyGroceryQuantity.Parse(preparedContext == "six" ? "300" : "250"), Assert.Single(preparedRows, x => x.NormalizedKey == "pasta").ExactQuantity);
+                    Assert.Equal(QuantityMath.Parse(preparedContext == "six" ? "300" : "250"), Assert.Single(preparedRows, x => x.NormalizedKey == "pasta").ExactQuantity);
                     await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projection, preparedReceipt, rows = preparedRows, preparedOccurrences, preparedHistory }, Json));
                     return;
                 }
@@ -230,7 +230,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     Assert.Equal(0, projected.ValidatedUses); Assert.Equal(2, projected.UncertainUses);
                     var fixedPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                     var fixedRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(fixedPlan.GroceryItems)!;
-                    Assert.Equal(LegacyGroceryQuantity.Parse("6"), Assert.Single(fixedRows, x => x.NormalizedKey == "oil").ExactQuantity);
+                    Assert.Equal(QuantityMath.Parse("6"), Assert.Single(fixedRows, x => x.NormalizedKey == "oil").ExactQuantity);
                     await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projected, rows = fixedRows }, Json));
                     return;
                 }
@@ -244,8 +244,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     Assert.Equal(0, projected.ValidatedUses); Assert.Equal(2, projected.UncertainUses);
                     var perItemPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                     var perItemRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(perItemPlan.GroceryItems)!;
-                    Assert.Equal(LegacyGroceryQuantity.Parse("12"), Assert.Single(perItemRows, x => x.NormalizedKey == "pieces").ExactQuantity);
-                    Assert.Equal(LegacyGroceryQuantity.Parse("6"), Assert.Single(perItemRows, x => x.NormalizedKey == "oil").ExactQuantity);
+                    Assert.Equal(QuantityMath.Parse("12"), Assert.Single(perItemRows, x => x.NormalizedKey == "pieces").ExactQuantity);
+                    Assert.Equal(QuantityMath.Parse("6"), Assert.Single(perItemRows, x => x.NormalizedKey == "oil").ExactQuantity);
                     await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projected, rows = perItemRows }, Json));
                     return;
                 }
@@ -257,7 +257,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     Assert.Equal(0, projected.ValidatedUses); Assert.Equal(2, projected.UncertainUses);
                     var remainderPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                     var remainderRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(remainderPlan.GroceryItems)!;
-                    Assert.Equal(LegacyGroceryQuantity.Parse("1"), Assert.Single(remainderRows, x => x.NormalizedKey == "oil").ExactQuantity);
+                    Assert.Equal(QuantityMath.Parse("1"), Assert.Single(remainderRows, x => x.NormalizedKey == "oil").ExactQuantity);
                     await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projected, rows = remainderRows }, Json));
                     return;
                 }
@@ -274,7 +274,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     Assert.Equal("Add half the pasta; cook 20 minutes at 180 °C.", projected.Sections[0].Steps[1].Text);
                     var fractionPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                     var fractionRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(fractionPlan.GroceryItems)!;
-                    Assert.Equal(LegacyGroceryQuantity.Parse("375"), Assert.Single(fractionRows, x => x.NormalizedKey == "pasta").ExactQuantity);
+                    Assert.Equal(QuantityMath.Parse("375"), Assert.Single(fractionRows, x => x.NormalizedKey == "pasta").ExactQuantity);
                     await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, projected, rows = fractionRows }, Json));
                     return;
                 }
@@ -292,7 +292,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     else Assert.Equal("50", content.InstructionSections[0].Steps[0].Bindings[0].GetProperty("payload").GetProperty("amount").GetProperty("value").GetProperty("n").GetString());
                     var allocationPlan = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                     var allocationRows = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(allocationPlan.GroceryItems)!;
-                    Assert.Equal(LegacyGroceryQuantity.Parse(uncertain ? "2" : split ? "4" : "375"), Assert.Single(allocationRows, x => x.NormalizedKey == (split ? "oil" : "pasta")).ExactQuantity);
+                    Assert.Equal(QuantityMath.Parse(uncertain ? "2" : split ? "4" : "375"), Assert.Single(allocationRows, x => x.NormalizedKey == (split ? "oil" : "pasta")).ExactQuantity);
                     await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, rows = allocationRows, projected }, Json));
                     return;
                 }
@@ -318,7 +318,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     var plan2 = await finalDb.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                     var rows2 = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan2.GroceryItems)!;
                     var pasta2 = Assert.Single(rows2, x => x.NormalizedKey == "pasta");
-                    Assert.Equal(LegacyGroceryQuantity.Parse(reportRefresh ? "600" : "500"), pasta2.ExactQuantity);
+                    Assert.Equal(QuantityMath.Parse(reportRefresh ? "600" : "500"), pasta2.ExactQuantity);
                     await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new { content, rows = rows2, projected }, Json));
                     return;
                 }
@@ -345,7 +345,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 using var baselines = JsonDocument.Parse(plan.GroceryCheckedDemandBaselines);
                 var baseline = baselines.RootElement.GetProperty(rows.Single(x => x.NormalizedKey == "pasta").RowId);
                 Assert.Equal("g", baseline.GetProperty("Unit").GetString());
-                Assert.Equal(LegacyGroceryQuantity.Parse(mixed ? "400" : "500"), baseline.GetProperty("Quantity").Deserialize<GroceryQuantity>());
+                Assert.Equal(QuantityMath.Parse(mixed ? "400" : "500"), baseline.GetProperty("Quantity").Deserialize<GroceryQuantity>());
                 if (mixed) Assert.False(baseline.GetProperty("QuantityComplete").GetBoolean());
                 await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new
                 { content, rows, checks, baseline, operations = await finalDb.CanonicalRecipeOperations.CountAsync() }, Json));

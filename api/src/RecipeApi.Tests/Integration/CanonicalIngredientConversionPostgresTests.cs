@@ -98,7 +98,7 @@ public class CanonicalIngredientConversionPostgresTests(ITestOutputHelper output
             using var client = factory.CreateAuthenticatedClient();
             var old = Assert.Single(converted.IngredientLines);
             var line = new RecipeApi.Dto.RecipeIngredientLineInput { Id = old.Id, Description = old.Description,
-                Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2", Unit = new("cup", null),
+                Amount = QuantityMath.Parse("2"), AmountText = "2", Unit = new("cup", null),
                 Scaling = old.Scaling, Package = old.Package, Shopping = old.Shopping };
             var response = await client.PatchAsJsonAsync($"/api/recipes/{id}", new
             { expectedContentRevision = converted.ContentRevision, ingredientLines = new[] { line } });

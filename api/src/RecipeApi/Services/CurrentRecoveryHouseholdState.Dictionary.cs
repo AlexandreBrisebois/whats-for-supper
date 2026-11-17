@@ -56,7 +56,7 @@ public sealed partial class CurrentRecoveryHouseholdState
             var known = GroceryUnit.Read(text);
             var family = known.Bucket switch { "g" => "mass", "ml" => "volume", "cup" => "cup", "tsp" => "tsp", "tbsp" => "tbsp", _ => null };
             if (family is not null)
-                Require(definition.Family == family && LegacyGroceryQuantity.Parse($"{known.Numerator}/{known.Denominator}")
+                Require(definition.Family == family && QuantityMath.Parse($"{known.Numerator}/{known.Denominator}")
                     == new GroceryQuantity("scalar", definition.Factor));
         }
         try
@@ -68,7 +68,7 @@ public sealed partial class CurrentRecoveryHouseholdState
             {
                 ct.ThrowIfCancellationRequested();
                 Require(Text(x.Id) && x.Family is "mass" or "volume" or "count" or "cup" or "tsp" or "tbsp"
-                    && x.Factor is not null && x.Factor.N != "0" && LegacyGroceryQuantity.IsCanonical(new("scalar", x.Factor))
+                    && x.Factor is not null && x.Factor.N != "0" && QuantityMath.IsCanonical(new("scalar", x.Factor))
                     && (x.Family == "count" ? Text(x.CountKind) : x.CountKind is null));
                 // No culinary-to-metric, cross-family or generic count factors.
                 if (x.Family is "cup" or "tsp" or "tbsp" or "count") Require(x.Factor == new GroceryRational("1", "1"));

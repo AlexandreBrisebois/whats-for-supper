@@ -27,7 +27,7 @@ public sealed partial class CanonicalRecipeReadTests
     public void ExactProjection_ScalesCanonicalOriginalsWithoutReplayingSourceOrChangingThem()
     {
         RecipeIngredientLineDto Line(string description, string? amount, string scaling = "proportional") => new() {
-            Id = Guid.NewGuid(), Description = description, Amount = amount is null ? null : LegacyGroceryQuantity.Parse(amount),
+            Id = Guid.NewGuid(), Description = description, Amount = amount is null ? null : QuantityMath.Parse(amount),
             AmountText = amount, Unit = new("cup", null), Scaling = scaling, Package = null,
             Shopping = new(description, null, null), Provenance = new("human", null, ["amount"]) };
         var content = new CanonicalRecipeContent(2, "saved-content", "saved-source", 3,
@@ -36,12 +36,12 @@ public sealed partial class CanonicalRecipeReadTests
             RawMetadata = """{"recipeIngredient":["9 cup stale"],"supply":[{"name":"stale","quantity":9,"unitText":"cup"}]}""" };
         var before = JsonSerializer.Serialize(recipe);
         var projected = SupperIngredientProjection.Read(recipe, 5);
-        Assert.Equal(LegacyGroceryQuantity.Parse("5/9"), projected[0].GroceryObservation.Quantity);
-        Assert.Equal(LegacyGroceryQuantity.Parse("10/3–5"), projected[1].GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("5/9"), projected[0].GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("10/3–5"), projected[1].GroceryObservation.Quantity);
         Assert.Null(projected[2].GroceryObservation.Quantity);
         Assert.Empty(projected[2].Issues);
-        Assert.Equal(LegacyGroceryQuantity.Parse("1"), projected[3].GroceryObservation.Quantity);
-        Assert.Equal(LegacyGroceryQuantity.Parse("1/3"), SupperIngredientProjection.Read(recipe, 3)[0].GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("1"), projected[3].GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("1/3"), SupperIngredientProjection.Read(recipe, 3)[0].GroceryObservation.Quantity);
         Assert.Equal(before, JsonSerializer.Serialize(recipe));
     }
 }

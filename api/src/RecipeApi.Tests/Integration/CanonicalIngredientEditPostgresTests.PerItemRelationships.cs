@@ -43,7 +43,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         };
         var oil = new RecipeIngredientLineInput
         {
-            ClientId = "per-item-oil", Description = french ? "huile" : "oil", Amount = LegacyGroceryQuantity.Parse("2"),
+            ClientId = "per-item-oil", Description = french ? "huile" : "oil", Amount = QuantityMath.Parse("2"),
             AmountText = "2", Unit = new(french ? "c. à thé" : "tsp", null), Scaling = "proportional", Package = null,
             Shopping = new(french ? "huile" : "oil", null, null)
         };
@@ -73,7 +73,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         Assert.Equal(content.IngredientLines[0].Id, count.GetProperty("ingredientLineId").GetGuid());
         Assert.Equal(content.IngredientLines[1].Id, use.GetProperty("ingredientLineId").GetGuid());
         Assert.Equal(count.GetProperty("id").GetGuid(), use.GetProperty("payload").GetProperty("countBindingId").GetGuid());
-        Assert.Equal(LegacyGroceryQuantity.Parse(dose), use.GetProperty("payload").GetProperty("dose")
+        Assert.Equal(QuantityMath.Parse(dose), use.GetProperty("payload").GetProperty("dose")
             .GetProperty("amount").Deserialize<GroceryQuantity>(Json));
         Assert.Equal(content.IngredientLines[1].Unit, use.GetProperty("payload").GetProperty("dose")
             .GetProperty("unit").Deserialize<RecipeUnitDto>(Json));
@@ -103,7 +103,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         foreach (var (key, amount) in new[] { ("tofu", tofu), (oilKey, oil), ("sauce", "200") })
         {
             var row = Assert.Single(groceries, row => row.NormalizedKey == key && row.RecipeIds.Contains(Id));
-            Assert.Equal(amount is null ? null : LegacyGroceryQuantity.Parse(amount), row.ExactQuantity);
+            Assert.Equal(amount is null ? null : QuantityMath.Parse(amount), row.ExactQuantity);
             if (amount is null) Assert.False(row.QuantityComplete);
         }
     }

@@ -94,7 +94,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
                 var groceries = JsonSerializer.Deserialize<List<GroceryLineItemDto>>((await db.WeeklyPlans.AsNoTracking()
                     .SingleAsync(x => x.WeekStartDate == monday)).GroceryItems)!;
-                Assert.Equal(LegacyGroceryQuantity.Parse("1"), Assert.Single(groceries,
+                Assert.Equal(QuantityMath.Parse("1"), Assert.Single(groceries,
                     row => row.NormalizedKey == "oil" && row.RecipeIds.Contains(Id)).ExactQuantity);
             }
 

@@ -319,7 +319,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
         Assert.Equal(2, operations.Length);
         var saved = Assert.Single(operations, operation => operation.Content.ContentRevision ==
             receipt.GetProperty("saved").GetProperty("contentRevision").GetString());
-        Assert.Equal(LegacyGroceryQuantity.Parse("250"), saved.Content.IngredientLines[0].Amount);
+        Assert.Equal(QuantityMath.Parse("250"), saved.Content.IngredientLines[0].Amount);
         Assert.Equal(content.SourceRevision, saved.Content.SourceRevision);
         var cleared = Assert.Single(operations, operation => operation.Content.ContentRevision == content.ContentRevision);
         Assert.Null(cleared.Content.IngredientLines[0].Amount);

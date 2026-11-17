@@ -78,7 +78,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
                 var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                 var groceries = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!;
-                Assert.Equal(LegacyGroceryQuantity.Parse("300"), Assert.Single(groceries,
+                Assert.Equal(QuantityMath.Parse("300"), Assert.Single(groceries,
                     x => x.NormalizedKey == "pasta" && x.RecipeIds.Contains(id)).ExactQuantity);
             });
     }
@@ -97,7 +97,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             var step = section.Steps[0];
             var raw = Assert.Single(step.Bindings);
             var forged = System.Text.Json.Nodes.JsonNode.Parse(raw.GetRawText())!;
-            forged["payload"]!["amount"] = JsonSerializer.SerializeToNode(LegacyGroceryQuantity.Parse("75"), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            forged["payload"]!["amount"] = JsonSerializer.SerializeToNode(QuantityMath.Parse("75"), new JsonSerializerOptions(JsonSerializerDefaults.Web));
             prepared = prepared with { Content = prepared.Content with { InstructionSections =
                 [section with { Steps = [step with { Bindings = [JsonSerializer.SerializeToElement(forged)] }, section.Steps[1]] }] } };
             var db = services.GetRequiredService<RecipeDbContext>();

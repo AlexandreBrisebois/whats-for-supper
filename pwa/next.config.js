@@ -1,8 +1,11 @@
+const isTestEnvironment = process.env.NEXT_PUBLIC_ENVIRONMENT === 'test';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   compress: true,
   output: 'standalone',
+  ...(isTestEnvironment ? { devIndicators: false } : {}),
   // Install metadata must be in the initial head for Apple/browser install discovery.
   htmlLimitedBots: /.*/,
   images: {
@@ -28,6 +31,7 @@ const nextConfig = {
   },
   typedRoutes: true,
   experimental: {
+    ...(isTestEnvironment ? { agentUpgrade: false } : {}),
     serverActions: {
       bodySizeLimit: '10mb',
     },

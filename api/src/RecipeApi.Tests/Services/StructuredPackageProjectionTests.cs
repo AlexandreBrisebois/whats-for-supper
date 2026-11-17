@@ -13,9 +13,9 @@ public sealed class StructuredPackageProjectionTests
         string? unit = "cans", int? basis = 4, string scaling = "proportional", bool package = true)
     {
         var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes",
-            Amount = count is null ? null : LegacyGroceryQuantity.Parse(count), AmountText = count,
+            Amount = count is null ? null : QuantityMath.Parse(count), AmountText = count,
             Unit = unit is null ? null : new(unit, null), Scaling = scaling,
-            Package = package ? new(new("cans", null), new(LegacyGroceryQuantity.Parse(capacity)!, new("g", null)), "net") : null,
+            Package = package ? new(new("cans", null), new(QuantityMath.Parse(capacity)!, new("g", null)), "net") : null,
             Shopping = new("tomatoes", null, null), Provenance = new("human", "retained-source", ["package"]) };
         var content = new CanonicalRecipeContent(2, "content", "source", basis, [row], []);
         return (new Recipe { Servings = basis, CanonicalContent = JsonSerializer.Serialize(content, Json),
@@ -31,7 +31,7 @@ public sealed class StructuredPackageProjectionTests
         Assert.Equal($"2 cans tomatoes ({capacity} g / cans; net)", line.OriginalText);
         Assert.Equal($"4 cans tomatoes ({capacity} g / cans; net)", line.DisplayText);
         Assert.Equal(line.OriginalText, CanonicalRecipeContentStore.Render(row));
-        Assert.Equal(LegacyGroceryQuantity.Parse("4"), line.GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse("4"), line.GroceryObservation.Quantity);
         Assert.Equal(row.Package, line.GroceryPackage);
         Assert.Equal("tomatoes", line.Name);
         Assert.Equal("cans", line.UnitText);
@@ -46,7 +46,7 @@ public sealed class StructuredPackageProjectionTests
         var (recipe, _) = Source(count);
         var line = Assert.Single(SupperIngredientProjection.Read(recipe, 6));
         Assert.Equal($"{projected} cans tomatoes (400 g / cans; net)", line.DisplayText);
-        Assert.Equal(LegacyGroceryQuantity.Parse(projected), line.GroceryObservation.Quantity);
+        Assert.Equal(QuantityMath.Parse(projected), line.GroceryObservation.Quantity);
     }
 
     [Theory]
@@ -69,7 +69,7 @@ public sealed class StructuredPackageProjectionTests
         var line = Assert.Single(SupperIngredientProjection.Read(recipe, 8));
         Assert.Equal(context == "unknownCount" ? "cans tomatoes (400 g / cans; net)" : "2 cans tomatoes (400 g / cans; net)", line.OriginalText);
         Assert.Equal(line.OriginalText, line.DisplayText);
-        if (context == "fixed") Assert.Equal(LegacyGroceryQuantity.Parse("2"), line.GroceryObservation.Quantity);
+        if (context == "fixed") Assert.Equal(QuantityMath.Parse("2"), line.GroceryObservation.Quantity);
         else Assert.Null(line.GroceryObservation.Quantity);
         if (context == "missingBasis") Assert.Contains("missing_basis", line.Issues);
     }

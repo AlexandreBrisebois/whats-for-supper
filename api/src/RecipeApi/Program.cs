@@ -77,6 +77,8 @@ try
     builder.Services.AddScoped<RecoverySnapshotService>();
     builder.Services.AddScoped<RecoveryBoundary>();
     builder.Services.AddScoped<FoodVocabularyStore>();
+    builder.Services.AddScoped<FoodVocabularySeeder>();
+    builder.Services.AddScoped<RecipeStartupMigrator>();
     builder.Services.AddScoped<GroceryPresentationService>();
     builder.Services.AddScoped<HouseholdFoodOverrideStore>();
     builder.Services.AddHostedService<RecoveryReconciler>();
@@ -428,10 +430,13 @@ try
     app.UseMiddleware<RecoveryBoundaryMiddleware>();
     app.MapControllers();
 
-    // Reconcile derivation changes before HTTP traffic and hosted workers can observe stale "current" groceries.
+    // Seed baseline vocabulary, migrate legacy recipes, and reconcile derivation changes before HTTP traffic and hosted workers begin.
     await using (var scope = app.Services.CreateAsyncScope())
     {
         var services = scope.ServiceProvider;
+        await services.GetRequiredService<RecoverySnapshotService>().ResumeIfInterruptedAsync(CancellationToken.None);
+        await services.GetRequiredService<FoodVocabularySeeder>().EnsureSeededAsync(CancellationToken.None);
+        await services.GetRequiredService<RecipeStartupMigrator>().MigrateAsync(CancellationToken.None);
         await services.GetRequiredService<SupperProjectionInvalidation>().ReconcileActivationAsync(
             services.GetRequiredService<RecoveryBoundary>(), services.GetRequiredService<RecoverySnapshotService>(), CancellationToken.None);
     }

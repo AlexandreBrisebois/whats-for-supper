@@ -166,7 +166,7 @@ public sealed partial class CurrentRecoveryHouseholdState
                         && Version(row.RowVersion) <= Version(outcome.ListVersion)
                         && row.WeekStartDate == outcome.WeekStartDate && row.Source == "recipe" && Text(row.DemandIdentity)
                         && Text(row.DisplayName) && Text(row.NormalizedKey) && GrocerySections.IsCanonicalName(row.Section)
-                        && (row.Quantity is null || LegacyGroceryQuantity.IsCanonical(row.Quantity))
+                        && (row.Quantity is null || QuantityMath.IsCanonical(row.Quantity))
                         && row.RecipeIds is { Length: > 0 } && row.RecipeIds.Distinct().Count() == row.RecipeIds.Length
                         && row.RecipeIds.All(recipeIds.Contains));
                 }

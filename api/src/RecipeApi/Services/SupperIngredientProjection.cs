@@ -58,12 +58,12 @@ public static class SupperIngredientProjection
             }
             var quantity = issues.Count == 0 && !unquantified ? ScaleAmount(amount, recipe.Servings, target) : null;
             if (quantity is null && amount is not null && issues.Count == 0) issues.Add("unreliable_amount");
+            var retainedToken = NumericToken(item, "quantity") ?? NumericToken(required, "value");
             result.Add(new IngredientProjectionLineDto
             {
-                GroceryRecordedNumberToken = NumericToken(item, "quantity") ?? NumericToken(required, "value"),
+                GroceryRecordedNumberToken = retainedToken,
                 GroceryObservation = bindings.ContainsKey(index)
-                    ? LegacyGroceryQuantity.Read(text, name, unit, NumericToken(item, "quantity") ?? NumericToken(required, "value"),
-                        basis: recipe.Servings, target: target)
+                    ? ObserveBoundLegacy(text, name, unit, retainedToken, recipe.Servings, target)
                     : new(null, "unresolved"),
                 OriginalText = text,
                 Name = name,
@@ -81,7 +81,7 @@ public static class SupperIngredientProjection
         return content.IngredientLines.Select(row =>
         {
             var quantity = target is null || row.Scaling == "fixed" ? row.Amount
-                : content.Servings is > 0 ? LegacyGroceryQuantity.Scale(row.Amount, target.Value, content.Servings.Value) : null;
+                : content.Servings is > 0 ? QuantityMath.Scale(row.Amount, target.Value, content.Servings.Value) : null;
             var issues = new List<string>();
             if (row.Amount is not null && quantity is null) issues.Add(content.Servings is not > 0 && target is not null ? "missing_basis" : "unreliable_amount");
             double? number = quantity?.Value is { } scalar && double.TryParse(scalar.N, System.Globalization.CultureInfo.InvariantCulture, out var n)
@@ -137,6 +137,52 @@ public static class SupperIngredientProjection
         }
         return result;
     }
+
+    private static GroceryQuantityObservation ObserveBoundLegacy(
+        string currentIngredient, string name, string? unit, string? retainedNumberToken, int? basis, int? target)
+    {
+        var text = NormalizeWhitespace(currentIngredient);
+        var suffix = NormalizeWhitespace(string.IsNullOrWhiteSpace(unit) ? name : $"{unit} {name}");
+        var source = text.EndsWith(" " + suffix, StringComparison.OrdinalIgnoreCase)
+            ? QuantityMath.Parse(text[..^(suffix.Length + 1)]) : null;
+        source ??= ReadQualifiedSource(text, name, unit);
+        var evidence = "current_ingredient_text";
+        if (source is null && retainedNumberToken is not null)
+        {
+            var token = double.TryParse(retainedNumberToken, System.Globalization.CultureInfo.InvariantCulture, out var parsedNumber) && parsedNumber == 0
+                ? "0" : retainedNumberToken;
+            source = QuantityMath.Parse(token);
+            evidence = "retained_numeric_token";
+        }
+        if (target is not null)
+        {
+            source = basis is > 0 && target > 0 ? QuantityMath.Scale(source, target.Value, basis.Value) : null;
+        }
+        return new(source, source is null ? "unresolved" : evidence);
+    }
+
+    private static GroceryQuantity? ReadQualifiedSource(string text, string name, string? unit)
+    {
+        if (text.Length > 256 || string.IsNullOrWhiteSpace(unit) || string.IsNullOrWhiteSpace(name)) return null;
+        const string preparation = @"(?:(?:finely |roughly )?(?:chopped|diced|sliced|minced)|haché[es]?|émincé[es]?)";
+        var description = @"^(?:" + preparation + @" )?" + Regex.Escape(NormalizeWhitespace(name))
+            + @"(?:, " + preparation + @")?$";
+        for (var amountEnd = text.IndexOf(' '); amountEnd > 0; amountEnd = text.IndexOf(' ', amountEnd + 1))
+        {
+            var amount = QuantityMath.Parse(text[..amountEnd]);
+            if (amount is null) continue;
+            var remainder = text[(amountEnd + 1)..];
+            for (var unitEnd = remainder.IndexOf(' '); unitEnd > 0; unitEnd = remainder.IndexOf(' ', unitEnd + 1))
+            {
+                if (GroceryUnit.Read(remainder[..unitEnd]) == GroceryUnit.Read(unit)
+                    && Regex.IsMatch(remainder[(unitEnd + 1)..], description, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+                    return amount;
+            }
+        }
+        return null;
+    }
+
+    private static string NormalizeWhitespace(string text) => Regex.Replace(text.Normalize(NormalizationForm.FormC), @"\s+", " ").Trim();
 
     private static string NormalizeName(string text) => Regex.Replace(text.Normalize(NormalizationForm.FormC).ToUpperInvariant(), @"\s+", " ").Trim();
 

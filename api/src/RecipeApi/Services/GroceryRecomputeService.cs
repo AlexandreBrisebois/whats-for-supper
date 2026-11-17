@@ -247,9 +247,9 @@ public partial class GroceryRecomputeService(
                 foreach (var item in g.Where(item => item.ExactQuantity is not null))
                 {
                     var definition = GroceryUnit.Read(item.UnitText);
-                    var converted = LegacyGroceryQuantity.Scale(item.ExactQuantity, definition.Numerator, definition.Denominator);
+                    var converted = QuantityMath.Scale(item.ExactQuantity, definition.Numerator, definition.Denominator);
                     if (converted is null) { bounded = false; break; }
-                    exactTotal = LegacyGroceryQuantity.Add(exactTotal, converted);
+                    exactTotal = QuantityMath.Add(exactTotal, converted);
                     if (exactTotal is null) { bounded = false; break; }
                 }
                 if (!bounded) exactTotal = null;
@@ -576,7 +576,7 @@ public partial class GroceryRecomputeService(
                 && count.TryGetProperty("text", out var countText) && countText.ValueKind == JsonValueKind.String
                 && package.TryGetProperty("capacity", out var capacity) && capacity.ValueKind == JsonValueKind.Object
                 && capacity.TryGetProperty("amount", out var amount) && amount.ValueKind == JsonValueKind.Object
-                && LegacyGroceryQuantity.IsCanonical(amount.Deserialize<GroceryQuantity>())
+                && QuantityMath.IsCanonical(amount.Deserialize<GroceryQuantity>())
                 && capacity.TryGetProperty("unit", out var unit) && unit.ValueKind == JsonValueKind.Object
                 && unit.TryGetProperty("text", out var unitText) && unitText.ValueKind == JsonValueKind.String
                 && package.TryGetProperty("basis", out var basis) && basis.ValueKind == JsonValueKind.String

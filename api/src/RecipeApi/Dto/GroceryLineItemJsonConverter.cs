@@ -16,9 +16,9 @@ public sealed class GroceryLineItemJsonConverter : JsonConverter<GroceryLineItem
         bool? Boolean(string key) => root.TryGetProperty(key, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean() : null;
         var quantity = root.TryGetProperty("quantity", out var q) ? q : default;
         GroceryQuantity? exact = quantity.ValueKind == JsonValueKind.Number
-            ? LegacyGroceryQuantity.Read("", "", null, quantity.GetRawText()).Quantity
+            ? QuantityMath.Parse(quantity.GetRawText())
             : quantity.ValueKind == JsonValueKind.Object ? quantity.Deserialize<GroceryQuantity>(options) : null;
-        if (quantity.ValueKind == JsonValueKind.Object && !LegacyGroceryQuantity.IsCanonical(exact))
+        if (quantity.ValueKind == JsonValueKind.Object && !QuantityMath.IsCanonical(exact))
             throw new JsonException("Invalid persisted exact grocery quantity.");
         double? numeric = quantity.ValueKind == JsonValueKind.Number && quantity.TryGetDouble(out var number) && double.IsFinite(number)
             ? number : exact?.Value is { } scalar ? double.Parse(scalar.N, CultureInfo.InvariantCulture) / double.Parse(scalar.D, CultureInfo.InvariantCulture) : null;
@@ -44,8 +44,8 @@ public sealed class GroceryLineItemJsonConverter : JsonConverter<GroceryLineItem
 
     public override void Write(Utf8JsonWriter writer, GroceryLineItemDto value, JsonSerializerOptions options)
     {
-        var exact = value.ExactQuantity ?? LegacyGroceryQuantity.Read("", "", null, null, value.Quantity).Quantity;
-        if (exact is not null && !LegacyGroceryQuantity.IsCanonical(exact)) throw new JsonException("Invalid exact grocery quantity.");
+        var exact = value.ExactQuantity ?? (value.Quantity.HasValue ? QuantityMath.Parse(value.Quantity.Value == 0 ? "0" : value.Quantity.Value.ToString("R", CultureInfo.InvariantCulture)) : null);
+        if (exact is not null && !QuantityMath.IsCanonical(exact)) throw new JsonException("Invalid exact grocery quantity.");
         // Internal numeric projection remains a compatibility observation. The wire
         // always carries bounded rational strings, never a rounded numeric authority.
         var fields = new Dictionary<string, object?>

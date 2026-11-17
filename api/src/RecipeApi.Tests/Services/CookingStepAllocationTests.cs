@@ -14,7 +14,7 @@ public sealed partial class CookingStepAllocationTests
     {
         var rowId = Guid.NewGuid();
         var unit = new RecipeUnitDto(splitOil ? "tbsp" : "g", null);
-        var amount = LegacyGroceryQuantity.Parse(splitOil ? "1" : "50");
+        var amount = QuantityMath.Parse(splitOil ? "1" : "50");
         var source = splitOil ? "Heat 1 tbsp oil." : "Add 50 g pasta from a 400 g package; cook 20 minutes at 180 °C.";
         var steps = Enumerable.Range(0, splitOil ? 2 : 1).Select(_ =>
         {
@@ -28,18 +28,18 @@ public sealed partial class CookingStepAllocationTests
             })]);
         }).ToArray();
         var row = new RecipeIngredientLineDto { Id = rowId, Description = splitOil ? "oil" : "pasta",
-            Amount = LegacyGroceryQuantity.Parse(splitOil ? "2" : "200"), AmountText = null, Package = null, Unit = unit, Scaling = "proportional",
+            Amount = QuantityMath.Parse(splitOil ? "2" : "200"), AmountText = null, Package = null, Unit = unit, Scaling = "proportional",
             Shopping = new(splitOil ? "oil" : "pasta", null, null), Provenance = new("human", null, []) };
         var before = new CanonicalRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
         var after = splitOil ? before : CookingStepProjection.Revalidate(before, before with
-        { ContentRevision = "after", IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("250") }] });
+        { ContentRevision = "after", IngredientLines = [row with { Amount = QuantityMath.Parse("250") }] });
         var result = CookingStepProjection.Read(after, splitOil ? 8 : 6);
         Assert.All(result.Sections[0].Steps, step => Assert.Equal(splitOil ? "Heat 2 tbsp oil." :
             "Add 75 g pasta from a 400 g package; cook 20 minutes at 180 °C.", step.Text));
         Assert.Equal(steps.Length, result.ValidatedUses);
         Assert.Equal(0, result.UncertainUses);
         Assert.All(after.InstructionSections[0].Steps, step => Assert.Equal(source, step.Text));
-        Assert.Equal(LegacyGroceryQuantity.Parse(splitOil ? "2" : "250"), after.IngredientLines[0].Amount);
+        Assert.Equal(QuantityMath.Parse(splitOil ? "2" : "250"), after.IngredientLines[0].Amount);
         if (!splitOil)
             Assert.Equal("50", after.InstructionSections[0].Steps[0].Bindings[0].GetProperty("payload").GetProperty("amount").GetProperty("value").GetProperty("n").GetString());
     }
@@ -61,7 +61,7 @@ public sealed partial class CookingStepAllocationTests
     public void ExhaustiveGroupsRequireCompleteCompatibleExactProof(string fault, int valid)
     {
         var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "oil",
-            Amount = LegacyGroceryQuantity.Parse("2"), AmountText = null, Package = null,
+            Amount = QuantityMath.Parse("2"), AmountText = null, Package = null,
             Unit = new("tbsp", null), Scaling = "proportional", Shopping = new("oil", null, null),
             Provenance = new("human", null, []) };
         var ids = new[] { Guid.NewGuid(), Guid.NewGuid() };
@@ -78,20 +78,20 @@ public sealed partial class CookingStepAllocationTests
                 validatedTextRevision = fault == "stale" && index == 1 ? "stale" : "text",
                 span = new { start = 4, end = 4 + spanText.Length, expectedText = spanText },
                 role = relative ? "fraction" : fault == "whole" && index == 1 ? "whole" : "absolute",
-                payload = new { fraction = new { n = "1", d = "2" }, amount = LegacyGroceryQuantity.Parse("1"), unit = new RecipeUnitDto(fault == "unit" && index == 1 ? "tsp" : "tbsp", null),
+                payload = new { fraction = new { n = "1", d = "2" }, amount = QuantityMath.Parse("1"), unit = new RecipeUnitDto(fault == "unit" && index == 1 ? "tsp" : "tbsp", null),
                     allocationGroup = new { id = group, exhaustive = fault != "alternative", bindingIds = fault == "duplicate" ? new[] { ids[0], ids[0] } : ids } },
                 status = "validated"
             })]);
         }).ToArray();
         var before = new CanonicalRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
         var content = fault == "reduced" ? CookingStepProjection.Revalidate(before, before with {
-            ContentRevision = "after", IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("1") }] }) : before;
+            ContentRevision = "after", IngredientLines = [row with { Amount = QuantityMath.Parse("1") }] }) : before;
         if (fault is "halvesCorrected" or "halfAndAbsoluteCorrected") content = CookingStepProjection.Revalidate(before, before with {
-            ContentRevision = "after", IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("3") }] });
+            ContentRevision = "after", IngredientLines = [row with { Amount = QuantityMath.Parse("3") }] });
         if (fault == "missing") content = content with { InstructionSections = [content.InstructionSections[0] with { Steps = [steps[0]] }] };
-        if (fault == "range") content = content with { IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("2–3") }] };
-        if (fault == "underallocated") content = content with { IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("3") }] };
-        if (fault == "ungrouped") content = content with { IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("1") }],
+        if (fault == "range") content = content with { IngredientLines = [row with { Amount = QuantityMath.Parse("2–3") }] };
+        if (fault == "underallocated") content = content with { IngredientLines = [row with { Amount = QuantityMath.Parse("3") }] };
+        if (fault == "ungrouped") content = content with { IngredientLines = [row with { Amount = QuantityMath.Parse("1") }],
             InstructionSections = content.InstructionSections.Select(section => section with { Steps = section.Steps.Select(step => step with {
                 Bindings = step.Bindings.Select(raw => { var node = System.Text.Json.Nodes.JsonNode.Parse(raw.GetRawText())!;
                     node["payload"]!.AsObject().Remove("allocationGroup"); return JsonSerializer.SerializeToElement(node); }).ToArray()
@@ -131,7 +131,7 @@ public sealed partial class CookingStepAllocationTests
     public void RelativeFractionRetainsWordingAndRevalidatesAgainstCurrentTotal(string fault, int valid)
     {
         var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "pasta",
-            Amount = LegacyGroceryQuantity.Parse("200"), AmountText = "200", Package = null,
+            Amount = QuantityMath.Parse("200"), AmountText = "200", Package = null,
             Unit = new("g", null), Scaling = fault == "fixed" ? "fixed" : "proportional",
             Shopping = new("pasta", null, null), Provenance = new("human", null, []) };
         var stepId = Guid.NewGuid();
@@ -149,13 +149,13 @@ public sealed partial class CookingStepAllocationTests
         var step = new RecipeInstructionStepDto(stepId, "Add half the pasta; cook 20 minutes at 180 °C.", "text", [raw]);
         if (fault == "overlap") step = step with { Bindings = [raw, JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), span = new { start = 4, end = 8 } })] };
         var before = new CanonicalRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, [step])]);
-        if (fault == "range") before = before with { IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("200–250") }] };
+        if (fault == "range") before = before with { IngredientLines = [row with { Amount = QuantityMath.Parse("200–250") }] };
         if (fault == "unknownTotal") before = before with { IngredientLines = [row with { Amount = null, AmountText = null }] };
-        if (fault == "overflow") before = before with { IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("99999999999999999999999999999999999999") }] };
+        if (fault == "overflow") before = before with { IngredientLines = [row with { Amount = QuantityMath.Parse("99999999999999999999999999999999999999") }] };
         var after = fault is "corrected" or "unitChanged" or "sourceChanged" or "wordingChanged"
             ? CookingStepProjection.Revalidate(before, before with { ContentRevision = "after",
                 SourceRevision = fault == "sourceChanged" ? "new-source" : "source",
-                IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("250"), AmountText = "250", Unit = fault == "unitChanged" ? new("cup", null) : row.Unit }],
+                IngredientLines = [row with { Amount = QuantityMath.Parse("250"), AmountText = "250", Unit = fault == "unitChanged" ? new("cup", null) : row.Unit }],
                 InstructionSections = [before.InstructionSections[0] with { Steps = [step with { Text = fault == "wordingChanged" ? "Add half the pasta, gently." : step.Text }] }] }) : before;
         var result = CookingStepProjection.Read(after, 6);
         Assert.Equal(valid, result.ValidatedUses);
@@ -187,7 +187,7 @@ public sealed partial class CookingStepAllocationTests
     public void RemainderRequiresClosedOrderedCompatibleProof(string fault, int valid, string rendered)
     {
         var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "oil",
-            Amount = LegacyGroceryQuantity.Parse("2"), AmountText = null, Package = null,
+            Amount = QuantityMath.Parse("2"), AmountText = null, Package = null,
             Unit = new("tbsp", null), Scaling = fault == "fixed" ? "fixed" : "proportional",
             Shopping = new("oil", null, null), Provenance = new("human", null, []) };
         var ids = new[] { Guid.NewGuid(), Guid.NewGuid() };
@@ -204,16 +204,16 @@ public sealed partial class CookingStepAllocationTests
                 role = index == 1 ? "remainder" : relative ? "fraction" : fault == "whole" ? "whole" : "absolute",
                 payload = new { allocationGroup = group, allocationGroupId = fault == "wrongGroup" ? Guid.NewGuid() : groupId,
                     predecessors = fault == "missing" ? Array.Empty<Guid>() : fault == "cycle" ? new[] { ids[1] } : new[] { ids[0] },
-                    amount = LegacyGroceryQuantity.Parse(fault == "rangePrior" ? "1–2" : "1"),
+                    amount = QuantityMath.Parse(fault == "rangePrior" ? "1–2" : "1"),
                     fraction = new { n = "1", d = "2" }, unit = new RecipeUnitDto(fault == "unit" ? "tsp" : "tbsp", null) }, status = "validated"
             })]);
         }).ToArray();
         var before = new CanonicalRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
-        if (fault is "fractionRange" or "scalarRange") before = before with { IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("2–3") }] };
+        if (fault is "fractionRange" or "scalarRange") before = before with { IngredientLines = [row with { Amount = QuantityMath.Parse("2–3") }] };
         if (fault == "unknown") before = before with { IngredientLines = [row with { Amount = null }] };
-        if (fault == "overflow") before = before with { IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("99999999999999999999999999999999999999") }] };
+        if (fault == "overflow") before = before with { IngredientLines = [row with { Amount = QuantityMath.Parse("99999999999999999999999999999999999999") }] };
         var after = fault is "corrected" or "reduced" or "zero" ? CookingStepProjection.Revalidate(before, before with {
-            ContentRevision = "after", IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse(fault == "corrected" ? "3" : fault == "zero" ? "1" : "1/2") }] }) : before;
+            ContentRevision = "after", IngredientLines = [row with { Amount = QuantityMath.Parse(fault == "corrected" ? "3" : fault == "zero" ? "1" : "1/2") }] }) : before;
         var result = CookingStepProjection.Read(after, 8);
         Assert.Equal(valid, result.ValidatedUses); Assert.Equal(2 - valid, result.UncertainUses);
         Assert.Equal($"Use {rendered} oil; cook 20 minutes at 180 °C.", result.Sections[0].Steps[1].Text);
@@ -246,10 +246,10 @@ public sealed partial class CookingStepAllocationTests
     public void PerItemScalesOnlySeparatelyProvenCount(string fault, int valid)
     {
         var countRow = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "pieces",
-            Amount = LegacyGroceryQuantity.Parse(fault == "range" ? "4–6" : fault == "overflow" ? "99999999999999999999999999999999999999" : "4"),
+            Amount = QuantityMath.Parse(fault == "range" ? "4–6" : fault == "overflow" ? "99999999999999999999999999999999999999" : "4"),
             AmountText = null, Unit = new("pieces", null), Package = null,
             Scaling = fault == "fixedCount" ? "fixed" : "proportional", Shopping = new("pieces", null, null), Provenance = new("human", null, []) };
-        var doseRow = countRow with { Id = Guid.NewGuid(), Description = "oil", Amount = LegacyGroceryQuantity.Parse("2"),
+        var doseRow = countRow with { Id = Guid.NewGuid(), Description = "oil", Amount = QuantityMath.Parse("2"),
             Unit = new("tsp", null), Scaling = "proportional", Shopping = new("oil", null, null) };
         var stepId = Guid.NewGuid(); var countId = Guid.NewGuid(); var doseId = Guid.NewGuid();
         const string text = "Spread 1/2 tsp on each of 4 pieces from a 400 g package; cook 20 minutes at 180 °C in a 20 cm pan.";
@@ -259,7 +259,7 @@ public sealed partial class CookingStepAllocationTests
         var dose = JsonSerializer.SerializeToElement(new { id = doseId, ingredientLineId = doseRow.Id, stepId,
             validatedContentRevision = "before", validatedTextRevision = "text",
             span = new { start = 7, end = 14, expectedText = "1/2 tsp" }, role = "perItem",
-            payload = new { dose = new { amount = LegacyGroceryQuantity.Parse(fault == "badDose" ? "1–2" : "1/2"),
+            payload = new { dose = new { amount = QuantityMath.Parse(fault == "badDose" ? "1–2" : "1/2"),
                 unit = new RecipeUnitDto(fault == "unit" ? "tbsp" : "tsp", null) },
                 countBindingId = fault == "missing" ? Guid.NewGuid() : fault == "cycle" ? doseId : countId }, status = "validated" });
         if (fault == "grouped") {
@@ -281,9 +281,9 @@ public sealed partial class CookingStepAllocationTests
         var after = fault is "correctedCount" or "correctedDoseTotal" or "countUnitChanged" or "countTextChanged" or "sourceChanged" ?
             CookingStepProjection.Revalidate(before, before with { ContentRevision = "after",
                 SourceRevision = fault == "sourceChanged" ? "new" : "source",
-                IngredientLines = [countRow with { Amount = LegacyGroceryQuantity.Parse(fault == "correctedCount" ? "6" : "4"),
+                IngredientLines = [countRow with { Amount = QuantityMath.Parse(fault == "correctedCount" ? "6" : "4"),
                     Unit = fault == "countUnitChanged" ? new("g", null) : countRow.Unit },
-                    doseRow with { Amount = LegacyGroceryQuantity.Parse(fault == "correctedDoseTotal" ? "3" : "2") }],
+                    doseRow with { Amount = QuantityMath.Parse(fault == "correctedDoseTotal" ? "3" : "2") }],
                 InstructionSections = [before.InstructionSections[0] with { Steps = [step with { Text = fault == "countTextChanged" ? text + " Changed." : text }] }] }) : before;
         var result = CookingStepProjection.Read(after, fault == "original" ? null : 8);
         Assert.Equal(valid, result.ValidatedUses);

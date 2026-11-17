@@ -284,7 +284,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.Equal("human", content.IngredientLines[0].Provenance.Origin);
             Assert.Contains("amount", content.IngredientLines[0].Provenance.ProtectedFields);
             Assert.Equal("Cook gently.", Assert.Single(Assert.Single(content.InstructionSections).Steps).Text);
-            Assert.Equal(LegacyGroceryQuantity.Parse("500"), SupperIngredientProjection.Read(repaired, 8)[0].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("500"), SupperIngredientProjection.Read(repaired, 8)[0].GroceryObservation.Quantity);
             using var repairedWire = JsonDocument.Parse((await db.RecipeFilePublications.AsNoTracking()
                 .SingleAsync(x => x.OperationId == repairExtract.TaskId)).Payload);
             Assert.Equal("review-canonical", repairedWire.RootElement.GetProperty("candidate").GetProperty("sourceKind").GetString());
@@ -350,12 +350,12 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             {
                 expectedContentRevision = initial.ContentRevision,
                 ingredientLines = initial.IngredientLines.Select((row, index) => PdfGuardRow(row) with
-                    { Amount = index == 0 ? LegacyGroceryQuantity.Parse("250") : row.Amount, AmountText = index == 0 ? "250" : row.AmountText })
+                    { Amount = index == 0 ? QuantityMath.Parse("250") : row.Amount, AmountText = index == 0 ? "250" : row.AmountText })
             });
             Assert.Equal(HttpStatusCode.OK, save.StatusCode);
             db.ChangeTracker.Clear();
             var edited = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id))!;
-            Assert.Equal(LegacyGroceryQuantity.Parse("250"), edited.IngredientLines[0].Amount);
+            Assert.Equal(QuantityMath.Parse("250"), edited.IngredientLines[0].Amount);
             Assert.Equal(initial.SourceRevision, edited.SourceRevision);
             Assert.Equal(initial.IngredientLines.Select(x => x.Id), edited.IngredientLines.Select(x => x.Id));
             Assert.Equal(JsonSerializer.Serialize(initial.InstructionSections), JsonSerializer.Serialize(edited.InstructionSections));
@@ -364,14 +364,14 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
             var rows = JsonSerializer.Deserialize<GroceryLineItemDto[]>(plan.GroceryItems)!;
             var pasta = Assert.Single(rows, x => x.NormalizedKey == "pasta");
-            Assert.Equal(LegacyGroceryQuantity.Parse("500"), pasta.ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("500"), pasta.ExactQuantity);
             Assert.Equal(id, Assert.Single(pasta.RecipeIds));
-            Assert.Equal(LegacyGroceryQuantity.Parse("200"), Assert.Single(rows, x => x.NormalizedKey == "sauce").ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("200"), Assert.Single(rows, x => x.NormalizedKey == "sauce").ExactQuantity);
             Assert.Equal(controls, await Controls());
             var readOnly = await PdfGuardSnapshotAsync(db, store, id);
             var detail = (await client.GetFromJsonAsync<RecipeDetailResponseDto>($"/api/recipes/{id}"))!.Recipe;
             Assert.Equal(edited.ContentRevision, detail!.ContentRevision);
-            Assert.Equal(LegacyGroceryQuantity.Parse("250"), detail.IngredientLines![0].Amount);
+            Assert.Equal(QuantityMath.Parse("250"), detail.IngredientLines![0].Amount);
             using var projection = await client.GetAsync($"/api/recipes/{id}/ingredient-projection?supperDate={monday:yyyy-MM-dd}&context=assigned&occurrenceId={occurrence.Id}");
             Assert.Equal(HttpStatusCode.OK, projection.StatusCode);
             using var projected = JsonDocument.Parse(await projection.Content.ReadAsStringAsync());

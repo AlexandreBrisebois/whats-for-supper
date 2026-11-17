@@ -80,13 +80,13 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.Equal(content.SourceRevision, evidence.GetProperty("sourceRevision").GetString());
         }
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        Assert.Equal(LegacyGroceryQuantity.Parse("4"), count.GetProperty("payload").GetProperty("relationshipEvidence")
+        Assert.Equal(QuantityMath.Parse("4"), count.GetProperty("payload").GetProperty("relationshipEvidence")
             .GetProperty("originalAmount").Deserialize<GroceryQuantity>(options));
-        Assert.Equal(LegacyGroceryQuantity.Parse("1/2"), dose.GetProperty("payload").GetProperty("dose")
+        Assert.Equal(QuantityMath.Parse("1/2"), dose.GetProperty("payload").GetProperty("dose")
             .GetProperty("amount").Deserialize<GroceryQuantity>(options));
         Assert.Equal(content.IngredientLines[1].Unit, dose.GetProperty("payload").GetProperty("dose")
             .GetProperty("unit").Deserialize<RecipeUnitDto>(options));
-        Assert.Equal(LegacyGroceryQuantity.Parse("1/2"), dose.GetProperty("payload").GetProperty("relationshipEvidence")
+        Assert.Equal(QuantityMath.Parse("1/2"), dose.GetProperty("payload").GetProperty("relationshipEvidence")
             .GetProperty("originalAmount").Deserialize<GroceryQuantity>(options));
     }
 
@@ -190,7 +190,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 var groceries = JsonSerializer.Deserialize<List<GroceryLineItemDto>>((await db.WeeklyPlans.AsNoTracking()
                     .SingleAsync(plan => plan.WeekStartDate == monday)).GroceryItems)!;
                 foreach (var (key, expected) in new[] { ("tofu", "8"), (french ? "huile" : "oil", "4"), ("sauce", "200") })
-                    Assert.Equal(LegacyGroceryQuantity.Parse(expected), Assert.Single(groceries,
+                    Assert.Equal(QuantityMath.Parse(expected), Assert.Single(groceries,
                         row => row.NormalizedKey == key && row.RecipeIds.Contains(id)).ExactQuantity);
                 var management = services.GetRequiredService<ManagementService>();
                 await management.BackupAsync();
@@ -239,7 +239,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                     "For all 4 pieces of tofu, use exactly 1/2 tsp of oil on each piece.", "4");
                 var count = prepared.Content.IngredientLines[0] with
                     { Description = "tofu", Unit = new("pieces", null), Shopping = new("tofu", null, null) };
-                var oil = count with { Id = Guid.NewGuid(), Description = "oil", Amount = LegacyGroceryQuantity.Parse("2"), AmountText = "2",
+                var oil = count with { Id = Guid.NewGuid(), Description = "oil", Amount = QuantityMath.Parse("2"), AmountText = "2",
                     Unit = new("tsp", null), Shopping = new("oil", null, null) };
                 var section = prepared.Content.InstructionSections[0];
                 prepared = prepared with { Content = prepared.Content with

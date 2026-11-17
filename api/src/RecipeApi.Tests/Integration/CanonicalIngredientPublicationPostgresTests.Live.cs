@@ -397,7 +397,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                         Assert.Equal("whole", bindings[0].GetProperty("role").GetString());
                         Assert.Equal("perItem", bindings[1].GetProperty("role").GetString());
                         Assert.Equal(bindings[0].GetProperty("id").GetGuid(), bindings[1].GetProperty("payload").GetProperty("countBindingId").GetGuid());
-                        Assert.Equal(LegacyGroceryQuantity.Parse("1/3"), bindings[1].GetProperty("payload").GetProperty("dose")
+                        Assert.Equal(QuantityMath.Parse("1/3"), bindings[1].GetProperty("payload").GetProperty("dose")
                             .GetProperty("amount").Deserialize<GroceryQuantity>(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
                         var projected = CookingStepProjection.Read(current, 8);
                         Assert.Equal(3, projected.ValidatedUses);

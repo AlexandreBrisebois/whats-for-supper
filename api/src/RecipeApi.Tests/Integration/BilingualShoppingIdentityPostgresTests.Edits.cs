@@ -79,7 +79,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
         ExpectedContentRevision = content.ContentRevision,
         IngredientLines = JsonSerializer.SerializeToElement(content.IngredientLines.Select((line, index) => new RecipeIngredientLineInput
         {
-            Id = line.Id, Description = line.Description, Amount = index == 0 ? LegacyGroceryQuantity.Parse(amount) : line.Amount,
+            Id = line.Id, Description = line.Description, Amount = index == 0 ? QuantityMath.Parse(amount) : line.Amount,
             AmountText = index == 0 ? amount : line.AmountText, Unit = line.Unit, Scaling = line.Scaling, Package = line.Package,
             Shopping = index == 0 ? shopping ?? line.Shopping : line.Shopping
         }), Json)

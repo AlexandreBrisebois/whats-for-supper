@@ -17,6 +17,7 @@ public sealed record FoodVocabularyMatch(string DictionaryRevision, CurrentRecov
 public sealed class FoodVocabularyCapture
 {
     private readonly byte[] bytes;
+    private FoodVocabularyDefinitions? _definitions;
     public FoodVocabularyReference Reference { get; }
     public int ResolverPolicyVersion { get; }
     public byte[] RawBytes => bytes.ToArray();
@@ -29,11 +30,13 @@ public sealed class FoodVocabularyCapture
     }
     public FoodVocabularyDefinitions Definitions()
     {
+        if (_definitions is not null) return _definitions;
         FoodVocabularyDefinitions.ValidateReference(Reference);
         if (ResolverPolicyVersion != 1 || FoodVocabularyDefinitions.Sha256(bytes) != Reference.Sha256)
             throw new InvalidDataException("Captured vocabulary policy or raw hash differs.");
         var definitions = FoodVocabularyDefinitions.Read(bytes);
         if (definitions.Revision != Reference.Revision) throw new InvalidDataException("Vocabulary revision differs from its reference.");
+        _definitions = definitions;
         return definitions;
     }
 }
@@ -41,6 +44,7 @@ public sealed class FoodVocabularyCapture
 public sealed class FoodVocabularyAuthority
 {
     private readonly FoodVocabularyCapture[] captures;
+    private bool _validated;
     public FoodVocabularyReference? ActiveRef { get; }
     public FoodVocabularyCapture[] Captures => captures.ToArray();
     [JsonConstructor]
@@ -51,25 +55,27 @@ public sealed class FoodVocabularyAuthority
     }
     public void Validate()
     {
+        if (_validated) return;
         var seen = new HashSet<FoodVocabularyReference>();
         var revisions = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var item in Captures)
+        foreach (var item in captures)
         {
             if (item is null || !seen.Add(item.Reference)) throw new InvalidDataException("Duplicate vocabulary authority.");
             _ = item.Definitions();
             if (!revisions.Add(item.Reference.Revision)) throw new InvalidDataException("Conflicting vocabulary revision.");
         }
         if (ActiveRef is not null && !seen.Contains(ActiveRef)) throw new InvalidDataException("Active vocabulary document is absent.");
+        _validated = true;
     }
     public FoodVocabularyDefinitions? ActiveDefinitions()
     {
         Validate();
-        return ActiveRef is null ? null : Captures.Single(x => x.Reference == ActiveRef).Definitions();
+        return ActiveRef is null ? null : captures.Single(x => x.Reference == ActiveRef).Definitions();
     }
     public FoodVocabularyCapture Find(FoodVocabularyReference reference)
     {
         Validate();
-        return Captures.SingleOrDefault(x => x.Reference == reference)
+        return captures.SingleOrDefault(x => x.Reference == reference)
             ?? throw new InvalidDataException("Required retained vocabulary authority is absent.");
     }
 }
@@ -86,6 +92,7 @@ public sealed class FoodVocabularyDefinitions
     };
     private readonly FoodVocabularyDocument document;
     private readonly Dictionary<string, FoodVocabularyMatch?> aliases = new(StringComparer.Ordinal);
+    private readonly Dictionary<(string, string), FoodVocabularyMatch?> releaseAliases = [];
     private readonly Dictionary<(string, Guid), CurrentRecoveryFood> foods = [];
     public string Revision => document.Revision;
     public static string Sha256(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
@@ -141,7 +148,7 @@ public sealed class FoodVocabularyDefinitions
         {
             Require(unit is not null && Text(unit.Id) && unitIds.Add(unit.Id) && unit.Aliases is { Length: > 0 }
                 && unit.Family is "mass" or "volume" or "count" or "cup" or "tsp" or "tbsp"
-                && unit.Factor is not null && unit.Factor.N != "0" && LegacyGroceryQuantity.IsCanonical(new("scalar", unit.Factor))
+                && unit.Factor is not null && unit.Factor.N != "0" && QuantityMath.IsCanonical(new("scalar", unit.Factor))
                 && (unit.Family == "count" ? Text(unit.CountKind) : unit.CountKind is null));
             if (unit!.Family is "count" or "cup" or "tsp" or "tbsp") Require(unit.Factor == new GroceryRational("1", "1"));
             foreach (var alias in unit.Aliases)
@@ -149,7 +156,7 @@ public sealed class FoodVocabularyDefinitions
                 Require(alias is not null && Locale(alias.Locale) && Text(alias.Text) && unitAliases.Add((alias.Locale, MatchKey(alias.Text))));
                 var known = GroceryUnit.Read(alias!.Text);
                 var family = known.Bucket switch { "g" => "mass", "ml" => "volume", "cup" => "cup", "tsp" => "tsp", "tbsp" => "tbsp", _ => null };
-                if (family is not null) Require(unit.Family == family && LegacyGroceryQuantity.Parse($"{known.Numerator}/{known.Denominator}") == new GroceryQuantity("scalar", unit.Factor));
+                if (family is not null) Require(unit.Family == family && QuantityMath.Parse($"{known.Numerator}/{known.Denominator}") == new GroceryQuantity("scalar", unit.Factor));
             }
         }
         Require(value.Releases!.All(x => x is not null) && value.Releases.Count(x => x.Revision == value.Revision) == 1);
@@ -177,12 +184,16 @@ public sealed class FoodVocabularyDefinitions
                 {
                     Require(alias is not null && Locale(alias.Locale) && Text(alias.Text) && alias.MatchKey == MatchKey(alias.Text)
                         && alias.Relation == "exact" && Text(alias.SourceRef) && alias.ReviewedAt != default && unique.Add((alias.Locale, alias.MatchKey)));
-                    if (food.Status != "validated" || release.Revision != value.Revision) continue;
-                    var key = (alias!.Locale, alias.MatchKey);
+                    if (food.Status != "validated") continue;
+                    var releaseMatch = new FoodVocabularyMatch(release.Revision, food);
+                    var releaseKey = (release.Revision, alias!.MatchKey);
+                    if (!releaseAliases.TryGetValue(releaseKey, out var existingRelease)) releaseAliases.Add(releaseKey, releaseMatch);
+                    else if (existingRelease?.Food.Id != food.Id) releaseAliases[releaseKey] = null;
+                    if (release.Revision != value.Revision) continue;
+                    var key = (alias.Locale, alias.MatchKey);
                     Require(!exact.TryGetValue(key, out var old) || old == food.Id);
                     exact[key] = food.Id;
-                    var match = new FoodVocabularyMatch(release.Revision, food);
-                    if (!aliases.TryGetValue(alias.MatchKey, out var existing)) aliases.Add(alias.MatchKey, match);
+                    if (!aliases.TryGetValue(alias.MatchKey, out var existing)) aliases.Add(alias.MatchKey, releaseMatch);
                     else if (existing?.Food.Id != food.Id) aliases[alias.MatchKey] = null; // Ambiguity never selects an arbitrary food.
                 }
                 foods.Add((release.Revision, food.Id), food);
@@ -190,18 +201,23 @@ public sealed class FoodVocabularyDefinitions
         }
     }
 
+    private static CurrentRecoveryFood CloneFood(CurrentRecoveryFood food) => new(
+        food.Id,
+        food.Revision,
+        food.Labels,
+        new Dictionary<string, string>(food.Qualifiers, StringComparer.Ordinal),
+        food.Status,
+        food.Aliases.ToArray());
+
     public FoodVocabularyMatch? Resolve(string phrase)
     {
         if (!aliases.TryGetValue(MatchKey(phrase), out var match) || match is null) return null;
-        return match with { Food = JsonSerializer.Deserialize<CurrentRecoveryFood>(JsonSerializer.Serialize(match.Food, Json), Json)! };
+        return match with { Food = CloneFood(match.Food) };
     }
     internal FoodVocabularyMatch? ResolveInRelease(string phrase, string release)
     {
-        var key = MatchKey(phrase);
-        var matches = foods.Where(x => x.Key.Item1 == release && x.Value.Status == "validated"
-            && x.Value.Aliases.Any(alias => alias.MatchKey == key)).Select(x => x.Value).ToArray();
-        return matches.Select(x => x.Id).Distinct().Count() == 1
-            ? new(release, JsonSerializer.Deserialize<CurrentRecoveryFood>(JsonSerializer.Serialize(matches[0], Json), Json)!) : null;
+        if (!releaseAliases.TryGetValue((release, MatchKey(phrase)), out var match) || match is null) return null;
+        return match with { Food = CloneFood(match.Food) };
     }
     internal CurrentRecoveryFood RequireFood(string release, Guid id, string foodRevision)
     {

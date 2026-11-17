@@ -59,6 +59,16 @@ export const test = base.extend<{ appLocale: 'en' | 'fr'; dateOnlyClock: boolean
     // Match LOCALE_KEY from pwa/src/locales/index.ts
     await page.addInitScript((locale) => {
       window.localStorage.setItem('locale', locale);
+      const suppressNextDevPortal = () => {
+        if (!document.head || document.getElementById('wfs-hide-nextjs-portal')) return;
+        const style = document.createElement('style');
+        style.id = 'wfs-hide-nextjs-portal';
+        style.textContent =
+          'nextjs-portal { display: none !important; pointer-events: none !important; }';
+        document.head.appendChild(style);
+      };
+      if (document.head) suppressNextDevPortal();
+      else document.addEventListener('DOMContentLoaded', suppressNextDevPortal, { once: true });
     }, appLocale);
 
     page.on('request', (request) => {

@@ -9,7 +9,7 @@ namespace RecipeApi.Tests.Services;
 public sealed partial class CookingStepRelationshipProducerTests
 {
     private static CanonicalRecipeContent Content(string text, string description = "pasta", string quantity = "200", params string[] otherSteps) => new(2, "content", "source", 4,
-        [new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = description, Amount = LegacyGroceryQuantity.Parse(quantity),
+        [new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = description, Amount = QuantityMath.Parse(quantity),
             AmountText = quantity, Unit = new("g", null), Scaling = "proportional", Package = null, Shopping = new(description, null, null), Provenance = new("source", "source", []) }],
         [new(Guid.NewGuid(), null, new[] { text }.Concat(otherSteps).Select(t => new RecipeInstructionStepDto(Guid.NewGuid(), t, Guid.NewGuid().ToString(), [])).ToArray())]);
 
@@ -41,7 +41,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         var result = CookingStepRelationshipProducer.Discover(original);
         var binding = Assert.Single(result.InstructionSections[0].Steps[0].Bindings);
         Assert.Equal("absolute", binding.GetProperty("role").GetString());
-        Assert.Equal(LegacyGroceryQuantity.Parse("50"), binding.GetProperty("payload").GetProperty("amount").Deserialize<GroceryQuantity>(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.Equal(QuantityMath.Parse("50"), binding.GetProperty("payload").GetProperty("amount").Deserialize<GroceryQuantity>(new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         Assert.Equal(text, result.InstructionSections[0].Steps[0].Text);
         Assert.Equal(original.IngredientLines, result.IngredientLines);
         Assert.Equal(projected, CookingStepProjection.Read(result, 6).Sections[0].Steps[0].Text);
@@ -75,7 +75,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         const string text = "Add half of the pasta (100 g).";
         var before = CookingStepRelationshipProducer.Discover(Content(text));
         var prior = Assert.Single(before.InstructionSections[0].Steps[0].Bindings);
-        var after = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Parse("250"), AmountText = "250" }] };
+        var after = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with { Amount = QuantityMath.Parse("250"), AmountText = "250" }] };
         var result = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, after), before);
         Assert.Equal(text, result.InstructionSections[0].Steps[0].Text);
         Assert.Equal("Add half of the pasta (187.5 g).", CookingStepProjection.Read(result, 6).Sections[0].Steps[0].Text);
@@ -132,7 +132,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void AnnotatedHalfDoesNotRemoveIndependentOtherRowWholeProof(string halfText, string description, string sauceText, string projectedSauce)
     {
         var original = Content(halfText, description, "200", sauceText);
-        var sauce = original.IngredientLines[0] with { Id = Guid.NewGuid(), Description = "sauce", Amount = LegacyGroceryQuantity.Parse("100"),
+        var sauce = original.IngredientLines[0] with { Id = Guid.NewGuid(), Description = "sauce", Amount = QuantityMath.Parse("100"),
             AmountText = "100", Unit = new("ml", null), Shopping = new("sauce", null, null) };
         original = original with { IngredientLines = [original.IngredientLines[0], sauce] };
         var result = CookingStepRelationshipProducer.Discover(original);
@@ -188,7 +188,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     {
         var before = CookingStepRelationshipProducer.Discover(MultipleUses());
         var originalIds = before.InstructionSections[0].Steps.Select(step => Assert.Single(step.Bindings).GetProperty("id").GetGuid()).ToArray();
-        var changed = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Parse("3"), AmountText = "3" }] };
+        var changed = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with { Amount = QuantityMath.Parse("3"), AmountText = "3" }] };
         var corrected = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, changed), before);
         Assert.Equal(originalIds, corrected.InstructionSections[0].Steps.Select(step => Assert.Single(step.Bindings).GetProperty("id").GetGuid()));
         Assert.Equal(new[] { "Add 2 tbsp oil.", "Use 2 tbsp oil." }, CookingStepProjection.Read(corrected, 8).Sections[0].Steps.Select(step => step.Text));
@@ -206,7 +206,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void MultipleUsesAcrossSectionsDoNotRequireAClosedOrExhaustiveSum()
     {
         var original = MultipleUses();
-        original = original with { IngredientLines = [original.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Parse("4"), AmountText = "4" }],
+        original = original with { IngredientLines = [original.IngredientLines[0] with { Amount = QuantityMath.Parse("4"), AmountText = "4" }],
             InstructionSections = [original.InstructionSections[0] with { Steps = [original.InstructionSections[0].Steps[0]] }, new(Guid.NewGuid(), "Finish", [original.InstructionSections[0].Steps[1]])] };
         var result = CookingStepRelationshipProducer.Discover(original);
         Assert.All(result.InstructionSections.SelectMany(section => section.Steps), step => Assert.Single(step.Bindings));
@@ -251,7 +251,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     {
         var before = CookingStepRelationshipProducer.Discover(Content("Add 50 g pasta."));
         var prior = Assert.Single(before.InstructionSections[0].Steps[0].Bindings);
-        var after = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Parse("250"), AmountText = "250" }] };
+        var after = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with { Amount = QuantityMath.Parse("250"), AmountText = "250" }] };
         var result = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, after), before);
         Assert.Equal("Add 75 g pasta.", CookingStepProjection.Read(result, 6).Sections[0].Steps[0].Text);
         Assert.Equal(prior.GetProperty("id").GetGuid(), Assert.Single(result.InstructionSections[0].Steps[0].Bindings).GetProperty("id").GetGuid());
@@ -289,7 +289,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         foreach (var property in new[] { "amount", "unit", "role", "validatedContentRevision" })
         {
             var node = JsonNode.Parse(binding.GetRawText())!;
-            if (property == "amount") node["payload"]![property] = JsonSerializer.SerializeToNode(LegacyGroceryQuantity.Parse("60"), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            if (property == "amount") node["payload"]![property] = JsonSerializer.SerializeToNode(QuantityMath.Parse("60"), new JsonSerializerOptions(JsonSerializerDefaults.Web));
             else if (property == "unit") node["payload"]![property] = JsonSerializer.SerializeToNode(new RecipeUnitDto("ml", null), new JsonSerializerOptions(JsonSerializerDefaults.Web));
             else node[property] = "forged";
             var changed = original with { InstructionSections = [original.InstructionSections[0] with { Steps = [original.InstructionSections[0].Steps[0] with { Bindings = [JsonSerializer.SerializeToElement(node)] }] }] };
@@ -309,7 +309,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         row = change switch
         {
             "clear" => row with { Amount = null, AmountText = null },
-            "reduced" => row with { Amount = LegacyGroceryQuantity.Parse("40"), AmountText = "40" },
+            "reduced" => row with { Amount = QuantityMath.Parse("40"), AmountText = "40" },
             "unit" => row with { Unit = new("ml", null) },
             _ => row with { Description = "noodles" }
         };
@@ -369,7 +369,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void AmountCorrectionCarriesPriorWholeAndRepeatedDiscoveryIsStable()
     {
         var before = CookingStepRelationshipProducer.Discover(Content("Add all 200 g pasta."));
-        var after = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Parse("250"), AmountText = "250" }] };
+        var after = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with { Amount = QuantityMath.Parse("250"), AmountText = "250" }] };
         var result = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, after), before);
         Assert.Equal("Add all 500 g pasta.", CookingStepProjection.Read(result, 8).Sections[0].Steps[0].Text);
         Assert.Equal(before.InstructionSections[0].Steps[0].Bindings[0].GetProperty("id").GetGuid(), result.InstructionSections[0].Steps[0].Bindings[0].GetProperty("id").GetGuid());
@@ -433,7 +433,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void ExistingOtherRolesArePreservedAndNeverOverlapped()
     {
         var original = Content("Add all 200 g pasta.");
-        var fixedUse = JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), role = "fixed", status = "validated", payload = new { amount = LegacyGroceryQuantity.Parse("200") } });
+        var fixedUse = JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), role = "fixed", status = "validated", payload = new { amount = QuantityMath.Parse("200") } });
         var content = original with { InstructionSections = [original.InstructionSections[0] with { Steps = [original.InstructionSections[0].Steps[0] with { Bindings = [fixedUse] }] }] };
         Assert.Equal(JsonSerializer.Serialize(content), JsonSerializer.Serialize(CookingStepRelationshipProducer.Discover(content)));
     }
@@ -442,7 +442,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void IncomingValidatedLabelAndMarkerCannotCertifyFreshContent()
     {
         var derived = CookingStepRelationshipProducer.Discover(Content("Add all 200 g pasta."));
-        var changed = derived with { IngredientLines = [derived.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Parse("250"), AmountText = "250" }] };
+        var changed = derived with { IngredientLines = [derived.IngredientLines[0] with { Amount = QuantityMath.Parse("250"), AmountText = "250" }] };
         Assert.Throws<InvalidDataException>(() => CookingStepRelationshipProducer.ValidateFresh(changed));
         var ambiguous = derived with { InstructionSections = [derived.InstructionSections[0] with { Steps = [derived.InstructionSections[0].Steps[0] with { Text = "Add 200 g pasta." }] }] };
         Assert.Throws<InvalidDataException>(() => CookingStepRelationshipProducer.ValidateFresh(ambiguous));

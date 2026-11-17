@@ -58,6 +58,9 @@
     <EmbeddedResource Include="src/RecipeApi/Prompts/*.md">
       <LogicalName>RecipeApi.Prompts.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="src/RecipeApi/Resources/*.json">
+      <LogicalName>RecipeApi.Resources.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

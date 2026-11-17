@@ -31,7 +31,7 @@ public static class CookingStepProjection
             step.Text[span.Start..span.End] != span.ExpectedText ||
             content.IngredientLines.Count(x => x.Id == binding.IngredientLineId) != 1) return false;
         var row = content.IngredientLines.Single(x => x.Id == binding.IngredientLineId);
-        if (binding.Role == "whole") return row.Amount is not null && LegacyGroceryQuantity.IsCanonical(row.Amount);
+        if (binding.Role == "whole") return row.Amount is not null && QuantityMath.IsCanonical(row.Amount);
         if (binding.Role == "fraction") return FractionAmount(row, binding) is not null && AnnotationValid(step, binding);
         if (binding.Role == "remainder") return true;
         if (binding.Role == "perItem") return content.InstructionSections.SelectMany(x => x.Steps)
@@ -43,7 +43,7 @@ public static class CookingStepProjection
         if (binding.Role is not ("absolute" or "fixed")) return false;
         try
         {
-            return binding.Payload.TryGetProperty("amount", out var amount) && LegacyGroceryQuantity.IsCanonical(amount.Deserialize<GroceryQuantity>(Json)) &&
+            return binding.Payload.TryGetProperty("amount", out var amount) && QuantityMath.IsCanonical(amount.Deserialize<GroceryQuantity>(Json)) &&
                 binding.Payload.TryGetProperty("unit", out var unit) && unit.Deserialize<RecipeUnitDto>(Json) == row.Unit;
         }
         catch (JsonException) { return false; }
@@ -55,7 +55,7 @@ public static class CookingStepProjection
         {
             return binding.Payload.TryGetProperty("dose", out var dose) && dose.ValueKind == JsonValueKind.Object &&
                 dose.TryGetProperty("amount", out var raw) && raw.Deserialize<GroceryQuantity>(Json) is { Kind: "scalar" } amount &&
-                LegacyGroceryQuantity.IsCanonical(amount) && dose.TryGetProperty("unit", out var unit) &&
+                QuantityMath.IsCanonical(amount) && dose.TryGetProperty("unit", out var unit) &&
                 unit.Deserialize<RecipeUnitDto>(Json) is { } doseUnit && doseUnit == row.Unit;
         }
         catch (JsonException) { return false; }
@@ -89,7 +89,7 @@ public static class CookingStepProjection
         var step = after.InstructionSections.SelectMany(x => x.Steps).SingleOrDefault(x => x.Id == proof.Step.Id);
         var row = after.IngredientLines.SingleOrDefault(x => x.Id == proof.Row.Id);
         return step is not null && row is not null && step.Text == proof.Step.Text && step.TextRevision == proof.Step.TextRevision &&
-            SameRowDependencies(proof.Row, row) && row.Amount is { Kind: "scalar" } && LegacyGroceryQuantity.IsCanonical(row.Amount) &&
+            SameRowDependencies(proof.Row, row) && row.Amount is { Kind: "scalar" } && QuantityMath.IsCanonical(row.Amount) &&
             step.Bindings.Count(raw => Read(raw)?.Id == proof.Use.Id &&
                 proof.Step.Bindings.Any(old => JsonElement.DeepEquals(old, raw))) == 1;
     }
@@ -100,9 +100,9 @@ public static class CookingStepProjection
         {
             if (!binding.Payload.TryGetProperty("fraction", out var raw) ||
                 raw.Deserialize<GroceryRational>(Json) is not { } fraction ||
-                !LegacyGroceryQuantity.IsCanonical(new("scalar", fraction)) ||
+                !QuantityMath.IsCanonical(new("scalar", fraction)) ||
                 BigInteger.Parse(fraction.N) > BigInteger.Parse(fraction.D)) return null;
-            return LegacyGroceryQuantity.Multiply(row.Amount, fraction);
+            return QuantityMath.Multiply(row.Amount, fraction);
         }
         catch (JsonException) { return null; }
     }
@@ -192,11 +192,11 @@ public static class CookingStepProjection
         var members = all.Where(x => Group(x.Use)?.Id == id).ToArray();
         if (!members.Select(x => x.Use!.Id).SequenceEqual(ids)) return null;
         var row = content.IngredientLines.Single(x => x.Id == binding.IngredientLineId);
-        if (!LegacyGroceryQuantity.IsCanonical(row.Amount)) return null;
+        if (!QuantityMath.IsCanonical(row.Amount)) return null;
         var amounts = new Dictionary<Guid, GroceryQuantity>();
-        var sum = LegacyGroceryQuantity.Parse("0");
-        var fractions = LegacyGroceryQuantity.Parse("0");
-        var absolutes = LegacyGroceryQuantity.Parse("0");
+        var sum = QuantityMath.Parse("0");
+        var fractions = QuantityMath.Parse("0");
+        var absolutes = QuantityMath.Parse("0");
         for (var index = 0; index < ids.Length; index++)
         {
             var matches = all.Where(x => x.Use?.Id == ids[index]).ToArray();
@@ -219,29 +219,29 @@ public static class CookingStepProjection
                 catch (Exception error) when (error is JsonException or InvalidOperationException or FormatException) { return null; }
                 // Fractions share the canonical total. Subtract that coefficient
                 // first, then known scalar uses: no independent interval subtraction.
-                var coefficient = LegacyGroceryQuantity.SubtractScalar(LegacyGroceryQuantity.Parse("1"), fractions);
-                var remainder = coefficient is null ? null : LegacyGroceryQuantity.SubtractScalar(
-                    LegacyGroceryQuantity.Multiply(row.Amount, coefficient.Value!), absolutes);
+                var coefficient = QuantityMath.SubtractScalar(QuantityMath.Parse("1"), fractions);
+                var remainder = coefficient is null ? null : QuantityMath.SubtractScalar(
+                    QuantityMath.Multiply(row.Amount, coefficient.Value!), absolutes);
                 if (remainder is null) return null;
                 amounts[use.Id] = remainder;
                 return amounts;
             }
             var amount = OriginalUse(row, use);
-            if (!LegacyGroceryQuantity.IsCanonical(amount)) return null;
+            if (!QuantityMath.IsCanonical(amount)) return null;
             amounts[use.Id] = amount!;
             if (use.Role == "fraction")
             {
                 var fraction = use.Payload.GetProperty("fraction").Deserialize<GroceryRational>(Json)!;
-                fractions = LegacyGroceryQuantity.Add(fractions, new("scalar", fraction));
+                fractions = QuantityMath.Add(fractions, new("scalar", fraction));
                 if (fractions is null) return null;
             }
             else
             {
                 if (amount!.Kind != "scalar") return null;
-                absolutes = LegacyGroceryQuantity.Add(absolutes, amount);
+                absolutes = QuantityMath.Add(absolutes, amount);
                 if (absolutes is null) return null;
             }
-            sum = LegacyGroceryQuantity.Add(sum, amount);
+            sum = QuantityMath.Add(sum, amount);
             if (sum is null) return null;
         }
         return row.Amount is { Kind: "scalar" } && sum == row.Amount ? amounts : null;
@@ -268,7 +268,7 @@ public static class CookingStepProjection
                     {
                         var count = CountProof(content, binding)!.Value.Row.Amount;
                         if (target is not null && (content.Servings is not > 0 ||
-                            LegacyGroceryQuantity.Scale(count, target.Value, content.Servings.Value) is null)) { uncertain++; continue; }
+                            QuantityMath.Scale(count, target.Value, content.Servings.Value) is null)) { uncertain++; continue; }
                         valid++;
                         continue; // Fixed dose and per-item prose remain byte-for-byte original.
                     }
@@ -277,7 +277,7 @@ public static class CookingStepProjection
                     if (binding.Role == "fixed") { valid++; continue; }
                     var amount = binding!.Role == "remainder" ? ResolveGroup(content, binding)![binding.Id] : OriginalUse(row, binding);
                     var scaled = target is null || row.Scaling == "fixed" ? amount
-                        : content.Servings is > 0 ? LegacyGroceryQuantity.Scale(amount, target.Value, content.Servings.Value) : null;
+                        : content.Servings is > 0 ? QuantityMath.Scale(amount, target.Value, content.Servings.Value) : null;
                     if (scaled is null) { uncertain++; continue; }
                     // Relative wording is already the correct instruction at every target.
                     // Replace an existing proved numeric annotation only; never invent one.

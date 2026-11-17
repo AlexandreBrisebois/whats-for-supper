@@ -40,7 +40,11 @@ import { subscribeIngredientProjectionInvalidation } from '@/lib/ingredient-proj
 import { ingredientProjectionText } from '@/lib/ingredient-presentation';
 import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
 import { t, tWithVars } from '@/locales';
-import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
+import {
+  parseRecipeSteps,
+  projectedCookingSteps,
+  type CookingStep,
+} from '@/lib/cooking/stepParser';
 import { formatCookingInstruction } from '@/lib/cooking/instructionPresentation';
 import { getImageUrl } from '@/lib/imageUtils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -70,25 +74,6 @@ function updateInstructionValue(value: unknown, instruction: string): unknown {
   const step = value as Record<string, unknown>;
   if ('text' in step) return { ...step, text: instruction };
   return { ...step, name: instruction };
-}
-
-function projectedCookingSteps(
-  projection: import('@/lib/api/generated/models').IngredientProjection | undefined
-): CookingStep[] | null {
-  const sections = projection?.instructionProjection?.sections;
-  if (!sections) return null;
-  return sections
-    .flatMap((section, sectionIndex) =>
-      (section.steps ?? []).map((step, stepIndex) => ({
-        sectionTitle: section.name ?? undefined,
-        index: 0,
-        title: '',
-        instruction: step.text ?? step.originalText ?? '',
-        editableInstruction: step.originalText ?? '',
-        sourcePath: [sectionIndex, stepIndex] as [number, number],
-      }))
-    )
-    .map((step, index) => ({ ...step, index: index + 1, title: `Step ${index + 1}` }));
 }
 
 export function CooksMode({
@@ -350,7 +335,8 @@ export function CooksMode({
         ingredientContext.context === 'assigned' ? ingredientContext.occurrenceId : null,
       ])
     : initialRecipe.id;
-  const steps = projectedCookingSteps(projection) ?? parsedSteps;
+  const projectedSteps = projectedCookingSteps(projection);
+  const steps = projectedSteps ?? parsedSteps;
   const currentStep = Math.min(cookProgress[progressKey] ?? 0, steps.length);
 
   useLayoutEffect(() => {
@@ -1123,7 +1109,7 @@ export function CooksMode({
                   )}
                 </p>
               )}
-              {scaled && !projection?.instructionProjection && (
+              {scaled && !projectedSteps && (
                 <p data-testid="cooking-instruction-limitation">
                   {t(
                     'cook.originalAmounts',
@@ -1336,7 +1322,7 @@ export function CooksMode({
                     <ol role="list" aria-label="Cooking steps" className="list-none space-y-4">
                       {steps.map((step, index) => {
                         const rowEditing = editingStepIndex === index;
-                        const instruction = projection?.instructionProjection
+                        const instruction = projectedSteps
                           ? step.instruction
                           : (step.editableInstruction ?? step.instruction);
                         const showTitle =

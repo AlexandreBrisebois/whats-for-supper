@@ -21,8 +21,8 @@ public static partial class CookingStepRelationshipProducer
             measurement + @"[ \t]+(?:de[ \t]+|d['’])" + noun + @")\.?[ \t]*\z";
         var match = Regex.Match(text, pattern, Options, MatchTimeout);
         if (!match.Success) return null;
-        var quantity = LegacyGroceryQuantity.Parse(match.Groups["amount"].Value.Trim());
-        if (quantity is not { Kind: "scalar", Value.N: not "0" } || !LegacyGroceryQuantity.IsCanonical(quantity)) return null;
+        var quantity = QuantityMath.Parse(match.Groups["amount"].Value.Trim());
+        if (quantity is not { Kind: "scalar", Value.N: not "0" } || !QuantityMath.IsCanonical(quantity)) return null;
         var span = match.Groups["measurement"];
         return new(new(span.Index, span.Index + span.Length, span.Value), quantity, "fixed");
     }
@@ -36,7 +36,7 @@ public static partial class CookingStepRelationshipProducer
     // Standalone fixed uses are not an exhaustive allocation. In particular,
     // total corrections do not redistribute or impose a new bound on the use.
     private static bool FixedAmount(RecipeIngredientLineDto row, GroceryQuantity? amount) =>
-        row.Amount is { Kind: "scalar", Value.N: not "0" } && LegacyGroceryQuantity.IsCanonical(row.Amount) &&
-        amount is { Kind: "scalar", Value.N: not "0" } && LegacyGroceryQuantity.IsCanonical(amount) && row.Unit is not null &&
+        row.Amount is { Kind: "scalar", Value.N: not "0" } && QuantityMath.IsCanonical(row.Amount) &&
+        amount is { Kind: "scalar", Value.N: not "0" } && QuantityMath.IsCanonical(amount) && row.Unit is not null &&
         GroceryUnit.Read(row.Unit.Text).Bucket is "g" or "ml" or "cup" or "tsp" or "tbsp";
 }

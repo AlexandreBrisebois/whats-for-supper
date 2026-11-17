@@ -130,7 +130,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
                 await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
                 var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
                 var groceries = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!;
-                Assert.Equal(LegacyGroceryQuantity.Parse("4"), Assert.Single(groceries,
+                Assert.Equal(QuantityMath.Parse("4"), Assert.Single(groceries,
                     row => row.NormalizedKey == ingredient && row.RecipeIds.Contains(id)).ExactQuantity);
                 if (photo) Assert.Equal(new byte[] { 4, 5, 6 }, await repository.GetOriginalImageAsync(id, 0, default));
                 var management = services.GetRequiredService<ManagementService>();

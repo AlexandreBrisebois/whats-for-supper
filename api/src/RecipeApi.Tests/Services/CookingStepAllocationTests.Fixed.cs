@@ -10,7 +10,7 @@ public sealed partial class CookingStepAllocationTests
 {
     private static CanonicalRecipeContent FixedContent()
     {
-        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "oil", Amount = LegacyGroceryQuantity.Parse("2"),
+        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "oil", Amount = QuantityMath.Parse("2"),
             AmountText = "2", Unit = new("tbsp", null), Scaling = "proportional", Package = null,
             Shopping = new("oil", null, null), Provenance = new("human", null, []) };
         var steps = new[] { "Heat one tbsp oil from a 400 g package; cook 20 minutes at 180 °C.", "Finish with 1 tbsp oil." }
@@ -19,7 +19,7 @@ public sealed partial class CookingStepAllocationTests
                 return new RecipeInstructionStepDto(stepId, text, "text", [JsonSerializer.SerializeToElement(new {
                     id = Guid.NewGuid(), ingredientLineId = row.Id, stepId, validatedContentRevision = "before", validatedTextRevision = "text",
                     span = new { start = text.IndexOf(span, StringComparison.Ordinal), end = text.IndexOf(span, StringComparison.Ordinal) + span.Length, expectedText = span },
-                    role = index == 0 ? "fixed" : "absolute", payload = new { amount = LegacyGroceryQuantity.Parse("1"), unit = row.Unit }, status = "validated"
+                    role = index == 0 ? "fixed" : "absolute", payload = new { amount = QuantityMath.Parse("1"), unit = row.Unit }, status = "validated"
                 }, new JsonSerializerOptions(JsonSerializerDefaults.Web))]);
             }).ToArray();
         return new(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
@@ -78,7 +78,7 @@ public sealed partial class CookingStepAllocationTests
             IngredientLines = [before.IngredientLines[0] with { Scaling = fault == "fixedRow" ? "fixed" : "proportional" }] };
         var after = fault is "corrected" or "rowUnitChanged" or "sourceChanged" ? CookingStepProjection.Revalidate(before, before with {
             ContentRevision = "after", SourceRevision = fault == "sourceChanged" ? "new-source" : before.SourceRevision,
-            IngredientLines = [before.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Parse("3"), Unit = new(fault == "rowUnitChanged" ? "tsp" : "tbsp", null) }] }) : before;
+            IngredientLines = [before.IngredientLines[0] with { Amount = QuantityMath.Parse("3"), Unit = new(fault == "rowUnitChanged" ? "tsp" : "tbsp", null) }] }) : before;
         foreach (var target in new int?[] { null, 4, 8, 6, 4 }) {
             var result = CookingStepProjection.Read(after, target);
             var fixedValid = fault is "valid" or "corrected" or "fixedRow" or "unknownBasis";
@@ -86,7 +86,7 @@ public sealed partial class CookingStepAllocationTests
             Assert.Equal((fixedValid ? 1 : 0) + (otherValid ? 1 : 0), result.ValidatedUses);
             Assert.Equal(steps[0].Text, result.Sections[0].Steps[0].Text);
             Assert.Equal(steps[0].Text, result.Sections[0].Steps[0].OriginalText);
-            if (otherValid) Assert.Equal($"Finish with {(target is null || fault == "fixedRow" ? "1" : CanonicalRecipeContentStore.Render(before.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Scale(LegacyGroceryQuantity.Parse("1"), target.Value, 4), AmountText = null, Unit = null, Description = "" }).TrimEnd())} tbsp oil.", result.Sections[0].Steps[1].Text);
+            if (otherValid) Assert.Equal($"Finish with {(target is null || fault == "fixedRow" ? "1" : CanonicalRecipeContentStore.Render(before.IngredientLines[0] with { Amount = QuantityMath.Scale(QuantityMath.Parse("1"), target.Value, 4), AmountText = null, Unit = null, Description = "" }).TrimEnd())} tbsp oil.", result.Sections[0].Steps[1].Text);
         }
         Assert.Equal(before.InstructionSections[0].Steps[0].Bindings[0].GetProperty("payload").GetRawText(), after.InstructionSections[0].Steps[0].Bindings[0].GetProperty("payload").GetRawText());
         if (fault == "corrected") Assert.Equal("after", after.InstructionSections[0].Steps[0].Bindings[0].GetProperty("validatedContentRevision").GetString());

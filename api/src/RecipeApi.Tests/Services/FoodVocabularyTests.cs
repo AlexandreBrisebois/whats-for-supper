@@ -113,7 +113,7 @@ public sealed class FoodVocabularyTests
         var next = mapped.Export with { Content = mapped.Export.Content with
         {
             ContentRevision = "quantity-next",
-            IngredientLines = [row with { Amount = LegacyGroceryQuantity.Parse("50"), AmountText = "50" }]
+            IngredientLines = [row with { Amount = QuantityMath.Parse("50"), AmountText = "50" }]
         } };
         var carried = FoodMappingQualification.Prepare(next, authority, Guid.NewGuid(), mapped.Export.Content, mapped.Evidence);
         Assert.Equal(row.Shopping, carried.Export.Content.IngredientLines[0].Shopping);
@@ -150,7 +150,7 @@ public sealed class FoodVocabularyTests
         Assert.Equal(clear ? "protected_clear" : "explicit_private", Assert.Single(decision.Decisions).Kind);
         var changedLine = decision.Export.Content.IngredientLines[0];
         var quantity = decision.Export with { Content = decision.Export.Content with
-        { ContentRevision = "quantity-following", IngredientLines = [changedLine with { Amount = LegacyGroceryQuantity.Parse("50"), AmountText = "50" }] } };
+        { ContentRevision = "quantity-following", IngredientLines = [changedLine with { Amount = QuantityMath.Parse("50"), AmountText = "50" }] } };
         var following = FoodMappingQualification.Prepare(quantity, authority, Guid.NewGuid(), decision.Export.Content, decision.Evidence);
         var retained = Assert.Single(following.Decisions);
         Assert.Equal(clear ? "protected_clear" : "explicit_private", retained.Kind);

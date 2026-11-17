@@ -111,8 +111,8 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
             var content = CanonicalRecipeContentStore.Read(saved)!;
             Assert.Equal("250 g pasta", CanonicalRecipeContentStore.Render(content.IngredientLines[0]));
-            Assert.Equal(LegacyGroceryQuantity.Parse("250"), content.IngredientLines[0].Amount);
-            Assert.Equal(LegacyGroceryQuantity.Parse("500"), SupperIngredientProjection.Read(saved, 8)[0].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("250"), content.IngredientLines[0].Amount);
+            Assert.Equal(QuantityMath.Parse("500"), SupperIngredientProjection.Read(saved, 8)[0].GroceryObservation.Quantity);
             Assert.Equal("human", content.IngredientLines[0].Provenance.Origin);
             using (var source = JsonDocument.Parse(saved.RawMetadata!))
             {

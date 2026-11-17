@@ -108,7 +108,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             var editedLines = canonical.IngredientLines.Select((line, index) => new RecipeIngredientLineInput
             {
                 Id = line.Id, Description = line.Description,
-                Amount = index == 0 ? LegacyGroceryQuantity.Parse("250") : line.Amount,
+                Amount = index == 0 ? QuantityMath.Parse("250") : line.Amount,
                 AmountText = index == 0 ? "250" : line.AmountText,
                 Unit = line.Unit, Scaling = line.Scaling, Package = line.Package, Shopping = line.Shopping
             }).ToArray();
@@ -120,8 +120,8 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             });
             var revised = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
             var projected = SupperIngredientProjection.Read(revised, 8);
-            Assert.Equal(LegacyGroceryQuantity.Parse("500"), projected[0].GroceryObservation.Quantity);
-            Assert.Equal(LegacyGroceryQuantity.Parse("200"), projected[1].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("500"), projected[0].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("200"), projected[1].GroceryObservation.Quantity);
             Assert.Equal(canonical.IngredientLines.Select(x => x.Id), CanonicalRecipeContentStore.Read(revised)!.IngredientLines.Select(x => x.Id));
             Assert.Equal(callsBeforeReplay, calls);
             var monday = new DateOnly(2026, 10, 12);
@@ -131,8 +131,8 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
             var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
             var grocery = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!;
-            Assert.Equal(LegacyGroceryQuantity.Parse("500"), grocery.Single(x => x.NormalizedKey == "pasta").ExactQuantity);
-            Assert.Equal(LegacyGroceryQuantity.Parse("200"), grocery.Single(x => x.NormalizedKey == "sauce").ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("500"), grocery.Single(x => x.NormalizedKey == "pasta").ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("200"), grocery.Single(x => x.NormalizedKey == "sauce").ExactQuantity);
             Assert.Single(grocery.Where(x => x.NormalizedKey == "pasta"));
         });
     }

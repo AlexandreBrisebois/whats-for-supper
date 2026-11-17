@@ -17,7 +17,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     {
         var content = Content(text, countName, "4");
         var count = content.IngredientLines[0] with { Unit = new(countUnit, null) };
-        var dose = count with { Id = Guid.NewGuid(), Description = doseName, Amount = LegacyGroceryQuantity.Parse("2"),
+        var dose = count with { Id = Guid.NewGuid(), Description = doseName, Amount = QuantityMath.Parse("2"),
             AmountText = "2", Unit = new(doseUnit, null), Shopping = new(doseName, null, null) };
         return content with { IngredientLines = [count, dose] };
     }
@@ -46,11 +46,11 @@ public sealed partial class CookingStepRelationshipProducerTests
                     end = step.Text.IndexOf(measurement, StringComparison.Ordinal) + measurement.Length, expectedText = measurement },
                 role, payload, status = "validated" });
         object Evidence(string amount) => new { version = 1, rule = "explicit-per-item-clause", sourceRevision = content.SourceRevision,
-            originalAmount = LegacyGroceryQuantity.Parse(amount) };
+            originalAmount = QuantityMath.Parse(amount) };
         return PerItemWithBindings(content,
             Binding(countId, count, "whole", "4 " + count.Unit!.Text, new { relationshipEvidence = Evidence("4") }),
             Binding(doseId, dose, "perItem", "1/2 " + dose.Unit!.Text, new { relationshipEvidence = Evidence("1/2"),
-                dose = new { amount = LegacyGroceryQuantity.Parse("1/2"), unit = dose.Unit }, countBindingId = countId }));
+                dose = new { amount = QuantityMath.Parse("1/2"), unit = dose.Unit }, countBindingId = countId }));
     }
 
     [Theory]
@@ -81,12 +81,12 @@ public sealed partial class CookingStepRelationshipProducerTests
             Assert.Equal("explicit-per-item-clause", evidence.GetProperty("rule").GetString());
             Assert.Equal(1, evidence.GetProperty("version").GetInt32());
             Assert.Equal(original.SourceRevision, evidence.GetProperty("sourceRevision").GetString());
-            Assert.Equal(LegacyGroceryQuantity.Parse(index == 0 ? "4" : "1/2"), evidence.GetProperty("originalAmount").Deserialize<GroceryQuantity>(PerItemJson));
+            Assert.Equal(QuantityMath.Parse(index == 0 ? "4" : "1/2"), evidence.GetProperty("originalAmount").Deserialize<GroceryQuantity>(PerItemJson));
             Assert.False(payload.TryGetProperty("allocationGroup", out _));
         }
         var dosePayload = bindings[1].GetProperty("payload");
         Assert.Equal(bindings[0].GetProperty("id").GetGuid(), dosePayload.GetProperty("countBindingId").GetGuid());
-        Assert.Equal(LegacyGroceryQuantity.Parse("1/2"), dosePayload.GetProperty("dose").GetProperty("amount").Deserialize<GroceryQuantity>(PerItemJson));
+        Assert.Equal(QuantityMath.Parse("1/2"), dosePayload.GetProperty("dose").GetProperty("amount").Deserialize<GroceryQuantity>(PerItemJson));
         Assert.Equal(original.IngredientLines[1].Unit, dosePayload.GetProperty("dose").GetProperty("unit").Deserialize<RecipeUnitDto>(PerItemJson));
         Assert.Equal(original.IngredientLines, result.IngredientLines);
         Assert.Equal(text, PerItemStep(result).Text);
@@ -105,8 +105,8 @@ public sealed partial class CookingStepRelationshipProducerTests
         var before = CookingStepRelationshipProducer.Discover(PerItemContent());
         Assert.Equal(2, PerItemStep(before).Bindings.Count);
         var changed = before with { ContentRevision = "corrected", IngredientLines = [before.IngredientLines[0] with
-            { Amount = LegacyGroceryQuantity.Parse("6"), AmountText = "6" }, before.IngredientLines[1] with
-            { Amount = doseTotal is null ? null : LegacyGroceryQuantity.Parse(doseTotal), AmountText = doseTotal }] };
+            { Amount = QuantityMath.Parse("6"), AmountText = "6" }, before.IngredientLines[1] with
+            { Amount = doseTotal is null ? null : QuantityMath.Parse(doseTotal), AmountText = doseTotal }] };
         var after = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, changed), before);
         Assert.Equal(2, PerItemStep(after).Bindings.Count);
         for (var index = 0; index < 2; index++)
@@ -125,7 +125,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         var saved = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(after, edited), after);
         Assert.Equal(2, PerItemStep(saved).Bindings.Count);
         Assert.NotEqual(PerItemStep(after).Bindings[1].GetProperty("id").GetGuid(), PerItemStep(saved).Bindings[1].GetProperty("id").GetGuid());
-        Assert.Equal(LegacyGroceryQuantity.Parse("1/3"), PerItemStep(saved).Bindings[1].GetProperty("payload").GetProperty("dose").GetProperty("amount").Deserialize<GroceryQuantity>(PerItemJson));
+        Assert.Equal(QuantityMath.Parse("1/3"), PerItemStep(saved).Bindings[1].GetProperty("payload").GetProperty("dose").GetProperty("amount").Deserialize<GroceryQuantity>(PerItemJson));
         CookingStepRelationshipProducer.ValidateFresh(saved);
     }
 
@@ -158,7 +158,7 @@ public sealed partial class CookingStepRelationshipProducerTests
                 case "textRevision": node["validatedTextRevision"] = "old"; break;
                 case "source": payload["relationshipEvidence"]!["sourceRevision"] = "old"; break;
                 case "rule": payload["relationshipEvidence"]!["rule"] = "explicit-whole-clause"; break;
-                case "amount": payload["dose"]!["amount"] = JsonSerializer.SerializeToNode(LegacyGroceryQuantity.Parse("1"), PerItemJson); break;
+                case "amount": payload["dose"]!["amount"] = JsonSerializer.SerializeToNode(QuantityMath.Parse("1"), PerItemJson); break;
                 case "unit": payload["dose"]!["unit"]!["text"] = "tbsp"; break;
                 case "span": node["span"]!["expectedText"] = "1/2 tbsp"; break;
                 case "overlap": node["span"] = JsonNode.Parse(bindings[0].GetProperty("span").GetRawText()); break;
@@ -231,7 +231,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void PerItemProducerDoesNotEraseIndependentRemainderAndFixedProof()
     {
         var before = PerItemContent();
-        var sauce = before.IngredientLines[1] with { Id = Guid.NewGuid(), Description = "sauce", Amount = LegacyGroceryQuantity.Parse("3"),
+        var sauce = before.IngredientLines[1] with { Id = Guid.NewGuid(), Description = "sauce", Amount = QuantityMath.Parse("3"),
             Unit = new("tbsp", null), Shopping = new("sauce", null, null) };
         var butter = sauce with { Id = Guid.NewGuid(), Description = "butter", Shopping = new("butter", null, null) };
         before = before with { IngredientLines = [.. before.IngredientLines, sauce, butter], InstructionSections = [before.InstructionSections[0] with
@@ -267,7 +267,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         var before = PerItemSubmission(PerItemContent());
         var changed = before with { ContentRevision = "context", Servings = change == "unknownBasis" ? null : 4,
             IngredientLines = [before.IngredientLines[0] with
-                { Amount = LegacyGroceryQuantity.Parse(change == "range" ? "4–6" : "4"), Scaling = change == "fixedCount" ? "fixed" : "proportional" }, before.IngredientLines[1]] };
+                { Amount = QuantityMath.Parse(change == "range" ? "4–6" : "4"), Scaling = change == "fixedCount" ? "fixed" : "proportional" }, before.IngredientLines[1]] };
         var result = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, changed), before);
         Assert.Equal(change == "unknownBasis" ? 2 : 1, PerItemStep(result).Bindings.Count);
         Assert.Equal("whole", PerItemStep(result).Bindings[0].GetProperty("role").GetString());
@@ -281,7 +281,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     {
         var original = PerItemContent();
         original = original with { IngredientLines = [original.IngredientLines[0], original.IngredientLines[1] with
-            { Amount = total is null ? null : LegacyGroceryQuantity.Parse(total), AmountText = total }] };
+            { Amount = total is null ? null : QuantityMath.Parse(total), AmountText = total }] };
         var result = CookingStepRelationshipProducer.Discover(original);
         Assert.Equal(2, PerItemStep(result).Bindings.Count);
         Assert.Equal(2, CookingStepProjection.Read(result, 8).ValidatedUses);
@@ -308,10 +308,10 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void PerItemProducerUnsupportedDoseUnitKeepsCountAndOtherProofAcrossFollowingSave(string? unit)
     {
         var original = PerItemContent();
-        var sauce = original.IngredientLines[1] with { Id = Guid.NewGuid(), Description = "sauce", Amount = LegacyGroceryQuantity.Parse("3"),
+        var sauce = original.IngredientLines[1] with { Id = Guid.NewGuid(), Description = "sauce", Amount = QuantityMath.Parse("3"),
             Unit = new("tbsp", null), Shopping = new("sauce", null, null) };
         var butter = sauce with { Id = Guid.NewGuid(), Description = "butter", Shopping = new("butter", null, null) };
-        var pasta = sauce with { Id = Guid.NewGuid(), Description = "pasta", Amount = LegacyGroceryQuantity.Parse("200"),
+        var pasta = sauce with { Id = Guid.NewGuid(), Description = "pasta", Amount = QuantityMath.Parse("200"),
             Unit = new("g", null), Shopping = new("pasta", null, null) };
         original = original with { IngredientLines = [.. original.IngredientLines, sauce, butter, pasta], InstructionSections = [original.InstructionSections[0] with
             { Steps = [PerItemStep(original), new(Guid.NewGuid(), "Use 1 tbsp sauce.", "sauce-first", []),
@@ -323,7 +323,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         var before = CookingStepRelationshipProducer.Discover(original);
         Assert.Equal(new[] { 2, 1, 1, 1, 1 }, before.InstructionSections[0].Steps.Select(step => step.Bindings.Count));
         before = Save(before, before with { ContentRevision = "count-six", IngredientLines = [before.IngredientLines[0] with
-            { Amount = LegacyGroceryQuantity.Parse("6"), AmountText = "6" }, .. before.IngredientLines.Skip(1)] });
+            { Amount = QuantityMath.Parse("6"), AmountText = "6" }, .. before.IngredientLines.Skip(1)] });
         before = Save(before, before with { ContentRevision = "current-six-step", InstructionSections = [before.InstructionSections[0] with
             { Steps = [PerItemStep(before) with { Text = PerItemEnglish.Replace("4 pieces", "6 pieces").Replace("1/2 tsp", "1/3 tsp"), TextRevision = "current-six-text" }, .. before.InstructionSections[0].Steps.Skip(1)] }] });
         var expectedCountId = PerItemStep(before).Bindings[0].GetProperty("id").GetGuid();
@@ -356,10 +356,10 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void PerItemProducerDoseRenameOrDeleteRetainsAuthoritativeUpstreamCountAcrossFollowingSave(string change)
     {
         var original = PerItemContent();
-        var sauce = original.IngredientLines[1] with { Id = Guid.NewGuid(), Description = "sauce", Amount = LegacyGroceryQuantity.Parse("3"),
+        var sauce = original.IngredientLines[1] with { Id = Guid.NewGuid(), Description = "sauce", Amount = QuantityMath.Parse("3"),
             Unit = new("tbsp", null), Shopping = new("sauce", null, null) };
         var butter = sauce with { Id = Guid.NewGuid(), Description = "butter", Shopping = new("butter", null, null) };
-        var pasta = sauce with { Id = Guid.NewGuid(), Description = "pasta", Amount = LegacyGroceryQuantity.Parse("200"),
+        var pasta = sauce with { Id = Guid.NewGuid(), Description = "pasta", Amount = QuantityMath.Parse("200"),
             Unit = new("g", null), Shopping = new("pasta", null, null) };
         original = original with { IngredientLines = [.. original.IngredientLines, sauce, butter, pasta], InstructionSections = [original.InstructionSections[0] with
             { Steps = [PerItemStep(original), new(Guid.NewGuid(), "Use 1 tbsp sauce.", "sauce-first", []),

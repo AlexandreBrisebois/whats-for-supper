@@ -2134,4 +2134,222 @@ describe('dated ingredient projection', () => {
     expect(screen.getByTestId('recipe-servings')).toHaveTextContent('2 servings');
     expect(screen.getByTestId('recipe-ingredient-projection')).toHaveTextContent('200 g pasta');
   });
+
+  it('projects validated step quantities across dated and 2/4/6 preview contexts, hides the original-quantities notice when instructionProjection is present, and keeps fixed or uncertain spans legible', async () => {
+    const id = '550e8400-e29b-41d4-a716-446655440111';
+    mockGetRecipe.mockResolvedValue({
+      id,
+      name: 'Weeknight Tomato Pasta',
+      servings: 2,
+      ingredients: ['200 g pasta', '1 can (400 g) tomatoes', 'Salt to taste'],
+      recipeInstructions: [
+        {
+          '@type': 'HowToSection',
+          name: 'Sauce',
+          itemListElement: [
+            {
+              text: 'Simmer 1 can (400 g) tomatoes with a pinch of chili for 20 minutes at 180 °C.',
+            },
+          ],
+        },
+        {
+          '@type': 'HowToSection',
+          name: 'Finish',
+          itemListElement: [{ text: 'Toss with 200 g pasta and salt to taste.' }],
+        },
+      ],
+    });
+    mockGetIngredientProjection.mockResolvedValue({
+      recipeId: id,
+      supperDate: '2026-10-14',
+      context: 'proposed',
+      baseServings: 2,
+      targetServings: 4,
+      factor: 2,
+      version: 'dated-4',
+      status: 'scaled',
+      editable: true,
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 400,
+          unitText: 'g',
+          status: 'scaled',
+          issues: [],
+        },
+        {
+          originalText: '1 can (400 g) tomatoes',
+          name: 'tomatoes',
+          quantity: 2,
+          unitText: 'cans (400 g)',
+          status: 'scaled',
+          issues: [],
+        },
+        {
+          originalText: 'Salt to taste',
+          name: 'Salt to taste',
+          quantity: null,
+          status: 'unquantified',
+          issues: [],
+        },
+      ],
+      instructionProjection: {
+        validatedUses: 2,
+        uncertainUses: 2,
+        sections: [
+          {
+            sectionId: 'sec-sauce',
+            name: 'Sauce',
+            steps: [
+              {
+                stepId: 'step-1',
+                textRevision: 'rev-1',
+                originalText:
+                  'Simmer 1 can (400 g) tomatoes with a pinch of chili for 20 minutes at 180 °C.',
+                text: 'Simmer 2 cans (400 g) tomatoes with a pinch of chili for 20 minutes at 180 °C.',
+              },
+            ],
+          },
+          {
+            sectionId: 'sec-finish',
+            name: 'Finish',
+            steps: [
+              {
+                stepId: 'step-2',
+                textRevision: 'rev-2',
+                originalText: 'Toss with 200 g pasta and salt to taste.',
+                text: 'Toss with 400 g pasta and salt to taste.',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    mockGetIngredientPreview.mockResolvedValue({
+      recipeId: id,
+      baseServings: 2,
+      targetServings: 6,
+      factor: 3,
+      version: 'preview-6',
+      status: 'scaled',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 600,
+          unitText: 'g',
+          status: 'scaled',
+          issues: [],
+        },
+        {
+          originalText: '1 can (400 g) tomatoes',
+          name: 'tomatoes',
+          quantity: 3,
+          unitText: 'cans (400 g)',
+          status: 'scaled',
+          issues: [],
+        },
+        {
+          originalText: 'Salt to taste',
+          name: 'Salt to taste',
+          quantity: null,
+          status: 'unquantified',
+          issues: [],
+        },
+      ],
+      instructionProjection: {
+        validatedUses: 2,
+        uncertainUses: 2,
+        sections: [
+          {
+            sectionId: 'sec-sauce',
+            name: 'Sauce',
+            steps: [
+              {
+                stepId: 'step-1',
+                textRevision: 'rev-1',
+                originalText:
+                  'Simmer 1 can (400 g) tomatoes with a pinch of chili for 20 minutes at 180 °C.',
+                text: 'Simmer 3 cans (400 g) tomatoes with a pinch of chili for 20 minutes at 180 °C.',
+              },
+            ],
+          },
+          {
+            sectionId: 'sec-finish',
+            name: 'Finish',
+            steps: [
+              {
+                stepId: 'step-2',
+                textRevision: 'rev-2',
+                originalText: 'Toss with 200 g pasta and salt to taste.',
+                text: 'Toss with 600 g pasta and salt to taste.',
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    render(
+      <RecipeDetailSheet
+        recipeId={id}
+        plannerDayLabel="Wednesday, October 14"
+        ingredientContext={{ context: 'proposed', supperDate: '2026-10-14' }}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    const instructions = await screen.findByRole('region', { name: 'Instructions' });
+    await waitFor(() =>
+      expect(
+        within(instructions).getByText(
+          'Simmer 2 cans (400 g) tomatoes with a pinch of chili for 20 minutes at 180 °C.'
+        )
+      ).toBeVisible()
+    );
+    expect(within(instructions).getByRole('heading', { name: 'Sauce' })).toBeVisible();
+    expect(within(instructions).getByRole('heading', { name: 'Finish' })).toBeVisible();
+    expect(
+      within(instructions).getByText('Toss with 400 g pasta and salt to taste.')
+    ).toBeVisible();
+    expect(screen.queryByTestId('recipe-instruction-limitation')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+    await waitFor(() =>
+      expect(
+        within(instructions).getByText(
+          'Simmer 3 cans (400 g) tomatoes with a pinch of chili for 20 minutes at 180 °C.'
+        )
+      ).toBeVisible()
+    );
+    expect(
+      within(instructions).getByText('Toss with 600 g pasta and salt to taste.')
+    ).toBeVisible();
+    expect(screen.queryByTestId('recipe-instruction-limitation')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByTestId('action-original-quantities'));
+    expect(
+      within(instructions).getByText(
+        'Simmer 1 can (400 g) tomatoes with a pinch of chili for 20 minutes at 180 °C.'
+      )
+    ).toBeVisible();
+    expect(
+      within(instructions).getByText('Toss with 200 g pasta and salt to taste.')
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
+    expect(
+      within(instructions).getByText(
+        'Simmer 2 cans (400 g) tomatoes with a pinch of chili for 20 minutes at 180 °C.'
+      )
+    ).toBeVisible();
+    expect(
+      within(instructions).getByText('Toss with 400 g pasta and salt to taste.')
+    ).toBeVisible();
+  });
 });

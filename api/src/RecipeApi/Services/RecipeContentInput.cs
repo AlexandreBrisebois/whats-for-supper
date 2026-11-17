@@ -90,8 +90,8 @@ internal static class RecipeContentInput
         {
             if (notation is not null) throw Invalid();
         }
-        else if (!LegacyGroceryQuantity.IsCanonical(amount)
-            || notation is not null && LegacyGroceryQuantity.Parse(notation) != amount) throw Invalid();
+        else if (!QuantityMath.IsCanonical(amount)
+            || notation is not null && QuantityMath.Parse(notation) != amount) throw Invalid();
     }
 
     private static void Unit(RecipeUnitDto? unit)

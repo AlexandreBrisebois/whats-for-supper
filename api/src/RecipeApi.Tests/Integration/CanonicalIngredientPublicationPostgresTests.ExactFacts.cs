@@ -61,10 +61,10 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.Equal(6, content.IngredientLines.Count);
             Assert.Equal(new[] { "½ cup flour", "2–3 tbsp oil", "0 g salt", "2 eggs", "cup water", "Fresh basil leaves" },
                 content.IngredientLines.Select(CanonicalRecipeContentStore.Render));
-            Assert.Equal(LegacyGroceryQuantity.Parse("½"), content.IngredientLines[0].Amount);
-            Assert.Equal(LegacyGroceryQuantity.Parse("2–3"), content.IngredientLines[1].Amount);
-            Assert.Equal(LegacyGroceryQuantity.Parse("0"), content.IngredientLines[2].Amount);
-            Assert.Equal(LegacyGroceryQuantity.Parse("2"), content.IngredientLines[3].Amount);
+            Assert.Equal(QuantityMath.Parse("½"), content.IngredientLines[0].Amount);
+            Assert.Equal(QuantityMath.Parse("2–3"), content.IngredientLines[1].Amount);
+            Assert.Equal(QuantityMath.Parse("0"), content.IngredientLines[2].Amount);
+            Assert.Equal(QuantityMath.Parse("2"), content.IngredientLines[3].Amount);
             Assert.Null(content.IngredientLines[3].Unit);
             Assert.Null(content.IngredientLines[4].Amount);
             Assert.Equal("cup", content.IngredientLines[4].Unit?.Text);
@@ -73,9 +73,9 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.All(content.IngredientLines, line => Assert.Equal("source", line.Provenance.Origin));
             Assert.DoesNotContain(await db.RecipeImportReports.AsNoTracking().ToListAsync(), x => x.RecipeId == id);
             var projected = SupperIngredientProjection.Read(saved, 8);
-            Assert.Equal(LegacyGroceryQuantity.Parse("1"), projected[0].GroceryObservation.Quantity);
-            Assert.Equal(LegacyGroceryQuantity.Parse("4–6"), projected[1].GroceryObservation.Quantity);
-            Assert.Equal(LegacyGroceryQuantity.Parse("0"), projected[2].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("1"), projected[0].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("4–6"), projected[1].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("0"), projected[2].GroceryObservation.Quantity);
             Assert.Null(projected[4].GroceryObservation.Quantity);
             Assert.Null(projected[5].GroceryObservation.Quantity);
 
@@ -86,9 +86,9 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(monday, default);
             var plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == monday);
             var grocery = JsonSerializer.Deserialize<List<GroceryLineItemDto>>(plan.GroceryItems)!;
-            Assert.Equal(LegacyGroceryQuantity.Parse("1"), Assert.Single(grocery, x => x.NormalizedKey == "flour").ExactQuantity);
-            Assert.Equal(LegacyGroceryQuantity.Parse("4–6"), Assert.Single(grocery, x => x.NormalizedKey == "oil").ExactQuantity);
-            Assert.Equal(LegacyGroceryQuantity.Parse("0"),
+            Assert.Equal(QuantityMath.Parse("1"), Assert.Single(grocery, x => x.NormalizedKey == "flour").ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("4–6"), Assert.Single(grocery, x => x.NormalizedKey == "oil").ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("0"),
                 Assert.Single(grocery, x => x.NormalizedKey == "salt" && x.RecipeIds.Contains(id)).ExactQuantity);
 
             var edited = content.IngredientLines.Select((line, index) => new RecipeIngredientLineInput
@@ -112,7 +112,7 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.Equal("human", reopened.IngredientLines[0].Provenance.Origin);
             Assert.Equal(content.SourceRevision, reopened.SourceRevision);
             Assert.Equal(content.IngredientLines.Select(x => x.Id), reopened.IngredientLines.Select(x => x.Id));
-            Assert.Equal(LegacyGroceryQuantity.Parse("2–3"), reopened.IngredientLines[1].Amount);
+            Assert.Equal(QuantityMath.Parse("2–3"), reopened.IngredientLines[1].Amount);
         });
     }
 }

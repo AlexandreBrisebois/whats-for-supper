@@ -117,9 +117,9 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             Assert.Equal(4, content.Servings);
             Assert.Equal(new[] { "200 g pasta", "100 ml sauce", "salt to taste" },
                 content.IngredientLines.Select(CanonicalRecipeContentStore.Render));
-            Assert.Equal(LegacyGroceryQuantity.Parse("200"), content.IngredientLines[0].Amount);
+            Assert.Equal(QuantityMath.Parse("200"), content.IngredientLines[0].Amount);
             Assert.Equal("g", content.IngredientLines[0].Unit!.Text);
-            Assert.Equal(LegacyGroceryQuantity.Parse("100"), content.IngredientLines[1].Amount);
+            Assert.Equal(QuantityMath.Parse("100"), content.IngredientLines[1].Amount);
             Assert.Null(content.IngredientLines[2].Amount);
             Assert.Null(content.IngredientLines[2].Unit);
             Assert.All(content.IngredientLines, line =>

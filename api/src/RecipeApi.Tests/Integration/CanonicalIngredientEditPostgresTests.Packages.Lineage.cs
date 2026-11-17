@@ -20,7 +20,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         {
             var current = await SaveDeclaredPackageRows(factory, before,
                 Row(before.IngredientLines[0]), Row(before.IngredientLines[1]),
-                DeclaredPackageRow("net400") with { Amount = LegacyGroceryQuantity.Parse("3"), AmountText = "3" },
+                DeclaredPackageRow("net400") with { Amount = QuantityMath.Parse("3"), AmountText = "3" },
                 DeclaredPackageRow("net800", "800"));
             var smallId = current.IngredientLines[2].Id;
             var largeId = current.IngredientLines[3].Id;
@@ -60,7 +60,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 using var identity = JsonDocument.Parse(row.DemandIdentity!);
                 return identity.RootElement.TryGetProperty("package", out var package)
                     && package.GetProperty("capacity").GetProperty("amount").Deserialize<GroceryQuantity>(Json)
-                        == LegacyGroceryQuantity.Parse(amount);
+                        == QuantityMath.Parse(amount);
             }
             using var client = factory.CreateAuthenticatedClient();
             var initial = await Read();
@@ -68,8 +68,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Equal(2, tomatoes.Length);
             var small = Assert.Single(tomatoes, row => HasCapacity(row, "400"));
             var large = Assert.Single(tomatoes, row => HasCapacity(row, "800"));
-            Assert.Equal(LegacyGroceryQuantity.Parse("3/4"), small.ExactQuantity);
-            Assert.Equal(LegacyGroceryQuantity.Parse("1/2"), large.ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("3/4"), small.ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("1/2"), large.ExactQuantity);
             Assert.NotEqual(small.DemandIdentity, large.DemandIdentity);
             foreach (var (row, ingredient) in new[] { (small, smallId), (large, largeId) })
             {
@@ -123,7 +123,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.NotEqual(small.DemandIdentity, nextSmall.DemandIdentity);
             using (var identity = JsonDocument.Parse(nextSmall.DemandIdentity!))
                 Assert.False(identity.RootElement.TryGetProperty("package", out _));
-            Assert.Equal(LegacyGroceryQuantity.Parse("3/4"), nextSmall.ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("3/4"), nextSmall.ExactQuantity);
             Assert.False(cleared.Checks.GetProperty(nextSmall.RowId!).GetBoolean());
             Assert.False(cleared.Baselines.TryGetProperty(nextSmall.RowId!, out _));
             Assert.False(cleared.Checks.TryGetProperty(small.RowId!, out _));
@@ -136,7 +136,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 Assert.Equal(large.RowId, actual.RowId); // Intended red: disjoint cleared400 must not retire800 lineage.
                 Assert.Equal(large.RowVersion, actual.RowVersion);
                 Assert.Equal(large.DemandIdentity, actual.DemandIdentity);
-                Assert.Equal(LegacyGroceryQuantity.Parse("1/2"), actual.ExactQuantity);
+                Assert.Equal(QuantityMath.Parse("1/2"), actual.ExactQuantity);
                 Assert.True(state.Checks.GetProperty(large.RowId!).GetBoolean());
                 Assert.True(JsonElement.DeepEquals(largeBaseline, state.Baselines.GetProperty(large.RowId!)));
                 Assert.True(JsonElement.DeepEquals(checkedState.Evidence.GetProperty(large.RowId!),
@@ -159,7 +159,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Null(current.IngredientLines.Single(row => row.Id == smallId).Package);
             var following = await Read();
             var followingSmall = Assert.Single(following.Rows, row => row.RowId == nextSmall.RowId);
-            Assert.Equal(LegacyGroceryQuantity.Parse("1"), followingSmall.ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("1"), followingSmall.ExactQuantity);
             Assert.Equal(nextSmall.DemandIdentity, followingSmall.DemandIdentity);
             Assert.False(following.Checks.GetProperty(followingSmall.RowId!).GetBoolean());
             Assert.False(following.Baselines.TryGetProperty(followingSmall.RowId!, out _));

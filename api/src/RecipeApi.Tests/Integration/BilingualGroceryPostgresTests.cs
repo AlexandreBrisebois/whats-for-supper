@@ -62,7 +62,7 @@ public sealed partial class BilingualGroceryPostgresTests(ITestOutputHelper outp
         var db = services.GetRequiredService<RecipeDbContext>();
         var id = Guid.NewGuid();
         var revision = Guid.NewGuid().ToString("N");
-        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = name, Amount = LegacyGroceryQuantity.Parse(amount), AmountText = amount,
+        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = name, Amount = QuantityMath.Parse(amount), AmountText = amount,
             Unit = new(unit, null), Scaling = "proportional", Package = package, Shopping = new(name, null, null), Provenance = new("source", revision, []) };
         var source = JsonSerializer.Serialize(new { name, recipeYield = "4 servings", recipeIngredient = new[] { CanonicalRecipeContentStore.Render(row) },
             supply = new[] { new { name, requiredQuantity = new { value = double.Parse(amount, System.Globalization.CultureInfo.InvariantCulture), unitText = unit } } } }, Json);
@@ -92,7 +92,7 @@ public sealed partial class BilingualGroceryPostgresTests(ITestOutputHelper outp
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public Task Mapped400Package_OrdinarySaveClearPreservesUntouchedChecked800IdentityAndBaseline() => WithHousehold(async factory =>
     {
-        RecipePackageDto Package(string size) => new(new("cans", null), new(LegacyGroceryQuantity.Parse(size)!, new("g", null)), "net");
+        RecipePackageDto Package(string size) => new(new("cans", null), new(QuantityMath.Parse(size)!, new("g", null)), "net");
         var smallId = await SeedMapped(factory, "canned tomatoes", "3", "cans", Package("400"));
         var largeId = await SeedMapped(factory, "canned tomatoes", "2", "cans", Package("800"));
         await Assign(factory, smallId, 0); await Assign(factory, largeId, 1);

@@ -56,7 +56,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
     {
         Id = row.Id,
         Description = row.Description,
-        Amount = amount is null ? row.Amount : LegacyGroceryQuantity.Parse(amount),
+        Amount = amount is null ? row.Amount : QuantityMath.Parse(amount),
         AmountText = amount ?? row.AmountText,
         Unit = row.Unit,
         Scaling = row.Scaling,
@@ -236,8 +236,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             Assert.Equal(before.InstructionSections.SelectMany(x => x.Steps).Select(x => x.Id), content.InstructionSections.SelectMany(x => x.Steps).Select(x => x.Id));
             Assert.Equal("Corrected description", saved.Description);
             Assert.Equal("Italian", saved.CuisineType);
-            Assert.Equal(LegacyGroceryQuantity.Parse("500"), SupperIngredientProjection.Read(saved, 8)[0].GroceryObservation.Quantity);
-            Assert.Equal(LegacyGroceryQuantity.Parse("200"), SupperIngredientProjection.Read(saved, 8)[1].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("500"), SupperIngredientProjection.Read(saved, 8)[0].GroceryObservation.Quantity);
+            Assert.Equal(QuantityMath.Parse("200"), SupperIngredientProjection.Read(saved, 8)[1].GroceryObservation.Quantity);
             Assert.Equal("pending", (await db.RecipeSearchDocuments.SingleAsync(x => x.RecipeId == Id)).IndexStatus);
             var persisted = JsonSerializer.Serialize(saved);
             var operations = await db.CanonicalRecipeOperations.CountAsync();
@@ -339,7 +339,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             {
                 ClientId = "split-row",
                 Description = "pasta",
-                Amount = LegacyGroceryQuantity.Parse("1"),
+                Amount = QuantityMath.Parse("1"),
                 AmountText = "1",
                 Unit = new("g", null),
                 Scaling = "proportional",
@@ -391,7 +391,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             {
                 clientId = $"draft-{index}",
                 description = form.Item1,
-                amount = form.Item2 is null ? null : LegacyGroceryQuantity.Parse(form.Item2),
+                amount = form.Item2 is null ? null : QuantityMath.Parse(form.Item2),
                 amountText = form.Item2,
                 unit = form.Item3 is null ? null : new RecipeUnitDto(form.Item3, null),
                 scaling = "proportional",

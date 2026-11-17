@@ -25,7 +25,7 @@ export async function startUnselectedProfileFixture() {
   );
   await writeFile(
     path.join(root, 'next.config.js'),
-    `module.exports = { experimental: { externalDir: true }, webpack(config) { config.resolve.alias['@'] = ${JSON.stringify(path.join(pwa, 'src'))}; return config; } };`
+    `module.exports = { devIndicators: false, experimental: { externalDir: true, agentUpgrade: false }, webpack(config) { config.resolve.alias['@'] = ${JSON.stringify(path.join(pwa, 'src'))}; return config; } };`
   );
   const child = spawn(
     process.execPath,

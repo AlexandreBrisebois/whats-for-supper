@@ -54,7 +54,7 @@ public sealed partial class CookingStepRelationshipProducerTests
             ("1", "Finally, use all the remaining (0 tbsp) oil.", 2), ("1/2", "Finally, use all the remaining oil.", 0) })
         {
             var changed = before with { ContentRevision = "corrected-" + total,
-                IngredientLines = [before.IngredientLines[0] with { Amount = LegacyGroceryQuantity.Parse(total), AmountText = total }] };
+                IngredientLines = [before.IngredientLines[0] with { Amount = QuantityMath.Parse(total), AmountText = total }] };
             var result = CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, changed), before);
             var projection = CookingStepProjection.Read(result, 8);
             Assert.Equal(count, projection.ValidatedUses);
@@ -107,7 +107,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         var row = content.IngredientLines[0];
         var steps = content.InstructionSections[0].Steps.ToArray();
         if (fault == "extra") steps = [..steps, new(Guid.NewGuid(), "Use oil later.", "extra", [])];
-        if (fault == "rangeTotal") row = row with { Amount = LegacyGroceryQuantity.Parse("2–3") };
+        if (fault == "rangeTotal") row = row with { Amount = QuantityMath.Parse("2–3") };
         if (fault == "rangePrior") steps[0] = steps[0] with { Text = "Use 1–2 tbsp oil." };
         if (fault == "unknownTotal") row = row with { Amount = null };
         if (fault == "unknownUnit") { row = row with { Unit = new("mystery", null) }; steps[0] = steps[0] with { Text = "Use 1 mystery oil." }; }
@@ -127,7 +127,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void RemainderStepEditsReplaceAffectedProofAndRetainUnrelatedRowIdentity()
     {
         var content = RemainderUses();
-        var sauce = content.IngredientLines[0] with { Id = Guid.NewGuid(), Description = "sauce", Amount = LegacyGroceryQuantity.Parse("100"),
+        var sauce = content.IngredientLines[0] with { Id = Guid.NewGuid(), Description = "sauce", Amount = QuantityMath.Parse("100"),
             AmountText = "100", Unit = new("ml", null), Shopping = new("sauce", null, null) };
         content = content with { IngredientLines = [content.IngredientLines[0], sauce],
             InstructionSections = [content.InstructionSections[0] with { Steps = [..content.InstructionSections[0].Steps,
@@ -267,7 +267,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     public void ClosedIndependentOtherRowClauseDoesNotInvalidateRemainder(string other)
     {
         var original = RemainderUses();
-        var sauce = original.IngredientLines[0] with { Id = Guid.NewGuid(), Description = "sauce", Amount = LegacyGroceryQuantity.Parse("100"),
+        var sauce = original.IngredientLines[0] with { Id = Guid.NewGuid(), Description = "sauce", Amount = QuantityMath.Parse("100"),
             AmountText = "100", Unit = new("ml", null), Shopping = new("sauce", null, null) };
         var content = original with { IngredientLines = [original.IngredientLines[0], sauce], InstructionSections = [original.InstructionSections[0] with
             { Steps = [..original.InstructionSections[0].Steps, new(Guid.NewGuid(), other, "other", [])] }] };
@@ -295,7 +295,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     {
         var original = RemainderUses();
         var row = original.IngredientLines[0] with { Id = Guid.NewGuid(), Description = description,
-            Amount = LegacyGroceryQuantity.Parse("100"), AmountText = "100", Unit = new("ml", null), Shopping = new(description, null, null) };
+            Amount = QuantityMath.Parse("100"), AmountText = "100", Unit = new("ml", null), Shopping = new(description, null, null) };
         var content = original with { IngredientLines = [original.IngredientLines[0], row], InstructionSections = [original.InstructionSections[0] with
             { Steps = [..original.InstructionSections[0].Steps, new(Guid.NewGuid(), other, "other", [])] }] };
         var result = CookingStepRelationshipProducer.Discover(content);

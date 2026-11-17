@@ -17,7 +17,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
     {
         var row = before.IngredientLines[0] with
         {
-            Description = splitOil ? "oil" : "pasta", Amount = LegacyGroceryQuantity.Parse(splitOil ? "2" : "200"),
+            Description = splitOil ? "oil" : "pasta", Amount = QuantityMath.Parse(splitOil ? "2" : "200"),
             AmountText = splitOil ? "2" : "200", Unit = new(splitOil ? "tbsp" : "g", null),
             Shopping = new(splitOil ? "oil" : "pasta", null, null)
         };
@@ -34,7 +34,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 id = Guid.NewGuid(), ingredientLineId = row.Id, stepId = step.Id,
                 validatedContentRevision = revision, validatedTextRevision = step.TextRevision,
                 span = new { start, end = start + expected.Length, expectedText = expected }, role = "absolute",
-                payload = new { amount = LegacyGroceryQuantity.Parse(splitOil ? "1" : "50"), unit = row.Unit }, status = "validated"
+                payload = new { amount = QuantityMath.Parse(splitOil ? "1" : "50"), unit = row.Unit }, status = "validated"
             }, Json)] };
         }).ToArray();
         if (exhaustive)

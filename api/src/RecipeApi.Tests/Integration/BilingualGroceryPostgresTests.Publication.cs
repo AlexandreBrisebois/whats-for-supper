@@ -20,7 +20,7 @@ public sealed partial class BilingualGroceryPostgresTests
     internal sealed record SourceLine(string Name, string? Amount = "1", string? Unit = "g", RecipePackageDto? Package = null);
 
     private static RecipePackageDto Package(string capacity, string basis = "net") =>
-        new(new("cans", null), new(LegacyGroceryQuantity.Parse(capacity)!, new("g", null)), basis);
+        new(new("cans", null), new(QuantityMath.Parse(capacity)!, new("g", null)), basis);
 
     private static async Task<Recipe> ReadRecipe(TestWebApplicationFactory factory, Guid id)
     {
@@ -69,7 +69,7 @@ public sealed partial class BilingualGroceryPostgresTests
         {
             return Input(line) with
             {
-                Amount = lines[index].Amount is { } amount ? LegacyGroceryQuantity.Parse(amount) : null, AmountText = lines[index].Amount,
+                Amount = lines[index].Amount is { } amount ? QuantityMath.Parse(amount) : null, AmountText = lines[index].Amount,
                 Unit = lines[index].Unit is { } unit ? new(unit, null) : null, Package = lines[index].Package
             };
         }));
@@ -158,16 +158,16 @@ public sealed partial class BilingualGroceryPostgresTests
         var rows = Rows(before);
         Assert.Equal(15, rows.Count);
         GroceryLineItemDto OnionUnit(string unit) => Assert.Single(rows, row => row.FoodId == Onion && row.UnitText == unit);
-        Assert.Equal(LegacyGroceryQuantity.Parse("750"), OnionUnit("g").ExactQuantity);
-        Assert.Equal(LegacyGroceryQuantity.Parse("5"), OnionUnit("ml").ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("750"), OnionUnit("g").ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("5"), OnionUnit("ml").ExactQuantity);
         foreach (var unit in new[] { "cup", "tsp", "tbsp", "US cup" })
-            Assert.Equal(LegacyGroceryQuantity.Parse("3"), OnionUnit(unit).ExactQuantity);
-        Assert.Equal(LegacyGroceryQuantity.Parse("1"), OnionUnit("piece").ExactQuantity);
-        Assert.Equal(LegacyGroceryQuantity.Parse("2"), OnionUnit("clove").ExactQuantity);
-        Assert.Equal(LegacyGroceryQuantity.Parse("3"), Assert.Single(rows, row => row.FoodId == BoundedVocabularyInput.Tomato).ExactQuantity);
+            Assert.Equal(QuantityMath.Parse("3"), OnionUnit(unit).ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("1"), OnionUnit("piece").ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("2"), OnionUnit("clove").ExactQuantity);
+        Assert.Equal(QuantityMath.Parse("3"), Assert.Single(rows, row => row.FoodId == BoundedVocabularyInput.Tomato).ExactQuantity);
         var packages = rows.Where(row => row.FoodId == BoundedVocabularyInput.CannedTomato).ToArray();
         Assert.Equal(3, packages.Length);
-        Assert.All(packages, row => Assert.Equal(LegacyGroceryQuantity.Parse("3"), row.ExactQuantity));
+        Assert.All(packages, row => Assert.Equal(QuantityMath.Parse("3"), row.ExactQuantity));
         var purchases = packages.Select(row => JsonDocument.Parse(row.DemandIdentity).RootElement.GetProperty("package").Deserialize<RecipePackageDto>(Json)!).ToArray();
         Assert.Contains(Package("400"), purchases);
         Assert.Contains(Package("800"), purchases);
@@ -259,7 +259,7 @@ public sealed partial class BilingualGroceryPostgresTests
         {
             await SaveLines(factory, id, current => current.Select(line =>
             {
-                return Input(line) with { Amount = amount is null ? null : LegacyGroceryQuantity.Parse(amount), AmountText = amount, Unit = new(unit, null) };
+                return Input(line) with { Amount = amount is null ? null : QuantityMath.Parse(amount), AmountText = amount, Unit = new(unit, null) };
             }));
             await Recompute(factory);
             var plan = await Plan(factory);
@@ -269,7 +269,7 @@ public sealed partial class BilingualGroceryPostgresTests
         }
         await SaveLines(factory, id, current => current.Select(line =>
         {
-            return Input(line) with { Amount = LegacyGroceryQuantity.Parse("4–5"), AmountText = "4–5" };
+            return Input(line) with { Amount = QuantityMath.Parse("4–5"), AmountText = "4–5" };
         }));
         await Recompute(factory);
         var increased = await Plan(factory);
