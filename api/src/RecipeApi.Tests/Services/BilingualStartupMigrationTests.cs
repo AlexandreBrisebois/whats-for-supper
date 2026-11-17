@@ -52,11 +52,11 @@ public sealed class BilingualStartupMigrationTests
     [Fact]
     public async Task MigrateAsync_UpgradesAll198SampleRecipesInUnderTwoSecondsAndIsIdempotent()
     {
-        var recipesDir = Path.Combine(DeploymentCalendarPostgresTests.RepositoryRoot(), "data", "recipes");
-        var files = Directory.GetFiles(recipesDir, "recipe.json", SearchOption.AllDirectories)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
-        Assert.Equal(198, files.Length);
+        var fixturePath = Path.Combine(
+            DeploymentCalendarPostgresTests.RepositoryRoot(),
+            "api/src/RecipeApi.Tests/Fixtures/legacy-sample-recipes-198.json");
+        var items = JsonSerializer.Deserialize<SeedRecipeFile[]>(await File.ReadAllTextAsync(fixturePath), Json)!;
+        Assert.Equal(198, items.Length);
 
         await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?>
         {
@@ -66,9 +66,8 @@ public sealed class BilingualStartupMigrationTests
         using (var seedScope = factory.Services.CreateScope())
         {
             var db = seedScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            foreach (var file in files)
+            foreach (var item in items)
             {
-                var item = JsonSerializer.Deserialize<SeedRecipeFile>(await File.ReadAllTextAsync(file), Json)!;
                 db.Recipes.Add(new Recipe
                 {
                     Id = item.Id,

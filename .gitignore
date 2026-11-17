@@ -94,6 +94,8 @@ docker/compose/data/
 api/appsettings.Development.json
 .vscode/settings.json
 .dotnet/
+.nuget/
+.local/
 docker/docker-compose.nas.yml
 # Python bytecode caches
 __pycache__/
