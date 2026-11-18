@@ -32,5 +32,5 @@ its artifact, requirement and task terminology; use the installed workflow for t
 Application `WorkflowTask` and workflow instances are runtime domain concepts.
 They are not agent assignments, specification checkboxes or Taskfile targets.
 Do not infer equivalence between API objects, storage entities and workflow data
-from shared names. Use the conditional [WFS source map](wfs-source-map.md) for verified navigation;
-check current source before relying on a mapping.
+from shared names. Use [investigation guidance](context-loading.md#investigation)
+for seam navigation and check current source before relying on a mapping.

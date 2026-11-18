@@ -1300,4 +1300,191 @@ describe('canonical original ingredient editing', () => {
     expect(screen.getByText('Original recovered draft')).toBeInTheDocument();
     expect(mockUpdateRecipe).toHaveBeenCalledTimes(1);
   });
+
+  it('edits step section headers and step content, adds/removes sections and steps, and submits trimmed sections', async () => {
+    const sectioned = {
+      ...canonical,
+      instructionSections: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440310',
+          name: 'Sauce',
+          steps: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440311',
+              text: 'Simmer tomatoes.',
+              textRevision: 't1',
+              bindings: [],
+            },
+          ],
+        },
+      ],
+      recipeInstructions: [
+        {
+          '@type': 'HowToSection',
+          name: 'Sauce',
+          itemListElement: [{ '@type': 'HowToStep', text: 'Simmer tomatoes.' }],
+        },
+      ],
+    };
+    mockGetRecipe.mockResolvedValue(sectioned);
+    mockUpdateRecipe.mockImplementation(async (_id, update) => ({
+      ...sectioned,
+      contentRevision: 'saved-sections',
+      instructionSections: update.instructionSections,
+      recipeInstructions: (
+        (update.instructionSections ?? []) as Array<{
+          name: string | null;
+          steps: Array<{ text: string }>;
+        }>
+      ).map((sec) => ({
+        '@type': 'HowToSection',
+        name: sec.name,
+        itemListElement: sec.steps.map((s) => ({ '@type': 'HowToStep', text: s.text })),
+      })),
+    }));
+
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    await edit();
+
+    const header0 = screen.getByTestId('recipe-edit-section-header-0');
+    expect(header0).toHaveValue('Sauce');
+    fireEvent.change(header0, { target: { value: '  Marinade  ' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Step 1 instructions' }), {
+      target: { value: 'Whisk tomatoes.' },
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-add-step-section-0'));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Step 2 instructions' }), {
+      target: { value: 'Season to taste.' },
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-add-section'));
+    const header1 = screen.getByTestId('recipe-edit-section-header-1');
+    expect(header1).toHaveValue('');
+    fireEvent.change(header1, { target: { value: '   ' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Step 3 instructions' }), {
+      target: { value: 'Serve warm.' },
+    });
+
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await waitFor(() =>
+      expect(mockUpdateRecipe).toHaveBeenCalledWith(
+        id,
+        expect.objectContaining({
+          expectedContentRevision: 'original-revision',
+          instructionSections: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440310',
+              name: 'Marinade',
+              steps: [
+                { id: '550e8400-e29b-41d4-a716-446655440311', text: 'Whisk tomatoes.' },
+                { clientId: expect.any(String), text: 'Season to taste.' },
+              ],
+            },
+            {
+              clientId: expect.any(String),
+              name: null,
+              steps: [{ clientId: expect.any(String), text: 'Serve warm.' }],
+            },
+          ],
+        })
+      )
+    );
+    expect(await screen.findByRole('heading', { level: 4, name: 'Marinade' })).toBeVisible();
+    expect(screen.getByText('Whisk tomatoes.')).toBeVisible();
+    expect(screen.getByText('Serve warm.')).toBeVisible();
+  });
+
+  it('discards section removal and header/step edits when Cancel is activated', async () => {
+    const sectioned = {
+      ...canonical,
+      instructionSections: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440320',
+          name: 'Prep',
+          steps: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440321',
+              text: 'Chop herbs.',
+              textRevision: 't1',
+              bindings: [],
+            },
+          ],
+        },
+      ],
+      recipeInstructions: [
+        {
+          '@type': 'HowToSection',
+          name: 'Prep',
+          itemListElement: [{ '@type': 'HowToStep', text: 'Chop herbs.' }],
+        },
+      ],
+    };
+    mockGetRecipe.mockResolvedValue(sectioned);
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    await edit();
+
+    fireEvent.change(screen.getByTestId('recipe-edit-section-header-0'), {
+      target: { value: 'Changed' },
+    });
+    fireEvent.click(screen.getByTestId('recipe-remove-section-0'));
+    expect(screen.queryByTestId('recipe-edit-section-header-0')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('recipe-cancel-edits'));
+    expect(mockUpdateRecipe).not.toHaveBeenCalled();
+    expect(await screen.findByRole('heading', { level: 4, name: 'Prep' })).toBeVisible();
+    expect(screen.getByText('Chop herbs.')).toBeVisible();
+  });
+
+  it('shows section headers in conflict reconciliation diff and preserves chosen header draft', async () => {
+    const sectioned = {
+      ...canonical,
+      instructionSections: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440330',
+          name: 'Original header',
+          steps: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440331',
+              text: 'Stir gently.',
+              textRevision: 't1',
+              bindings: [],
+            },
+          ],
+        },
+      ],
+    };
+    mockGetRecipe.mockResolvedValue(sectioned);
+    const first = render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    await edit();
+    fireEvent.change(screen.getByTestId('recipe-edit-section-header-0'), {
+      target: { value: 'My header' },
+    });
+    first.unmount();
+
+    const concurrent = {
+      ...sectioned,
+      contentRevision: 'someone-else',
+      instructionSections: [
+        {
+          ...sectioned.instructionSections[0],
+          name: 'Their header',
+        },
+      ],
+    };
+    mockGetRecipe.mockResolvedValue(concurrent);
+    render(<RecipeDetailSheet {...props} />);
+    expect(await screen.findByTestId('recipe-edit-section-header-0')).toHaveValue('My header');
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reconcile draft' }));
+
+    expect(screen.getByText(/My header/)).toBeVisible();
+    expect(screen.getByText(/Their header/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep my draft: Instructions' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply reviewed draft' }));
+    expect(screen.getByTestId('recipe-edit-section-header-0')).toHaveValue('My header');
+  });
 });

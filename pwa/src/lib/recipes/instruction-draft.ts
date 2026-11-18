@@ -18,6 +18,19 @@ export function originalInstructions(recipe: Recipe): unknown[] {
       }))
     : structuredClone(recipe.recipeInstructions ?? []);
 }
+export interface InstructionStepDraftRow {
+  path: [number, number?];
+  stepNumber: number;
+  text: string;
+}
+
+export interface InstructionSectionDraft {
+  sectionIndex: number;
+  key: string;
+  name: string;
+  steps: InstructionStepDraftRow[];
+}
+
 export function instructionRows(content: unknown[], canonical: boolean) {
   return content.flatMap((entry, outer) => {
     const section = object(entry);
@@ -35,6 +48,105 @@ export function instructionRows(content: unknown[], canonical: boolean) {
     ];
   });
 }
+
+function isLegacySectioned(content: unknown[]): boolean {
+  return content.length > 0 && Array.isArray(object(content[0]).itemListElement);
+}
+
+export function instructionSections(
+  content: unknown[],
+  canonical: boolean
+): InstructionSectionDraft[] {
+  if (!content.length) return [];
+  if (canonical || isLegacySectioned(content)) {
+    let stepNumber = 1;
+    return content.map((entry, outer) => {
+      const section = object(entry);
+      const rawSteps = (canonical ? section.steps : section.itemListElement) as unknown[];
+      const steps = Array.isArray(rawSteps) ? rawSteps : [];
+      const key =
+        typeof section.id === 'string'
+          ? section.id
+          : typeof section.clientId === 'string'
+            ? section.clientId
+            : `section-${outer}`;
+      return {
+        sectionIndex: outer,
+        key,
+        name: typeof section.name === 'string' ? section.name : '',
+        steps: steps.map((step, inner) => ({
+          path: [outer, inner] as [number, number?],
+          stepNumber: stepNumber++,
+          text:
+            typeof step === 'string' ? step : String(object(step).text ?? object(step).name ?? ''),
+        })),
+      };
+    });
+  }
+  return [
+    {
+      sectionIndex: 0,
+      key: 'section-0',
+      name: '',
+      steps: content.map((entry, outer) => {
+        const step = object(entry);
+        return {
+          path: [outer] as [number, number?],
+          stepNumber: outer + 1,
+          text: typeof entry === 'string' ? entry : String(step.text ?? step.name ?? ''),
+        };
+      }),
+    },
+  ];
+}
+
+export function changeInstructionSectionName(
+  content: unknown[],
+  canonical: boolean,
+  sectionIndex: number,
+  name: string
+): unknown[] {
+  if (canonical || isLegacySectioned(content)) {
+    return content.map((entry, index) =>
+      index === sectionIndex ? { ...object(entry), name } : entry
+    );
+  }
+  if (sectionIndex !== 0) return content;
+  return [{ '@type': 'HowToSection', name, itemListElement: [...content] }];
+}
+
+export function addInstructionSection(content: unknown[], canonical: boolean): unknown[] {
+  if (canonical) {
+    return [
+      ...content,
+      {
+        clientId: crypto.randomUUID(),
+        name: null,
+        steps: [{ clientId: crypto.randomUUID(), text: '' }],
+      },
+    ];
+  }
+  const nextSection = {
+    '@type': 'HowToSection',
+    name: null,
+    itemListElement: [{ '@type': 'HowToStep', text: '' }],
+  };
+  if (!content.length) return [nextSection];
+  if (isLegacySectioned(content)) return [...content, nextSection];
+  return [{ '@type': 'HowToSection', name: null, itemListElement: [...content] }, nextSection];
+}
+
+export function removeInstructionSection(
+  content: unknown[],
+  canonical: boolean,
+  sectionIndex: number
+): unknown[] {
+  if (canonical || isLegacySectioned(content)) {
+    return content.filter((_, index) => index !== sectionIndex);
+  }
+  return sectionIndex === 0 ? [] : content;
+}
+
 export function changeInstruction(
   content: unknown[],
   canonical: boolean,
@@ -59,11 +171,16 @@ export function changeInstruction(
     ];
   });
 }
-export function addInstruction(content: unknown[], canonical: boolean): unknown[] {
+export function addInstruction(
+  content: unknown[],
+  canonical: boolean,
+  sectionIndex?: number
+): unknown[] {
   if (!canonical) {
-    if (content.length && Array.isArray(object(content[0]).itemListElement))
+    if (isLegacySectioned(content)) {
+      const target = sectionIndex ?? content.length - 1;
       return content.map((entry, index) =>
-        index === content.length - 1
+        index === target
           ? {
               ...object(entry),
               itemListElement: [
@@ -73,18 +190,38 @@ export function addInstruction(content: unknown[], canonical: boolean): unknown[
             }
           : entry
       );
+    }
     return [...content, typeof content[0] === 'string' ? '' : { '@type': 'HowToStep', text: '' }];
   }
   const step = { clientId: crypto.randomUUID(), text: '' };
   if (!content.length) return [{ clientId: crypto.randomUUID(), name: null, steps: [step] }];
+  const target = sectionIndex ?? content.length - 1;
   return content.map((entry, index) =>
-    index === content.length - 1
+    index === target
       ? { ...object(entry), steps: [...(object(entry).steps as unknown[]), step] }
       : entry
   );
 }
 export function canonicalInstructionInput(content: unknown[]) {
-  return content as UpdateRecipeDto['instructionSections'];
+  return content.map((entry) => {
+    const section = object(entry);
+    const trimmed = typeof section.name === 'string' ? section.name.trim() : '';
+    return {
+      ...section,
+      name: trimmed ? trimmed : null,
+    };
+  }) as UpdateRecipeDto['instructionSections'];
+}
+export function legacyInstructionInput(content: unknown[]): unknown[] {
+  return content.map((entry) => {
+    const section = object(entry);
+    if (!Array.isArray(section.itemListElement)) return entry;
+    const trimmed = typeof section.name === 'string' ? section.name.trim() : '';
+    return {
+      ...section,
+      name: trimmed ? trimmed : null,
+    };
+  });
 }
 
 export function restoreDeletedInstructionIds(content: unknown[], current: unknown[]): unknown[] {

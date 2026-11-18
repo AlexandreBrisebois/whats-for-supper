@@ -89,11 +89,12 @@ test-resource coordination.
 ## Investigation
 
 For an unknown or complex path, start at the reported component, route or failing
-test. Follow the API wrapper/generated client → approved OpenAPI operation →
-controller → service → persistence or workflow boundary, loading only affected
-source and immediate dependencies. Use the conditional [WFS source map](wfs-source-map.md)
-as navigation, then verify current code. `task agent:slice -- <route>` and
-`task agent:api` support discovery; their static output is not proof of live parity.
+test. Follow the API wrapper (`pwa/src/lib/api/`) and generated client
+(`pwa/src/lib/api/generated/`) → approved OpenAPI operation (`specs/openapi.yaml`) →
+controller → service → persistence (`api/src/RecipeApi/Data/RecipeDbContext.cs`,
+`api/database/`) or workflow boundary (`api/src/RecipeApi/Workflows/`), loading only
+affected source and immediate dependencies. `task agent:slice -- <route>` and
+`task agent:api` support static discovery; their output is not proof of live parity.
 
 When a bug's cause is uncertain or an attempted correction fails, choose the
 smallest repeatable experiment that distinguishes plausible causes. State the

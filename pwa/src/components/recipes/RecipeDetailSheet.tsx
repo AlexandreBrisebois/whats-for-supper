@@ -19,10 +19,14 @@ import {
 } from '@/lib/recipes/editor-draft';
 import {
   originalInstructions,
-  instructionRows,
+  instructionSections,
   changeInstruction,
+  changeInstructionSectionName,
   addInstruction,
+  addInstructionSection,
+  removeInstructionSection,
   canonicalInstructionInput,
+  legacyInstructionInput,
 } from '@/lib/recipes/instruction-draft';
 import { PreparationStatus } from '@/components/planner/PreparationStatus';
 
@@ -282,8 +286,11 @@ export function RecipeDetailSheet({
     })[field];
   const editorFieldText = (fields: EditorFields, field: EditorField, canonical: boolean) => {
     if (field === 'instructions')
-      return instructionRows(fields.instructions ?? [], canonical)
-        .map((row) => row.text)
+      return instructionSections(fields.instructions ?? [], canonical)
+        .flatMap((section) => [
+          ...(section.name.trim() ? [section.name.trim()] : []),
+          ...section.steps.map((row) => row.text),
+        ])
         .join('\n');
     if (field !== 'ingredients')
       return Array.isArray(fields[field]) ? fields[field].join(', ') : fields[field];
@@ -680,12 +687,19 @@ export function RecipeDetailSheet({
     const cleanedIngredients = draftIngredients
       .map((ingredient) => ingredient.trim())
       .filter(Boolean);
+    const normalizedLegacyInstructions =
+      !canonicalEditing && draftInstructions !== undefined
+        ? legacyInstructionInput(draftInstructions)
+        : undefined;
     const nextRecipe: Recipe = {
       ...recipe,
       ...servingsUpdate,
       name: draftName.trim(),
       description: draftDescription.trim(),
       ingredients: cleanedIngredients,
+      ...(normalizedLegacyInstructions !== undefined
+        ? { recipeInstructions: normalizedLegacyInstructions }
+        : {}),
       cuisineType: draftCuisineType.trim() || null,
       mealTypes: draftMealTypes,
     };
@@ -707,7 +721,9 @@ export function RecipeDetailSheet({
             }
           : {
               ingredients: cleanedIngredients,
-              ...(draftInstructions === undefined ? {} : { recipeInstructions: draftInstructions }),
+              ...(normalizedLegacyInstructions === undefined
+                ? {}
+                : { recipeInstructions: normalizedLegacyInstructions }),
             }),
         cuisineType: nextRecipe.cuisineType,
         mealTypes: nextRecipe.mealTypes ?? [],
@@ -1867,73 +1883,199 @@ export function RecipeDetailSheet({
                   )}
                 {isEditing ? (
                   <div className="grid min-w-0 gap-4">
-                    {instructionRows(
-                      draftInstructions ?? originalInstructions(recipe),
-                      canonicalEditing
-                    ).map((row, index) => (
-                      <div key={row.path.join(':')} className="grid min-w-0 gap-2">
-                        <label className="grid min-w-0 gap-2">
-                          <span>
-                            {tWithVars('recipes.stepInstructions', 'Step {{number}} instructions', {
-                              number: index + 1,
-                            })}
-                          </span>
-                          <textarea
-                            rows={3}
-                            disabled={isSavingRecipe}
-                            value={row.text}
-                            onChange={(event) =>
-                              setDraftInstructions(
-                                changeInstruction(
-                                  draftInstructions ?? originalInstructions(recipe),
-                                  canonicalEditing,
-                                  row.path,
-                                  event.target.value
+                    {(() => {
+                      const currentInstructions = draftInstructions ?? originalInstructions(recipe);
+                      const editableSections = instructionSections(
+                        currentInstructions,
+                        canonicalEditing
+                      );
+                      return (
+                        <>
+                          {editableSections.map((section) => (
+                            <div
+                              key={section.key}
+                              data-testid={`recipe-edit-section-${section.sectionIndex}`}
+                              className="grid min-w-0 gap-3 rounded-2xl border border-charcoal/10 p-3"
+                            >
+                              <div className="flex flex-wrap items-end gap-2">
+                                <label className="grid min-w-0 flex-1 gap-2">
+                                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                                    {tWithVars(
+                                      'recipes.sectionHeader',
+                                      'Section {{number}} header',
+                                      {
+                                        number: section.sectionIndex + 1,
+                                      }
+                                    )}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    data-testid={`recipe-edit-section-header-${section.sectionIndex}`}
+                                    disabled={isSavingRecipe}
+                                    placeholder={t(
+                                      'recipes.sectionHeaderPlaceholder',
+                                      'Optional section header'
+                                    )}
+                                    value={section.name}
+                                    onChange={(event) =>
+                                      setDraftInstructions(
+                                        changeInstructionSectionName(
+                                          currentInstructions,
+                                          canonicalEditing,
+                                          section.sectionIndex,
+                                          event.target.value
+                                        )
+                                      )
+                                    }
+                                    className="min-h-12 min-w-0 w-full rounded-xl border border-charcoal/15 bg-white px-3 py-2 text-base font-semibold text-charcoal"
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  data-testid={`recipe-remove-section-${section.sectionIndex}`}
+                                  disabled={isSavingRecipe}
+                                  aria-label={tWithVars(
+                                    'recipes.removeSection',
+                                    'Remove section {{number}}',
+                                    {
+                                      number: section.sectionIndex + 1,
+                                    }
+                                  )}
+                                  onClick={() =>
+                                    setDraftInstructions(
+                                      removeInstructionSection(
+                                        currentInstructions,
+                                        canonicalEditing,
+                                        section.sectionIndex
+                                      )
+                                    )
+                                  }
+                                  className="min-h-12 rounded-xl px-3 text-sm text-charcoal"
+                                >
+                                  {tWithVars('recipes.removeSection', 'Remove section {{number}}', {
+                                    number: section.sectionIndex + 1,
+                                  })}
+                                </button>
+                              </div>
+                              {section.steps.map((row) => (
+                                <div key={row.path.join(':')} className="grid min-w-0 gap-2">
+                                  <label className="grid min-w-0 gap-2">
+                                    <span>
+                                      {tWithVars(
+                                        'recipes.stepInstructions',
+                                        'Step {{number}} instructions',
+                                        {
+                                          number: row.stepNumber,
+                                        }
+                                      )}
+                                    </span>
+                                    <textarea
+                                      rows={3}
+                                      data-testid={`recipe-edit-step-${row.stepNumber - 1}`}
+                                      disabled={isSavingRecipe}
+                                      value={row.text}
+                                      onChange={(event) =>
+                                        setDraftInstructions(
+                                          changeInstruction(
+                                            currentInstructions,
+                                            canonicalEditing,
+                                            row.path,
+                                            event.target.value
+                                          )
+                                        )
+                                      }
+                                      className="min-w-0 w-full rounded-2xl border border-charcoal/15 bg-white p-3 text-base"
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    data-testid={`recipe-remove-step-${row.stepNumber - 1}`}
+                                    disabled={isSavingRecipe}
+                                    aria-label={tWithVars(
+                                      'recipes.removeStep',
+                                      'Remove step {{number}}',
+                                      {
+                                        number: row.stepNumber,
+                                      }
+                                    )}
+                                    onClick={() =>
+                                      setDraftInstructions(
+                                        changeInstruction(
+                                          currentInstructions,
+                                          canonicalEditing,
+                                          row.path,
+                                          null
+                                        )
+                                      )
+                                    }
+                                    className="min-h-12 justify-self-end rounded-xl px-3 text-sm text-charcoal"
+                                  >
+                                    {tWithVars('recipes.removeStep', 'Remove step {{number}}', {
+                                      number: row.stepNumber,
+                                    })}
+                                  </button>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                data-testid={`recipe-add-step-section-${section.sectionIndex}`}
+                                disabled={isSavingRecipe}
+                                aria-label={
+                                  editableSections.length > 1
+                                    ? tWithVars(
+                                        'recipes.addStepToSection',
+                                        'Add step to section {{number}}',
+                                        {
+                                          number: section.sectionIndex + 1,
+                                        }
+                                      )
+                                    : undefined
+                                }
+                                onClick={() =>
+                                  setDraftInstructions(
+                                    addInstruction(
+                                      currentInstructions,
+                                      canonicalEditing,
+                                      section.sectionIndex
+                                    )
+                                  )
+                                }
+                                className="min-h-12 rounded-xl border border-charcoal/15 px-4 font-semibold"
+                              >
+                                {t('recipes.addStep', 'Add step')}
+                              </button>
+                            </div>
+                          ))}
+                          {editableSections.length === 0 && (
+                            <button
+                              type="button"
+                              disabled={isSavingRecipe}
+                              onClick={() =>
+                                setDraftInstructions(
+                                  addInstruction(currentInstructions, canonicalEditing)
                                 )
+                              }
+                              className="min-h-12 rounded-xl border border-charcoal/15 px-4 font-semibold"
+                            >
+                              {t('recipes.addStep', 'Add step')}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            data-testid="recipe-add-section"
+                            disabled={isSavingRecipe}
+                            onClick={() =>
+                              setDraftInstructions(
+                                addInstructionSection(currentInstructions, canonicalEditing)
                               )
                             }
-                            className="min-w-0 w-full rounded-2xl border border-charcoal/15 bg-white p-3 text-base"
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          disabled={isSavingRecipe}
-                          aria-label={tWithVars('recipes.removeStep', 'Remove step {{number}}', {
-                            number: index + 1,
-                          })}
-                          onClick={() =>
-                            setDraftInstructions(
-                              changeInstruction(
-                                draftInstructions ?? originalInstructions(recipe),
-                                canonicalEditing,
-                                row.path,
-                                null
-                              )
-                            )
-                          }
-                          className="min-h-12 justify-self-end rounded-xl px-3 text-sm text-charcoal"
-                        >
-                          {tWithVars('recipes.removeStep', 'Remove step {{number}}', {
-                            number: index + 1,
-                          })}
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      disabled={isSavingRecipe}
-                      onClick={() =>
-                        setDraftInstructions(
-                          addInstruction(
-                            draftInstructions ?? originalInstructions(recipe),
-                            canonicalEditing
-                          )
-                        )
-                      }
-                      className="min-h-12 rounded-xl border border-charcoal/15 px-4 font-semibold"
-                    >
-                      {t('recipes.addStep', 'Add step')}
-                    </button>
+                            className="min-h-12 rounded-xl border border-charcoal/15 px-4 font-semibold"
+                          >
+                            {t('recipes.addSection', 'Add section')}
+                          </button>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : steps.length ? (
                   <ol className="space-y-5">

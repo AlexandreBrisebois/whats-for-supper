@@ -17,10 +17,9 @@ OpenSpec owns specification planning, review, artifact formats and task applicat
 Repository skills provide technical guidance within the selected change; they do
 not introduce a separate specification writer or task-executor workflow.
 
-Investigation and bounded delegation use [context loading](../core/context-loading.md#investigation)
-and the conditional [WFS source map](../core/wfs-source-map.md). API design guidance
-lives with [openapi-expert](openapi-expert/api-design-principles.md); persistence
-operations live with [database](database/SKILL.md).
+Investigation and bounded delegation use [context loading](../core/context-loading.md#investigation).
+API design guidance lives with [openapi-expert](openapi-expert/api-design-principles.md);
+persistence operations live with [database](database/SKILL.md).
 
 For explicitly requested skill authoring, use the host's skill-authoring guidance
 when available. Repository skills live under `.agents/skills/`; update this registry
