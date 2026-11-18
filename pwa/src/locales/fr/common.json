@@ -41,7 +41,7 @@
   "betaContext": {
     "start": "Commencer à explorer",
     "label": "Bêta · Meilleure grâce à vos idées",
-    "welcome": "Bienvenue dans la version bêta de Whats for Supper? Essayez de choisir vos repas ensemble, de planifier votre semaine et de faire du souper une chose de moins à gérer.",
+    "welcome": "Bienvenue dans la version bêta de What's for Supper? Essayez de choisir vos repas ensemble, de planifier votre semaine et de faire du souper une chose de moins à gérer.",
     "expectations": "Nous travaillons encore sur cette version. Certaines choses peuvent changer et vous pourriez rencontrer un bogue en cours de route. Nous développons cette application en public, ensemble. Vos idées et vos commentaires aident à façonner la suite.",
     "reopen": "Vous pouvez rouvrir cette explication à tout moment à partir du bandeau Bêta.",
     "feedback": "Donner votre avis sur GitHub",
@@ -84,7 +84,7 @@
     "tryAgain": "Réessayer"
   },
   "landing": {
-    "title": "Whats for Supper?",
+    "title": "What's for Supper?",
     "subtitle": "Capturez des recettes, planifiez la semaine et découvrez quoi cuisiner.",
     "getStarted": "Commencer"
   },
@@ -96,6 +96,9 @@
   },
   "capture": {
     "done": "Terminé",
+    "buildingRecipe": "Préparation de votre recette…",
+    "buildingRecipeSubtext": "Un instant — nous vous préviendrons dès qu'elle sera prête.",
+    "saveAndBuild": "Enregistrer et préparer la recette",
     "saveRecipe": "Sauvegarder la recette",
     "choosePhotos": "Choisir des photos",
     "redirecting": "Redirection vers l'accueil dans {{seconds}}s...",
@@ -156,7 +159,7 @@
     "editNameFor": "Modifier le nom de {{name}}"
   },
   "auth": {
-    "welcomeTitle": "Whats for Supper?",
+    "welcomeTitle": "What's for Supper?",
     "demoPrefilled": "Le mot de passe de la démo est déjà rempli pour vous. Appuyez sur Entrer pour explorer.",
     "welcomeSubtitle": "Entrez le mot de passe de votre famille pour continuer",
     "passphrasePlaceholder": "Mot de passe de la famille",

@@ -3,6 +3,7 @@ import { expect, type Page, type TestInfo } from '@playwright/test';
 /** Shared mocked and actual generated-client/API/PostgreSQL acceptance. */
 export async function qualifyCookingFraction(page: Page, id: string, info: TestInfo) {
   await expect(page.getByTestId('recipe-detail-name')).toBeVisible();
+  await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('300 g pasta');
   const before = await page.evaluate(
     async (id) => (await (await fetch(`/api/recipes/${id}`)).json()).recipe,
     id

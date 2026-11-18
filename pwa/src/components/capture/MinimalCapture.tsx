@@ -758,7 +758,7 @@ export default function MinimalCapture({
     const heading = isGoto
       ? 'Your GOTO is being prepared'
       : wasDescribeCaptured
-        ? 'Synthesizing\u2026'
+        ? t('capture.buildingRecipe', 'Building your recipe\u2026')
         : 'Recipe queued';
 
     const subtext = isGoto
@@ -767,7 +767,10 @@ export default function MinimalCapture({
         ? "We're processing your photo. You'll get a notification when it's ready."
         : wasUrlCaptured
           ? "We're fetching the recipe from that link. You'll get a notification when it's ready."
-          : "We're building your recipe. Hang tight \u2014 it'll be ready shortly.";
+          : t(
+              'capture.buildingRecipeSubtext',
+              "Hang tight \u2014 we'll notify you when it's ready."
+            );
 
     // GOTO uses a different destination after success
     const gotoDest = ROUTES.HOME;
@@ -1526,10 +1529,10 @@ export default function MinimalCapture({
             {isDescribing ? (
               <span className="flex items-center gap-2">
                 <Loader2 size={18} className="animate-spin" />
-                Synthesizing…
+                {t('capture.buildingRecipe', 'Building your recipe…')}
               </span>
             ) : (
-              'Synthesize Recipe'
+              t('capture.saveAndBuild', 'Save & build recipe')
             )}
           </Button>
 

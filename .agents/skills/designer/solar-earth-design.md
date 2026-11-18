@@ -1,4 +1,4 @@
-# Solar Earth surfaces and motion
+# Shared Table surfaces and motion
 
 Load for relevant WFS surface or transition work. Existing utilities in
 [globals.css](../../../pwa/src/app/globals.css), including `.glass`, `.glass-nav`

@@ -119,7 +119,7 @@ export function SkipRecoveryDialog({
             className="font-heading text-[10px] font-black uppercase tracking-[0.3em] text-terracotta"
             data-testid="recovery-dialog-title"
           >
-            {t('home.recoveryFlow', 'Recovery Flow')}
+            {t('home.recoveryFlow', 'Plan B')}
           </h2>
           <button
             disabled={pending}

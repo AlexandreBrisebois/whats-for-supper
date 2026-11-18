@@ -2352,6 +2352,33 @@ describe('RecipesPage', () => {
       expect(mocks.assignRecipeToDay).toHaveBeenCalledTimes(1);
     });
 
+    it('does not abort an unresolved initial target scan when a week update arrives during recipe editing', async () => {
+      let releaseFirstRead!: (value: any) => void;
+      mocks.getSchedule.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseFirstRead = resolve;
+          })
+      );
+      await act(async () => {
+        render(<UnifiedRecipesPage />);
+      });
+      await waitFor(() => expect(releaseFirstRead).toBeTypeOf('function'));
+      expect(mocks.getSchedule).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        useWeekStore.setState({
+          ingredientProjectionUpdate: { weekStartDate: '2026-05-04', sequence: 1 },
+        });
+      });
+      expect(mocks.getSchedule).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        releaseFirstRead(base);
+      });
+      await waitFor(() =>
+        expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 4')
+      );
+    });
+
     it('checks an uncertain automatic write on its original date after midnight', async () => {
       await mount();
       mocks.assignRecipeToDay.mockRejectedValueOnce(new Error('Reply lost'));

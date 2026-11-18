@@ -14,7 +14,7 @@ The app keeps your whole family on the same page — literally. Whatever anyone 
 
 ## What's for Supper? (Home)
 
-The home screen is your command centre. It tells you what's planned for tonight, how long it takes, and what to do next.
+The home screen brings your household's shared table into focus for tonight — one less thing weighing on you. It tells you what's planned for tonight, how long it takes, and what to do next.
 
 If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to check ingredients and read the instructions. Use the **Step by step** or **All steps** view controls in the recipe header; **All steps** is the default until you save a preference. The app remembers a successfully saved choice for the selected family member. Switching views keeps your ingredient checks and reading position; if saving fails, your current view stays available and you can choose **Retry**.
 

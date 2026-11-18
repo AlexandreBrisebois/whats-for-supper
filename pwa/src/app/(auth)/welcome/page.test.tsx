@@ -73,10 +73,10 @@ describe('entry branding', () => {
   it.each(['en', 'fr'])('keeps the exact app name on landing and Welcome in %s', async (locale) => {
     localStorage.setItem('locale', locale);
     const landing = render(<LandingPage />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Whats for Supper?' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: "What's for Supper?" })).toBeVisible();
     landing.unmount();
     await welcome();
-    expect(screen.getByRole('heading', { level: 1, name: 'Whats for Supper?' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: "What's for Supper?" })).toBeVisible();
     expect(screen.getByTestId('welcome-helper')).toHaveTextContent(
       locale === 'en'
         ? 'The demo passphrase is filled in for you. Tap Enter to explore.'
@@ -350,7 +350,7 @@ it('keeps Beta in the selected in-memory French locale when storage writes fail'
   expect(screen.getByRole('button', { name: 'Commencer à explorer' })).toBeVisible();
   expect(
     screen.getByText(
-      'Bienvenue dans la version bêta de Whats for Supper? Essayez de choisir vos repas ensemble, de planifier votre semaine et de faire du souper une chose de moins à gérer.'
+      "Bienvenue dans la version bêta de What's for Supper? Essayez de choisir vos repas ensemble, de planifier votre semaine et de faire du souper une chose de moins à gérer."
     )
   ).toBeVisible();
   expect(

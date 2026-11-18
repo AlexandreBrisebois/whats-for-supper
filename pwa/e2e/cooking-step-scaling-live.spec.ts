@@ -39,6 +39,7 @@ test('corrected whole use agrees across Home detail Cook and one grocery contrib
       : route.abort('blockedbyclient');
   });
   await page.goto(`/recipes?open=${id}`);
+  await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
   await page.getByTestId('action-gear-menu').click();
   await page.getByTestId('action-edit-recipe').click();
   await expect(page.getByTestId('recipe-edit-amount-0')).toHaveValue('200');
@@ -126,6 +127,9 @@ test('absolute allocation agrees across Home detail Cook and one grocery contrib
       : route.abort('blockedbyclient');
   });
   await page.goto(`/recipes?open=${id}`);
+  await expect(page.getByTestId('recipe-ingredient-projection')).toContainText(
+    split ? '4 tbsp oil' : '300 g pasta'
+  );
   if (!split || uncertain) {
     await page.getByTestId('action-gear-menu').click();
     await page.getByTestId('action-edit-recipe').click();

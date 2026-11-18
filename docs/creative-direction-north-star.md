@@ -46,7 +46,7 @@ Make participation understandable and accessible across the journey. Use Canadia
 
 ## Character to preserve
 
-Keep Solar Earth warm, distinctive and beautiful. Let typography, colour, composition and earned moments of delight support clarity and anticipation. Reuse established components and tokens; do not turn particular colours, blur values or animation into universal requirements.
+Keep Shared Table warm, distinctive and beautiful, with a contemporary family cookbook feel. Let typography, colour, composition and earned moments of delight support clarity and anticipation. Reuse established components and tokens; do not turn particular colours, blur values or animation into universal requirements.
 
 Preserve progress that reduces household work: grocery extras, quick voting convergence, recipe rotation through dreaming and PDF import. Alex identified these as meaningful gains in October 2026; that reported experience guides preservation, not claims of independently verified behavior.
 

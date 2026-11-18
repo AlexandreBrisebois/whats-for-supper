@@ -61,7 +61,7 @@ avoidable decisions, inconsistency and polish. Explain concrete evidence → hum
 consequence → smallest useful correction, with uncertainty and proportionate
 verification. Findings may be empty; no score or fixed presentation is required.
 
-Preserve strengths and reuse existing components and vocabulary. Keep Solar Earth
+Preserve strengths and reuse existing components and vocabulary. Keep Shared Table
 warm, distinctive and ambitious rather than defaulting to generic minimalism.
 Offer creative alternatives only when exploration is in scope; connect their feeling
 and user payoff to trade-offs and effort. Options do not authorize redesign.

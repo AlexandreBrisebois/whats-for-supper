@@ -65,7 +65,7 @@ export function DemoExplanation({
             isBeta
               ? betaText(
                   'betaContext.welcome',
-                  'Welcome to the beta of Whats for Supper? Try choosing meals together, planning your week, and making supper one less thing to think about.'
+                  "Welcome to the beta of What's for Supper? Try choosing meals together, planning your week, and making supper one less thing to think about."
                 )
               : t(
                   'demoContext.shared',

@@ -55,7 +55,7 @@ export function WelcomeForm({ initialPassphrase }: { initialPassphrase: string |
       <main className="relative flex flex-1 flex-col items-center justify-center gap-8 px-6 py-12 bg-cream">
         <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
           <h1 className="text-4xl font-bold text-indigo tracking-tight" data-testid="welcome-title">
-            {t('auth.welcomeTitle', 'Whats for Supper?')}
+            {t('auth.welcomeTitle', "What's for Supper?")}
           </h1>
           <p
             id="welcome-helper"

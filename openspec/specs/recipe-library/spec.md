@@ -1247,9 +1247,9 @@ When saved notes or a nonempty retained draft exist, detail SHALL offer the quie
 - **WHEN** saved notes and any retained draft are empty
 - **THEN** no shortcut is displayed and the field remains writable without an Add button
 
-### Requirement: Present readable Solar Earth recipe detail across viewports
+### Requirement: Present readable Shared Table cookbook recipe detail across viewports
 
-Detail SHALL use the established Solar Earth typography, palette and components with prominent recipe identity and food imagery, readable sentence-case labels and stable text surfaces. Phones SHALL use full-screen detail; larger screens SHALL use a bounded spacious dialog. At 320 CSS px and 200% text, English/French content, focus and 48 CSS px action targets SHALL remain reachable without horizontal overflow.
+Detail SHALL use the established Shared Table typography, palette and components in a contemporary cookbook layout, with prominent recipe identity and food imagery, warm readable surfaces, sentence-case labels and stable text hierarchy. Phones SHALL use full-screen detail; larger screens SHALL use a bounded spacious dialog. At 320 CSS px and 200% text, English/French content, focus and 48 CSS px action targets SHALL remain reachable without horizontal overflow.
 
 #### Scenario: Ordinary phone and tablet reading
 - **WHEN** a complete photo-filled recipe opens on phone or tablet

@@ -4,7 +4,7 @@
 
 ### Requirement: Advertise direct household shortcuts
 
-The manifest SHALL advertise Vote Together at `/discovery`, Search at `/recipes?focus=search` and Capture Meal at `/capture`, each with a 192 pixel icon. Vote Together SHALL have short name “Vote” and description “Vote on supper ideas with your family”. Search SHALL have short name “Search” and description “Search your recipe library”. Opening these destinations SHALL remain subject to household-identity requirements `Gate protected page entry with household access` and `Apply member context after household access`.
+The manifest SHALL advertise Vote Together at `/discovery` (short name “Vote”, description “Vote on supper ideas with your family”), Search at `/recipes?focus=search` (short name “Search”, description “Search your recipe library”) and Capture Meal at `/capture`, each with a 192 pixel icon. Opening these destinations SHALL remain subject to household-identity requirements `Gate protected page entry with household access` and `Apply member context after household access`.
 
 #### Scenario: Read shortcut destinations
 - **WHEN** the ordinary manifest is requested

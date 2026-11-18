@@ -121,10 +121,10 @@ for (const locale of ['en', 'fr'] as const) {
       await page.addInitScript((language) => localStorage.setItem('locale', language), locale);
       await page.goto('/');
       await expect(
-        page.getByRole('heading', { level: 1, name: 'Whats for Supper?', exact: true })
+        page.getByRole('heading', { level: 1, name: "What's for Supper?", exact: true })
       ).toBeVisible();
       await page.goto('/welcome');
-      await expect(page.getByTestId('welcome-title')).toHaveText('Whats for Supper?');
+      await expect(page.getByTestId('welcome-title')).toHaveText("What's for Supper?");
       await expect(page.getByTestId('passphrase-input')).toHaveValue('Swipe-Match-Cook');
       const helper =
         locale === 'en'
@@ -266,7 +266,7 @@ test.describe('Beta context', () => {
         const band = page.getByTestId('beta-context-band');
         const input = page.getByTestId('passphrase-input');
         await expect(input).toHaveValue('');
-        await expect(page.getByTestId('welcome-title')).toHaveText('Whats for Supper?');
+        await expect(page.getByTestId('welcome-title')).toHaveText("What's for Supper?");
         await expect(page.getByTestId('identity-hint')).toHaveCount(0);
         await expect(page.getByRole('dialog')).toHaveCount(0);
         await expect(band).toHaveText(title);

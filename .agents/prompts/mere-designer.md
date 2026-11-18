@@ -65,7 +65,7 @@ The same meaning should use the same terminology, control, visual treatment
 and feedback across the app. Check action hierarchy, placement, typography,
 spacing, icons and loading, empty, error and success states.
 
-Use established Solar Earth tokens and components. Load the
+Use established Shared Table tokens and components. Load the
 [visual identity reference](../skills/designer/visual-identity.md) when relevant;
 inspect current implementation for actual values and patterns.
 

@@ -1,4 +1,4 @@
-# Solar Earth visual language · v2
+# Shared Table visual language · v2
 
 **Review reference, not an implementation specification.** This guide makes design
 intent visible without changing the app, its palette, components or behavior.
@@ -18,7 +18,7 @@ reported Demo inspection, but is not a new runtime observation or a usage census
 
 [Open board 1 at full size](visual-language/01-roles-type-states.svg).
 
-![Solar Earth green and icon vocabulary: sage supports preference, participation, plans, shopping and cooking progress, selection and celebration. Existing icons and labels are separated from proposed contrast, type, control-state and touch-target examples.](visual-language/01-roles-type-states.svg)
+![Shared Table green and icon vocabulary: sage supports preference, participation, plans, shopping and cooking progress, selection and celebration. Existing icons and labels are separated from proposed contrast, type, control-state and touch-target examples.](visual-language/01-roles-type-states.svg)
 
 *Board 1: keep the warm cream, terracotta, ochre and sage identity; change the role
 or existing shade when a foreground/background pairing cannot carry its meaning.
@@ -40,7 +40,7 @@ Food and the household's recipes should carry anticipation and belonging. At ord
 
 The user-supplied [Screenshot_20261026-212933.png](visual-language/references/Screenshot_20261026-212933.png) is the composition anchor: a portrait-shaped white card on cream, dominant nearly square photograph, deeply rounded image/card corners, substantial soft elevation, bold recipe title and a subtle blush duration pill. Preserve these qualities without reproducing faint tiny labels or hiding the new actions. The photograph need not be forced into a portrait crop simply because the overall card is portrait. The pivot reference [Screenshot_20261026-212918.png](visual-language/references/Screenshot_20261026-212918.png) shares the rounded frame, shadow and bold title but uses a wider image, then one primary and a compact row of two secondary actions. Let meal and pivot keep those distinct proportions within the same visual family. The pivot’s yellow primary and faint Order In are historical evidence, not treatments reinstated by using the screenshot. Navigation/Capture/voting shown in the references are outside this Home-card correction.
 
-This is a contemporary family cookbook within Solar Earth: keep Outfit/Inter and existing tokens/icons. It does not call for a new serif font, fake paper texture, rustic ornament, decorative badges or a new theme.
+This is a contemporary family cookbook within Shared Table: keep Outfit/Inter and existing tokens/icons. It does not call for a new serif font, fake paper texture, rustic ornament, decorative badges or a new theme.
 
 | Home element | Local treatment (Sessions 5–6) | Preserve |
 |---|---|---|
@@ -315,7 +315,7 @@ These are **proposed review targets**, not completed app checks:
   sheet actions above the keyboard/home indicator, and let content scroll without
   clipping the title, error or recovery action. Keep close/cancel intent explicit;
   recovery dismissal must respect pending and partially completed work.
-- Glass, rounded cards and food imagery remain Solar Earth strengths. Place essential
+- Glass, rounded cards and food imagery remain Shared Table strengths. Place essential
   text on a stable readable surface; test the worst composite, not only a flat swatch.
   Reuse established motion; avoid motion as the only status signal.
 - Keyboard implementation work is deferred in this touch-first review, not removed
@@ -405,7 +405,7 @@ Planner's **Portions** uses a plate/cutlery icon and visible label without the n
 
 Grocery sources use a compact recipe-book disclosure with actual source titles, not repeated Review recipe wording. Keep the aisle **tag** and shopping checkbox separate in meaning, hit area and focus order. Missing titles use honest unavailable-title text. An incomplete number remains visibly a known subtotal; prior unknown checked amounts retain a distinct warning even when the current total is complete. Neither warning disappears into the disclosure, and opening a source never acknowledges a check. Source links retain original-quantity inspection.
 
-Review this direction in English and French on phone/full-screen and tablet/bounded layouts, including 320 CSS px, short heights, 200% text, keyboard-open notes, long source titles, absent photo/duration/yield, failed saves and every footer state. Preserve 48 CSS px targets, readable contrast and selected/expanded semantics. Use real food imagery and established Solar Earth/Outfit/Inter components. Screenshots and geometry checks support review; they do not establish physical-device accessibility or the premium, calm quality by themselves.
+Review this direction in English and French on phone/full-screen and tablet/bounded layouts, including 320 CSS px, short heights, 200% text, keyboard-open notes, long source titles, absent photo/duration/yield, failed saves and every footer state. Preserve 48 CSS px targets, readable contrast and selected/expanded semantics. Use real food imagery and established Shared Table/Outfit/Inter components. Screenshots and geometry checks support review; they do not establish physical-device accessibility or the premium, calm quality by themselves.
 
 
 **Local DV release evidence:** the accepted refinement is now deployed at https://dv.srvrlss.dev. The complete automated gate and separate required live paths pass; local/public health, auth, SSR/assets, SSE and read-only preview smoke pass. Current browser-render evidence remains the locally inspected EN/FR compositions above. Physical phone/native keyboard/screen reader and deployed rendered interaction review remain user-reserved; HTTP checks do not establish that visual/device outcome.

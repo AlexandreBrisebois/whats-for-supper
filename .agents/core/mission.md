@@ -4,7 +4,7 @@
 Deliver the "What's For Supper" (WFS) project.
 
 ## 2. Product Intent
-Build a premium, high-performance Meal Planning Progressive Web App (PWA) using a contract-first, test-driven approach.
+Turn *"What's for supper?"* from a dreaded daily question into a fun, collaborative household activity (**Swipe, Match, Cook!**) where everyone—kids included—helps choose the week's meals around recipes they love and a shared grocery list, leaving the household with one clear feeling: *"That’s one less thing weighing on me. We chose this together, it feels like us, and I’m looking forward to supper."* Deliver this experience as a reliable, high-performance Progressive Web App (PWA) using a contract-first, test-driven approach.
 
 ## 3. Engineering posture
 Build reliable, maintainable capabilities. Avoid zombie code and speculative
@@ -48,7 +48,8 @@ implementation as an invariant.
 
 ## 4. Core Design & UX Patterns
 - **Trust First**: Prioritize understandable tasks, honest outcomes and accessibility.
-  Support them with warm, premium Solar Earth design and established tokens; use the
+  Support them with warm, distinctive Shared Table design, a contemporary family cookbook
+  aesthetic, and established tokens; use the
   [North Star](../../docs/creative-direction-north-star.md) for emotional direction.
 - **Background work**: Keep the primary experience responsive and preserve navigation
   while asynchronous work proceeds. Persisted workflow lifecycle and status behavior

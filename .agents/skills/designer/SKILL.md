@@ -1,6 +1,6 @@
 ---
 name: designer
-description: Implement or review WFS journeys, information architecture, interactions, content, accessibility and Solar Earth UI when the selected task needs UX work.
+description: Implement or review WFS journeys, information architecture, interactions, content, accessibility and Shared Table UI when the selected task needs UX work.
 ---
 
 # WFS UX/UI designer
@@ -31,7 +31,7 @@ Load [designer judgment and guidance](../../../docs/agent-designer-identity.md)
 for evidence, research, accessibility references or marketing evaluation, and the
 [North Star](../../../docs/creative-direction-north-star.md) for emotional/creative
 alignment when needed. Load [visual identity](visual-identity.md) for token/typography
-work and [Solar Earth](solar-earth-design.md) for surfaces or motion only when relevant.
+work and [Shared Table](solar-earth-design.md) for surfaces or motion only when relevant.
 Compare with current components and CSS before adding a new pattern.
 
 The [Everyday Household lens](../../prompts/mere-designer.md) is optional when

@@ -41,7 +41,7 @@
   "betaContext": {
     "start": "Start exploring",
     "label": "Beta · Better with your ideas",
-    "welcome": "Welcome to the beta of Whats for Supper? Try choosing meals together, planning your week, and making supper one less thing to think about.",
+    "welcome": "Welcome to the beta of What's for Supper? Try choosing meals together, planning your week, and making supper one less thing to think about.",
     "expectations": "We’re still working on this version. Some things may change, and you might run into a bug along the way. We’re building this in public, together. Your ideas and feedback help shape what comes next.",
     "reopen": "You can reopen this explanation from the Beta band at any time.",
     "feedback": "Share feedback on GitHub",
@@ -84,7 +84,7 @@
     "tryAgain": "Try again"
   },
   "landing": {
-    "title": "Whats for Supper?",
+    "title": "What's for Supper?",
     "subtitle": "Capture recipes, plan your week, discover what to cook next.",
     "getStarted": "Get Started"
   },
@@ -96,6 +96,9 @@
   },
   "capture": {
     "done": "Done",
+    "buildingRecipe": "Building your recipe…",
+    "buildingRecipeSubtext": "Hang tight — we'll notify you when it's ready.",
+    "saveAndBuild": "Save & build recipe",
     "saveRecipe": "Save Recipe",
     "choosePhotos": "Choose Photos",
     "redirecting": "Redirecting home in {{seconds}}s...",
@@ -156,7 +159,7 @@
     "editNameFor": "Edit name for {{name}}"
   },
   "auth": {
-    "welcomeTitle": "Whats for Supper?",
+    "welcomeTitle": "What's for Supper?",
     "demoPrefilled": "The demo passphrase is filled in for you. Tap Enter to explore.",
     "welcomeSubtitle": "Enter your family's passphrase to continue",
     "passphrasePlaceholder": "Family passphrase",
@@ -659,7 +662,7 @@
     "search": "Search the Library",
     "searchDescription": "Find the recipe, then tap the star to make it your GOTO.",
     "describe": "Describe a Dish",
-    "describeDescription": "AI synthesizes a full recipe from your description",
+    "describeDescription": "AI builds a full recipe from your description",
     "capture": "Take a Photo",
     "captureDescription": "Photo of a recipe card, box, or handwritten note"
   },

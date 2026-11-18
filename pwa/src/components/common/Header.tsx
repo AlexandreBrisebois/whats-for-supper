@@ -62,11 +62,6 @@ export function Header({
               {dynamicTitle}
             </h1>
           )}
-          {title === 'Discovery' || !title ? (
-            <p className="hidden text-[8px] font-bold uppercase tracking-[0.2em] text-terracotta-600 sm:block">
-              {title === 'Discovery' ? 'Matchmaking' : 'Command Center'}
-            </p>
-          ) : null}
         </div>
 
         {/* Right Side: Desktop Nav + Optional Action */}

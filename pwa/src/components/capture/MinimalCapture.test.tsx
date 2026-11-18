@@ -165,8 +165,8 @@ async function renderAndTriggerSuccess(intent?: string): Promise<void> {
     nameInput.dispatchEvent(new Event('input', { bubbles: true }));
   });
 
-  // Click Synthesize Recipe to trigger handleDescribeSubmit
-  const synthesizeBtn = screen.getByRole('button', { name: /synthesize recipe/i });
+  // Click Save & build recipe to trigger handleDescribeSubmit
+  const synthesizeBtn = screen.getByRole('button', { name: /save & build recipe/i });
   await act(async () => {
     synthesizeBtn.click();
   });
@@ -205,6 +205,10 @@ describe('MinimalCapture — preservation unit tests', () => {
 
     // Should NOT have navigated immediately
     expect(mockPush).not.toHaveBeenCalled();
+    expect(screen.getByTestId('capture-success-heading')).toHaveTextContent(
+      'Building your recipe…'
+    );
+    expect(screen.getByText("Hang tight — we'll notify you when it's ready.")).toBeInTheDocument();
 
     // "Done" button is present
     const doneBtn = screen.getByTestId('capture-done-btn');

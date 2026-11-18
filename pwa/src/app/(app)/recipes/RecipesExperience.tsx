@@ -1174,11 +1174,10 @@ function RecipesContent() {
     setTargetReadAttempt((attempt) => attempt + 1);
   }, [detailTargetKey]);
   useEffect(() => {
-    if (!detailRecipeId || originalSourceReview || assignmentNeedsCheck) return;
+    if (!detailRecipeId || originalSourceReview || assignmentNeedsCheck || !visibleTargetDate)
+      return;
     return subscribeIngredientProjectionInvalidation(
-      !automaticTarget && visibleTargetDate
-        ? { context: 'proposed', supperDate: visibleTargetDate }
-        : undefined,
+      !automaticTarget ? { context: 'proposed', supperDate: visibleTargetDate } : undefined,
       refreshDetailTarget
     );
   }, [

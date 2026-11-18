@@ -216,7 +216,7 @@ For API actions using shared member-context binding, a parseable GUID in `X-Fami
 - **WHEN** neither member header nor member cookie contains a parseable GUID
 - **THEN** binding supplies no member identity and the action applies its own missing-context response
 
-### Requirement: Present Profile as a coherent Solar Earth household surface
+### Requirement: Present Profile as a coherent Shared Table household surface
 
 Profile SHALL use a warm cream canvas, rounded light surfaces and soft depth consistent with the shared app shell. Its existing localised title and member name SHALL lead the hierarchy, with supporting sentence-case labels at least 14 CSS px at default text size. Settings SHALL remain a recognisable secondary action. Existing member selection consequences SHALL remain governed by member-context requirements.
 

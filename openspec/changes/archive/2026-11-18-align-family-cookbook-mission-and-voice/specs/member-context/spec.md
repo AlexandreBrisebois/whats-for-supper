@@ -3,12 +3,12 @@
 ## REMOVED Requirements
 
 ### Requirement: Present Profile as a coherent Solar Earth household surface
-**Reason**: Retired the "Solar Earth" nomenclature in favor of the unified Family Cookbook visual identity.
-**Migration**: Governed by "Present Profile as a coherent Family Cookbook household surface".
+**Reason**: Retired the "Solar Earth" nomenclature in favor of the unified Shared Table identity.
+**Migration**: Governed by "Present Profile as a coherent Shared Table household surface".
 
 ## ADDED Requirements
 
-### Requirement: Present Profile as a coherent Family Cookbook household surface
+### Requirement: Present Profile as a coherent Shared Table household surface
 
 Profile SHALL use a warm cream canvas, rounded light surfaces and soft depth consistent with the shared app shell. Its existing localised title and member name SHALL lead the hierarchy, with supporting sentence-case labels at least 14 CSS px at default text size. Settings SHALL remain a recognisable secondary action. Existing member selection consequences SHALL remain governed by member-context requirements.
 
