@@ -31,7 +31,7 @@ public partial class PreparedSupperPostgresTests
             await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(
                 new DeploymentCalendarIntegrationTests.CalendarClock { UtcNow = Tuesday }, new() {
                     ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = settings.ConnectionString,
-                    ["Tests:HttpUrl"] = "http://127.0.0.1:0",
+                    ["Tests:HttpUrl"] = "http://127.0.0.1:0", ["Tests:LocalRecipeStore"] = "true",
                 }, app => {
                     app.Use(async (context, next) => {
                         var preparing = context.Request.Method == "POST" && context.Request.Path == PrepareUrl;
@@ -142,7 +142,7 @@ public partial class PreparedSupperPostgresTests
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == recipeId);
                 recipe.IsReady = true; recipe.IsSynthesized = true;
                 recipe.RawMetadata = "{\"recipeInstructions\":[\"Add 200 g pasta.\",\"Serve.\"],\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}";
-                recipe.CanonicalContent = BuildCanonicalContent(recipe.Servings, "200", "g", "pasta", recipe.CanonicalContent);
+                recipe.CanonicalContent = BuildCanonicalContent(recipe.Servings, "200", "g", "pasta", recipe.CanonicalContent, ["Add 200 g pasta.", "Serve."]);
                 await db.SaveChangesAsync();
             }
             ProcessStartInfo Command(params string[] args) {

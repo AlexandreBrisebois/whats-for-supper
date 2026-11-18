@@ -440,7 +440,7 @@ test('real dated detail, cooking and groceries share inputs across two independe
       await expect(
         page.getByTestId('cooks-mode-overlay').getByText('Add 200 g pasta.', { exact: true })
       ).toBeVisible();
-      await expect(page.getByTestId('cooking-instruction-limitation')).toHaveCount(1);
+      await expect(page.getByTestId('cooking-instruction-limitation')).toHaveCount(0);
       await page.screenshot({
         path: info.outputPath(`real-${count}-cooking.png`),
         animations: 'disabled',
@@ -506,18 +506,17 @@ test('real dated detail, cooking and groceries share inputs across two independe
     const candidate = (await read('/_test/servings/persisted')).recipes.find(
       (r: any) => r.id !== recipeId
     );
+    const candidateDetail = (await read(`/api/recipes/${candidate.id}`)).recipe;
     const candidatePatch = await request.patch(`${api}/api/recipes/${candidate.id}`, {
       headers,
-      data: { servings: 1 },
+      data: { expectedContentRevision: candidateDetail.contentRevision, servings: 1 },
     });
     expect(candidatePatch.ok()).toBe(true);
     await expect(foreign.getByTestId('cooking-quantities-available')).toBeInViewport();
     await foreign.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
-    await expect(foreign.getByTestId('ingredient-toggle')).toContainText('1,000 g pasta');
+    await expect(foreign.getByTestId('ingredient-toggle')).toContainText('1000 g pasta');
     await foreign.getByTestId('close-cooks-mode').click();
-    await expect(foreign.getByTestId('recipe-ingredient-projection')).toContainText(
-      '1,000 g pasta'
-    );
+    await expect(foreign.getByTestId('recipe-ingredient-projection')).toContainText('1000 g pasta');
     evidence.foreignProposedHttp = await read(
       `/api/recipes/${candidate.id}/ingredient-projection?context=proposed&supperDate=2026-10-28`
     );
@@ -570,7 +569,7 @@ test('real dated detail, cooking and groceries share inputs across two independe
     await observer.getByTestId('recipe-save-edits').focus();
     await observer.getByTestId('recipe-save-edits').press('Enter');
     await expect(observer.getByTestId('recipe-ingredient-projection')).toContainText(
-      '1,200 g pasta'
+      '1200 g pasta'
     );
     await expect(page.getByTestId('cooking-quantities-available')).toBeVisible();
     await expect(page.getByTestId('cooking-portion-context')).toContainText('4 portions');
@@ -586,10 +585,25 @@ test('real dated detail, cooking and groceries share inputs across two independe
     expect(groceryChecked(corrected)).toBe(false);
     evidence.correctedBasisHttp = [await projection(2), await projection(4)];
     evidence.correctedBasisDatabase = await read('/_test/servings/persisted');
-    // Current text intentionally diverges from retained extraction; old numbers must disappear.
+    // Saved canonical ingredient lines replace prior quantified lines without consulting retained supply.
+    const currentDetail = (await read(`/api/recipes/${recipeId}`)).recipe;
     const patch = await request.patch(`${api}/api/recipes/${recipeId}`, {
       headers,
-      data: { ingredients: ['current sauce'] },
+      data: {
+        expectedContentRevision: currentDetail.contentRevision,
+        ingredientLines: [
+          {
+            clientId: 'c1',
+            description: 'current sauce',
+            amount: null,
+            amountText: null,
+            unit: null,
+            scaling: 'proportional',
+            package: null,
+            shopping: { name: 'current sauce', foodId: null, mappingRevision: null },
+          },
+        ],
+      },
     });
     expect(patch.ok()).toBe(true);
     await expect(observer.getByTestId('recipe-ingredient-projection')).toContainText(

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Services.Ai;
@@ -20,6 +21,14 @@ namespace RecipeApi.Tests.Integration;
 
 public partial class SupperServingsPostgresTests
 {
+    private static RecipeInstructionSectionDto[] PastaInstructionSections() =>
+    [
+        new(Guid.NewGuid(), "Pasta", [
+            new(Guid.NewGuid(), "Add 200 g pasta.", Guid.NewGuid().ToString("N"), []),
+            new(Guid.NewGuid(), "Serve.", Guid.NewGuid().ToString("N"), [])
+        ])
+    ];
+
     [DeploymentCalendarPostgresTests.CalendarLiveFact]
     public async Task LiveBrowser_SupperServingsGeneratedClientAndTwoClientUpdates()
     {
@@ -118,12 +127,12 @@ public partial class SupperServingsPostgresTests
             Guid recipeId;
             using (var scope = factory.Services.CreateScope()) {
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                var recipe = new Recipe { Name = "Original pasta for two", Servings = 2, Ingredients = "[\"200 g pasta\"]", IsReady = true, SourceUrl = "https://example.test/original-pasta", Notes = "Keep the original pasta instructions.", RawMetadata = "{\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Pasta\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Add 200 g pasta.\"},{\"@type\":\"HowToStep\",\"text\":\"Serve.\"}]}],\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) };
+                var recipe = new Recipe { Name = "Original pasta for two", Servings = 2, Ingredients = "[\"200 g pasta\"]", IsReady = true, SourceUrl = "https://example.test/original-pasta", Notes = "Keep the original pasta instructions.", RawMetadata = "{\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Pasta\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Add 200 g pasta.\"},{\"@type\":\"HowToStep\",\"text\":\"Serve.\"}]}],\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2, instructionSections: PastaInstructionSections()) };
                 recipeId = recipe.Id; db.Recipes.Add(recipe);
                 var coffeeId = Guid.NewGuid();
                 var coffee = GroceryExtraOccurrence.Create(coffeeId, coffeeId, new(2026, 10, 12), "Coffee", "coffee", "Grocery", DateTimeOffset.Parse("2026-10-12T12:00:00Z"));
                 coffee.Checked = true; db.GroceryExtraOccurrences.Add(coffee);
-                db.Recipes.Add(new Recipe { Name = "Unassigned pasta for two", Servings = 2, Ingredients = recipe.Ingredients, RawMetadata = recipe.RawMetadata, CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2), IsReady = true });
+                db.Recipes.Add(new Recipe { Name = "Unassigned pasta for two", Servings = 2, Ingredients = recipe.Ingredients, RawMetadata = recipe.RawMetadata, CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2, instructionSections: PastaInstructionSections()), IsReady = true });
                 db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, Status = CalendarEventStatus.Planned, VoteCount = 7 });
                 db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = Wednesday.AddDays(2), RecipeId = recipe.Id, Status = CalendarEventStatus.Planned });
                 await db.SaveChangesAsync();

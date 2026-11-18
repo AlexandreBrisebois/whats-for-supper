@@ -20,12 +20,34 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
     private static readonly DateTimeOffset Tuesday = DateTimeOffset.Parse("2026-10-13T12:00:00Z");
     private static readonly JsonSerializerOptions CanonicalJson = new(JsonSerializerDefaults.Web);
 
-    private static string BuildCanonicalContent(int? servings, string amountText, string unitText, string name, string? existingCanonicalContent = null)
+    private static string BuildCanonicalContent(
+        int? servings,
+        string amountText,
+        string unitText,
+        string name,
+        string? existingCanonicalContent = null,
+        IReadOnlyList<string>? instructions = null)
     {
-        var existingId = string.IsNullOrWhiteSpace(existingCanonicalContent)
-            ? Guid.NewGuid()
-            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, CanonicalJson)!.IngredientLines[0].Id;
-        return JsonSerializer.Serialize(new CanonicalRecipeContent(2, Guid.NewGuid().ToString("N"), "source", servings, [
+        var existing = string.IsNullOrWhiteSpace(existingCanonicalContent)
+            ? null
+            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, CanonicalJson);
+        var existingId = existing is { IngredientLines.Count: > 0 }
+            ? existing.IngredientLines[0].Id
+            : Guid.NewGuid();
+        var sections = instructions is { Count: > 0 }
+            ? new[]
+            {
+                new RecipeInstructionSectionDto(
+                    Guid.NewGuid(),
+                    null,
+                    instructions.Select(step => new RecipeInstructionStepDto(
+                        Guid.NewGuid(),
+                        step,
+                        Guid.NewGuid().ToString("N"),
+                        [])).ToArray())
+            }
+            : existing?.InstructionSections ?? [];
+        var content = new CanonicalRecipeContent(2, Guid.NewGuid().ToString("N"), "source", servings, [
             new RecipeIngredientLineDto
             {
                 Id = existingId,
@@ -38,7 +60,10 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
                 Shopping = new(name, null, null),
                 Provenance = new("human", "source", [])
             }
-        ], []), CanonicalJson);
+        ], sections);
+        return JsonSerializer.Serialize(
+            sections.Count > 0 ? CookingStepRelationshipProducer.Discover(content, existing) : content,
+            CanonicalJson);
     }
 
     private static async Task<Guid> Seed(TestWebApplicationFactory app, bool configured = true)

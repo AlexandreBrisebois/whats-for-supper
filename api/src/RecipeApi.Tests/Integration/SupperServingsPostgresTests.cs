@@ -26,7 +26,8 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
     internal static string BuildCanonicalContent(
         IEnumerable<(string name, string? amountText, string? unitText)> lines,
         int? basis = null,
-        string? existingCanonicalContent = null)
+        string? existingCanonicalContent = null,
+        IReadOnlyList<RecipeInstructionSectionDto>? instructionSections = null)
     {
         var existing = string.IsNullOrWhiteSpace(existingCanonicalContent)
             ? null
@@ -44,8 +45,12 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
             Shopping = new(line.name, null, null),
             Provenance = new("human", "source", [])
         }).ToList();
-        return JsonSerializer.Serialize(new CanonicalRecipeContent(
-            2, Guid.NewGuid().ToString("N"), "source", basis, mapped, []), CanonicalJson);
+        var sections = instructionSections ?? existing?.InstructionSections ?? [];
+        var content = new CanonicalRecipeContent(
+            2, Guid.NewGuid().ToString("N"), "source", basis, mapped, sections);
+        return JsonSerializer.Serialize(
+            sections.Count > 0 ? CookingStepRelationshipProducer.Discover(content, existing) : content,
+            CanonicalJson);
     }
 
     private static async Task<string> ContentRevisionAsync(HttpClient client, Guid recipeId) =>
