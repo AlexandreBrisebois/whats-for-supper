@@ -185,7 +185,7 @@ def verification_plan(paths, changed, *, explicit):
             item['prerequisites'] = 'Running API exposing its generated OpenAPI document.'
             item['limitations'] = 'Live endpoint parity only; does not prove database behavior.'
         elif check == 'spec:check':
-            item['prerequisites'] = 'Taskfile-pinned OpenSpec CLI.'
+            item['prerequisites'] = 'Installed OpenSpec CLI (@fission-ai/openspec).'
         elif check == 'documentation':
             item['prerequisites'] = 'Git and readable selected documents/link targets.'
         else:

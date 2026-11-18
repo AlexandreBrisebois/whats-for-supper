@@ -31,8 +31,6 @@ jobs:
     name: OpenSpec — validate
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    env:
-      OPENSPEC_VERSION: '1.17.0'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -40,10 +38,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
-      - name: Install pinned OpenSpec CLI
-        run: npm install --global "@fission-ai/openspec@${OPENSPEC_VERSION}"
-      - name: Verify CLI version
-        run: test "$(openspec --version)" = "$OPENSPEC_VERSION"
+      - name: Install OpenSpec CLI
+        run: npm install --global @fission-ai/openspec
+      - name: Verify CLI installation
+        run: openspec --version
       - name: Validate capability specs and changes
         run: openspec validate --all --strict --no-interactive
 

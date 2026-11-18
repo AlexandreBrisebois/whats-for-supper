@@ -10,7 +10,7 @@ nvm use
 task hooks:setup
 ```
 
-`hooks:setup` installs the pinned OpenSpec CLI and Python/PWA/browser dependencies, restores the API test project,
+`hooks:setup` installs the OpenSpec CLI and Python/PWA/browser dependencies, restores the API test project,
 and installs the commit hook. Push validation is manual. Use `task hooks:install` when hooks are missing or the adapter itself changes;
 an installed adapter reads the current repository configuration on each invocation. Docker must be running for API integration tests; the
 push check does not reset the development stack or kill an existing dev server.
@@ -111,9 +111,9 @@ An explicit Task variable such as `PYTHON=python3` can select an already-provisi
 interpreter in CI or another managed environment. Do not install into Homebrew's
 externally managed system Python.
 
-`task spec:check` validates capability specs and active changes with the strict,
-non-interactive OpenSpec version pinned by `OPENSPEC_VERSION` in `Taskfile.yml`
-(currently 1.14.3). `task hooks:setup` installs that pin. The reusable CI validation
+`task spec:check` validates capability specs and active changes with strict,
+non-interactive OpenSpec checks (`@fission-ai/openspec`, without pinning a specific
+CLI version). `task hooks:setup` installs the CLI. The reusable CI validation
 workflow also validates specs for documentation-only changes. Spec validity is
 separate from implementation or deployment acceptance.
 
