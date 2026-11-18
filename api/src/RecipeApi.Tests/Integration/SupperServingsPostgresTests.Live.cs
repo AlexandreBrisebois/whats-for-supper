@@ -79,7 +79,7 @@ public partial class SupperServingsPostgresTests
                     }).RequireAuthorization();
                     if (sourceTitlesOnly) app.MapPost("/_test/servings/add-grocery-source", async (RecipeDbContext db, GroceryRecomputeService groceries) => {
                         var original = await db.Recipes.AsNoTracking().FirstAsync(x => x.Name == "Original pasta for two");
-                        var lunch = new Recipe { Name = "New live lunch source", Servings = 2, Ingredients = original.Ingredients, RawMetadata = original.RawMetadata, IsReady = true };
+                        var lunch = new Recipe { Name = "New live lunch source", Servings = 2, Ingredients = original.Ingredients, RawMetadata = original.RawMetadata, CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2), IsReady = true };
                         db.Recipes.Add(lunch); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday.AddDays(1), MealSlot = 1, RecipeId = lunch.Id });
                         await db.SaveChangesAsync();
                         await groceries.RecomputeForWeekAsync(new(2026, 10, 12), default);
@@ -118,12 +118,12 @@ public partial class SupperServingsPostgresTests
             Guid recipeId;
             using (var scope = factory.Services.CreateScope()) {
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                var recipe = new Recipe { Name = "Original pasta for two", Servings = 2, Ingredients = "[\"200 g pasta\"]", IsReady = true, SourceUrl = "https://example.test/original-pasta", Notes = "Keep the original pasta instructions.", RawMetadata = "{\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Pasta\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Add 200 g pasta.\"},{\"@type\":\"HowToStep\",\"text\":\"Serve.\"}]}],\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}" };
+                var recipe = new Recipe { Name = "Original pasta for two", Servings = 2, Ingredients = "[\"200 g pasta\"]", IsReady = true, SourceUrl = "https://example.test/original-pasta", Notes = "Keep the original pasta instructions.", RawMetadata = "{\"recipeInstructions\":[{\"@type\":\"HowToSection\",\"name\":\"Pasta\",\"itemListElement\":[{\"@type\":\"HowToStep\",\"text\":\"Add 200 g pasta.\"},{\"@type\":\"HowToStep\",\"text\":\"Serve.\"}]}],\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) };
                 recipeId = recipe.Id; db.Recipes.Add(recipe);
                 var coffeeId = Guid.NewGuid();
                 var coffee = GroceryExtraOccurrence.Create(coffeeId, coffeeId, new(2026, 10, 12), "Coffee", "coffee", "Grocery", DateTimeOffset.Parse("2026-10-12T12:00:00Z"));
                 coffee.Checked = true; db.GroceryExtraOccurrences.Add(coffee);
-                db.Recipes.Add(new Recipe { Name = "Unassigned pasta for two", Servings = 2, Ingredients = recipe.Ingredients, RawMetadata = recipe.RawMetadata, IsReady = true });
+                db.Recipes.Add(new Recipe { Name = "Unassigned pasta for two", Servings = 2, Ingredients = recipe.Ingredients, RawMetadata = recipe.RawMetadata, CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2), IsReady = true });
                 db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, Status = CalendarEventStatus.Planned, VoteCount = 7 });
                 db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = Wednesday.AddDays(2), RecipeId = recipe.Id, Status = CalendarEventStatus.Planned });
                 await db.SaveChangesAsync();
@@ -165,7 +165,7 @@ public partial class SupperServingsPostgresTests
                     await db.SaveChangesAsync();
                 }
                 if (sourceTitlesOnly) {
-                    var lunch = new Recipe { Name = "Lunch-only source", Servings = 2, Ingredients = recipe.Ingredients, RawMetadata = recipe.RawMetadata, IsReady = true };
+                    var lunch = new Recipe { Name = "Lunch-only source", Servings = 2, Ingredients = recipe.Ingredients, RawMetadata = recipe.RawMetadata, CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2), IsReady = true };
                     db.Recipes.Add(lunch); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, MealSlot = 1, RecipeId = lunch.Id });
                     await db.SaveChangesAsync();
                 }

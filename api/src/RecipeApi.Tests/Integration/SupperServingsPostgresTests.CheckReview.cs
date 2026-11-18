@@ -20,7 +20,7 @@ public partial class SupperServingsPostgresTests
             ((DeploymentCalendarIntegrationTests.CalendarClock)app.Services.GetRequiredService<IClock>()).UtcNow = DateTimeOffset.Parse("2026-10-12T12:00:00Z");
             using var scope = app.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var recipe = CorrectionRecipe(); recipe.Ingredients = "[\"pasta\"]"; recipe.RawMetadata = "{\"recipeIngredient\":[\"pasta\"],\"supply\":[{\"name\":\"pasta\",\"unitText\":\"g\"}]}";
+            var recipe = CorrectionRecipe(); recipe.Ingredients = "[\"pasta\"]"; recipe.RawMetadata = "{\"recipeIngredient\":[\"pasta\"],\"supply\":[{\"name\":\"pasta\",\"unitText\":\"g\"}]}"; recipe.CanonicalContent = BuildCanonicalContent([("pasta", null, "g")], 2, recipe.CanonicalContent);
             db.Recipes.Add(recipe); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id });
             db.SupperServings.Add(Serving(Wednesday,6)); await db.SaveChangesAsync();
             var recompute = scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
@@ -29,7 +29,7 @@ public partial class SupperServingsPostgresTests
             using var client = app.CreateAuthenticatedClient();
             var rowId = await GroceryTestRows.CheckAsync(client,monday);
             db.ChangeTracker.Clear(); var original = CorrectionRecipe();
-            recipe = await db.Recipes.SingleAsync(); recipe.Ingredients = original.Ingredients; recipe.RawMetadata = original.RawMetadata; await db.SaveChangesAsync();
+            recipe = await db.Recipes.SingleAsync(); recipe.Ingredients = original.Ingredients; recipe.RawMetadata = original.RawMetadata; recipe.CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2, recipe.CanonicalContent); await db.SaveChangesAsync();
             await recompute.RecomputeForWeekAsync(monday,default);
             async Task AssertOrdinaryCheck(bool expected = true) {
                 var schedule = await GroceryTestRows.ReadAsync(client,monday);
@@ -83,7 +83,7 @@ public partial class SupperServingsPostgresTests
             var second = await Change(6);
             Assert.Equal(first.GetProperty("version").GetString(), second.GetProperty("version").GetString());
             Assert.NotEqual(firstSummary, second.GetProperty("resetSummaryVersion").GetString());
-            var tomato = new Recipe { Name = "Tomato", Servings = 2, Ingredients = "[\"100 g tomato\"]", RawMetadata = "{\"recipeIngredient\":[\"100 g tomato\"],\"supply\":[{\"name\":\"tomato\",\"quantity\":100,\"unitText\":\"g\"}]}" };
+            var tomato = new Recipe { Name = "Tomato", Servings = 2, Ingredients = "[\"100 g tomato\"]", RawMetadata = "{\"recipeIngredient\":[\"100 g tomato\"],\"supply\":[{\"name\":\"tomato\",\"quantity\":100,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("tomato", "100", "g")], 2) };
             db.Recipes.Add(tomato); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday.AddDays(1), RecipeId = tomato.Id }); await db.SaveChangesAsync();
             await recompute.RecomputeForWeekAsync(new(2026, 10, 12), default);
             Assert.Equal(JsonValueKind.Null, (await Read(client)).GetProperty("groceryRefresh").GetProperty("resetSummaryVersion").ValueKind);

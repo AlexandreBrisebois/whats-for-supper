@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -17,12 +18,41 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
     private static readonly DateOnly Friday = new(2026, 10, 16);
     private const string PrepareUrl = "/api/schedule/day/2026-10-16/prepare";
     private static readonly DateTimeOffset Tuesday = DateTimeOffset.Parse("2026-10-13T12:00:00Z");
+    private static readonly JsonSerializerOptions CanonicalJson = new(JsonSerializerDefaults.Web);
+
+    private static string BuildCanonicalContent(int? servings, string amountText, string unitText, string name, string? existingCanonicalContent = null)
+    {
+        var existingId = string.IsNullOrWhiteSpace(existingCanonicalContent)
+            ? Guid.NewGuid()
+            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, CanonicalJson)!.IngredientLines[0].Id;
+        return JsonSerializer.Serialize(new CanonicalRecipeContent(2, Guid.NewGuid().ToString("N"), "source", servings, [
+            new RecipeIngredientLineDto
+            {
+                Id = existingId,
+                Description = name,
+                Amount = QuantityMath.Parse(amountText),
+                AmountText = amountText,
+                Unit = new(unitText, null),
+                Scaling = "proportional",
+                Package = null,
+                Shopping = new(name, null, null),
+                Provenance = new("human", "source", [])
+            }
+        ], []), CanonicalJson);
+    }
 
     private static async Task<Guid> Seed(TestWebApplicationFactory app, bool configured = true)
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var recipe = new Recipe { Name = "Friday pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}" };
+        var recipe = new Recipe
+        {
+            Name = "Friday pasta",
+            Servings = 2,
+            Ingredients = "[\"200 g pasta\"]",
+            RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}",
+            CanonicalContent = BuildCanonicalContent(2, "200", "g", "pasta")
+        };
         var other = new Recipe { Name = "Tuesday soup", Ingredients = "[]" };
         db.Recipes.AddRange(recipe, other);
         db.CalendarEvents.AddRange(new CalendarEvent { Id = Guid.NewGuid(), Date = Friday, RecipeId = recipe.Id }, new CalendarEvent { Id = Guid.NewGuid(), Date = Friday.AddDays(-2), RecipeId = recipe.Id }, new CalendarEvent { Id = Guid.NewGuid(), Date = Friday.AddDays(-3), RecipeId = other.Id, Status = CalendarEventStatus.Locked });
@@ -51,7 +81,7 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("data").Clone();
     }
-    private static Task<TestWebApplicationFactory> Factory(string? connection = null, DeploymentCalendarIntegrationTests.CalendarClock? clock = null) => TestWebApplicationFactory.CreateWithAuthAsync(clock ?? new() { UtcNow = Tuesday }, new() { ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = connection });
+    private static Task<TestWebApplicationFactory> Factory(string? connection = null, DeploymentCalendarIntegrationTests.CalendarClock? clock = null, bool localRecipeStore = false) => TestWebApplicationFactory.CreateWithAuthAsync(clock ?? new() { UtcNow = Tuesday }, new() { ["Calendar:TimeZone"] = "America/Toronto", ["Tests:PostgresConnectionString"] = connection, ["Tests:LocalRecipeStore"] = localRecipeStore ? "true" : null });
 
     [Fact]
     public async Task PreparedSupper_HttpTracer_PreparesFridayOnTuesdayWithoutCompletingOtherOccurrences()
@@ -90,7 +120,9 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
         var schedule = JsonDocument.Parse(await client.GetStringAsync("/api/schedule?referenceWeekStartDate=2026-10-12")).RootElement.GetProperty("data");
         Assert.Equal("2026-10-13", schedule.GetProperty("days")[4].GetProperty("preparation").GetProperty("preparedOn").GetString());
         var corrected = (await db.Recipes.FindAsync(recipe))!;
-        corrected.Servings = 3; corrected.Ingredients = "[\"300 g pasta\"]"; await db.SaveChangesAsync();
+        corrected.Servings = 3; corrected.Ingredients = "[\"300 g pasta\"]";
+        corrected.CanonicalContent = BuildCanonicalContent(3, "300", "g", "pasta", corrected.CanonicalContent);
+        await db.SaveChangesAsync();
         ((DeploymentCalendarIntegrationTests.CalendarClock)scope.ServiceProvider.GetRequiredService<IClock>()).UtcNow = Tuesday.AddDays(2);
         Assert.Equal(prepared.GetRawText(), (await Prepare(client, request)).GetProperty("preparation").GetRawText());
 
@@ -106,7 +138,9 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
             var row = await db.SupperServings.SingleAsync(); row.OverrideServings = 7; await db.SaveChangesAsync();
             Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(PrepareUrl, captured)).StatusCode);
             row.OverrideServings = 6; await db.SaveChangesAsync();
-            var source = await db.Recipes.FindAsync(recipe); source!.Ingredients = "[\"300 g pasta\"]"; await db.SaveChangesAsync();
+            var source = await db.Recipes.FindAsync(recipe); source!.Ingredients = "[\"300 g pasta\"]";
+            source.CanonicalContent = BuildCanonicalContent(source.Servings, "300", "g", "pasta", source.CanonicalContent);
+            await db.SaveChangesAsync();
             Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(PrepareUrl, captured)).StatusCode);
             var entry = await db.CalendarEvents.SingleAsync(x => x.Date == Friday); db.CalendarEvents.Remove(entry); await db.SaveChangesAsync();
             db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = Friday, RecipeId = recipe }); await db.SaveChangesAsync();

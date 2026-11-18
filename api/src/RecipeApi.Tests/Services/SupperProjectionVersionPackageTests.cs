@@ -14,17 +14,14 @@ public sealed class SupperProjectionVersionPackageTests
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly DateOnly Date = new(2026, 11, 23);
     private static string Hash<T>(T value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(value))));
-    private static Recipe Source(bool canonical, RecipePackageDto? package = null)
+    private static Recipe Source(RecipePackageDto? package = null)
     {
         var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Tomatoes", Servings = 4, Ingredients = "[\"2 cans tomatoes\"]",
             RawMetadata = "{\"recipeIngredient\":[\"2 cans tomatoes\"],\"supply\":[{\"name\":\"tomatoes\",\"quantity\":2,\"unitText\":\"cans\"}]}" };
-        if (canonical)
-        {
-            var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes", Amount = QuantityMath.Parse("2"),
-                AmountText = "2", Unit = new("cans", null), Scaling = "proportional", Package = package,
-                Shopping = new("tomatoes", null, null), Provenance = new("human", "source", []) };
-            recipe.CanonicalContent = JsonSerializer.Serialize(new CanonicalRecipeContent(2, "content", "source", 4, [row], []), Json);
-        }
+        var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes", Amount = QuantityMath.Parse("2"),
+            AmountText = "2", Unit = new("cans", null), Scaling = "proportional", Package = package,
+            Shopping = new("tomatoes", null, null), Provenance = new("human", "source", []) };
+        recipe.CanonicalContent = JsonSerializer.Serialize(new CanonicalRecipeContent(2, "content", "source", 4, [row], []), Json);
         return recipe;
     }
     private static RecipePackageDto Package() => new(new("cans", "saved-count-definition"),
@@ -49,11 +46,10 @@ public sealed class SupperProjectionVersionPackageTests
         return (preview, dated, week);
     }
 
-    [Theory]
-    [InlineData(false)][InlineData(true)]
-    public void NonpackageLegacyAndCanonicalVersionsKeepExactPreviousSixFieldBytes(bool canonical)
+    [Fact]
+    public void NonpackageCanonicalVersionsKeepExactPreviousSixFieldBytes()
     {
-        var recipe = Source(canonical); var lines = SupperIngredientProjection.Read(recipe, 8); var occurrence = Guid.NewGuid();
+        var recipe = Source(); var lines = SupperIngredientProjection.Read(recipe, 8); var occurrence = Guid.NewGuid();
         var expectedIngredient = OldIngredientVersion(recipe, lines);
         var actual = Versions(recipe, lines, occurrence);
         Assert.Equal(expectedIngredient, actual.Preview);
@@ -65,7 +61,7 @@ public sealed class SupperProjectionVersionPackageTests
     [InlineData(false)][InlineData(true)]
     public void DerivedDisplayTextOnlyChangesNeverChangeSemanticPreviewDatedOrWeekVersion(bool packaged)
     {
-        var recipe = Source(true, packaged ? Package() : null); var lines = SupperIngredientProjection.Read(recipe, 8); var occurrence = Guid.NewGuid();
+        var recipe = Source(packaged ? Package() : null); var lines = SupperIngredientProjection.Read(recipe, 8); var occurrence = Guid.NewGuid();
         var before = Versions(recipe, lines, occurrence);
         var changed = lines.Select(line => line with { DisplayText = "A different derived display only" }).ToArray();
         Assert.Equal(before, Versions(recipe, changed, occurrence));
@@ -76,7 +72,7 @@ public sealed class SupperProjectionVersionPackageTests
     [InlineData("capacityRange")][InlineData("capacityUnit")][InlineData("countLabel")][InlineData("basis")][InlineData("clearPackage")]
     public void FullLiteralPackageOperandsChangePreviewDatedAndWeekEvenWhenCaptionStaysTheSame(string change)
     {
-        var package = Package(); var recipe = Source(true, package); var lines = SupperIngredientProjection.Read(recipe, 8); var occurrence = Guid.NewGuid();
+        var package = Package(); var recipe = Source(package); var lines = SupperIngredientProjection.Read(recipe, 8); var occurrence = Guid.NewGuid();
         var before = Versions(recipe, lines, occurrence);
         RecipePackageDto? next = change switch
         {

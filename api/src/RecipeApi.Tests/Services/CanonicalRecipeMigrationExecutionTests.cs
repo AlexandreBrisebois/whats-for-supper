@@ -33,7 +33,7 @@ public sealed class CanonicalRecipeMigrationExecutionTests
             "not-an-inventory-authority", 2, 2, 0, []);
         var at = DateTimeOffset.Parse("2026-11-15T16:00:00.123456Z");
         var before = JsonSerializer.Serialize(recipe);
-        var prepared = await InvokeStore<CanonicalRecipeOperation>(store, "PrepareMigrationConversionAsync", item, at, CancellationToken.None, null!);
+        var prepared = await InvokeStore<CanonicalRecipeOperation>(store, "PrepareMigrationConversionAsync", item, at, CancellationToken.None);
         Assert.Equal(before, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id)));
         Assert.False(await db.CanonicalRecipeOperations.AnyAsync(x => x.OperationId == operationId));
         Assert.False(await db.MaintenanceCommands.AnyAsync());

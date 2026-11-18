@@ -1,3 +1,4 @@
+using System.Reflection;
 using RecipeApi.Infrastructure;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -208,5 +209,28 @@ public sealed class FoodVocabularyTests
         if (change == "retained") node["retained"]!.AsArray().Clear();
         if (change == "epoch") node["presentationEpoch"] = Guid.NewGuid().ToString("D");
         Assert.Throws<InvalidDataException>(() => FoodVocabularyStore.MembershipReferences(node.ToJsonString()));
+    }
+
+    [Fact]
+    public void RecipeApiAssembly_DoesNotExposeRetiredV1AuthorityTypes_AndRejectsInconsistentV1Operations()
+    {
+        var assembly = typeof(CanonicalRecipeContentStore).Assembly;
+        const BindingFlags AnyMember = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+
+        Assert.DoesNotContain(
+            typeof(CanonicalRecipeContentStore).GetMethods(AnyMember),
+            method => method.Name == "ValidateAttestedV1");
+
+        Assert.Null(assembly.GetType("RecipeApi.Services.V1ExactSourceAdmission", throwOnError: false));
+        Assert.Null(assembly.GetType("RecipeApi.Services.V1RecoveryHistoryContext", throwOnError: false));
+        Assert.Null(assembly.GetType("RecipeApi.Services.V1AuthorityTransitionContext", throwOnError: false));
+
+        var bytes = File.ReadAllBytes(Path.Combine(Integration.DeploymentCalendarPostgresTests.RepositoryRoot(),
+            "api/src/RecipeApi.Tests/Fixtures/canonical-old-authority-v1-v3.json"));
+        using var document = JsonDocument.Parse(bytes);
+        var inconsistentV1 = document.RootElement.GetProperty("proofs")[0].GetProperty("operations")[0]
+            .Deserialize<CanonicalRecipeOperation>()!;
+        inconsistentV1.InputHash = new string('0', 64);
+        Assert.Throws<InvalidDataException>(() => CanonicalRecipeContentStore.VocabularyReferences(inconsistentV1));
     }
 }

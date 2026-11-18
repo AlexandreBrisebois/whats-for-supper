@@ -43,6 +43,13 @@ public sealed class SupperProjectionInvalidation(RecipeDbContext db, IClock cloc
         return await EnlistWeeksAsync(dates.Select(DeploymentCalendar.Monday), ct);
     }
 
+    public async Task<IReadOnlyList<DateOnly>> AffectedWeeksAsync(Guid recipeId, CancellationToken ct = default)
+    {
+        var today = calendar.Capture(clock.UtcNow).Today;
+        var dates = await db.CalendarEvents.Where(x => x.RecipeId == recipeId && x.Date >= today).Select(x => x.Date).ToListAsync(ct);
+        return dates.Select(DeploymentCalendar.Monday).Distinct().Order().ToArray();
+    }
+
     // The same transaction-aware week owner is reusable by calendar/portions writers.
     public async Task<IReadOnlyList<DateOnly>> EnlistWeeksAsync(IEnumerable<DateOnly> weeks, CancellationToken ct)
     {

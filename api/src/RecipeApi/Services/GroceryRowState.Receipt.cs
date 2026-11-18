@@ -8,6 +8,20 @@ namespace RecipeApi.Services;
 
 internal static partial class GroceryRowState
 {
+    internal static object ItemInput(GroceryItemMutationDto request) => request.ExpectedPresentationEpoch is null
+        ? new { kind = "item", rowId = request.RowId!.Value.ToString("D"), request.WeekStartDate, request.ExpectedRowVersion, request.Checked }
+        : new { kind = "item", rowId = request.RowId!.Value.ToString("D"), request.WeekStartDate, request.ExpectedRowVersion, request.Checked, request.ExpectedPresentationEpoch };
+
+    internal static object BulkInput(GroceryBulkMutationDto request)
+    {
+        var ordered = request.Checks!.OrderBy(x => x.Key, StringComparer.Ordinal).ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal);
+        return request.ExpectedPresentationEpoch is null
+            ? new { kind = "bulk", request.WeekStartDate, request.ExpectedListVersion, checks = ordered }
+            : new { kind = "bulk", request.WeekStartDate, request.ExpectedListVersion, checks = ordered, request.ExpectedPresentationEpoch };
+    }
+
+    internal static string InputHash(object input) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(input))));
+
     private sealed record CapturedMutation(int Version, string Input, JsonElement Result);
 
     internal static string SerializeCapturedOutcome(GroceryMutationResult outcome, object input)

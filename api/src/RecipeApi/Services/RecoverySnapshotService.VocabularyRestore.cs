@@ -48,18 +48,15 @@ public partial class RecoverySnapshotService
         catch (DecoderFallbackException error) { throw new InvalidDataException("Snapshot artifact is not valid UTF-8.", error); }
     }
 
-    private async Task<CurrentSnapshotSource> ReadCurrentSnapshotAsync(string root, Guid snapshotId, bool demo, CancellationToken ct,
-        V1RecoveryHistoryContext? authority = null)
+    private async Task<CurrentSnapshotSource> ReadCurrentSnapshotAsync(string root, Guid snapshotId, bool demo, CancellationToken ct)
     {
-        try { return await ReadCurrentSnapshotCoreAsync(root, snapshotId, demo, ct, authority); }
+        try { return await ReadCurrentSnapshotCoreAsync(root, snapshotId, demo, ct); }
         catch (Exception error) when (error is JsonException or KeyNotFoundException or FormatException or InvalidOperationException or OverflowException)
         { throw new InvalidDataException("Snapshot artifacts have an invalid content shape.", error); }
     }
 
-    private async Task<CurrentSnapshotSource> ReadCurrentSnapshotCoreAsync(string root, Guid snapshotId, bool demo, CancellationToken ct,
-        V1RecoveryHistoryContext? authority)
+    private async Task<CurrentSnapshotSource> ReadCurrentSnapshotCoreAsync(string root, Guid snapshotId, bool demo, CancellationToken ct)
     {
-        FoodVocabularyDefinitions.Require(authority is null || !demo);
         RejectLinks(root);
         if (demo && !Directory.Exists(Path.Combine(root, "recipes")))
             throw new InvalidDataException("Demo asset directory is missing; recapture the prepared baseline.");
@@ -105,7 +102,7 @@ public partial class RecoverySnapshotService
         var documents = new List<FoodVocabularyCapture>();
         foreach (var document in index.Documents)
             documents.Add(new(document.Reference, 1, ReadArtifact(document.Path)));
-        var contexts = FoodVocabularyInventoryQualification.ValidateRecoveryArtifacts(indexBytes, historyBytes, documents, demo ? "demo" : "snapshot", authority);
+        var contexts = FoodVocabularyInventoryQualification.ValidateRecoveryArtifacts(indexBytes, historyBytes, documents, demo ? "demo" : "snapshot");
         var current = contexts.Single(x => x.Context.Kind == (demo ? "demo" : "snapshot") && x.Context.SnapshotId == snapshotId && x.Context.Generation == index.Generation).Facts;
         var tables = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         foreach (var table in manifest.Tables)

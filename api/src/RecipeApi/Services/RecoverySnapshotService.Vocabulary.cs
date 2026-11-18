@@ -16,7 +16,7 @@ public partial class RecoverySnapshotService
             x.DictionaryRevision, x.Document, x.FallbackKey, x.ShoppingName, x.GrocerySection, x.ProtectedFields,
             x.PresentationSequence, x.CreatedAt, x.UpdatedAt)).ToArray();
         FoodVocabularyDefinitions.Require(JsonSerializer.Serialize(feed, Json) == JsonSerializer.Serialize(observation.Live.Overrides.Rows, Json));
-        foreach (var (path, bytes) in VocabularyArtifacts(observation, snapshotId, recipes.Generation, demo ? "demo" : "snapshot", null))
+        foreach (var (path, bytes) in VocabularyArtifacts(observation, snapshotId, recipes.Generation, demo ? "demo" : "snapshot"))
         {
             var destination = Path.Combine(stage, path);
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
@@ -25,7 +25,7 @@ public partial class RecoverySnapshotService
     }
 
     private static IReadOnlyDictionary<string, byte[]> VocabularyArtifacts(FoodVocabularyRecoveryObservation observation,
-        Guid snapshotId, string? generation, string kind, V1RecoveryHistoryContext? authority)
+        Guid snapshotId, string? generation, string kind)
     {
         var artifacts = new Dictionary<string, byte[]>(StringComparer.Ordinal)
         {
@@ -42,7 +42,7 @@ public partial class RecoverySnapshotService
             FoodVocabularyDefinitions.Sha256(observation.HistoryBytes), observation.Live.Overrides.Coverage, documents.ToArray(), observation.Origins);
         var indexBytes = FoodVocabularyInventoryQualification.WriteRecoveryIndex(index);
         _ = FoodVocabularyInventoryQualification.ValidateRecoveryArtifacts(indexBytes, observation.HistoryBytes,
-            observation.Documents, kind, authority);
+            observation.Documents, kind);
         artifacts.Add("vocabulary/index.json", indexBytes);
         return artifacts;
     }

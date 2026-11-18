@@ -26,7 +26,8 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
         {
             var normalized = offset == 0 ? "tomato" : "lettuce";
             var recipe = new Recipe { Name = name, Servings = 4, Ingredients = JsonSerializer.Serialize(new[] { normalized }),
-                RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { normalized }, supply = new[] { new { name = normalized, quantity = 1 } } }) };
+                RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { normalized }, supply = new[] { new { name = normalized, quantity = 1 } } }),
+                CanonicalContent = BuildCanonicalContent([(normalized, "1", null)], 4) };
             db.Recipes.Add(recipe);
             db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = Monday.AddDays(offset), RecipeId = recipe.Id });
             rows.Add(new(name, normalized, "Produce", 1, null, [recipe.Id], true)
@@ -61,6 +62,7 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                     {
                         Id = Guid.NewGuid(), Name = $"Water fixture {index}", Ingredients = "[\"Water\"]",
                         RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { "Water" }, supply = new[] { new { name = "Water", unitText = units[index] } } }),
+                        CanonicalContent = BuildCanonicalContent([("Water", null, units[index])]),
                     };
                     db.Recipes.Add(recipe);
                     db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipe.Id, Date = Monday.AddDays(index) });

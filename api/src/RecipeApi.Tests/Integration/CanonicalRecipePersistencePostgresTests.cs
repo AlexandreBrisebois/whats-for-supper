@@ -23,12 +23,12 @@ public sealed class CanonicalRecipePersistencePostgresTests(ITestOutputHelper ou
     private static async Task Seed(IServiceProvider services)
     {
         var db = services.GetRequiredService<RecipeDbContext>();
-        var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-        recipe.Servings = null;
-        recipe.Ingredients = """["⅓ cup flour","mystery garnish","2–3 cloves garlic","salt","salt"]""";
-        recipe.RawMetadata = """{"recipeIngredient":["⅓ cup flour","mystery garnish","2–3 cloves garlic","salt","salt"],"supply":[{"name":"garlic","quantity":2,"unitText":"cloves"},{"name":"flour","quantity":0.33,"unitText":"cup"},{"name":"salt","quantity":9}],"recipeInstructions":[{"@type":"HowToStep","text":"Mix."}]}""";
-        await db.SaveChangesAsync();
-        await db.Entry(recipe).ReloadAsync();
+        await TomorrowPushPostgresTests.ResetToLegacyAsync(db, Id, recipe =>
+        {
+            recipe.Servings = null;
+            recipe.Ingredients = """["⅓ cup flour","mystery garnish","2–3 cloves garlic","salt","salt"]""";
+            recipe.RawMetadata = """{"recipeIngredient":["⅓ cup flour","mystery garnish","2–3 cloves garlic","salt","salt"],"supply":[{"name":"garlic","quantity":2,"unitText":"cloves"},{"name":"flour","quantity":0.33,"unitText":"cup"},{"name":"salt","quantity":9}],"recipeInstructions":[{"@type":"HowToStep","text":"Mix."}]}""";
+        });
     }
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
@@ -208,11 +208,12 @@ public sealed class CanonicalRecipePersistencePostgresTests(ITestOutputHelper ou
             await TomorrowPushPostgresTests.Seed(factory);
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            await TomorrowPushPostgresTests.ResetToLegacyAsync(db, Id, r =>
+            {
+                r.Ingredients = "[\"flour\"]";
+                r.RawMetadata = """{"recipeIngredient":["flour"],"supply":[{"name":"flour","quantity":200,"unitText":"g"}]}""";
+            });
             var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-            recipe.Ingredients = "[\"flour\"]";
-            recipe.RawMetadata = """{"recipeIngredient":["flour"],"supply":[{"name":"flour","quantity":200,"unitText":"g"}]}""";
-            await db.SaveChangesAsync();
-            await db.Entry(recipe).ReloadAsync();
             var before = JsonSerializer.Serialize(recipe);
             await Assert.ThrowsAsync<InvalidDataException>(() => Store(scope.ServiceProvider).ConvertAsync(Id,
                 CanonicalRecipeContentStore.InspectContentRevision(recipe), CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid()));
@@ -232,10 +233,12 @@ public sealed class CanonicalRecipePersistencePostgresTests(ITestOutputHelper ou
             await TomorrowPushPostgresTests.Seed(factory);
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            await TomorrowPushPostgresTests.ResetToLegacyAsync(db, Id, r =>
+            {
+                r.Ingredients = empty ? "[]" : "[\"g flour\"]";
+                r.RawMetadata = """{"recipeIngredient":["g flour"],"supply":[{"name":"flour","unitText":"g"}]}""";
+            });
             var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-            recipe.Ingredients = empty ? "[]" : "[\"g flour\"]";
-            recipe.RawMetadata = """{"recipeIngredient":["g flour"],"supply":[{"name":"flour","unitText":"g"}]}""";
-            await db.SaveChangesAsync();
             var result = await Store(scope.ServiceProvider).ConvertAsync(Id, CanonicalRecipeContentStore.InspectContentRevision(recipe),
                 CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
             if (empty) Assert.Empty(result.Content.IngredientLines);

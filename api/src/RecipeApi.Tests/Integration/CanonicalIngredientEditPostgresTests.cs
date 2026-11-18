@@ -38,12 +38,14 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             {
                 var services = scope.ServiceProvider;
                 var db = services.GetRequiredService<RecipeDbContext>();
+                await TomorrowPushPostgresTests.ResetToLegacyAsync(db, Id, r =>
+                {
+                    r.SourceUrl = sourceUrl ?? r.SourceUrl;
+                    r.Servings = 4;
+                    r.Ingredients = "[\"200 g pasta\",\"100 ml sauce\"]";
+                    r.RawMetadata = """{"recipeIngredient":["200 g pasta","100 ml sauce"],"supply":[{"name":"pasta","quantity":200,"unitText":"g"},{"name":"sauce","quantity":100,"unitText":"ml"}],"recipeInstructions":[{"@type":"HowToStep","text":"Mix pasta and sauce."}]}""";
+                });
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-                recipe.SourceUrl = sourceUrl ?? recipe.SourceUrl;
-                recipe.Servings = 4;
-                recipe.Ingredients = "[\"200 g pasta\",\"100 ml sauce\"]";
-                recipe.RawMetadata = """{"recipeIngredient":["200 g pasta","100 ml sauce"],"supply":[{"name":"pasta","quantity":200,"unitText":"g"},{"name":"sauce","quantity":100,"unitText":"ml"}],"recipeInstructions":[{"@type":"HowToStep","text":"Mix pasta and sauce."}]}""";
-                await db.SaveChangesAsync();
                 content = (await services.GetRequiredService<CanonicalRecipeContentStore>().ConvertAsync(Id,
                     CanonicalRecipeContentStore.InspectContentRevision(recipe),
                     CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid())).Content;

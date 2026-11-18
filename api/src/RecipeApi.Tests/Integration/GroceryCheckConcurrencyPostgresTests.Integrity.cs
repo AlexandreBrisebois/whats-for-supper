@@ -51,6 +51,7 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                         recipeIngredient = new[] { names[i] },
                         supply = new[] { new { name = names[i], quantity = amount, unitText = "g" } }
                     });
+                    recipe.CanonicalContent = BuildCanonicalContent([(names[i], amount.ToString(), "g")], recipe.Servings, recipe.CanonicalContent);
                 }
                 await db.SaveChangesAsync();
             }

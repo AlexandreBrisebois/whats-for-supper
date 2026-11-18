@@ -31,32 +31,13 @@ public static partial class FoodVocabularyInventoryQualification
     public static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferences(FoodVocabularyInventoryFacts facts)
         => RequiredReferences(facts, prospectiveDemoInvalidation: false);
 
-    internal static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferencesForAttestedSource(
-        FoodVocabularyInventoryFacts facts, V1ExactSourceAdmission attestation)
-        => RequiredReferences(facts, prospectiveDemoInvalidation: false, attestation);
-
-    internal static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferencesForTransition(
-        FoodVocabularyInventoryFacts facts, V1AuthorityTransitionContext transition)
-        => RequiredReferences(facts, prospectiveDemoInvalidation: false, transition: transition);
-
-    internal static IReadOnlyList<FoodVocabularyReferenceOrigin> ContextReferences(FoodVocabularyContextFacts context) =>
-        ContextReferences(context, null);
-
-    internal static IReadOnlyList<FoodVocabularyReferenceOrigin> ContextReferences(FoodVocabularyContextFacts context,
-        V1RecoveryHistoryContext? authority)
-    {
-        if (authority is null)
-            return context.Context.Kind == "demo-destination" ? RequiredReferencesForDemoInvalidation(context.Facts) : RequiredReferences(context.Facts);
-        authority.RequireContext(context.Context);
-        authority.RequireFacts(context.Facts);
-        return RequiredReferencesForAttestedSource(context.Facts, authority.Attestation);
-    }
+    internal static IReadOnlyList<FoodVocabularyReferenceOrigin> ContextReferences(FoodVocabularyContextFacts context)
+        => context.Context.Kind == "demo-destination" ? RequiredReferencesForDemoInvalidation(context.Facts) : RequiredReferences(context.Facts);
 
     internal static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferencesForDemoInvalidation(FoodVocabularyInventoryFacts facts)
         => RequiredReferences(facts, prospectiveDemoInvalidation: true);
 
-    private static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferences(FoodVocabularyInventoryFacts facts, bool prospectiveDemoInvalidation,
-        V1ExactSourceAdmission? attestation = null, V1AuthorityTransitionContext? transition = null)
+    private static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferences(FoodVocabularyInventoryFacts facts, bool prospectiveDemoInvalidation)
     {
         FoodVocabularyDefinitions.Require(facts is not null && facts.Membership is not null && facts.Recipes is not null
             && facts.CanonicalOperations is not null && facts.Publications is not null && facts.History is not null
@@ -92,8 +73,7 @@ public static partial class FoodVocabularyInventoryQualification
             Add(FoodVocabularyStore.MembershipReferences(membership), "membership", "food_vocabulary_publication");
         foreach (var recipe in facts.Recipes) Add(RecipeReferences(recipe), "recipe", recipe.RecipeId.ToString("D"));
         foreach (var operation in facts.CanonicalOperations)
-            Add(transition is not null ? transition.References(operation)
-                : attestation is null ? CanonicalRecipeContentStore.VocabularyReferences(operation) : attestation.References(operation),
+            Add(CanonicalRecipeContentStore.VocabularyReferences(operation),
                 "canonical-operation", $"{operation.RecipeId:D}/{operation.OperationId:D}");
         foreach (var publication in facts.Publications)
             Add(RecipeFilePublicationStore.VocabularyReferences(publication), "publication", $"{publication.RecipeId:D}/{publication.OperationId:D}");

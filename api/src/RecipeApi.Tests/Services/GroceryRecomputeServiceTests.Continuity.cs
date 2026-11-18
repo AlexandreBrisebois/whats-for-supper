@@ -15,6 +15,18 @@ public partial class GroceryRecomputeServiceTests
         await SetRangeAsync(recipe, "2", "g");
         await SetChecksAsync(("pasta", true));
         var before = Assert.Single(await GetGroceryItemsAsync(TestMonday));
+        var plan = await _db.WeeklyPlans.SingleAsync(p => p.WeekStartDate == TestMonday);
+        var stripped = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(plan.GroceryDemandEvidence)!
+            .ToDictionary(
+                entry => entry.Key,
+                entry => new
+                {
+                    InputFingerprint = entry.Value.GetProperty("InputFingerprint").GetString()!,
+                    Members = entry.Value.GetProperty("Members").EnumerateArray().Select(m => m.GetString()!).ToArray(),
+                    Contributors = (object?)null
+                });
+        plan.GroceryDemandEvidence = JsonSerializer.Serialize(stripped);
+        await _db.SaveChangesAsync();
         await SetRangeAsync(recipe, "3", "cup");
         Assert.NotEqual(before.RowId, Assert.Single(await GetGroceryItemsAsync(TestMonday)).RowId);
         Assert.False(await IsCheckedAsync("pasta"));

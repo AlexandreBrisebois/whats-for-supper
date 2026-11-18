@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -20,6 +21,36 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
 {
     private const string Url = "/api/schedule/servings?weekOffset=0&referenceWeekStartDate=2026-10-12";
     private static readonly DateOnly Wednesday = new(2026, 10, 14);
+    private static readonly JsonSerializerOptions CanonicalJson = new(JsonSerializerDefaults.Web);
+
+    internal static string BuildCanonicalContent(
+        IEnumerable<(string name, string? amountText, string? unitText)> lines,
+        int? basis = null,
+        string? existingCanonicalContent = null)
+    {
+        var existing = string.IsNullOrWhiteSpace(existingCanonicalContent)
+            ? null
+            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, CanonicalJson);
+        var existingLines = existing?.IngredientLines ?? [];
+        var mapped = lines.Select((line, index) => new RecipeIngredientLineDto
+        {
+            Id = index < existingLines.Count ? existingLines[index].Id : Guid.NewGuid(),
+            Description = line.name,
+            Amount = line.amountText is null ? null : QuantityMath.Parse(line.amountText),
+            AmountText = line.amountText,
+            Unit = string.IsNullOrWhiteSpace(line.unitText) ? null : new(line.unitText, null),
+            Scaling = "proportional",
+            Package = null,
+            Shopping = new(line.name, null, null),
+            Provenance = new("human", "source", [])
+        }).ToList();
+        return JsonSerializer.Serialize(new CanonicalRecipeContent(
+            2, Guid.NewGuid().ToString("N"), "source", basis, mapped, []), CanonicalJson);
+    }
+
+    private static async Task<string> ContentRevisionAsync(HttpClient client, Guid recipeId) =>
+        (await client.GetFromJsonAsync<JsonElement>($"/api/recipes/{recipeId}"))
+            .GetProperty("recipe").GetProperty("contentRevision").GetString()!;
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public async Task SupperServings_SaveAcknowledgesBeforeRefresh_ThenRestartedWorkPersists600gAndUnchecksOnlyPasta()
@@ -30,10 +61,10 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
             await using (var factory = await TomorrowPushPostgresTests.CreateFactory(settings)) {
                 using var scope = factory.Services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                var recipe = new Recipe { Name = "Pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}" };
+                var recipe = new Recipe { Name = "Pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) };
                 recipeId = recipe.Id;
                 db.Recipes.Add(recipe);
-                var unrelated = new Recipe { Name = "Unrelated lunch", Ingredients = "[\"1 g salt\"]", RawMetadata = "{\"recipeIngredient\":[\"1 g salt\"],\"supply\":[{\"name\":\"salt\",\"quantity\":1,\"unitText\":\"g\"}]}" };
+                var unrelated = new Recipe { Name = "Unrelated lunch", Ingredients = "[\"1 g salt\"]", RawMetadata = "{\"recipeIngredient\":[\"1 g salt\"],\"supply\":[{\"name\":\"salt\",\"quantity\":1,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("salt", "1", "g")], null) };
                 db.Recipes.Add(unrelated); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, MealSlot = 1, RecipeId = unrelated.Id });
                 db.FamilySettings.Add(new() { Key = SupperServingsService.DefaultKey, Value = JsonSerializer.SerializeToElement(new { servings = 2 }) });
                 db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, Status = CalendarEventStatus.Planned, VoteCount = 7 });

@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Models;
+using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
@@ -58,6 +60,33 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests(ITestOutputHelp
             Assert.True(checks[TomatoRow], "Tomato must survive the other request's save.");
             Assert.True(checks[LettuceRow], "Lettuce must survive the other request's save.");
         });
+    }
+
+    private static readonly JsonSerializerOptions CanonicalJson = new(JsonSerializerDefaults.Web);
+
+    private static string BuildCanonicalContent(
+        IEnumerable<(string name, string? amountText, string? unitText)> lines,
+        int? basis = null,
+        string? existingCanonicalContent = null)
+    {
+        var existing = string.IsNullOrWhiteSpace(existingCanonicalContent)
+            ? null
+            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, CanonicalJson);
+        var existingLines = existing?.IngredientLines ?? [];
+        var mapped = lines.Select((line, index) => new RecipeIngredientLineDto
+        {
+            Id = index < existingLines.Count ? existingLines[index].Id : Guid.NewGuid(),
+            Description = line.name,
+            Amount = line.amountText is null ? null : QuantityMath.Parse(line.amountText),
+            AmountText = line.amountText,
+            Unit = string.IsNullOrWhiteSpace(line.unitText) ? null : new(line.unitText, null),
+            Scaling = "proportional",
+            Package = null,
+            Shopping = new(line.name, null, null),
+            Provenance = new("human", "source", [])
+        }).ToList();
+        return JsonSerializer.Serialize(new CanonicalRecipeContent(
+            2, Guid.NewGuid().ToString("N"), "source", basis, mapped, []), CanonicalJson);
     }
 
     private sealed class WeeklyPlanReadBarrier : DbCommandInterceptor

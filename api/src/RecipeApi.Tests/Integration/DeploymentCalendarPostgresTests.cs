@@ -502,8 +502,16 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         db.Recipes.AddRange(
-            new Recipe { Id = SelectedId, Name = "Sunday Chicken", Ingredients = "[\"Carrot\"]", IsReady = true, IsDiscoverable = true },
-            new Recipe { Id = SentinelId, Name = "Next Sunday Lasagna", Ingredients = "[\"Potato\"]", IsReady = true, IsDiscoverable = true });
+            new Recipe
+            {
+                Id = SelectedId, Name = "Sunday Chicken", Ingredients = "[\"Carrot\"]", IsReady = true, IsDiscoverable = true,
+                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+            },
+            new Recipe
+            {
+                Id = SentinelId, Name = "Next Sunday Lasagna", Ingredients = "[\"Potato\"]", IsReady = true, IsDiscoverable = true,
+                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)])
+            });
         foreach (var entry in db.ChangeTracker.Entries<Recipe>().ToArray())
         {
             var content = new RecipeSearchDocumentBuilder().Build(entry.Entity);

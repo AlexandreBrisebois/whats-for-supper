@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -276,5 +277,20 @@ public sealed class BilingualStartupMigrationTests
             var extra = await db.GroceryExtraOccurrences.SingleAsync(x => x.Id == extraId);
             Assert.Equal("Coffee", extra.Name);
         }
+    }
+
+    [Fact]
+    public void RecipeApiAssembly_DoesNotExposeOfflineMigrationOperatorOrExecutionMethods()
+    {
+        var assembly = typeof(RecipeStartupMigrator).Assembly;
+        const BindingFlags AnyMember = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+
+        Assert.Null(assembly.GetType("RecipeApi.Services.CanonicalRecipeMigrationOperator", throwOnError: false));
+        Assert.DoesNotContain(
+            typeof(CanonicalRecipeContentStore).GetMethods(AnyMember),
+            method => method.Name is "CaptureMigrationManifestAsync" or "ExecuteMigrationAsync");
+
+        Assert.NotNull(assembly.GetType(typeof(RecipeStartupMigrator).FullName!, throwOnError: false));
+        Assert.NotNull(assembly.GetType(typeof(CanonicalRecipeMigrationReceipt).FullName!, throwOnError: false));
     }
 }

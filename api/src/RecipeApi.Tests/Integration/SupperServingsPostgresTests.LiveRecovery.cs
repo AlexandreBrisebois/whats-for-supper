@@ -113,7 +113,7 @@ public partial class SupperServingsPostgresTests
             });
             using (var scope = factory.Services.CreateScope()) {
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                var recipe = new Recipe { Name = "Recovery pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", IsReady = true };
+                var recipe = new Recipe { Name = "Recovery pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2), IsReady = true };
                 db.Recipes.Add(recipe); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, VoteCount = 7 });
                 // Seed complete current date snapshots for the one-member household;
                 // movement must retain these rows rather than first materialize missing inheritance.

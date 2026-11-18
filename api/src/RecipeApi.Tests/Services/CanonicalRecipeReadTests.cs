@@ -44,4 +44,28 @@ public sealed partial class CanonicalRecipeReadTests
         Assert.Equal(QuantityMath.Parse("1/3"), SupperIngredientProjection.Read(recipe, 3)[0].GroceryObservation.Quantity);
         Assert.Equal(before, JsonSerializer.Serialize(recipe));
     }
+
+    [Fact]
+    public void Projection_EmptyUnreadyPlaceholderReturnsEmpty_AndPopulatedNonCanonicalRecipeFailsClosed()
+    {
+        Assert.Empty(SupperIngredientProjection.Read(new Recipe { Name = "Pending", IsReady = false }, 4));
+        Assert.Empty(SupperIngredientProjection.Read(new Recipe { Name = "Pending", IsReady = false, Ingredients = "[]" }, 4));
+
+        Assert.Throws<InvalidDataException>(() => SupperIngredientProjection.Read(
+            new Recipe { Name = "Legacy", Servings = 4, Ingredients = "[\"200 g pasta\"]" }, 4));
+        Assert.Throws<InvalidDataException>(() => SupperIngredientProjection.Read(
+            new Recipe
+            {
+                Name = "LegacySupply",
+                Servings = 4,
+                Ingredients = "[]",
+                RawMetadata = "{\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}"
+            }, 4));
+        Assert.Throws<InvalidDataException>(() => SupperIngredientProjection.Read(
+            new Recipe
+            {
+                Name = "UnsupportedVersion",
+                CanonicalContent = "{\"contentSchemaVersion\":1,\"contentRevision\":\"rev\",\"sourceRevision\":\"src\",\"servings\":4,\"ingredientLines\":[],\"instructionSections\":[]}"
+            }, 4));
+    }
 }

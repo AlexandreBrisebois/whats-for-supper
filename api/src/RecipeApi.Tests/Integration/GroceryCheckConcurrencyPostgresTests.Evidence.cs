@@ -38,6 +38,7 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                 }
                 recipe.Ingredients = "[\"pasta\",\"sauce\"]";
                 recipe.RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { "pasta", "sauce" }, supply = new[] { new { name = "pasta", quantity = amount, unitText = "g" }, new { name = "sauce", quantity = 100, unitText = "ml" } } });
+                recipe.CanonicalContent = BuildCanonicalContent([("pasta", amount.ToString(), "g"), ("sauce", "100", "ml")], recipe.Servings, recipe.CanonicalContent);
                 await db.SaveChangesAsync();
             }
             async Task Recompute()
@@ -100,7 +101,12 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                 var dateOffset = 0;
                 foreach (var unit in new[] { "g", "cup" })
                 {
-                    var recipe = new Recipe { Name = "Category fixture", Ingredients = "[\"pasta\"]", RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { "pasta" }, supply = new[] { new { name = "pasta", quantity = 2, unitText = unit } } }) };
+                    var recipe = new Recipe
+                    {
+                        Name = "Category fixture", Ingredients = "[\"pasta\"]",
+                        RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { "pasta" }, supply = new[] { new { name = "pasta", quantity = 2, unitText = unit } } }),
+                        CanonicalContent = BuildCanonicalContent([("pasta", "2", unit)])
+                    };
                     db.Recipes.Add(recipe);
                     db.CalendarEvents.Add(new() { Date = Monday.AddDays(dateOffset++), RecipeId = recipe.Id });
                 }
@@ -151,6 +157,7 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                 var text = $"2 {unit} pasta";
                 recipe.Ingredients = JsonSerializer.Serialize(new[] { text });
                 recipe.RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { text }, supply = new[] { new { name = "pasta", quantity = 2, unitText = unit } } });
+                recipe.CanonicalContent = BuildCanonicalContent([("pasta", "2", unit)], recipe.Servings, recipe.CanonicalContent);
                 await db.SaveChangesAsync();
                 await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(Monday, default);
             }
@@ -195,7 +202,8 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
             {
                 var db = seed.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 db.Recipes.Add(new() { Id = id, Name = "Source fixture", Ingredients = "[\"1/3 cup pasta\"]",
-                    RawMetadata = "{\"recipeIngredient\":[\"1/3 cup pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":0.33,\"unitText\":\"cup\"}]}" });
+                    RawMetadata = "{\"recipeIngredient\":[\"1/3 cup pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":0.33,\"unitText\":\"cup\"}]}",
+                    CanonicalContent = BuildCanonicalContent([("pasta", "1/3", "cup")]) });
                 db.CalendarEvents.Add(new() { Date = Monday, RecipeId = id });
                 await db.SaveChangesAsync();
                 await seed.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(Monday, default);

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -13,11 +14,41 @@ namespace RecipeApi.Tests.Integration;
 
 public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
 {
-    private static Recipe Recipe(int? basis = 2) => new() {
-        Name = "Preview pasta", Servings = basis, IsReady = true,
-        Ingredients = "[\"200 g pasta\",\"Salt to taste\"]",
-        RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\",\"Salt to taste\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"},{\"name\":\"Salt to taste\"}]}"
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
+
+    private static RecipeIngredientLineDto Line(string description, string? amount, string? unit = null, string? shoppingName = null, RecipePackageDto? package = null) => new()
+    {
+        Id = Guid.NewGuid(),
+        Description = description,
+        Amount = amount is null ? null : QuantityMath.Parse(amount),
+        AmountText = amount,
+        Unit = unit is null ? null : new(unit, null),
+        Scaling = "proportional",
+        Package = package,
+        Shopping = new(shoppingName ?? description, null, null),
+        Provenance = new("source", "source-v1", [])
     };
+
+    private static string BuildCanonical(int? basis, params RecipeIngredientLineDto[] lines) =>
+        JsonSerializer.Serialize(new CanonicalRecipeContent(2, Guid.NewGuid().ToString("N"), "source-v1", basis, lines, []), WebJson);
+
+    private static Recipe Recipe(int? basis = 2)
+    {
+        var lines = new[]
+        {
+            Line("pasta", "200", "g"),
+            Line("Salt to taste", null)
+        };
+        return new()
+        {
+            Name = "Preview pasta",
+            Servings = basis,
+            IsReady = true,
+            Ingredients = "[\"200 g pasta\",\"Salt to taste\"]",
+            RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\",\"Salt to taste\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"},{\"name\":\"Salt to taste\"}]}",
+            CanonicalContent = BuildCanonical(basis, lines)
+        };
+    }
 
     internal static Recipe LegacyShells()
     {
@@ -25,11 +56,24 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
         string[] names = ["coquilles géantes", "oignon haché", "Bœuf haché mi-maigre", "Sauce marinara", "Parmesan râpé", "huile d'olive", "basilic haché"];
         double[] amounts = [12, 1, 450, 500, 80, 30, 30];
         string?[] units = [null, null, "g", "ml", "ml", "ml", "ml"];
+        var canonicalLines = new[]
+        {
+            Line("coquilles géantes", "12"),
+            Line("oignon haché", "1"),
+            Line("Bœuf haché mi-maigre", "450", "g"),
+            Line("Sauce marinara", "500", "ml"),
+            Line("Parmesan râpé", "80", "ml"),
+            Line("d'huile d'olive", "30", "ml", "huile d'olive"),
+            Line("de basilic haché", "30", "ml", "basilic haché"),
+            Line("sel", null),
+            Line("poivre", null)
+        };
         return new Recipe {
             Name = "Coquilles farcies au bœuf", IsReady = true, Servings = 4,
             Ingredients = JsonSerializer.Serialize(lines),
             RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = lines,
-                supply = names.Select((name, i) => new { name, requiredQuantity = new { value = amounts[i], unitText = units[i] } }) })
+                supply = names.Select((name, i) => new { name, requiredQuantity = new { value = amounts[i], unitText = units[i] } }) }),
+            CanonicalContent = BuildCanonical(4, canonicalLines)
         };
     }
 
@@ -47,7 +91,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
         using var client = factory.CreateAuthenticatedClient();
         using var doc = JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-preview?targetServings={target}"));
         var root = doc.RootElement; var lines = root.GetProperty("lines");
-        Assert.Equal("partial", root.GetProperty("status").GetString());
+        Assert.Equal("scaled", root.GetProperty("status").GetString());
         double[] amounts = [12, 1, 450, 500, 80, 30, 30];
         for (var i = 0; i < amounts.Length; i++) {
             Assert.Equal(amounts[i] * target / 4, lines[i].GetProperty("quantity").GetDouble());
@@ -55,7 +99,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
         }
         foreach (var i in new[] { 7, 8 }) {
             Assert.Equal(JsonValueKind.Null, lines[i].GetProperty("quantity").ValueKind);
-            Assert.Equal("unresolved", lines[i].GetProperty("status").GetString());
+            Assert.Equal("unquantified", lines[i].GetProperty("status").GetString());
         }
         db.ChangeTracker.Clear();
         var saved = await db.Recipes.SingleAsync(); Assert.Equal(original, saved.Ingredients); Assert.Equal(metadata, saved.RawMetadata);
@@ -63,56 +107,76 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void Preview_AlignmentIsUniqueAndDoesNotZipOmittedMiddleLines()
+    public async Task Preview_PopulatedRecipeWithoutCanonicalContentFailsClosed_AndEmptyPlaceholderProjectsEmpty()
     {
-        string[] texts = ["2 cloves d'ail", "Le zeste et le jus d'une limette", "30 ml de miel", "Sel et poivre au goût", "750 g de saumon", "30 ml de sésame"];
-        var recipe = new Recipe { Servings = 4, Ingredients = JsonSerializer.Serialize(texts), RawMetadata = JsonSerializer.Serialize(new {
-            recipeIngredient = texts,
-            supply = new[] { new { name = "sésame", quantity = 30, unitText = "ml" }, new { name = "ail", quantity = 2, unitText = "cloves" }, new { name = "miel", quantity = 30, unitText = "ml" }, new { name = "saumon", quantity = 750, unitText = "g" } }
-        }) };
-        var lines = SupperIngredientProjection.Read(recipe, 6);
-        Assert.Equal(3d, lines[0].Quantity); Assert.Null(lines[1].Quantity); Assert.Equal(45d, lines[2].Quantity);
-        Assert.Equal("unquantified", lines[3].Status); Assert.Equal(1125d, lines[4].Quantity); Assert.Equal(45d, lines[5].Quantity);
+        Assert.Empty(SupperIngredientProjection.Read(new Recipe { Name = "Pending", IsReady = false }, 4));
+
+        var legacy = new Recipe
+        {
+            Name = "Unmigrated pasta",
+            Servings = 4,
+            IsReady = true,
+            Ingredients = "[\"200 g pasta\"]",
+            RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}"
+        };
+        Assert.Throws<InvalidDataException>(() => SupperIngredientProjection.Read(legacy, 4));
+        Assert.Throws<InvalidDataException>(() => SupperIngredientProjection.Read(
+            new Recipe { Name = "Supply only", RawMetadata = "{\"supply\":[{\"name\":\"pasta\",\"quantity\":200}]}" }, 4));
+
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var placeholder = new Recipe { Name = "Pending", IsReady = false };
+        db.Recipes.AddRange(legacy, placeholder);
+        await db.SaveChangesAsync();
+
+        using var client = factory.CreateAuthenticatedClient();
+        var emptyReply = await client.GetAsync($"/api/recipes/{placeholder.Id}/ingredient-preview?targetServings=4");
+        Assert.Equal(HttpStatusCode.OK, emptyReply.StatusCode);
+        using var emptyDoc = JsonDocument.Parse(await emptyReply.Content.ReadAsStringAsync());
+        Assert.Equal(0, emptyDoc.RootElement.GetProperty("lines").GetArrayLength());
+
+        var failReply = await client.GetAsync($"/api/recipes/{legacy.Id}/ingredient-preview?targetServings=4");
+        Assert.Equal(HttpStatusCode.InternalServerError, failReply.StatusCode);
     }
 
     [Fact]
-    public void Preview_AlignmentRejectsAmbiguitySubstringsAndStaleSource()
+    public void Preview_CanonicalLinesIgnoreRetainedRawMetadataSupplyAndMissingBasisRemainsUnresolved()
     {
-        string[] texts = ["1 onion", "2 onion", "200 g onionwood", "400 g pasta"];
-        var metadata = JsonSerializer.Serialize(new { recipeIngredient = texts, supply = new[] { new { name = "onion", quantity = 1 }, new { name = "pasta", quantity = 400 } } });
-        var recipe = new Recipe { Servings = 4, Ingredients = JsonSerializer.Serialize(texts), RawMetadata = metadata };
-        var lines = SupperIngredientProjection.Read(recipe, 6);
-        Assert.All(lines.Take(3), line => Assert.Null(line.Quantity)); Assert.Equal(600d, lines[3].Quantity);
-        recipe.Ingredients = JsonSerializer.Serialize(texts.Append("Added after capture"));
-        Assert.All(SupperIngredientProjection.Read(recipe, 6), line => Assert.Null(line.Quantity));
-    }
+        var package = new RecipePackageDto(new("cans", null), new(QuantityMath.Parse("400")!, new("g", null)), "net");
+        var linesInput = new[]
+        {
+            Line("cafe\u0301", "10", "g"),
+            Line("tomatoes", "2", "cans", package: package),
+            Line("salt to taste", null)
+        };
+        var recipe = new Recipe
+        {
+            Servings = 4,
+            Ingredients = "[\"999 kg completely different legacy text\"]",
+            RawMetadata = JsonSerializer.Serialize(new
+            {
+                recipeIngredient = new[] { "999 kg stale" },
+                supply = new[] { new { name = "stale", quantity = 999, unitText = "kg" } }
+            }),
+            CanonicalContent = BuildCanonical(4, linesInput)
+        };
 
-    [Fact]
-    public void Preview_AlignmentPreservesUnicodeTokensPackagesAndStructuredNumbers()
-    {
-        string[] texts = ["10 g cafe\u0301", "1 g cumin\u0338", "2 cans tomatoes (400 g each)", "1 g salt to taste"];
-        var recipe = new Recipe { Servings = 4, Ingredients = JsonSerializer.Serialize(texts), RawMetadata = JsonSerializer.Serialize(new {
-            recipeIngredient = texts, supply = new[] { new { name = "café", quantity = 10, unitText = "g" }, new { name = "cumin", quantity = 1, unitText = "g" }, new { name = "tomatoes", quantity = 2, unitText = "cans" }, new { name = "salt to taste", quantity = 1, unitText = "g" } }
-        }) };
         var lines = SupperIngredientProjection.Read(recipe, 6);
-        Assert.Equal(15d, lines[0].Quantity); Assert.Null(lines[1].Quantity);
-        Assert.Equal(3d, lines[2].Quantity); Assert.Contains("400 g", lines[2].OriginalText);
-        Assert.Equal(1.5d, lines[3].Quantity); Assert.Equal("scaled", lines[3].Status);
+        Assert.Equal(15d, lines[0].Quantity);
+        Assert.Empty(lines[0].Issues);
+        Assert.Equal(3d, lines[1].Quantity);
+        Assert.Contains("400 g", lines[1].OriginalText);
+        Assert.Null(lines[2].Quantity);
+        Assert.Equal("unquantified", lines[2].Status);
+
+        recipe.CanonicalContent = BuildCanonical(null, linesInput);
         recipe.Servings = null;
-        Assert.All(SupperIngredientProjection.Read(recipe, 6), line => Assert.Null(line.Quantity));
-    }
-
-    [Fact]
-    public void Preview_AlignmentRejectsCompetingSuppliesAndSameLengthSourceEdits()
-    {
-        string[] texts = ["2 ml olive oil", "3 ml sesame oil", "400 g pasta"];
-        var recipe = new Recipe { Servings = 4, Ingredients = JsonSerializer.Serialize(texts), RawMetadata = JsonSerializer.Serialize(new {
-            recipeIngredient = texts, supply = new[] { new { name = "oil", quantity = 1 }, new { name = "olive oil", quantity = 2 }, new { name = "pasta", quantity = 400 } }
-        }) };
-        var lines = SupperIngredientProjection.Read(recipe, 6);
-        Assert.Null(lines[0].Quantity); Assert.Null(lines[1].Quantity); Assert.Equal(600d, lines[2].Quantity);
-        recipe.Ingredients = JsonSerializer.Serialize(new[] { "2 ml olive oil", "3 ml sesame oil", "500 g pasta" });
-        Assert.All(SupperIngredientProjection.Read(recipe, 6), line => Assert.Null(line.Quantity));
+        var missingBasis = SupperIngredientProjection.Read(recipe, 6);
+        Assert.Equal("unresolved", missingBasis[0].Status);
+        Assert.Equal(["missing_basis"], missingBasis[0].Issues);
+        Assert.Null(missingBasis[0].Quantity);
+        Assert.Equal("unquantified", missingBasis[2].Status);
     }
 
     [Fact]
@@ -176,7 +240,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
             using var preview = JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-preview?targetServings=6"));
             using var assigned = JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-projection?supperDate=2026-10-14&context=assigned&occurrenceId={occurrence.Id}"));
             Assert.Equal(preview.RootElement.GetProperty("lines").GetRawText(), assigned.RootElement.GetProperty("lines").GetRawText());
-            Assert.Equal("partial", assigned.RootElement.GetProperty("status").GetString());
+            Assert.Equal("scaled", assigned.RootElement.GetProperty("status").GetString());
             var items = JsonSerializer.Deserialize<List<RecipeApi.Dto.GroceryLineItemDto>>((await db.WeeklyPlans.SingleAsync()).GroceryItems!)!;
             var beef = items.Single(x => x.UnitText == "g"); Assert.Equal(675d, beef.Quantity); Assert.True(beef.QuantityComplete);
             Assert.All(items.Where(x => x.DisplayName is "sel" or "poivre"), item => { Assert.Null(item.Quantity); Assert.False(item.QuantityComplete); });
@@ -213,7 +277,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
             async Task<string> Snapshot() {
                 db.ChangeTracker.Clear();
                 return JsonSerializer.Serialize(new {
-                    recipes = await db.Recipes.AsNoTracking().Select(x => new { x.Id, x.Servings, x.Ingredients, x.RawMetadata, x.LastCookedDate, x.UpdatedAt }).ToListAsync(),
+                    recipes = await db.Recipes.AsNoTracking().Select(x => new { x.Id, x.Servings, x.Ingredients, x.RawMetadata, x.CanonicalContent, x.LastCookedDate, x.UpdatedAt }).ToListAsync(),
                     events = await db.CalendarEvents.AsNoTracking().Select(x => new { x.Id, x.Date, x.RecipeId, x.Status, x.PreparedOn, x.PreparedAtUtc, x.PreparedServings, x.PreparedOriginalServings, x.PreparationPlanToken, x.PreparationServingVersion }).ToListAsync(),
                     counts = await db.SupperServings.AsNoTracking().ToListAsync(),
                     defaults = await db.FamilySettings.AsNoTracking().ToListAsync(),
@@ -228,14 +292,23 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
                 Assert.Equal(target * 100, doc.RootElement.GetProperty("lines")[0].GetProperty("quantity").GetDouble());
                 Assert.Equal(before, await Snapshot());
             }
-            var saved = await db.Recipes.SingleAsync(); saved.Servings = null; await db.SaveChangesAsync();
+            var saved = await db.Recipes.SingleAsync();
+            saved.Servings = null;
+            saved.CanonicalContent = BuildCanonical(null, CanonicalRecipeContentStore.Read(saved)!.IngredientLines.ToArray());
+            await db.SaveChangesAsync();
             using var missing = JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-preview?targetServings=4"));
             Assert.Equal(JsonValueKind.Null, missing.RootElement.GetProperty("factor").ValueKind);
             Assert.Equal("unresolved", missing.RootElement.GetProperty("status").GetString());
             Assert.Equal("200 g pasta", missing.RootElement.GetProperty("lines")[0].GetProperty("originalText").GetString());
-            saved.Servings = 2; saved.Ingredients = "[\"Changed pasta\",\"Salt to taste\"]"; await db.SaveChangesAsync();
+            saved.Servings = 2;
+            saved.Ingredients = "[\"Changed pasta\",\"Salt to taste\"]";
+            saved.CanonicalContent = BuildCanonical(2, Line("Changed pasta", null), Line("Salt to taste", null));
+            await db.SaveChangesAsync();
             using var stale = JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-preview?targetServings=6"));
-            Assert.Equal("unresolved", stale.RootElement.GetProperty("status").GetString());
+            Assert.Equal("scaled", stale.RootElement.GetProperty("status").GetString());
+            Assert.Equal("unquantified", stale.RootElement.GetProperty("lines")[0].GetProperty("status").GetString());
+            Assert.Equal("Changed pasta", stale.RootElement.GetProperty("lines")[0].GetProperty("originalText").GetString());
+            Assert.Empty(stale.RootElement.GetProperty("lines")[0].GetProperty("issues").EnumerateArray());
             Assert.Equal(JsonValueKind.Null, stale.RootElement.GetProperty("lines")[0].GetProperty("quantity").ValueKind);
             Assert.Equal(7, (await db.CalendarEvents.SingleAsync()).PreparedServings);
         });

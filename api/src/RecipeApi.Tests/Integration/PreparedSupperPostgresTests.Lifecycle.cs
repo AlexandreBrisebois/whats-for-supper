@@ -15,7 +15,7 @@ public partial class PreparedSupperPostgresTests
     {
         foreach (var scenario in new[] { "roundtrip", "partial", "count", "null" })
             await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {
-                await using var app = await Factory(settings.ConnectionString);
+                await using var app = await Factory(settings.ConnectionString, localRecipeStore: scenario == "roundtrip");
                 if (scenario == "roundtrip") await PreparedCalendarMergeTests.RoundTrip(app);
                 else if (scenario == "null") await PreparedCalendarMergeTests.LegacyNull(app);
                 else await PreparedCalendarMergeTests.Malformed(app, scenario);

@@ -77,7 +77,7 @@ With positive recipe basis B and target T, each proportional exact scalar or ran
 
 ### Requirement: Report incomplete scaling without invented quantities
 
-Missing basis, unreliable amounts and stale source SHALL remain truthful in authoritative projections, without invented quantities or complete partial totals. Recipe detail SHALL retain original text and missing-basis correction but omit generic review warnings and replacement cues. Other consumers retain their feedback. Intentional unquantified directions remain normal text; usable contributions scale independently. Reads/calculation SHALL NOT call AI.
+Authoritative projections SHALL read structured canonical ingredient lines exclusively, keeping missing basis and unreliable amounts truthful without invented quantities or complete partial totals, and failing closed when populated recipes lack canonical content. Recipe detail SHALL retain original text and missing-basis correction without generic review warnings. Intentional unquantified directions remain normal text; reads SHALL NOT call AI.
 
 #### Scenario: Salt to taste is normal recipe content
 - **WHEN** an ingredient says salt to taste or oil for frying
@@ -88,8 +88,12 @@ Missing basis, unreliable amounts and stale source SHALL remain truthful in auth
 - **THEN** original quantities remain visible and no complete scaled amount is claimed; recipe detail offers Set recipe portions with its saved-change explanation in the editor, while other consumers retain their existing correction/original feedback
 
 #### Scenario: Ingredient text was edited independently
-- **WHEN** current ingredient text no longer agrees with the structured supply's source basis
-- **THEN** stale supply quantities are not presented as current scaled needs and the response remains unresolved; recipe detail retains original text/inspection without a generic review warning or replacement cue, while other consumers retain their existing correction/re-import feedback
+- **WHEN** saved canonical ingredient lines were edited independently of retained raw metadata supply
+- **THEN** projections read only the saved canonical ingredient lines without consulting retained supply or deriving a `stale_source` fallback, and recipe detail retains current canonical text without a generic review warning or replacement cue
+
+#### Scenario: Populated recipe without structured canonical content fails closed
+- **WHEN** a projection or weekly grocery derivation reads an unready empty capture placeholder with no canonical or legacy ingredient content, or reads a populated recipe lacking structured v2 canonical content
+- **THEN** the empty capture placeholder projects zero lines without error, whereas the populated non-canonical recipe fails closed instead of scraping legacy `ingredients` strings, binding `rawMetadata.supply`, or silently returning an empty list
 
 #### Scenario: Remove generic detail review without changing completeness
 - **WHEN** a recipe-detail preview has usable numeric lines and unreliable lines

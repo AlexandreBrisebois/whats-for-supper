@@ -25,8 +25,11 @@ public class CanonicalIngredientConversionPostgresTests(ITestOutputHelper output
             var id = TomorrowPushPostgresTests.Selected;
             string before;
             using (var scope = factory.Services.CreateScope())
-                before = JsonSerializer.Serialize(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
-                    .Recipes.AsNoTracking().SingleAsync(x => x.Id == id));
+            {
+                var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                await TomorrowPushPostgresTests.ResetToLegacyAsync(db, id, _ => { });
+                before = JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id));
+            }
             using var client = factory.CreateAuthenticatedClient();
             for (var i = 0; i < 2; i++)
             {
@@ -54,8 +57,11 @@ public class CanonicalIngredientConversionPostgresTests(ITestOutputHelper output
             var id = TomorrowPushPostgresTests.Selected;
             string before;
             using (var scope = factory.Services.CreateScope())
-                before = JsonSerializer.Serialize(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
-                    .Recipes.AsNoTracking().SingleAsync(x => x.Id == id));
+            {
+                var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+                await TomorrowPushPostgresTests.ResetToLegacyAsync(db, id, _ => { });
+                before = JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id));
+            }
             foreach (var collection in new[] { "ingredientLines", "instructionSections" })
             {
             var response = await client.PatchAsJsonAsync($"/api/recipes/{id}", new Dictionary<string, object?>
@@ -88,6 +94,7 @@ public class CanonicalIngredientConversionPostgresTests(ITestOutputHelper output
             {
                 var services = scope.ServiceProvider;
                 var db = services.GetRequiredService<RecipeDbContext>();
+                await TomorrowPushPostgresTests.ResetToLegacyAsync(db, id, _ => { });
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == id);
                 // Explicit forward conversion sets up saved IDs; neither GET nor
                 // the ordinary edit request may silently convert legacy content.

@@ -88,7 +88,7 @@ public partial class SupperServingsPostgresTests
             await using var factory = await TomorrowPushPostgresTests.CreateFactory(settings);
             using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             for (var i = await db.FamilyMembers.CountAsync(); i < 4; i++) db.FamilyMembers.Add(new() { Name = "Snapshot member " + i });
-            var recipe = new Recipe { Name = "Pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}" };
+            var recipe = new Recipe { Name = "Pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) };
             db.Recipes.Add(recipe);
             var past = new DateOnly(2026,10,10); var prepared = Wednesday.AddDays(1); var skipped = Wednesday.AddDays(2); var overridden = Wednesday.AddDays(3); var otherMeal = Wednesday.AddDays(4);
             db.CalendarEvents.AddRange(new CalendarEvent { Date = past, RecipeId = recipe.Id }, new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id },
@@ -118,7 +118,7 @@ public partial class SupperServingsPostgresTests
     {
         await WithLifecycle(async (app, root) => {
             using var scope = app.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var recipe = new Recipe { Name = "Restored automatic", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}" };
+            var recipe = new Recipe { Name = "Restored automatic", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) };
             db.Recipes.Add(recipe); db.CalendarEvents.Add(new() { Date = Wednesday, RecipeId = recipe.Id });
             db.WeeklyPlans.Add(new() { WeekStartDate = new(2026,10,12), ServingInputVersion = "old-current-derivation", ServingAppliedVersion = "old-current-derivation", GroceryItems = "[]" }); await db.SaveChangesAsync();
             var recovery = scope.ServiceProvider.GetRequiredService<RecoverySnapshotService>(); var snapshot = await recovery.CaptureAsync(default);
@@ -146,7 +146,7 @@ public partial class SupperServingsPostgresTests
     private static async Task ExerciseActivationAudit(TestWebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var recipe = new Recipe { Name = "Activation", Servings = 2, Ingredients = "[\"200 g pasta\"]" }; db.Recipes.Add(recipe);
+        var recipe = new Recipe { Name = "Activation", Servings = 2, Ingredients = "[\"200 g pasta\"]", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) }; db.Recipes.Add(recipe);
         db.CalendarEvents.AddRange(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id }, new CalendarEvent { Date = Wednesday.AddDays(7), RecipeId = recipe.Id });
         db.WeeklyPlans.Add(new() { WeekStartDate = new(2026,10,12), ServingInputVersion = "old-current", ServingAppliedVersion = "old-current" }); await db.SaveChangesAsync();
         var owner = scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>();
@@ -167,7 +167,7 @@ public partial class SupperServingsPostgresTests
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {
             await using var factory = await TomorrowPushPostgresTests.CreateFactory(settings);
             using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var recipe = new Recipe { Name = "Preparation usual", Servings = 2, Ingredients = "[\"200 g pasta\"]" }; var evt = new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id };
+            var recipe = new Recipe { Name = "Preparation usual", Servings = 2, Ingredients = "[\"200 g pasta\"]", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) }; var evt = new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id };
             db.Recipes.Add(recipe); db.CalendarEvents.Add(evt); await db.SaveChangesAsync();
             using var client = factory.CreateAuthenticatedClient();
             async Task<JsonElement> Project() => JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-projection?supperDate=2026-10-14&context=assigned&occurrenceId={evt.Id}")).RootElement.Clone();

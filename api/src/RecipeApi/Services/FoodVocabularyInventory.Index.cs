@@ -13,15 +13,10 @@ public static partial class FoodVocabularyInventoryQualification
     internal static byte[] WriteRecoveryIndex(FoodVocabularyRecoveryIndex index) => JsonSerializer.SerializeToUtf8Bytes(index, HistoryJson);
 
     public static IReadOnlyList<FoodVocabularyContextFacts> ValidateRecoveryArtifacts(byte[] indexBytes, byte[] historyBytes,
-        IReadOnlyList<FoodVocabularyCapture> captures, string kind) => ValidateRecoveryArtifacts(indexBytes, historyBytes, captures, kind, null);
-
-    internal static IReadOnlyList<FoodVocabularyContextFacts> ValidateRecoveryArtifacts(byte[] indexBytes, byte[] historyBytes,
-        IReadOnlyList<FoodVocabularyCapture> captures, string kind, V1RecoveryHistoryContext? authority)
+        IReadOnlyList<FoodVocabularyCapture> captures, string kind)
     {
         FoodVocabularyDefinitions.Require(kind is "snapshot" or "demo");
         var index = ReadRecoveryIndex(indexBytes);
-        if (authority is not null)
-            FoodVocabularyDefinitions.Require(kind == "snapshot" && index.SnapshotId == authority.SnapshotId && index.Generation == authority.Generation);
         FoodVocabularyDefinitions.Require(index.HistorySha256 == FoodVocabularyDefinitions.Sha256(historyBytes)
             && captures is not null && captures.All(x => x is not null)
             && captures.Select(x => x.Reference).Distinct().Count() == captures.Count
@@ -32,37 +27,34 @@ public static partial class FoodVocabularyInventoryQualification
             _ = capture.Definitions();
             FoodVocabularyDefinitions.Require(capture.RawBytes.Length == document.Length);
         }
-        var contexts = ValidateHistoryAuthority(historyBytes, captures, authority);
+        var contexts = ValidateHistoryAuthority(historyBytes, captures);
         var live = contexts.Where(x => x.Context.Kind == kind && x.Context.SnapshotId == index.SnapshotId
             && x.Context.Generation == index.Generation).ToArray();
         FoodVocabularyDefinitions.Require(live.Length == 1 && live[0].Facts.Membership.RawJson == index.MembershipRawJson);
-        var required = contexts.SelectMany(x => ContextReferences(x, authority)).ToHashSet();
+        var required = contexts.SelectMany(ContextReferences).ToHashSet();
         FoodVocabularyDefinitions.Require(index.Origins.Length == index.Origins.Distinct().Count()
             && required.SetEquals(index.Origins) && required.Select(x => x.Reference).ToHashSet().SetEquals(index.Documents.Select(x => x.Reference)));
         return contexts;
     }
 
     internal static IReadOnlyList<FoodVocabularyContextFacts> ValidateHistoryAuthority(byte[] historyBytes,
-        IReadOnlyList<FoodVocabularyCapture> captures) => ValidateHistoryAuthority(historyBytes, captures, null);
-
-    internal static IReadOnlyList<FoodVocabularyContextFacts> ValidateHistoryAuthority(byte[] historyBytes,
-        IReadOnlyList<FoodVocabularyCapture> captures, V1RecoveryHistoryContext? authority)
+        IReadOnlyList<FoodVocabularyCapture> captures)
     {
         FoodVocabularyDefinitions.Require(captures is not null && captures.All(x => x is not null)
             && captures.Select(x => x.Reference).Distinct().Count() == captures.Count
             && captures.Select(x => x.Reference.Revision).Distinct(StringComparer.Ordinal).Count() == captures.Count);
         foreach (var capture in captures)
             foreach (var previous in captures) capture.Definitions().ValidateCompatible(previous.Definitions());
-        var contexts = ReadHistoryObservations(historyBytes, authority);
-        ValidateObservationCompatibility(contexts, authority);
-        FoodVocabularyDefinitions.Require(contexts.SelectMany(x => ContextReferences(x, authority)).Select(x => x.Reference).ToHashSet()
+        var contexts = ReadHistoryObservations(historyBytes);
+        ValidateObservationCompatibility(contexts);
+        FoodVocabularyDefinitions.Require(contexts.SelectMany(ContextReferences).Select(x => x.Reference).ToHashSet()
             .SetEquals(captures.Select(x => x.Reference)));
         foreach (var context in contexts)
         {
             var facts = context.Facts;
             FoodVocabularyDefinitions.Require(facts.Overrides.Coverage == FoodVocabularyOverrideCoverage.CapturedV1 && facts.Overrides.Rows is not null);
             var membership = facts.Membership.RawJson is null ? null : FoodVocabularyStore.InspectMembership(facts.Membership.RawJson);
-            FoodVocabularyDefinitions.Require(membership?.HasPrepared != true && (membership is not null || ContextReferences(context, authority).Count == 0));
+            FoodVocabularyDefinitions.Require(membership?.HasPrepared != true && (membership is not null || ContextReferences(context).Count == 0));
             var vocabularyAuthority = new FoodVocabularyAuthority(membership?.ActiveRef, captures.ToArray());
             vocabularyAuthority.Validate();
             foreach (var recipe in facts.Recipes)

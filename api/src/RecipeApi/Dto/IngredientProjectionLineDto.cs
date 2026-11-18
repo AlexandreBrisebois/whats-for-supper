@@ -5,8 +5,6 @@ public record IngredientProjectionLineDto
     [System.Text.Json.Serialization.JsonIgnore]
     public GroceryQuantityObservation GroceryObservation { get; init; } = new(null, "unresolved");
     [System.Text.Json.Serialization.JsonIgnore]
-    public string? GroceryRecordedNumberToken { get; init; }
-    [System.Text.Json.Serialization.JsonIgnore]
     public Guid? SavedIngredientLineId { get; init; }
     [System.Text.Json.Serialization.JsonIgnore]
     public string? GroceryPurchaseIdentity { get; init; }

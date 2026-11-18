@@ -6,12 +6,6 @@ namespace RecipeApi.Services;
 
 public sealed partial class FoodVocabularyStore
 {
-    internal void RequireMigrationTarget(RecipeApi.Data.RecipeDbContext expectedDb, RecipesRootResolver expectedRoots, RecoveryBoundary expectedBoundary)
-    {
-        FoodVocabularyDefinitions.Require(ReferenceEquals(db, expectedDb) && ReferenceEquals(recipes, expectedRoots)
-            && ReferenceEquals(boundary, expectedBoundary));
-    }
-
     // The caller owns Snapshot/Publish coordination. All retained statuses are
     // observed, including originals whose runtime membership has been retired.
     internal async Task<FoodVocabularyInventoryFacts> ObserveInventoryFactsAsync(CancellationToken ct)

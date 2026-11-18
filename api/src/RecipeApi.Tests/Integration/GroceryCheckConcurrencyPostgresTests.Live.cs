@@ -72,7 +72,8 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                 var ingredient = $"1 {unit} Water";
                 var recipe = new Recipe { Id = Guid.NewGuid(), Name = $"Water in {unit}", Servings = 4,
                     Ingredients = JsonSerializer.Serialize(new[] { ingredient }),
-                    RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { ingredient }, supply = new[] { new { name = "Water", quantity = 1, unitText = unit } } }) };
+                    RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { ingredient }, supply = new[] { new { name = "Water", quantity = 1, unitText = unit } } }),
+                    CanonicalContent = BuildCanonicalContent([("Water", "1", unit)], 4) };
                 db.Recipes.Add(recipe);
                 db.CalendarEvents.Add(new CalendarEvent { Date = new DateOnly(2026, 10, 5).AddDays(offset), RecipeId = recipe.Id });
             }

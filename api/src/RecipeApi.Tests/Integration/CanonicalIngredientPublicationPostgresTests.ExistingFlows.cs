@@ -38,12 +38,14 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             var edited = await editor.EditAsync(Id, seeded.Content.SourceRevision, Guid.NewGuid(), new UpdateRecipeDto
             { ExpectedContentRevision = seeded.Content.ContentRevision, Notes = "Human note" });
             var expected = JsonSerializer.Serialize(edited.Content, JsonDefaults.CamelCase);
+            await TomorrowPushPostgresTests.ResetToLegacyAsync(db, TomorrowPushPostgresTests.Other, other =>
+            {
+                other.RawMetadata = null;
+                other.Name = null;
+                other.IsReady = false;
+                other.Servings = 4;
+            });
             var other = await db.Recipes.SingleAsync(x => x.Id == TomorrowPushPostgresTests.Other);
-            other.RawMetadata = null;
-            other.Name = null;
-            other.IsReady = false;
-            other.Servings = 4;
-            await db.SaveChangesAsync();
             var converted = await editor.ConvertAsync(other.Id, CanonicalRecipeContentStore.InspectContentRevision(other), CanonicalRecipeContentStore.InspectSourceRevision(other), Guid.NewGuid());
             await editor.EditAsync(other.Id, converted.Content.SourceRevision, Guid.NewGuid(), new UpdateRecipeDto
             { ExpectedContentRevision = converted.Content.ContentRevision, IngredientLines = JsonSerializer.SerializeToElement(Array.Empty<object>()), InstructionSections = JsonSerializer.SerializeToElement(Array.Empty<object>()) });
@@ -156,10 +158,10 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests
             await db.SaveChangesAsync();
             await repository.SaveOriginalImageAsync(Id, 1, "image/png", [4, 5, 6], default);
             var before = JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id));
-            var searchBefore = JsonSerializer.Serialize(await db.RecipeSearchDocuments.AsNoTracking().OrderBy(x => x.RecipeId).ToListAsync());
+            var searchBefore = JsonSerializer.Serialize(await db.RecipeSearchDocuments.AsNoTracking().Where(x => x.RecipeId == Id).OrderBy(x => x.RecipeId).ToListAsync());
             var result = await management.RestoreAsync();
             Assert.True(result.Errors > 0);
-            Assert.Equal(searchBefore, JsonSerializer.Serialize(await db.RecipeSearchDocuments.AsNoTracking().OrderBy(x => x.RecipeId).ToListAsync()));
+            Assert.Equal(searchBefore, JsonSerializer.Serialize(await db.RecipeSearchDocuments.AsNoTracking().Where(x => x.RecipeId == Id).OrderBy(x => x.RecipeId).ToListAsync()));
             Assert.Equal(before, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)));
         }, localRecipeStore: true);
     }

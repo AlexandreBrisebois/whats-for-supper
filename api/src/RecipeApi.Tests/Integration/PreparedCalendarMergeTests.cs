@@ -75,14 +75,14 @@ public class PreparedCalendarMergeTests
     [Fact]
     public async Task PreparedCalendarMerge_RoundTripRepeatAndLegacyAbsencePreserveRepresentedAssociation()
     {
-        await using var app = await TestWebApplicationFactory.CreateAsync();
+        await using var app = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["Tests:LocalRecipeStore"] = "true" });
         await RoundTrip(app);
     }
 
     internal static async Task RoundTrip(TestWebApplicationFactory app)
     {
         using var scope = app.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var recipe = new Recipe { Name = "Prepared pasta", IsSynthesized = true, Servings = 2, Ingredients = "[\"200 g pasta\"]" }; db.Recipes.Add(recipe);
+        var recipe = new Recipe { Name = "Prepared pasta", IsSynthesized = true, Servings = 2, Ingredients = "[\"200 g pasta\"]", CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("pasta", "200", "g")], 2) }; db.Recipes.Add(recipe);
         var entry = Entry(recipe.Id); recipe.LastCookedDate = entry.PreparedAtUtc; db.CalendarEvents.Add(entry); await db.SaveChangesAsync();
         var service = scope.ServiceProvider.GetRequiredService<ManagementService>(); await service.BackupAsync();
         var path = Path.Combine(scope.ServiceProvider.GetRequiredService<DataRootResolver>().Root,"calendar-events.json");
@@ -96,6 +96,10 @@ public class PreparedCalendarMergeTests
         }
         var legacy = JsonNode.Parse(wire)!.AsArray();
         foreach (var field in new[]{"preparedOn","preparedAtUtc","preparedServings","preparedOriginalServings","preparationPlanToken","preparationServingVersion"}) legacy[0]!.AsObject().Remove(field);
+        var canonicalBackup = Path.Combine(scope.ServiceProvider.GetRequiredService<DataRootResolver>().Root, "canonical-backup.json");
+        if (File.Exists(canonicalBackup)) File.Delete(canonicalBackup);
+        var recipeDir = Path.Combine(scope.ServiceProvider.GetRequiredService<RecipesRootResolver>().Root, recipe.Id.ToString());
+        if (Directory.Exists(recipeDir)) Directory.Delete(recipeDir, true);
         await File.WriteAllTextAsync(path,legacy.ToJsonString()); await service.RestoreAsync(); db.ChangeTracker.Clear();
         var restored = await db.CalendarEvents.SingleAsync(); Assert.Equal(CalendarEventStatus.Cooked,restored.Status); Assert.Null(restored.PreparedOn); Assert.Null(restored.PreparedAtUtc); Assert.Null(restored.PreparedServings);
     }

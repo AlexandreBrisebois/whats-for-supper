@@ -421,7 +421,12 @@ public partial class OnlineRecoveryPostgresTests : IAsyncLifetime
         var member = await db.FamilyMembers.SingleAsync();
         member.PreferredLanguage = "fr";
         member.BrowseViewMode = "list";
-        var recipe = new Recipe { Name = "Facts soup", IsReady = true, CuisineType = "French", Notes = "Family note", Ingredients = "[\"water\"]" };
+        var recipe = new Recipe
+        {
+            Name = "Facts soup", IsReady = true, CuisineType = "French", Notes = "Family note",
+            Ingredients = "[\"water\"]",
+            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("water", null, null)])
+        };
         var oldRound = Guid.NewGuid();
         db.Recipes.Add(recipe);
         db.WeeklyPlans.Add(new WeeklyPlan { WeekStartDate = new(2026, 5, 4), Status = WeeklyPlanStatus.VotingOpen, VotingRoundId = oldRound, GroceryState = "{\"water\":true}", GroceryItems = "[]" });

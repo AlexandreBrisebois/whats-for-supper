@@ -142,6 +142,7 @@ public partial class PreparedSupperPostgresTests
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == recipeId);
                 recipe.IsReady = true; recipe.IsSynthesized = true;
                 recipe.RawMetadata = "{\"recipeInstructions\":[\"Add 200 g pasta.\",\"Serve.\"],\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}";
+                recipe.CanonicalContent = BuildCanonicalContent(recipe.Servings, "200", "g", "pasta", recipe.CanonicalContent);
                 await db.SaveChangesAsync();
             }
             ProcessStartInfo Command(params string[] args) {

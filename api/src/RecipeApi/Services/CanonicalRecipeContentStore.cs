@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Dto;
@@ -18,7 +20,7 @@ public sealed record CanonicalRecipeContent(
 
 public sealed record CanonicalRecipeWriteResult(CanonicalRecipeContent Content, IReadOnlyDictionary<string, Guid> CreatedIds);
 
-public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClock clock, SupperProjectionInvalidation invalidation, FoodVocabularyStore vocabulary, IValidationService? validation = null, DeploymentCalendar? migrationCalendar = null)
+public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClock clock, SupperProjectionInvalidation invalidation, FoodVocabularyStore vocabulary, IValidationService? validation = null)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly string[] ProtectedFacts = ["description", "amount", "amountText", "unit", "scaling", "package", "shopping"];
@@ -274,18 +276,20 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
         return new RecipeInstructionSectionDto(id, section.GetProperty("name").GetString(), steps);
     }).ToArray();
 
+    private sealed record SourceSupplyObservation(string Name, string? UnitText, GroceryQuantity? Quantity);
+
     private static IReadOnlyList<RecipeIngredientLineDto> ConvertLines(Recipe recipe, Func<Guid> newId)
     {
         var texts = RecipeService.DeserializeIngredients(recipe.Ingredients);
         // An explicit current empty array is authoritative over retained supply.
         if (texts.Count == 0 && recipe.Ingredients is not null) return [];
-        var observations = SupperIngredientProjection.Read(recipe, null);
+        var observations = ReadSourceSupplyObservations(recipe);
         if (observations.Count != texts.Count) throw new InvalidDataException("Legacy conversion requires explicit reconciliation.");
         return texts.Select((text, index) =>
         {
             if (string.IsNullOrWhiteSpace(text)) throw new InvalidDataException("Legacy conversion requires explicit reconciliation.");
             var observation = observations[index]; // Same captured collection, not identity matching across revisions.
-            var amount = observation.GroceryObservation.Quantity;
+            var amount = observation.Quantity;
             string? notation = null;
             var description = text;
             RecipeUnitDto? unit = null;
@@ -324,6 +328,116 @@ public sealed partial class CanonicalRecipeContentStore(RecipeDbContext db, IClo
             return row;
         }).ToArray();
     }
+
+    private static List<SourceSupplyObservation> ReadSourceSupplyObservations(Recipe recipe)
+    {
+        var ingredients = RecipeService.DeserializeIngredients(recipe.Ingredients ?? "[]");
+        using var metadata = Metadata(recipe.RawMetadata);
+        var root = metadata?.RootElement;
+        var source = root is { ValueKind: JsonValueKind.Object } value &&
+            (value.TryGetProperty("recipeIngredient", out var retained) || value.TryGetProperty("ingredients", out retained))
+            && retained.ValueKind == JsonValueKind.Array ? retained : default;
+        var supply = root is { ValueKind: JsonValueKind.Object } data && data.TryGetProperty("supply", out var supplies)
+            && supplies.ValueKind == JsonValueKind.Array ? supplies : default;
+        if (recipe.Ingredients is null && source.ValueKind == JsonValueKind.Array && source.EnumerateArray().All(x => x.ValueKind == JsonValueKind.String))
+            ingredients = source.EnumerateArray().Select(x => x.GetString()!).ToList();
+        var coherent = source.ValueKind == JsonValueKind.Array && source.GetArrayLength() == ingredients.Count
+            && source.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString()?.Trim() : null)
+                .SequenceEqual(ingredients.Select(x => x.Trim()), StringComparer.Ordinal);
+        if (ingredients.Count == 0 && supply.ValueKind == JsonValueKind.Array)
+            ingredients = supply.EnumerateArray().Select(x => Text(x, "name")).Where(x => x is not null).Select(x => x!).ToList();
+        var bindings = coherent ? BindSupplies(ingredients, supply) : new Dictionary<int, JsonElement>();
+        var result = new List<SourceSupplyObservation>(ingredients.Count);
+        for (var index = 0; index < ingredients.Count; index++)
+        {
+            var text = ingredients[index];
+            var item = bindings.GetValueOrDefault(index);
+            var name = Text(item, "name") ?? text;
+            var required = item.ValueKind == JsonValueKind.Object && item.TryGetProperty("requiredQuantity", out var nested) ? nested : default;
+            var unit = Text(item, "unitText") ?? Text(required, "unitText");
+            var retainedToken = NumericToken(item, "quantity") ?? NumericToken(required, "value");
+            var quantity = bindings.ContainsKey(index) ? ObserveBoundSourceQuantity(text, name, unit, retainedToken) : null;
+            result.Add(new SourceSupplyObservation(name, unit, quantity));
+        }
+        return result;
+    }
+
+    private static Dictionary<int, JsonElement> BindSupplies(List<string> ingredients, JsonElement supply)
+    {
+        if (supply.ValueKind != JsonValueKind.Array) return [];
+        var entries = supply.EnumerateArray().ToArray();
+        var normalized = ingredients.Select(NormalizeName).ToArray();
+        var candidates = entries.Select(entry =>
+        {
+            var name = Text(entry, "name");
+            if (string.IsNullOrWhiteSpace(name)) return Array.Empty<int>();
+            var pattern = @"(?<![\p{L}\p{M}\p{N}])" + Regex.Escape(NormalizeName(name)) + @"(?![\p{L}\p{M}\p{N}])";
+            return Enumerable.Range(0, normalized.Length).Where(i => Regex.IsMatch(normalized[i], pattern, RegexOptions.CultureInvariant)).ToArray();
+        }).ToArray();
+        var result = new Dictionary<int, JsonElement>();
+        for (var i = 0; i < entries.Length; i++)
+        {
+            if (candidates[i].Length != 1) continue;
+            var line = candidates[i][0];
+            if (candidates.Count(matches => matches.Contains(line)) == 1) result[line] = entries[i];
+        }
+        return result;
+    }
+
+    private static GroceryQuantity? ObserveBoundSourceQuantity(string currentIngredient, string name, string? unit, string? retainedNumberToken)
+    {
+        var text = NormalizeWhitespace(currentIngredient);
+        var suffix = NormalizeWhitespace(string.IsNullOrWhiteSpace(unit) ? name : $"{unit} {name}");
+        var source = text.EndsWith(" " + suffix, StringComparison.OrdinalIgnoreCase)
+            ? QuantityMath.Parse(text[..^(suffix.Length + 1)]) : null;
+        source ??= ReadQualifiedSource(text, name, unit);
+        if (source is null && retainedNumberToken is not null)
+        {
+            var token = double.TryParse(retainedNumberToken, System.Globalization.CultureInfo.InvariantCulture, out var parsedNumber) && parsedNumber == 0
+                ? "0" : retainedNumberToken;
+            source = QuantityMath.Parse(token);
+        }
+        return source;
+    }
+
+    private static GroceryQuantity? ReadQualifiedSource(string text, string name, string? unit)
+    {
+        if (text.Length > 256 || string.IsNullOrWhiteSpace(unit) || string.IsNullOrWhiteSpace(name)) return null;
+        const string preparation = @"(?:(?:finely |roughly )?(?:chopped|diced|sliced|minced)|haché[es]?|émincé[es]?)";
+        var description = @"^(?:" + preparation + @" )?" + Regex.Escape(NormalizeWhitespace(name))
+            + @"(?:, " + preparation + @")?$";
+        for (var amountEnd = text.IndexOf(' '); amountEnd > 0; amountEnd = text.IndexOf(' ', amountEnd + 1))
+        {
+            var amount = QuantityMath.Parse(text[..amountEnd]);
+            if (amount is null) continue;
+            var remainder = text[(amountEnd + 1)..];
+            for (var unitEnd = remainder.IndexOf(' '); unitEnd > 0; unitEnd = remainder.IndexOf(' ', unitEnd + 1))
+            {
+                if (GroceryUnit.Read(remainder[..unitEnd]) == GroceryUnit.Read(unit)
+                    && Regex.IsMatch(remainder[(unitEnd + 1)..], description, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+                    return amount;
+            }
+        }
+        return null;
+    }
+
+    private static string NormalizeWhitespace(string text) => Regex.Replace(text.Normalize(NormalizationForm.FormC), @"\s+", " ").Trim();
+
+    private static string NormalizeName(string text) => Regex.Replace(text.Normalize(NormalizationForm.FormC).ToUpperInvariant(), @"\s+", " ").Trim();
+
+    private static JsonDocument? Metadata(string? raw)
+    {
+        try { return string.IsNullOrWhiteSpace(raw) ? null : JsonDocument.Parse(raw); }
+        catch (JsonException) { return null; }
+    }
+
+    private static string? Text(JsonElement item, string key)
+        => item.ValueKind == JsonValueKind.Object && item.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String
+            ? string.IsNullOrWhiteSpace(value.GetString()) ? null : value.GetString() : null;
+
+    private static string? NumericToken(JsonElement item, string key) =>
+        item.ValueKind == JsonValueKind.Object && item.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.Number
+            ? value.GetRawText() : null;
 
     private static IReadOnlyList<RecipeInstructionSectionDto> ConvertInstructions(string? raw, Func<Guid> sectionId, Func<Guid> stepId, Func<string> textRevision)
     {

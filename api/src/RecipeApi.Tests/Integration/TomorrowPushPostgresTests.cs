@@ -212,11 +212,40 @@ public partial class TomorrowPushPostgresTests(ITestOutputHelper output)
         });
     }
 
+    internal static async Task ResetToLegacyAsync(RecipeDbContext db, Guid recipeId, Action<Recipe> configure)
+    {
+        if (db.Database.IsRelational())
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE recipes DISABLE TRIGGER canonical_recipe_content_guard");
+        try
+        {
+            var recipe = await db.Recipes.SingleAsync(x => x.Id == recipeId);
+            recipe.CanonicalContent = null;
+            configure(recipe);
+            await db.SaveChangesAsync();
+            await db.Entry(recipe).ReloadAsync();
+        }
+        finally
+        {
+            if (db.Database.IsRelational())
+                await db.Database.ExecuteSqlRawAsync("ALTER TABLE recipes ENABLE TRIGGER canonical_recipe_content_guard");
+        }
+    }
+
     internal static async Task Seed(TestWebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        db.Recipes.AddRange(new Recipe { Id = Selected, Name = "Sunday Chicken", Ingredients = "[\"Carrot\"]", IsReady = true }, new Recipe { Id = Other, Name = "Chain Lasagna", Ingredients = "[\"Potato\"]", IsReady = true });
+        db.Recipes.AddRange(
+            new Recipe
+            {
+                Id = Selected, Name = "Sunday Chicken", Ingredients = "[\"Carrot\"]",
+                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)]), IsReady = true
+            },
+            new Recipe
+            {
+                Id = Other, Name = "Chain Lasagna", Ingredients = "[\"Potato\"]",
+                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)]), IsReady = true
+            });
         for (var i=0; i<15; i++) db.CalendarEvents.Add(new CalendarEvent {
             Id = Guid.NewGuid(), Date = Sunday.AddDays(i), RecipeId = i is 0 or 4 ? Selected : Other,
             Status = i == 2 ? CalendarEventStatus.Locked : CalendarEventStatus.Planned,

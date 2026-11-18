@@ -384,6 +384,8 @@ public class RecipeService(
                 var result = await canonicalEditor.EditAsync(id,
                     CanonicalRecipeContentStore.InspectSourceRevision(baseline), Guid.NewGuid(), dto);
                 var saved = await db.Recipes.SingleAsync(x => x.Id == id);
+                if (dto.HasServings || dto.IngredientLines.ValueKind != JsonValueKind.Undefined)
+                    await projectionPublisher.PublishAsync(await projectionInvalidation.AffectedWeeksAsync(id));
                 // Capture the operation's authoritative snapshot before metadata
                 // synchronization reloads the row under its own coordination.
                 var response = new RecipeDetailResponseDto

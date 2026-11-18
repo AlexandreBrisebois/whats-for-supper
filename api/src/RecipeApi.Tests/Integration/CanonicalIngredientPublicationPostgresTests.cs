@@ -36,9 +36,14 @@ public sealed partial class CanonicalIngredientPublicationPostgresTests(ITestOut
             using var scope = factory.Services.CreateScope();
             var services = scope.ServiceProvider;
             var db = services.GetRequiredService<RecipeDbContext>();
-            var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-            recipe.RawMetadata = Original; recipe.Ingredients = "[\"salt\"]"; recipe.Servings = null;
-            await db.SaveChangesAsync();
+            foreach (var evt in await db.CalendarEvents.Where(x => x.RecipeId == Id).ToListAsync())
+                evt.RecipeId = TomorrowPushPostgresTests.Other;
+            await TomorrowPushPostgresTests.ResetToLegacyAsync(db, Id, recipe =>
+            {
+                recipe.RawMetadata = Original;
+                recipe.Ingredients = "[\"salt\"]";
+                recipe.Servings = null;
+            });
             var storage = new FailingStorage(services.GetRequiredService<IStorageProvider>());
             var repository = new RecipeRepository(storage);
             await repository.SaveInfoAsync(new RecipeInfo { Id = Id, Name = "Original", ImageCount = 1 }, default);
