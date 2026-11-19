@@ -5,12 +5,12 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    'bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700 active:scale-[0.98] transition-all shadow-sm',
+    'bg-hearth-fill text-cream-100 hover:bg-hearth-fill-hover active:bg-hearth-fill-active active:scale-[0.98] transition-all shadow-sm',
   secondary:
-    'bg-white text-terracotta-700 border border-terracotta-200 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors',
-  ghost: 'text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors',
+    'bg-white text-hearth-ink border border-hearth-line hover:bg-terracotta-50 active:bg-terracotta-50 transition-colors',
+  ghost: 'text-hearth-ink hover:bg-terracotta-50 active:bg-terracotta-50 transition-colors',
   danger:
-    'bg-terracotta-50 text-terracotta-700 border border-terracotta-200 hover:bg-terracotta-100 active:bg-terracotta-200 transition-colors',
+    'bg-terracotta-50 text-hearth-ink border border-hearth-line hover:bg-hearth-fill hover:text-cream-100 hover:border-hearth-fill active:bg-hearth-fill-active transition-colors',
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
@@ -45,7 +45,7 @@ export function Button({
       aria-busy={isLoading || undefined}
       className={[
         'inline-flex items-center justify-center font-semibold transition-opacity',
-        'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal',
+        'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body',
         'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANT_CLASSES[variant],
         SIZE_CLASSES[size],

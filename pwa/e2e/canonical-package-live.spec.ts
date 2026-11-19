@@ -142,7 +142,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
         .all())
         await header.click();
     };
-    const demand = async (n: string, d = '1', suffix = ' (400 g / cans; net)') => {
+    const demand = async (n: string, d = '1', suffix = ' (400 g / can; net)') => {
       const state = await schedule();
       const rows = state.groceryItems.filter(
         (row: any) => row.normalizedKey === 'tomato' && row.recipeIds.includes(id)
@@ -182,13 +182,13 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     await edit(editor);
     await editor.getByTestId('recipe-add-ingredient').click();
     await editor.getByTestId('recipe-edit-amount-2').fill('2');
-    await editor.getByTestId('recipe-edit-unit-2').fill('cans');
+    await editor.getByTestId('recipe-edit-unit-2').selectOption('can');
     await editor.getByTestId('recipe-edit-ingredient-2').fill('tomatoes');
     await options(editor);
     await editor.getByTestId('recipe-edit-package-enabled-2').check();
-    await expect(editor.getByTestId('recipe-edit-package-count-unit-2')).toHaveValue('cans');
+    await expect(editor.getByTestId('recipe-edit-package-count-unit-2')).toHaveValue('can');
     await editor.getByTestId('recipe-edit-package-capacity-2').fill('400');
-    await editor.getByTestId('recipe-edit-package-unit-2').fill('g');
+    await editor.getByTestId('recipe-edit-package-unit-2').selectOption('g');
     await editor.getByTestId('recipe-edit-package-basis-2').selectOption('net');
     for (const field of ['count-unit', 'capacity', 'unit', 'basis'])
       await expect(editor.getByTestId(`recipe-edit-package-${field}-2`)).toHaveAccessibleName(/\S/);
@@ -197,9 +197,9 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     expect(created.input).not.toHaveProperty('ingredients');
     expect(created.input.ingredientLines[2]).toMatchObject({
       clientId: expect.any(String),
-      unit: { text: 'cans', definitionId: null },
+      unit: { text: 'can', definitionId: null },
       package: {
-        countUnit: { text: 'cans', definitionId: null },
+        countUnit: { text: 'can', definitionId: null },
         capacity: { amount: scalar('400'), unit: { text: 'g', definitionId: null } },
         basis: 'net',
       },
@@ -245,35 +245,35 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
       expect(state.state.groceryState[sauce.rowId]).toBe(true);
       await editor.goto(`/recipes?open=${id}`);
       await expect(editor.getByTestId('recipe-ingredient-projection')).toContainText(
-        `${count} cans tomatoes (400 g / cans; net)`
+        `${count} can tomatoes (400 g / can; net)`
       );
       await editor.getByTestId('action-gear-menu').click();
       await editor.getByTestId('action-original-quantities').click();
       await expect(
-        editor.getByText('2 cans tomatoes (400 g / cans; net)', { exact: true })
+        editor.getByText('2 can tomatoes (400 g / can; net)', { exact: true })
       ).toBeVisible();
       await editor.getByTestId('action-gear-menu').click();
       await editor.getByTestId('action-reset-view').click();
       await expect(editor.getByTestId('recipe-ingredient-projection')).toContainText(
-        `${count} cans tomatoes (400 g / cans; net)`
+        `${count} can tomatoes (400 g / can; net)`
       );
       await editor.goto('/home');
       await editor.getByTestId('tonight-ingredients-toggle').click();
       await expect(editor.getByTestId('tonight-menu-card')).toContainText(
-        `${count} cans tomatoes (400 g / cans; net)`
+        `${count} can tomatoes (400 g / can; net)`
       );
       await editor.getByTestId('cook-mode-btn').click();
       await expect(
         editor
           .getByTestId('ingredient-toggle')
-          .filter({ hasText: `${count} cans tomatoes (400 g / cans; net)` })
+          .filter({ hasText: `${count} can tomatoes (400 g / can; net)` })
       ).toBeVisible();
       await editor.getByTestId('close-cooks-mode').click();
       await openGroceries(editor);
-      await expect(groceryCheck(editor, state.row)).toContainText('tomatoes (400 g / cans; net)');
+      await expect(groceryCheck(editor, state.row)).toContainText('tomatoes (400 g / can; net)');
       await expect(
         groceryCheck(editor, state.row).getByTestId('grocery-item-quantity-hint')
-      ).toContainText(portions === 1 ? '0.5 cans' : `${count} cans`);
+      ).toContainText(portions === 1 ? '0.5 can' : `${count} can`);
       assertOriginals(await read());
     }
     await editor.setViewportSize({ width: 320, height: 844 });
@@ -313,13 +313,13 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     await expect(
       shopper
         .getByTestId('ingredient-toggle')
-        .filter({ hasText: '4 cans tomatoes (400 g / cans; net)' })
+        .filter({ hasText: '4 can tomatoes (400 g / can; net)' })
     ).toBeVisible();
     await shopper.getByRole('button', { name: copy.cook.refreshQuantities, exact: true }).click();
     await expect(
       shopper
         .getByTestId('ingredient-toggle')
-        .filter({ hasText: '4 cans tomatoes (800 g / cans; drained)' })
+        .filter({ hasText: '4 can tomatoes (800 g / can; drained)' })
     ).toBeVisible();
     await expect(sauceIngredient).toHaveAttribute('aria-checked', 'true');
     await shopper.getByTestId('cooks-mode-step-next').click();
@@ -327,7 +327,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     await expect(shopper.getByTestId('cooks-mode-step-text')).toContainText('Mix pasta and sauce.');
     await shopper.getByTestId('close-cooks-mode').click();
     await recompute();
-    const changedMeaning = await demand('4', '1', ' (800 g / cans; drained)');
+    const changedMeaning = await demand('4', '1', ' (800 g / can; drained)');
     expect(changedMeaning.row.rowId).not.toBe(first.row.rowId);
     expect(changedMeaning.state.groceryState[changedMeaning.row.rowId]).toBe(false);
     expect(changedMeaning.state.groceryState[pasta.rowId]).toBe(true);
@@ -350,7 +350,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
         .click();
       await page.getByTestId('recipe-cancel-edits').click();
     };
-    // Restore400/net ordinarily, then make a package-only conflict: local400/tins/net versus remote800/cans/drained.
+    // Restore400/net ordinarily, then make a package-only conflict: local400/tins/net versus remote800/can/drained.
     await edit(editor);
     await options(editor);
     await editor.getByTestId('recipe-edit-package-capacity-2').fill('400');
@@ -371,9 +371,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     const review = await reconcile(editor);
     const choices = review.locator('p.whitespace-pre-wrap');
     await expect(choices.nth(0)).toContainText(`400 g / tins · ${copy.recipes.packageBasisNet}`);
-    await expect(choices.nth(1)).toContainText(
-      `800 g / cans · ${copy.recipes.packageBasisDrained}`
-    );
+    await expect(choices.nth(1)).toContainText(`800 g / can · ${copy.recipes.packageBasisDrained}`);
     expect(writes).toHaveLength(beforeReviewWrites);
     await editor.screenshot({
       path: info.outputPath('package-conflict-phone.png'),
@@ -401,7 +399,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
       .split('\n')
       .find((line) => line.includes('tomatoes'));
     expect(currentClearedTomatoes).toBe(
-      `2 · cans · tomatoes · tomatoes · ${copy.recipes.noPackageDetails}`
+      `2 · can · tomatoes · tomatoes · ${copy.recipes.noPackageDetails}`
     );
     await adoptCurrent(editor);
     expect((await read()).ingredientLines[2].package).toBeNull();
@@ -412,9 +410,9 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     await editor.getByTestId('recipe-edit-package-enabled-2').check();
     await editor.getByTestId('recipe-edit-package-count-unit-2').fill('tins');
     await editor.getByTestId('recipe-edit-package-capacity-2').fill('400');
-    await editor.getByTestId('recipe-edit-package-unit-2').fill('g');
+    await editor.getByTestId('recipe-edit-package-unit-2').selectOption('g');
     await editor.getByTestId('recipe-edit-package-basis-2').selectOption('net');
-    await editor.getByTestId('recipe-edit-unit-2').fill('');
+    await editor.getByTestId('recipe-edit-unit-2').selectOption('');
     await save(editor);
     const independent = await read();
     expect(independent.ingredientLines[2]).toMatchObject({
@@ -430,7 +428,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     await edit(editor);
     await options(editor);
     await editor.getByTestId('recipe-edit-package-capacity-2').fill('⅓–½');
-    await editor.getByTestId('recipe-edit-package-unit-2').fill('kg');
+    await editor.getByTestId('recipe-edit-package-unit-2').selectOption('kg');
     await editor.getByTestId('recipe-edit-package-basis-2').selectOption('drained');
     await editor.reload();
     await options(editor);
@@ -447,7 +445,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     await edit(editor);
     await options(editor);
     await editor.getByTestId('recipe-edit-package-capacity-2').fill('⅓–½');
-    await editor.getByTestId('recipe-edit-package-unit-2').fill('kg');
+    await editor.getByTestId('recipe-edit-package-unit-2').selectOption('kg');
     await editor.getByTestId('recipe-edit-package-basis-2').selectOption('drained');
     let committed: any;
     await editor.route(
@@ -525,16 +523,16 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     // Two saved lines share the legacy tomato member, but represent distinct purchases.
     // Clearing one package must preserve the other size's acknowledged demand.
     await edit(editor);
-    await editor.getByTestId('recipe-edit-unit-2').fill('cans');
+    await editor.getByTestId('recipe-edit-unit-2').selectOption('can');
     await options(editor);
     await editor.getByTestId('recipe-edit-package-enabled-2').check();
-    await editor.getByTestId('recipe-edit-package-count-unit-2').fill('cans');
+    await editor.getByTestId('recipe-edit-package-count-unit-2').fill('can');
     await editor.getByTestId('recipe-edit-package-capacity-2').fill('400');
-    await editor.getByTestId('recipe-edit-package-unit-2').fill('g');
+    await editor.getByTestId('recipe-edit-package-unit-2').selectOption('g');
     await editor.getByTestId('recipe-edit-package-basis-2').selectOption('net');
     await editor.getByTestId('recipe-add-ingredient').click();
     await editor.getByTestId('recipe-edit-amount-3').fill('2');
-    await editor.getByTestId('recipe-edit-unit-3').fill('cans');
+    await editor.getByTestId('recipe-edit-unit-3').selectOption('can');
     await editor.getByTestId('recipe-edit-ingredient-3').fill('tomatoes');
     const siblingOptions = editor.locator('details').filter({
       has: editor.getByTestId('recipe-edit-package-enabled-3'),
@@ -542,9 +540,9 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     if (!(await siblingOptions.evaluate((node) => (node as HTMLDetailsElement).open)))
       await siblingOptions.locator('summary').click();
     await editor.getByTestId('recipe-edit-package-enabled-3').check();
-    await editor.getByTestId('recipe-edit-package-count-unit-3').fill('cans');
+    await editor.getByTestId('recipe-edit-package-count-unit-3').fill('can');
     await editor.getByTestId('recipe-edit-package-capacity-3').fill('800');
-    await editor.getByTestId('recipe-edit-package-unit-3').fill('g');
+    await editor.getByTestId('recipe-edit-package-unit-3').selectOption('g');
     await editor.getByTestId('recipe-edit-package-basis-3').selectOption('net');
     const siblingSaved = (await save(editor)).result.recipe;
     assertOriginals(siblingSaved);
@@ -558,8 +556,8 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
       );
     const twoSizes = packageRows(await schedule());
     expect(twoSizes).toHaveLength(2);
-    const small = twoSizes.find((row: any) => row.displayName === 'tomato (400 g / cans; net)');
-    const large = twoSizes.find((row: any) => row.displayName === 'tomato (800 g / cans; net)');
+    const small = twoSizes.find((row: any) => row.displayName === 'tomato (400 g / can; net)');
+    const large = twoSizes.find((row: any) => row.displayName === 'tomato (800 g / can; net)');
     expect(small).toBeDefined();
     expect(large).toBeDefined();
     expect(small.quantity).toEqual(scalar('6'));
@@ -589,7 +587,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     const clearRows = packageRows(clearState);
     expect(clearRows).toHaveLength(2);
     const unqualified = clearRows.find((row: any) => row.displayName === 'tomato');
-    expect(unqualified).toMatchObject({ quantity: scalar('6'), unitText: 'cans' });
+    expect(unqualified).toMatchObject({ quantity: scalar('6'), unitText: 'can' });
     expect(unqualified.rowId).not.toBe(small.rowId);
     expect(clearState.groceryState[unqualified.rowId]).toBe(false);
     expect(clearRows.find((row: any) => row.displayName === checkedLarge.displayName)).toEqual(
@@ -604,7 +602,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     expect(followingSave.ingredientLines[2]).toMatchObject({
       id: packageId,
       amount: scalar('4'),
-      unit: { text: 'cans', definitionId: null },
+      unit: { text: 'can', definitionId: null },
       package: null,
     });
     expect(followingSave.ingredientLines[3]).toEqual(siblingSaved.ingredientLines[3]);
@@ -633,8 +631,8 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
       .getByTestId('recipe-ingredient-projection')
       .getByRole('listitem');
     await expect(finalProjection).toHaveCount(4);
-    await expect(finalProjection.nth(2)).toHaveText('8 cans tomatoes');
-    await expect(finalProjection.nth(3)).toHaveText('4 cans tomatoes (800 g / cans; net)');
+    await expect(finalProjection.nth(2)).toHaveText('8 can tomatoes');
+    await expect(finalProjection.nth(3)).toHaveText('4 can tomatoes (800 g / can; net)');
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
   }

@@ -35,17 +35,17 @@ function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) =
   }, [toast.id, toast.persistent, onDismiss]);
 
   const icons = {
-    success: <CheckCircle2 size={18} className="text-sage" />,
-    error: <AlertCircle size={18} className="text-terracotta" />,
-    info: <Info size={18} className="text-ochre" />,
-    loading: <Loader2 size={18} className="text-ochre animate-spin" />,
+    success: <CheckCircle2 size={18} className="text-sage-700" aria-hidden="true" />,
+    error: <AlertCircle size={18} className="text-terracotta-700" aria-hidden="true" />,
+    info: <Info size={18} className="text-ochre-800" aria-hidden="true" />,
+    loading: <Loader2 size={18} className="text-ochre-800 animate-spin" aria-hidden="true" />,
   };
 
   const borderColors = {
-    success: 'border-sage/30 border-l-sage',
-    error: 'border-terracotta/30 border-l-terracotta',
-    info: 'border-ochre/30 border-l-ochre',
-    loading: 'border-ochre/30 border-l-ochre',
+    success: 'border-sage-200 border-l-sage-700',
+    error: 'border-terracotta-200 border-l-terracotta',
+    info: 'border-ochre-200 border-l-ochre-700',
+    loading: 'border-ochre-200 border-l-ochre-700',
   };
 
   return (
@@ -57,19 +57,20 @@ function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) =
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
       className={cn(
-        'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border border-l-4 bg-white/95 backdrop-blur-md shadow-glass min-w-[200px] max-w-sm',
+        'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border border-l-4 bg-white shadow-card min-w-[200px] max-w-sm',
         borderColors[toast.type as keyof typeof borderColors] || borderColors.info
       )}
     >
       <div className="flex-shrink-0">{icons[toast.type as keyof typeof icons] || icons.info}</div>
       <p className="text-sm font-bold text-charcoal leading-tight flex-1">{toast.message}</p>
       <button
+        type="button"
         aria-label="Dismiss notification"
         title="Dismiss notification"
         onClick={() => onDismiss(toast.id)}
-        className="flex-shrink-0 p-1 rounded-full hover:bg-black/5 transition-colors"
+        className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full hover:bg-charcoal-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
       >
-        <X size={14} className="text-charcoal/40" />
+        <X size={16} className="text-charcoal-600" aria-hidden="true" />
       </button>
     </motion.div>
   );

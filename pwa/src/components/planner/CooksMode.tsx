@@ -869,7 +869,7 @@ export function CooksMode({
             transition={{ duration: 0.3 }}
             className="absolute inset-0 flex flex-col items-center justify-center bg-cream z-10"
           >
-            <Sparkles size={48} className="text-ochre mb-4" />
+            <Sparkles size={48} className="text-ochre-800 mb-4" />
             <p className="font-heading text-3xl font-black text-charcoal">Supper&apos;s done!</p>
             <p className="text-charcoal/60 mt-2 font-medium">Nice work.</p>
           </motion.div>
@@ -1256,9 +1256,9 @@ export function CooksMode({
                     {ingredients.length > 0 ? (
                       <div className="space-y-6">
                         {/* Progress counter */}
-                        <div className="flex items-center gap-2 text-sage">
+                        <div className="flex items-center gap-2 text-sage-700">
                           <CheckCircle2 size={16} />
-                          <span className="text-sm font-black uppercase tracking-wider">
+                          <span className="text-sm font-semibold">
                             {ingredients.filter(({ key }) => gathered[key]).length} of{' '}
                             {ingredients.length} ready
                           </span>
@@ -1280,22 +1280,22 @@ export function CooksMode({
                                 }
                                 className={`group flex items-center p-4 md:p-5 rounded-[1.5rem] w-full text-left border transition-all ${
                                   isChecked
-                                    ? 'bg-sage/10 border-sage/20'
-                                    : 'bg-white border-charcoal/5 shadow-sm hover:border-charcoal/10'
+                                    ? 'bg-sage-50 border-sage-200'
+                                    : 'bg-white border-charcoal-200 shadow-sm hover:border-charcoal-300'
                                 }`}
                               >
                                 <div
                                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 mr-4 transition-all ${
                                     isChecked
-                                      ? 'bg-sage border-sage text-white'
-                                      : 'border-charcoal/10 group-hover:border-charcoal/20'
+                                      ? 'bg-sage-700 border-sage-700 text-white'
+                                      : 'border-charcoal-200 group-hover:border-charcoal-400'
                                   }`}
                                 >
                                   {isChecked && <Check size={14} strokeWidth={4} />}
                                 </div>
                                 <span
                                   className={`text-lg font-bold transition-all ${
-                                    isChecked ? 'text-charcoal/40 line-through' : 'text-charcoal/80'
+                                    isChecked ? 'text-charcoal-600 line-through' : 'text-charcoal'
                                   }`}
                                 >
                                   {text}
@@ -1306,9 +1306,9 @@ export function CooksMode({
                         </div>
                       </div>
                     ) : (
-                      <div className="py-16 px-8 rounded-[2.5rem] bg-charcoal/5 border border-dashed border-charcoal/10 flex flex-col items-center text-center">
-                        <UtensilsCrossed size={32} className="text-charcoal/20 mb-4" />
-                        <p className="text-charcoal/40 font-bold max-w-xs">
+                      <div className="py-16 px-8 rounded-[2.5rem] bg-charcoal-100 border border-dashed border-charcoal-200 flex flex-col items-center text-center">
+                        <UtensilsCrossed size={32} className="text-charcoal-400 mb-4" />
+                        <p className="text-charcoal-600 font-semibold max-w-xs">
                           {t(
                             'cook.extractionInProgress',
                             "Extraction in progress... we're still identifying the exact quantities."

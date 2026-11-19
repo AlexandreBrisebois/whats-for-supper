@@ -31,7 +31,7 @@ const nextConfig = {
   },
   typedRoutes: true,
   experimental: {
-    ...(isTestEnvironment ? { agentUpgrade: false } : {}),
+    agentUpgrade: isTestEnvironment ? false : 'security',
     serverActions: {
       bodySizeLimit: '10mb',
     },

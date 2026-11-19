@@ -84,26 +84,26 @@ Queue reads SHALL order by descending like count, then by last-cooked date ascen
 
 ### Requirement: Display recipe card facts and vote controls
 
-Cards SHALL display the recipe name and named-image alternative text. Usable formatted total time SHALL appear once in a lower-left hero badge matching Recipes stack cards; absent time SHALL omit the badge. Cuisine and meal-type pills and the former time footer SHALL be absent. The front card SHALL retain right-drag like and left-drag pass; buttons named Like recipe and Dislike recipe SHALL remain alternatives and be disabled for an empty queue.
+Cards SHALL display the recipe name, named-image alt text, and up to two clamped lines of non-empty description, omitted when blank. Usable formatted total time SHALL appear once in a solid warm-cream lower-left hero badge preserving localized Ready in copy; cuisine and meal-type pills SHALL remain absent. Right-drag like, left-drag pass, and WCAG AA `Like recipe` / `Dislike recipe` controls SHALL remain operable.
 
 #### Scenario: Card loaded
+- **WHEN** a front card has a non-empty description, cuisine, meal types, and usable total time
+- **THEN** the name, named image, clamped supporting description, one readable warm-cream Ready in badge, and `Like recipe` / `Dislike recipe` controls appear
+- **AND** cuisine and meal-type pills remain absent
 
-- **WHEN** a front card has cuisine, meal types and total time
-- **THEN** the name and named image appear with one formatted Ready in badge inside the hero and with Like recipe and Dislike recipe controls
-- **AND** cuisine and meal-type pills and the former time footer are absent
+#### Scenario: No usable time
+- **WHEN** the existing duration formatting yields an empty value or description is blank
+- **THEN** no Ready in badge or empty description/time block appears, while the title and voting controls remain available
+
+#### Scenario: Card loaded without description
+- **WHEN** a front card has usable total time and an empty or whitespace-only description
+- **THEN** no blank description block renders beneath the title while the hero image, Ready in badge, title, and voting controls remain intact
 
 #### Scenario: Empty queue controls
-
 - **WHEN** the queue is empty
 - **THEN** like and dislike buttons are disabled
 
-#### Scenario: No usable time
-
-- **WHEN** the existing duration formatting yields an empty value for a card
-- **THEN** no Ready in badge or empty time footer appears, while the title and voting remain available
-
 #### Scenario: Vote after presentation change
-
 - **WHEN** the person performs a right-drag like or left-drag pass on the front card, or activates its corresponding vote button
 - **THEN** the existing vote behavior targets the same front recipe identity
 - **AND** touching the time badge adds no separate action or recipe-detail navigation
@@ -489,7 +489,7 @@ Discovery SHALL replace its voting arena with a static green success card when a
 #### Scenario: Readable action
 - **WHEN** Discovery presents the matches action on the green card
 - **THEN** its rendered foreground/background contrast is at least 4.5:1, including the translucent button hover background
-- **AND** Home's existing cooked-card presentation remains unchanged
+- **AND** Home's cooked-success card shares the same accessible Deep Herb celebration contrast while preserving its existing cooked copy and dismiss behavior
 
 ### Requirement: Continue recording votes after convergence
 

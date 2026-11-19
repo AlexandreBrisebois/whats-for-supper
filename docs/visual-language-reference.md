@@ -9,9 +9,9 @@ Normative visual reference for What's For Supper (WFS). Organized in three coher
 - [Board 03 · Layer 3A Domain: Supper Plan (Tonight, Weekly Planner, Portions & Groceries)](visual-language/03-domain-supper-plan-and-week.svg)
 - [Board 04 · Layer 3B Domain: Recipe Cards, Browse Toolbar & Detail Sheet](visual-language/04-domain-recipe-cards-and-detail.svg)
 
-![Board 01: Era 3 warm espresso-ink charcoal ramp, Hearth Terracotta, Tonal Ochre, Option A two-pole Sage (deep herb and tonal botanical), Outfit and Inter type scale, context-paired Ready in pills, 48px targets, outline-charcoal focus ring, and Lucide icon vocabulary.](visual-language/01-foundations-roles-and-type.svg)
+![Board 01: Era 3 warm espresso-ink charcoal ramp, dual-mode Standard AA / High Contrast AAA semantic roles (Hearth, Tonal Sunlight, cooled herb Garden), Outfit and Inter type scale, context-paired Ready in pills, 48px targets, outline-ink-body focus ring, and Lucide icon vocabulary.](visual-language/01-foundations-roles-and-type.svg)
 
-![Board 02: Functional pattern grammar—four-tier opaque surface ladder with restricted glass, side-by-side card action row, role-locked aria-pressed choices, inline disclosures, 48px switches vs 24px checkboxes, Profile and Settings sections, Option A celebration, and uncertain-save recovery.](visual-language/02-surfaces-controls-and-recovery.svg)
+![Board 02: Functional pattern grammar—four-tier opaque surface ladder with restricted Standard glass vs opaque High Contrast chrome, side-by-side card action row, role-locked aria-pressed choices, inline disclosures, 48px switches vs 24px checkboxes, Profile (with Contrast below Language) and Settings sections, cooled herb celebration, and uncertain-save recovery.](visual-language/02-surfaces-controls-and-recovery.svg)
 
 ![Board 03: Supper Plan domain continuity—Home Tonight states (TonightMenuCard side-by-side actions with View ingredients disclosure, TonightPivotCard, white TonightCardBase non-cooking, Option A deep herb Cooked celebration, tonal VotingNudgeCard) paired with Weekly Planner temporal rows, inline Portions editor, and Groceries with source disclosure.](visual-language/03-domain-supper-plan-and-week.svg)
 
@@ -26,20 +26,20 @@ Food and the household's recipes carry anticipation and belonging. At ordinary m
 
 The user-supplied composition anchors ([planned meal anchor](visual-language/references/Screenshot_20261026-212933.png) and [pivot anchor](visual-language/references/Screenshot_20261026-212918.png)) establish portrait/5:4 photography hierarchy, deep corner rounding, soft outer elevation, and one dominant action per card. Keep Outfit headings and Inter body/data text; do not introduce extra display fonts, paper textures, or decorative badges.
 
-| Home element | Era 3 Family Cookbook standard | Preserve |
-|---|---|---|
-| Food image | Generous near-square meal photo (`TonightMenuCard`) and 5:4 pivot crop (`TonightPivotCard`); text/actions grow independently | Subject visibility, responsive reflow, navigation reachability |
-| Recipe title | Main typographic anchor in Outfit, bold weight, comfortable wrapping | Full EN/FR title on stable readable background |
-| Context / duration | Quiet `charcoal-600` context (`#524A43`); sentence-case `Ready in 30m` pill (`bg-terracotta-50 text-terracotta-700` on white card; `bg-cream text-charcoal` on photo) | Existing localized Ready In wrapper and missing-time behavior |
-| Primary CTA (`Cook`, `Make this tonight`, `Search`) | Rich terracotta `#B85542` with `cream-100` / white text (`>= 4.61:1`); hover `#A44A37`, pressed `#7B3829` | One dominant action per card, clear label, contrast, focus ring |
-| Secondary CTA (`Change plan`, `Take Out`, `Edit supper plan`) | White surface with `1px` `terracotta-200` border and `terracotta-700` ink (`8.61:1`), `min-h-12` / `min-h-14` | Visibly enabled actions and generous hit areas |
-| Ingredients disclosure | Left-aligned label and `ChevronDown` with transparent `>= 48 px` touch padding | Explicit expanded state, keyboard focus, local identity reset |
-| Empty / failed image | Modest icon on warm `cream` slot (`bg-cream text-sage-700`) rather than a heavy gray slab | Honest state, recipe identity, no invented image |
+| Home element                                                  | Era 3 Family Cookbook standard                                                                                                                                                     | Preserve                                                        |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Food image                                                    | Generous near-square meal photo (`TonightMenuCard`) and 5:4 pivot crop (`TonightPivotCard`); text/actions grow independently                                                       | Subject visibility, responsive reflow, navigation reachability  |
+| Recipe title                                                  | Main typographic anchor in Outfit (`text-ink-body`), bold weight, comfortable wrapping                                                                                             | Full EN/FR title on stable readable background                  |
+| Context / duration                                            | Quiet `ink-muted` context (`#6E645B` AA -> `#524A43` AAA); sentence-case `Ready in 30m` pill (`bg-terracotta-50 text-hearth-ink` on white card; `bg-cream text-ink-body` on photo) | Existing localized Ready In wrapper and missing-time behavior   |
+| Primary CTA (`Cook`, `Make this tonight`, `Search`)           | `bg-hearth-fill text-cream-100` (`#B85542` `4.61:1` AA -> `#7B3829` `8.34:1` AAA); hover `bg-hearth-fill-hover`, pressed `bg-hearth-fill-active`                                   | One dominant action per card, clear label, contrast, focus ring |
+| Secondary CTA (`Change plan`, `Take Out`, `Edit supper plan`) | White surface with `1px` `border-hearth-line` and `text-hearth-ink` (`#A44A37` `5.81:1` AA -> `#7B3829` `8.61:1` AAA), `min-h-12` / `min-h-14`                                     | Visibly enabled actions and generous hit areas                  |
+| Ingredients disclosure                                        | Left-aligned label and `ChevronDown` with transparent `>= 48 px` touch padding                                                                                                     | Explicit expanded state, keyboard focus, local identity reset   |
+| Empty / failed image                                          | Modest icon on warm `cream` slot (`bg-cream text-garden-ink`) rather than a heavy gray slab                                                                                        | Honest state, recipe identity, no invented image                |
 
 ## Seven principles for consistent decisions
 
 1. **Lead with the truth about the task.** Make tonight's state, the next action, and its consequence visible before decoration. A candidate, a saved meal, an intentional `Take Out` plan, and a cooked meal are different facts.
-2. **Assign colour a role without flattening identity.** Warm cream (`#FDFCF0`) is the canvas; warm espresso-ink charcoal (`#28231F` / `#524A43`) carries reading. Terracotta owns primary Hearth actions, personal config, and destructive recovery; tonal sunlit ochre owns voting/GOTO highlights; two-pole sage carries preference, household participation, plans, progress, and deep-herb celebration. Pair state with words and icons—never hue alone.
+2. **Assign colour a role without flattening identity.** Warm cream (`#FDFCF0`) is the canvas; warm espresso-ink charcoal (`ink-body` `#28231F`/`#191512`, `ink-muted` `#6E645B`/`#524A43`) carries reading. Hearth terracotta owns primary actions, personal config, and destructive recovery; Sunlight ochre owns voting/GOTO highlights; cooled herb Garden (`#4E6E52`/`#3D5940` AA -> `#324D36`/`#243A27` AAA) carries preference, household participation, plans, progress, and celebration. Pair state with words and icons—never hue alone.
 3. **Compensate for perceptual lightness asymmetry.** Base terracotta (`#B85542`, $L \approx 0.56$), base sage (`#8A9A5B`, $L \approx 0.66$), and base ochre (`#E1AD01`, $L \approx 0.77$) sit in distinct luminance bands. Never force `"bg-<hue> text-white"` across all hues and never put dark/black ink onto mid-tone `#8A9A5B` or `#E1AD01`.
 4. **Use type to explain hierarchy.** Preserve **Outfit** headings and **Inter** body/data. Keep all readable copy at `>= 12 CSS px` (`text-xs` minimum), prefer sentence case (`Ready in 30m`, `Change plan`, `Take Out`) over `< 12 px` tracked all-caps, and preserve semantic heading order.
 5. **Make controls look as available as they are.** Enabled secondary actions use clear outlined or tonal surfaces—never disabled-looking gray. Keep pressed, selected, busy, unavailable, and error states distinct and dimensionally stable while busy.
@@ -48,53 +48,51 @@ The user-supplied composition anchors ([planned meal anchor](visual-language/ref
 
 ## Cross-section functional standards (Layer 2)
 
-1. **Opaque white surface ladder:** Crisp opaque `bg-white` (`#FFFFFF`) frames hero cards (`TonightCardBase` `rounded-[3rem]`), Settings/Profile section panels (`rounded-3xl`, `1px` `border-charcoal-200`), and active Planner day rows (`rounded-2xl`); flat `bg-cream` (`#FDFCF0`, `shadow-none`) marks past/muted rows and recessed wells. Reserve frosted translucency strictly for floating navigation (`.glass-nav`) and photo-overlaid capsules (`bg-cream/80 backdrop-blur-md` `View Original`).
-2. **Context-paired `Ready in` badge:** Always sentence case (`Ready in 30m`, `12–14 CSS px` semibold/bold)—blush `bg-terracotta-50 text-terracotta-700` inside white card headers (`TonightMenuCard`), and solid warm `bg-cream text-charcoal` when overlaid directly on food photography (`RecipeStackCard`, `DiscoveryCard`, `RecipeDetailSheet`).
-3. **Role-locked `aria-pressed` selection:** Raised `bg-white shadow-sm` on cream for neutral view/rating (`Rating` borderless choices with no red fill/checkmark; `Stack / List`); blush `bg-terracotta-50 border-terracotta-200 text-terracotta-700` for personal/recipe configuration (`Preview portions 2/4/6`, `Language`, active member); tonal `bg-sage-50 border-sage-200 text-sage-700` + `Check` for household supper-plan choices (`NonCookingDaySheet`).
-4. **Pill-track switches vs. checkboxes:** Immediate binary toggles (`role="switch"`, such as `Ask the Family` and `Preview features`) use a `>= 48 px` row with a `56 × 32 px` rounded pill track (`bg-sage-700` or `bg-terracotta` active + white thumb); form options inside explicit-save forms (`Usual portions: Use family size`, `Keep amount fixed`) use a `22–24 px` rounded checkbox (`accent-terracotta`) inside a `>= 48 px` label row.
-5. **Focus indicator & sheet shell:** Standardize keyboard focus on `focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal` (`#28231F`) across all interactive controls (including `<Button>`). Sheets and dialogs render an opaque `bg-cream` container (full-screen `< 768 px`, bounded dialog on tablet) over a warm dark scrim (`bg-charcoal/45 backdrop-blur-sm`) with sticky header, scrollable body, and safe-area bottom dock.
+1. **Opaque white surface ladder & dual-mode chrome:** Crisp opaque `bg-white` (`#FFFFFF`) frames hero cards (`TonightCardBase` `rounded-[3rem]`), Settings/Profile section panels (`rounded-3xl`, `1px` `border-chrome-line`), and active Planner day rows (`rounded-2xl`); flat `bg-cream` (`#FDFCF0`, `shadow-none`) marks past/muted rows and recessed wells. In Standard mode, frosted translucency is restricted strictly to `.glass-nav` (`rgba(253,252,240,0.85)` + `blur(20px)`) and photo-overlaid capsules (`bg-cream/80 backdrop-blur-md` `View Original`); in High Contrast (`data-contrast="high"`), `.glass-nav` becomes opaque `bg-cream` (`#FDFCF0`, `backdrop-filter: none`, `1px` `#6E645B` top border) and chrome boundaries sharpen from `#E5DFD7` to `#6E645B`.
+2. **Context-paired `Ready in` badge:** Always sentence case (`Ready in 30m`, `12–14 CSS px` semibold/bold)—blush `bg-terracotta-50 text-hearth-ink` inside white card headers (`TonightMenuCard`), and solid warm `bg-cream text-ink-body` when overlaid directly on food photography (`RecipeStackCard`, `DiscoveryCard`, `RecipeDetailSheet`).
+3. **Role-locked `aria-pressed` selection:** Raised `bg-white shadow-sm` on cream for neutral view/rating (`Rating` borderless choices with semantic ink `text-hearth-ink` / `text-garden-ink`, no red fill/checkmark; `Stack / List`); blush `bg-terracotta-50 border-hearth-line text-hearth-ink` + `Check` for personal/recipe configuration (`Preview portions 2/4/6`, `Language`, `Contrast` directly below `Language` on Profile, active member); tonal `bg-sage-50 border-garden-line text-garden-ink` + `Check` for household supper-plan choices (`NonCookingDaySheet`).
+4. **Pill-track switches vs. checkboxes:** Immediate binary toggles (`role="switch"`, such as `Ask the Family` and `Preview features`) use a `>= 48 px` row with a `56 × 32 px` rounded pill track (`bg-garden-fill` or `bg-hearth-fill` active + white thumb); form options inside explicit-save forms (`Usual portions: Use family size`, `Keep amount fixed`) use a `22–24 px` rounded checkbox (`accent-terracotta`) inside a `>= 48 px` label row.
+5. **Focus indicator & sheet shell:** Standardize keyboard focus on `focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body` (`#28231F` AA -> `#191512` AAA) across all interactive controls (including `<Button>`). Sheets and dialogs render an opaque `bg-cream` container (full-screen `< 768 px`, bounded dialog on tablet) over a warm dark scrim (`bg-charcoal/45 backdrop-blur-sm`) with sticky header, scrollable body, and safe-area bottom dock.
 
-## Warm neutral & two-pole Sage roles
+## Warm neutral & dual-mode semantic roles
 
 ### Neutral ramp (warm espresso-ink)
 
-[globals.css](../pwa/src/app/globals.css) and [tailwind.config.ts](../pwa/tailwind.config.ts) define a strictly monotonic warm espresso-ink `charcoal` ramp (`50` → `900`) tuned to harmonize with `#FDFCF0` cream without cool blue-slate simultaneous contrast:
+[globals.css](../pwa/src/app/globals.css) and [tailwind.config.ts](../pwa/tailwind.config.ts) define an immutable, strictly monotonic warm espresso-ink `charcoal` ramp (`50` → `900`) tuned to harmonize with `#FDFCF0` cream without cool blue-slate simultaneous contrast:
 
-- `charcoal-50`: `#FAF8F5` · `100`: `#F3EFEA` · `200`: `#E5DFD7` · `300`: `#CFC6BC` · `400`: `#9B9085`
-- `charcoal-500`: `#6E645B` (`5.57:1` on cream) · `600`: `#524A43` (`8.42:1` on cream) · `700`: `#3D3630` (`11.43:1`) · `800` (`DEFAULT`): `#28231F` (`15.08:1` on cream, `15.55:1` on white) · `900`: `#191512` (`17.48:1`)
+- `charcoal-50`: `#FAF8F5` · `100`: `#F3EFEA` · `200`: `#E5DFD7` (`chrome-line` Standard) · `300`: `#CFC6BC` · `400`: `#9B9085` (`icon-affordance` Standard `3.03:1` cream / `3.12:1` white)
+- `charcoal-500`: `#6E645B` (`ink-muted` Standard `5.60:1` cream / `chrome-line` High Contrast) · `600`: `#524A43` (`ink-muted` / `icon-affordance` High Contrast `8.42:1` cream / `8.68:1` white) · `700`: `#3D3630` (`11.43:1`) · `800` (`DEFAULT`): `#28231F` (`ink-body` Standard `15.08:1` cream / `15.55:1` white) · `900`: `#191512` (`ink-body` High Contrast `17.59:1` cream / `18.15:1` white)
 
-### Garden two-pole Sage roles in source (Option A)
+### Garden cooled herb roles in source
 
-**Sage** operates across two high-contrast poles—never dark ink or white text on mid-tone `#8A9A5B`:
+**Garden** shifts off olive-toned `sage-600/700` onto cooled herb green tokens (`--role-garden-fill`, `--role-garden-fill-deep`, `--role-garden-ink`, `--role-garden-line`) for crisp green-vs-red hue separation against Hearth, while keeping raw `sage-50/100` (`#F1F3EB`, `#E3E7D7`) soft botanical fields and avoiding dark ink or white text on mid-tone `#8A9A5B`:
 
-| Journey | Sage pole & role | Source owner |
-|---|---|---|
-| Matches / celebration (`#5 Cooked`) | Deep Herb (`bg-sage-600`/`700`, `#6E7A49` → `#525B37`) + crisp white/cream text and `bg-white text-sage-700` `Dismiss` | [SuccessCard](../pwa/src/components/ui/SuccessCard.tsx) |
-| Discovery | `LOVE` preference overlay (`bg-sage-700/90 text-white`), `Just planned ✓` badge (`bg-sage-50 text-sage-800`) | [DiscoveryCard](../pwa/src/components/discovery/DiscoveryCard.tsx) |
-| Planning & non-cooking | `Ask the Family` / `Nudge family` (`bg-sage-700 text-white`), unanimous/prepared badges (`sage-50/700`), `NonCooking` icon (`bg-cream text-sage-700`) | `pwa/src/app/(app)/planner/page.tsx`, [TonightPivotCard](../pwa/src/components/home/TonightPivotCard.tsx) |
-| Groceries & Cooking | Checked progress, aisle completion (`bg-sage-50 text-sage-700`), recipe-book source links (`text-sage-800`), cooked badges | [GroceryList](../pwa/src/components/planner/GroceryList.tsx), [CooksMode](../pwa/src/components/planner/CooksMode.tsx) |
+| Journey                             | Garden semantic role (`Standard AA -> High Contrast AAA`)                                                                                                                                    | Source owner                                                                                                                                                                                                                  |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Matches / celebration (`#5 Cooked`) | `bg-garden-fill` / `from-garden-fill to-garden-fill-deep` (`#4E6E52`->`#3D5940` AA; `#324D36`->`#243A27` AAA) + white/cream text and `bg-white border-garden-line text-garden-ink` `Dismiss` | [SuccessCard](../pwa/src/components/ui/SuccessCard.tsx)                                                                                                                                                                       |
+| Discovery                           | `LOVE` preference overlay (`bg-garden-fill/90 text-white`), `Just planned ✓` badge (`bg-sage-50 border-garden-line text-garden-ink`), `Like` button (`text-garden-ink border-garden-line`)   | [DiscoveryCard](../pwa/src/components/discovery/DiscoveryCard.tsx), `pwa/src/app/(app)/discovery/page.tsx`                                                                                                                    |
+| Planning & non-cooking              | `Ask the Family` switch (`bg-garden-fill`), `NonCooking` options (`bg-sage-50 border-garden-line text-garden-ink`), `TonightPivotCard` icon (`bg-cream text-garden-ink`)                     | [DiscoveryToggleCard](../pwa/src/components/recipes/DiscoveryToggleCard.tsx), [NonCookingDaySheet](../pwa/src/components/planner/NonCookingDaySheet.tsx), [TonightPivotCard](../pwa/src/components/home/TonightPivotCard.tsx) |
+| Groceries & Detail                  | Checked icons (`text-garden-ink`), aisle progress (`bg-sage-50 text-garden-ink`), recipe-book source links (`text-garden-ink`), `Like` rating ink (`text-garden-ink`)                        | [GroceryList](../pwa/src/components/planner/GroceryList.tsx), [RecipeDetailSheet](../pwa/src/components/recipes/RecipeDetailSheet.tsx)                                                                                        |
 
-## Role-Locked Color Matrix
+## Dual-Mode Semantic Role Color Matrix
 
-All opaque text pairs below are verified via WCAG 2.2 sRGB relative luminance in [tokens.test.ts](../pwa/src/test/tokens.test.ts). Thresholds: `>= 4.5:1` for normal text, `>= 3.0:1` for qualifying large text (`>= 24 px` or `>= 18.67 px` bold) and meaningful non-text boundaries/icons.
+All pairs below are verified via WCAG 2.2 sRGB relative luminance in [tokens.test.ts](../pwa/src/test/tokens.test.ts). Thresholds: Standard (`:root`, `contrastLevel: 'aa'`) enforces `>= 4.5:1` ordinary text, `>= 3.0:1` large text and icon-only non-text affordances; High Contrast (`:root[data-contrast="high"]`, `contrastLevel: 'aaa'`) enforces `>= 7.0:1` ordinary text/icons (`>= 6.76:1` ochre-200) and `>= 4.5:1` large text.
 
-| Role family | Foreground / background tokens | Hex pair | Ratio |
-|---|---|---|---:|
-| Body on warm canvas | `text-charcoal` / `bg-cream` | `#28231F` / `#FDFCF0` | 15.08:1 |
-| Body on elevated card | `text-charcoal` / `bg-white` | `#28231F` / `#FFFFFF` | 15.55:1 |
-| Supporting context | `text-charcoal-600` / `bg-cream` | `#524A43` / `#FDFCF0` | 8.42:1 |
-| Hearth primary action | `text-cream-100` / `bg-terracotta` | `#FDFCF0` / `#B85542` | 4.61:1 |
-| Hearth primary (white ink) | `text-white` / `bg-terracotta` | `#FFFFFF` / `#B85542` | 4.76:1 |
-| Hearth hover / pressed | `text-white` / `bg-terracotta-600` · `-700` | `#FFFFFF` / `#A44A37` · `#7B3829` | 5.81:1 · 8.61:1 |
-| Secondary / Ghost action | `text-terracotta-700` / `bg-white` (`border-terracotta-200`) | `#7B3829` / `#FFFFFF` | 8.61:1 |
-| Sunlight voting / highlight | `text-ochre-800` / `bg-ochre-50` (`bg-ochre-100`, hover `-200`) | `#664E01` / `#FFFBE6` (`#FFF7CC`, `#FFEE99`) | 7.61:1 (`7.32:1`, `6.76:1`) |
-| Sunlight raised action | `text-ochre-800` / `bg-white` (`border-ochre-300`) | `#664E01` / `#FFFFFF` | 7.91:1 |
-| Garden soft state / badge | `text-sage-700` / `bg-sage-50` (`text-sage-800` / `bg-sage-100`) | `#525B37` / `#F1F3EB` (`#373D25` / `#E3E7D7`) | 6.45:1 (`9.07:1`) |
-| Garden Deep Herb solid / celebration | `text-white` / `bg-sage-600` · `bg-sage-700` (`text-cream-100` / `bg-sage-700`) | `#FFFFFF` / `#6E7A49` · `#525B37` (`#FDFCF0` / `#525B37`) | 4.62:1 · 7.22:1 (`7.00:1`) |
-| Error & destructive (`Button danger`) | `text-terracotta-700` / `bg-terracotta-50` (`border-terracotta-200`) | `#7B3829` / `#F9ECE9` | 7.46:1 |
-| Disabled reference | `text-charcoal-600` / `bg-charcoal-200` | `#524A43` / `#E5DFD7` | 6.56:1 |
+| Semantic role token                                       | Foreground / background                                 |                        Standard (`:root`, AA) |   High Contrast (`data-contrast="high"`, AAA) |
+| --------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------: | --------------------------------------------: |
+| Body on warm canvas (`ink-body`)                          | `text-ink-body` / `bg-cream` (`bg-white`)               | `#28231F` / `#FDFCF0` (`15.08:1` · `15.55:1`) | `#191512` / `#FDFCF0` (`17.59:1` · `18.15:1`) |
+| Supporting context (`ink-muted`)                          | `text-ink-muted` / `bg-cream` (`bg-white`)              |   `#6E645B` / `#FDFCF0` (`5.60:1` · `5.77:1`) |   `#524A43` / `#FDFCF0` (`8.42:1` · `8.68:1`) |
+| Hearth primary CTA (`hearth-fill`)                        | `text-cream-100` (`text-white`) / `bg-hearth-fill`      |   `#FDFCF0` / `#B85542` (`4.61:1` · `4.76:1`) |   `#FDFCF0` / `#7B3829` (`8.34:1` · `8.61:1`) |
+| Hearth hover / pressed (`hearth-fill-hover` / `-active`)  | `text-white` / hover · active                           |   `#A44A37` (`5.81:1`) · `#7B3829` (`8.61:1`) | `#52251B` (`12.66:1`) · `#29130E` (`17.64:1`) |
+| Secondary / Ghost / Error (`hearth-ink` / `hearth-line`)  | `text-hearth-ink` / `bg-white` (`bg-terracotta-50`)     |   `#A44A37` (`5.81:1` white · `5.04:1` blush) |   `#7B3829` (`8.61:1` white · `7.46:1` blush) |
+| Sunlight voting / GOTO (`sunlight-ink` / `sunlight-line`) | `text-sunlight-ink` / `bg-white` · `ochre-100` · `-200` |    `#856400` (`5.50:1` · `5.09:1` · `4.70:1`) |    `#664E01` (`7.91:1` · `7.32:1` · `6.76:1`) |
+| Garden solid / celebration (`garden-fill` / `-deep`)      | `text-white` / `bg-garden-fill` · `-deep`               |   `#4E6E52` (`5.71:1`) · `#3D5940` (`7.77:1`) |  `#324D36` (`9.33:1`) · `#243A27` (`12.28:1`) |
+| Garden soft state / link (`garden-ink` / `garden-line`)   | `text-garden-ink` / `bg-white` · `sage-50` · `sage-100` |    `#4E6E52` (`5.71:1` · `5.10:1` · `4.54:1`) |    `#324D36` (`9.33:1` · `8.34:1` · `7.41:1`) |
+| Icon-only non-text affordance (`icon-affordance`)         | `text-icon-affordance` / `bg-cream` (`bg-white`)        |               `#9B9085` (`3.03:1` · `3.12:1`) |               `#524A43` (`8.42:1` · `8.68:1`) |
+| Disabled reference                                        | `text-charcoal-600` / `bg-charcoal-200`                 |              `#524A43` / `#E5DFD7` (`6.56:1`) |              `#524A43` / `#E5DFD7` (`6.56:1`) |
 
 **Disallowed & automatically ratcheted tokens** (enforced by [visual-contract.test.ts](../pwa/src/test/visual-contract.test.ts)):
+
 - Off-palette colors (`indigo`, `lavender`, `pink`, `red-*`, `ochre-dark`).
 - Solid `bg-ochre`, `bg-ochre-400`, or `bg-ochre-500` behind text or icon controls—under either light (`2.06:1`) or dark/charcoal ink; reserve `#E1AD01` strictly for non-text accents (filled star glyph, glow, ambient pulse).
 - Dark or white text on mid-tone `#8A9A5B` `bg-sage`/`bg-sage-500` (always use Deep Herb `sage-600`/`700` with white, or Tonal Botanical `sage-50`/`100` with `sage-700`/`800`).
@@ -103,37 +101,38 @@ All opaque text pairs below are verified via WCAG 2.2 sRGB relative luminance in
 ## Protected domain flows & bilingual copy
 
 - **Home & Tonight (`03-domain-supper-plan-and-week.svg`):** **Cook** opens Cook's Mode without marking cooked; **Change plan** runs backup → original disposition → replacement save before inline `View ingredients` disclosure; **Take Out** records a supper plan (including takeout and delivery) rather than placing an external order; **Cooked (`SuccessCard`)** uses Deep Herb **Option A** white-on-green and compacts without undoing completion.
-- **Planner, Portions & Groceries (`03`):** Temporal rows (`bg-cream` past vs opaque `bg-white` upcoming, `Today` terracotta divider), inline `Portions` mode with compact numeric reset (`[4]`) and dirty departure guard, and embedded/standalone `GroceryList` with recipe-book source disclosure keeping incomplete-subtotal hints outside.
-- **Recipes, Detail & Settings (`04` & `02`):** Progressive Browse search/Discovery/GOTO/Stack-List/RecycleBin toolbar; `RecipeDetailSheet` protecting toolbar order (`Cook` + `GOTO` + `Share` + `•••` + `Close`), `2 / 4 / 6` portion preview, locked **Rating → Notes → Ask the Family** order, and bottom `Plan for {{day}}` + icon-only `Change day`; `Profile` & `Settings` preserving active member, `Language`, `Manage family`, `Usual portions`, `Failed captures`, and `Preview features`.
+- **Planner, Portions & Groceries (`03`):** Temporal rows (`bg-cream` past vs opaque `bg-white` upcoming, `Today` terracotta divider), inline `Portions` mode with dimensionally stable rows (photo-only past rows, quiet plain-text Already prepared and portions on upcoming prepared rows, and active minus/value/plus steppers without per-row reset buttons) and dirty departure guard, and embedded/standalone `GroceryList` with recipe-book source disclosure keeping incomplete-subtotal hints outside.
+- **Recipes, Detail & Settings (`04` & `02`):** Progressive Browse search/Discovery/GOTO/Stack-List/RecycleBin toolbar; `RecipeDetailSheet` protecting toolbar order (`Cook` + `GOTO` + `Share` + `•••` + `Close`), `2 / 4 / 6` portion preview, locked **Rating → Notes → Ask the Family** order, and bottom `Plan for {{day}}` + icon-only `Change day`; `Profile` & `Settings` preserving active member, `Language`, `Contrast` (`Standard` / `High contrast`) directly below `Language`, `Manage family`, `Usual portions`, `Failed captures`, and `Preview features`.
 
-| Concept | English | French | Notes |
-|---|---|---|---|
-| Cook action | Cook | Cuisiner | Opens Cook's Mode |
-| Change intention | Change plan | Changer le plan | Opens recovery |
-| Search / Suggestions | Search / Suggestions | Recherche / Suggestions | Recipe selection (not a duration filter) |
-| Non-cooking plan | Take Out | À emporter | Records a plan (includes takeout and delivery), not an order |
-| Blank day | Leave this day unplanned | Laisser cette journée sans plan | Separate Planner action |
+| Concept              | English                             | French                                 | Notes                                                                  |
+| -------------------- | ----------------------------------- | -------------------------------------- | ---------------------------------------------------------------------- |
+| Cook action          | Cook                                | Cuisiner                               | Opens Cook's Mode                                                      |
+| Change intention     | Change plan                         | Changer le plan                        | Opens recovery                                                         |
+| Search / Suggestions | Search / Suggestions                | Recherche / Suggestions                | Recipe selection (not a duration filter)                               |
+| Non-cooking plan     | Take Out                            | À emporter                             | Records a plan (includes takeout and delivery), not an order           |
+| Blank day            | Leave this day unplanned            | Laisser cette journée sans plan        | Separate Planner action                                                |
+| Profile contrast     | Contrast · Standard / High contrast | Contraste · Standard / Contraste élevé | Per-member preference; unset falls back to OS `prefers-contrast: more` |
 
 ## Mobile review & automated verification
 
-Before shipping UI work, verify both EN and FR across `320 px` narrow phone (`200%` text scaling), `390×844` phone, and tablet viewports using [visual-a11y-contract.ts](../pwa/e2e/visual-a11y-contract.ts) (`assertCookbookVisualA11y`), [tokens.test.ts](../pwa/src/test/tokens.test.ts), and [visual-contract.test.ts](../pwa/src/test/visual-contract.test.ts):
+Before shipping UI work, verify both EN and FR across `320 px` narrow phone (`200%` text scaling), `390×844` phone, and tablet viewports using [visual-a11y-contract.ts](../pwa/e2e/visual-a11y-contract.ts) (`assertCookbookVisualA11y` with `contrastLevel: 'aa'` for Standard and `contrastLevel: 'aaa'` for High Contrast), [tokens.test.ts](../pwa/src/test/tokens.test.ts), and [visual-contract.test.ts](../pwa/src/test/visual-contract.test.ts):
 
 - **Touch targets:** `>= 48 × 48 CSS px` (`min-h-12` / `min-h-14` on `<Button>` and action links), `whitespace` separation, and non-clipped wrapped EN/FR labels.
-- **Keyboard & focus:** Visible `:focus-visible` CSS `outline` + `outline-offset` (`outline-charcoal` `#28231F`, `>= 3:1` in light and Forced Colors modes), logical tab order, and focus return from modals/sheets.
-- **Composite contrast & motion:** Measure actual composited backgrounds on `.glass-nav` and hero `View Original` capsules over light and dark photography; respect `prefers-reduced-motion` and keep busy controls dimensionally stable.
+- **Keyboard & focus:** Visible `:focus-visible` CSS `outline` + `outline-offset` (`outline-ink-body` `#28231F`/`#191512`, `>= 3:1` in light and Forced Colors modes), logical tab order, and focus return from modals/sheets.
+- **Composite contrast & motion:** Measure actual composited backgrounds on `.glass-nav` (Standard translucent vs. High Contrast opaque `bg-cream`) and hero `View Original` capsules over light and dark photography; respect `prefers-reduced-motion` and keep busy controls dimensionally stable.
 
 ## Canonical code & contract owners
 
-| Owner | Responsibility |
-|---|---|
-| [globals.css](../pwa/src/app/globals.css) & [tailwind.config.ts](../pwa/tailwind.config.ts) | Authoritative Era 3 colors, warm charcoal ramp, `.cookbook-bg`, `.glass*`, safe areas |
-| [Root layout](../pwa/src/app/layout.tsx) | Outfit / Inter font loading and viewport setup |
-| [button.tsx](../pwa/src/components/ui/button.tsx) & [common/Button.tsx](../pwa/src/components/common/Button.tsx) | Shared Era 3 `<Button>` (`primary`, `secondary`, `ghost`, `danger`, `min-h-12`/`14`, `focus-visible:outline-charcoal`) |
-| [SolarLoader.tsx](../pwa/src/components/ui/SolarLoader.tsx) & [ui/index.ts](../pwa/src/components/ui/index.ts) | `CookbookLoader` primitive and `SolarLoader` compatibility alias |
-| [tokens.test.ts](../pwa/src/test/tokens.test.ts) & [button.test.tsx](../pwa/src/components/ui/button.test.tsx) | Monotonic warm neutral luminance, brand parity, role contrast floors, and `<Button>` contract |
-| [visual-contract.test.ts](../pwa/src/test/visual-contract.test.ts) | Static palette, tonal ochre, sage, micro-type, and shrinking `LEGACY_ERA_ALLOWLIST` ratchet |
-| [visual-a11y-contract.ts](../pwa/e2e/visual-a11y-contract.ts) | Computed composite contrast, `>= 48 px` target geometry, and `320 px`/200% reflow helper |
-| [English](../pwa/src/locales/en/common.json) & [French](../pwa/src/locales/fr/common.json) | Localized strings |
+| Owner                                                                                                            | Responsibility                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [globals.css](../pwa/src/app/globals.css) & [tailwind.config.ts](../pwa/tailwind.config.ts)                      | Authoritative Era 3 colors, warm charcoal ramp, dual-mode `--role-*` semantic variables, `.cookbook-bg`, `.glass*`, High Contrast opaque `.glass-nav`, safe areas |
+| [Root layout](../pwa/src/app/layout.tsx) & [ContrastProvider](../pwa/src/components/common/ContrastProvider.tsx) | Outfit / Inter font loading, `beforeInteractive` `data-contrast` init, member/OS contrast resolution                                                              |
+| [button.tsx](../pwa/src/components/ui/button.tsx) & [common/Button.tsx](../pwa/src/components/common/Button.tsx) | Shared Era 3 `<Button>` (`primary`, `secondary`, `ghost`, `danger`, `min-h-12`/`14`, `focus-visible:outline-ink-body`)                                            |
+| [SolarLoader.tsx](../pwa/src/components/ui/SolarLoader.tsx) & [ui/index.ts](../pwa/src/components/ui/index.ts)   | `CookbookLoader` primitive and `SolarLoader` compatibility alias                                                                                                  |
+| [tokens.test.ts](../pwa/src/test/tokens.test.ts) & [button.test.tsx](../pwa/src/components/ui/button.test.tsx)   | Monotonic warm neutral luminance, brand parity, Standard AA & High Contrast AAA floors, semantic key parity, and `<Button>` contract                              |
+| [visual-contract.test.ts](../pwa/src/test/visual-contract.test.ts)                                               | Static palette, tonal ochre, sage, micro-type, and shrinking `LEGACY_ERA_ALLOWLIST` ratchet                                                                       |
+| [visual-a11y-contract.ts](../pwa/e2e/visual-a11y-contract.ts)                                                    | Computed composite contrast (`contrastLevel: 'aa'                                                                                                                 | 'aaa'`), `>= 48 px`target geometry, and`320 px`/200% reflow helper |
+| [English](../pwa/src/locales/en/common.json) & [French](../pwa/src/locales/fr/common.json)                       | Localized strings                                                                                                                                                 |
 
 ## Official grounding
 

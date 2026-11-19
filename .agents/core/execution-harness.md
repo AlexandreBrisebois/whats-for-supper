@@ -170,6 +170,20 @@ mocked API boundary.
 
 ## Effects, blockers and supporting commands
 
+### Command quick reference
+
+- Static contract check (public): `task check:contracts` (`review:contracts` is
+  `internal: true` and invoked by `task review` / `task verify`; run
+  `task gen:client:check` and `task agent:reconcile` separately when needed).
+- Single OpenSpec validation: `task spec:check -- <name> --type change` (or
+  `--type spec`); never `--change`. Run `task spec:check` with no arguments for
+  all specs and changes.
+- Isolated live OpenAPI/Docker smoke check: `task test:smoke -- --isolated`
+  (runs Development OpenAPI on owned Compose resources and dynamic loopback
+  ports). Local Production Docker on `:9001` intentionally returns `404` on
+  `/openapi/v1.json` (`api/src/RecipeApi/Program.cs` maps OpenAPI only in
+  Development).
+
 - `task agent:reconcile` and `agent:drift:routes` inspect source route coverage;
   `agent:drift:schemas` checks DTO property/requiredness patterns;
   `agent:drift:mocks` audits ID/GUID patterns. None proves live API/database behavior.

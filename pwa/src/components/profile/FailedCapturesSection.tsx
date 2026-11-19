@@ -68,11 +68,11 @@ export function FailedCapturesSection() {
   return (
     <div
       data-testid="failed-captures-section"
-      className="w-full rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/60 p-8 shadow-glass"
+      className="w-full rounded-3xl bg-white border border-chrome-line p-8 shadow-card"
     >
       <div className="flex items-center gap-3 mb-8">
-        <AlertCircle className="h-4 w-4 text-terracotta" />
-        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-terracotta">
+        <AlertCircle className="h-4 w-4 text-hearth-ink" />
+        <h3 className="text-xs font-semibold text-hearth-ink">
           {t('settings.failedCaptures', 'Failed Captures')}
         </h3>
       </div>
@@ -82,19 +82,17 @@ export function FailedCapturesSection() {
           <li
             key={failure.id}
             data-testid={`failed-capture-${failure.id}`}
-            className="flex flex-col gap-4 rounded-2xl bg-white/60 border border-white/40 p-5 shadow-sm"
+            className="flex flex-col gap-4 rounded-2xl bg-cream-100 border border-chrome-line p-5 shadow-sm"
           >
             <div className="flex flex-col gap-1">
               <p
                 data-testid={`failed-capture-reason-${failure.id}`}
-                className="text-sm font-bold text-charcoal tracking-tight"
+                className="text-sm font-bold text-ink-body tracking-tight"
               >
                 {failure.friendlyReason}
               </p>
               {failure.previewText && (
-                <p className="text-[10px] font-medium text-charcoal/40 truncate">
-                  {failure.previewText}
-                </p>
+                <p className="text-xs font-medium text-ink-muted truncate">{failure.previewText}</p>
               )}
             </div>
 
@@ -102,7 +100,7 @@ export function FailedCapturesSection() {
               {retryingIds.has(failure.id) ? (
                 <span
                   data-testid={`action-retry-${failure.id}-retrying`}
-                  className="text-xs font-black uppercase tracking-widest text-terracotta-600"
+                  className="text-xs font-semibold text-hearth-ink"
                 >
                   {t('settings.retrying', 'Retrying…')}
                 </span>
@@ -110,7 +108,7 @@ export function FailedCapturesSection() {
                 <button
                   data-testid={`action-retry-${failure.id}`}
                   onClick={() => handleRetry(failure.id)}
-                  className="h-10 rounded-xl bg-terracotta active:bg-terracotta-700 px-5 text-[10px] font-black uppercase tracking-[0.1em] text-white transition-all active:scale-95 hover:bg-terracotta-600 shadow-sm"
+                  className="min-h-12 rounded-xl bg-hearth-fill active:bg-hearth-fill-active px-5 text-xs font-semibold text-cream-100 transition-all active:scale-95 hover:bg-hearth-fill-hover shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                 >
                   {t('settings.retry', 'Retry')}
                 </button>
@@ -120,7 +118,7 @@ export function FailedCapturesSection() {
                 data-testid={`action-clear-${failure.id}`}
                 onClick={() => handleClear(failure.id)}
                 disabled={clearingIds.has(failure.id)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-terracotta/20 text-terracotta-600 transition-all hover:bg-terracotta/5 hover:text-terracotta-600 disabled:opacity-50 active:scale-90"
+                className="flex h-12 w-12 items-center justify-center rounded-xl border border-hearth-line bg-terracotta-50 text-hearth-ink transition-transform hover:bg-white hover:border-hearth-ink disabled:opacity-50 active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                 aria-label={t('settings.clearFailedCapture', 'Clear failed capture')}
               >
                 <Trash2 size={16} />
@@ -130,7 +128,7 @@ export function FailedCapturesSection() {
             {errorIds.has(failure.id) && (
               <p
                 data-testid={`action-retry-error-${failure.id}`}
-                className="text-xs font-bold text-terracotta"
+                className="text-xs font-semibold text-hearth-ink"
               >
                 {t('settings.retryError', 'Retry failed. Please try again.')}
               </p>

@@ -31,17 +31,17 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6 py-12">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-cream px-6 py-12">
       <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
         <h1
-          className="text-4xl font-bold text-indigo tracking-tight"
+          className="font-heading text-4xl font-bold text-charcoal tracking-tight"
           data-testid="onboarding-title"
         >
           {isSwitching
             ? t('auth.switchMember', 'Switch Member')
             : t('auth.onboardingTitle', 'Who Are You?')}
         </h1>
-        <p className="mt-2 text-sm font-medium text-charcoal-300">
+        <p className="mt-2 text-sm font-medium text-charcoal-600">
           {isSwitching
             ? t('auth.switchMemberSubtitle', 'Select a different name to change perspective')
             : t('auth.onboardingSubtitle', 'Select your name or add a new family member')}
@@ -50,12 +50,15 @@ export default function OnboardingPage() {
 
       {/* Status messages */}
       {isLoading && (
-        <p className="text-center text-sm text-charcoal-400">
+        <p className="text-center text-sm text-charcoal-600">
           {t('profile.loading', 'Loading family members…')}
         </p>
       )}
       {error && (
-        <p role="alert" className="text-center text-sm text-pink">
+        <p
+          role="alert"
+          className="rounded-2xl border border-terracotta-200 bg-terracotta-50 px-4 py-3 text-center text-sm font-medium text-terracotta-700"
+        >
           {error}
         </p>
       )}

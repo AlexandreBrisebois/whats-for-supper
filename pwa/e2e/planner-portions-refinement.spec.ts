@@ -1,5 +1,14 @@
 import { test, expect } from './fixtures';
-import { setupCommonRoutes, MOCK_IDS } from './mock-api';
+import {
+  setupCommonRoutes,
+  builders,
+  MOCK_IDS,
+  mockNonCookingSchedule,
+  mockSupperServings,
+} from './mock-api';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
+import fs from 'node:fs';
+import path from 'node:path';
 
 for (const locale of ['en', 'fr'] as const)
   test.describe(`compact Portions ${locale}`, () => {
@@ -52,12 +61,12 @@ for (const locale of ['en', 'fr'] as const)
   });
 
 for (const locale of ['en', 'fr'] as const)
-  test.describe(`date reset ${locale}`, () => {
+  test.describe(`stable Portions geometry and Option A Cooked row ${locale}`, () => {
     test.use({ appLocale: locale });
-    test('resets five and equal-four with numeric action and date-only persistence', async ({
+
+    test('keeps stepper geometry stable without a default serving button when stepping portions', async ({
       page,
-    }, info) => {
-      await page.setViewportSize({ width: 390, height: 844 });
+    }) => {
       await page.context().addCookies([
         {
           name: 'x-family-member-id',
@@ -66,6 +75,13 @@ for (const locale of ['en', 'fr'] as const)
         },
       ]);
       await setupCommonRoutes(page);
+      await page.addInitScript(() => {
+        const style = document.createElement('style');
+        style.textContent = 'nextjs-portal{display:none}';
+        document.addEventListener('DOMContentLoaded', () => document.head.append(style), {
+          once: true,
+        });
+      });
       await page.goto('/profile/settings');
       await page.getByTestId('usual-portions-automatic').uncheck();
       await page.getByTestId('usual-portions-input').fill('4');
@@ -75,60 +91,69 @@ for (const locale of ['en', 'fr'] as const)
           .getByTestId('usual-portions-section')
           .getByText(locale === 'fr' ? 'Enregistré' : 'Saved', { exact: true })
       ).toBeVisible();
-      await page.goto('/planner');
-      const open = page.getByTestId('at-the-table-mode');
-      const input = page.getByTestId('portion-input-2026-05-10');
-      const reset = page.getByTestId('reset-portions-2026-05-10');
-      const done = page.getByTestId('save-portions');
-      const readSunday = () =>
-        page.evaluate(async () => {
-          const { data } = await (await fetch('/api/schedule/servings?weekOffset=0')).json();
-          return data.days.find((day: { date: string }) => day.date === '2026-05-10');
+
+      for (const [width, height] of [
+        [390, 844],
+        [375, 812],
+      ] as const) {
+        await page.setViewportSize({ width, height });
+        await page.goto('/planner');
+        await page.getByTestId('at-the-table-mode').click();
+        const input = page.getByTestId('portion-input-2026-05-06');
+        await expect(input).toHaveValue('4');
+        await expect(page.getByTestId('reset-portions-2026-05-06')).toHaveCount(0);
+
+        const stepper = page.getByTestId('portion-controls-2026-05-06').locator('[role="group"]');
+        const plusBtn = page.getByRole('button', {
+          name: locale === 'fr' ? 'Plus de portions 2026-05-06' : 'More portions 2026-05-06',
+          exact: true,
         });
-      await open.click();
-      await expect(done).toHaveAccessibleName(locale === 'fr' ? 'Recettes' : 'Recipes');
-      await expect(done.locator('svg.lucide-calendar')).toHaveCount(1);
-      await expect(page.getByTestId('usual-portions')).toHaveCount(0);
+        const minusBtn = page.getByRole('button', {
+          name: locale === 'fr' ? 'Moins de portions 2026-05-06' : 'Fewer portions 2026-05-06',
+          exact: true,
+        });
+        const nextRow = page.getByTestId('portion-row-2026-05-07');
+
+        const measure = async () => ({
+          stepper: (await stepper.boundingBox())!,
+          plus: (await plusBtn.boundingBox())!,
+          nextRow: (await nextRow.boundingBox())!,
+        });
+
+        const initial = await measure();
+
+        await plusBtn.click();
+        await expect(input).toHaveValue('5');
+        await expect(page.getByTestId('reset-portions-2026-05-06')).toHaveCount(0);
+        const afterPlus = await measure();
+        for (const key of ['x', 'y', 'width', 'height'] as const) {
+          expect(Math.abs(afterPlus.stepper[key] - initial.stepper[key])).toBeLessThan(1);
+          expect(Math.abs(afterPlus.plus[key] - initial.plus[key])).toBeLessThan(1);
+        }
+        expect(Math.abs(afterPlus.nextRow.y - initial.nextRow.y)).toBeLessThan(1);
+
+        await minusBtn.click();
+        await expect(input).toHaveValue('4');
+        await expect(page.getByTestId('reset-portions-2026-05-06')).toHaveCount(0);
+        const afterMinus = await measure();
+        for (const key of ['x', 'y', 'width', 'height'] as const) {
+          expect(Math.abs(afterMinus.stepper[key] - initial.stepper[key])).toBeLessThan(1);
+          expect(Math.abs(afterMinus.plus[key] - initial.plus[key])).toBeLessThan(1);
+        }
+        expect(Math.abs(afterMinus.nextRow.y - initial.nextRow.y)).toBeLessThan(1);
+      }
+
+      const open = page.getByTestId('at-the-table-mode');
+      const done = page.getByTestId('save-portions');
+      const input = page.getByTestId('portion-input-2026-05-06');
       await input.fill('5');
-      await page.getByTestId('portion-input-2026-05-06').fill('5');
       await done.click();
       await expect(open).toBeVisible();
-      expect(await readSunday()).toMatchObject({ servings: 5, overrideServings: 5 });
+
       await open.click();
-      await expect(reset).toHaveText('4');
-      await expect(reset).toHaveAccessibleName(
-        locale === 'fr'
-          ? /utiliser les 4 portions habituelles.*dimanche/i
-          : /use usual 4 portions.*sunday/i
-      );
-      // Wednesday is fully visible above the fixed navigation on this phone.
-      const captureReset = page.getByTestId('reset-portions-2026-05-06');
-      const captureRow = page.getByTestId('portion-row-2026-05-06');
-      await captureReset.focus();
-      await expect(captureReset).toBeFocused();
-      await page.screenshot({
-        path: info.outputPath(`planner-${locale}-saved5-reset4-focus.png`),
-        animations: 'disabled',
-        style: 'nextjs-portal{visibility:hidden}',
-      });
-      await captureRow.screenshot({
-        path: info.outputPath(`planner-${locale}-saved5-reset4-row.png`),
-        style: 'nextjs-portal{visibility:hidden}',
-      });
-      await page.keyboard.press('Enter');
-      await expect(captureRow.getByRole('status')).toContainText('4');
-      await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('4');
-      await page.screenshot({
-        path: info.outputPath(`planner-${locale}-reset-inherited4.png`),
-        animations: 'disabled',
-        style: 'nextjs-portal{visibility:hidden}',
-      });
-      await captureRow.screenshot({
-        path: info.outputPath(`planner-${locale}-inherited4-row.png`),
-        style: 'nextjs-portal{visibility:hidden}',
-      });
-      await reset.click();
-      await expect(input).toHaveValue('4');
+      await expect(input).toHaveValue('5');
+      await expect(page.getByTestId('reset-portions-2026-05-06')).toHaveCount(0);
+      await input.fill('4');
       const write = page.waitForRequest(
         (request) =>
           request.method() === 'PUT' && new URL(request.url()).pathname === '/api/schedule/servings'
@@ -136,95 +161,160 @@ for (const locale of ['en', 'fr'] as const)
       await done.click();
       const payload = (await write).postDataJSON();
       expect(payload).not.toHaveProperty('defaultServings');
-      expect(payload.days).toEqual(
-        expect.arrayContaining([
-          { date: '2026-05-06', servings: null },
-          { date: '2026-05-10', servings: null },
-        ])
-      );
+      expect(payload.days).toEqual([{ date: '2026-05-06', servings: 4 }]);
       await expect(open).toBeVisible();
-      expect(await readSunday()).toMatchObject({ servings: 4, overrideServings: null });
-      await open.click();
-      await input.fill('5');
-      await done.click();
-      await expect(open).toBeVisible();
-      await open.click();
-      await input.fill('4');
-      await done.click();
-      await expect(open).toBeVisible();
-      expect(await readSunday()).toMatchObject({ servings: 4, overrideServings: 4 });
-      await open.click();
-      await reset.click();
-      await expect(page.getByTestId('portion-row-2026-05-10').getByRole('status')).toContainText(
-        '4'
-      );
-      await done.click();
-      await expect(open).toBeVisible();
-      expect(await readSunday()).toMatchObject({ servings: 4, overrideServings: null });
     });
-  });
 
-test('a concurrent usual change reviews the new reset target and saves null with the fresh version', async ({
-  page,
-}) => {
-  await page.context().addCookies([
-    {
-      name: 'x-family-member-id',
-      value: MOCK_IDS.MEMBER_ALEX,
-      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
-    },
-  ]);
-  await setupCommonRoutes(page);
-  await page.goto('/profile/settings');
-  await page.getByTestId('usual-portions-automatic').uncheck();
-  await page.getByTestId('usual-portions-input').fill('4');
-  await page.getByTestId('save-usual-portions').click();
-  await expect(
-    page.getByTestId('usual-portions-section').getByText('Saved', { exact: true })
-  ).toBeVisible();
-  await page.goto('/planner');
-  await page.getByTestId('at-the-table-mode').click();
-  await page.getByTestId('portion-input-2026-05-10').fill('5');
-  await page.getByTestId('save-portions').click();
-  await page.getByTestId('at-the-table-mode').click();
-  await page.getByTestId('reset-portions-2026-05-10').click();
-  await expect(page.getByTestId('portion-input-2026-05-10')).toHaveValue('4');
-  const fresh = await page.evaluate(async () => {
-    const { data } = await (await fetch('/api/schedule/servings?weekOffset=0')).json();
-    const response = await fetch('/api/schedule/servings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        referenceWeekStartDate: data.referenceWeekStartDate,
-        weekOffset: 0,
-        expectedVersion: data.version,
-        defaultServings: 7,
-        days: [],
-      }),
+    test('renders photo-only past rows and quiet plain-text upcoming prepared rows in Standard AA and High Contrast AAA', async ({
+      page,
+    }, info) => {
+      await page.context().addCookies([
+        {
+          name: 'x-family-member-id',
+          value: MOCK_IDS.MEMBER_ALEX,
+          url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+        },
+      ]);
+      const common = await setupCommonRoutes(page);
+      const schedule = builders.scheduleDays() as any;
+      schedule.calendar.today = '2026-05-06';
+      schedule.days = schedule.days.map((day: any, i: number) => ({
+        ...day,
+        recipe:
+          i === 0 || i === 2 || i === 5
+            ? builders.scheduleRecipe({
+                name: 'Roasted garlic pasta',
+                image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+              })
+            : null,
+        status: i === 0 || i === 5 ? 2 : i === 4 ? 3 : 0,
+        nonCooking: i === 4 ? { kind: 'EatingOut' } : null,
+        preparation:
+          i === 5
+            ? {
+                preparedOn: '2026-05-05',
+                preparedAtUtc: '2026-05-05T18:00:00Z',
+                servings: 6,
+                originalServings: 2,
+              }
+            : null,
+      }));
+      await page.route(`**/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`, (route) =>
+        route.fulfill({
+          body: fs.readFileSync(path.resolve('e2e/fixtures/recipe-photos/original.webp')),
+          contentType: 'image/webp',
+        })
+      );
+      await mockNonCookingSchedule(page, schedule);
+      const control = await mockSupperServings(page, () => schedule, {
+        readFamilyCount: common.readFamilyCount,
+      });
+      control.restoreSnapshot({
+        ...control.captureSnapshot(),
+        savedUsual: 4,
+        inherited: [['2026-05-04', 6]],
+      });
+      await page.addInitScript(() => {
+        const style = document.createElement('style');
+        style.textContent = 'nextjs-portal{display:none}';
+        document.addEventListener('DOMContentLoaded', () => document.head.append(style), {
+          once: true,
+        });
+      });
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto('/planner');
+      await page.getByTestId('at-the-table-mode').click();
+
+      const pastCookedRow = page.getByTestId('portion-row-2026-05-04');
+      await expect(pastCookedRow.getByTestId('planner-meal')).toHaveClass(/bg-cream/);
+      await expect(pastCookedRow).not.toHaveClass(/grayscale/);
+      await expect(pastCookedRow.getByTestId('portion-input-2026-05-04')).toHaveCount(0);
+      await expect(pastCookedRow.getByTestId('portion-cooked-badge-2026-05-04')).toHaveCount(0);
+      await expect(pastCookedRow.getByTestId('portion-prepared-status-2026-05-04')).toHaveCount(0);
+      await expect(pastCookedRow.locator('button')).toHaveCount(0);
+      await expect(pastCookedRow).not.toContainText(
+        /Cooked|Cuisiné|Already prepared|Déjà préparé|\b6\b/
+      );
+
+      const pastEmptyRow = page.getByTestId('portion-row-2026-05-05');
+      await expect(pastEmptyRow.getByTestId('portion-input-2026-05-05')).toHaveCount(0);
+      await expect(pastEmptyRow.getByTestId('portion-prepared-status-2026-05-05')).toHaveCount(0);
+      await expect(pastEmptyRow.locator('button')).toHaveCount(0);
+
+      const activeRow = page.getByTestId('portion-row-2026-05-06');
+      await expect(activeRow.locator('button')).toHaveCount(2);
+      await expect(activeRow.getByTestId('portion-input-2026-05-06')).toBeVisible();
+      await expect(activeRow.getByTestId('reset-portions-2026-05-06')).toHaveCount(0);
+
+      const preparedRow = page.getByTestId('portion-row-2026-05-09');
+      await expect(preparedRow.getByTestId('planner-meal')).toHaveClass(/glass/);
+      const preparedStatus = preparedRow.getByTestId('portion-prepared-status-2026-05-09');
+      const preparedCount = preparedRow.getByTestId('portion-prepared-count-2026-05-09');
+      await expect(preparedStatus).toBeVisible();
+      await expect(preparedStatus).toContainText(
+        locale === 'fr' ? 'Déjà préparé' : 'Already prepared'
+      );
+      await expect(preparedCount).toHaveText('6 portions');
+      await expect(preparedRow.getByTestId('portion-input-2026-05-09')).toHaveCount(0);
+      await expect(preparedRow.locator('button')).toHaveCount(0);
+
+      for (const [width, height] of [
+        [390, 844],
+        [375, 812],
+      ] as const) {
+        await page.setViewportSize({ width, height });
+        const geometry = await preparedRow.evaluate((row) => {
+          const meal = row.querySelector('[data-testid="planner-meal"]')!;
+          const photo = meal.querySelector('[aria-label]')!;
+          const statusEl = row.querySelector('[data-testid="portion-prepared-status-2026-05-09"]')!;
+          return {
+            meal: meal.getBoundingClientRect().toJSON(),
+            photo: photo.getBoundingClientRect().toJSON(),
+            status: statusEl.getBoundingClientRect().toJSON(),
+          };
+        });
+        const statusCenter = geometry.status.top + geometry.status.height / 2;
+        const photoCenter = geometry.photo.top + geometry.photo.height / 2;
+        expect(Math.abs(statusCenter - photoCenter)).toBeLessThan(12);
+        expect(geometry.photo.right).toBeLessThanOrEqual(geometry.status.left + 1);
+        expect(geometry.meal.right).toBeLessThanOrEqual(width);
+      }
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await assertCookbookVisualA11y(page, {
+        rootSelector: '[data-testid="portions-editor"]',
+        contrastLevel: 'aa',
+      });
+      await page.screenshot({
+        path: info.outputPath(`portions-prepared-${locale}-390-aa.png`),
+        animations: 'disabled',
+        style: 'nextjs-portal{visibility:hidden}',
+      });
+
+      await page.evaluate(() => {
+        document.documentElement.dataset.contrast = 'high';
+      });
+      await assertCookbookVisualA11y(page, {
+        rootSelector: '[data-testid="portions-editor"]',
+        contrastLevel: 'aaa',
+      });
+      await page.screenshot({
+        path: info.outputPath(`portions-prepared-${locale}-390-aaa.png`),
+        animations: 'disabled',
+        style: 'nextjs-portal{visibility:hidden}',
+      });
+
+      await page.evaluate(() => {
+        delete document.documentElement.dataset.contrast;
+        document.documentElement.style.fontSize = '32px';
+      });
+      await page.setViewportSize({ width: 320, height: 740 });
+      expect(
+        await page.getByTestId('portions-editor').evaluate((el) => el.scrollWidth <= el.clientWidth)
+      ).toBe(true);
     });
-    if (!response.ok) throw new Error('Concurrent fixture save failed');
-    return (await response.json()).data.version;
   });
-  await page.getByTestId('save-portions').click();
-  await expect(page.getByTestId('save-portions')).toBeDisabled();
-  await page.getByTestId('portions-review').click();
-  await expect(page.getByTestId('portions-saved-review')).toContainText('Your edits: 7');
-  await expect(page.getByTestId('portion-input-2026-05-10')).toHaveValue('7');
-  await expect(page.getByTestId('reset-portions-2026-05-10')).toHaveText('7');
-  await page.getByTestId('portions-keep-draft').click();
-  const write = page.waitForRequest(
-    (request) =>
-      request.method() === 'PUT' && new URL(request.url()).pathname === '/api/schedule/servings'
-  );
-  await page.getByTestId('save-portions').click();
-  const payload = (await write).postDataJSON();
-  expect(payload).toMatchObject({
-    expectedVersion: fresh,
-    days: [{ date: '2026-05-10', servings: null }],
-  });
-  expect(payload).not.toHaveProperty('defaultServings');
-  await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
-});
 
 for (const locale of ['en', 'fr'] as const)
   test.describe(`Portions native focus ${locale}`, () => {
@@ -284,7 +374,7 @@ for (const locale of ['en', 'fr'] as const)
           await assertVisibleFocus();
           if (index < count - 1) await page.keyboard.press('Tab');
         }
-        await expect(page.getByTestId('reset-portions-2026-05-10')).toBeFocused();
+        await expect(controls.last()).toBeFocused();
         await page.screenshot({
           path: info.outputPath(`${locale}-${width}-${scale}-last-row-focus.png`),
           style: 'nextjs-portal{visibility:hidden}',

@@ -227,7 +227,7 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     await editor.getByTestId('action-gear-menu').click();
     await editor.getByRole('button', { name: 'Edit', exact: true }).click();
     await editor.getByTestId('recipe-edit-amount-0').fill('2');
-    await editor.getByTestId('recipe-edit-unit-0').fill('cup');
+    await editor.getByTestId('recipe-edit-unit-0').selectOption('cup');
     // Forward the real mutation and drop only its successful transport reply.
     // The API and database commit; no API result is manufactured by this test.
     let committed: any;
@@ -402,15 +402,15 @@ test('original correction, refresh recovery and concurrent grocery checks use th
             document: document.documentElement.scrollWidth <= window.innerWidth,
             labels: [
               ...panel.querySelectorAll(
-                'input[data-testid^="recipe-edit-amount-"], input[data-testid^="recipe-edit-unit-"]'
+                'input[data-testid^="recipe-edit-amount-"], select[data-testid^="recipe-edit-unit-"]'
               ),
             ]
               .map((input) => input.closest('label')!)
               .filter((label) => label.scrollWidth > label.clientWidth)
               .map((label) => label.textContent?.trim()),
             shortValues: [
-              ...panel.querySelectorAll<HTMLInputElement>(
-                'input[data-testid="recipe-edit-amount-0"], input[data-testid="recipe-edit-unit-0"], input[data-testid="recipe-edit-servings-input"]'
+              ...panel.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+                'input[data-testid="recipe-edit-amount-0"], select[data-testid="recipe-edit-unit-0"], input[data-testid="recipe-edit-servings-input"]'
               ),
             ]
               .filter((input) => {
@@ -418,15 +418,19 @@ test('original correction, refresh recovery and concurrent grocery checks use th
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d')!;
                 context.font = style.font;
+                const text =
+                  input instanceof HTMLSelectElement
+                    ? (input.selectedOptions[0]?.textContent?.trim() ?? input.value)
+                    : input.value;
                 return (
-                  context.measureText(input.value).width >
+                  context.measureText(text).width >
                   input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
                 );
               })
               .map((input) => input.getAttribute('data-testid')),
             fields: [
               ...panel.querySelectorAll(
-                'input[data-testid^="recipe-edit-"], button[data-testid^="recipe-edit-meal-type-pill-"]'
+                'input[data-testid^="recipe-edit-"], select[data-testid^="recipe-edit-"], button[data-testid^="recipe-edit-meal-type-pill-"]'
               ),
             ]
               .map((input) => {
@@ -485,11 +489,11 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     await editor.getByTestId('mobile-more-filters').click();
     await editor.getByTestId('mobile-filter-ready-to-review').click();
     await editor.getByTestId('mobile-filter-apply').click();
-    await expect(editor.getByTestId('stack-card-front')).toHaveAttribute(
-      'data-recipe-id',
-      incompleteId
+    const incompleteCard = editor.locator(
+      `[data-testid="browse-list-recipe-card"][data-recipe-id="${incompleteId}"]`
     );
-    await editor.getByTestId(`stack-card-${incompleteId}`).click();
+    await expect(incompleteCard).toBeVisible();
+    await incompleteCard.click();
     await expect(editor.getByTestId('recipe-detail-name')).toHaveText('Flagged incomplete recipe');
     await editor.getByTestId('action-gear-menu').click();
     await editor.getByTestId('action-edit-recipe').click();
@@ -537,10 +541,7 @@ test('original correction, refresh recovery and concurrent grocery checks use th
       status: 'readyToReview',
       isReimporting: false,
     });
-    const savedNotification = editor.getByTestId('toast').filter({ hasText: 'Changes saved' });
-    await expect(savedNotification).toBeVisible();
-    await savedNotification.getByRole('button', { name: 'Dismiss notification' }).click();
-    await expect(savedNotification).toHaveCount(0);
+    await expect(editor.getByTestId('toast')).toHaveCount(0);
     await editor.getByTestId('action-gear-menu').click();
     await editor.getByTestId('action-report-import-issue').click();
     await expect(editor.getByTestId('import-issue-note')).toHaveValue(incomplete.importIssue.note);

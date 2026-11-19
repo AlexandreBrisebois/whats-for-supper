@@ -11,6 +11,8 @@ public class FamilyService(IClock clock, RecipeDbContext db, DeploymentCalendar 
     public const string BrowseViewModeList = "list";
     public const string CookingViewModeStepByStep = "step-by-step";
     public const string CookingViewModeAllSteps = "all-steps";
+    public const string ContrastModeStandard = "standard";
+    public const string ContrastModeHigh = "high";
 
     public async Task<List<FamilyMember>> GetAllFamilyMembers()
     {
@@ -75,7 +77,8 @@ public class FamilyService(IClock clock, RecipeDbContext db, DeploymentCalendar 
         Guid id,
         string? browseViewMode,
         string? preferredLanguage,
-        string? cookingViewMode)
+        string? cookingViewMode,
+        string? contrastMode = null)
     {
         var member = await db.FamilyMembers.FindAsync(id)
             ?? throw new KeyNotFoundException($"Family member {id} not found.");
@@ -104,9 +107,18 @@ public class FamilyService(IClock clock, RecipeDbContext db, DeploymentCalendar 
             member.CookingViewMode = normalizedCookingView;
         }
 
+        if (!string.IsNullOrEmpty(contrastMode))
+        {
+            var normalizedContrastMode = contrastMode.Trim().ToLowerInvariant();
+            if (normalizedContrastMode is not (ContrastModeStandard or ContrastModeHigh))
+                throw new ArgumentException("contrastMode must be standard or high.");
+            member.ContrastMode = normalizedContrastMode;
+        }
+
         if (string.IsNullOrEmpty(browseViewMode)
             && string.IsNullOrEmpty(preferredLanguage)
-            && string.IsNullOrEmpty(cookingViewMode))
+            && string.IsNullOrEmpty(cookingViewMode)
+            && string.IsNullOrEmpty(contrastMode))
             throw new ArgumentException("At least one preference must be supplied.");
 
         member.UpdatedAt = clock.UtcNow;

@@ -48,6 +48,12 @@ describe('LanguageSwitchProposal', () => {
 
     expect(screen.getByTestId('language-proposal')).toBeInTheDocument();
     expect(screen.getByText(/Passer en Français/i)).toBeInTheDocument();
+    const switchBtn = screen.getByTestId('language-proposal-switch');
+    const dismissBtn = screen.getByTestId('language-proposal-dismiss');
+    expect(switchBtn).toHaveClass('min-h-12', 'bg-sage-700', 'text-white');
+    expect(switchBtn).not.toHaveClass('bg-sage');
+    expect(dismissBtn).toHaveClass('min-h-12', 'text-charcoal-600');
+    expect(dismissBtn).not.toHaveClass('text-charcoal/40');
   });
 
   it('allows switching language', async () => {

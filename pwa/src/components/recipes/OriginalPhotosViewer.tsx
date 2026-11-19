@@ -186,7 +186,7 @@ export function OriginalPhotosViewer({
       {/* Header */}
       <div className="flex h-20 items-center justify-between px-6">
         <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
+          <span className="text-xs font-semibold text-white/80">
             {t('recipes.viewOriginal', 'Original Photo')}
           </span>
           <span className="text-sm font-bold text-white/90">

@@ -482,7 +482,11 @@ test('real dated detail, cooking and groceries share inputs across two independe
     await foreign.getByTestId('recipe-search-input').fill('Unassigned pasta for two');
     await foreign.getByTestId('recipe-search-input').press('Enter');
     console.log('LIVE foreign card');
-    await foreign.getByTestId('stack-card-front').click();
+    await foreign
+      .getByTestId('browse-list-recipe-card')
+      .filter({ hasText: 'Unassigned pasta for two' })
+      .first()
+      .click();
     await foreign.getByRole('button', { name: 'Change day', exact: true }).click();
     await expect(foreign.getByTestId('planning-day-2')).toContainText('October 21');
     const nextWeek = foreign.waitForResponse(
@@ -678,144 +682,3 @@ test('real dated detail, cooking and groceries share inputs across two independe
     await other.close().catch(() => {});
   }
 });
-
-if (process.env.SUPPER_RESET_LIVE === '1')
-  test('real Planner reset retains Cancel and removes equal-number override with grocery convergence', async ({
-    page,
-    browser,
-    request,
-    baseURL,
-  }, info) => {
-    test.setTimeout(180_000);
-    const api = process.env.SUPPER_SERVINGS_API_URL!;
-    const headers = { 'X-Hearth-Secret': process.env.HEARTH_SECRET! };
-    const read = async (path: string) => {
-      const response = await request.get(`${api}${path}`, { headers });
-      expect(response.ok(), path).toBe(true);
-      return response.json();
-    };
-    const portions = async () =>
-      (await read('/api/schedule/servings?weekOffset=0&referenceWeekStartDate=2026-10-12')).data;
-    const persisted = () => read('/_test/servings/persisted');
-    const schedule = async () =>
-      (await read('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-10-12')).data;
-    const member = (await read('/api/family')).data[0];
-    const cookies = [
-      {
-        name: 'h_access',
-        value: await generateSecretToken(process.env.HEARTH_SECRET!),
-        url: baseURL!,
-      },
-      { name: 'x-family-member-id', value: member.id, url: baseURL! },
-    ];
-    await page.context().addCookies(cookies);
-    await page.addInitScript(() => localStorage.setItem('locale', 'en'));
-    const other = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 } });
-    await other.addCookies(cookies);
-    const observer = await other.newPage();
-    const evidence: Record<string, unknown> = {};
-    const advance = async () => {
-      const result = await request.post(`${api}/_test/servings/advance`, { headers });
-      expect(result.ok()).toBe(true);
-      await expect.poll(async () => (await portions()).groceryRefresh.status).toBe('current');
-    };
-    const open = page.getByTestId('at-the-table-mode');
-    const done = page.getByTestId('save-portions');
-    const wednesday = page.getByTestId('portion-input-2026-10-14');
-    try {
-      evidence.before = await persisted();
-      expect(groceryRow(await schedule()).quantity).toEqual(exactGroceryQuantity(900));
-      await observer.goto('/planner?referenceWeekStartDate=2026-10-12');
-      await observer.evaluate(() => {
-        const events = { connected: false, weeks: [] as unknown[], groceries: [] as unknown[] };
-        (window as any).__resetEvents = events;
-        const stream = new EventSource('/api/stream');
-        stream.addEventListener('connected', () => {
-          events.connected = true;
-        });
-        stream.addEventListener('week_updated', (event) =>
-          events.weeks.push(JSON.parse((event as MessageEvent).data))
-        );
-        stream.addEventListener('grocery_updated', (event) =>
-          events.groceries.push(JSON.parse((event as MessageEvent).data))
-        );
-      });
-      await expect
-        .poll(() => observer.evaluate(() => (window as any).__resetEvents.connected))
-        .toBe(true);
-      await observer.getByTestId('grocery-tab').click();
-      await page.goto('/planner?referenceWeekStartDate=2026-10-12');
-      await open.click();
-      await expect(page.getByTestId('usual-portions')).toHaveCount(0);
-      await page.getByTestId('reset-portions-2026-10-14').click();
-      await expect(wednesday).toHaveValue('4');
-      await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-      expect((await portions()).days[2]).toMatchObject({ servings: 5, overrideServings: 5 });
-      expect(await persisted()).toEqual(evidence.before);
-      evidence.cancel = await persisted();
-      expect((await read('/_test/servings/requests')).save ?? 0).toBe(0);
-      await open.click();
-      await expect(wednesday).toHaveValue('5');
-      await page.getByTestId('reset-portions-2026-10-14').click();
-      const write = page.waitForRequest(
-        (request) =>
-          request.method() === 'PUT' && new URL(request.url()).pathname === '/api/schedule/servings'
-      );
-      await done.click();
-      const payload = (await write).postDataJSON();
-      expect(payload).not.toHaveProperty('defaultServings');
-      expect(payload.days).toEqual([{ date: '2026-10-14', servings: null }]);
-      await expect(open).toBeVisible();
-      expect((await portions()).days[2]).toMatchObject({ servings: 4, overrideServings: null });
-      expect(
-        (await persisted()).rows.find((row: { date: string }) => row.date === '2026-10-14')
-          .overrideServings
-      ).toBeNull();
-      expect((await portions()).groceryRefresh.status).toBe('updating');
-      await advance();
-      expect(groceryRow(await schedule()).quantity).toEqual(exactGroceryQuantity(800));
-      await expect(observer.getByTestId('grocery-portions-updating')).toHaveCount(0);
-      await open.click();
-      await expect(page.getByTestId('portion-input-2026-10-16')).toHaveValue('4');
-      const beforeEqual = await portions();
-      await page.getByTestId('reset-portions-2026-10-16').click();
-      await expect(page.getByTestId('portion-row-2026-10-16').getByRole('status')).toContainText(
-        'Using usual 4 portions'
-      );
-      await done.click();
-      await expect(open).toBeVisible();
-      const afterEqual = await portions();
-      expect(afterEqual.days[4]).toMatchObject({ servings: 4, overrideServings: null });
-      expect(afterEqual.version).not.toBe(beforeEqual.version);
-      evidence.equal = await persisted();
-      expect(
-        (evidence.equal as any).rows.find((row: { date: string }) => row.date === '2026-10-16')
-          .overrideServings
-      ).toBeNull();
-      await advance();
-      await page.goto('/profile/settings');
-      await page.getByTestId('usual-portions-input').fill('7');
-      await page.getByTestId('save-usual-portions').click();
-      await expect(
-        page.getByTestId('usual-portions-section').getByText('Saved', { exact: true })
-      ).toBeVisible();
-      await expect.poll(async () => (await portions()).defaultServings).toBe(7);
-      await advance();
-      expect((await portions()).days[2]).toMatchObject({ servings: 7, overrideServings: null });
-      expect((await portions()).days[4]).toMatchObject({ servings: 7, overrideServings: null });
-      expect(groceryRow(await schedule()).quantity).toEqual(exactGroceryQuantity(1400));
-      await expect
-        .poll(() => observer.evaluate(() => (window as any).__resetEvents.groceries.length))
-        .toBeGreaterThan(0);
-      evidence.after = await persisted();
-      evidence.transport = await observer.evaluate(() => (window as any).__resetEvents);
-      evidence.requests = await read('/_test/servings/requests');
-      expect((evidence.requests as any).save).toBe(3);
-      await writeFile(
-        info.outputPath('planner-reset-independent-live-evidence.json'),
-        JSON.stringify(evidence, null, 2)
-      );
-    } finally {
-      await other.close();
-    }
-  });

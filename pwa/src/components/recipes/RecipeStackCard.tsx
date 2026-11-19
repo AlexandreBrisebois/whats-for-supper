@@ -275,14 +275,14 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           {formattedTime && (
             <span
               data-testid="stack-time-badge"
-              className="absolute bottom-4 left-4 z-30 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full border border-white bg-terracotta-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-terracotta-700 shadow-md"
+              className="absolute bottom-4 left-4 z-30 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full border border-charcoal-200/60 bg-cream px-3 py-2 text-xs font-semibold tracking-wide text-charcoal shadow-md"
             >
               <Clock size={14} aria-hidden="true" className="shrink-0" />
               {tWithVars('common.readyIn', 'READY IN {{time}}', { time: formattedTime })}
             </span>
           )}
 
-          {/* Swipe direction indicators — Ghost style aligned with Discovery voting */}
+          {/* Swipe direction indicators — High-contrast pill badges aligned with Discovery voting */}
           {isFront && (
             <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
               {/* Back indicator (swipe right) - Terracotta color */}
@@ -292,7 +292,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
                   scale: nextScale,
                 }}
                 data-testid="stack-swipe-next-indicator"
-                className="flex flex-col items-center rounded-full bg-terracotta/30 p-8 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center rounded-full bg-terracotta/90 p-8 text-white shadow-2xl"
               >
                 <span className="text-xl font-black tracking-widest">
                   {t('buttons.back', 'BACK')}
@@ -306,7 +306,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
                   scale: backScale,
                 }}
                 data-testid="stack-swipe-back-indicator"
-                className="flex flex-col items-center rounded-full bg-sage/30 p-8 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center rounded-full bg-sage-700/90 p-8 text-white shadow-2xl"
               >
                 <span className="text-xl font-black tracking-widest">
                   {t('buttons.next', 'NEXT')}

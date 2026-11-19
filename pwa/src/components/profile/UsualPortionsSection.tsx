@@ -39,7 +39,7 @@ function confirmedIntent(saved: SupperServings, attempt: Attempt) {
   );
 }
 const control =
-  'min-h-12 rounded-xl border border-charcoal/20 bg-white px-3 text-charcoal focus-visible:outline-2 focus-visible:outline-terracotta';
+  'min-h-12 rounded-xl border border-chrome-line bg-white px-3 text-ink-body focus-visible:outline-2 focus-visible:outline-hearth-ink';
 
 export function UsualPortionsSection() {
   const id = useId();
@@ -240,38 +240,38 @@ export function UsualPortionsSection() {
     <section
       data-testid="usual-portions-section"
       aria-labelledby={`${id}-heading`}
-      className="min-w-0 rounded-[2rem] border border-white/60 bg-white/40 p-6 shadow-glass backdrop-blur-xl"
+      className="min-w-0 rounded-[2rem] border border-chrome-line bg-white/40 p-6 shadow-glass backdrop-blur-xl"
     >
-      <h2 id={`${id}-heading`} className="font-heading text-lg font-bold text-charcoal">
+      <h2 id={`${id}-heading`} className="font-heading text-lg font-bold text-ink-body">
         {t('usualPortions.title', 'Usual portions')}
       </h2>
-      <p className="mt-2 text-sm text-charcoal/70">
+      <p className="mt-2 text-sm text-ink-muted">
         {t(
           'usualPortions.description',
           'The total to cook, including leftovers. Individual days can use a different number.'
         )}
       </p>
       {!saved && reading && (
-        <p role="status" className="mt-4">
+        <p role="status" className="mt-4 text-ink-body">
           {t('usualPortions.loading', 'Loading portions…')}
         </p>
       )}
       {saved && (
         <div className="mt-4 flex flex-col gap-4">
-          <label className="flex min-h-12 items-center gap-3 text-charcoal">
+          <label className="flex min-h-12 items-center gap-3 text-ink-body">
             <input
               data-testid="usual-portions-automatic"
               type="checkbox"
               checked={source === 'family'}
               disabled={saving || (reading && !saved)}
-              className="h-6 w-6 accent-terracotta"
+              className="h-6 w-6 accent-hearth-fill"
               onChange={(event) =>
                 edit({ source: event.currentTarget.checked ? 'family' : 'explicit', text })
               }
             />
             {t('usualPortions.useFamilySize', 'Use family size')}
           </label>
-          <label htmlFor={`${id}-count`} className="font-medium text-charcoal">
+          <label htmlFor={`${id}-count`} className="font-medium text-ink-body">
             {t('usualPortions.title', 'Usual portions')}
           </label>
           <input
@@ -289,7 +289,7 @@ export function UsualPortionsSection() {
             className={`${control} w-full`}
             onChange={(event) => edit({ source: 'explicit', text: event.currentTarget.value })}
           />
-          <p id={`${id}-context`} className="text-sm text-charcoal/70">
+          <p id={`${id}-context`} className="text-sm text-ink-muted">
             {source === 'family'
               ? automaticCount == null
                 ? saved.defaultServingsSource === 'explicit'
@@ -308,7 +308,7 @@ export function UsualPortionsSection() {
                 )}
           </p>
           {source === 'explicit' && !validCount(text) && (
-            <p id={`${id}-error`} role="alert" className="text-sm text-terracotta">
+            <p id={`${id}-error`} role="alert" className="text-sm text-hearth-ink">
               {t('usualPortions.invalid', 'Enter a whole number from 1 to 2147483647.')}
             </p>
           )}
@@ -332,17 +332,21 @@ export function UsualPortionsSection() {
         </div>
       )}
       {rosterError && (
-        <p className="mt-4 text-sm text-charcoal/70">
+        <p className="mt-4 text-sm text-ink-muted">
           {t(
             'usualPortions.rosterError',
             'The family list could not be loaded. Retry to view its members.'
           )}{' '}
-          <button type="button" className="min-h-12 underline" onClick={() => void loadFamily()}>
+          <button
+            type="button"
+            className="min-h-12 underline text-hearth-ink"
+            onClick={() => void loadFamily()}
+          >
             {t('usualPortions.retryFamily', 'Retry family list')}
           </button>
         </p>
       )}
-      <div aria-live="polite" className="mt-4 text-sm text-charcoal">
+      <div aria-live="polite" className="mt-4 text-sm text-ink-body">
         {message === 'saved' && <p>{t('usualPortions.saved', 'Saved')}</p>}
         {message === 'uncertain' && (
           <p role="alert">

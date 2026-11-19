@@ -7,10 +7,12 @@ CREATE TABLE family_members (
     browse_view_mode text DEFAULT 'list' NOT NULL,
     cooking_view_mode text,
     preferred_language text,
+    contrast_mode text,
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL,
     CONSTRAINT family_members_browse_view_mode_check CHECK (browse_view_mode IN ('stack', 'list')),
     CONSTRAINT family_members_preferred_language_check CHECK (preferred_language IN ('en', 'fr')),
+    CONSTRAINT "CK_family_members_contrast_mode" CHECK (contrast_mode IS NULL OR contrast_mode IN ('standard', 'high')),
     CONSTRAINT family_members_cooking_view_mode_check CHECK (cooking_view_mode IS NULL OR cooking_view_mode IN ('step-by-step', 'all-steps'))
 );
 

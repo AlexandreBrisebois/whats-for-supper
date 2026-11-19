@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Utensils } from 'lucide-react';
+import { X, Sparkles, Utensils, ChevronDown, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { getFillTheGap } from '@/lib/api/planner';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,8 @@ export function QuickFindModal({
   dayIndex = null,
   referenceWeekStartDate,
 }: QuickFindModalProps) {
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const detailsId = useId();
   const [recipes, setRecipes] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,7 +94,7 @@ export function QuickFindModal({
   }, [fillTheGapVersion, recipes.length]);
 
   const handleNext = () => {
-    setIsFlipped(false);
+    setDetailsExpanded(false);
     if (safeCurrentIndex < totalCards - 1) {
       setCurrentIndex(safeCurrentIndex + 1);
     } else {
@@ -106,6 +107,7 @@ export function QuickFindModal({
   const isNudgeCard = recipes.length > 0 && safeCurrentIndex === recipes.length;
   const currentRecipe = recipes[safeCurrentIndex];
   const hasNextCard = recipes.length > 0;
+  const formattedTime = currentRecipe ? formatRecipeTime(currentRecipe.totalTime) : '';
 
   const searchUrl =
     dayIndex !== null
@@ -119,30 +121,34 @@ export function QuickFindModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-cream/55 backdrop-blur-xl"
+        className="absolute inset-0 bg-charcoal/45 backdrop-blur-sm"
       />
 
       <motion.div
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        initial={{ scale: 0.95, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        exit={{ scale: 0.95, opacity: 0, y: 16 }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('planner.quickFindAction', 'Suggestions')}
         data-testid="quick-find-modal"
-        className="relative w-full max-w-sm rounded-[3.5rem] overflow-hidden border border-white/60 bg-[rgba(253,252,240,0.78)] shadow-[0_24px_60px_-16px_rgba(74,55,40,0.18)] backdrop-blur-xl"
+        className="relative w-full max-w-sm max-h-[90dvh] overflow-y-auto rounded-[2.5rem] border border-charcoal-200 bg-cream shadow-2xl"
       >
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center space-x-2 text-ochre">
-              <Sparkles size={20} className="text-ochre animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em]">
+        <div className="p-6 sm:p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-2 text-ochre-800">
+              <Sparkles size={18} aria-hidden="true" className="text-ochre-600" />
+              <span className="text-xs font-semibold">
                 {t('planner.quickFindAction', 'Suggestions')}
               </span>
             </div>
             <button
+              type="button"
               data-testid="quick-find-close"
               onClick={onClose}
               aria-label="Close"
               title="Close"
-              className="p-3 rounded-full bg-charcoal/5 hover:bg-charcoal/10 text-charcoal/45 transition-colors"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white border border-charcoal-200 hover:bg-charcoal-100 text-charcoal-600 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
             >
               <X size={20} />
             </button>
@@ -153,118 +159,130 @@ export function QuickFindModal({
               <SolarLoader size="sm" label="Curating your stack..." />
             </div>
           ) : recipes.length > 0 ? (
-            <div className="relative aspect-[4/5] mb-8 perspective-1000">
+            <div className="mb-6">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={safeCurrentIndex}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1, rotateY: isFlipped ? 180 : 0 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-                  className="relative w-full h-full preserve-3d cursor-pointer"
-                  onClick={() => !isNudgeCard && setIsFlipped(!isFlipped)}
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full"
                 >
                   {isNudgeCard ? (
                     /* Search Nudge Card */
-                    <div className="absolute inset-0 rounded-[3rem] bg-white p-10 flex flex-col items-center justify-center text-center shadow-2xl border-2 border-white/20">
-                      <div className="h-20 w-20 rounded-3xl bg-ochre/10 text-ochre flex items-center justify-center mb-8">
-                        <Utensils size={40} />
+                    <div className="min-h-[20rem] rounded-[2rem] bg-white p-8 flex flex-col items-center justify-center text-center shadow-card border border-charcoal-200">
+                      <div className="h-16 w-16 rounded-2xl bg-ochre-100 text-ochre-800 flex items-center justify-center mb-6">
+                        <Utensils size={32} aria-hidden="true" />
                       </div>
-                      <h4 className="text-2xl font-heading font-black text-charcoal mb-4 leading-tight tracking-tight">
+                      <h4 className="text-2xl font-heading font-bold text-charcoal mb-3 leading-tight">
                         Didn&apos;t find a match?
                       </h4>
-                      <p className="text-sm text-charcoal/40 font-medium leading-relaxed mb-10">
+                      <p className="text-sm text-charcoal-600 font-medium leading-relaxed mb-8">
                         Our library has thousands of recipes. Try searching for exactly what
                         you&apos;re craving.
                       </p>
                       <Link
                         href={searchUrl}
                         data-testid="quick-find-search-library"
-                        className="inline-flex items-center justify-center w-full h-16 rounded-2xl bg-ochre text-white font-black uppercase tracking-widest text-[11px] shadow-lg shadow-ochre/20"
+                        className="inline-flex items-center justify-center w-full min-h-14 rounded-2xl bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-cream-100 font-semibold text-sm shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
                       >
                         Search Library
                       </Link>
                     </div>
                   ) : (
                     /* Regular Recipe Card */
-                    <>
-                      {/* Front of Card */}
-                      <div
-                        className={cn(
-                          'absolute inset-0 rounded-[3rem] overflow-hidden shadow-2xl backface-hidden border-2 border-white/20',
-                          isFlipped ? 'pointer-events-none' : ''
-                        )}
-                      >
-                        {currentRecipe.image && (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={getImageUrl(currentRecipe.image)}
-                              alt={currentRecipe.name}
-                              className="absolute inset-0 h-full w-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                          </>
-                        )}
-                        <div className="absolute bottom-0 left-0 right-0 p-8">
-                          <h4 className="text-2xl font-heading font-black text-white mb-3 leading-tight tracking-tight">
-                            {currentRecipe.name}
-                          </h4>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-white text-[10px] font-black uppercase tracking-widest bg-ochre px-3 py-1.5 rounded-full shadow-lg">
+                    <div className="rounded-[2rem] bg-white border border-charcoal-200 overflow-hidden shadow-card">
+                      {currentRecipe.image && (
+                        <div className="relative aspect-[16/10] w-full overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={getImageUrl(currentRecipe.image)}
+                            alt={currentRecipe.name}
+                            className="h-full w-full object-cover"
+                          />
+                          {formattedTime && (
+                            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-charcoal-200/60 bg-cream px-3 py-1.5 text-xs font-semibold text-charcoal shadow-sm">
+                              <Clock size={14} aria-hidden="true" className="shrink-0" />
                               {tWithVars('common.readyIn', 'READY IN {{time}}', {
-                                time: formatRecipeTime(currentRecipe.totalTime),
+                                time: formattedTime,
                               })}
                             </span>
-                          </div>
+                          )}
                         </div>
-                      </div>
+                      )}
 
-                      {/* Back of Card */}
-                      <div
-                        className={cn(
-                          'absolute inset-0 rounded-[3rem] bg-white shadow-2xl rotate-y-180 backface-hidden border-2 border-ochre/20 overflow-hidden',
-                          !isFlipped ? 'pointer-events-none' : ''
+                      <div className="p-6 flex flex-col gap-3">
+                        {!currentRecipe.image && formattedTime && (
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-terracotta-50 px-3 py-1.5 text-xs font-semibold text-terracotta-700">
+                            <Clock size={14} aria-hidden="true" className="shrink-0" />
+                            {tWithVars('common.readyIn', 'READY IN {{time}}', {
+                              time: formattedTime,
+                            })}
+                          </span>
                         )}
-                      >
-                        <div className="h-full overflow-y-auto scrollbar-none">
-                          <div className="min-h-full p-10 flex flex-col items-center justify-center text-center">
-                            <Sparkles size={32} className="text-ochre/40 mb-6 flex-shrink-0" />
-                            <h4 className="text-xl font-heading font-black text-charcoal mb-4 flex-shrink-0">
-                              Why we love it
-                            </h4>
-                            <p className="text-sm text-charcoal/60 leading-relaxed mb-6">
-                              {currentRecipe.description ||
-                                'A delicious home-cooked meal waiting for you.'}
-                            </p>
-                            <div className="flex flex-wrap justify-center gap-2">
+
+                        <h4 className="text-2xl font-heading font-bold text-charcoal leading-tight">
+                          {currentRecipe.name}
+                        </h4>
+
+                        <button
+                          type="button"
+                          data-testid="quick-find-details-toggle"
+                          aria-expanded={detailsExpanded}
+                          aria-controls={detailsId}
+                          onClick={() => setDetailsExpanded((prev) => !prev)}
+                          className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-terracotta-700 hover:bg-terracotta-50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+                        >
+                          {detailsExpanded
+                            ? t('planner.hideDetails', 'Hide details')
+                            : t('planner.viewDetails', 'View details')}
+                          <ChevronDown
+                            size={18}
+                            aria-hidden="true"
+                            className={
+                              detailsExpanded
+                                ? 'rotate-180 transition-transform'
+                                : 'transition-transform'
+                            }
+                          />
+                        </button>
+
+                        <div
+                          id={detailsId}
+                          hidden={!detailsExpanded}
+                          className="border-t border-charcoal-200 pt-3 flex flex-col gap-3"
+                        >
+                          <p className="text-sm text-charcoal-600 leading-relaxed">
+                            {currentRecipe.description ||
+                              'A delicious home-cooked meal waiting for you.'}
+                          </p>
+                          {(currentRecipe.ingredients || []).length > 0 && (
+                            <div className="flex flex-wrap gap-2">
                               {(currentRecipe.ingredients || []).map((ing: string) => (
                                 <span
                                   key={ing}
-                                  className="text-[10px] font-bold uppercase tracking-widest bg-charcoal/5 px-3 py-1.5 rounded-lg text-charcoal/40"
+                                  className="text-xs font-medium bg-charcoal-100 px-3 py-1.5 rounded-xl text-charcoal"
                                 >
                                   {ing}
                                 </span>
                               ))}
                             </div>
-                            <p className="mt-8 text-[10px] font-black text-ochre uppercase tracking-widest flex-shrink-0">
-                              Tap to flip back
-                            </p>
-                          </div>
+                          )}
                         </div>
                       </div>
-                    </>
+                    </div>
                   )}
                 </motion.div>
               </AnimatePresence>
             </div>
           ) : (
             <div className="py-10 text-center">
-              <p className="mb-5 text-charcoal/40">No recipes found.</p>
+              <p className="mb-5 text-sm text-charcoal-600 font-medium">No recipes found.</p>
               <Link
                 href={searchUrl}
                 data-testid="quick-find-search-library"
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-ochre px-6 font-bold text-white"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-terracotta hover:bg-terracotta-600 px-6 font-semibold text-sm text-cream-100 shadow-sm transition-colors"
               >
                 Search Library
               </Link>
@@ -274,7 +292,7 @@ export function QuickFindModal({
           <div className="grid grid-cols-2 gap-4">
             <Button
               variant="secondary"
-              className="h-16 rounded-3xl bg-charcoal/5 border-charcoal/10 text-charcoal font-black hover:bg-charcoal/10 active:scale-95 transition-all uppercase tracking-widest text-[11px]"
+              className="min-h-14 rounded-2xl bg-white border border-charcoal-200 text-charcoal font-semibold hover:bg-charcoal-100 active:scale-95 transition-all text-sm"
               onClick={handleNext}
               disabled={isLoading || !hasNextCard}
               data-testid="quick-find-next"
@@ -283,10 +301,10 @@ export function QuickFindModal({
             </Button>
             <Button
               className={cn(
-                'h-16 rounded-3xl font-black shadow-xl active:scale-95 transition-all uppercase tracking-widest text-[11px]',
+                'min-h-14 rounded-2xl font-semibold active:scale-95 transition-all text-sm',
                 isNudgeCard
-                  ? 'bg-charcoal/10 text-charcoal/30 cursor-not-allowed shadow-none'
-                  : 'bg-ochre text-white shadow-ochre/30'
+                  ? 'bg-charcoal-100 text-charcoal-500 cursor-not-allowed shadow-none'
+                  : 'bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-cream-100 shadow-sm'
               )}
               onClick={() => !isNudgeCard && currentRecipe && onSelect(currentRecipe)}
               disabled={isLoading || isNudgeCard || !currentRecipe}
@@ -296,14 +314,14 @@ export function QuickFindModal({
             </Button>
           </div>
 
-          <div className="mt-8 flex justify-center space-x-2">
+          <div className="mt-6 flex justify-center space-x-2">
             {Array.from({ length: totalCards }, (_, i) => (
               <motion.div
                 key={i}
                 data-testid="quick-find-progress-indicator"
                 animate={{
                   width: i === safeCurrentIndex ? 32 : 8,
-                  backgroundColor: i === safeCurrentIndex ? '#E1AD01' : 'rgba(32, 24, 21, 0.12)',
+                  backgroundColor: i === safeCurrentIndex ? '#C26B46' : '#DDD6D1',
                 }}
                 className="h-2 rounded-full"
               />

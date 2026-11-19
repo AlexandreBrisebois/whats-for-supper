@@ -26,7 +26,7 @@ export function RecipeImportIssueBadge({
       aria-label={accessibleLabel}
       className={`inline-flex items-center rounded-full ${
         compact
-          ? 'shrink-0 gap-1 whitespace-nowrap px-2 py-0.5 text-[10px] font-semibold uppercase leading-4'
+          ? 'shrink-0 gap-1 whitespace-nowrap px-2 py-0.5 text-xs font-semibold leading-4'
           : 'gap-1.5 px-3 py-1 text-xs font-bold'
       } ${ready ? 'bg-sage-100 text-sage-800' : 'bg-ochre-50 text-ochre-800'}`}
     >

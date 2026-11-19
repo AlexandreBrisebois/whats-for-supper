@@ -6,9 +6,9 @@ Normative surface, card/sheet anatomy, touch-target, focus, and motion rules for
 
 - **Canvas:** Warm cream `#FDFCF0` via `.cookbook-bg` in [globals.css](../../../pwa/src/app/globals.css) (retain `.solar-earth-bg` only on legacy surfaces until migrated).
 - **Tier 1 · Hero cards (`TonightCardBase`):** Crisp opaque white `#FFFFFF` frames (`rounded-[3rem]` on Home hero cards, `rounded-[2.5rem]` on Browse/Discovery cards), soft warm shadow, generous padding (`p-6`), and normal-flow layout rather than fixed card heights or 3D flip dependencies ([TonightMenuCard.tsx](../../../pwa/src/components/home/TonightMenuCard.tsx)).
-- **Tier 2 · Section panels & active rows:** Crisp opaque `#FFFFFF` with a subtle warm hairline border (`1px` `border-charcoal-200`, `rounded-3xl` Settings/Profile panels, `rounded-2xl` active Planner day rows).
+- **Tier 2 · Section panels & active rows:** Crisp opaque `#FFFFFF` with a `1px` semantic chrome border (`border-chrome-line`, `#E5DFD7` in Standard -> `#6E645B` crisp boundary in High Contrast; `rounded-3xl` Settings/Profile panels, `rounded-2xl` active Planner day rows).
 - **Tier 3 · Muted / past rows & recessed wells:** Flat `bg-cream` (`#FDFCF0`, `shadow-none`) for past Planner days and icon wells inside white cards.
-- **Action hierarchy:** Keep at most **one** primary `bg-terracotta text-cream-100` CTA per card or dialog footer. Secondary actions use crisp white `1px` `border-terracotta-200 text-terracotta-700` outlines (`rounded-[1.5rem]`, `min-h-14` on hero cards) or left-aligned `ChevronDown` text disclosures; never stack competing equal-weight solids.
+- **Action hierarchy:** Keep at most **one** primary `bg-hearth-fill text-cream-100` CTA per card or dialog footer. Secondary actions use crisp white `1px` `border-hearth-line text-hearth-ink` outlines (`rounded-[1.5rem]`, `min-h-14` on hero cards) or left-aligned `ChevronDown` text disclosures; never stack competing equal-weight solids.
 
 ## 2. Sheets, Dialogs & Narrow Viewports
 
@@ -18,16 +18,16 @@ Normative surface, card/sheet anatomy, touch-target, focus, and motion rules for
 
 ## 3. Restricted Translucency & Composite Contrast
 
-- Restrict frosted translucency strictly to floating bottom navigation (`.glass-nav`) and translucent hero-photo capsules (`bg-cream/80 backdrop-blur-md` `View Original`); keep card/row surfaces opaque `#FFFFFF` or `#FDFCF0`.
-- Measure rendered foreground-over-composite contrast in Chromium (both bright and dark photo fixtures) using `assertCookbookVisualA11y` in [visual-a11y-contract.ts](../../../pwa/e2e/visual-a11y-contract.ts): `>= 4.5:1` for normal text and `>= 3.0:1` for large text (`>= 24 px` or `>= 18.67 px` bold) and meaningful control boundaries/icons.
+- Restrict frosted translucency in Standard mode strictly to floating bottom navigation (`.glass-nav`) and translucent hero-photo capsules (`bg-cream/80 backdrop-blur-md` `View Original`); keep card/row surfaces opaque `#FFFFFF` or `#FDFCF0`. Under `:root[data-contrast="high"]`, `.glass-nav` becomes completely opaque (`--role-nav-bg: #FDFCF0`, `backdrop-filter: none`, `1px` `#6E645B` top border).
+- Measure rendered foreground-over-composite contrast in Chromium (both bright and dark photo fixtures) using `assertCookbookVisualA11y` in [visual-a11y-contract.ts](../../../pwa/e2e/visual-a11y-contract.ts): `contrastLevel: 'aa'` (default) enforces `>= 4.5:1` normal text / `>= 3.0:1` large text (and `>= 3.0:1` non-text icon affordances); `contrastLevel: 'aaa'` enforces `>= 7.0:1` normal text / `>= 4.5:1` large text (and `>= 7.0:1` icon affordances).
 
 ## 4. Switches, Checkboxes, Touch Targets & Focus
 
 - **Binary control grammar:**
-  - *Immediate binary switches (`role="switch"`):* `>= 48 CSS px` full-row interactive target with a `56 × 32 px` rounded pill track (`bg-sage-700` or `bg-terracotta` active + white thumb; `bg-charcoal-200` inactive)—used for `Ask the Family` and `Preview features`.
-  - *Explicit-save form checkboxes:* `22–24 px` rounded checkbox (`accent-terracotta`) inside a `>= 48 CSS px` label row—used for `Usual portions: Use family size` and ingredient scaling flags.
+  - _Immediate binary switches (`role="switch"`):_ `>= 48 CSS px` full-row interactive target with a `56 × 32 px` rounded pill track (`bg-garden-fill` or `bg-hearth-fill` active + white thumb; `bg-charcoal-200` inactive)—used for `Ask the Family` and `Preview features`.
+  - _Explicit-save form checkboxes:_ `22–24 px` rounded checkbox (`accent-terracotta`) inside a `>= 48 CSS px` label row—used for `Usual portions: Use family size` and ingredient scaling flags.
 - **Touch targets:** Interactive controls (primary, secondary, icon-only toolbar actions, disclosures) require `>= 48 × 48 CSS px` (`min-h-12` / `min-h-14` on `<Button>` in [button.tsx](../../../pwa/src/components/ui/button.tsx); transparent hit padding around `20–24 px` icons where compact visually). Inline prose links inside running paragraphs remain exempt.
-- **Keyboard focus:** Standardize `:focus-visible` on **`focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal` (`#28231F`)** across all controls (`>= 3:1` against cream, white, and terracotta, and preserved in Forced Colors Mode). Never suppress outlines without an equally visible replacement.
+- **Keyboard focus:** Standardize `:focus-visible` on **`focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body`** (`#28231F` in Standard -> `#191512` in High Contrast; or `outline-hearth-ink` on Hearth panels) across all controls (`>= 3:1` against cream, white, and terracotta, and preserved in Forced Colors Mode). Never suppress outlines without an equally visible replacement.
 
 ## 5. Motion & Asynchronous Stability
 

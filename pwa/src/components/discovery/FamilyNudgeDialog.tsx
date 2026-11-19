@@ -79,7 +79,7 @@ function FamilyNudgeContent({ onClose }: { onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-charcoal/40 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-charcoal/45 px-4 backdrop-blur-sm"
       onClick={() => onClose()}
     >
       <motion.div
@@ -92,28 +92,29 @@ function FamilyNudgeContent({ onClose }: { onClose: () => void }) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 16 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="flex w-full max-w-sm flex-col gap-5 rounded-[2rem] bg-white p-6 shadow-2xl"
+        className="flex w-full max-w-sm flex-col gap-5 rounded-[2rem] border border-charcoal-200 bg-cream p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-charcoal">Nudge the family</h2>
-            <p className="mt-0.5 text-xs text-charcoal/50">Share this week&apos;s voting link</p>
+            <h2 className="font-heading text-lg font-bold text-charcoal">Nudge the family</h2>
+            <p className="mt-0.5 text-xs text-charcoal-600">Share this week&apos;s voting link</p>
           </div>
           <button
+            type="button"
             onClick={() => onClose()}
             data-testid="planner-nudge-close"
-            className="rounded-full p-2 text-charcoal/40 transition-colors hover:bg-charcoal/5"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-charcoal-600 transition-colors hover:bg-charcoal-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
             aria-label={t('common.close', 'Close')}
             title={t('common.close', 'Close')}
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
         <div
           data-testid="planner-nudge-link"
-          className="select-all break-all rounded-xl border border-charcoal/10 bg-cream px-4 py-3 font-mono text-xs text-charcoal/60"
+          className="select-all break-all rounded-xl border border-charcoal-200 bg-white px-4 py-3 font-mono text-xs text-charcoal-700"
         >
           {shareUrl || 'Generating link...'}
         </div>
@@ -121,7 +122,7 @@ function FamilyNudgeContent({ onClose }: { onClose: () => void }) {
         {copied && (
           <p
             data-testid="planner-nudge-copied-feedback"
-            className="-mt-2 text-center text-xs font-medium text-sage"
+            className="-mt-2 text-center text-xs font-medium text-sage-700"
           >
             Link copied!
           </p>
@@ -129,22 +130,24 @@ function FamilyNudgeContent({ onClose }: { onClose: () => void }) {
 
         <div className="flex gap-3">
           <button
+            type="button"
             onClick={handleCopyVotingLink}
             disabled={!shareUrl}
             data-testid="planner-nudge-copy"
-            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-charcoal/5 text-sm font-semibold text-charcoal transition-all hover:bg-charcoal/10 active:scale-95 disabled:opacity-40"
+            className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-charcoal-200 bg-white text-sm font-semibold text-charcoal transition-all hover:bg-charcoal-50 active:scale-95 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
           >
-            <Copy size={16} />
+            <Copy size={16} aria-hidden="true" />
             Copy
           </button>
           {canShare && (
             <button
+              type="button"
               onClick={handleShareVotingLink}
               disabled={!shareUrl}
               data-testid="planner-nudge-share"
-              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-ochre text-sm font-semibold text-white shadow-lg shadow-ochre/30 transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
+              className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-terracotta text-sm font-semibold text-cream-100 shadow-sm transition-all hover:bg-terracotta-600 active:bg-terracotta-700 active:scale-95 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
             >
-              <Share2 size={16} />
+              <Share2 size={16} aria-hidden="true" />
               Share
             </button>
           )}

@@ -62,6 +62,64 @@
   --font-heading: 'Outfit', system-ui, sans-serif;
 }
 
+:root {
+  --role-ink-body: #28231f;
+  --role-ink-muted: #6e645b;
+  --role-hearth-fill: #b85542;
+  --role-hearth-fill-hover: #a44a37;
+  --role-hearth-fill-active: #7b3829;
+  --role-hearth-ink: #a44a37;
+  --role-hearth-line: #e6b3a9;
+  --role-garden-fill: #4e6e52;
+  --role-garden-fill-deep: #3d5940;
+  --role-garden-ink: #4e6e52;
+  --role-garden-line: #c7cfb0;
+  --role-sunlight-ink: #856400;
+  --role-sunlight-line: #ffe666;
+  --role-chrome-line: #e5dfd7;
+  --role-icon-affordance: #9b9085;
+  --role-nav-bg: rgba(253, 252, 240, 0.85);
+  --role-nav-border: rgba(255, 255, 255, 0.2);
+}
+
+:root[data-contrast='high'] {
+  --role-ink-body: #191512;
+  --role-ink-muted: #524a43;
+  --role-hearth-fill: #7b3829;
+  --role-hearth-fill-hover: #52251b;
+  --role-hearth-fill-active: #29130e;
+  --role-hearth-ink: #7b3829;
+  --role-hearth-line: #a44a37;
+  --role-garden-fill: #324d36;
+  --role-garden-fill-deep: #243a27;
+  --role-garden-ink: #324d36;
+  --role-garden-line: #324d36;
+  --role-sunlight-ink: #664e01;
+  --role-sunlight-line: #8f6d01;
+  --role-chrome-line: #6e645b;
+  --role-icon-affordance: #524a43;
+  --role-nav-bg: #fdfcf0;
+  --role-nav-border: #6e645b;
+}
+
+@theme inline {
+  --color-ink-body: var(--role-ink-body);
+  --color-ink-muted: var(--role-ink-muted);
+  --color-hearth-fill: var(--role-hearth-fill);
+  --color-hearth-fill-hover: var(--role-hearth-fill-hover);
+  --color-hearth-fill-active: var(--role-hearth-fill-active);
+  --color-hearth-ink: var(--role-hearth-ink);
+  --color-hearth-line: var(--role-hearth-line);
+  --color-garden-fill: var(--role-garden-fill);
+  --color-garden-fill-deep: var(--role-garden-fill-deep);
+  --color-garden-ink: var(--role-garden-ink);
+  --color-garden-line: var(--role-garden-line);
+  --color-sunlight-ink: var(--role-sunlight-ink);
+  --color-sunlight-line: var(--role-sunlight-line);
+  --color-chrome-line: var(--role-chrome-line);
+  --color-icon-affordance: var(--role-icon-affordance);
+}
+
 @layer base {
   *,
   *::before,
@@ -112,11 +170,31 @@
   }
 
   .glass-nav {
-    background: rgba(253, 252, 240, 0.85);
+    background: var(--role-nav-bg, rgba(253, 252, 240, 0.85));
     -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-top: 1px solid var(--role-nav-border, rgba(255, 255, 255, 0.2));
     box-shadow: 0 -4px 20px rgba(74, 55, 40, 0.02);
+  }
+
+  .glass-header {
+    background: var(--role-nav-bg, rgba(253, 252, 240, 0.85));
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--role-chrome-line, #e5dfd7);
+  }
+
+  .glass-overlay {
+    background: rgba(253, 252, 240, 0.94);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+
+  .glass-toast {
+    background: rgba(255, 255, 255, 0.96);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(40, 35, 31, 0.08);
   }
 
   .glass-sage {
@@ -248,4 +326,33 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+}
+
+:root[data-contrast='high'] .glass-nav {
+  background: var(--role-nav-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-top: 1px solid var(--role-nav-border);
+  box-shadow: none;
+}
+
+:root[data-contrast='high'] .glass-header {
+  background: var(--color-cream);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom: 1px solid var(--role-chrome-line);
+  box-shadow: none;
+}
+
+:root[data-contrast='high'] .glass-overlay {
+  background: var(--color-cream);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:root[data-contrast='high'] .glass-toast {
+  background: var(--color-cream-50);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
 }

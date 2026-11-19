@@ -34,9 +34,9 @@ These screenshots show the demo app. Select an image to see it at full size.
 
 <table>
   <tr>
-    <td align="center" valign="top"><a href="docs/screenshots/demo-discovery.png"><img src="docs/screenshots/demo-discovery.png" alt="Demo Discovery card for Mediterranean Baked Cod with Quinoa, with pass and heart voting controls." width="260" /></a></td>
-    <td align="center" valign="top"><a href="docs/screenshots/demo-weekly-planner.png"><img src="docs/screenshots/demo-weekly-planner.png" alt="Demo weekly planner with chosen recipes, a mystery night, and other supper plans." width="260" /></a></td>
-    <td align="center" valign="top"><a href="docs/screenshots/demo-grocery-list.png"><img src="docs/screenshots/demo-grocery-list.png" alt="Demo grocery checklist grouped by Produce, Bakery, Meat, and Dairy & Eggs, with item checkboxes and shopping progress." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-discovery.png"><img src="docs/screenshots/demo-discovery.png" alt="Demo Discovery card for Honey Garlic Chicken Fried Rice, with solid warm-cream Ready in badge, clamped description, pass and heart voting controls, and tonal sunlit Discover medallion." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-weekly-planner.png"><img src="docs/screenshots/demo-weekly-planner.png" alt="Demo weekly planner with scheduled dinners, open Plan supper slots, Portions control, and Deep Herb Ask the Family CTA." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-grocery-list.png"><img src="docs/screenshots/demo-grocery-list.png" alt="Demo grocery checklist grouped by aisle with Produce items, quantities, recipe and aisle controls, and add-extra input." width="260" /></a></td>
   </tr>
   <tr>
     <td align="center">Choose together.</td>
@@ -44,9 +44,9 @@ These screenshots show the demo app. Select an image to see it at full size.
     <td align="center">Shop from one list.</td>
   </tr>
   <tr>
-    <td align="center" valign="top"><a href="docs/screenshots/demo-add-recipe.png"><img src="docs/screenshots/demo-add-recipe.png" alt="Demo Add a Recipe screen with camera, gallery, recipe link, description, and recipe file options." width="260" /></a></td>
-    <td align="center" valign="top"><a href="docs/screenshots/demo-tonights-supper.png"><img src="docs/screenshots/demo-tonights-supper.png" alt="Demo Tonight’s Menu showing Mediterranean Baked Cod with Quinoa, ready in 35 minutes, with a link to ingredients." width="260" /></a></td>
-    <td align="center" valign="top"><a href="docs/screenshots/demo-cooks-mode.png"><img src="docs/screenshots/demo-cooks-mode.png" alt="Demo Cook's Mode showing quinoa and fish preparation instructions, plus Ingredients and Cooked controls." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-add-recipe.png"><img src="docs/screenshots/demo-add-recipe.png" alt="Demo Add a Recipe screen with terracotta camera button, gallery picker, recipe link, description, and recipe file options." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-tonights-supper.png"><img src="docs/screenshots/demo-tonights-supper.png" alt="Demo Tonight’s Menu showing Grilled Thai Coconut Chicken Skewers, ready in 27 minutes, with Cook and Change plan actions." width="260" /></a></td>
+    <td align="center" valign="top"><a href="docs/screenshots/demo-cooks-mode.png"><img src="docs/screenshots/demo-cooks-mode.png" alt="Demo Cook's Mode for Grilled Thai Coconut Chicken Skewers showing preparation instructions, portion summary, Ingredients, and Cooked controls." width="260" /></a></td>
   </tr>
   <tr>
     <td align="center">Add your family favourites.</td>

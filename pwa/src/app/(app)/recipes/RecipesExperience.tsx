@@ -1728,8 +1728,10 @@ function RecipesContent() {
               : t('recipes.showingAll', 'Showing all recipes')
           }
         >
-          <Compass className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre fill-ochre/20' : ''}`} />
-          <span className="hidden min-[390px]:inline text-xs font-black tracking-wide uppercase">
+          <Compass
+            className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre-800 fill-ochre/20' : ''}`}
+          />
+          <span className="hidden min-[390px]:inline text-xs font-semibold tracking-wide">
             {isDiscoverableOnly
               ? t('recipes.scopeDiscovery', 'Discovery')
               : t('recipes.scopeAll', 'All')}
@@ -1968,10 +1970,10 @@ function RecipesContent() {
           <div className="flex flex-col items-center gap-4">
             <Loader2
               data-testid="browse-all-loader"
-              className="animate-spin motion-reduce:animate-none text-ochre"
+              className="animate-spin motion-reduce:animate-none text-terracotta"
               size={48}
             />
-            <p className="text-sm font-medium text-charcoal/50">
+            <p className="text-sm font-medium text-charcoal-600">
               {searchActive
                 ? t('recipes.searchLoading', 'Searching…')
                 : t('recipes.libraryLoading', 'Loading your library…')}
@@ -1992,7 +1994,7 @@ function RecipesContent() {
               type="button"
               data-testid="browse-request-retry"
               onClick={() => fetchLibraryData(1, isDiscoverableOnly)}
-              className="min-h-12 px-6 py-3 rounded-full bg-ochre text-charcoal font-bold text-sm shadow-md"
+              className="min-h-12 px-6 py-3 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-cream-100 font-semibold text-sm shadow-sm"
             >
               {t('common.retry', 'Retry')}
             </button>
@@ -2011,7 +2013,7 @@ function RecipesContent() {
               type="button"
               disabled={isPrefetching}
               onClick={() => void fetchLibraryData(1, isDiscoverableOnly, true, true)}
-              className="mt-2 min-h-12 rounded-full bg-ochre px-6 font-bold text-charcoal"
+              className="mt-2 min-h-12 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-6 font-semibold text-cream-100"
             >
               {t('recipes.restartFirstPage', 'Restart from first page')}
             </button>
@@ -2082,7 +2084,7 @@ function RecipesContent() {
                 type="button"
                 data-testid="search-empty-clear-search"
                 onClick={clearSearch}
-                className="min-h-12 rounded-full bg-ochre px-4 font-bold text-charcoal"
+                className="min-h-12 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-4 font-semibold text-cream-100"
               >
                 {t('recipes.clearSearchAndBrowse', 'Clear search and browse')}
               </button>
@@ -2149,7 +2151,7 @@ function RecipesContent() {
               {isPrefetching && (
                 <div className="flex justify-center py-4">
                   <Loader2
-                    className="animate-spin motion-reduce:animate-none text-ochre"
+                    className="animate-spin motion-reduce:animate-none text-terracotta"
                     size={28}
                   />
                 </div>

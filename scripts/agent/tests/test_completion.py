@@ -385,6 +385,67 @@ class CompletionTests(IsolatedGitTestCase):
         self.assertEqual(f.introduced_links('[old](missing.md) [new](new.md)',
                                             '[old](missing.md)'), ['new.md'])
 
+    def test_markdown_links_and_documentation_check_support_nextjs_route_groups(self):
+        f = self.finish()
+        baseline = '[Existing](pwa/src/app/(auth)/login/page.tsx)'
+        current = (
+            '(see [Existing](pwa/src/app/(auth)/login/page.tsx) and '
+            '[Home](pwa/src/app/(app)/home/page.tsx) and '
+            '[Welcome](pwa/src/app/(auth)/welcome/page.tsx#L10) and '
+            '[BrokenParens](pwa/src/app/(app)/missing.tsx) and '
+            '[BrokenPlain](docs/missing.md))'
+        )
+        self.assertEqual(
+            f.introduced_links(current, baseline),
+            [
+                'pwa/src/app/(app)/home/page.tsx',
+                'pwa/src/app/(auth)/welcome/page.tsx#L10',
+                'pwa/src/app/(app)/missing.tsx',
+                'docs/missing.md',
+            ],
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
+            subprocess.run(['git', 'config', 'user.email', 'tests@example.com'], cwd=root, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Tests'], cwd=root, check=True)
+            home_page = root / 'pwa/src/app/(app)/home/page.tsx'
+            welcome_page = root / 'pwa/src/app/(auth)/welcome/page.tsx'
+            home_page.parent.mkdir(parents=True)
+            welcome_page.parent.mkdir(parents=True)
+            home_page.write_text('export default function HomePage() { return null; }\n')
+            welcome_page.write_text('export default function WelcomePage() { return null; }\n')
+            doc = root / 'docs/routes.md'
+            doc.parent.mkdir(parents=True)
+            doc.write_text('# Routes\n')
+            subprocess.run(['git', 'add', '.'], cwd=root, check=True)
+            subprocess.run(['git', 'commit', '-qm', 'baseline'], cwd=root, check=True)
+
+            doc.write_text(
+                '# Routes\n\n'
+                '- [Home](../pwa/src/app/(app)/home/page.tsx)\n'
+                '- [Welcome](../pwa/src/app/(auth)/welcome/page.tsx#L1)\n'
+            )
+            with mock.patch.object(f, 'ROOT', root):
+                status, detail = f.documentation_check(['docs/routes.md'])
+                self.assertEqual(status, 'passed', detail)
+
+                _, links = f.documentation_inputs(['docs/routes.md'])
+                self.assertTrue(links[str(home_page.resolve())])
+                self.assertTrue(links[str(welcome_page.resolve())])
+
+                doc.write_text(
+                    '# Routes\n\n'
+                    '- [Home](../pwa/src/app/(app)/home/page.tsx)\n'
+                    '- [BrokenParens](../pwa/src/app/(app)/missing.tsx)\n'
+                    '- [BrokenPlain](missing.md)\n'
+                )
+                status, detail = f.documentation_check(['docs/routes.md'])
+                self.assertEqual(status, 'failed')
+                self.assertIn('docs/routes.md: unresolved ../pwa/src/app/(app)/missing.tsx', detail)
+                self.assertIn('docs/routes.md: unresolved missing.md', detail)
+
     def test_audit_preserves_discovery_and_semantic_assertions(self):
         import test_audit
         with tempfile.TemporaryDirectory() as tmp:

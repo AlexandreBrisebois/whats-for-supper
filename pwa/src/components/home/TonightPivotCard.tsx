@@ -64,7 +64,7 @@ export function TonightPivotCard({
         <div className="flex justify-between items-center mb-5 px-1">
           <h2
             data-testid="pivot-card-header"
-            className="font-heading text-base font-medium text-charcoal-600"
+            className="font-heading text-base font-medium text-ink-muted"
           >
             {mysteryProposal
               ? nonCookingLabel
@@ -78,7 +78,7 @@ export function TonightPivotCard({
           {showGotoHelper ? (
             <div
               data-testid="empty-pivot-illustration"
-              className="flex h-28 sm:h-40 items-center justify-center rounded-[1.5rem] bg-cream text-sage-700"
+              className="flex h-28 sm:h-40 items-center justify-center rounded-[1.5rem] bg-cream text-garden-ink"
               aria-hidden="true"
             >
               <Utensils size={104} strokeWidth={1.25} />
@@ -86,7 +86,7 @@ export function TonightPivotCard({
           ) : mysteryWithoutProposal ? (
             <div
               data-testid="mystery-plan-illustration"
-              className="mb-6 flex h-28 items-center justify-center rounded-[1.5rem] bg-cream text-sage-700 sm:h-40"
+              className="mb-6 flex h-28 items-center justify-center rounded-[1.5rem] bg-cream text-garden-ink sm:h-40"
               aria-hidden="true"
             >
               <NonCookingIcon kind="mystery" size={104} strokeWidth={1.25} />
@@ -99,7 +99,7 @@ export function TonightPivotCard({
               className="aspect-[5/4]"
               fallback={
                 nonCookingLabel ? (
-                  <NonCookingIcon kind={nonCookingKind} size={28} className="text-sage-700" />
+                  <NonCookingIcon kind={nonCookingKind} size={28} className="text-garden-ink" />
                 ) : (
                   <Utensils size={28} />
                 )
@@ -113,7 +113,7 @@ export function TonightPivotCard({
           {mysteryProposal ? null : nonCookingLabel && nonCookingKind === 'mystery' ? (
             <h3
               data-testid="today-non-cooking-label"
-              className="font-heading text-3xl font-black leading-snug text-charcoal"
+              className="font-heading text-3xl font-black leading-snug text-ink-body"
             >
               {nonCookingLabel}
             </h3>
@@ -121,11 +121,11 @@ export function TonightPivotCard({
             <details>
               <summary
                 data-testid="today-non-cooking-label"
-                className="cursor-pointer font-heading text-3xl font-black text-charcoal"
+                className="cursor-pointer font-heading text-3xl font-black text-ink-body"
               >
                 {nonCookingLabel}
               </summary>
-              <p className="mt-3 whitespace-pre-wrap break-words text-charcoal">
+              <p className="mt-3 whitespace-pre-wrap break-words text-ink-body">
                 {nonCookingLabel}
               </p>
             </details>
@@ -133,7 +133,7 @@ export function TonightPivotCard({
           {mysteryWithoutProposal && !hasGoto && (
             <p
               data-testid="mystery-availability"
-              className="text-base leading-relaxed text-charcoal-600"
+              className="text-base leading-relaxed text-ink-muted"
             >
               {hasCheckedActive
                 ? t('home.noGotoSuggestion', 'No GOTO suggestion available right now.')
@@ -142,19 +142,19 @@ export function TonightPivotCard({
           )}
           {gotoReady ? (
             <div>
-              <p className="text-sm font-medium leading-normal text-charcoal-600">
+              <p className="text-sm font-medium leading-normal text-ink-muted">
                 {t('home.familyGoto', "Your family's GOTO")}
               </p>
-              <h3 className="font-heading text-[2rem] font-black text-charcoal leading-tight tracking-tight">
+              <h3 className="font-heading text-[2rem] font-black text-ink-body leading-tight tracking-tight">
                 {gotoDescription}
               </h3>
             </div>
           ) : gotoPending ? (
-            <p className="text-charcoal-600 text-sm font-medium italic">
+            <p className="text-ink-muted text-sm font-medium italic">
               {t('home.preparingGoto', 'Your GOTO is being prepared…')}
             </p>
           ) : isFetching ? (
-            <p className="text-charcoal-600 text-sm font-medium italic">
+            <p className="text-ink-muted text-sm font-medium italic">
               {t('home.checkingGoto', 'Checking your GOTO…')}
             </p>
           ) : null}
@@ -167,7 +167,7 @@ export function TonightPivotCard({
               disabled={actionPending}
               onClick={onConfirmGoto}
               data-testid="confirm-goto-btn"
-              className="flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal"
+              className="flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] bg-hearth-fill text-cream-100 hover:bg-hearth-fill-hover active:bg-hearth-fill-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body text-base font-semibold leading-normal"
             >
               <UtensilsCrossed size={18} aria-hidden="true" className="shrink-0" />
               {t('home.makeThisTonight', 'Make this tonight')}
@@ -180,8 +180,8 @@ export function TonightPivotCard({
               data-testid="discover-btn"
               className={
                 gotoReady
-                  ? 'flex min-w-[min(100%,8em)] flex-[1.4_1_8em] items-center justify-center gap-1 min-h-14 px-1.5 py-3 rounded-[1.5rem] border border-terracotta-200 text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal'
-                  : 'flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal'
+                  ? 'flex min-w-[min(100%,8em)] flex-[1.4_1_8em] items-center justify-center gap-1 min-h-14 px-1.5 py-3 rounded-[1.5rem] border border-hearth-line text-hearth-ink hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body text-base font-semibold leading-normal'
+                  : 'flex items-center justify-center gap-2 min-h-14 px-4 py-3 rounded-[1.5rem] bg-hearth-fill text-cream-100 hover:bg-hearth-fill-hover active:bg-hearth-fill-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body text-base font-semibold leading-normal'
               }
             >
               <Search size={16} aria-hidden="true" className="shrink-0" />
@@ -195,8 +195,8 @@ export function TonightPivotCard({
               data-testid="order-in-btn"
               className={
                 gotoReady
-                  ? 'flex min-w-[min(100%,8.25em)] flex-[1_1_8.25em] items-center justify-center gap-1 min-h-14 px-1.5 py-3 rounded-[1.5rem] border border-terracotta-200 text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal'
-                  : 'flex items-center justify-center gap-1 min-h-14 px-1.5 py-3 rounded-[1.5rem] border border-terracotta-200 text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal text-base font-semibold leading-normal'
+                  ? 'flex min-w-[min(100%,8.25em)] flex-[1_1_8.25em] items-center justify-center gap-1 min-h-14 px-1.5 py-3 rounded-[1.5rem] border border-hearth-line text-hearth-ink hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body text-base font-semibold leading-normal'
+                  : 'flex items-center justify-center gap-1 min-h-14 px-1.5 py-3 rounded-[1.5rem] border border-hearth-line text-hearth-ink hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body text-base font-semibold leading-normal'
               }
             >
               <ShoppingBag size={16} aria-hidden="true" className="shrink-0" />
@@ -207,7 +207,7 @@ export function TonightPivotCard({
           </div>
           {showGotoHelper && (
             <div data-testid="goto-setup-helper" className="mt-2 space-y-1">
-              <p className="text-base font-normal leading-relaxed text-charcoal-600">
+              <p className="text-base font-normal leading-relaxed text-ink-muted">
                 {t(
                   'home.gotoHelper',
                   'Tap the {{star}} on favourite recipes so we can suggest one here.'

@@ -640,7 +640,7 @@ test('corrects today cooked portions without reopening cooking', async ({ page }
   expect(schedule.days[2].status).toBe(2);
 });
 
-for (const action of ['leave', 'four', 'reset'] as const) {
+for (const action of ['leave', 'four'] as const) {
   test(`current cooked inherited portions ${action} preserves the saved baseline and intent`, async ({
     page,
   }) => {
@@ -661,15 +661,12 @@ for (const action of ['leave', 'four', 'reset'] as const) {
       await page.getByTestId('save-portions').click();
       expect(bodies).toHaveLength(0);
     } else {
-      await input.fill(action === 'reset' ? '6' : '4');
-      if (action === 'reset') await page.getByTestId('reset-portions-2026-05-06').click();
+      await input.fill('4');
       await expect(input).toHaveValue('4');
       await page.getByTestId('save-portions').click();
       await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
       expect(bodies).toHaveLength(1);
-      expect(bodies[0].days).toEqual([
-        { date: '2026-05-06', servings: action === 'reset' ? null : 4 },
-      ]);
+      expect(bodies[0].days).toEqual([{ date: '2026-05-06', servings: 4 }]);
       const stored = control.captureSnapshot();
       expect(stored.inherited.find(([date]) => date === '2026-05-06')?.[1]).toBe(4);
       control.restoreSnapshot({ ...stored, savedUsual: 6 });
@@ -681,7 +678,7 @@ for (const action of ['leave', 'four', 'reset'] as const) {
   });
 }
 
-test('configured usual, sparse reset and invalid correction keep date-only drafts', async ({
+test('configured usual, sparse edit and invalid correction keep date-only drafts', async ({
   page,
 }) => {
   const { bodies } = await draftFixture(page, { usual: 4 });
@@ -698,11 +695,12 @@ test('configured usual, sparse reset and invalid correction keep date-only draft
     ],
   });
   await page.getByTestId('at-the-table-mode').click();
-  await page.getByTestId('reset-portions-2026-05-06').click();
+  await expect(page.getByTestId('reset-portions-2026-05-06')).toHaveCount(0);
+  await page.getByTestId('portion-input-2026-05-06').fill('4');
   await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('4');
   await page.getByTestId('save-portions').click();
   await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
-  expect(bodies[1]).toMatchObject({ days: [{ date: '2026-05-06', servings: null }] });
+  expect(bodies[1]).toMatchObject({ days: [{ date: '2026-05-06', servings: 4 }] });
   expect(bodies[1]).not.toHaveProperty('defaultServings');
   await page.getByTestId('at-the-table-mode').click();
   await page.getByTestId('portion-input-2026-05-06').fill('0');
@@ -841,7 +839,7 @@ test('returning to a clean draft releases native history and does not restore ob
 }) => {
   const { bodies } = await draftFixture(page, { usual: 4 });
   await page.getByTestId('portion-input-2026-05-06').fill('5');
-  await page.getByTestId('reset-portions-2026-05-06').click();
+  await page.getByTestId('portion-input-2026-05-06').fill('4');
   await expect
     .poll(() =>
       page.evaluate(() =>
@@ -972,7 +970,8 @@ test('keyboard numbers enforce integer bounds and reset without a premature writ
   await page.setViewportSize({ width: 320, height: 390 });
   await input.scrollIntoViewIfNeeded();
   await expect(input).toBeInViewport();
-  await page.getByTestId('reset-portions-2026-05-06').click();
+  await expect(page.getByTestId('reset-portions-2026-05-06')).toHaveCount(0);
+  await input.fill('4');
   await expect(input).toHaveValue('4');
   expect(bodies).toHaveLength(0);
 });
@@ -1110,11 +1109,31 @@ test('past and Cooked portions retain their saved values while usual portions ch
   schedule.calendar.today = '2026-05-05';
   schedule.days[6].status = 2;
   await page.getByTestId('at-the-table-mode').click();
-  await expect(page.getByTestId('portion-input-2026-05-04')).toBeDisabled();
-  await expect(page.getByTestId('portion-input-2026-05-10')).toBeDisabled();
-  await expect(page.getByTestId('portion-input-2026-05-04')).toHaveValue('');
-  await expect(page.getByTestId('portion-input-2026-05-10')).toHaveValue('');
+  const pastRow = page.getByTestId('portion-row-2026-05-04');
+  await expect(pastRow.getByTestId('portion-input-2026-05-04')).toHaveCount(0);
+  await expect(pastRow.getByTestId('portion-prepared-status-2026-05-04')).toHaveCount(0);
+  await expect(pastRow.locator('button')).toHaveCount(0);
+
+  const cookedRow = page.getByTestId('portion-row-2026-05-10');
+  await expect(cookedRow.getByTestId('portion-input-2026-05-10')).toHaveCount(0);
+  await expect(cookedRow.getByTestId('portion-prepared-status-2026-05-10')).toContainText(
+    'Already prepared'
+  );
+  await expect(cookedRow.getByTestId('portion-prepared-count-2026-05-10')).toHaveCount(0);
+  await expect(cookedRow.locator('button')).toHaveCount(0);
+
   await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('5');
+  const apiState = await page.evaluate(
+    async () => (await (await fetch('/api/schedule/servings?weekOffset=0')).json()).data
+  );
+  expect(apiState.days.find((d: any) => d.date === '2026-05-04')).toMatchObject({
+    servings: null,
+    editable: false,
+  });
+  expect(apiState.days.find((d: any) => d.date === '2026-05-10')).toMatchObject({
+    servings: null,
+    editable: false,
+  });
   expect(bodies).toHaveLength(0);
 });
 

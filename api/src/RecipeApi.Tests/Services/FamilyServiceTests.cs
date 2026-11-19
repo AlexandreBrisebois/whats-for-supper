@@ -248,6 +248,54 @@ public class FamilyServiceTests
         Assert.Null(member.CookingViewMode);
     }
 
+    [Theory]
+    [InlineData("standard", "standard")]
+    [InlineData("HIGH", "high")]
+    [InlineData("  Standard  ", "standard")]
+    public async Task UpdateFamilyMemberPreferences_Persists_And_Normalizes_ContrastMode_Only(
+        string supplied,
+        string expected)
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = CreateService(ctx);
+        var member = await service.CreateFamilyMember("Alex");
+        await service.UpdateFamilyMemberPreferences(member.Id, "stack", "fr", "step-by-step");
+
+        var updated = await service.UpdateFamilyMemberPreferences(member.Id, null, null, null, supplied);
+
+        Assert.Equal(expected, updated.ContrastMode);
+        Assert.Equal("stack", updated.BrowseViewMode);
+        Assert.Equal("fr", updated.PreferredLanguage);
+        Assert.Equal("step-by-step", updated.CookingViewMode);
+        Assert.Equal("Alex", updated.Name);
+    }
+
+    [Theory]
+    [InlineData("ultra")]
+    [InlineData("   ")]
+    public async Task UpdateFamilyMemberPreferences_Invalid_ContrastMode_Does_Not_Change_Member(string supplied)
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = CreateService(ctx);
+        var member = await service.CreateFamilyMember("Alex");
+        await service.UpdateFamilyMemberPreferences(member.Id, null, null, null, "high");
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdateFamilyMemberPreferences(member.Id, null, null, null, supplied));
+        Assert.Equal("high", member.ContrastMode);
+    }
+
+    [Fact]
+    public async Task UpdateFamilyMemberPreferences_All_Null_Throws_ArgumentException()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = CreateService(ctx);
+        var member = await service.CreateFamilyMember("Alex");
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdateFamilyMemberPreferences(member.Id, null, null, null, null));
+    }
+
     // ── DeleteFamilyMember ────────────────────────────────────────────────────
 
     [Fact]

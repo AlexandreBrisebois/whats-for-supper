@@ -212,8 +212,14 @@ test('generated prepare persists Friday receipt, actual Tuesday history, raw SSE
     await observer.getByTestId('close-cooks-mode').click();
     await observer.getByTestId('action-close-sheet').click();
     await observer.getByTestId('at-the-table-mode').click();
-    await expect(observer.getByTestId('portion-input-2026-10-16')).toBeDisabled();
-    await expect(observer.getByTestId('portion-input-2026-10-16')).toHaveValue('6');
+    const preparedRow = observer.getByTestId('portion-row-2026-10-16');
+    await expect(preparedRow.getByTestId('portion-input-2026-10-16')).toHaveCount(0);
+    await expect(preparedRow.getByTestId('portion-prepared-status-2026-10-16')).toContainText(
+      'Already prepared'
+    );
+    await expect(preparedRow.getByTestId('portion-prepared-count-2026-10-16')).toHaveText(
+      '6 portions'
+    );
     await observer.screenshot({
       path: info.outputPath('frozen-prepared-table.png'),
       animations: 'disabled',

@@ -25,7 +25,7 @@ describe('RecipeImportIssueBadge', () => {
     render(<RecipeImportIssueBadge status="readyToReview" variant="compact" />);
 
     const badge = screen.getByLabelText('Recipe ready for review');
-    expect(badge).toHaveClass('shrink-0', 'whitespace-nowrap', 'text-[10px]');
+    expect(badge).toHaveClass('shrink-0', 'whitespace-nowrap', 'text-xs');
     expect(badge).toHaveTextContent('Review');
   });
 

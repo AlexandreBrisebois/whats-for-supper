@@ -42,6 +42,17 @@ describe('FamilyNudgeDialog', () => {
     unmount();
     trigger.remove();
   });
+
+  it('renders Share action with Family Cookbook terracotta primary contrast when navigator.share is available', async () => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: vi.fn() });
+    render(<FamilyNudgeDialog open onClose={vi.fn()} />);
+    await screen.findByText(`${window.location.origin}/discovery`);
+    const shareBtn = screen.getByTestId('planner-nudge-share');
+    expect(shareBtn).toHaveClass('bg-terracotta', 'text-cream-100', 'min-h-12');
+    expect(shareBtn).not.toHaveClass('bg-ochre');
+    const closeBtn = screen.getByTestId('planner-nudge-close');
+    expect(closeBtn).toHaveClass('h-12', 'w-12', 'text-charcoal-600');
+  });
 });
 
 // Run the real declaration/coordinator path rather than mocking the observation hook.

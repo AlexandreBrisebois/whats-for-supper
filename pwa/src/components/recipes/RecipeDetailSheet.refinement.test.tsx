@@ -189,7 +189,7 @@ describe('quiet recipe composition refinement', () => {
     expect(screen.queryByTestId('action-change-day')).not.toBeInTheDocument();
     expect(screen.queryByTestId('action-add-to-day')).not.toBeInTheDocument();
     expect(screen.queryByTestId('action-plan-another-day')).not.toBeInTheDocument();
-    expect(screen.getByTestId('action-cooks-mode')).toHaveClass('bg-terracotta');
+    expect(screen.getByTestId('action-cooks-mode')).toHaveClass('bg-hearth-fill');
     fireEvent.click(planned);
     expect(onOpenPlannedDay).toHaveBeenCalledOnce();
     expect(props.onUseForDay).not.toHaveBeenCalled();

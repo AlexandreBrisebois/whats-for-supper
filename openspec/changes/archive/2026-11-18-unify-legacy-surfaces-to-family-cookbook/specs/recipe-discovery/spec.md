@@ -4,7 +4,7 @@
 
 ### Requirement: Display recipe card facts and vote controls
 
-Cards SHALL display the recipe name, named-image alternative text, and concise supporting description (`<= 2` clamped lines) when a non-empty description is present, omitting the description block when blank. Formatted total time SHALL appear once in a solid high-contrast warm-cream lower-left hero badge (preserving existing localized Ready in copy) when usable; cuisine and meal-type pills SHALL remain absent. Right-drag like, left-drag pass, and accessible `Like recipe` / `Dislike recipe` controls SHALL remain operable with WCAG 2.2 AA contrast.
+Cards SHALL display the recipe name, named-image alt text, and up to two clamped lines of non-empty description, omitted when blank. Usable formatted total time SHALL appear once in a solid warm-cream lower-left hero badge preserving localized Ready in copy; cuisine and meal-type pills SHALL remain absent. Right-drag like, left-drag pass, and WCAG AA `Like recipe` / `Dislike recipe` controls SHALL remain operable.
 
 #### Scenario: Card loaded
 - **WHEN** a front card has a non-empty description, cuisine, meal types, and usable total time

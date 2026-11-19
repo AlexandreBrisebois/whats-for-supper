@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -18,12 +18,12 @@ vi.mock('next/link', () => ({
     </a>
   ),
 }));
-vi.mock('@/locales', () => ({ t: (_key: string, fallback: string) => fallback }));
 vi.mock('@/lib/api/discovery', () => ({
   getCategories: mocks.getCategories,
   getVotingSession: mocks.getVotingSession,
 }));
 
+import { LocaleProvider, useLocale } from '@/components/common/LocaleProvider';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { Navigation } from './Navigation';
 
@@ -47,6 +47,7 @@ const sessionFor = (phase: 'unowned' | 'collecting' | 'converged', revision = 1)
 describe('Navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     mocks.pathname = '/recipes';
     mocks.getCategories.mockResolvedValue([]);
     mocks.getVotingSession.mockResolvedValue(sessionFor('unowned'));
@@ -125,5 +126,74 @@ describe('Navigation', () => {
     expect(screen.getByTestId('nav-item-discovery').querySelector('div')).not.toHaveClass(
       'animate-pulse-ochre'
     );
+  });
+
+  it('uses Family Cookbook tonal sunlit Discover medallion, >= 12px sentence-case labels, and min-h-12 targets', async () => {
+    await act(async () => {
+      render(
+        <LocaleProvider>
+          <Navigation />
+        </LocaleProvider>
+      );
+    });
+
+    const discoveryLink = screen.getByTestId('nav-item-discovery');
+    expect(discoveryLink).toHaveClass('-top-3', 'min-h-12');
+    expect(discoveryLink).not.toHaveClass('-top-4');
+
+    const orb = discoveryLink.querySelector('div');
+    expect(orb).toHaveClass(
+      'h-16',
+      'w-16',
+      'bg-ochre-100',
+      'text-sunlight-ink',
+      'border-sunlight-line'
+    );
+    expect(orb).not.toHaveClass('h-20', 'w-20', 'bg-ochre');
+
+    const discoveryLabel = discoveryLink.querySelector('span');
+    expect(discoveryLabel).toHaveClass('text-xs', 'text-sunlight-ink');
+    expect(discoveryLabel).not.toHaveClass('text-[9px]', 'uppercase', 'text-ochre');
+
+    const homeLink = screen.getByTestId('nav-item-home');
+    expect(homeLink).toHaveClass('min-h-12', 'text-xs', 'text-ink-muted');
+    expect(homeLink).not.toHaveClass('text-[11px]', 'uppercase', 'text-charcoal-400');
+
+    const recipesLink = screen.getByTestId('nav-item-recipes');
+    expect(recipesLink).toHaveClass('min-h-12', 'text-xs', 'text-hearth-ink');
+  });
+
+  it('updates navigation labels at render time when locale changes without reload', async () => {
+    function LocaleToggleHelper() {
+      const { setCurrentLocale } = useLocale();
+      return (
+        <button type="button" onClick={() => setCurrentLocale('fr')}>
+          Switch to FR
+        </button>
+      );
+    }
+
+    await act(async () => {
+      render(
+        <LocaleProvider>
+          <LocaleToggleHelper />
+          <Navigation />
+        </LocaleProvider>
+      );
+    });
+
+    expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Recipes' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Discovery' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Planner' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Profile' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to FR' }));
+
+    expect(screen.getByRole('link', { name: 'Accueil' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Recettes' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Découverte' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Plan' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Profil' })).toBeInTheDocument();
   });
 });

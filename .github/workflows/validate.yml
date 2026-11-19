@@ -128,7 +128,7 @@ jobs:
       - name: Set up .NET 11 Preview
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '11.0.100-rc.2.26504.105'
+          dotnet-version: '11.0.100'
           cache: true
           cache-dependency-path: '**/*.csproj'
       - name: Restore dependencies
@@ -164,7 +164,7 @@ jobs:
       - name: Set up .NET 11 Preview
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '11.0.100-rc.2.26504.105'
+          dotnet-version: '11.0.100'
           cache: true
           cache-dependency-path: '**/*.csproj'
       - name: Restore dependencies
@@ -227,7 +227,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
-            11.0.100-rc.2.26504.105
+            11.0.100
             10.0.x
           cache: true
           cache-dependency-path: '**/*.csproj'

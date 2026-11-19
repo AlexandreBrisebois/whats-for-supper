@@ -11,19 +11,19 @@ import { t } from '@/locales';
  */
 export default function LandingPage() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6 py-12">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-cream px-6 py-12">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-indigo">
+        <h1 className="font-heading text-4xl font-bold text-charcoal">
           {t('landing.title', "What's for Supper?")}
         </h1>
-        <p className="mt-3 text-lg text-charcoal-400">
+        <p className="mt-3 text-lg text-charcoal-600">
           {t('landing.subtitle', 'Capture recipes, plan your week, discover what to cook next.')}
         </p>
       </div>
 
       <Link
         href={ROUTES.ONBOARDING}
-        className="rounded-2xl bg-indigo px-8 py-4 text-lg font-semibold text-lavender shadow-card transition-opacity hover:opacity-90 active:opacity-75"
+        className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-terracotta px-8 py-4 text-lg font-semibold text-cream-100 shadow-sm transition-colors hover:bg-terracotta-600 active:bg-terracotta-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
       >
         {t('landing.getStarted', 'Get Started')}
       </Link>

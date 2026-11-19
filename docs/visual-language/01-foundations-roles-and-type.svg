@@ -50,163 +50,164 @@ SOFTWARE.
     <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#28231F" flood-opacity="0.08"/>
   </filter>
   <linearGradient id="herbGrad" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="#6E7A49"/>
-    <stop offset="100%" stop-color="#525B37"/>
+    <stop offset="0%" stop-color="#4E6E52"/>
+    <stop offset="100%" stop-color="#3D5940"/>
   </linearGradient>
 </defs>
 <style>text { font-family: Inter, "DejaVu Sans", sans-serif; } .heading { font-family: Outfit, Inter, "DejaVu Sans", sans-serif; }</style>
 <rect x="0" y="0" width="920" height="1840" rx="0" fill="#FDFCF0"/>
 <rect x="0" y="0" width="920" height="140" rx="0" fill="#FDFCF0"/>
-<text x="32" y="42" font-size="14" fill="#7B3829" font-weight="700">WFS / Shared Table · Family Cookbook Era 3</text>
-<rect x="660" y="26" width="228" height="24" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="670" y="42.2" font-size="12" fill="#524A43" font-weight="600">Layer 1 · Perceptual Foundations</text>
+<text x="32" y="42" font-size="14" fill="#A44A37" font-weight="700">WFS / Shared Table · Family Cookbook Era 3 (Dual-Mode)</text>
+<rect x="640" y="26" width="248" height="24" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="650" y="42.2" font-size="12" fill="#6E645B" font-weight="600">Layer 1 · Standard AA &amp; High AAA</text>
 <text x="32" y="82" font-size="30" fill="#28231F" font-weight="700" class="heading">01  Foundations: roles, type &amp; icons</text>
-<text x="32" y="112" font-size="15" fill="#524A43" font-weight="400">Token pairs compensated for hue lightness asymmetry · applies identically across every route.</text>
+<text x="32" y="112" font-size="15" fill="#6E645B" font-weight="400">Dual-mode semantic tokens (:root Standard AA default vs. :root[data-contrast="high"] AAA) over immutable ramps.</text>
 <line x1="32" y1="132" x2="888" y2="132" stroke="#E5DFD7" stroke-width="1"/>
 <text x="32" y="166" font-size="18" fill="#28231F" font-weight="700" class="heading">1 · Warm espresso-ink charcoal ramp &amp; cream canvas</text>
 <rect x="32" y="182" width="856" height="152" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <rect x="48" y="198" width="66" height="52" rx="10" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
 <text x="81" y="228" font-size="12" fill="#28231F" font-weight="700" text-anchor="middle">cream</text>
-<text x="81" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#FDFCF0</text>
-<text x="81" y="285" font-size="10.5" fill="#7B3829" font-weight="600" text-anchor="middle">15.08:1</text>
+<text x="81" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#FDFCF0</text>
+<text x="81" y="285" font-size="10.5" fill="#A44A37" font-weight="600" text-anchor="middle">15.08:1</text>
 <rect x="117" y="198" width="66" height="52" rx="10" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="150" y="228" font-size="12" fill="#28231F" font-weight="700" text-anchor="middle">white</text>
-<text x="150" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#FFFFFF</text>
-<text x="150" y="285" font-size="10.5" fill="#7B3829" font-weight="600" text-anchor="middle">15.55:1</text>
+<text x="150" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#FFFFFF</text>
+<text x="150" y="285" font-size="10.5" fill="#A44A37" font-weight="600" text-anchor="middle">15.55:1</text>
 <rect x="186" y="198" width="66" height="52" rx="10" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
 <text x="219" y="228" font-size="12" fill="#28231F" font-weight="700" text-anchor="middle">50</text>
-<text x="219" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#FAF8F5</text>
+<text x="219" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#FAF8F5</text>
 <rect x="255" y="198" width="66" height="52" rx="10" fill="#F3EFEA"/>
 <text x="288" y="228" font-size="12" fill="#28231F" font-weight="700" text-anchor="middle">100</text>
-<text x="288" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#F3EFEA</text>
+<text x="288" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#F3EFEA</text>
 <rect x="324" y="198" width="66" height="52" rx="10" fill="#E5DFD7"/>
 <text x="357" y="228" font-size="12" fill="#28231F" font-weight="700" text-anchor="middle">200</text>
-<text x="357" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#E5DFD7</text>
+<text x="357" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#E5DFD7</text>
 <rect x="393" y="198" width="66" height="52" rx="10" fill="#CFC6BC"/>
 <text x="426" y="228" font-size="12" fill="#28231F" font-weight="700" text-anchor="middle">300</text>
-<text x="426" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#CFC6BC</text>
+<text x="426" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#CFC6BC</text>
 <rect x="462" y="198" width="66" height="52" rx="10" fill="#9B9085"/>
 <text x="495" y="228" font-size="12" fill="#28231F" font-weight="700" text-anchor="middle">400</text>
-<text x="495" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#9B9085</text>
+<text x="495" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#9B9085</text>
+<text x="495" y="285" font-size="10.5" fill="#6E645B" font-weight="600" text-anchor="middle">3.03:1 icon</text>
 <rect x="531" y="198" width="66" height="52" rx="10" fill="#6E645B"/>
 <text x="564" y="228" font-size="12" fill="#FFFFFF" font-weight="700" text-anchor="middle">500</text>
-<text x="564" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#6E645B</text>
-<text x="564" y="285" font-size="10.5" fill="#7B3829" font-weight="600" text-anchor="middle">5.57:1</text>
+<text x="564" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#6E645B</text>
+<text x="564" y="285" font-size="10.5" fill="#A44A37" font-weight="600" text-anchor="middle">5.60:1 AA</text>
 <rect x="600" y="198" width="66" height="52" rx="10" fill="#524A43"/>
 <text x="633" y="228" font-size="12" fill="#FFFFFF" font-weight="700" text-anchor="middle">600</text>
-<text x="633" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#524A43</text>
-<text x="633" y="285" font-size="10.5" fill="#7B3829" font-weight="600" text-anchor="middle">8.42:1</text>
+<text x="633" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#524A43</text>
+<text x="633" y="285" font-size="10.5" fill="#A44A37" font-weight="600" text-anchor="middle">8.42:1 AAA</text>
 <rect x="669" y="198" width="66" height="52" rx="10" fill="#3D3630"/>
 <text x="702" y="228" font-size="12" fill="#FFFFFF" font-weight="700" text-anchor="middle">700</text>
-<text x="702" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#3D3630</text>
-<text x="702" y="285" font-size="10.5" fill="#7B3829" font-weight="600" text-anchor="middle">11.43:1</text>
+<text x="702" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#3D3630</text>
+<text x="702" y="285" font-size="10.5" fill="#A44A37" font-weight="600" text-anchor="middle">11.43:1</text>
 <rect x="738" y="198" width="66" height="52" rx="10" fill="#28231F"/>
 <text x="771" y="228" font-size="12" fill="#FFFFFF" font-weight="700" text-anchor="middle">800*</text>
-<text x="771" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#28231F</text>
-<text x="771" y="285" font-size="10.5" fill="#7B3829" font-weight="600" text-anchor="middle">15.08:1</text>
+<text x="771" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#28231F</text>
+<text x="771" y="285" font-size="10.5" fill="#A44A37" font-weight="600" text-anchor="middle">15.08:1</text>
 <rect x="807" y="198" width="66" height="52" rx="10" fill="#191512"/>
 <text x="840" y="228" font-size="12" fill="#FFFFFF" font-weight="700" text-anchor="middle">900</text>
-<text x="840" y="268" font-size="10.5" fill="#524A43" font-weight="400" text-anchor="middle">#191512</text>
-<text x="840" y="285" font-size="10.5" fill="#7B3829" font-weight="600" text-anchor="middle">17.48:1</text>
-<text x="48" y="316" font-size="13" fill="#524A43" font-weight="400">* DEFAULT charcoal-800 (#28231F). Strictly monotonic luminance (R &gt;= G &gt;= B) so neutral ink never turns cool blue-slate on #FDFCF0 cream.</text>
-<text x="32" y="370" font-size="18" fill="#28231F" font-weight="700" class="heading">2 · Role-locked color matrix (two-pole Sage · zero black-on-mid-sage)</text>
+<text x="840" y="268" font-size="10.5" fill="#6E645B" font-weight="400" text-anchor="middle">#191512</text>
+<text x="840" y="285" font-size="10.5" fill="#A44A37" font-weight="600" text-anchor="middle">17.59:1</text>
+<text x="48" y="316" font-size="12.5" fill="#6E645B" font-weight="400">* Standard AA: ink-body 800 (#28231F), ink-muted 500 (#6E645B), chrome-line 200 (#E5DFD7). High AAA: 900 (#191512), 600 (#524A43), 500 (#6E645B).</text>
+<text x="32" y="370" font-size="18" fill="#28231F" font-weight="700" class="heading">2 · Dual-mode semantic role matrix (Standard AA default → High Contrast AAA)</text>
 <rect x="32" y="386" width="416" height="200" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="52" y="414" font-size="15" fill="#28231F" font-weight="700">Hearth · Primary, Secondary &amp; Destructive</text>
+<text x="52" y="414" font-size="15" fill="#28231F" font-weight="700">Hearth · Standard AA → High Contrast AAA</text>
 <rect x="52" y="428" width="182" height="58" rx="12" fill="#B85542"/>
-<text x="64" y="452" font-size="12" fill="#FDFCF0" font-weight="700">bg-terracotta + cream-100</text>
-<text x="64" y="472" font-size="12" fill="#FDFCF0" font-weight="400">#FDFCF0 / #B85542 · 4.61:1</text>
+<text x="64" y="452" font-size="12" fill="#FDFCF0" font-weight="700">Std hearth-fill (#B85542)</text>
+<text x="64" y="472" font-size="12" fill="#FDFCF0" font-weight="400">4.61:1 cream · 4.76:1 white</text>
 <rect x="246" y="428" width="182" height="58" rx="12" fill="#7B3829"/>
-<text x="258" y="452" font-size="12" fill="#FFFFFF" font-weight="700">Pressed / Hover (-600/-700)</text>
-<text x="258" y="472" font-size="12" fill="#FFFFFF" font-weight="400">#FFFFFF / #7B3829 · 8.61:1</text>
+<text x="258" y="452" font-size="12" fill="#FFFFFF" font-weight="700">High hearth-fill (#7B3829)</text>
+<text x="258" y="472" font-size="12" fill="#FFFFFF" font-weight="400">8.34:1 cream · 8.61:1 white</text>
 <rect x="52" y="498" width="182" height="58" rx="12" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
-<text x="64" y="522" font-size="12" fill="#7B3829" font-weight="700">Secondary &amp; Ghost</text>
-<text x="64" y="542" font-size="12" fill="#7B3829" font-weight="400">#7B3829 / #FFFFFF · 8.61:1</text>
+<text x="64" y="522" font-size="12" fill="#A44A37" font-weight="700">Std hearth-ink (#A44A37)</text>
+<text x="64" y="542" font-size="12" fill="#A44A37" font-weight="400">5.81:1 white · AAA #7B3829</text>
 <rect x="246" y="498" width="182" height="58" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
-<text x="258" y="522" font-size="12" fill="#7B3829" font-weight="700">Error / Destructive</text>
-<text x="258" y="542" font-size="12" fill="#7B3829" font-weight="400">#7B3829 / #F9ECE9 · 7.46:1</text>
-<text x="52" y="576" font-size="12.5" fill="#524A43" font-weight="400">At most one solid primary terracotta CTA per card or dialog footer.</text>
+<text x="258" y="522" font-size="12" fill="#A44A37" font-weight="700">Error / Danger (blush)</text>
+<text x="258" y="542" font-size="12" fill="#A44A37" font-weight="400">Std 5.04:1 · High 7.46:1</text>
+<text x="52" y="576" font-size="12.5" fill="#6E645B" font-weight="400">Quiet #E6B3A9 line in Standard; crisp #A44A37 border in High.</text>
 <rect x="472" y="386" width="416" height="200" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="492" y="414" font-size="15" fill="#28231F" font-weight="700">Sunlight · Tonal Voting &amp; GOTO Highlight</text>
-<rect x="492" y="428" width="182" height="58" rx="12" fill="#FFFBE6" stroke="#FFEE99" stroke-width="1"/>
-<text x="504" y="452" font-size="12" fill="#664E01" font-weight="700">Voting Callout (ochre-50)</text>
-<text x="504" y="472" font-size="12" fill="#664E01" font-weight="400">#664E01 / #FFFBE6 · 7.61:1</text>
-<rect x="686" y="428" width="182" height="58" rx="12" fill="#FFF7CC" stroke="#FFEE99" stroke-width="1"/>
-<text x="698" y="452" font-size="12" fill="#664E01" font-weight="700">GOTO / Tag Pill (ochre-100)</text>
-<text x="698" y="472" font-size="12" fill="#664E01" font-weight="400">#664E01 / #FFF7CC · 7.32:1</text>
+<text x="492" y="414" font-size="15" fill="#28231F" font-weight="700">Sunlight · Standard AA (#856400) → High AAA (#664E01)</text>
+<rect x="492" y="428" width="182" height="58" rx="12" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+<text x="504" y="452" font-size="12" fill="#856400" font-weight="700">Std sunlight-ink (ochre-50)</text>
+<text x="504" y="472" font-size="12" fill="#856400" font-weight="400">#856400 · 5.29:1 (High 7.61:1)</text>
+<rect x="686" y="428" width="182" height="58" rx="12" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
+<text x="698" y="452" font-size="12" fill="#856400" font-weight="700">GOTO / Nav (ochre-100)</text>
+<text x="698" y="472" font-size="12" fill="#856400" font-weight="400">#856400 · 5.09:1 (High 7.32:1)</text>
 <rect x="492" y="498" width="182" height="58" rx="12" fill="#FFFFFF" stroke="#FFE666" stroke-width="1"/>
-<text x="504" y="522" font-size="12" fill="#664E01" font-weight="700">Raised Sunlight CTA</text>
-<text x="504" y="542" font-size="12" fill="#664E01" font-weight="400">#664E01 / #FFFFFF · 7.91:1</text>
+<text x="504" y="522" font-size="12" fill="#856400" font-weight="700">Raised Sunlight CTA</text>
+<text x="504" y="542" font-size="12" fill="#856400" font-weight="400">Std 5.50:1 · High 7.91:1</text>
 <rect x="686" y="498" width="182" height="58" rx="12" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
 <g transform="translate(698 515) scale(0.9167)" fill="#E1AD01" stroke="#E1AD01" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
 </g>
 <text x="728" y="523" font-size="12" fill="#28231F" font-weight="700">#E1AD01 Accent</text>
-<text x="728" y="542" font-size="12" fill="#524A43" font-weight="400">Star glyph / pulse only</text>
-<text x="492" y="576" font-size="12.5" fill="#524A43" font-weight="400">Never place text or icon controls on solid bg-ochre (#E1AD01).</text>
+<text x="728" y="542" font-size="12" fill="#6E645B" font-weight="400">Star glyph / pulse only</text>
+<text x="492" y="576" font-size="12.5" fill="#6E645B" font-weight="400">High border sharpens to #8F6D01; never place text on bg-ochre.</text>
 <rect x="32" y="602" width="856" height="174" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="52" y="632" font-size="15" fill="#28231F" font-weight="700">Garden · Option A Two-Pole Sage (preference, plans, groceries &amp; celebration)</text>
+<text x="52" y="632" font-size="15" fill="#28231F" font-weight="700">Garden · Cooled Herb Roles (#4E6E52 / #3D5940 Standard AA → #324D36 / #243A27 High Contrast AAA)</text>
 <rect x="52" y="648" width="198" height="66" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
-<text x="64" y="672" font-size="12" fill="#525B37" font-weight="700">Pole 1A · Botanical Tint</text>
-<text x="64" y="691" font-size="12" fill="#525B37" font-weight="400">sage-700 / sage-50 · 6.45:1</text>
-<text x="64" y="707" font-size="11" fill="#373D25" font-weight="400">Non-cooking icons, progress</text>
-<rect x="262" y="648" width="198" height="66" rx="12" fill="#E3E7D7" stroke="#C7CFB0" stroke-width="1"/>
-<text x="274" y="672" font-size="12" fill="#373D25" font-weight="700">Pole 1B · Deep Tonal</text>
-<text x="274" y="691" font-size="12" fill="#373D25" font-weight="400">sage-800 / sage-100 · 9.07:1</text>
-<text x="274" y="707" font-size="11" fill="#373D25" font-weight="400">Unanimous badge, steps</text>
-<rect x="472" y="648" width="198" height="66" rx="12" fill="#6E7A49"/>
-<text x="484" y="672" font-size="12" fill="#FFFFFF" font-weight="700">Pole 2A · Herb Start</text>
-<text x="484" y="691" font-size="12" fill="#FFFFFF" font-weight="400">#FFFFFF / #6E7A49 · 4.62:1</text>
-<text x="484" y="707" font-size="11" fill="#FDFCF0" font-weight="400">Celebration field highlight</text>
-<rect x="682" y="648" width="186" height="66" rx="12" fill="#525B37"/>
-<text x="694" y="672" font-size="12" fill="#FFFFFF" font-weight="700">Pole 2B · Deep Herb Solid</text>
-<text x="694" y="691" font-size="12" fill="#FFFFFF" font-weight="400">#FFFFFF / #525B37 · 7.22:1</text>
-<text x="694" y="707" font-size="11" fill="#FDFCF0" font-weight="400">SuccessCard, switches, CTAs</text>
-<text x="52" y="742" font-size="13" fill="#524A43" font-weight="400">Retire both white-on-mid-sage (#8A9A5B, 3.06:1) and dark ink on mid-sage (muddy olive-drab). Option A keeps celebrations</text>
-<text x="52" y="761" font-size="13" fill="#524A43" font-weight="400">crisp white-on-deep-herb (from-sage-600 to-sage-700) with a white Dismiss button (#FFFFFF / #525B37 text).</text>
-<text x="32" y="812" font-size="18" fill="#28231F" font-weight="700" class="heading">3 · Retired / disallowed pairings vs. Era 3 repairs</text>
+<text x="64" y="672" font-size="12" fill="#4E6E52" font-weight="700">Std garden-ink (sage-50)</text>
+<text x="64" y="691" font-size="12" fill="#4E6E52" font-weight="400">#4E6E52 / #F1F3EB · 5.10:1</text>
+<text x="64" y="707" font-size="11" fill="#4E6E52" font-weight="400">Non-cooking, progress, Like</text>
+<rect x="262" y="648" width="198" height="66" rx="12" fill="#4E6E52"/>
+<text x="274" y="672" font-size="12" fill="#FFFFFF" font-weight="700">Std garden-fill (#4E6E52)</text>
+<text x="274" y="691" font-size="12" fill="#FFFFFF" font-weight="400">#FFFFFF / #4E6E52 · 5.71:1</text>
+<text x="274" y="707" font-size="11" fill="#FDFCF0" font-weight="400">Switches, gradient start (-deep #3D5940)</text>
+<rect x="472" y="648" width="198" height="66" rx="12" fill="#324D36"/>
+<text x="484" y="672" font-size="12" fill="#FFFFFF" font-weight="700">High garden-fill (#324D36)</text>
+<text x="484" y="691" font-size="12" fill="#FFFFFF" font-weight="400">#FFFFFF / #324D36 · 9.33:1</text>
+<text x="484" y="707" font-size="11" fill="#FDFCF0" font-weight="400">High Contrast AAA solid &amp; ink</text>
+<rect x="682" y="648" width="186" height="66" rx="12" fill="#243A27"/>
+<text x="694" y="672" font-size="12" fill="#FFFFFF" font-weight="700">High -deep (#243A27)</text>
+<text x="694" y="691" font-size="12" fill="#FFFFFF" font-weight="400">#FFFFFF / #243A27 · 12.28:1</text>
+<text x="694" y="707" font-size="11" fill="#FDFCF0" font-weight="400">High SuccessCard gradient</text>
+<text x="52" y="742" font-size="13" fill="#6E645B" font-weight="400">Cooled herb replaces olive sage-600/700 for crisp green-vs-red hue separation against Hearth while keeping sage-50/100</text>
+<text x="52" y="761" font-size="13" fill="#6E645B" font-weight="400">tints (High Contrast garden-ink #324D36 reaches 8.34:1 on sage-50, 7.41:1 on sage-100, and 9.33:1 on white).</text>
+<text x="32" y="812" font-size="18" fill="#28231F" font-weight="700" class="heading">3 · Retired / disallowed pairings vs. Standard AA role repairs</text>
 <rect x="32" y="828" width="856" height="250" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="52" y="856" font-size="13" fill="#7B3829" font-weight="700">RETIRED / DISALLOWED IN VISUAL RATCHET</text>
-<text x="472" y="856" font-size="13" fill="#525B37" font-weight="700">ERA 3 COOKBOOK STANDARD</text>
+<text x="52" y="856" font-size="13" fill="#A44A37" font-weight="700">RETIRED / DISALLOWED IN VISUAL RATCHET</text>
+<text x="472" y="856" font-size="13" fill="#4E6E52" font-weight="700">ERA 3 STANDARD AA ROLE DEFAULT</text>
 <rect x="52" y="872" width="396" height="48" rx="10" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
 <text x="68" y="900" font-size="10" fill="#28231F" font-weight="900" fill-opacity="0.4">TONIGHT’S MENU</text>
-<text x="206" y="900" font-size="12" fill="#524A43" font-weight="400">10px @ 40% (~2.35:1)</text>
+<text x="206" y="900" font-size="12" fill="#6E645B" font-weight="400">10px @ 40% (~2.35:1)</text>
 <rect x="472" y="872" width="396" height="48" rx="10" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
-<text x="488" y="901" font-size="16" fill="#524A43" font-weight="600">Tonight’s menu</text>
-<text x="640" y="901" font-size="12.5" fill="#524A43" font-weight="400">16px #524A43 (8.42:1)</text>
+<text x="488" y="901" font-size="16" fill="#6E645B" font-weight="600">Tonight’s menu</text>
+<text x="630" y="901" font-size="12.5" fill="#6E645B" font-weight="400">16px #6E645B (5.60:1 AA)</text>
 <rect x="52" y="934" width="396" height="48" rx="10" fill="#E1AD01"/>
 <text x="68" y="963" font-size="13" fill="#FFFFFF" font-weight="700">White 2.06:1 · Black on #E1AD01</text>
 <text x="320" y="963" font-size="13" fill="#28231F" font-weight="700">or #28231F</text>
-<rect x="472" y="934" width="190" height="48" rx="10" fill="#FFF7CC" stroke="#FFEE99" stroke-width="1"/>
-<text x="486" y="963" font-size="13" fill="#664E01" font-weight="700">Vote Now · 7.32:1</text>
+<rect x="472" y="934" width="190" height="48" rx="10" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
+<text x="486" y="963" font-size="13" fill="#856400" font-weight="700">Vote Now · 5.09:1</text>
 <rect x="676" y="934" width="192" height="48" rx="10" fill="#B85542"/>
 <text x="692" y="963" font-size="13" fill="#FDFCF0" font-weight="700">Cook · #B85542</text>
 <rect x="52" y="996" width="396" height="48" rx="10" fill="#8A9A5B"/>
 <text x="68" y="1025" font-size="13" fill="#FFFFFF" font-weight="700">White 3.06:1</text>
 <text x="180" y="1025" font-size="13" fill="#28231F" font-weight="700">Dark on #8A9A5B banned</text>
 <rect x="472" y="996" width="190" height="48" rx="10" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
-<text x="486" y="1025" font-size="13" fill="#525B37" font-weight="700">Cooked · 6.45:1</text>
+<text x="486" y="1025" font-size="13" fill="#4E6E52" font-weight="700">Cooked · 5.10:1</text>
 <rect x="676" y="996" width="192" height="48" rx="10" fill="url(#herbGrad)"/>
-<text x="690" y="1025" font-size="13" fill="#FFFFFF" font-weight="700">Enjoy! · #FFFFFF</text>
-<text x="52" y="1066" font-size="12.5" fill="#524A43" font-weight="400">Checked on every CI run by pwa/src/test/visual-contract.test.ts + contrast floors in tokens.test.ts.</text>
+<text x="690" y="1025" font-size="13" fill="#FFFFFF" font-weight="700">Enjoy! · #4E6E52</text>
+<text x="52" y="1066" font-size="12.5" fill="#6E645B" font-weight="400">Checked continuously by tokens.test.ts + visual-contract.test.ts + visual-a11y-contract.ts ('aa' and 'aaa').</text>
 <text x="32" y="1114" font-size="18" fill="#28231F" font-weight="700" class="heading">4 · Type scale, context-paired Ready in, 48px targets &amp; focus</text>
 <rect x="32" y="1130" width="444" height="286" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="52" y="1172" font-size="28" fill="#28231F" font-weight="700" class="heading">Tonight’s supper</text>
-<text x="300" y="1170" font-size="12.5" fill="#524A43" font-weight="400">Outfit · 28–32px bold</text>
+<text x="300" y="1170" font-size="12.5" fill="#6E645B" font-weight="400">Outfit · 28–32px bold</text>
 <text x="52" y="1208" font-size="16" fill="#28231F" font-weight="600">Section / Card context</text>
-<text x="300" y="1208" font-size="12.5" fill="#524A43" font-weight="400">Inter · 16px semibold</text>
+<text x="300" y="1208" font-size="12.5" fill="#6E645B" font-weight="400">Inter · 16px semibold</text>
 <text x="52" y="1240" font-size="16" fill="#28231F" font-weight="400">Body and ingredients copy.</text>
-<text x="300" y="1240" font-size="12.5" fill="#524A43" font-weight="400">Inter · 16 / 24 regular</text>
-<text x="52" y="1272" font-size="12" fill="#524A43" font-weight="600">Metadata floor (&gt;= 12 CSS px)</text>
-<text x="300" y="1272" font-size="12.5" fill="#524A43" font-weight="400">12px minimum text-xs</text>
+<text x="300" y="1240" font-size="12.5" fill="#6E645B" font-weight="400">Inter · 16 / 24 regular</text>
+<text x="52" y="1272" font-size="12" fill="#6E645B" font-weight="600">Metadata floor (&gt;= 12 CSS px)</text>
+<text x="300" y="1272" font-size="12.5" fill="#6E645B" font-weight="400">12px minimum text-xs</text>
 <line x1="52" y1="1290" x2="456" y2="1290" stroke="#E5DFD7" stroke-width="1"/>
 <text x="52" y="1316" font-size="13" fill="#28231F" font-weight="700">Ready in pill (sentence case everywhere · context-paired):</text>
 <rect x="52" y="1330" width="122" height="30" rx="15" fill="#F9ECE9"/>
-<g transform="translate(63 1338) scale(0.5833)" fill="none" stroke="#7B3829" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(63 1338) scale(0.5833)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="10"/>
   <path d="M12 6v6l4 2"/>
 </g>
-<text x="82" y="1349.55" font-size="13" fill="#7B3829" font-weight="600">Ready in 30m</text>
-<text x="186" y="1350" font-size="12.5" fill="#524A43" font-weight="400">On white card surfaces</text>
+<text x="82" y="1349.55" font-size="13" fill="#A44A37" font-weight="600">Ready in 30m</text>
+<text x="186" y="1350" font-size="12.5" fill="#6E645B" font-weight="400">On white card surfaces</text>
 <rect x="52" y="1370" width="210" height="36" rx="10" fill="#3D3630"/>
 <rect x="60" y="1373" width="122" height="30" rx="15" fill="#FDFCF0"/>
 <g transform="translate(71 1381) scale(0.5833)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -214,18 +215,18 @@ SOFTWARE.
   <path d="M12 6v6l4 2"/>
 </g>
 <text x="90" y="1392.55" font-size="13" fill="#28231F" font-weight="600">Ready in 30m</text>
-<text x="274" y="1393" font-size="12.5" fill="#524A43" font-weight="400">Over food photography</text>
+<text x="274" y="1393" font-size="12.5" fill="#6E645B" font-weight="400">Over food photography</text>
 <rect x="496" y="1130" width="392" height="286" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="516" y="1162" font-size="15" fill="#28231F" font-weight="700">Touch Target &amp; Keyboard Focus</text>
-<rect x="516" y="1180" width="48" height="48" rx="10" fill="#FDFCF0" stroke="#525B37" stroke-width="1.5" stroke-dasharray="4 3"/>
-<g transform="translate(528 1192) scale(1.0000)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="516" y="1162" font-size="15" fill="#28231F" font-weight="700">Touch Target, Icon Affordances &amp; Focus</text>
+<rect x="516" y="1180" width="48" height="48" rx="10" fill="#FDFCF0" stroke="#4E6E52" stroke-width="1.5" stroke-dasharray="4 3"/>
+<g transform="translate(528 1192) scale(1.0000)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/>
   <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/>
   <path d="m2.1 21.8 6.4-6.3"/>
   <path d="m19 5-7 7"/>
 </g>
 <text x="578" y="1200" font-size="13" fill="#28231F" font-weight="600">24px glyph inside &gt;= 48 x 48 CSS px box</text>
-<text x="578" y="1220" font-size="12.5" fill="#524A43" font-weight="400">Preserve room for EN / FR label wrapping</text>
+<text x="578" y="1220" font-size="12.5" fill="#6E645B" font-weight="400">Icons: &gt;= 3.0:1 (#9B9085) Std · &gt;= 7.0:1 (#524A43) High</text>
 <rect x="516" y="1252" width="168" height="56" rx="20" fill="none" stroke="#28231F" stroke-width="2"/>
 <rect x="520" y="1256" width="160" height="48" rx="16" fill="#B85542"/>
 <g transform="translate(572.3 1272) scale(0.6667)" fill="none" stroke="#FDFCF0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -235,60 +236,60 @@ SOFTWARE.
   <path d="m19 5-7 7"/>
 </g>
 <text x="595.3" y="1285.25" font-size="15" fill="#FDFCF0" font-weight="600">Cook</text>
-<text x="700" y="1278" font-size="13" fill="#28231F" font-weight="600">outline-charcoal (#28231F)</text>
-<text x="700" y="1298" font-size="12.5" fill="#524A43" font-weight="400">2px solid, 4px offset · all</text>
-<text x="700" y="1315" font-size="12.5" fill="#524A43" font-weight="400">controls incl. Button</text>
+<text x="700" y="1278" font-size="13" fill="#28231F" font-weight="600">outline-ink-body (#28231F/#191512)</text>
+<text x="700" y="1298" font-size="12.5" fill="#6E645B" font-weight="400">2px solid, 4px offset · all</text>
+<text x="700" y="1315" font-size="12.5" fill="#6E645B" font-weight="400">controls incl. Button</text>
 <rect x="516" y="1344" width="148" height="48" rx="16" fill="#E5DFD7"/>
 <text x="590" y="1372.9" font-size="14" fill="#524A43" font-weight="600" text-anchor="middle">Not available</text>
-<rect x="680" y="1344" width="148" height="48" rx="16" fill="#525B37"/>
+<rect x="680" y="1344" width="148" height="48" rx="16" fill="#4E6E52"/>
 <text x="754" y="1372.9" font-size="14" fill="#FFFFFF" font-weight="600" text-anchor="middle">Saving…</text>
-<text x="516" y="1408" font-size="12" fill="#524A43" font-weight="400">Disabled #E5DFD7/#524A43 (6.56:1); busy preserves dimensions.</text>
-<text x="32" y="1452" font-size="18" fill="#28231F" font-weight="700" class="heading">5 · Bottom navigation &amp; Lucide icon vocabulary</text>
+<text x="516" y="1408" font-size="12" fill="#6E645B" font-weight="400">Disabled #E5DFD7/#524A43 (6.56:1); busy preserves dimensions.</text>
+<text x="32" y="1452" font-size="18" fill="#28231F" font-weight="700" class="heading">5 · Bottom navigation (.glass-nav vs. opaque High Contrast) &amp; Lucide icons</text>
 <rect x="32" y="1468" width="856" height="108" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(114 1486) scale(1.0000)" fill="none" stroke="#7B3829" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(114 1486) scale(1.0000)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/>
   <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
 </g>
-<text x="126" y="1532" font-size="13" fill="#7B3829" font-weight="700" text-anchor="middle">Home</text>
-<g transform="translate(279 1486) scale(1.0000)" fill="none" stroke="#524A43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="126" y="1532" font-size="13" fill="#A44A37" font-weight="700" text-anchor="middle">Home</text>
+<g transform="translate(279 1486) scale(1.0000)" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M12 5v16"/>
   <path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/>
 </g>
-<text x="291" y="1532" font-size="13" fill="#524A43" font-weight="600" text-anchor="middle">Recipes</text>
+<text x="291" y="1532" font-size="13" fill="#6E645B" font-weight="600" text-anchor="middle">Recipes</text>
 <rect x="430" y="1478" width="52" height="52" rx="26" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
-<g transform="translate(444 1492) scale(1.0000)" fill="none" stroke="#664E01" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(444 1492) scale(1.0000)" fill="none" stroke="#856400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="10"/>
   <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>
 </g>
-<text x="456" y="1550" font-size="13" fill="#664E01" font-weight="700" text-anchor="middle">Discover</text>
-<g transform="translate(609 1486) scale(1.0000)" fill="none" stroke="#524A43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="456" y="1550" font-size="13" fill="#856400" font-weight="700" text-anchor="middle">Discovery</text>
+<g transform="translate(609 1486) scale(1.0000)" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M8 2v3"/>
   <path d="M16 2v3"/>
   <rect x="3" y="3" width="18" height="18" rx="2"/>
   <path d="M3 9h18"/>
 </g>
-<text x="621" y="1532" font-size="13" fill="#524A43" font-weight="600" text-anchor="middle">Planner</text>
-<g transform="translate(774 1486) scale(1.0000)" fill="none" stroke="#524A43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="621" y="1532" font-size="13" fill="#6E645B" font-weight="600" text-anchor="middle">Planner</text>
+<g transform="translate(774 1486) scale(1.0000)" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="10"/>
   <circle cx="12" cy="10" r="3"/>
   <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/>
 </g>
-<text x="786" y="1532" font-size="13" fill="#524A43" font-weight="600" text-anchor="middle">Profile</text>
-<text x="52" y="1568" font-size="12" fill="#524A43" font-weight="400">Target Era 3 bar (Wave A moves Navigation.tsx Discover off solid bg-ochre + 9px text onto ochre-100/800 + &gt;= 12px sentence case).</text>
+<text x="786" y="1532" font-size="13" fill="#6E645B" font-weight="600" text-anchor="middle">Profile</text>
+<text x="52" y="1568" font-size="12" fill="#6E645B" font-weight="400">Standard .glass-nav uses translucent frosted cream; :root[data-contrast="high"] switches to opaque #FDFCF0 + #6E645B top border.</text>
 <rect x="32" y="1594" width="202" height="80" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(48 1610) scale(0.9167)" fill="none" stroke="#7B3829" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(48 1610) scale(0.9167)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/>
   <circle cx="12" cy="13" r="3"/>
 </g>
 <text x="48" y="1648" font-size="13.5" fill="#28231F" font-weight="700">Capture Recipe</text>
-<text x="48" y="1665" font-size="12" fill="#524A43" font-weight="400">photo or link</text>
+<text x="48" y="1665" font-size="12" fill="#6E645B" font-weight="400">photo or link</text>
 <rect x="250" y="1594" width="202" height="80" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <g transform="translate(266 1610) scale(0.9167)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m21 21-4.34-4.34"/>
   <circle cx="11" cy="11" r="8"/>
 </g>
 <text x="266" y="1648" font-size="13.5" fill="#28231F" font-weight="700">Search / Suggestions</text>
-<text x="266" y="1665" font-size="12" fill="#524A43" font-weight="400">pick for tonight</text>
+<text x="266" y="1665" font-size="12" fill="#6E645B" font-weight="400">pick for tonight</text>
 <rect x="468" y="1594" width="202" height="80" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <g transform="translate(484 1610) scale(0.9167)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/>
@@ -297,7 +298,7 @@ SOFTWARE.
   <path d="m19 5-7 7"/>
 </g>
 <text x="484" y="1648" font-size="13.5" fill="#28231F" font-weight="700">Cook / Eating out</text>
-<text x="484" y="1665" font-size="12" fill="#524A43" font-weight="400">label disambiguates</text>
+<text x="484" y="1665" font-size="12" fill="#6E645B" font-weight="400">label disambiguates</text>
 <rect x="686" y="1594" width="202" height="80" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <g transform="translate(702 1610) scale(0.9167)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m16 3 4 4-4 4"/>
@@ -306,36 +307,36 @@ SOFTWARE.
   <path d="M4 17h16"/>
 </g>
 <text x="702" y="1648" font-size="13.5" fill="#28231F" font-weight="700">Change plan / day</text>
-<text x="702" y="1665" font-size="12" fill="#524A43" font-weight="400">adapt or move slot</text>
+<text x="702" y="1665" font-size="12" fill="#6E645B" font-weight="400">adapt or move slot</text>
 <rect x="32" y="1688" width="202" height="80" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(48 1704) scale(0.9167)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(48 1704) scale(0.9167)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M16 10a4 4 0 0 1-8 0"/>
   <path d="M3.103 6.034h17.794"/>
   <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>
 </g>
 <text x="48" y="1742" font-size="13.5" fill="#28231F" font-weight="700">Take Out</text>
-<text x="48" y="1759" font-size="12" fill="#524A43" font-weight="400">plan, not an order</text>
+<text x="48" y="1759" font-size="12" fill="#6E645B" font-weight="400">plan, not an order</text>
 <rect x="250" y="1688" width="202" height="80" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(266 1704) scale(0.9167)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(266 1704) scale(0.9167)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/>
   <path d="M20 2v4"/>
   <path d="M22 4h-4"/>
   <circle cx="4" cy="20" r="2"/>
 </g>
 <text x="266" y="1742" font-size="13.5" fill="#28231F" font-weight="700">Mystery night</text>
-<text x="266" y="1759" font-size="12" fill="#524A43" font-weight="400">decide later</text>
+<text x="266" y="1759" font-size="12" fill="#6E645B" font-weight="400">decide later</text>
 <rect x="468" y="1688" width="202" height="80" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(484 1704) scale(0.9167)" fill="none" stroke="#664E01" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(484 1704) scale(0.9167)" fill="none" stroke="#856400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
 </g>
 <text x="484" y="1742" font-size="13.5" fill="#28231F" font-weight="700">GOTO favourite</text>
-<text x="484" y="1759" font-size="12" fill="#524A43" font-weight="400">#E1AD01 star + label</text>
+<text x="484" y="1759" font-size="12" fill="#6E645B" font-weight="400">#E1AD01 star + label</text>
 <rect x="686" y="1688" width="202" height="80" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(702 1704) scale(0.9167)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(702 1704) scale(0.9167)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="10"/>
   <path d="m16 9-5.5 5.5L8 12"/>
 </g>
 <text x="702" y="1742" font-size="13.5" fill="#28231F" font-weight="700">Cooked / Prepared</text>
-<text x="702" y="1759" font-size="12" fill="#524A43" font-weight="400">always pair with copy</text>
-<text x="32" y="1814" font-size="13" fill="#524A43" font-weight="400">Companion boards: 02 Surfaces, Controls &amp; Recovery · 03 Supper Plan &amp; Week · 04 Recipe Cards &amp; Detail.</text>
+<text x="702" y="1759" font-size="12" fill="#6E645B" font-weight="400">always pair with copy</text>
+<text x="32" y="1814" font-size="13" fill="#6E645B" font-weight="400">Companion boards: 02 Surfaces, Controls &amp; Recovery · 03 Supper Plan &amp; Week · 04 Recipe Cards &amp; Detail.</text>
 </svg>

@@ -53,6 +53,29 @@ describe('SkipRecoveryDialog', () => {
     expect(onAction).toHaveBeenCalledWith('tomorrow');
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+
+  it('uses >= 12px sentence-case Family Cookbook typography and 48px close target without faint charcoal copy', () => {
+    const { rerender } = render(
+      <SkipRecoveryDialog isOpen step={1} onClose={vi.fn()} onBack={vi.fn()} onAction={vi.fn()} />
+    );
+    const title = screen.getByTestId('recovery-dialog-title');
+    expect(title).toHaveClass('text-xs');
+    expect(title).not.toHaveClass('text-[10px]', 'uppercase');
+    expect(screen.getByTestId('recovery-close')).toHaveClass('h-12', 'w-12');
+    expect(screen.getByText('Plans changed. We get it. What are we eating instead?')).toHaveClass(
+      'text-charcoal-600'
+    );
+
+    rerender(
+      <SkipRecoveryDialog isOpen step={2} onClose={vi.fn()} onBack={vi.fn()} onAction={vi.fn()} />
+    );
+    const consequence = screen.getByText('Keeps the recipe in your library');
+    expect(consequence).toHaveClass('text-xs', 'text-charcoal-600');
+    expect(consequence).not.toHaveClass('text-[10px]', 'uppercase', 'text-charcoal/30');
+    const goBack = screen.getByRole('button', { name: 'Go back' });
+    expect(goBack).toHaveClass('min-h-12', 'text-xs', 'text-charcoal-600');
+    expect(goBack).not.toHaveClass('uppercase', 'text-charcoal/30');
+  });
 });
 
 it('announces an uncertain save and offers checking without another disposition', () => {

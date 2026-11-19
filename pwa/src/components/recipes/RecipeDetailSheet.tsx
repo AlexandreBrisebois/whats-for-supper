@@ -1003,7 +1003,7 @@ export function RecipeDetailSheet({
       >
         <div
           data-testid="recipe-detail-toolbar"
-          className="shrink-0 flex flex-wrap items-center gap-[8px] border-b border-charcoal/10 px-[16px] py-[12px] md:px-8"
+          className="shrink-0 flex flex-wrap items-center gap-[8px] border-b border-chrome-line px-[16px] py-[12px] md:px-8"
         >
           <div className="flex min-w-0 items-center gap-2">
             {!isLoading && recipe && !isEditing && (
@@ -1013,10 +1013,10 @@ export function RecipeDetailSheet({
                 disabled={departureBlocked}
                 onClick={() => setShowCooksMode(true)}
                 className={[
-                  'inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full px-[12px] py-[10px] text-sm font-semibold shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal disabled:opacity-60',
+                  'inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full px-[12px] py-[10px] text-sm font-semibold shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60',
                   isConfirmedPlanned
-                    ? 'bg-terracotta text-white hover:bg-terracotta-600'
-                    : 'border border-charcoal/10 bg-white text-charcoal hover:bg-charcoal/5',
+                    ? 'bg-hearth-fill text-white hover:bg-hearth-fill-hover'
+                    : 'border border-chrome-line bg-white text-ink-body hover:bg-charcoal/5',
                 ].join(' ')}
               >
                 <UtensilsCrossed size={18} className="shrink-0" aria-hidden="true" />
@@ -1047,10 +1047,10 @@ export function RecipeDetailSheet({
                 onClick={() => void handleSetGoto()}
                 disabled={isSavingGoto}
                 className={[
-                  'inline-flex min-h-[48px] items-center justify-center gap-[6px] rounded-full px-[12px] text-sm font-bold shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal disabled:cursor-default',
+                  'inline-flex min-h-[48px] items-center justify-center gap-[6px] rounded-full border border-sunlight-line px-[12px] text-sm font-bold shadow-sm transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:cursor-default',
                   isCurrentGoto
-                    ? 'bg-ochre-100 text-ochre-800 hover:bg-ochre-200'
-                    : 'bg-ochre-50 text-ochre-800 hover:bg-ochre-100',
+                    ? 'bg-ochre-100 text-sunlight-ink hover:bg-ochre-200'
+                    : 'bg-ochre-50 text-sunlight-ink hover:bg-ochre-100',
                 ].join(' ')}
               >
                 <Star
@@ -1077,7 +1077,7 @@ export function RecipeDetailSheet({
                   title={t('recipes.shareRecipe', 'Share recipe')}
                   onClick={() => void handleShareRecipe()}
                   disabled={isSharingRecipe}
-                  className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full bg-white text-charcoal shadow-sm transition hover:bg-charcoal/5"
+                  className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border border-chrome-line bg-white text-ink-body shadow-sm transition hover:bg-charcoal/5"
                 >
                   <Share2 size={14} />
                 </button>
@@ -1120,20 +1120,20 @@ export function RecipeDetailSheet({
               aria-label={t('common.close', 'Close')}
               title={t('common.close', 'Close')}
               onClick={closeDetail}
-              className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
+              className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-icon-affordance hover:text-ink-body transition hover:bg-charcoal/10 focus-visible:outline-2 focus-visible:outline-ink-body"
             >
               <X size={18} />
             </button>
           </div>
           {recipe?.importIssue?.reimportFailureMessage && (
-            <p role="status" className="basis-full text-sm font-bold text-terracotta-700">
+            <p role="status" className="basis-full text-sm font-bold text-hearth-ink">
               {recipe.importIssue.reimportFailureMessage}
             </p>
           )}
         </div>
 
         {moveError && (
-          <p role="alert" className="px-6 pt-4 text-sm text-red-700">
+          <p role="alert" className="px-6 pt-4 text-sm text-hearth-ink font-medium">
             {t(
               'recipes.moveToBinError',
               'Could not move this recipe to the Recycle Bin. Try again.'
@@ -1141,26 +1141,26 @@ export function RecipeDetailSheet({
           </p>
         )}
         {loadError && !isLoading ? (
-          <div className="px-6 py-10 text-sm font-medium text-charcoal">
+          <div className="px-6 py-10 text-sm font-medium text-ink-body">
             <p role="alert">{t('recipes.detailLoadError', 'Could not load this recipe.')}</p>
             <button
               type="button"
               data-testid="recipe-detail-retry"
               onClick={() => setReadAttempt((attempt) => attempt + 1)}
-              className="mt-4 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-5 py-3 font-bold text-white"
+              className="mt-4 rounded-full bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active px-5 py-3 font-bold text-white"
             >
               {t('common.retry', 'Retry')}
             </button>
           </div>
         ) : isLoading || !recipe ? (
-          <div className="px-6 py-10 text-sm font-medium text-charcoal/60">
+          <div className="px-6 py-10 text-sm font-medium text-ink-muted">
             {t('recipes.loadingDetail', 'Loading recipe...')}
           </div>
         ) : (
           <div
             ref={readingRef}
             data-testid="recipe-detail-reading"
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-8 pt-5 md:px-8"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[20px] pb-[32px] pt-[20px] md:px-8"
           >
             <div
               data-testid="recipe-detail-hero"
@@ -1179,7 +1179,7 @@ export function RecipeDetailSheet({
                   className="absolute inset-0 flex items-center justify-center"
                   aria-hidden="true"
                 >
-                  <UtensilsCrossed size={40} className="text-charcoal/20" />
+                  <UtensilsCrossed size={40} className="text-icon-affordance" />
                 </div>
               )}
               {!isEditing &&
@@ -1196,7 +1196,7 @@ export function RecipeDetailSheet({
                         setShowOriginals(true);
                       }
                     }}
-                    className="absolute bottom-4 right-4 inline-flex min-h-12 max-w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-full bg-cream/80 px-4 py-2 text-sm font-semibold text-charcoal shadow-sm backdrop-blur-md transition-colors hover:bg-cream/90 active:bg-cream/90 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal focus-visible:ring-2 focus-visible:ring-charcoal focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+                    className="absolute bottom-4 right-4 inline-flex min-h-12 max-w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-full bg-cream/90 border border-chrome-line px-4 py-2 text-sm font-semibold text-ink-body shadow-sm backdrop-blur-md transition-colors hover:bg-cream active:bg-cream focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body focus-visible:ring-2 focus-visible:ring-ink-body focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
                   >
                     <span data-testid="view-original-icon">
                       {recipe.sourceType === 'url' ? (
@@ -1211,7 +1211,7 @@ export function RecipeDetailSheet({
               {!isEditing && readyTime && (
                 <span
                   data-testid="recipe-ready-in"
-                  className="absolute top-4 left-4 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full bg-cream px-3 py-2 text-sm font-semibold text-charcoal shadow-sm"
+                  className="absolute top-4 left-4 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full bg-cream border border-chrome-line px-3 py-2 text-sm font-semibold text-ink-body shadow-sm"
                 >
                   <Clock size={14} aria-hidden="true" />
                   {tWithVars('common.readyIn', 'Ready in {{time}}', { time: readyTime })}
@@ -1257,14 +1257,14 @@ export function RecipeDetailSheet({
               {shareError && (
                 <p
                   data-testid="recipe-share-error"
-                  className="rounded-2xl border border-pink/20 bg-pink/5 px-4 py-3 text-sm font-medium text-pink"
+                  className="rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm font-medium text-hearth-ink"
                 >
                   {shareError}
                 </p>
               )}
               {isEditing ? (
                 <label className="grid gap-2">
-                  <span className="text-sm font-semibold text-charcoal">
+                  <span className="text-sm font-semibold text-ink-body">
                     {t('recipes.name', 'Name')}
                   </span>
                   <input
@@ -1272,13 +1272,13 @@ export function RecipeDetailSheet({
                     disabled={isSavingRecipe}
                     value={draftName}
                     onChange={(event) => setDraftName(event.target.value)}
-                    className="w-full rounded-[1.25rem] border border-charcoal/10 bg-white/90 px-4 py-3 text-xl font-black text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                    className="w-full rounded-[1.25rem] border border-chrome-line bg-white/90 px-4 py-3 text-xl font-black text-ink-body shadow-sm outline-none transition focus:border-hearth-line"
                   />
                 </label>
               ) : (
                 <h2
                   data-testid="recipe-detail-name"
-                  className="break-words text-3xl font-bold leading-tight text-charcoal md:text-4xl"
+                  className="break-words text-3xl font-bold leading-tight text-ink-body md:text-4xl"
                 >
                   {recipe.name}
                 </h2>
@@ -1295,7 +1295,7 @@ export function RecipeDetailSheet({
                         reading.scrollTo({ top: section.offsetTop - reading.offsetTop });
                       notesInputRef.current?.focus({ preventScroll: true });
                     }}
-                    className="min-h-12 rounded-xl px-3 py-2 text-sm font-semibold text-sage-800 underline underline-offset-4"
+                    className="min-h-12 rounded-xl px-3 py-2 text-sm font-semibold text-garden-ink underline underline-offset-4"
                   >
                     {t('recipes.familyNotes', 'Family notes')}
                   </button>
@@ -1304,7 +1304,7 @@ export function RecipeDetailSheet({
               {isEditing ? (
                 <div className="grid gap-3">
                   <label className="grid gap-2">
-                    <span className="text-sm font-semibold text-charcoal">
+                    <span className="text-sm font-semibold text-ink-body">
                       {t('recipes.cuisineType', 'Cuisine')}
                     </span>
                     <input
@@ -1312,11 +1312,11 @@ export function RecipeDetailSheet({
                       disabled={isSavingRecipe}
                       value={draftCuisineType}
                       onChange={(event) => setDraftCuisineType(event.target.value)}
-                      className="min-h-12 w-full px-4 py-2.5 rounded-xl border border-charcoal/10 bg-white text-charcoal focus:border-sage focus:outline-none text-sm transition-all duration-200"
+                      className="min-h-12 w-full px-4 py-2.5 rounded-xl border border-chrome-line bg-white text-ink-body focus:border-garden-line focus:outline-none text-sm transition-all duration-200"
                     />
                   </label>
                   <div className="grid gap-2">
-                    <span className="text-sm font-semibold text-charcoal">
+                    <span className="text-sm font-semibold text-ink-body">
                       {t('recipes.mealTypes', 'Meal types')}
                     </span>
                     <div className="flex flex-wrap gap-2">
@@ -1338,8 +1338,8 @@ export function RecipeDetailSheet({
                             }
                             className={
                               isSelected
-                                ? 'min-h-12 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-sage text-white shadow-md active:scale-95'
-                                : 'min-h-12 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-white border border-charcoal/10 text-charcoal/60 hover:bg-cream/20 active:scale-95'
+                                ? 'min-h-12 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-garden-fill text-white shadow-md active:scale-95'
+                                : 'min-h-12 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 bg-white border border-chrome-line text-ink-muted hover:bg-cream-100 active:scale-95'
                             }
                           >
                             {mealType}
@@ -1355,7 +1355,7 @@ export function RecipeDetailSheet({
                     {recipe.cuisineType && (
                       <span
                         data-testid="recipe-detail-cuisine-badge"
-                        className="inline-flex items-center gap-1 rounded-full bg-ochre/10 text-ochre-800 px-3 py-1.5 shadow-sm text-[11px] font-black uppercase tracking-widest"
+                        className="inline-flex items-center gap-1 rounded-full bg-ochre-50 border border-sunlight-line text-sunlight-ink px-3 py-1.5 shadow-sm text-xs font-semibold"
                       >
                         {recipe.cuisineType}
                       </span>
@@ -1364,7 +1364,7 @@ export function RecipeDetailSheet({
                       <span
                         key={mealType}
                         data-testid={`recipe-detail-meal-type-${mealType.toLowerCase()}`}
-                        className="rounded-full bg-white border border-sage/30 text-sage-700 px-3 py-1 text-xs font-bold uppercase"
+                        className="rounded-full bg-white border border-garden-line text-garden-ink px-3 py-1 text-xs font-bold uppercase"
                       >
                         {mealType}
                       </span>
@@ -1374,7 +1374,7 @@ export function RecipeDetailSheet({
               )}
               {isEditing ? (
                 <label className="grid gap-2">
-                  <span className="text-sm font-semibold text-charcoal">
+                  <span className="text-sm font-semibold text-ink-body">
                     {t('recipes.description', 'Description')}
                   </span>
                   <textarea
@@ -1382,12 +1382,12 @@ export function RecipeDetailSheet({
                     disabled={isSavingRecipe}
                     value={draftDescription}
                     onChange={(event) => setDraftDescription(event.target.value)}
-                    className="min-h-24 w-full rounded-[1.25rem] border border-charcoal/10 bg-white/90 px-4 py-3 text-sm leading-6 text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                    className="min-h-24 w-full rounded-[1.25rem] border border-chrome-line bg-white/90 px-4 py-3 text-sm leading-6 text-ink-body shadow-sm outline-none transition focus:border-hearth-line"
                   />
                 </label>
               ) : (
                 recipe.description && (
-                  <p className="text-sm leading-6 text-charcoal/70">{recipe.description}</p>
+                  <p className="text-sm leading-6 text-ink-muted">{recipe.description}</p>
                 )
               )}
               {!isEditing && onFindSimilar && (
@@ -1396,7 +1396,7 @@ export function RecipeDetailSheet({
                   data-testid="action-find-similar"
                   disabled={departureBlocked}
                   onClick={() => onFindSimilar(recipe.id)}
-                  className="inline-flex min-h-[48px] max-w-full items-center justify-center gap-2 self-start rounded-full border border-charcoal/15 bg-white px-[16px] py-[12px] text-sm font-semibold text-charcoal shadow-sm hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal disabled:opacity-60"
+                  className="inline-flex min-h-[48px] max-w-full items-center justify-center gap-2 self-start rounded-full border border-chrome-line bg-white px-[16px] py-[12px] text-sm font-semibold text-ink-body shadow-sm hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
                 >
                   <Search size={18} className="shrink-0" aria-hidden="true" />
                   <span className="min-w-0 break-words">
@@ -1411,7 +1411,7 @@ export function RecipeDetailSheet({
                 <h3
                   ref={portionsHeadingRef}
                   tabIndex={-1}
-                  className="mb-4 flex flex-wrap items-center gap-2 text-xl font-semibold text-charcoal focus-visible:outline-2 focus-visible:outline-charcoal"
+                  className="mb-4 flex flex-wrap items-center gap-2 text-xl font-semibold text-ink-body focus-visible:outline-2 focus-visible:outline-ink-body"
                 >
                   <span className="max-w-full break-words">
                     {t('recipes.ingredients', 'Ingredients')}
@@ -1419,7 +1419,7 @@ export function RecipeDetailSheet({
                   {displayedServings != null && displayedServings! > 0 && (
                     <span
                       data-testid="recipe-servings"
-                      className="inline-block max-w-full shrink-0 rounded-full bg-charcoal/5 px-2 py-1 text-xs font-medium normal-case tracking-normal text-charcoal/80"
+                      className="inline-block max-w-full shrink-0 rounded-full bg-charcoal/5 px-2 py-1 text-xs font-medium normal-case tracking-normal text-ink-body"
                     >
                       {tWithVars(
                         displayedServings === 1 ? 'recipes.serving' : 'recipes.servings',
@@ -1434,7 +1434,7 @@ export function RecipeDetailSheet({
                     {(previewTarget || showingOriginalEvidence) &&
                       readingBasisServings != null &&
                       readingBasisServings > 0 && (
-                        <p data-testid="recipe-original-yield" className="mb-2 text-charcoal/80">
+                        <p data-testid="recipe-original-yield" className="mb-2 text-ink-muted">
                           {tWithVars(
                             readingBasisServings === 1
                               ? 'recipes.originalBasisSingular'
@@ -1482,7 +1482,7 @@ export function RecipeDetailSheet({
                                   : { scope: previewScope, target }
                               );
                             }}
-                            className={`min-h-[48px] min-w-[48px] rounded-xl border px-3 font-semibold focus-visible:outline-2 focus-visible:outline-terracotta ${previewTarget === target || (!previewTarget && !showingOriginalEvidence && headingServings === target) ? 'border-terracotta bg-terracotta-50 text-terracotta-700' : 'border-charcoal/15 bg-white text-charcoal'}`}
+                            className={`min-h-[48px] min-w-[48px] rounded-xl border px-3 font-semibold focus-visible:outline-2 focus-visible:outline-hearth-ink ${previewTarget === target || (!previewTarget && !showingOriginalEvidence && headingServings === target) ? 'border-hearth-line bg-terracotta-50 text-hearth-ink' : 'border-chrome-line bg-white text-ink-body'}`}
                           >
                             {target}
                           </button>
@@ -1493,7 +1493,7 @@ export function RecipeDetailSheet({
                         <button
                           type="button"
                           disabled={Boolean(ingredientContext && !projection)}
-                          className="min-h-[48px] text-sage-800 underline underline-offset-4"
+                          className="min-h-[48px] text-garden-ink underline underline-offset-4"
                           onClick={() => {
                             setPreviewSelection(null);
                             resetDrafts(recipe);
@@ -1527,12 +1527,12 @@ export function RecipeDetailSheet({
                   </div>
                 )}
                 {!isEditing && sourceDayLabel && onBeginPlanning && (
-                  <p data-testid="recipe-portion-context" className="mb-3 text-sm text-charcoal/80">
+                  <p data-testid="recipe-portion-context" className="mb-3 text-sm text-ink-muted">
                     {sourceDayLabel}
                   </p>
                 )}
                 {ingredientContext && !isEditing && (
-                  <div className="mb-3 text-sm text-charcoal/80">
+                  <div className="mb-3 text-sm text-ink-muted">
                     {projection?.preparation && (
                       <>
                         <PreparationStatus preparation={projection.preparation} />
@@ -1579,20 +1579,20 @@ export function RecipeDetailSheet({
                 )}
                 {isEditing && (
                   <div className="mb-3 min-w-0">
-                    <p className="mb-2 text-sm text-charcoal/70">
+                    <p className="mb-2 text-sm text-ink-muted">
                       {t(
                         'recipes.yieldCorrectionHint',
                         'This updates the saved recipe and may change your shopping list.'
                       )}
                     </p>
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <label
                         htmlFor="recipe-edit-servings"
-                        className="shrink-0 text-sm font-semibold text-charcoal"
+                        className="shrink-0 text-sm font-semibold text-ink-body"
                       >
                         {t('recipes.servingsLabel', 'Servings')}
                       </label>
-                      <div className="ml-auto inline-flex shrink-0 items-center rounded-full border border-charcoal/15 bg-white/90 shadow-sm">
+                      <div className="ml-auto inline-flex max-w-full min-w-0 shrink-0 items-center rounded-full border border-chrome-line bg-white/90 shadow-sm">
                         <button
                           type="button"
                           data-testid="recipe-edit-servings-decrement"
@@ -1608,7 +1608,7 @@ export function RecipeDetailSheet({
                               setDraftServings(String(parsedDraftServings - 1));
                             }
                           }}
-                          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-l-full text-charcoal transition hover:bg-charcoal/5 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
+                          className="inline-flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-l-full text-ink-body transition hover:bg-charcoal/5 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-hearth-ink"
                         >
                           <Minus size={16} aria-hidden="true" />
                         </button>
@@ -1623,7 +1623,7 @@ export function RecipeDetailSheet({
                           onChange={(event) => setDraftServings(event.target.value)}
                           aria-invalid={servingsInvalid}
                           aria-describedby={servingsInvalid ? 'recipe-servings-error' : undefined}
-                          className="min-h-12 w-14 bg-transparent text-center text-sm font-semibold text-charcoal outline-none"
+                          className="min-h-[48px] min-w-[48px] w-14 bg-transparent text-center text-sm font-semibold text-ink-body outline-none"
                         />
                         <button
                           type="button"
@@ -1640,7 +1640,7 @@ export function RecipeDetailSheet({
                               parsedDraftServings === null ? '1' : String(parsedDraftServings + 1)
                             )
                           }
-                          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-r-full text-charcoal transition hover:bg-charcoal/5 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
+                          className="inline-flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-r-full text-ink-body transition hover:bg-charcoal/5 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-hearth-ink"
                         >
                           <Plus size={16} aria-hidden="true" />
                         </button>
@@ -1649,7 +1649,7 @@ export function RecipeDetailSheet({
                     {servingsInvalid && (
                       <p
                         id="recipe-servings-error"
-                        className="mt-1 break-words text-sm text-terracotta-600"
+                        className="mt-1 break-words text-sm text-hearth-ink"
                       >
                         {t('recipes.servingsInvalid', 'Enter a whole number from 1 to 2147483647.')}
                       </p>
@@ -1670,30 +1670,30 @@ export function RecipeDetailSheet({
                           return (
                             <div
                               key={row.key}
-                              className="space-y-3 rounded-2xl border border-charcoal/10 bg-white/75 p-3"
+                              className="space-y-3 rounded-2xl border border-chrome-line bg-white/75 p-3"
                             >
                               <div
                                 data-testid={`recipe-ingredient-top-row-${index}`}
-                                className="flex items-end gap-2"
+                                className="flex flex-wrap items-end gap-2"
                               >
-                                <label className="grid min-w-0 flex-1 gap-1 text-sm font-semibold text-charcoal">
+                                <label className="grid min-w-[min(100%,5rem)] flex-1 gap-1 text-sm font-semibold text-ink-body">
                                   <span>{t('recipes.ingredientAmount', 'Amount')}</span>
                                   <input
                                     data-testid={`recipe-edit-amount-${index}`}
                                     disabled={isSavingRecipe}
                                     value={row.amount}
                                     onChange={(event) => change({ amount: event.target.value })}
-                                    className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
+                                    className="min-h-12 w-full min-w-0 rounded-xl border border-chrome-line bg-white px-3 text-sm font-normal text-ink-body"
                                   />
                                 </label>
-                                <label className="grid min-w-0 flex-[1.2] gap-1 text-sm font-semibold text-charcoal">
+                                <label className="grid min-w-[min(100%,6rem)] flex-[1.2] gap-1 text-sm font-semibold text-ink-body">
                                   <span>{t('recipes.ingredientUnit', 'Unit')}</span>
                                   <select
                                     data-testid={`recipe-edit-unit-${index}`}
                                     disabled={isSavingRecipe}
                                     value={row.unit}
                                     onChange={(event) => change({ unit: event.target.value })}
-                                    className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-2 text-sm font-normal text-charcoal"
+                                    className="min-h-12 w-full min-w-0 rounded-xl border border-chrome-line bg-white px-2 text-sm font-normal text-ink-body"
                                   >
                                     {renderUnitOptions(row.unit)}
                                   </select>
@@ -1709,26 +1709,26 @@ export function RecipeDetailSheet({
                                       rows.filter((item) => item.key !== row.key)
                                     )
                                   }
-                                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-charcoal/70 transition hover:bg-charcoal/5 hover:text-charcoal disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
+                                  className="ml-auto inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-icon-affordance transition hover:bg-charcoal/5 hover:text-ink-body disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-hearth-ink"
                                 >
                                   <Trash2 size={18} aria-hidden="true" />
                                 </button>
                               </div>
-                              <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                              <label className="grid min-w-0 gap-1 text-sm font-semibold text-ink-body">
                                 <span>{t('recipes.ingredientDescription', 'Description')}</span>
                                 <input
                                   data-testid={`recipe-edit-ingredient-${index}`}
                                   disabled={isSavingRecipe}
                                   value={row.description}
                                   onChange={(event) => change({ description: event.target.value })}
-                                  className="min-h-12 w-full rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
+                                  className="min-h-12 w-full rounded-xl border border-chrome-line bg-white px-3 text-sm font-normal text-ink-body"
                                 />
                               </label>
                               <details className="rounded-xl bg-charcoal/3 px-3 py-1">
-                                <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold text-charcoal/80">
+                                <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold text-ink-body">
                                   {t('recipes.ingredientOptions', 'Shopping and scaling')}
                                 </summary>
-                                <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                <label className="grid min-w-0 gap-1 text-sm font-semibold text-ink-body">
                                   <span>{t('recipes.shoppingName', 'Shopping name')}</span>
                                   <input
                                     disabled={isSavingRecipe}
@@ -1736,10 +1736,10 @@ export function RecipeDetailSheet({
                                     onChange={(event) =>
                                       change({ shoppingName: event.target.value })
                                     }
-                                    className="min-h-12 w-full rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
+                                    className="min-h-12 w-full rounded-xl border border-chrome-line bg-white px-3 text-sm font-normal text-ink-body"
                                   />
                                 </label>
-                                <label className="flex min-h-12 items-center gap-2 text-sm text-charcoal">
+                                <label className="flex min-h-12 items-center gap-2 text-sm text-ink-body">
                                   <input
                                     type="checkbox"
                                     disabled={isSavingRecipe}
@@ -1751,7 +1751,7 @@ export function RecipeDetailSheet({
                                     'Keep amount fixed when portions change'
                                   )}
                                 </label>
-                                <label className="flex min-h-12 items-center gap-2 text-sm text-charcoal">
+                                <label className="flex min-h-12 items-center gap-2 text-sm text-ink-body">
                                   <input
                                     type="checkbox"
                                     data-testid={`recipe-edit-package-enabled-${index}`}
@@ -1768,7 +1768,7 @@ export function RecipeDetailSheet({
                                 </label>
                                 {pack.enabled && (
                                   <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2 pb-2">
-                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-ink-body">
                                       <span>{t('recipes.packageCountUnit', 'Package label')}</span>
                                       <input
                                         data-testid={`recipe-edit-package-count-unit-${index}`}
@@ -1777,10 +1777,10 @@ export function RecipeDetailSheet({
                                         onChange={(event) =>
                                           change({ packageCountUnit: event.target.value })
                                         }
-                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-chrome-line bg-white px-3 text-sm font-normal text-ink-body"
                                       />
                                     </label>
-                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-ink-body">
                                       <span>
                                         {t(
                                           'recipes.packageCapacityAmount',
@@ -1794,10 +1794,10 @@ export function RecipeDetailSheet({
                                         onChange={(event) =>
                                           change({ packageCapacityAmount: event.target.value })
                                         }
-                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-chrome-line bg-white px-3 text-sm font-normal text-ink-body"
                                       />
                                     </label>
-                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-ink-body">
                                       <span>
                                         {t('recipes.packageCapacityUnit', 'Unit in each package')}
                                       </span>
@@ -1808,12 +1808,12 @@ export function RecipeDetailSheet({
                                         onChange={(event) =>
                                           change({ packageCapacityUnit: event.target.value })
                                         }
-                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-2 text-sm font-normal text-charcoal"
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-chrome-line bg-white px-2 text-sm font-normal text-ink-body"
                                       >
                                         {renderUnitOptions(pack.capacityUnit)}
                                       </select>
                                     </label>
-                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-ink-body">
                                       <span>{t('recipes.packageBasis', 'Amount refers to')}</span>
                                       <select
                                         data-testid={`recipe-edit-package-basis-${index}`}
@@ -1825,7 +1825,7 @@ export function RecipeDetailSheet({
                                               .value as IngredientDraft['packageBasis'],
                                           })
                                         }
-                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-2 text-sm font-normal text-charcoal"
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-chrome-line bg-white px-2 text-sm font-normal text-ink-body"
                                       >
                                         <option value="unspecified">
                                           {t('recipes.packageBasisUnspecified', 'Not specified')}
@@ -1855,7 +1855,7 @@ export function RecipeDetailSheet({
                               onChange={(event) =>
                                 handleIngredientChange(index, event.target.value)
                               }
-                              className="min-h-12 min-w-0 flex-1 rounded-2xl border border-charcoal/10 bg-white/90 px-4 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
+                              className="min-h-12 min-w-0 flex-1 rounded-2xl border border-chrome-line bg-white/90 px-4 py-2 text-sm text-ink-body shadow-sm outline-none transition focus:border-hearth-line"
                             />
                             <button
                               type="button"
@@ -1863,7 +1863,7 @@ export function RecipeDetailSheet({
                               disabled={isSavingRecipe}
                               aria-label={t('recipes.removeIngredient', 'Remove ingredient')}
                               onClick={() => handleRemoveIngredient(index)}
-                              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
+                              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-icon-affordance hover:text-ink-body transition hover:bg-charcoal/10"
                             >
                               <X size={16} />
                             </button>
@@ -1886,7 +1886,7 @@ export function RecipeDetailSheet({
                           ? setCanonicalDrafts((rows) => [...rows, ingredientDraft()])
                           : handleAddIngredient()
                       }
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-4 text-sm font-black text-charcoal shadow-sm"
+                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-chrome-line bg-white px-4 text-sm font-black text-ink-body shadow-sm"
                     >
                       <Plus size={16} />
                       {t('recipes.addIngredient', 'Add ingredient')}
@@ -1901,7 +1901,7 @@ export function RecipeDetailSheet({
                           ? 'recipe-ingredient-projection'
                           : undefined
                     }
-                    className="divide-y divide-sage/20 text-base leading-relaxed text-charcoal"
+                    className="divide-y divide-garden-line text-base leading-relaxed text-ink-body"
                   >
                     {previewTarget || (ingredientContext && !showingOriginalEvidence)
                       ? displayedProjection?.lines?.map((line, index) => (
@@ -1925,7 +1925,7 @@ export function RecipeDetailSheet({
               >
                 <h3
                   id="recipe-instructions-heading"
-                  className="mb-4 text-xl font-semibold text-charcoal"
+                  className="mb-4 text-xl font-semibold text-ink-body"
                 >
                   {t('recipes.instructions', 'Instructions')}
                 </h3>
@@ -1936,7 +1936,7 @@ export function RecipeDetailSheet({
                   displayedProjection.lines?.some((line) => line.status === 'scaled') && (
                     <p
                       data-testid="recipe-instruction-limitation"
-                      className="mb-4 text-sm text-charcoal"
+                      className="mb-4 text-sm text-ink-body"
                     >
                       {t(
                         'cook.originalAmounts',
@@ -1958,11 +1958,11 @@ export function RecipeDetailSheet({
                             <div
                               key={section.key}
                               data-testid={`recipe-edit-section-${section.sectionIndex}`}
-                              className="grid min-w-0 gap-3 rounded-2xl border border-charcoal/10 p-3"
+                              className="grid min-w-0 gap-3 rounded-2xl border border-chrome-line p-3"
                             >
                               <div className="flex items-end gap-2">
                                 <label className="grid min-w-0 flex-1 gap-2">
-                                  <span className="text-sm font-semibold text-charcoal">
+                                  <span className="text-sm font-semibold text-ink-body">
                                     {tWithVars(
                                       'recipes.sectionHeader',
                                       'Section {{number}} header',
@@ -1990,7 +1990,7 @@ export function RecipeDetailSheet({
                                         )
                                       )
                                     }
-                                    className="min-h-12 min-w-0 w-full rounded-xl border border-charcoal/15 bg-white px-3 py-2 text-base font-semibold text-charcoal"
+                                    className="min-h-12 min-w-0 w-full rounded-xl border border-chrome-line bg-white px-3 py-2 text-base font-semibold text-ink-body"
                                   />
                                 </label>
                                 <button
@@ -2020,7 +2020,7 @@ export function RecipeDetailSheet({
                                       )
                                     )
                                   }
-                                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-charcoal/70 transition hover:bg-charcoal/5 hover:text-charcoal disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
+                                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-icon-affordance transition hover:bg-charcoal/5 hover:text-ink-body disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-hearth-ink"
                                 >
                                   <Trash2 size={18} aria-hidden="true" />
                                 </button>
@@ -2030,7 +2030,7 @@ export function RecipeDetailSheet({
                                   <div className="flex items-center justify-between gap-2">
                                     <label
                                       htmlFor={`recipe-edit-step-${row.stepNumber - 1}-input`}
-                                      className="text-sm font-semibold text-charcoal"
+                                      className="text-sm font-semibold text-ink-body"
                                     >
                                       {tWithVars(
                                         'recipes.stepInstructions',
@@ -2068,7 +2068,7 @@ export function RecipeDetailSheet({
                                           )
                                         )
                                       }
-                                      className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-charcoal/70 transition hover:bg-charcoal/5 hover:text-charcoal disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
+                                      className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-icon-affordance transition hover:bg-charcoal/5 hover:text-ink-body disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-hearth-ink"
                                     >
                                       <Trash2 size={18} aria-hidden="true" />
                                     </button>
@@ -2089,7 +2089,7 @@ export function RecipeDetailSheet({
                                         )
                                       )
                                     }
-                                    className="min-w-0 w-full rounded-2xl border border-charcoal/15 bg-white p-3 text-base text-charcoal"
+                                    className="min-w-0 w-full rounded-2xl border border-chrome-line bg-white p-3 text-base text-ink-body"
                                   />
                                 </div>
                               ))}
@@ -2117,7 +2117,7 @@ export function RecipeDetailSheet({
                                     )
                                   )
                                 }
-                                className="min-h-12 rounded-xl border border-charcoal/15 px-4 font-semibold"
+                                className="min-h-12 rounded-xl border border-chrome-line px-4 font-semibold"
                               >
                                 {t('recipes.addStep', 'Add step')}
                               </button>
@@ -2132,7 +2132,7 @@ export function RecipeDetailSheet({
                                   addInstruction(currentInstructions, canonicalEditing)
                                 )
                               }
-                              className="min-h-12 rounded-xl border border-charcoal/15 px-4 font-semibold"
+                              className="min-h-12 rounded-xl border border-chrome-line px-4 font-semibold"
                             >
                               {t('recipes.addStep', 'Add step')}
                             </button>
@@ -2146,7 +2146,7 @@ export function RecipeDetailSheet({
                                 addInstructionSection(currentInstructions, canonicalEditing)
                               )
                             }
-                            className="min-h-12 rounded-xl border border-charcoal/15 px-4 font-semibold"
+                            className="min-h-12 rounded-xl border border-chrome-line px-4 font-semibold"
                           >
                             {t('recipes.addSection', 'Add section')}
                           </button>
@@ -2160,18 +2160,18 @@ export function RecipeDetailSheet({
                       <li
                         key={step.index}
                         value={step.index}
-                        className="text-base leading-relaxed text-charcoal"
+                        className="text-base leading-relaxed text-ink-body"
                       >
                         {step.sectionTitle &&
                           step.sectionTitle !== steps[index - 1]?.sectionTitle && (
-                            <h4 className="mb-3 text-lg font-semibold text-sage-800">
+                            <h4 className="mb-3 text-lg font-semibold text-garden-ink">
                               {step.sectionTitle}
                             </h4>
                           )}
                         <div className="flex items-start gap-3">
                           <span
                             aria-hidden="true"
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sage/15 text-sm font-semibold text-sage-800"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sage-50 border border-garden-line text-sm font-semibold text-garden-ink"
                           >
                             {step.index}
                           </span>
@@ -2191,7 +2191,7 @@ export function RecipeDetailSheet({
                     ))}
                   </ol>
                 ) : (
-                  <p className="text-base leading-relaxed text-charcoal/80">
+                  <p className="text-base leading-relaxed text-ink-muted">
                     {t(
                       'recipes.instructionsUnavailable',
                       'Instructions are unavailable for this recipe.'
@@ -2201,7 +2201,7 @@ export function RecipeDetailSheet({
               </section>
             </div>
             <section className="mt-8" aria-labelledby="recipe-rating-heading">
-              <h3 id="recipe-rating-heading" className="mb-3 text-xl font-semibold">
+              <h3 id="recipe-rating-heading" className="mb-3 text-xl font-semibold text-ink-body">
                 {t('recipes.rating', 'Rating')}
               </h3>
               <div
@@ -2210,6 +2210,12 @@ export function RecipeDetailSheet({
               >
                 {RATING_OPTIONS.map(({ value, emoji, label }) => {
                   const isSelected = rating === value;
+                  const ratingInk =
+                    value === 1
+                      ? 'text-hearth-ink'
+                      : value === 2
+                        ? 'text-garden-ink'
+                        : 'text-ink-body';
                   return (
                     <button
                       key={value}
@@ -2219,7 +2225,8 @@ export function RecipeDetailSheet({
                       aria-pressed={isSelected}
                       onClick={() => void handleRatingChange(value)}
                       className={[
-                        'relative inline-flex min-h-[48px] min-w-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-[1.5rem] px-2 py-3 text-sm text-charcoal transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal',
+                        'relative inline-flex min-h-[48px] min-w-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-[1.5rem] px-2 py-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body',
+                        ratingInk,
                         isSelected ? 'bg-white shadow-md' : 'hover:bg-white/60',
                       ].join(' ')}
                     >
@@ -2227,9 +2234,9 @@ export function RecipeDetailSheet({
                         {emoji}
                       </span>
                       <span
-                        className={[
-                          'max-w-full break-words text-sm font-semibold text-charcoal',
-                        ].join(' ')}
+                        className={['max-w-full break-words text-sm font-semibold', ratingInk].join(
+                          ' '
+                        )}
                       >
                         {t(`recipes.rating${label}`, label)}
                       </span>
@@ -2244,18 +2251,18 @@ export function RecipeDetailSheet({
               role="region"
               aria-label={t('recipes.familyNotes', 'Family notes')}
               data-testid="recipe-family-notes"
-              className="mt-8 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sage"
+              className="mt-8 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-garden-ink"
             >
               <div>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <label
                     htmlFor="recipe-notes-input"
-                    className="text-xl font-semibold text-charcoal"
+                    className="text-xl font-semibold text-ink-body"
                   >
                     {t('recipes.notes', 'Notes')}
                   </label>
                   {(notesDraft?.status === 'pending' || notesDraft?.status === 'saving') && (
-                    <span role="status" className="text-xs text-charcoal/60">
+                    <span role="status" className="text-xs text-ink-muted">
                       {t('recipes.notesSaving', 'Saving…')}
                     </span>
                   )}
@@ -2263,7 +2270,7 @@ export function RecipeDetailSheet({
                     <span
                       data-testid="recipe-notes-saved"
                       role="status"
-                      className="flex items-center gap-1 text-sm font-medium text-sage-800"
+                      className="flex items-center gap-1 text-sm font-medium text-garden-ink"
                     >
                       <Check size={11} strokeWidth={3} />
                       {t('recipes.notesSaved', 'Saved')}
@@ -2281,13 +2288,13 @@ export function RecipeDetailSheet({
                   onChange={(event) => {
                     editRecipeNotes(recipeId, event.target.value);
                   }}
-                  className="min-h-28 w-full rounded-[1.5rem] border border-charcoal/10 bg-white/90 px-4 py-3 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
+                  className="min-h-28 w-full rounded-[1.5rem] border border-chrome-line bg-white/90 px-4 py-3 text-sm text-ink-body shadow-sm outline-none transition focus:border-hearth-line focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hearth-fill"
                 />
                 {notesDraft?.status === 'error' && (
                   <div
                     id="recipe-notes-error"
                     role="alert"
-                    className="mt-2 text-sm text-terracotta"
+                    className="mt-2 text-sm text-hearth-ink"
                   >
                     {t('recipes.notesError', 'Notes could not be saved. Your draft is retained.')}
                     <button
@@ -2306,7 +2313,7 @@ export function RecipeDetailSheet({
               {!isEditing && (
                 <DiscoveryToggleCard
                   compactReading
-                  descriptionClassName="text-charcoal-600"
+                  descriptionClassName="text-ink-muted"
                   isDiscoverable={isDiscoverable}
                   onToggle={handleToggleDiscovery}
                   isLoading={isUpdatingDiscovery}
@@ -2315,14 +2322,14 @@ export function RecipeDetailSheet({
             </div>
 
             {editError && (
-              <p className="mb-4 rounded-2xl bg-terracotta/10 px-4 py-3 text-sm font-bold text-terracotta-600">
+              <p className="mb-4 rounded-2xl bg-terracotta/10 px-4 py-3 text-sm font-bold text-hearth-ink">
                 {editError}
               </p>
             )}
           </div>
         )}
         {isEditing && (
-          <div className="shrink-0 max-h-[45dvh] overflow-y-auto flex flex-wrap gap-3 border-t border-charcoal/10 bg-cream px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-8">
+          <div className="shrink-0 max-h-[45dvh] overflow-y-auto flex flex-wrap gap-3 border-t border-chrome-line bg-cream px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-8">
             {draftStorageIssue && (
               <p role="alert" className="w-full text-sm">
                 {t(
@@ -2542,7 +2549,7 @@ export function RecipeDetailSheet({
                 draftName.trim().length === 0 ||
                 draftMealTypes.length === 0
               }
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta active:bg-terracotta-700 px-2 py-3 sm:px-5 text-sm font-black text-white shadow-sm transition hover:bg-terracotta-600 disabled:opacity-60"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-hearth-fill active:bg-hearth-fill-active px-2 py-3 sm:px-5 text-sm font-black text-white shadow-sm transition hover:bg-hearth-fill-hover disabled:opacity-60"
             >
               <Save size={16} className="hidden shrink-0 sm:block" />
               <span className="min-w-0 break-words">
@@ -2556,7 +2563,7 @@ export function RecipeDetailSheet({
               data-testid="recipe-cancel-edits"
               onClick={handleCancelEdit}
               disabled={isSavingRecipe}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-2 py-3 sm:px-5 text-sm font-black text-charcoal shadow-sm disabled:opacity-60"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-chrome-line bg-white px-2 py-3 sm:px-5 text-sm font-black text-ink-body shadow-sm disabled:opacity-60"
             >
               <X size={16} className="hidden shrink-0 sm:block" />
               <span className="min-w-0 break-words">{t('common.cancel', 'Cancel')}</span>
@@ -2567,15 +2574,15 @@ export function RecipeDetailSheet({
         {recipe && !isLoading && !isEditing && (
           <div
             data-testid="recipe-planning-actions"
-            className="shrink-0 max-h-[45dvh] overflow-y-auto border-t border-charcoal/10 bg-cream px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-8"
+            className="shrink-0 max-h-[45dvh] overflow-y-auto border-t border-chrome-line bg-cream px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-8"
           >
             {actionError && (
-              <p role="alert" className="mb-2 text-sm text-terracotta">
+              <p role="alert" className="mb-2 text-sm text-hearth-ink">
                 {actionError}
               </p>
             )}
             {planningMessage && (
-              <p role={onRetryTarget ? 'alert' : 'status'} className="mb-2 text-sm">
+              <p role={onRetryTarget ? 'alert' : 'status'} className="mb-2 text-sm text-ink-body">
                 {planningMessage}
               </p>
             )}
@@ -2586,7 +2593,7 @@ export function RecipeDetailSheet({
                   data-testid="action-begin-planning"
                   onClick={onBeginPlanning}
                   disabled={departureBlocked}
-                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-terracotta px-[16px] py-[12px] text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal disabled:opacity-60"
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-hearth-fill px-[16px] py-[12px] text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
                 >
                   {t('recipes.plan', 'Plan')}
                 </button>
@@ -2602,7 +2609,7 @@ export function RecipeDetailSheet({
                     'Planned for {{day}}. Open Planner',
                     { day: plannedDayLabel! }
                   )}
-                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl border border-charcoal/15 bg-white px-[16px] py-[12px] text-sm font-semibold text-charcoal shadow-sm hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal disabled:opacity-60"
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl border border-chrome-line bg-white px-[16px] py-[12px] text-sm font-semibold text-ink-body shadow-sm hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
                 >
                   <span className="min-w-0 break-words">
                     {tWithVars('recipes.plannedForDay', 'Planned for {{day}}', {
@@ -2616,7 +2623,7 @@ export function RecipeDetailSheet({
                   data-testid="action-add-to-day"
                   onClick={() => (onRetryTarget ? onRetryTarget() : void handleUseRecipe())}
                   disabled={isSavingAction || planningLoading}
-                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-terracotta px-[16px] py-[12px] text-sm font-semibold text-white disabled:opacity-60"
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-hearth-fill px-[16px] py-[12px] text-sm font-semibold text-white disabled:opacity-60"
                 >
                   <span className="min-w-0 break-words">
                     {isSavingAction
@@ -2634,7 +2641,7 @@ export function RecipeDetailSheet({
                   data-testid="action-add-to-day"
                   onClick={onRetryTarget}
                   disabled={isSavingAction || planningLoading}
-                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-terracotta px-[16px] py-[12px] text-sm font-semibold text-white disabled:opacity-60"
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-hearth-fill px-[16px] py-[12px] text-sm font-semibold text-white disabled:opacity-60"
                 >
                   {planningLoading
                     ? t('common.loading', 'Loading…')
@@ -2654,7 +2661,7 @@ export function RecipeDetailSheet({
                     // chooser's return-focus trigger connected and focusable.
                     if (!changeDayDisabled) onChangeDay();
                   }}
-                  className="inline-flex min-h-[48px] w-[48px] min-w-[48px] flex-none items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
+                  className="inline-flex min-h-[48px] w-[48px] min-w-[48px] flex-none items-center justify-center rounded-xl text-icon-affordance hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hearth-ink"
                 >
                   <ArrowRightLeft
                     data-testid="change-day-icon"

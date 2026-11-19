@@ -109,3 +109,106 @@ it('retains a visible roster error when the API error has no message', async () 
     error: 'Failed to load family members',
   });
 });
+
+describe('familyStore contrastMode preferences', () => {
+  const alexWithContrast = {
+    ...alex,
+    id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    contrastMode: null as 'standard' | 'high' | null,
+  };
+
+  beforeEach(() => {
+    apiMocks.updateMemberPreferences.mockReset();
+    useFamilyStore.setState({
+      familyMembers: [alexWithContrast],
+      selectedFamilyMemberId: alexWithContrast.id,
+      error: null,
+    });
+  });
+
+  it('optimistically updates and reconciles contrastMode using case-insensitive member matching', async () => {
+    let resolveSave!: (value: typeof alexWithContrast) => void;
+    apiMocks.updateMemberPreferences.mockReturnValueOnce(
+      new Promise((resolve) => (resolveSave = resolve))
+    );
+
+    const save = useFamilyStore
+      .getState()
+      .updateMemberPreferences(alexWithContrast.id.toUpperCase(), { contrastMode: 'high' });
+
+    expect(useFamilyStore.getState().familyMembers[0].contrastMode).toBe('high');
+    expect(apiMocks.updateMemberPreferences).toHaveBeenCalledWith(alexWithContrast.id, {
+      contrastMode: 'high',
+    });
+
+    resolveSave({ ...alexWithContrast, contrastMode: 'high' });
+    await save;
+    expect(useFamilyStore.getState().familyMembers[0].contrastMode).toBe('high');
+  });
+
+  it('reconciles contrastMode on error under case-insensitive selectedFamilyMemberId', async () => {
+    let rejectSave!: (reason: Error) => void;
+    apiMocks.updateMemberPreferences.mockReturnValueOnce(
+      new Promise((_resolve, reject) => (rejectSave = reject))
+    );
+    useFamilyStore.setState({
+      selectedFamilyMemberId: alexWithContrast.id.toUpperCase(),
+    });
+
+    const save = useFamilyStore
+      .getState()
+      .updateMemberPreferences(alexWithContrast.id, { contrastMode: 'high' });
+
+    rejectSave(new Error('save failed'));
+    await save;
+
+    expect(useFamilyStore.getState().familyMembers[0].contrastMode).toBeNull();
+    expect(useFamilyStore.getState().error).toBe('save failed');
+  });
+
+  it('ignores stale contrast preference responses when toggled rapidly', async () => {
+    let resolveFirst!: (value: typeof alexWithContrast) => void;
+    let resolveSecond!: (value: typeof alexWithContrast) => void;
+    apiMocks.updateMemberPreferences
+      .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+      .mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)));
+
+    const first = useFamilyStore
+      .getState()
+      .updateMemberPreferences(alexWithContrast.id, { contrastMode: 'high' });
+    const second = useFamilyStore
+      .getState()
+      .updateMemberPreferences(alexWithContrast.id, { contrastMode: 'standard' });
+
+    resolveSecond({ ...alexWithContrast, contrastMode: 'standard' });
+    await second;
+    resolveFirst({ ...alexWithContrast, contrastMode: 'high' });
+    await first;
+
+    expect(useFamilyStore.getState().familyMembers[0].contrastMode).toBe('standard');
+  });
+
+  it('rolls back contrastMode on error without overwriting unrelated changes or leaking error to another member', async () => {
+    let rejectSave!: (reason: Error) => void;
+    apiMocks.updateMemberPreferences.mockReturnValueOnce(
+      new Promise((_resolve, reject) => (rejectSave = reject))
+    );
+
+    const save = useFamilyStore
+      .getState()
+      .updateMemberPreferences(alexWithContrast.id, { contrastMode: 'high' });
+    useFamilyStore.setState((state) => ({
+      familyMembers: state.familyMembers.map((member) => ({ ...member, name: 'Renamed' })),
+      selectedFamilyMemberId: '22222222-2222-4222-8222-222222222222',
+    }));
+
+    rejectSave(new Error('network error'));
+    await save;
+
+    expect(useFamilyStore.getState().familyMembers[0]).toMatchObject({
+      name: 'Renamed',
+      contrastMode: null,
+    });
+    expect(useFamilyStore.getState().error).toBeNull();
+  });
+});

@@ -159,6 +159,7 @@ export const builders = {
     browseViewMode: 'stack',
     cookingViewMode: null,
     preferredLanguage: 'en' as any,
+    contrastMode: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

@@ -494,7 +494,7 @@ Planner's existing recipe-row change action SHALL use the same opposing horizont
 - **THEN** those actions retain their existing icons and behavior
 ### Requirement: Switch Planner rows into At the table inline
 
-Planner SHALL expose Portions as a quiet plate-and-label control aligned with Ask the Family, using the same split date column, Today divider, card surfaces and spacing as Meals view. Each row SHALL right-align its joined minus/value/plus stepper and reset control in the thumb zone, replace full-row grayscale on read-only cooked days with a calm sage Cooked badge, and keep Week, Grocery and voting controls available.
+Planner SHALL expose Portions as a quiet plate-and-label control aligned with Ask the Family, using Meals view's date column, Today divider and card surfaces. Editable rows SHALL right-align a joined minus/value/plus stepper without per-row reset buttons; past rows SHALL show photo-only with no portions or Cooked label, and upcoming prepared rows SHALL show quiet plain-text Already prepared and portions without an input, keeping Week, Grocery and voting available.
 
 #### Scenario: Enter portions mode on a phone
 - **WHEN** Portions is activated for the loaded week
@@ -506,10 +506,11 @@ Planner SHALL expose Portions as a quiet plate-and-label control aligned with As
 - **THEN** each row uses the same left-hand weekday/day/month column and compact Today divider above Today's row as Meals view
 - **AND** editable and past cards match Meals view card surface styling (`glass` for current/future and quiet `cream` for past) without applying full-row `grayscale`
 
-#### Scenario: Thumb-zone stepper alignment and calm Cooked status badge
-- **WHEN** Portions renders an editable day or a read-only cooked day
-- **THEN** the joined minus/value/plus stepper (and compact usual-reset button when active) is right-aligned in the card's trailing thumb zone
-- **AND** a read-only cooked day shows a calm sage `Cooked` badge beside its read-only portion count instead of greying out the entire row
+#### Scenario: Thumb-zone stepper alignment, photo-only past rows, and quiet prepared text
+- **WHEN** Portions renders an editable day, a past day, or a current/future read-only prepared day
+- **THEN** an editable day right-aligns its joined minus/value/plus stepper in the card's trailing thumb zone without a per-row reset button shifting the controls
+- **AND** past days show photo-only (or neutral fallback) on their quiet cream surface with no portions control, no portions count, and no `Cooked` badge
+- **AND** current or future read-only prepared days omit the stepper and input box and show quiet plain-text `Already prepared` (`Déjà préparé`) alongside subtle plain-text portions when a count is saved, matching Recipes view without greying out the row
 
 #### Scenario: Long recipe name or missing photo
 - **WHEN** a recipe has a long name or unavailable hero
@@ -539,7 +540,7 @@ Ask the Family, Nudge family and Close voting SHALL retain their existing state-
 
 ### Requirement: Finish or cancel a week portions draft explicitly
 
-Portions SHALL provide a Recipes button with the planner icon to return to recipe cards, draft-only minus/plus and direct integer entry. Usual configuration SHALL live in Settings, not in this editor. A compact usual-number button SHALL clear a date override in the draft. Recipes saves one changed batch before returning without waiting for groceries; with no changes it returns directly. Failed, invalid, concurrent or uncertain saves SHALL preserve correctable drafts and existing reconciliation.
+Portions SHALL provide a Recipes button with the planner icon to return to recipe cards, draft-only minus/plus and direct integer entry. Usual configuration SHALL live in Settings, not in this editor. Recipes saves one changed batch before returning without waiting for groceries; with no changes it returns directly. Failed, invalid, concurrent or uncertain saves SHALL preserve correctable drafts and existing reconciliation.
 
 #### Scenario: Include leftovers
 - **WHEN** Portions opens
@@ -570,8 +571,8 @@ Portions SHALL provide a Recipes button with the planner icon to return to recip
 
 #### Scenario: Automatic usual portions
 - **WHEN** no explicit usual exists and family size is four
-- **THEN** editable inherited dates use four and their compact reset target is four, without exposing the usual-setting field in Planner
-- **AND** explicit date overrides remain effective until deliberately reset
+- **THEN** editable inherited dates use four without exposing the usual-setting field in Planner
+- **AND** explicit date overrides remain effective until edited
 
 #### Scenario: Correct today's Cooked count
 - **WHEN** today has a Cooked supper without an explicit preparation receipt
@@ -599,28 +600,14 @@ Each joined minus/value/plus group SHALL provide accessible date-specific names,
 - **WHEN** a person focuses Friday's numeric field and enters seven
 - **THEN** its name identifies Friday and portions, seven remains editable, and minus/plus have distinct date-specific names
 
-### Requirement: Reset date portions with a compact usual-number action
+### Requirement: Keep date portions rows dimensionally stable without per-row reset buttons
 
-When an editable date has an override or changed draft and usual is known, its reset control SHALL show the usual number alone with a date-specific accessible action label. Activation SHALL clear the override draft and show inherited usual immediately, awaiting Recipes. Read-only dates SHALL remain protected. Unknown usual SHALL not create a blank or misleading numeric button; a quiet unavailable explanation SHALL retain date editing where allowed.
+Portions SHALL omit any per-row usual-number reset button so stepping or editing counts never shifts controls horizontally or wraps the row. Editable dates SHALL retain direct minus/plus and numeric entry to any valid integer count (including a count equal to usual) and save via Recipes. Read-only dates SHALL remain protected, and unknown usual SHALL show a quiet unavailable explanation while keeping valid date editing enabled.
 
-#### Scenario: Reset five to usual four
-- **WHEN** Sunday's override is five and usual is four, then its visible 4 button is activated
-- **THEN** the field changes to four in the draft, its accessible name describes using usual four portions for Sunday, and Recipes persists removal of the override before returning
-
-#### Scenario: Same number but different inheritance
-- **WHEN** an uncompleted date has override four equal to usual four and the 4 reset button is activated
-- **THEN** reset still removes the explicit override on Recipes so a later automatic/default change can affect that date
-- **AND** accessible status explains the draft's inherited state without requiring a numeric change
+#### Scenario: Edit an overridden date without shifting controls
+- **WHEN** Sunday's saved or inherited portions are adjusted with minus/plus or direct numeric entry
+- **THEN** no per-row default-serving reset button appears, stepper controls stay dimensionally stable in place, and Recipes persists the entered count
 
 #### Scenario: Prepared and unavailable states
 - **WHEN** the date is frozen or the usual count is unknown
-- **THEN** no enabled numeric reset suggests it can change that state, and known prepared/date values are not overwritten
-
-#### Scenario: Default changes during editing
-- **WHEN** usual changes elsewhere while an override-reset draft is open
-- **THEN** existing baseline conflict/review handles it without silently saving a stale visible usual number
-
-#### Scenario: Reset a corrected Cooked count without following future usual changes
-- **WHEN** today's Cooked supper has no preparation receipt and its eligible correction draft uses the compact usual reset
-- **THEN** it previews the current usual number, with Recipes capturing that number for the completed date
-- **AND** reset also works when an earlier draft exists over a frozen inherited value without an override; later usual/member changes do not rescale the saved Cooked date
+- **THEN** no per-row reset button appears, known prepared/date values remain read-only, and unknown usual shows a quiet unavailable note while permitting direct date edits where allowed

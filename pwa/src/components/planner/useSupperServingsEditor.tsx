@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import Image from 'next/image';
-import { Calendar, Check, Minus, Plus, Utensils } from 'lucide-react';
+import { Calendar, Minus, Plus, Utensils } from 'lucide-react';
 import { getLocale, t, tWithVars } from '@/locales';
 import { readSupperServings, saveSupperServings } from '@/lib/api/supper-servings';
 import type { SupperServings } from '@/lib/api/generated/models';
@@ -97,8 +97,6 @@ export function useSupperServingsEditor(
     }
   };
   const usual = state?.defaultServings ?? null;
-  const usualIsSingular =
-    usual !== null && new Intl.PluralRules(getLocale()).select(usual) === 'one';
   const dirty = editing && (Object.keys(draft).length > 0 || legacyUsualReview !== undefined);
   const validCount = (value: string) =>
     /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 2147483647;
@@ -555,14 +553,16 @@ export function useSupperServingsEditor(
         const hasDraft = Object.hasOwn(draft, key);
         const count = hasDraft ? (draft[key] === null ? usual : draft[key]) : day.servings;
         const value = count == null ? '' : String(count);
-        const change = (value: string | null) =>
+        const numericCount = count == null || value === '' ? null : Number(value);
+        const isUpcomingPrepared =
+          !isPast &&
+          !day.editable &&
+          meal?.status !== 3 &&
+          (Boolean(meal?.preparation) || meal?.status === 2);
+        const change = (value: string) =>
           setDraft((previous) => {
             const next = { ...previous };
-            const unchanged =
-              value === null
-                ? day.overrideServings == null && day.servings === usual
-                : value === String(day.servings ?? '');
-            if (unchanged) delete next[key];
+            if (value === String(day.servings ?? '')) delete next[key];
             else next[key] = value;
             return next;
           });
@@ -577,7 +577,7 @@ export function useSupperServingsEditor(
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <p
                   data-testid="planner-today-label"
-                  className="min-w-0 max-w-full text-sm leading-5 font-semibold text-terracotta-600 break-words"
+                  className="min-w-0 max-w-full text-sm leading-5 font-semibold text-hearth-ink break-words"
                 >
                   {t('planner.today', 'Today')}
                 </p>
@@ -642,104 +642,87 @@ export function useSupperServingsEditor(
                       <Utensils aria-hidden="true" />
                     )}
                   </div>
-                  {meal?.status !== 3 ? (
-                    <>
-                      {meal?.status === 2 && !day.editable && (
-                        <span
-                          id={`portion-cooked-${key}`}
-                          data-testid={`portion-cooked-badge-${key}`}
-                          className="inline-flex items-center gap-1 rounded-full bg-sage/15 px-2.5 py-1 text-xs font-semibold text-sage-800"
-                        >
-                          <Check size={14} aria-hidden="true" />
-                          {t('cook.cooked', 'Cooked')}
-                        </span>
-                      )}
-                      <div
-                        data-testid={`portion-controls-${key}`}
-                        className="ml-auto flex flex-wrap items-center justify-end gap-2"
-                      >
-                        <div
-                          role="group"
-                          aria-label={`${key} ${t('portions.portions', 'portions')}`}
-                          aria-describedby={
-                            meal?.status === 2 && !day.editable
-                              ? `portion-cooked-${key}`
-                              : undefined
-                          }
-                          className={`inline-flex items-center rounded-xl border border-charcoal/15 bg-white shadow-sm focus-within:ring-2 focus-within:ring-terracotta ${!day.editable ? 'opacity-75' : ''}`}
-                        >
-                          <button
-                            className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-l-xl text-charcoal hover:bg-cream focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2 disabled:opacity-40"
-                            disabled={!day.editable || pending || Number(value) <= 1}
-                            aria-label={`${t('portions.less', 'Fewer portions')} ${key}`}
-                            onClick={() => change(String(Math.max(1, Number(value || 1) - 1)))}
-                          >
-                            <Minus size={18} />
-                          </button>
-                          <label className="text-center text-sm">
-                            <input
-                              className="h-[48px] w-[64px] min-w-0 border-x border-charcoal/15 bg-transparent text-center tabular-nums outline-none focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2"
-                              type="number"
-                              min={1}
-                              max={2147483647}
-                              inputMode="numeric"
-                              value={value}
-                              disabled={!day.editable || pending}
-                              aria-label={`${key} ${t('portions.portions', 'portions')}`}
-                              data-testid={`portion-input-${key}`}
-                              aria-invalid={
-                                (day.editable &&
-                                  Object.hasOwn(draft, key) &&
-                                  draft[key] !== null &&
-                                  !validCount(value)) ||
-                                undefined
-                              }
-                              aria-describedby={
-                                day.editable &&
-                                Object.hasOwn(draft, key) &&
-                                draft[key] !== null &&
-                                !validCount(value)
-                                  ? `portion-error-${key}`
-                                  : undefined
-                              }
-                              onChange={(event) => change(event.target.value)}
-                            />
-                          </label>
-                          <button
-                            className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-r-xl text-charcoal hover:bg-cream focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-terracotta focus-visible:-outline-offset-2 disabled:opacity-40"
-                            disabled={!day.editable || pending || Number(value) >= 2147483647}
-                            aria-label={`${t('portions.more', 'More portions')} ${key}`}
-                            onClick={() => change(String(Number(value || 0) + 1))}
-                          >
-                            <Plus size={18} />
-                          </button>
-                        </div>
-                        {usual !== null &&
-                          (day.overrideServings != null ||
-                            (Object.hasOwn(draft, key) && draft[key] !== null)) && (
-                            <button
-                              className={control + ' text-sm disabled:opacity-60'}
-                              data-testid={`reset-portions-${key}`}
-                              disabled={!day.editable || pending}
-                              aria-label={tWithVars(
-                                usualIsSingular ? 'portions.resetUsualOne' : 'portions.resetUsual',
-                                usualIsSingular
-                                  ? 'Use usual {{count}} portion for {{date}}'
-                                  : 'Use usual {{count}} portions for {{date}}',
-                                { count: usual, date: formatSupperPlanDate(key) }
-                              )}
-                              onClick={() => change(null)}
-                            >
-                              {usual}
-                            </button>
-                          )}
-                      </div>
-                    </>
-                  ) : (
+                  {meal?.status === 3 ? (
                     <span className="text-sm font-semibold text-charcoal-600">
                       {nonCookingLabel(meal.nonCooking)}
                     </span>
-                  )}
+                  ) : day.editable ? (
+                    <div
+                      data-testid={`portion-controls-${key}`}
+                      className="ml-auto flex items-center justify-end"
+                    >
+                      <div
+                        role="group"
+                        aria-label={`${key} ${t('portions.portions', 'portions')}`}
+                        className="inline-flex items-center rounded-xl border border-chrome-line bg-white shadow-sm focus-within:ring-2 focus-within:ring-terracotta"
+                      >
+                        <button
+                          type="button"
+                          className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-l-xl text-ink-body hover:bg-cream focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-ink-body focus-visible:-outline-offset-2 disabled:opacity-40"
+                          disabled={pending || Number(value) <= 1}
+                          aria-label={`${t('portions.less', 'Fewer portions')} ${key}`}
+                          onClick={() => change(String(Math.max(1, Number(value || 1) - 1)))}
+                        >
+                          <Minus size={18} aria-hidden="true" />
+                        </button>
+                        <label className="text-center text-sm">
+                          <input
+                            className="h-[48px] w-[64px] min-w-0 border-x border-chrome-line bg-transparent text-center tabular-nums text-ink-body outline-none focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-ink-body focus-visible:-outline-offset-2"
+                            type="number"
+                            min={1}
+                            max={2147483647}
+                            inputMode="numeric"
+                            value={value}
+                            disabled={pending}
+                            aria-label={`${key} ${t('portions.portions', 'portions')}`}
+                            data-testid={`portion-input-${key}`}
+                            aria-invalid={
+                              (Object.hasOwn(draft, key) &&
+                                draft[key] !== null &&
+                                !validCount(value)) ||
+                              undefined
+                            }
+                            aria-describedby={
+                              Object.hasOwn(draft, key) && draft[key] !== null && !validCount(value)
+                                ? `portion-error-${key}`
+                                : undefined
+                            }
+                            onChange={(event) => change(event.target.value)}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-r-xl text-ink-body hover:bg-cream focus-visible:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-ink-body focus-visible:-outline-offset-2 disabled:opacity-40"
+                          disabled={pending || Number(value) >= 2147483647}
+                          aria-label={`${t('portions.more', 'More portions')} ${key}`}
+                          onClick={() => change(String(Number(value || 0) + 1))}
+                        >
+                          <Plus size={18} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : isUpcomingPrepared ? (
+                    <div
+                      data-testid={`portion-prepared-status-${key}`}
+                      className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 pl-0.5"
+                    >
+                      <span className="text-sm font-semibold leading-tight text-garden-ink">
+                        {t('cook.alreadyPrepared', 'Already prepared')}
+                      </span>
+                      {numericCount != null && Number.isFinite(numericCount) && (
+                        <span
+                          data-testid={`portion-prepared-count-${key}`}
+                          className="text-xs font-medium leading-tight text-ink-muted tabular-nums"
+                        >
+                          {tWithVars(
+                            numericCount === 1 ? 'portions.countOne' : 'portions.countOther',
+                            numericCount === 1 ? '{{count}} portion' : '{{count}} portions',
+                            { count: value }
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  ) : null}
                   {day.editable &&
                     Object.hasOwn(draft, key) &&
                     draft[key] !== null &&
@@ -755,17 +738,6 @@ export function useSupperServingsEditor(
                   {meal?.status !== 3 && day.editable && usual === null && (
                     <p className="w-full text-sm text-charcoal/70">
                       {t('portions.usualUnavailable', 'Usual portions unavailable')}
-                    </p>
-                  )}
-                  {meal?.status !== 3 && day.editable && usual !== null && draft[key] === null && (
-                    <p role="status" className="w-full text-sm text-charcoal/70">
-                      {tWithVars(
-                        usualIsSingular ? 'portions.usingUsualOne' : 'portions.usingUsual',
-                        usualIsSingular
-                          ? 'Using usual {{count}} portion'
-                          : 'Using usual {{count}} portions',
-                        { count: usual }
-                      )}
                     </p>
                   )}
                 </div>

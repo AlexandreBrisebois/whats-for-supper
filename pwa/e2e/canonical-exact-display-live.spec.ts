@@ -159,7 +159,7 @@ test(`exact display ${locale} preserves original fractions and coherent dated re
       const index = offset + 2;
       await editor.getByTestId('recipe-add-ingredient').click();
       await editor.getByTestId(`recipe-edit-amount-${index}`).fill(amount);
-      await editor.getByTestId(`recipe-edit-unit-${index}`).fill(unit);
+      await editor.getByTestId(`recipe-edit-unit-${index}`).selectOption(unit);
       await editor.getByTestId(`recipe-edit-ingredient-${index}`).fill(description);
     }
     for (const [number, text] of [

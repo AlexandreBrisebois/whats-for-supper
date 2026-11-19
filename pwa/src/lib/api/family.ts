@@ -9,6 +9,7 @@ export type FamilyMember = {
   browseViewMode: 'stack' | 'list';
   cookingViewMode: 'step-by-step' | 'all-steps' | null;
   preferredLanguage: string;
+  contrastMode: 'standard' | 'high' | null;
 };
 
 function toBrowseViewMode(value: unknown): 'stack' | 'list' {
@@ -17,6 +18,10 @@ function toBrowseViewMode(value: unknown): 'stack' | 'list' {
 
 function toCookingViewMode(value: unknown): 'step-by-step' | 'all-steps' | null {
   return value === 'step-by-step' || value === 'all-steps' ? value : null;
+}
+
+function toContrastMode(value: unknown): 'standard' | 'high' | null {
+  return value === 'standard' || value === 'high' ? value : null;
 }
 
 export async function getFamilyMembers(): Promise<FamilyMember[]> {
@@ -29,6 +34,7 @@ export async function getFamilyMembers(): Promise<FamilyMember[]> {
       browseViewMode: toBrowseViewMode(m.browseViewMode),
       cookingViewMode: toCookingViewMode(m.cookingViewMode),
       preferredLanguage: m.preferredLanguage || '',
+      contrastMode: toContrastMode(m.contrastMode),
     })) || []
   );
 }
@@ -43,6 +49,7 @@ export async function getCurrentFamilyMember(): Promise<FamilyMember | null> {
       browseViewMode: toBrowseViewMode(result.data.browseViewMode),
       cookingViewMode: toCookingViewMode(result.data.cookingViewMode),
       preferredLanguage: result.data.preferredLanguage || '',
+      contrastMode: toContrastMode(result.data.contrastMode),
     };
   } catch (err) {
     return null;
@@ -60,6 +67,7 @@ export async function createFamilyMember(payload: FamilyPostRequestBody): Promis
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
     cookingViewMode: toCookingViewMode(result.data.cookingViewMode),
     preferredLanguage: result.data.preferredLanguage || '',
+    contrastMode: toContrastMode(result.data.contrastMode),
   };
 }
 
@@ -77,6 +85,7 @@ export async function updateFamilyMember(
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
     cookingViewMode: toCookingViewMode(result.data.cookingViewMode),
     preferredLanguage: result.data.preferredLanguage || '',
+    contrastMode: toContrastMode(result.data.contrastMode),
   };
 }
 
@@ -94,6 +103,7 @@ export async function updateFamilyMemberPreferences(
     browseViewMode: toBrowseViewMode(result.data.browseViewMode),
     cookingViewMode: toCookingViewMode(result.data.cookingViewMode),
     preferredLanguage: result.data.preferredLanguage || '',
+    contrastMode: toContrastMode(result.data.contrastMode),
   };
 }
 

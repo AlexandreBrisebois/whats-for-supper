@@ -6,16 +6,16 @@ import { t } from '@/locales';
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 py-12 text-center">
-      <h2 className="text-2xl font-bold text-charcoal">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-cream px-6 py-12 text-center">
+      <h2 className="font-heading text-2xl font-bold text-charcoal">
         {t('errors.notFoundTitle', 'Page not found')}
       </h2>
-      <p className="text-charcoal-400">
+      <p className="text-charcoal-600">
         {t('errors.notFoundDescription', "The page you're looking for doesn't exist.")}
       </p>
       <Link
         href="/"
-        className="rounded-xl bg-indigo px-6 py-3 font-semibold text-lavender transition-opacity hover:opacity-90"
+        className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-terracotta px-6 py-3 font-semibold text-cream-100 transition-colors hover:bg-terracotta-600 active:bg-terracotta-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
       >
         {t('errors.goHome', 'Go home')}
       </Link>

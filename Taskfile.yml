@@ -1080,7 +1080,12 @@ tasks:
   spec:search:
     desc: "Search specification documents before creating or revising a spec"
     cmds:
-      - rg -n -i --glob '*.md' -- {{.CLI_ARGS}} openspec/specs openspec/changes
+      - |
+        if command -v rg >/dev/null 2>&1; then
+          rg -n -i --glob '*.md' -- {{.CLI_ARGS}} openspec/specs openspec/changes
+        else
+          grep -rn -i -E --include='*.md' -- {{.CLI_ARGS}} openspec/specs openspec/changes
+        fi
 
   spec:audit:
     desc: "Read-only canonical inventory (use -- --format json or --capability <exact-id>)"

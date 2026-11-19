@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures';
 import { setupCommonRoutes, MOCK_IDS } from './mock-api';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 
 const pdf = {
   name: 'supper.pdf',
@@ -163,5 +164,49 @@ test.describe('PDF import', () => {
     await page.goto('/capture?share=' + token);
     await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
     await expect(page.getByTestId('pdf-share-error')).toContainText(/again/);
+  });
+
+  for (const mode of ['standard', 'high'] as const) {
+    const contrastLevel = mode === 'high' ? 'aaa' : 'aa';
+
+    test(`PDF confirmation and share error satisfy ${contrastLevel.toUpperCase()} contract in ${mode} mode`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto('/profile');
+      await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+      const save = page.waitForResponse(
+        (r) =>
+          r.url().endsWith(`/api/family/${MOCK_IDS.MEMBER_ALEX}/preferences`) &&
+          r.request().method() === 'PUT'
+      );
+      await page.getByTestId(`contrast-btn-${mode}`).click();
+      await save;
+      await expect(page.locator('html')).toHaveAttribute('data-contrast', mode);
+
+      await page.goto('/capture');
+      await page.getByTestId('import-recipe-file-input').setInputFiles(pdf);
+      await expect(page.getByTestId('pdf-confirmation')).toBeVisible();
+      await page.getByTestId('pdf-rating-2').click();
+      await page.getByTestId('pdf-notes').fill('Less salt, extra lemon');
+      await assertCookbookVisualA11y(page, { contrastLevel });
+
+      await page.goto('/capture?pdfShareError=1');
+      await expect(page.getByTestId('pdf-share-error')).toBeVisible();
+      await assertCookbookVisualA11y(page, { contrastLevel });
+    });
+  }
+
+  test('OS prefers-contrast: more enforces High Contrast AAA on PDF confirmation', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ contrast: 'more' });
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    await page.goto('/capture');
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
+    await page.getByTestId('import-recipe-file-input').setInputFiles(pdf);
+    await expect(page.getByTestId('pdf-confirmation')).toBeVisible();
+    await assertCookbookVisualA11y(page, { contrastLevel: 'aaa' });
   });
 });

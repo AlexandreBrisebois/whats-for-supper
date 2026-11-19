@@ -332,8 +332,14 @@ test('planned-day Home, Planner, detail and table retain frozen prepared context
   await page.goto('/planner');
   await expect(page.getByTestId('day-card-4')).toContainText('Already prepared');
   await page.getByTestId('at-the-table-mode').click();
-  await expect(page.getByTestId('portion-input-2026-05-08')).toBeDisabled();
-  await expect(page.getByTestId('portion-input-2026-05-08')).toHaveValue('6');
+  const preparedRow = page.getByTestId('portion-row-2026-05-08');
+  await expect(preparedRow.getByTestId('portion-input-2026-05-08')).toHaveCount(0);
+  await expect(preparedRow.getByTestId('portion-prepared-status-2026-05-08')).toContainText(
+    'Already prepared'
+  );
+  await expect(preparedRow.getByTestId('portion-prepared-count-2026-05-08')).toHaveText(
+    '6 portions'
+  );
 });
 
 test('generic common-fixture cooking prepares from its current source context', async ({

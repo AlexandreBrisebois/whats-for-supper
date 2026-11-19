@@ -1,5 +1,6 @@
 import path from 'path';
 import { test, expect } from './fixtures';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import {
   MOCK_IDS,
   builders,
@@ -950,5 +951,143 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toBeVisible();
     await page.getByTestId(`recipe-failure-dismiss-${recipeId}`).click();
     await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).not.toBeVisible();
+  });
+});
+
+test.describe('Capture Family Cookbook dual-mode visual & a11y contract', () => {
+  test.beforeEach(async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: MOCK_IDS.MEMBER_ALEX,
+        url: baseUrl,
+        httpOnly: true,
+      },
+    ]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupCommonRoutes(page);
+  });
+
+  for (const mode of ['standard', 'high'] as const) {
+    const contrastLevel = mode === 'high' ? 'aaa' : 'aa';
+
+    test(`capture surfaces, notifications, and overlays satisfy ${contrastLevel.toUpperCase()} contract in ${mode} mode`, async ({
+      page,
+    }) => {
+      await page.goto('/profile');
+      await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+      const save = page.waitForResponse(
+        (r) =>
+          r.url().endsWith(`/api/family/${MOCK_IDS.MEMBER_ALEX}/preferences`) &&
+          r.request().method() === 'PUT'
+      );
+      await page.getByTestId(`contrast-btn-${mode}`).click();
+      await save;
+      await expect(page.locator('html')).toHaveAttribute('data-contrast', mode);
+
+      await page.goto('/capture');
+      await expect(page.getByTestId('capture-take-photo-btn')).toBeVisible();
+
+      if (mode === 'high') {
+        const headerStyle = await page.locator('header.glass-header').evaluate((el) => {
+          const cs = getComputedStyle(el);
+          return {
+            backgroundColor: cs.backgroundColor,
+            backdropFilter: cs.backdropFilter,
+          };
+        });
+        expect(headerStyle.backgroundColor).toBe('rgb(253, 252, 240)');
+        expect(headerStyle.backdropFilter).toBe('none');
+      }
+
+      await assertCookbookVisualA11y(page, { contrastLevel });
+
+      await page.getByTestId('capture-gallery-input').setInputFiles(FIXTURE_IMAGE);
+      await expect(page.getByTestId('capture-photos-count')).toBeVisible();
+      await page.getByTestId('capture-rating-2').click();
+      await expect(page.getByTestId('capture-rating-2')).toHaveAttribute('aria-pressed', 'true');
+      await page.getByLabel(/notes/i).fill('Warm broth and fresh herbs');
+      await assertCookbookVisualA11y(page, { contrastLevel });
+
+      await page.goto('/capture');
+      await page.getByTestId('capture-secondary-action-describe').click();
+      await expect(page.getByTestId('capture-synthesize-btn')).toBeVisible();
+      await page.getByLabel(/recipe name/i).fill('Aunt Marie Tourtiere');
+      await page.getByLabel(/description/i).fill('Spiced pork pie in flaky pastry.');
+      await expect(page.getByTestId('capture-synthesize-btn')).toBeEnabled();
+      await expect(page.getByTestId('capture-synthesize-btn')).toHaveCSS('opacity', '1');
+      await assertCookbookVisualA11y(page, { contrastLevel });
+
+      await page.goto('/home');
+      await page.waitForFunction(() => Boolean((window as any).__libraryStore), {
+        timeout: 10_000,
+      });
+      await page.evaluate(
+        ({ readyId, failedId }) => {
+          const store = (window as any).__libraryStore.getState();
+          store.pushNotification({ recipeId: readyId, name: 'Sunday Pasta', type: 'ready' });
+          store.pushNotification({
+            recipeId: failedId,
+            name: 'Failed Lasagna',
+            type: 'failed',
+            errorMessage: 'Extraction timed out',
+            failedStep: 'recipe-extraction',
+          });
+        },
+        { readyId: MOCK_IDS.RECIPE_SPAGHETTI, failedId: MOCK_IDS.RECIPE_LASAGNA }
+      );
+
+      const toast = page.locator('[role="status"]').filter({ hasText: 'Sunday Pasta' });
+      const banner = page.getByTestId(`recipe-failure-banner-${MOCK_IDS.RECIPE_LASAGNA}`);
+      await expect(toast).toBeVisible();
+      await expect(banner).toBeVisible();
+      await expect(toast).toHaveCSS('opacity', '1');
+      await expect(banner).toHaveCSS('opacity', '1');
+
+      if (mode === 'high') {
+        const toastStyle = await toast.locator('.glass-toast').evaluate((el) => {
+          const cs = getComputedStyle(el);
+          return {
+            backgroundColor: cs.backgroundColor,
+            backdropFilter: cs.backdropFilter,
+          };
+        });
+        expect(toastStyle.backgroundColor).toBe('rgb(255, 255, 255)');
+        expect(toastStyle.backdropFilter).toBe('none');
+      }
+
+      await assertCookbookVisualA11y(page, { contrastLevel });
+    });
+  }
+
+  test('OS prefers-contrast: more activates High Contrast AAA on Capture at 320px width without overflow', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ contrast: 'more' });
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    await page.goto('/capture');
+    await expect(page.getByTestId('capture-take-photo-btn')).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
+
+    const headerStyle = await page.locator('header.glass-header').evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return {
+        backgroundColor: cs.backgroundColor,
+        backdropFilter: cs.backdropFilter,
+      };
+    });
+    expect(headerStyle.backgroundColor).toBe('rgb(253, 252, 240)');
+    expect(headerStyle.backdropFilter).toBe('none');
+
+    await assertCookbookVisualA11y(page, { contrastLevel: 'aaa' });
+
+    await page.getByTestId('capture-secondary-action-describe').click();
+    await expect(page.getByTestId('capture-synthesize-btn')).toBeVisible();
+    await page.getByLabel(/recipe name/i).fill('Quick Pea Soup');
+    await expect(page.getByTestId('capture-synthesize-btn')).toBeEnabled();
+    await expect(page.getByTestId('capture-synthesize-btn')).toHaveCSS('opacity', '1');
+    await assertCookbookVisualA11y(page, { contrastLevel: 'aaa' });
   });
 });

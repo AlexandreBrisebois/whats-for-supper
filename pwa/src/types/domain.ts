@@ -6,6 +6,7 @@ export interface FamilyMember {
   browseViewMode?: 'stack' | 'list';
   cookingViewMode?: 'step-by-step' | 'all-steps' | null;
   preferredLanguage?: string;
+  contrastMode?: 'standard' | 'high' | null;
 }
 
 export interface RecipeImage {

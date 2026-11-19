@@ -54,7 +54,7 @@ function Editor({
 async function openEditor(meals = schedule, today?: string | null) {
   render(<Editor meals={meals} today={today} />);
   fireEvent.click(screen.getByTestId('at-the-table-mode'));
-  await screen.findByTestId(`portion-input-${sunday}`);
+  await screen.findByTestId(`portion-row-${sunday}`);
 }
 
 function retainLegacyDraft(uncertainSave = false) {
@@ -89,17 +89,16 @@ it('edits only date exceptions without a usual configuration field', async () =>
   expect(screen.queryByRole('spinbutton', { name: 'Usual portions' })).not.toBeInTheDocument();
 });
 
-it('shows only the usual number on reset with a date-specific accessible action', async () => {
+it('omits any per-row default serving reset button on overridden or edited dates', async () => {
   await openEditor();
-  const reset = screen.getByTestId(`reset-portions-${sunday}`);
-  expect(reset).toHaveTextContent(/^4$/);
-  expect(reset).toHaveAccessibleName(/use usual 4 portions for .*sunday/i);
-  expect(reset).toBeEnabled();
+  expect(screen.queryByTestId(`reset-portions-${sunday}`)).not.toBeInTheDocument();
+  fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '6' } });
+  expect(screen.queryByTestId(`reset-portions-${sunday}`)).not.toBeInTheDocument();
 });
 
-it('resets five to inherited four and Recipes removes only that date override', async () => {
+it('edits five to four directly and Recipes saves only that date count', async () => {
   await openEditor();
-  fireEvent.click(screen.getByTestId(`reset-portions-${sunday}`));
+  fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '4' } });
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(4);
   expect(save).not.toHaveBeenCalled();
   fireEvent.click(screen.getByTestId('save-portions'));
@@ -108,7 +107,7 @@ it('resets five to inherited four and Recipes removes only that date override', 
   expect(payload).not.toHaveProperty('defaultServings');
   expect(payload.days).toHaveLength(1);
   expect(String(payload.days[0].date)).toBe(sunday);
-  expect(payload.days[0].servings).toBeNull();
+  expect(payload.days[0].servings).toBe(4);
 });
 
 it('returns to recipes without saving when nothing changed', async () => {
@@ -121,11 +120,11 @@ it('returns to recipes without saving when nothing changed', async () => {
 
 it('saves a draft before returning to recipes', async () => {
   await openEditor();
-  fireEvent.click(screen.getByTestId(`reset-portions-${sunday}`));
+  fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '4' } });
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(4);
   fireEvent.click(screen.getByRole('button', { name: 'Recipes' }));
   await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-  expect(save.mock.calls[0][0].days[0].servings).toBeNull();
+  expect(save.mock.calls[0][0].days[0].servings).toBe(4);
   await screen.findByTestId('at-the-table-mode');
 });
 
@@ -139,24 +138,11 @@ it('keeps edits available for review when saving from Recipes fails', async () =
   expect(screen.getByRole('button', { name: 'Recipes' })).toBeDisabled();
 });
 
-it('explains inheritance when resetting an explicit four to usual four', async () => {
-  read.mockResolvedValue(snapshot(4));
-  await openEditor();
-  fireEvent.click(screen.getByTestId(`reset-portions-${sunday}`));
-  expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(4);
-  const row = screen.getByTestId(`portion-row-${sunday}`);
-  expect(within(row).getByRole('status')).toHaveTextContent(/using usual 4 portions/i);
-  fireEvent.click(screen.getByTestId('save-portions'));
-  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-  expect(save.mock.calls[0][0].days[0].servings).toBeNull();
-});
-
-it('keeps an unknown usual honest without offering an enabled reset', async () => {
+it('keeps an unknown usual honest without offering a reset button', async () => {
   read.mockResolvedValue(snapshot(5, null));
   await openEditor();
   const row = screen.getByTestId(`portion-row-${sunday}`);
-  const reset = within(row).queryByTestId(`reset-portions-${sunday}`);
-  expect(reset === null || reset.hasAttribute('disabled')).toBe(true);
+  expect(within(row).queryByTestId(`reset-portions-${sunday}`)).toBeNull();
   expect(row).toHaveTextContent(/usual portions (?:are )?unavailable/i);
   expect(screen.getByTestId(`portion-input-${sunday}`)).toBeEnabled();
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(5);
@@ -173,16 +159,31 @@ it('keeps frozen dates and non-cooking dates protected', async () => {
         : day.date === sunday
           ? { ...day, status: 2 }
           : day
-    )
+    ),
+    '2026-10-14'
   );
-  expect(screen.getByTestId(`portion-input-${sunday}`)).toBeDisabled();
-  expect(screen.getByTestId(`portion-row-${sunday}`)).not.toHaveClass('bg-charcoal/10');
-  expect(screen.getByTestId(`portion-row-${sunday}`)).not.toHaveClass('grayscale');
+  const sundayRow = screen.getByTestId(`portion-row-${sunday}`);
+  expect(sundayRow).not.toHaveClass('bg-charcoal/10');
+  expect(sundayRow).not.toHaveClass('grayscale');
+  expect(within(sundayRow).getByTestId('planner-meal')).toHaveClass('glass');
+  expect(within(sundayRow).queryByTestId(`portion-input-${sunday}`)).not.toBeInTheDocument();
+  expect(within(sundayRow).queryByTestId(`reset-portions-${sunday}`)).not.toBeInTheDocument();
+  expect(within(sundayRow).queryAllByRole('button')).toHaveLength(0);
+  expect(within(sundayRow).getByTestId(`portion-prepared-status-${sunday}`)).toHaveTextContent(
+    'Already prepared'
+  );
+  expect(within(sundayRow).getByTestId(`portion-prepared-count-${sunday}`)).toHaveTextContent(
+    '5 portions'
+  );
+
+  const pastRow = screen.getByTestId('portion-row-2026-10-13');
+  expect(within(pastRow).getByTestId('planner-meal')).toHaveClass('bg-cream');
+  expect(within(pastRow).queryByTestId('portion-input-2026-10-13')).not.toBeInTheDocument();
   expect(
-    within(screen.getByTestId(`portion-row-${sunday}`)).getByTestId('planner-meal')
-  ).toHaveClass('glass');
-  expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(5);
-  expect(screen.getByTestId(`reset-portions-${sunday}`)).toBeDisabled();
+    within(pastRow).queryByTestId('portion-prepared-status-2026-10-13')
+  ).not.toBeInTheDocument();
+  expect(within(pastRow).queryAllByRole('button')).toHaveLength(0);
+
   expect(screen.queryByTestId(`portion-input-${monday}`)).not.toBeInTheDocument();
   expect(screen.queryByTestId(`reset-portions-${monday}`)).not.toBeInTheDocument();
   expect(within(screen.getByTestId(`portion-row-${monday}`)).queryByRole('group')).toBeNull();
@@ -202,22 +203,36 @@ it('allows a server-editable cooked date to be corrected and saved', async () =>
 });
 
 it.each(['en', 'fr'])(
-  'labels a disabled cooked meal in %s without labeling other disabled dates',
+  'shows quiet Already prepared text for upcoming prepared meals in %s and keeps past cooked meals photo-only',
   async (locale) => {
     localStorage.setItem('locale', locale);
     try {
       const state = snapshot();
       state.days = state.days?.map((day) => ({ ...day, editable: false }));
       read.mockResolvedValue(state);
-      await openEditor(schedule.map((day) => (day.date === sunday ? { ...day, status: 2 } : day)));
-      const row = screen.getByTestId(`portion-row-${sunday}`);
-      expect(within(row).getByTestId(`portion-input-${sunday}`)).toBeDisabled();
-      expect(within(row).getByText(locale === 'fr' ? 'Cuisiné' : 'Cooked')).toBeInTheDocument();
+      await openEditor(
+        schedule.map((day) =>
+          day.date === monday || day.date === sunday ? { ...day, status: 2 } : day
+        ),
+        '2026-10-14'
+      );
+      const futureRow = screen.getByTestId(`portion-row-${sunday}`);
+      expect(within(futureRow).queryByTestId(`portion-input-${sunday}`)).not.toBeInTheDocument();
+      expect(within(futureRow).getByTestId(`portion-prepared-status-${sunday}`)).toHaveTextContent(
+        locale === 'fr' ? 'Déjà préparé' : 'Already prepared'
+      );
+      expect(within(futureRow).getByTestId(`portion-prepared-count-${sunday}`)).toHaveTextContent(
+        '5 portions'
+      );
+
+      const pastRow = screen.getByTestId(`portion-row-${monday}`);
+      expect(within(pastRow).queryByTestId(`portion-input-${monday}`)).not.toBeInTheDocument();
       expect(
-        within(screen.getByTestId(`portion-row-${monday}`)).queryByText(
-          locale === 'fr' ? 'Cuisiné' : 'Cooked'
-        )
-      ).toBeNull();
+        within(pastRow).queryByTestId(`portion-prepared-status-${monday}`)
+      ).not.toBeInTheDocument();
+      expect(pastRow).not.toHaveTextContent(
+        /Already prepared|Déjà préparé|Cooked|Cuisiné|\b5\b|\b4\b/
+      );
     } finally {
       localStorage.removeItem('locale');
     }
@@ -353,25 +368,24 @@ it.each(['', '4', 'not a count'])(
   }
 );
 
-it('reviews a changed usual target and preserves null reset with the fresh version', async () => {
-  save.mockRejectedValueOnce(new Error('conflict')).mockResolvedValueOnce(snapshot(null, 5));
+it('reviews a changed baseline and preserves date edit with the fresh version', async () => {
+  save.mockRejectedValueOnce(new Error('conflict')).mockResolvedValueOnce(snapshot(6, 5));
   await openEditor();
-  fireEvent.click(screen.getByTestId(`reset-portions-${sunday}`));
-  expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(4);
+  fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '6' } });
+  expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(6);
   fireEvent.click(screen.getByTestId('save-portions'));
   await screen.findByRole('alert');
   read.mockResolvedValue({ ...snapshot(5, 5), version: 'fresh' });
   fireEvent.click(screen.getByTestId('portions-review'));
   const review = await screen.findByTestId('portions-saved-review');
-  expect(review).toHaveTextContent('Your edits: 5');
-  expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(5);
-  expect(screen.getByTestId(`reset-portions-${sunday}`)).toHaveTextContent(/^5$/);
+  expect(review).toHaveTextContent('Your edits: 6');
+  expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(6);
   fireEvent.click(screen.getByTestId('portions-keep-draft'));
   fireEvent.click(screen.getByTestId('save-portions'));
   await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
   expect(save.mock.calls[1][0]).toMatchObject({
     expectedVersion: 'fresh',
-    days: [{ servings: null }],
+    days: [{ servings: 6 }],
   });
   expect(save.mock.calls[1][0]).not.toHaveProperty('defaultServings');
 });
@@ -417,29 +431,6 @@ it('keeps legacy default-only context for explicit review, then closes without a
   expect(save).not.toHaveBeenCalled();
 });
 
-it.each(['en', 'fr'])('uses singular numeric reset and inherited status in %s', async (locale) => {
-  localStorage.setItem('locale', locale);
-  try {
-    read.mockResolvedValue(snapshot(5, 1));
-    await openEditor();
-    const reset = screen.getByTestId(`reset-portions-${sunday}`);
-    expect(reset).toHaveTextContent(/^1$/);
-    expect(reset).toHaveAccessibleName(
-      locale === 'fr'
-        ? /utiliser la 1 portion habituelle.*dimanche/i
-        : /use usual 1 portion.*sunday/i
-    );
-    fireEvent.click(reset);
-    expect(
-      within(screen.getByTestId(`portion-row-${sunday}`)).getByRole('status')
-    ).toHaveTextContent(
-      locale === 'fr' ? 'Utilisation de la 1 portion habituelle' : 'Using usual 1 portion'
-    );
-  } finally {
-    localStorage.removeItem('locale');
-  }
-});
-
 describe('frozen inherited portions correction', () => {
   const frozen = () => {
     const state = snapshot(null);
@@ -466,20 +457,9 @@ describe('frozen inherited portions correction', () => {
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0][0].days[0].servings).toBe(count);
   });
-
-  it('retains reset intent after editing a frozen inherited five with no override', async () => {
-    read.mockResolvedValue(frozen());
-    await openEditor();
-    fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '6' } });
-    fireEvent.click(screen.getByTestId(`reset-portions-${sunday}`));
-    expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(4);
-    fireEvent.click(screen.getByTestId('save-portions'));
-    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-    expect(save.mock.calls[0][0].days[0].servings).toBeNull();
-  });
 });
 
-describe('Planner Portions Meals-parity layout and calm Cooked badge', () => {
+describe('Planner Portions Meals-parity layout, photo-only past rows, and quiet prepared text', () => {
   it('matches Meals view split date column, Today divider, and temporal card surfaces', async () => {
     const today = '2026-10-14';
     await openEditor(schedule, today);
@@ -505,31 +485,58 @@ describe('Planner Portions Meals-parity layout and calm Cooked badge', () => {
     expect(within(futureRow).getByTestId('planner-meal')).toHaveClass('glass');
   });
 
-  it('right-aligns stepper and reset controls in the thumb zone and shows a calm sage Cooked badge on read-only cooked days', async () => {
+  it('right-aligns editable stepper without a reset button, shows photo-only past rows, and renders quiet plain text on upcoming prepared days', async () => {
     const state = snapshot();
     state.days = state.days?.map((day) =>
-      String(day.date) === monday ? { ...day, editable: false } : day
+      String(day.date) === monday || String(day.date) === '2026-10-17'
+        ? { ...day, servings: 6, editable: false }
+        : day
     );
     read.mockResolvedValue(state);
     await openEditor(
-      schedule.map((day) => (day.date === monday ? { ...day, status: 2 } : day)),
+      schedule.map((day) =>
+        day.date === monday
+          ? { ...day, status: 2 }
+          : day.date === '2026-10-17'
+            ? {
+                ...day,
+                status: 2,
+                preparation: { preparedOn: '2026-10-14', servings: 6 } as any,
+              }
+            : day
+      ),
       '2026-10-14'
     );
 
     const editableControls = screen.getByTestId(`portion-controls-${sunday}`);
     expect(editableControls).toHaveClass('ml-auto');
-    expect(editableControls).toContainElement(screen.getByTestId(`reset-portions-${sunday}`));
+    expect(screen.queryByTestId(`reset-portions-${sunday}`)).not.toBeInTheDocument();
     expect(editableControls).toContainElement(
       within(screen.getByTestId(`portion-row-${sunday}`)).getByRole('group')
     );
 
-    const cookedRow = screen.getByTestId(`portion-row-${monday}`);
-    expect(cookedRow).not.toHaveClass('grayscale');
-    const cookedBadge = within(cookedRow).getByTestId(`portion-cooked-badge-${monday}`);
-    expect(cookedBadge).toHaveTextContent('Cooked');
-    expect(cookedBadge).toHaveClass('bg-sage/15', 'text-sage-800');
-    expect(cookedBadge.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
-    const cookedGroup = within(cookedRow).getByRole('group');
-    expect(cookedGroup).toHaveAttribute('aria-describedby', `portion-cooked-${monday}`);
+    const pastCookedRow = screen.getByTestId(`portion-row-${monday}`);
+    expect(pastCookedRow).not.toHaveClass('grayscale');
+    expect(within(pastCookedRow).getByTestId('planner-meal')).toHaveClass('bg-cream');
+    expect(
+      within(pastCookedRow).queryByTestId(`portion-cooked-badge-${monday}`)
+    ).not.toBeInTheDocument();
+    expect(within(pastCookedRow).queryByTestId(`portion-input-${monday}`)).not.toBeInTheDocument();
+    expect(pastCookedRow).not.toHaveTextContent(/Cooked|Already prepared|\b6\b/);
+    expect(within(pastCookedRow).queryAllByRole('button')).toHaveLength(0);
+
+    const futurePreparedRow = screen.getByTestId('portion-row-2026-10-17');
+    expect(within(futurePreparedRow).getByTestId('planner-meal')).toHaveClass('glass');
+    expect(
+      within(futurePreparedRow).queryByTestId('portion-input-2026-10-17')
+    ).not.toBeInTheDocument();
+    expect(within(futurePreparedRow).queryByRole('group')).toBeNull();
+    expect(within(futurePreparedRow).queryAllByRole('button')).toHaveLength(0);
+    const status = within(futurePreparedRow).getByTestId('portion-prepared-status-2026-10-17');
+    const label = within(status).getByText('Already prepared');
+    const count = within(futurePreparedRow).getByTestId('portion-prepared-count-2026-10-17');
+    expect(label).toHaveClass('text-garden-ink');
+    expect(count).toHaveTextContent('6 portions');
+    expect(count).toHaveClass('text-ink-muted');
   });
 });

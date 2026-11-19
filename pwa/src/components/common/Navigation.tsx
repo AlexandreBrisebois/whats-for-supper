@@ -11,6 +11,7 @@ import { ROUTES } from '@/lib/constants/routes';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { getCategories } from '@/lib/api/discovery';
 import { t } from '@/locales';
+import { useLocale } from './LocaleProvider';
 
 interface NavItem {
   href: Route;
@@ -19,19 +20,6 @@ interface NavItem {
   isPrimary?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { href: ROUTES.HOME as Route, label: t('navigation.home', 'Home'), icon: Home },
-  { href: '/recipes' as Route, label: t('navigation.recipes', 'Recipes'), icon: BookOpen },
-  {
-    href: ROUTES.DISCOVERY as Route,
-    label: t('navigation.discover', 'Discover'),
-    icon: Compass,
-    isPrimary: true,
-  },
-  { href: ROUTES.PLANNER as Route, label: t('navigation.planner', 'Planner'), icon: Calendar },
-  { href: ROUTES.PROFILE as Route, label: t('navigation.profile', 'Profile'), icon: UserCircle },
-];
-
 interface NavigationProps {
   className?: string;
 }
@@ -39,7 +27,33 @@ interface NavigationProps {
 export function Navigation({ className = '' }: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { locale } = useLocale();
   const { hasPendingCards, session, setHasPendingCards, refreshSession } = useDiscoveryStore();
+
+  const navItems: NavItem[] = [
+    { href: ROUTES.HOME as Route, label: t('navigation.home', 'Home', locale), icon: Home },
+    {
+      href: '/recipes' as Route,
+      label: t('navigation.recipes', 'Recipes', locale),
+      icon: BookOpen,
+    },
+    {
+      href: ROUTES.DISCOVERY as Route,
+      label: t('navigation.discover', 'Discovery', locale),
+      icon: Compass,
+      isPrimary: true,
+    },
+    {
+      href: ROUTES.PLANNER as Route,
+      label: t('navigation.planner', 'Planner', locale),
+      icon: Calendar,
+    },
+    {
+      href: ROUTES.PROFILE as Route,
+      label: t('navigation.profile', 'Profile', locale),
+      icon: UserCircle,
+    },
+  ];
 
   // Background check for pending cards and authoritative session phase on app load
   useEffect(() => {
@@ -67,7 +81,7 @@ export function Navigation({ className = '' }: NavigationProps) {
         className,
       ].join(' ')}
     >
-      {NAV_ITEMS.map((item) => {
+      {navItems.map((item) => {
         const active = pathname === item.href;
         const Icon = item.icon;
 
@@ -80,20 +94,20 @@ export function Navigation({ className = '' }: NavigationProps) {
                 if (requestPortionsDeparture(() => router.push(item.href))) event.preventDefault();
               }}
               data-testid={`nav-item-${item.href.replace('/', '') || 'home'}`}
-              className="relative -top-4 flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 active:scale-95 z-40"
+              className="relative -top-3 flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 transition-transform hover:scale-105 active:scale-95 z-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
               aria-current={active ? 'page' : undefined}
             >
               <div
                 className={[
-                  'flex h-20 w-20 items-center justify-center rounded-full bg-ochre ring-4 ring-cream-100 shadow-ochre-floating transition-all',
+                  'flex h-16 w-16 items-center justify-center rounded-full bg-ochre-100 text-sunlight-ink border border-sunlight-line ring-4 ring-cream-100 shadow-ochre-floating',
                   hasPendingCards && session?.phase === 'collecting' && !active
                     ? 'animate-pulse-ochre'
                     : '',
                 ].join(' ')}
               >
-                <Icon size={32} strokeWidth={2.5} className="text-white" aria-hidden="true" />
+                <Icon size={28} strokeWidth={2.5} aria-hidden="true" />
               </div>
-              <span className="text-[9px] font-bold text-ochre mt-1 uppercase tracking-widest">
+              <span className="text-xs font-semibold leading-tight text-sunlight-ink">
                 {item.label}
               </span>
             </Link>
@@ -109,8 +123,8 @@ export function Navigation({ className = '' }: NavigationProps) {
             }}
             data-testid={`nav-item-${item.href.replace('/', '') || 'home'}`}
             className={[
-              'flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-bold transition-all z-40 uppercase tracking-tighter',
-              active ? 'text-terracotta' : 'text-charcoal-400 hover:text-terracotta-600',
+              'flex flex-1 min-h-12 min-w-12 flex-col items-center justify-center gap-1 py-1 text-xs font-semibold leading-tight z-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body',
+              active ? 'text-hearth-ink' : 'text-ink-muted hover:text-hearth-ink',
             ].join(' ')}
             aria-current={active ? 'page' : undefined}
           >

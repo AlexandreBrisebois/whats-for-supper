@@ -33,7 +33,12 @@ for (const action of ['tomorrow', 'next-week', 'drop'] as const) {
       route.fulfill({
         json: {
           data: [
-            builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Replacement Lasagna' }),
+            builders.scheduleRecipe({
+              id: MOCK_IDS.RECIPE_LASAGNA,
+              name: 'Replacement Lasagna',
+              description: 'Layered pasta with rich tomato sauce.',
+              ingredients: ['Lasagna noodles', 'Tomato sauce'],
+            }),
           ],
         },
       })
@@ -49,6 +54,12 @@ for (const action of ['tomorrow', 'next-week', 'drop'] as const) {
     await page.goto('/home');
     await page.getByTestId('skip-tonight-btn').click();
     await page.getByTestId('recovery-action-pick-else').click();
+    const detailsToggle = page.getByTestId('quick-find-details-toggle');
+    await expect(detailsToggle).toHaveAttribute('aria-expanded', 'false');
+    await detailsToggle.click();
+    await expect(detailsToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByText('Layered pasta with rich tomato sauce.')).toBeVisible();
+    await expect(page.getByText('Lasagna noodles')).toBeVisible();
     await page.getByTestId('quick-find-select').click();
     let assignments = 0,
       dispositions = 0;

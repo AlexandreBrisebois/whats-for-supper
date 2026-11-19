@@ -26,60 +26,7 @@ export interface VisualViolation {
  * - Any allowlisted file whose count drops below its recorded cap fails with tightening
  *   instructions so migration gains cannot silently regress.
  */
-export const LEGACY_ERA_ALLOWLIST: Record<string, number> = {
-  'src/app/(app)/capture/confirm/page.tsx': 1,
-  'src/app/(app)/discovery/page.tsx': 7,
-  'src/app/(app)/planner/page.tsx': 22,
-  'src/app/(app)/profile/settings/SettingsPageContent.tsx': 2,
-  'src/app/(app)/recipes/RecipesExperience.tsx': 6,
-  'src/app/(auth)/invite/page.tsx': 1,
-  'src/app/(auth)/onboarding/page.tsx': 2,
-  'src/app/(auth)/welcome/WelcomeForm.tsx': 3,
-  'src/app/error.tsx': 2,
-  'src/app/not-found.tsx': 2,
-  'src/app/page.tsx': 3,
-  'src/components/capture/CameraView.tsx': 5,
-  'src/components/capture/ImageReview.tsx': 5,
-  'src/components/capture/LibraryToast.tsx': 5,
-  'src/components/capture/MinimalCapture.tsx': 40,
-  'src/components/capture/NotesField.tsx': 7,
-  'src/components/capture/PdfCaptureConfirmation.tsx': 1,
-  'src/components/capture/PdfCapturePanel.tsx': 1,
-  'src/components/capture/RatingSelector.tsx': 5,
-  'src/components/capture/RecipeFailureBanner.tsx': 1,
-  'src/components/capture/SubmitConfirmation.tsx': 8,
-  'src/components/common/FormInput.tsx': 1,
-  'src/components/common/InviteLinkDialog.tsx': 3,
-  'src/components/common/LanguageSwitchProposal.tsx': 3,
-  'src/components/common/LocaleToggle.tsx': 2,
-  'src/components/common/Modal.tsx': 3,
-  'src/components/common/Navigation.tsx': 4,
-  'src/components/discovery/FamilyNudgeDialog.tsx': 3,
-  'src/components/home/HomeCommandCenter.tsx': 3,
-  'src/components/home/HomeGreeting.tsx': 2,
-  'src/components/home/HomeSections.tsx': 4,
-  'src/components/home/SkipRecoveryDialog.tsx': 16,
-  'src/components/identity/FamilyMemberList.tsx': 1,
-  'src/components/identity/IdentityHint.tsx': 1,
-  'src/components/planner/CooksMode.tsx': 6,
-  'src/components/planner/GroceryList.tsx': 16,
-  'src/components/planner/PlanningPivotSheet.tsx': 16,
-  'src/components/planner/QuickFindModal.tsx': 19,
-  'src/components/profile/FailedCapturesSection.tsx': 4,
-  'src/components/profile/FamilyManagement.tsx': 1,
-  'src/components/recipes/BrowseAllEmptyState.tsx': 1,
-  'src/components/recipes/DiscoveryToggleCard.tsx': 1,
-  'src/components/recipes/EndCard.tsx': 3,
-  'src/components/recipes/OriginalPhotosViewer.tsx': 1,
-  'src/components/recipes/RecipeDetailSheet.tsx': 7,
-  'src/components/recipes/RecipeFiltersSheet.tsx': 1,
-  'src/components/recipes/RecipeImportIssueBadge.tsx': 1,
-  'src/components/recipes/RecycleBinSheet.tsx': 12,
-  'src/components/recipes/StackActionBar.tsx': 4,
-  'src/components/ui/SuccessCard.tsx': 2,
-  'src/components/ui/ToastContainer.tsx': 4,
-  'src/components/ui/spinner.tsx': 1,
-};
+export const LEGACY_ERA_ALLOWLIST: Record<string, number> = {};
 
 function scanLine(file: string, lineNumber: number, line: string): VisualViolation[] {
   const hits: VisualViolation[] = [];
@@ -352,6 +299,8 @@ describe('Family Cookbook visual contract scanner', () => {
       expect(LEGACY_ERA_ALLOWLIST[era3CleanFile]).toBeUndefined();
       expect(scanSource(era3CleanFile, sources[era3CleanFile])).toEqual([]);
     }
+
+    expect(Object.keys(LEGACY_ERA_ALLOWLIST)).toHaveLength(0);
 
     const failures = evaluateRatchet(sources, LEGACY_ERA_ALLOWLIST);
     expect(failures, failures.join('\n\n')).toEqual([]);

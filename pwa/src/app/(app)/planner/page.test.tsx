@@ -733,7 +733,7 @@ describe('PlannerPage voting action row', () => {
     });
   });
 
-  it.each(['count', 'reset', 'departure'])(
+  it.each(['count', 'departure'])(
     'accepts an authoritative matching %s intent without replay',
     async (kind) => {
       const baseline = {
@@ -744,8 +744,8 @@ describe('PlannerPage voting action row', () => {
         defaultServings: 4,
         days: makeSchedule('2026-05-17').map((d) => ({
           date: d.date,
-          servings: kind === 'reset' ? 6 : 4,
-          overrideServings: kind === 'reset' ? 6 : null,
+          servings: 4,
+          overrideServings: null,
           editable: true,
         })),
       };
@@ -754,11 +754,9 @@ describe('PlannerPage voting action row', () => {
       renderPlanner(0);
       fireEvent.click(screen.getByTestId('at-the-table-mode'));
       await screen.findByTestId('portion-input-2026-05-13');
-      if (kind === 'reset') fireEvent.click(screen.getByTestId('reset-portions-2026-05-13'));
-      else
-        fireEvent.change(screen.getByTestId('portion-input-2026-05-13'), {
-          target: { value: '6' },
-        });
+      fireEvent.change(screen.getByTestId('portion-input-2026-05-13'), {
+        target: { value: '6' },
+      });
       if (kind === 'departure') {
         fireEvent.click(screen.getByTestId('grocery-tab'));
         fireEvent.click(screen.getByTestId('portions-save-continue'));
@@ -772,8 +770,8 @@ describe('PlannerPage voting action row', () => {
           d.date === '2026-05-13'
             ? {
                 ...d,
-                servings: kind === 'reset' ? 4 : 6,
-                overrideServings: kind === 'count' || kind === 'departure' ? 6 : null,
+                servings: 6,
+                overrideServings: 6,
               }
             : d
         ),
@@ -839,54 +837,48 @@ describe('PlannerPage voting action row', () => {
     }
   );
 
-  it.each([false, true])(
-    'requires exact override intent when reconciling a reset (%s)',
-    async (reset) => {
-      const baseline = {
-        referenceWeekStartDate: '2026-05-11',
-        weekStartDate: '2026-05-11',
-        weekOffset: 0,
-        version: 'before',
-        defaultServings: 4,
-        days: makeSchedule('2026-05-17').map((d) => ({
-          date: d.date,
-          servings: reset ? 6 : 4,
-          overrideServings: reset ? 6 : null,
-          editable: true,
+  it('requires exact override intent when reconciling a count edit', async () => {
+    const baseline = {
+      referenceWeekStartDate: '2026-05-11',
+      weekStartDate: '2026-05-11',
+      weekOffset: 0,
+      version: 'before',
+      defaultServings: 4,
+      days: makeSchedule('2026-05-17').map((d) => ({
+        date: d.date,
+        servings: 4,
+        overrideServings: null,
+        editable: true,
+      })),
+    };
+    mocks.servingsGet.mockResolvedValue({ data: baseline });
+    mocks.servingsPut.mockRejectedValue(new Error('reply lost'));
+    renderPlanner(0);
+    fireEvent.click(screen.getByTestId('at-the-table-mode'));
+    await screen.findByTestId('portion-input-2026-05-13');
+    fireEvent.change(screen.getByTestId('portion-input-2026-05-13'), {
+      target: { value: '6' },
+    });
+    fireEvent.click(screen.getByTestId('save-portions'));
+    await screen.findByTestId('portions-review');
+    // Equal effective quantities do not prove an explicit override committed.
+    mocks.servingsGet.mockResolvedValue({
+      data: {
+        ...baseline,
+        version: 'other',
+        defaultServings: 6,
+        days: baseline.days.map((d) => ({
+          ...d,
+          servings: 6,
+          overrideServings: null,
         })),
-      };
-      mocks.servingsGet.mockResolvedValue({ data: baseline });
-      mocks.servingsPut.mockRejectedValue(new Error('reply lost'));
-      renderPlanner(0);
-      fireEvent.click(screen.getByTestId('at-the-table-mode'));
-      await screen.findByTestId('portion-input-2026-05-13');
-      if (reset) fireEvent.click(screen.getByTestId('reset-portions-2026-05-13'));
-      else
-        fireEvent.change(screen.getByTestId('portion-input-2026-05-13'), {
-          target: { value: '6' },
-        });
-      fireEvent.click(screen.getByTestId('save-portions'));
-      await screen.findByTestId('portions-review');
-      const effective = reset ? 4 : 6;
-      // Equal effective quantities do not prove an explicit override or reset committed.
-      mocks.servingsGet.mockResolvedValue({
-        data: {
-          ...baseline,
-          version: 'other',
-          defaultServings: effective,
-          days: baseline.days.map((d) => ({
-            ...d,
-            servings: effective,
-            overrideServings: reset ? 4 : null,
-          })),
-        },
-      });
-      fireEvent.click(screen.getByTestId('portions-review'));
-      await screen.findByTestId('portions-saved-review');
-      expect(screen.getByTestId('save-portions')).toBeDisabled();
-      expect(mocks.servingsPut).toHaveBeenCalledTimes(1);
-    }
-  );
+      },
+    });
+    fireEvent.click(screen.getByTestId('portions-review'));
+    await screen.findByTestId('portions-saved-review');
+    expect(screen.getByTestId('save-portions')).toBeDisabled();
+    expect(mocks.servingsPut).toHaveBeenCalledTimes(1);
+  });
 
   it('saves one dated draft and returns before grocery work is current', async () => {
     const days = makeSchedule('2026-05-17').map((d) => ({
@@ -934,7 +926,7 @@ describe('PlannerPage voting action row', () => {
     expect(screen.getByTestId('at-the-table-mode')).toBeVisible();
   });
 
-  it('saves only a date reset without usual mutation or unchanged rows', async () => {
+  it('saves only a date portion edit without usual mutation or unchanged rows', async () => {
     const baseline = {
       referenceWeekStartDate: '2026-05-11',
       weekStartDate: '2026-05-11',
@@ -952,15 +944,16 @@ describe('PlannerPage voting action row', () => {
     mocks.servingsPut.mockResolvedValue({ data: { ...baseline, version: 'saved' } });
     renderPlanner(0);
     fireEvent.click(screen.getByTestId('at-the-table-mode'));
-    await screen.findByTestId('portion-input-2026-05-13');
+    const input = await screen.findByTestId('portion-input-2026-05-13');
     expect(screen.queryByTestId('usual-portions')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('reset-portions-2026-05-13'));
-    expect(screen.getByTestId('portion-input-2026-05-13')).toHaveValue(4);
+    expect(screen.queryByTestId('reset-portions-2026-05-13')).not.toBeInTheDocument();
+    fireEvent.change(input, { target: { value: '4' } });
+    expect(input).toHaveValue(4);
     fireEvent.click(screen.getByTestId('save-portions'));
     await waitFor(() =>
       expect(mocks.servingsPut).toHaveBeenCalledWith(
         expect.objectContaining({
-          days: [{ date: '2026-05-13', servings: null }],
+          days: [{ date: '2026-05-13', servings: 4 }],
         }),
         expect.anything()
       )
@@ -1311,7 +1304,13 @@ describe('PlannerPage voting action row', () => {
   it('shows Ask the Family for a draft non-past week', () => {
     renderPlanner(0);
 
-    expect(screen.getByTestId('ask-family-cta')).toBeInTheDocument();
+    const askBtn = screen.getByTestId('ask-family-cta');
+    expect(askBtn).toBeInTheDocument();
+    expect(askBtn).toHaveClass('bg-sage-700', 'text-white', 'text-xs', 'min-h-12');
+    expect(askBtn).not.toHaveClass('bg-sage', 'text-[9px]', 'uppercase');
+    expect(screen.getByTestId('planner-tab')).toHaveClass('text-xs');
+    expect(screen.getByTestId('planner-tab')).not.toHaveClass('text-[10px]', 'uppercase');
+    expect(screen.getByTestId('grocery-tab')).toHaveClass('text-xs', 'text-charcoal-600');
     expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nudge-family-cta')).not.toBeInTheDocument();
   });

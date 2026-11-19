@@ -58,7 +58,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-charcoal/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-charcoal/45 backdrop-blur-sm"
         aria-hidden="true"
         onClick={onClose}
       />
@@ -66,11 +66,11 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       {/* Panel */}
       <div
         ref={dialogRef}
-        className="relative z-10 w-full max-w-sm rounded-t-3xl bg-lavender p-6 shadow-glass sm:rounded-3xl"
+        className="relative z-10 w-full max-w-sm rounded-t-3xl border border-charcoal-200 bg-cream p-6 shadow-card sm:rounded-3xl"
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           {title && (
-            <h2 id="modal-title" className="text-lg font-bold text-charcoal">
+            <h2 id="modal-title" className="font-heading text-lg font-bold text-charcoal">
               {title}
             </h2>
           )}
@@ -78,7 +78,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             ref={closeBtnRef}
             onClick={onClose}
             aria-label="Close modal"
-            className="ml-auto rounded-full p-1 text-charcoal-400 transition-colors hover:bg-indigo/10 hover:text-indigo"
+            className="ml-auto flex h-12 w-12 items-center justify-center rounded-full text-charcoal-600 transition-colors hover:bg-charcoal-100 hover:text-charcoal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
           >
             <X size={20} aria-hidden="true" />
           </button>

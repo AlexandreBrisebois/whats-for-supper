@@ -34,6 +34,12 @@ vi.mock('@/locales', () => ({
       value
     );
   },
+  getLocale: () => 'en',
+  setLocale: vi.fn(),
+}));
+
+vi.mock('@/components/common/LocaleProvider', () => ({
+  useLocale: () => ({ locale: 'en', setCurrentLocale: vi.fn() }),
 }));
 
 let mockImages: any[] = [];

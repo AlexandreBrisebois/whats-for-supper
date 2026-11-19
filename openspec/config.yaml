@@ -18,6 +18,10 @@ rules:
     - For bug fixes, distinguish the reproducible defect, intended correction
       and nearby behavior that must remain working; do not turn a fix into a
       feature expansion.
+    - Prefer backticked repo-relative source paths (for example, `pwa/src/...`)
+      over relative Markdown links (`../../../...`); archiving moves a change
+      into `openspec/changes/archive/<YYYY-MM-DD>-<name>/`, shifting relative
+      links one level deeper and breaking `documentation_check`.
   specs:
     - Describe observable behavior, compatibility and failure/recovery
       scenarios; keep implementation details in design and tasks.
@@ -41,6 +45,10 @@ rules:
       generated tests as proof.
     - For bug fixes, ground the cause in reproduction/source evidence and
       identify the preservation boundaries the correction could affect.
+    - Prefer backticked repo-relative source paths (for example, `pwa/src/...`)
+      over relative Markdown links (`../../../...`), so archiving to
+      `openspec/changes/archive/<YYYY-MM-DD>-<name>/` does not break
+      `documentation_check`.
   tasks:
     - Use bounded dependency-ordered tasks with named acceptance checks and
       traceability to requirements/scenarios.
@@ -57,6 +65,10 @@ rules:
       into concrete acceptance checks linked to requirements/scenarios. Required
       acceptance is not optional; configuration rules themselves are not
       verification evidence.
+    - Prefer backticked repo-relative source paths (for example, `pwa/src/...`)
+      over relative Markdown links (`../../../...`), so archiving to
+      `openspec/changes/archive/<YYYY-MM-DD>-<name>/` does not break
+      `documentation_check`.
 
 operations:
   apply:
@@ -79,4 +91,9 @@ operations:
         sync/archive writes. Verify the resulting planning-file state under
         .agents/core/execution-harness.md; earlier implementation results apply
         only to their original content identity.
+      - Inspect archived change artifacts for relative Markdown links (such as
+        `../../../...`) that shifted one directory deeper after moving into
+        `openspec/changes/archive/<YYYY-MM-DD>-<name>/`, update them (or convert
+        source references to backticked repo-relative paths), and confirm
+        `documentation_check` passes via `task verify`.
 skillsScope: project

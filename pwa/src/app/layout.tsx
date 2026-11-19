@@ -7,7 +7,9 @@ import { Suspense } from 'react';
 import { PdfShareLifecycle } from '@/components/capture/PdfShareLifecycle';
 import { Outfit, Inter } from 'next/font/google';
 import './globals.css';
+import { ContrastProvider } from '@/components/common/ContrastProvider';
 import { LocaleProvider } from '@/components/common/LocaleProvider';
+import { CONTRAST_BOOT_SCRIPT } from '@/lib/contrast';
 import { InstallIdentityProvider } from '@/components/identity/IdentityHint';
 import { IdentityValidator } from '@/components/identity/IdentityValidator';
 
@@ -57,7 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await connection();
   const identity = resolveAppIdentity();
   return (
-    <html lang="en" className={`${outfit.variable} ${inter.variable}`}>
+    <html lang="en" className={`${outfit.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
         {/* iOS Splash Screens */}
         <link
@@ -125,17 +127,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             navigator.serviceWorker.register('/sw.js');
           }
         `}</Script>
+        <script id="contrast-init" dangerouslySetInnerHTML={{ __html: CONTRAST_BOOT_SCRIPT }} />
       </head>
-      <body className="min-h-dvh bg-cream text-charcoal antialiased">
+      <body className="min-h-dvh bg-cream text-ink-body antialiased">
         <Script src="/pdf-share.js" strategy="beforeInteractive" />
         <Suspense fallback={null}>
           <PdfShareLifecycle />
         </Suspense>
-        <LocaleProvider>
-          <InstallIdentityProvider identity={{ demo: identity.demo, channel: identity.channel }}>
-            <IdentityValidator>{children}</IdentityValidator>
-          </InstallIdentityProvider>
-        </LocaleProvider>
+        <ContrastProvider>
+          <LocaleProvider>
+            <InstallIdentityProvider identity={{ demo: identity.demo, channel: identity.channel }}>
+              <IdentityValidator>{children}</IdentityValidator>
+            </InstallIdentityProvider>
+          </LocaleProvider>
+        </ContrastProvider>
       </body>
     </html>
   );

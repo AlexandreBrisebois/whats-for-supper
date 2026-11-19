@@ -261,3 +261,18 @@ Retry of saved-but-not-started URL capture SHALL initialize acquisition on the e
 #### Scenario: Concurrent retries or uncertain reply
 - **WHEN** initialization requests overlap or the first committed initialization reply is lost
 - **THEN** rereading or retrying retains one acquisition graph on the same workflow
+
+### Requirement: Keep failed-capture controls readable and touch-accessible
+
+Failed-capture rows in Settings SHALL use sentence-case headings and source preview text of at least `12 CSS px`, accessible Family Cookbook contrast, and `>= 48 CSS px` touch targets on both Retry and Clear failed capture actions.
+
+#### Scenario: Household member reviews or clears a failed capture on mobile
+- **WHEN** Settings displays one or more paused capture failures
+- **THEN** section labels, friendly reasons, and preview snippets render at `>= 12 CSS px` and Retry and Clear controls each provide at least `48 × 48 CSS px` hit areas
+
+### Requirement: Present active session failure banners with dual-mode contrast and localization
+Active session capture-failure banners (`RecipeFailureBanner`) SHALL adapt automatically to Standard AA and High Contrast AAA semantic roles, display localized EN/FR copy matching the active member locale, keep Retry and Dismiss hit areas at least `48 × 48 CSS px` with visible focus indicators, and honor reduced motion.
+
+#### Scenario: Active session failure banner renders in Standard and High Contrast modes
+- **WHEN** an active session `recipe_failed` banner is displayed under French or English locale in either `standard` or `high` contrast mode
+- **THEN** its copy renders in the active locale, its text, borders, and Retry/Dismiss controls meet AA (`standard`) or AAA (`high`) contrast ratios, all buttons are at least `48 × 48 CSS px` with visible `focus-visible` outlines, and entry/exit motion honors `prefers-reduced-motion: reduce`

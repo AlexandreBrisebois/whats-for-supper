@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Utensils, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLibraryStore } from '@/store/libraryStore';
 import { getImageUrl } from '@/lib/imageUtils';
+import { t, tWithVars } from '@/locales';
+import { useLocale } from '@/components/common/LocaleProvider';
 
 const TOAST_DURATION_MS = 5000;
 
@@ -15,9 +17,11 @@ const TOAST_DURATION_MS = 5000;
  * Shows ONE toast at a time (most recent). If >1 pending: shows "+N more" count badge.
  * Tapping the notification opens the completed recipe. The explicit X dismisses without navigation.
  *
- * Mounted at layout level (pwa/src/app/(app)/layout.tsx).
+ * Mounted at layout level (`pwa/src/app/(app)/layout.tsx`).
  */
 export function LibraryToast() {
+  const { locale } = useLocale();
+  const reducedMotion = useReducedMotion();
   const notifications = useLibraryStore((s) => s.notifications);
   const dismissNotification = useLibraryStore((s) => s.dismissNotification);
   const router = useRouter();
@@ -79,21 +83,36 @@ export function LibraryToast() {
       {current && (
         <motion.div
           key={current.recipeId}
-          initial={{ y: -20, opacity: 0 }}
+          initial={reducedMotion ? false : { y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          exit={reducedMotion ? { opacity: 0 } : { opacity: 0 }}
+          transition={
+            reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }
+          }
           className="flex flex-col items-stretch gap-1.5 w-full max-w-sm pointer-events-auto"
           role="status"
           aria-live="polite"
-          aria-label={`${current.name} is ready`}
+          aria-label={tWithVars(
+            'capture.toast.readyAria',
+            '{{name}} is ready',
+            { name: current.name },
+            locale
+          )}
         >
-          <div className="relative w-full overflow-hidden rounded-2xl border border-sage/30 border-l-4 border-l-sage bg-white/95 shadow-glass backdrop-blur-md">
+          <div
+            data-testid="library-toast-card"
+            className="glass-toast relative w-full overflow-hidden rounded-2xl border border-garden-line border-l-4 border-l-garden-fill"
+          >
             <button
               type="button"
               onClick={handleViewRecipe}
-              aria-label={`View ${current.name}`}
-              className="flex w-full items-center gap-3 pr-12 text-left active:scale-[0.98] transition-transform"
+              aria-label={tWithVars(
+                'capture.toast.viewAria',
+                'View {{name}}',
+                { name: current.name },
+                locale
+              )}
+              className="flex min-h-12 w-full items-center gap-3 rounded-2xl pr-12 text-left active:scale-[0.98] transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
               {/* Thumbnail */}
               <div className="flex-shrink-0 ml-3 my-3">
@@ -107,21 +126,23 @@ export function LibraryToast() {
                     />
                   </div>
                 ) : (
-                  <div className="h-10 w-10 rounded-xl bg-sage/20 flex items-center justify-center text-sage">
-                    <Utensils size={20} />
+                  <div className="h-10 w-10 rounded-xl bg-sage-50 flex items-center justify-center text-garden-ink">
+                    <Utensils size={20} aria-hidden="true" />
                   </div>
                 )}
               </div>
 
               {/* Text */}
               <div className="flex-1 min-w-0 py-3">
-                <p className="text-sm text-charcoal leading-snug">
-                  <span className="text-sage mr-1">✓</span>
+                <p className="text-sm text-ink-body leading-snug">
+                  <span className="text-garden-ink mr-1 font-semibold" aria-hidden="true">
+                    ✓
+                  </span>
                   <span className="font-bold">{current.name}</span>
-                  {' is ready!'}
+                  {t('capture.toast.readySuffix', ' is ready!', locale)}
                 </p>
-                <p className="text-[10px] text-charcoal/50 font-medium mt-0.5">
-                  Tap to view recipe
+                <p className="text-xs text-ink-muted font-medium mt-0.5">
+                  {t('capture.toast.tapToView', 'Tap to view recipe', locale)}
                 </p>
               </div>
             </button>
@@ -129,16 +150,17 @@ export function LibraryToast() {
             <button
               type="button"
               onClick={handleDismiss}
-              aria-label="Dismiss notification"
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
+              aria-label={t('capture.toast.dismissAria', 'Dismiss notification', locale)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-charcoal-100 hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
-              <X size={14} />
+              <X size={16} aria-hidden="true" />
             </button>
 
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sage/10">
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sage-100">
               <motion.div
-                className="h-full bg-sage/60 transition-none"
+                className="h-full bg-garden-fill transition-none"
                 animate={{ scaleX: progress / 100 }}
+                transition={reducedMotion ? { duration: 0 } : undefined}
                 style={{ transformOrigin: 'left center' }}
               />
             </div>
@@ -147,8 +169,13 @@ export function LibraryToast() {
           {/* "+N more" badge */}
           {extraCount > 0 && (
             <div className="self-center">
-              <span className="text-[10px] font-bold text-sage/70 bg-sage/10 border border-sage/20 px-3 py-1 rounded-full">
-                +{extraCount} more
+              <span className="text-xs font-semibold text-garden-ink bg-sage-50 border border-garden-line px-3 py-1 rounded-full">
+                {tWithVars(
+                  'capture.toast.moreCount',
+                  '+{{count}} more',
+                  { count: extraCount },
+                  locale
+                )}
               </span>
             </div>
           )}

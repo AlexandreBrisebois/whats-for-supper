@@ -653,7 +653,9 @@ export async function setupCommonRoutes(
     const cookies = await page.context().cookies();
     const cookie = cookies.find((c) => c.name === 'x-family-member-id');
     const memberId = cookie?.value || MOCK_IDS.MEMBER_ALEX;
-    const member = familyMembers.find((candidate) => candidate.id === memberId);
+    const member = familyMembers.find(
+      (candidate) => (candidate.id ?? '').toLowerCase() === memberId.toLowerCase()
+    );
 
     await fulfill(route, {
       status: 200,
@@ -667,23 +669,77 @@ export async function setupCommonRoutes(
   await page.route('**/api/family/*/preferences', async (route) => {
     if (route.request().method() === 'PUT') {
       const body = route.request().postDataJSON() as {
-        browseViewMode?: 'stack' | 'list';
-        preferredLanguage?: string;
-        cookingViewMode?: 'step-by-step' | 'all-steps';
-      };
+        browseViewMode?: string | null;
+        preferredLanguage?: string | null;
+        cookingViewMode?: string | null;
+        contrastMode?: string | null;
+      } | null;
       const id = new URL(route.request().url()).pathname.split('/').at(-2);
-      const current = familyMembers.find((member) => member.id === id);
+      const current = familyMembers.find(
+        (member) => (member.id ?? '').toLowerCase() === (id ?? '').toLowerCase()
+      );
       if (!current) {
         await fulfill(route, { status: 404 });
         return;
       }
+
+      const normalizedBrowse =
+        typeof body?.browseViewMode === 'string' && body.browseViewMode.length > 0
+          ? body.browseViewMode.trim().toLowerCase()
+          : null;
+      const normalizedLang =
+        typeof body?.preferredLanguage === 'string' && body.preferredLanguage.length > 0
+          ? body.preferredLanguage.trim().toLowerCase()
+          : null;
+      const normalizedCooking =
+        typeof body?.cookingViewMode === 'string' && body.cookingViewMode.length > 0
+          ? body.cookingViewMode.trim().toLowerCase()
+          : null;
+      const normalizedContrast =
+        typeof body?.contrastMode === 'string' && body.contrastMode.length > 0
+          ? body.contrastMode.trim().toLowerCase()
+          : null;
+
+      const browseInvalid =
+        typeof body?.browseViewMode === 'string' &&
+        body.browseViewMode.length > 0 &&
+        normalizedBrowse !== 'stack' &&
+        normalizedBrowse !== 'list';
+      const langInvalid =
+        typeof body?.preferredLanguage === 'string' &&
+        body.preferredLanguage.length > 0 &&
+        normalizedLang !== 'en' &&
+        normalizedLang !== 'fr';
+      const cookingInvalid =
+        typeof body?.cookingViewMode === 'string' &&
+        body.cookingViewMode.length > 0 &&
+        normalizedCooking !== 'step-by-step' &&
+        normalizedCooking !== 'all-steps';
+      const contrastInvalid =
+        typeof body?.contrastMode === 'string' &&
+        body.contrastMode.length > 0 &&
+        normalizedContrast !== 'standard' &&
+        normalizedContrast !== 'high';
+      const noneSupplied =
+        !normalizedBrowse && !normalizedLang && !normalizedCooking && !normalizedContrast;
+
+      if (browseInvalid || langInvalid || cookingInvalid || contrastInvalid || noneSupplied) {
+        await fulfill(route, {
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'The supplied preference value is invalid.' }),
+        });
+        return;
+      }
+
       const updated = {
         ...current,
-        ...(body.browseViewMode === undefined ? {} : { browseViewMode: body.browseViewMode }),
-        ...(body.preferredLanguage === undefined
-          ? {}
-          : { preferredLanguage: body.preferredLanguage as any }),
-        ...(body.cookingViewMode === undefined ? {} : { cookingViewMode: body.cookingViewMode }),
+        ...(normalizedBrowse ? { browseViewMode: normalizedBrowse as 'stack' | 'list' } : {}),
+        ...(normalizedLang ? { preferredLanguage: normalizedLang as any } : {}),
+        ...(normalizedCooking
+          ? { cookingViewMode: normalizedCooking as 'step-by-step' | 'all-steps' }
+          : {}),
+        ...(normalizedContrast ? { contrastMode: normalizedContrast as 'standard' | 'high' } : {}),
         updatedAt: new Date(),
       };
       Object.assign(current, updated);

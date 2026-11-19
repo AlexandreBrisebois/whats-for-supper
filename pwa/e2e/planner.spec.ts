@@ -1721,7 +1721,7 @@ test.describe('Supper Planner', () => {
     );
     const root = page
       .getByTestId('reorder-group')
-      .locator('xpath=ancestor::div[contains(@class,"solar-earth-bg")][1]');
+      .locator('xpath=ancestor::div[contains(@class,"cookbook-bg")][1]');
     const initialBottomPadding = await root.evaluate(
       (node) => getComputedStyle(node).paddingBottom
     );

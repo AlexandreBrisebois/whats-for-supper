@@ -715,22 +715,25 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         <div
           role="alert"
           data-testid="take-out-save-error"
-          className="rounded-2xl bg-cream p-4 text-base text-charcoal"
+          className="rounded-2xl bg-cream border border-hearth-line p-4 text-base text-ink-body"
         >
           <p>{t('planner.nonCookingSaveError', 'Could not save this plan. Try again.')}</p>
           <button
             onClick={() => void replaceMysteryWithTakeOut()}
-            className="mt-2 min-h-12 px-3 font-semibold text-terracotta-700 focus-visible:outline-2 focus-visible:outline-charcoal"
+            className="mt-2 min-h-12 px-3 font-semibold text-hearth-ink focus-visible:outline-2 focus-visible:outline-ink-body"
           >
             {t('errors.tryAgain', 'Try again')}
           </button>
         </div>
       )}
       {calendarError && (
-        <div role="alert" className="rounded-2xl bg-terracotta/10 p-4 text-sm text-charcoal">
+        <div
+          role="alert"
+          className="rounded-2xl bg-terracotta/10 border border-hearth-line p-4 text-sm text-ink-body"
+        >
           <p>{calendarError}</p>
           <button
-            className="mt-2 min-h-11 font-bold"
+            className="mt-2 min-h-11 font-bold text-hearth-ink focus-visible:outline-2 focus-visible:outline-ink-body"
             onClick={() =>
               retryStart ? retryStart() : useTodayStore.getState().retryCalendarAction()
             }
@@ -751,12 +754,12 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               data-testid="today-non-cooking-plan"
               className="flex min-w-0 flex-col gap-5 p-6 [overflow-wrap:anywhere]"
             >
-              <h2 className="px-1 font-heading text-base font-medium text-charcoal-600">
+              <h2 className="px-1 font-heading text-base font-medium text-ink-muted">
                 {t('home.tonight', 'Tonight')}
               </h2>
               <div
                 data-testid="saved-plan-illustration"
-                className="flex h-28 items-center justify-center rounded-[1.5rem] bg-cream text-sage-700 sm:h-40"
+                className="flex h-28 items-center justify-center rounded-[1.5rem] bg-cream text-garden-ink sm:h-40"
                 aria-hidden="true"
               >
                 <NonCookingIcon kind={nonCooking?.kind} size={104} strokeWidth={1.25} />
@@ -764,14 +767,14 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               <div className="space-y-2 px-1">
                 <h3
                   data-testid="today-non-cooking-label"
-                  className="whitespace-pre-wrap break-words font-heading text-3xl font-black leading-snug text-charcoal"
+                  className="whitespace-pre-wrap break-words font-heading text-3xl font-black leading-snug text-ink-body"
                 >
                   {nonCookingLabel(nonCooking)}
                 </h3>
                 {nonCookingNote(nonCooking) && (
                   <p
                     data-testid="today-non-cooking-note"
-                    className="whitespace-pre-wrap break-words text-base leading-relaxed text-charcoal-600"
+                    className="whitespace-pre-wrap break-words text-base leading-relaxed text-ink-muted"
                   >
                     {nonCookingNote(nonCooking)}
                   </p>
@@ -784,7 +787,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
                     `${ROUTES.PLANNER}?weekOffset=0&referenceWeekStartDate=${calendar?.referenceWeekStartDate ?? ''}&planDate=${calendar?.today ?? ''}`
                   )
                 }
-                className="flex min-h-14 items-center justify-center rounded-[1.5rem] border border-terracotta-200 px-4 py-3 text-base font-semibold text-terracotta-700 transition-colors hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+                className="flex min-h-14 items-center justify-center rounded-[1.5rem] border border-hearth-line px-4 py-3 text-base font-semibold text-hearth-ink transition-colors hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
               >
                 {t('planner.editSupperPlan', 'Edit supper plan')}
               </button>
@@ -850,7 +853,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             <button
               type="button"
               onClick={handleCookMode}
-              className="w-full rounded-2xl border border-sage/30 bg-sage/10 p-5 text-left"
+              className="w-full rounded-2xl border border-garden-line bg-sage/10 p-5 text-left"
             >
               <PreparationStatus preparation={preparation} />
             </button>
@@ -863,14 +866,16 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             <button
               data-testid="cooked-compact-badge"
               onClick={handleCookMode}
-              className="flex items-center gap-3 w-full bg-sage/10 border border-sage/30 rounded-2xl px-5 py-4 transition-all active:scale-[0.98] hover:bg-sage/15"
+              className="flex items-center gap-3 w-full bg-sage-50 border border-garden-line rounded-2xl px-5 py-4 transition-all active:scale-[0.98] hover:bg-sage-100"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sage/20 text-sage flex-shrink-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sage-100 text-garden-ink flex-shrink-0">
                 <Check size={20} strokeWidth={3} />
               </div>
               <div className="flex flex-col items-start gap-0.5">
-                <span className="text-sm font-black text-sage leading-none">Cooked tonight!</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-sage/60">
+                <span className="text-sm font-bold text-garden-ink leading-none">
+                  Cooked tonight!
+                </span>
+                <span className="text-xs font-medium text-garden-ink">
                   Tap to open Cook&apos;s Mode
                 </span>
               </div>

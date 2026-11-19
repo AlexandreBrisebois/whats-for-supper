@@ -1,12 +1,12 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useId } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Camera,
   Image as ImageIcon,
+  Check,
   CheckCircle2,
-  Loader2,
   X,
   Star,
   PenLine,
@@ -22,7 +22,9 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { apiClient } from '@/lib/api/api-client';
 import { importRecipeShareBundle, parseRecipeBundleFile } from '@/lib/api/recipes';
 import { Button } from '@/components/ui/button';
+import { CookbookLoader } from '@/components/ui/SolarLoader';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { useLocale } from '@/components/common/LocaleProvider';
 
 import { ROUTES } from '@/lib/constants/routes';
 import { normalizeGotos } from '@/lib/gotoUtils';
@@ -66,6 +68,12 @@ export default function MinimalCapture({
   initialTitle,
   initialText,
 }: MinimalCaptureProps) {
+  const { locale } = useLocale();
+  const photoNotesId = useId();
+  const urlInputId = useId();
+  const urlNotesId = useId();
+  const describeNameId = useId();
+  const describeNotesId = useId();
   const router = useRouter();
   const searchParams = useSearchParams();
   const familySettings = useFamilyStore((state) => state.familySettings);
@@ -148,6 +156,66 @@ export default function MinimalCapture({
   const isGoto = intent === 'goto';
   const memberId = useFamilyStore((state) => state.selectedFamilyMemberId);
   const pdfSelection = usePdfCaptureStore((state) => state.selection);
+  const photoUrlsRef = useRef<Map<string, string>>(new Map());
+  const [photoUrlMap, setPhotoUrlMap] = useState<Record<string, string>>({});
+
+  const photoEntries = (() => {
+    const counts = new Map<string, number>();
+    return images.map((file) => {
+      const base = `${file.name}:${file.size}:${file.type}`;
+      const occ = counts.get(base) ?? 0;
+      counts.set(base, occ + 1);
+      return { file, key: `${base}#${occ}` };
+    });
+  })();
+
+  useEffect(() => {
+    const counts = new Map<string, number>();
+    const entries = images.map((file) => {
+      const base = `${file.name}:${file.size}:${file.type}`;
+      const occ = counts.get(base) ?? 0;
+      counts.set(base, occ + 1);
+      return { file, key: `${base}#${occ}` };
+    });
+
+    const currentMap = photoUrlsRef.current;
+    const nextKeys = new Set(entries.map((entry) => entry.key));
+    let changed = currentMap.size !== nextKeys.size;
+
+    for (const [key, url] of Array.from(currentMap.entries())) {
+      if (!nextKeys.has(key)) {
+        if (typeof URL.revokeObjectURL === 'function') {
+          URL.revokeObjectURL(url);
+        }
+        currentMap.delete(key);
+        changed = true;
+      }
+    }
+
+    for (const { file, key } of entries) {
+      if (!currentMap.has(key)) {
+        currentMap.set(key, URL.createObjectURL(file));
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      setPhotoUrlMap(Object.fromEntries(currentMap));
+    }
+  }, [images]);
+
+  useEffect(() => {
+    const currentMap = photoUrlsRef.current;
+    return () => {
+      for (const url of currentMap.values()) {
+        if (typeof URL.revokeObjectURL === 'function') {
+          URL.revokeObjectURL(url);
+        }
+      }
+      currentMap.clear();
+    };
+  }, []);
+
   useEffect(() => {
     if (pdfSelection) resetCapture?.();
   }, [pdfSelection, resetCapture]);
@@ -345,12 +413,16 @@ export default function MinimalCapture({
         setCountdown(10);
         setOnSuccess(true);
       } catch (err) {
-        setUrlCaptureError(err instanceof Error ? err.message : 'Failed to capture link.');
+        setUrlCaptureError(
+          err instanceof Error
+            ? err.message
+            : t('capture.linkCaptureFailed', 'Failed to capture link.', locale)
+        );
       } finally {
         setIsUrlCapturing(false);
       }
     },
-    [submitUrl, isGoto, saveGoTo, familySettings]
+    [submitUrl, isGoto, saveGoTo, familySettings, locale]
   );
 
   const capturedUrlRef = useRef<string | null>(null);
@@ -590,7 +662,7 @@ export default function MinimalCapture({
   // Describe path submit — E3
   const handleDescribeSubmit = async () => {
     if (!describeName.trim()) {
-      setDescribeError('Please enter a recipe name.');
+      setDescribeError(t('capture.missingRecipeName', 'Please enter a recipe name.', locale));
       return;
     }
     setDescribeError(null);
@@ -601,7 +673,7 @@ export default function MinimalCapture({
         description: describeText.trim() || describeName.trim(),
       });
       const id = response?.data?.id ? String(response.data.id) : null;
-      if (!id) throw new Error('No recipe ID returned.');
+      if (!id) throw new Error(t('capture.noRecipeIdReturned', 'No recipe ID returned.', locale));
 
       if (id) {
         setWasDescribeCaptured(true);
@@ -634,29 +706,66 @@ export default function MinimalCapture({
         setOnSuccess(true);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to submit. Please try again.';
+      const message =
+        err instanceof Error
+          ? err.message
+          : t('capture.submitFailed', 'Failed to submit. Please try again.', locale);
       setDescribeError(message);
     } finally {
       setIsDescribing(false);
     }
   };
 
+  const PHOTO_RATING_OPTIONS = [
+    { value: 1 as const, label: 'Not for me', icon: '👎' },
+    { value: 2 as const, label: 'It was OK', icon: '👍' },
+    { value: 3 as const, label: 'Loved it!', icon: '💚' },
+  ];
+
+  const getRatingCardClass = (value: 1 | 2 | 3, selected: boolean) => {
+    if (!selected) {
+      return 'border-chrome-line bg-white text-ink-muted hover:bg-cream-100 scale-[0.98] motion-reduce:scale-100';
+    }
+    if (value === 1) {
+      return 'border-hearth-line bg-terracotta-50 text-hearth-ink scale-100 shadow-sm';
+    }
+    if (value === 2) {
+      return 'border-garden-line bg-sage-50 text-garden-ink scale-100 shadow-sm';
+    }
+    return 'border-ink-body bg-white text-ink-body scale-100 shadow-sm';
+  };
+
+  const fieldInputBase =
+    'w-full border border-icon-affordance bg-white text-sm text-ink-body placeholder:text-ink-muted focus:border-hearth-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body focus:ring-2 focus:ring-hearth-fill/20 transition-all';
+  const duplicateCardClass =
+    'w-full rounded-2xl border border-sunlight-line bg-ochre-50 px-4 py-3 text-sm text-sunlight-ink flex flex-col gap-2 items-center';
+  const viewExistingBtnClass =
+    'inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl px-4 text-sm font-semibold text-sunlight-ink underline underline-offset-4 hover:bg-ochre-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body';
+  const alertClass =
+    'rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm font-medium text-hearth-ink';
+  const secondaryActionBtnClass =
+    'flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-chrome-line bg-white px-4 py-3 text-sm font-semibold text-ink-body transition-colors hover:bg-charcoal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body';
+
   // ── Success screen ──────────────────────────────────────────────────────────
   if (bundleImportSucceeded) {
     return (
       <div
         data-testid="bundle-import-success"
-        className="flex flex-col items-center justify-center gap-8 py-20 text-center animate-in fade-in zoom-in duration-500"
+        className="flex flex-col items-center justify-center gap-8 py-20 text-center"
       >
-        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-sage/10 text-sage ring-8 ring-sage/5 animate-in zoom-in duration-300">
-          <CheckCircle2 size={48} />
+        <div className="flex h-24 w-24 items-center justify-center rounded-full border border-garden-line bg-sage-50 text-garden-ink ring-8 ring-sage-50 animate-in zoom-in duration-300 motion-reduce:animate-none">
+          <CheckCircle2 size={48} aria-hidden="true" />
         </div>
         <div className="flex flex-col gap-2">
-          <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">
-            {bundleImportRecipeName || 'Recipe imported'}
+          <h2 className="font-heading text-3xl font-bold tracking-tight text-ink-body">
+            {bundleImportRecipeName || t('capture.recipeImported', 'Recipe imported', locale)}
           </h2>
-          <p className="px-4 text-sm text-charcoal/60">
-            Your shared recipe is ready to use in the library.
+          <p className="px-4 text-sm text-ink-muted">
+            {t(
+              'capture.recipeImportedSubtext',
+              'Your shared recipe is ready to use in the library.',
+              locale
+            )}
           </p>
         </div>
         <Button
@@ -665,7 +774,7 @@ export default function MinimalCapture({
           onClick={() => router.push(ROUTES.HOME as any)}
           className="rounded-2xl px-8"
         >
-          Done
+          {t('capture.done', 'Done', locale)}
         </Button>
       </div>
     );
@@ -677,34 +786,48 @@ export default function MinimalCapture({
       return (
         <div
           data-testid="capture-success-screen"
-          className="flex flex-col items-center justify-center gap-8 py-20 text-center animate-in fade-in zoom-in duration-500"
+          className="flex flex-col items-center justify-center gap-8 py-20 text-center"
         >
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-sage/10 text-sage ring-8 ring-sage/5 animate-in zoom-in duration-300">
-            <CheckCircle2 size={48} />
+          <div className="flex h-24 w-24 items-center justify-center rounded-full border border-garden-line bg-sage-50 text-garden-ink ring-8 ring-sage-50 animate-in zoom-in duration-300 motion-reduce:animate-none">
+            <CheckCircle2 size={48} aria-hidden="true" />
           </div>
           <div className="flex flex-col gap-2">
             <h2
               data-testid="capture-success-heading"
-              className="font-heading text-3xl font-bold tracking-tight text-charcoal"
+              className="font-heading text-3xl font-bold tracking-tight text-ink-body"
             >
-              {readyRecipeName} is ready!
+              {tWithVars(
+                'capture.readyTitle',
+                '{{name}} is ready!',
+                { name: readyRecipeName },
+                locale
+              )}
             </h2>
-            <p className="text-charcoal/60 px-4 max-w-sm">It&apos;s in your library.</p>
+            <p className="px-4 max-w-sm text-ink-muted">
+              {t('capture.inYourLibrary', "It's in your library.", locale)}
+            </p>
           </div>
 
           {photoDuplicate && (
             <div
               data-testid="duplicate-recipe-warning"
-              className="w-full max-w-sm rounded-2xl border border-ochre/20 bg-ochre/5 px-4 py-3 text-sm text-ochre flex flex-col gap-2 items-center"
+              className={`max-w-sm ${duplicateCardClass}`}
             >
-              <span>A recipe with this name already exists: {photoDuplicate.name}</span>
+              <span>
+                {tWithVars(
+                  'capture.duplicatePhoto',
+                  'A recipe with this name already exists: {{name}}',
+                  { name: photoDuplicate.name || '' },
+                  locale
+                )}
+              </span>
               <button
                 type="button"
                 data-testid="view-existing-recipe-btn"
                 onClick={() => setDuplicateRecipeId(photoDuplicate.id || null)}
-                className="underline font-bold text-xs hover:text-ochre/80 animate-in fade-in"
+                className={`${viewExistingBtnClass} animate-in fade-in motion-reduce:animate-none`}
               >
-                View existing recipe
+                {t('capture.viewExistingRecipe', 'View existing recipe', locale)}
               </button>
             </div>
           )}
@@ -716,15 +839,15 @@ export default function MinimalCapture({
               onClick={() => router.push(ROUTES.PLANNER as any)}
               className="rounded-2xl px-8"
             >
-              Add to this week
+              {t('capture.addToThisWeek', 'Add to this week', locale)}
             </Button>
             <Button
               variant="ghost"
               data-testid="capture-done-btn"
               onClick={() => router.push(ROUTES.HOME as any)}
-              className="rounded-2xl px-8 text-charcoal/50"
+              className="rounded-2xl px-8 text-ink-muted hover:bg-cream-100 hover:text-ink-body"
             >
-              Done
+              {t('capture.done', 'Done', locale)}
             </Button>
             {photoDuplicate && (
               <Button
@@ -733,9 +856,9 @@ export default function MinimalCapture({
                 onClick={handleDiscardDuplicate}
                 isLoading={isDiscardingDuplicate}
                 disabled={isDiscardingDuplicate}
-                className="rounded-2xl px-8 text-pink hover:text-pink/80 font-bold"
+                className="rounded-2xl px-8 font-bold"
               >
-                Discard duplicate
+                {t('capture.discardDuplicate', 'Discard duplicate', locale)}
               </Button>
             )}
           </div>
@@ -753,20 +876,33 @@ export default function MinimalCapture({
 
     // ── Queued state: recipe submitted, waiting for SSE recipe_ready ──────────
     const heading = isGoto
-      ? 'Your GOTO is being prepared'
+      ? t('capture.gotoBeingPrepared', 'Your GOTO is being prepared', locale)
       : wasDescribeCaptured
-        ? t('capture.buildingRecipe', 'Building your recipe\u2026')
-        : 'Recipe queued';
+        ? t('capture.buildingRecipe', 'Building your recipe\u2026', locale)
+        : t('capture.recipeQueued', 'Recipe queued', locale);
 
     const subtext = isGoto
-      ? "We'll notify you when it's ready on the home screen."
+      ? t(
+          'capture.gotoNotifySubtext',
+          "We'll notify you when it's ready on the home screen.",
+          locale
+        )
       : wasPhotoCaptured
-        ? "We're processing your photo. You'll get a notification when it's ready."
+        ? t(
+            'capture.photoProcessingSubtext',
+            "We're processing your photo. You'll get a notification when it's ready.",
+            locale
+          )
         : wasUrlCaptured
-          ? "We're fetching the recipe from that link. You'll get a notification when it's ready."
+          ? t(
+              'capture.urlFetchingSubtext',
+              "We're fetching the recipe from that link. You'll get a notification when it's ready.",
+              locale
+            )
           : t(
               'capture.buildingRecipeSubtext',
-              "Hang tight \u2014 we'll notify you when it's ready."
+              "Hang tight \u2014 we'll notify you when it's ready.",
+              locale
             );
 
     // GOTO uses a different destination after success
@@ -775,19 +911,29 @@ export default function MinimalCapture({
     return (
       <div
         data-testid="capture-success-screen"
-        className="flex flex-col items-center justify-center gap-8 py-20 text-center animate-in fade-in zoom-in duration-500"
+        className="flex flex-col items-center justify-center gap-8 py-20 text-center"
       >
-        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-ochre/10 text-ochre ring-8 ring-ochre/5">
-          {isGoto ? <CheckCircle2 size={48} /> : <Loader2 size={48} className="animate-spin" />}
+        <div
+          className={
+            isGoto
+              ? 'flex h-24 w-24 items-center justify-center rounded-full border border-sunlight-line bg-ochre-100 text-sunlight-ink ring-8 ring-ochre-50'
+              : 'flex h-24 w-24 items-center justify-center'
+          }
+        >
+          {isGoto ? (
+            <CheckCircle2 size={48} aria-hidden="true" />
+          ) : (
+            <CookbookLoader size="md" label={heading} />
+          )}
         </div>
         <div className="flex flex-col gap-2">
           <h2
             data-testid="capture-success-heading"
-            className="font-heading text-3xl font-bold tracking-tight text-charcoal"
+            className="font-heading text-3xl font-bold tracking-tight text-ink-body"
           >
             {heading}
           </h2>
-          <p className="text-charcoal/60 px-4 max-w-sm">{subtext}</p>
+          <p className="text-ink-muted px-4 max-w-sm">{subtext}</p>
         </div>
         {isGoto ? (
           <Button
@@ -796,7 +942,7 @@ export default function MinimalCapture({
             onClick={() => router.push(gotoDest as any)}
             className="rounded-2xl px-8"
           >
-            {t('capture.done', 'Done')}
+            {t('capture.done', 'Done', locale)}
           </Button>
         ) : (
           <div className="flex flex-col gap-3 w-full max-w-xs">
@@ -806,13 +952,16 @@ export default function MinimalCapture({
               onClick={() => router.push(ROUTES.HOME as any)}
               className="rounded-2xl px-8"
             >
-              Done
+              {t('capture.done', 'Done', locale)}
             </Button>
             {countdown !== null && (
-              <p className="text-xs text-charcoal/30 mt-4 animate-in fade-in duration-500">
-                {tWithVars('capture.redirecting', 'Redirecting home in {{seconds}}s...', {
-                  seconds: countdown,
-                })}
+              <p className="text-xs text-ink-muted mt-4 animate-in fade-in duration-500 motion-reduce:animate-none">
+                {tWithVars(
+                  'capture.redirecting',
+                  'Redirecting home in {{seconds}}s...',
+                  { seconds: countdown },
+                  locale
+                )}
               </p>
             )}
           </div>
@@ -826,71 +975,91 @@ export default function MinimalCapture({
     const originalCount = parsedBundle.originals?.length ?? 0;
 
     return (
-      <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h2 className="font-heading text-2xl font-black text-charcoal tracking-tight">
-            Review recipe file
+          <h2 className="font-heading text-2xl font-bold text-ink-body tracking-tight">
+            {t('capture.reviewRecipeFile', 'Review recipe file', locale)}
           </h2>
-          <p className="text-sm text-charcoal/50">
-            {selectedBundleFileName || 'Shared recipe file'} is ready to import.
+          <p className="text-sm text-ink-muted">
+            {tWithVars(
+              'capture.readyToImport',
+              '{{name}} is ready to import.',
+              {
+                name:
+                  selectedBundleFileName ||
+                  t('capture.sharedRecipeFileFallback', 'Shared recipe file', locale),
+              },
+              locale
+            )}
           </p>
         </div>
 
         {fileDuplicate && (
-          <div
-            data-testid="duplicate-recipe-warning"
-            className="w-full rounded-2xl border border-ochre/20 bg-ochre/5 px-4 py-3 text-sm text-ochre flex flex-col gap-2 items-center"
-          >
-            <span>This recipe already exists in your library.</span>
+          <div data-testid="duplicate-recipe-warning" className={duplicateCardClass}>
+            <span>
+              {t('capture.duplicateExists', 'This recipe already exists in your library.', locale)}
+            </span>
             <button
               type="button"
               data-testid="view-existing-recipe-btn"
               onClick={() => setDuplicateRecipeId(fileDuplicate.id || null)}
-              className="underline font-bold text-xs hover:text-ochre/80"
+              className={viewExistingBtnClass}
             >
-              View existing recipe
+              {t('capture.viewExistingRecipe', 'View existing recipe', locale)}
             </button>
           </div>
         )}
 
         <div
           data-testid="bundle-preview-card"
-          className="overflow-hidden rounded-[2rem] border border-charcoal/10 bg-white shadow-sm"
+          className="overflow-hidden rounded-[2rem] border border-chrome-line bg-white shadow-sm"
         >
           {hero?.base64 && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={`data:${hero.mimeType};base64,${hero.base64}`}
-              alt={parsedBundle.recipe?.name || 'Shared recipe'}
+              alt={
+                parsedBundle.recipe?.name ||
+                t('capture.sharedRecipeFileFallback', 'Shared recipe file', locale)
+              }
               className="h-52 w-full object-cover"
             />
           )}
           <div className="flex flex-col gap-3 p-5">
             <h3
               data-testid="bundle-preview-name"
-              className="font-heading text-xl font-black text-charcoal"
+              className="font-heading text-xl font-bold text-ink-body"
             >
               {parsedBundle.recipe?.name}
             </h3>
             {parsedBundle.recipe?.sourceUrl && (
-              <p data-testid="bundle-preview-source-url" className="text-sm text-charcoal/60">
+              <p data-testid="bundle-preview-source-url" className="text-sm text-ink-muted">
                 {parsedBundle.recipe.sourceUrl}
               </p>
             )}
             {parsedBundle.recipe?.sourceName && (
-              <p data-testid="bundle-preview-source-name" className="text-sm text-charcoal/60">
+              <p data-testid="bundle-preview-source-name" className="text-sm text-ink-muted">
                 {parsedBundle.recipe.sourceName}
               </p>
             )}
             <span
               data-testid="bundle-preview-synthesis-badge"
-              className="inline-flex w-fit rounded-full bg-ochre/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-ochre"
+              className="inline-flex w-fit rounded-full border border-sunlight-line bg-ochre-100 px-3 py-1 text-xs font-semibold text-sunlight-ink"
             >
-              {parsedBundle.recipe?.isSynthesized ? 'Synthesized' : 'Original'}
+              {parsedBundle.recipe?.isSynthesized
+                ? t('capture.synthesizedBadge', 'Synthesized', locale)
+                : t('capture.originalBadge', 'Original', locale)}
             </span>
             {originalCount > 0 && (
-              <p data-testid="bundle-preview-original-count" className="text-sm text-charcoal/60">
-                {originalCount} original photo{originalCount === 1 ? '' : 's'}
+              <p data-testid="bundle-preview-original-count" className="text-sm text-ink-muted">
+                {originalCount === 1
+                  ? t('capture.originalPhotosOne', '1 original photo', locale)
+                  : tWithVars(
+                      'capture.originalPhotosMany',
+                      '{{count}} original photos',
+                      { count: originalCount },
+                      locale
+                    )}
               </p>
             )}
 
@@ -901,7 +1070,7 @@ export default function MinimalCapture({
                     {section.name && (
                       <h4
                         data-testid="bundle-preview-section-title"
-                        className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40"
+                        className="text-xs font-semibold text-ink-muted"
                       >
                         {section.name}
                       </h4>
@@ -911,7 +1080,7 @@ export default function MinimalCapture({
                         <li
                           key={tIdx}
                           data-testid="bundle-preview-step-text"
-                          className="text-sm text-charcoal/70 leading-relaxed"
+                          className="text-sm text-ink-body leading-relaxed"
                         >
                           {step.text}
                         </li>
@@ -923,13 +1092,13 @@ export default function MinimalCapture({
             )}
 
             {parsedBundle.recipe?.notes && (
-              <div className="mt-4 flex flex-col gap-2 rounded-2xl bg-cream/50 p-4 border border-charcoal/5">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">
-                  Notes
+              <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-chrome-line bg-cream-50 p-4">
+                <h4 className="text-xs font-semibold text-ink-muted">
+                  {t('capture.notesHeading', 'Notes', locale)}
                 </h4>
                 <p
                   data-testid="bundle-preview-notes"
-                  className="text-sm italic text-charcoal/70 leading-relaxed"
+                  className="text-sm italic text-ink-body leading-relaxed"
                 >
                   {parsedBundle.recipe.notes}
                 </p>
@@ -938,18 +1107,19 @@ export default function MinimalCapture({
 
             {parsedBundle.recipe?.rating && parsedBundle.recipe.rating > 0 && (
               <div className="mt-4 flex flex-col gap-2">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">
-                  Rating
+                <h4 className="text-xs font-semibold text-ink-muted">
+                  {t('capture.ratingHeading', 'Rating', locale)}
                 </h4>
                 <div data-testid="bundle-preview-rating" className="flex gap-1">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <Star
                       key={i}
                       size={16}
+                      aria-hidden="true"
                       className={
                         i < (parsedBundle.recipe?.rating || 0)
-                          ? 'fill-ochre text-ochre'
-                          : 'text-charcoal/10'
+                          ? 'fill-sunlight-ink text-sunlight-ink'
+                          : 'text-icon-affordance'
                       }
                     />
                   ))}
@@ -960,10 +1130,7 @@ export default function MinimalCapture({
         </div>
 
         {bundleImportError && (
-          <p
-            data-testid="bundle-import-error"
-            className="rounded-2xl border border-pink/20 bg-pink/5 px-4 py-3 text-sm font-medium text-pink"
-          >
+          <p role="alert" data-testid="bundle-import-error" className={alertClass}>
             {bundleImportError}
           </p>
         )}
@@ -977,15 +1144,15 @@ export default function MinimalCapture({
             isLoading={isBundleSubmitting}
             className="rounded-[2rem] py-6 text-lg font-bold"
           >
-            Import recipe
+            {t('capture.importRecipeBtn', 'Import recipe', locale)}
           </Button>
           <Button
             variant="ghost"
             data-testid="reject-bundle-btn"
             onClick={handleRejectBundle}
-            className="rounded-[2rem] py-6 text-lg font-bold text-charcoal/60"
+            className="rounded-[2rem] py-6 text-lg font-bold text-ink-muted hover:bg-cream-100 hover:text-ink-body"
           >
-            Cancel
+            {t('common.cancel', 'Cancel', locale)}
           </Button>
         </div>
         {duplicateRecipeId && (
@@ -1000,19 +1167,54 @@ export default function MinimalCapture({
     );
   }
 
+  const renderAppreciationFieldset = () => (
+    <fieldset className="flex flex-col gap-3 px-2">
+      <legend className="mb-3 text-sm font-bold text-ink-body">
+        {t('capture.appreciation', 'Appreciation', locale)}
+      </legend>
+      <div className="flex gap-2">
+        {PHOTO_RATING_OPTIONS.map((opt) => {
+          const isSelected = rating === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              data-testid={`capture-rating-${opt.value}`}
+              aria-pressed={isSelected}
+              onClick={() => setRating(opt.value)}
+              className={`relative min-h-12 min-w-12 flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body ${getRatingCardClass(opt.value, isSelected)}`}
+            >
+              {isSelected && (
+                <span className="absolute right-2 top-2" aria-hidden="true">
+                  <Check size={14} />
+                </span>
+              )}
+              <span aria-hidden="true" className="text-2xl leading-none">
+                {opt.icon}
+              </span>
+              <span className="text-xs font-semibold">
+                {t(`capture.rating.${opt.value}`, opt.label, locale)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+
   const recipeFileImport = (
     <>
       <button
         type="button"
         data-testid="capture-secondary-action-import"
         onClick={handleRecipeFileImport}
-        className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
+        className={secondaryActionBtnClass}
       >
-        <ArrowLeft size={16} className="rotate-180" />
+        <ArrowLeft size={16} className="rotate-180" aria-hidden="true" />
         <span data-testid="import-recipe-file-btn">
           {preparedOnly
-            ? t('demoContext.importPrepared', 'Import a shared recipe (.txt)')
-            : 'Import recipe file'}
+            ? t('demoContext.importPrepared', 'Import a shared recipe (.txt)', locale)
+            : t('capture.importRecipeFile', 'Import recipe file', locale)}
         </span>
       </button>
       <input
@@ -1028,22 +1230,19 @@ export default function MinimalCapture({
         }
         aria-label={
           preparedOnly
-            ? t('demoContext.importPrepared', 'Import a shared recipe (.txt)')
-            : 'Import recipe file'
+            ? t('demoContext.importPrepared', 'Import a shared recipe (.txt)', locale)
+            : t('capture.importRecipeFile', 'Import recipe file', locale)
         }
         title={
           preparedOnly
-            ? t('demoContext.importPrepared', 'Import a shared recipe (.txt)')
-            : 'Import recipe file'
+            ? t('demoContext.importPrepared', 'Import a shared recipe (.txt)', locale)
+            : t('capture.importRecipeFile', 'Import recipe file', locale)
         }
         className="hidden"
         onChange={handleRecipeBundleFileChange}
       />
       {bundleImportError && (
-        <p
-          data-testid="bundle-import-error"
-          className="rounded-2xl border border-pink/20 bg-pink/5 px-4 py-3 text-sm font-medium text-pink"
-        >
+        <p role="alert" data-testid="bundle-import-error" className={alertClass}>
           {bundleImportError}
         </p>
       )}
@@ -1054,41 +1253,57 @@ export default function MinimalCapture({
     <div className="flex flex-col gap-6">
       {/* ── URL Capturing Overlay ─────────────────────────────────────────────── */}
       {!preparedOnly && isUrlCapturing && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-cream/90 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="glass-overlay fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 animate-in fade-in duration-300 motion-reduce:animate-none">
           <div className="relative">
-            <div className="absolute inset-0 animate-ping rounded-full bg-terracotta/20" />
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-terracotta text-white shadow-xl">
-              <Globe size={32} className="animate-pulse" />
+            <div className="absolute inset-0 animate-ping motion-reduce:animate-none rounded-full bg-hearth-fill/20" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-hearth-fill text-cream-100 shadow-xl">
+              <Globe
+                size={32}
+                className="animate-pulse motion-reduce:animate-none"
+                aria-hidden="true"
+              />
             </div>
           </div>
           <div className="flex flex-col gap-1 text-center px-6">
-            <h3 className="font-heading text-xl font-bold text-charcoal">Capturing link...</h3>
-            <p className="text-sm text-charcoal/50">One moment while we fetch the recipe.</p>
+            <h3 className="font-heading text-xl font-bold text-ink-body">
+              {t('capture.capturingLink', 'Capturing link...', locale)}
+            </h3>
+            <p className="text-sm text-ink-muted">
+              {t('capture.fetchingRecipeHint', 'One moment while we fetch the recipe.', locale)}
+            </p>
           </div>
-          <Loader2 className="animate-spin text-terracotta" size={24} />
+          <CookbookLoader size="sm" />
         </div>
       )}
 
       {!preparedOnly && showPhotoUploadOverlay && (
         <div
           data-testid="capture-photo-upload-overlay"
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-cream/90 backdrop-blur-md animate-in fade-in duration-300"
+          className="glass-overlay fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 animate-in fade-in duration-300 motion-reduce:animate-none"
         >
           <div className="relative">
-            <div className="absolute inset-0 animate-ping rounded-full bg-terracotta/20" />
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-terracotta text-white shadow-xl">
-              <ImageIcon size={32} className="animate-pulse" />
+            <div className="absolute inset-0 animate-ping motion-reduce:animate-none rounded-full bg-hearth-fill/20" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-hearth-fill text-cream-100 shadow-xl">
+              <ImageIcon
+                size={32}
+                className="animate-pulse motion-reduce:animate-none"
+                aria-hidden="true"
+              />
             </div>
           </div>
           <div className="flex flex-col gap-1 px-6 text-center">
-            <h3 className="font-heading text-xl font-bold text-charcoal">
-              Uploading your photos...
+            <h3 className="font-heading text-xl font-bold text-ink-body">
+              {t('capture.uploadingPhotosOverlay', 'Uploading your photos...', locale)}
             </h3>
-            <p data-testid="capture-upload-keep-open" className="text-sm text-charcoal/50">
-              Please keep this screen open while we send them.
+            <p data-testid="capture-upload-keep-open" className="text-sm text-ink-muted">
+              {t(
+                'capture.keepScreenOpen',
+                'Please keep this screen open while we send them.',
+                locale
+              )}
             </p>
           </div>
-          <Loader2 className="animate-spin text-terracotta" size={24} />
+          <CookbookLoader size="sm" />
         </div>
       )}
 
@@ -1102,30 +1317,30 @@ export default function MinimalCapture({
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`flex flex-col items-center gap-6 rounded-[3rem] p-12 text-center transition-all duration-300 border-2 border-dashed ${
+              className={`flex flex-col items-center gap-6 rounded-[3rem] p-12 text-center transition-all duration-300 motion-reduce:transition-none border-2 border-dashed ${
                 isDragging
-                  ? 'bg-terracotta/10 border-terracotta scale-[1.02] shadow-xl shadow-terracotta/5'
-                  : 'bg-terracotta/[0.03] border-terracotta/10 hover:bg-terracotta/[0.05]'
+                  ? 'bg-terracotta-50 border-hearth-fill scale-[1.02] motion-reduce:scale-100 shadow-xl'
+                  : 'bg-terracotta-50/40 border-hearth-line hover:bg-terracotta-50/70'
               }`}
             >
               <button
                 type="button"
                 data-testid="capture-take-photo-btn"
                 onClick={handleCapture}
-                aria-label="Take a photo"
-                className="flex h-28 w-28 items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white shadow-xl shadow-terracotta/30 ring-4 ring-white active:scale-95 transition-transform"
+                aria-label={t('capture.takePhoto', 'Take a photo', locale)}
+                className="flex h-28 w-28 items-center justify-center rounded-full bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-cream-100 shadow-xl ring-4 ring-white active:scale-95 motion-reduce:active:scale-100 transition-transform focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
               >
-                <Camera size={40} strokeWidth={2} />
+                <Camera size={40} strokeWidth={2} aria-hidden="true" />
               </button>
 
               <button
                 type="button"
                 data-testid="capture-pick-gallery-btn"
                 onClick={handleGallery}
-                className="flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest text-terracotta-600 transition-colors hover:text-terracotta"
+                className="inline-flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-hearth-ink transition-colors hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
               >
-                <ImageIcon size={16} />
-                {t('capture.pickFromGallery', 'Pick from Gallery')}
+                <ImageIcon size={16} aria-hidden="true" />
+                {t('capture.pickFromGallery', 'Pick from Gallery', locale)}
               </button>
 
               <input
@@ -1134,8 +1349,8 @@ export default function MinimalCapture({
                 accept="image/*"
                 capture="environment"
                 className="hidden"
-                aria-label={t('capture.takePhoto', 'Take a photo')}
-                title={t('capture.takePhoto', 'Take a photo')}
+                aria-label={t('capture.takePhoto', 'Take a photo', locale)}
+                title={t('capture.takePhoto', 'Take a photo', locale)}
                 onChange={handleFileChange}
               />
               <input
@@ -1145,14 +1360,18 @@ export default function MinimalCapture({
                 accept="image/*"
                 multiple
                 className="hidden"
-                aria-label={t('capture.choosePhotos', 'Choose photos from your library')}
-                title={t('capture.choosePhotos', 'Choose photos from your library')}
+                aria-label={t(
+                  'capture.choosePhotosTitle',
+                  'Choose photos from your library',
+                  locale
+                )}
+                title={t('capture.choosePhotosTitle', 'Choose photos from your library', locale)}
                 onChange={handleFileChange}
               />
             </div>
           )}
 
-          <div className="flex flex-col gap-3 rounded-[2rem] border border-charcoal/8 bg-white/70 p-5 shadow-sm">
+          <div className="flex flex-col gap-3 rounded-[2rem] border border-chrome-line bg-white p-5 shadow-sm">
             {!preparedOnly && (
               <>
                 <button
@@ -1163,10 +1382,10 @@ export default function MinimalCapture({
                     setUrlInput('');
                     setBundleImportError(null);
                   }}
-                  className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
+                  className={secondaryActionBtnClass}
                 >
-                  <Globe size={16} />
-                  Paste recipe link
+                  <Globe size={16} aria-hidden="true" />
+                  {t('capture.pasteRecipeLink', 'Paste recipe link', locale)}
                 </button>
 
                 <button
@@ -1176,10 +1395,10 @@ export default function MinimalCapture({
                     setShowDescribe(true);
                     setBundleImportError(null);
                   }}
-                  className="flex items-center justify-center gap-2 rounded-2xl border border-charcoal/10 px-4 py-4 text-sm font-bold uppercase tracking-widest text-charcoal/70 transition-colors hover:bg-charcoal/5"
+                  className={secondaryActionBtnClass}
                 >
-                  <PenLine size={16} />
-                  Describe a recipe
+                  <PenLine size={16} aria-hidden="true" />
+                  {t('capture.describeRecipe', 'Describe a recipe', locale)}
                 </button>
               </>
             )}
@@ -1188,105 +1407,112 @@ export default function MinimalCapture({
 
           {/* Preview Area */}
           {!preparedOnly && images.length > 0 && (
-            <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500 motion-reduce:animate-none">
               <div className="flex items-center justify-between px-2">
                 <h3
                   data-testid="capture-photos-count"
-                  className="font-heading text-lg font-bold text-charcoal"
+                  className="font-heading text-lg font-bold text-ink-body"
                 >
-                  {tWithVars('capture.photosCount', `Photos (${images.length})`, {
-                    count: images.length,
-                  })}
+                  {tWithVars(
+                    'capture.photosCount',
+                    `Photos (${images.length})`,
+                    { count: images.length },
+                    locale
+                  )}
                 </h3>
                 <button
-                  onClick={() => images.forEach((_, i) => removeImage(0))}
-                  className="text-[10px] font-bold uppercase tracking-widest text-terracotta-600"
+                  type="button"
+                  onClick={() => images.forEach(() => removeImage(0))}
+                  className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl px-4 text-xs font-semibold text-hearth-ink hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                 >
-                  {t('capture.clearAll', 'Clear All')}
+                  {t('capture.clearAll', 'Clear All', locale)}
                 </button>
               </div>
 
               <div className="flex flex-wrap gap-4">
-                {images.map((file, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setSelectedDishPhotoIndex(idx)}
-                    className={`group relative h-28 w-28 flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl shadow-sm ring-2 transition-all active:scale-95 ${idx === selectedDishPhotoIndex ? 'ring-terracotta scale-105 z-10 shadow-lg' : 'ring-terracotta/5'}`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt="Capture preview"
-                      className="h-full w-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeImage(idx);
-                      }}
-                      aria-label={t('capture.removePhoto', 'Remove photo')}
-                      title={t('capture.removePhoto', 'Remove photo')}
-                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-charcoal/80 text-white backdrop-blur-sm transition-opacity opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
-                    >
-                      <X size={14} />
-                    </button>
-                    <div
-                      className={`absolute left-1 top-1 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md transition-all ${idx === selectedDishPhotoIndex ? 'bg-terracotta text-white shadow-lg scale-110 opacity-100' : 'opacity-0 bg-white/60 text-charcoal/20'}`}
-                    >
-                      <Star
-                        size={16}
-                        fill={idx === selectedDishPhotoIndex ? 'currentColor' : 'none'}
-                        strokeWidth={idx === selectedDishPhotoIndex ? 0 : 2}
-                      />
-                    </div>
-                    {idx === selectedDishPhotoIndex && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-terracotta py-1 text-center">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-white">
-                          {t('capture.mainDish', 'Main Dish')}
+                {photoEntries.map(({ key }, idx) => {
+                  const photoUrl = photoUrlMap[key];
+                  return (
+                    <div key={key} className="group relative h-28 w-28 flex-shrink-0">
+                      <button
+                        type="button"
+                        data-testid={`capture-photo-thumb-${idx}`}
+                        aria-pressed={idx === selectedDishPhotoIndex}
+                        aria-label={tWithVars(
+                          'capture.selectMainDishPhoto',
+                          'Select photo {{number}} as main dish photo',
+                          { number: idx + 1 },
+                          locale
+                        )}
+                        onClick={() => setSelectedDishPhotoIndex(idx)}
+                        className={`relative h-full w-full overflow-hidden rounded-2xl shadow-sm ring-2 transition-all active:scale-95 motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body ${idx === selectedDishPhotoIndex ? 'ring-hearth-fill scale-105 motion-reduce:scale-100 z-10 shadow-lg' : 'ring-chrome-line'}`}
+                      >
+                        {photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={photoUrl}
+                            alt={tWithVars(
+                              'capture.capturePreviewAlt',
+                              'Capture preview {{number}}',
+                              { number: idx + 1 },
+                              locale
+                            )}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : null}
+                        <div
+                          className={`absolute left-1 top-1 flex h-7 w-7 items-center justify-center rounded-full transition-all ${idx === selectedDishPhotoIndex ? 'bg-hearth-fill text-cream-100 shadow-lg scale-110 motion-reduce:scale-100 opacity-100' : 'opacity-0 bg-white/80 text-ink-body'}`}
+                        >
+                          <Star
+                            size={16}
+                            aria-hidden="true"
+                            fill={idx === selectedDishPhotoIndex ? 'currentColor' : 'none'}
+                            strokeWidth={idx === selectedDishPhotoIndex ? 0 : 2}
+                          />
+                        </div>
+                        {idx === selectedDishPhotoIndex && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-hearth-fill py-1 text-center">
+                            <span className="text-xs font-semibold text-cream-100">
+                              {t('capture.mainDish', 'Main Dish', locale)}
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        aria-label={tWithVars(
+                          'capture.removePhotoAt',
+                          'Remove photo {{number}}',
+                          { number: idx + 1 },
+                          locale
+                        )}
+                        title={t('capture.removePhoto', 'Remove photo', locale)}
+                        className="absolute -right-1 -top-1 z-20 flex h-12 w-12 items-center justify-center rounded-full transition-opacity opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
+                      >
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink-body text-cream-100 shadow-sm">
+                          <X size={14} aria-hidden="true" />
                         </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Appreciation & Notes */}
               <div className="flex flex-col gap-6 mt-2">
-                <div className="flex flex-col gap-3 px-2">
-                  <label className="text-sm font-bold text-charcoal/80">
-                    {t('capture.appreciation', 'Appreciation')}
-                  </label>
-                  <div className="flex gap-2">
-                    {[
-                      { value: 1, label: 'Not for me', icon: '👎' },
-                      { value: 2, label: 'It was OK', icon: '👍' },
-                      { value: 3, label: 'Loved it!', icon: '💚' },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        data-testid={`capture-rating-${opt.value}`}
-                        onClick={() => setRating(opt.value as any)}
-                        className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta-600 scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
-                      >
-                        <span className="text-2xl leading-none">{opt.icon}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider">
-                          {t(`capture.rating.${opt.value}`, opt.label)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {renderAppreciationFieldset()}
 
                 <div className="flex flex-col gap-3 px-2">
-                  <label className="text-sm font-bold text-charcoal/80">
-                    {t('capture.notes', 'Notes (Optional)')}
+                  <label htmlFor={photoNotesId} className="text-sm font-bold text-ink-body">
+                    {t('capture.notes', 'Notes (Optional)', locale)}
                   </label>
                   <textarea
+                    id={photoNotesId}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder={t('capture.notesPlaceholder', 'Any tweaks for next time?')}
-                    className="w-full rounded-3xl border-2 border-charcoal/10 bg-white p-5 text-sm text-charcoal placeholder:text-charcoal/30 focus:border-terracotta focus:outline-none focus:ring-4 focus:ring-terracotta/10 min-h-[120px] resize-none transition-all"
+                    placeholder={t('capture.notesPlaceholder', 'Any tweaks for next time?', locale)}
+                    className={`${fieldInputBase} min-h-[120px] resize-y rounded-3xl p-5`}
                   />
                 </div>
               </div>
@@ -1298,19 +1524,19 @@ export default function MinimalCapture({
                   size="lg"
                   data-testid="capture-save-btn"
                   isLoading={isSubmitting || isPhotoSubmitPending}
-                  loadingText="Uploading Photos..."
+                  loadingText={t('capture.uploadingPhotos', 'Uploading Photos...', locale)}
                   onClick={handleSave}
                   disabled={isSubmitting || isPhotoSubmitPending}
-                  className="mt-4 rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
+                  className="mt-4 rounded-[2rem] py-6 text-lg font-bold"
                 >
-                  {t('capture.saveRecipe', 'Save Recipe')}
+                  {t('capture.saveRecipe', 'Save Recipe', locale)}
                 </Button>
                 {isPhotoSubmitPending && (
                   <p
                     data-testid="capture-photo-upload-helper"
-                    className="mt-3 px-3 text-center text-sm font-medium text-charcoal/60"
+                    className="mt-3 px-3 text-center text-sm font-medium text-ink-muted"
                   >
-                    Large photos can take a few seconds.
+                    {t('capture.largePhotosHint', 'Large photos can take a few seconds.', locale)}
                   </p>
                 )}
               </div>
@@ -1318,7 +1544,10 @@ export default function MinimalCapture({
           )}
 
           {error && (
-            <p className="px-4 text-center text-sm font-medium text-pink animate-in shake duration-300">
+            <p
+              role="alert"
+              className={`${alertClass} text-center animate-in shake duration-300 motion-reduce:animate-none`}
+            >
               {error}
             </p>
           )}
@@ -1327,7 +1556,7 @@ export default function MinimalCapture({
 
       {/* ── URL Review Form ─────────────────────────────────────────────────── */}
       {!preparedOnly && showUrlReview && !onSuccess && (
-        <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-4">
             <button
               type="button"
@@ -1338,40 +1567,44 @@ export default function MinimalCapture({
                 setUrlDuplicate(null);
                 setUrlInput('');
               }}
-              className="flex w-fit items-center gap-1 text-sm font-bold uppercase tracking-widest text-charcoal/40 transition-colors hover:text-charcoal"
+              className="flex min-h-12 min-w-12 w-fit items-center gap-1 rounded-xl px-2 text-sm font-semibold text-ink-muted transition-colors hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
-              <ArrowLeft size={14} />
-              Back
+              <ArrowLeft size={14} aria-hidden="true" />
+              {t('capture.back', 'Back', locale)}
             </button>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-terracotta/10 text-terracotta-600">
-              <Globe size={24} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-hearth-line bg-terracotta-50 text-hearth-ink">
+              <Globe size={24} aria-hidden="true" />
             </div>
             <div className="flex flex-col gap-2">
               <h2
                 data-testid="capture-url-review-heading"
-                className="font-heading text-2xl font-black text-charcoal tracking-tight"
+                className="font-heading text-2xl font-bold text-ink-body tracking-tight"
               >
-                Review your link
+                {t('capture.reviewYourLink', 'Review your link', locale)}
               </h2>
-              <p className="text-sm text-charcoal/50">
-                We&apos;ll fetch the details once you save.
+              <p className="text-sm text-ink-muted">
+                {t('capture.fetchOnceSaved', "We'll fetch the details once you save.", locale)}
               </p>
             </div>
           </div>
 
           {urlDuplicate && (
-            <div
-              data-testid="duplicate-recipe-warning"
-              className="w-full rounded-2xl border border-ochre/20 bg-ochre/5 px-4 py-3 text-sm text-ochre flex flex-col gap-2 items-center"
-            >
-              <span>You already have a recipe from this link: {urlDuplicate.name}</span>
+            <div data-testid="duplicate-recipe-warning" className={duplicateCardClass}>
+              <span>
+                {tWithVars(
+                  'capture.duplicateUrl',
+                  'You already have a recipe from this link: {{name}}',
+                  { name: urlDuplicate.name || '' },
+                  locale
+                )}
+              </span>
               <button
                 type="button"
                 data-testid="view-existing-recipe-btn"
                 onClick={() => setDuplicateRecipeId(urlDuplicate.id || null)}
-                className="underline font-bold text-xs hover:text-ochre/80"
+                className={viewExistingBtnClass}
               >
-                View existing recipe
+                {t('capture.viewExistingRecipe', 'View existing recipe', locale)}
               </button>
             </div>
           )}
@@ -1379,52 +1612,37 @@ export default function MinimalCapture({
           <div className="flex flex-col gap-6">
             {/* URL Display - Multi-line Textbox */}
             <div className="flex flex-col gap-3 px-2">
-              <label className="text-sm font-bold text-charcoal/80">Link URL</label>
+              <label htmlFor={urlInputId} className="text-sm font-bold text-ink-body">
+                {t('capture.linkUrl', 'Link URL', locale)}
+              </label>
               <textarea
+                id={urlInputId}
                 data-testid="capture-url-input"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="Paste a recipe link here..."
-                className="w-full rounded-3xl border-2 border-charcoal/10 bg-white p-5 text-sm text-charcoal placeholder:text-charcoal/30 font-mono leading-relaxed resize-none min-h-[100px] focus:border-terracotta focus:outline-none focus:ring-4 focus:ring-terracotta/10 transition-all"
+                placeholder={t(
+                  'capture.pasteLinkPlaceholder',
+                  'Paste a recipe link here...',
+                  locale
+                )}
+                className={`${fieldInputBase} min-h-[100px] resize-y rounded-3xl p-5 font-mono leading-relaxed`}
               />
             </div>
 
             {/* Appreciation & Notes (Same as Photo Path) */}
             <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-3 px-2">
-                <label className="text-sm font-bold text-charcoal/80">
-                  {t('capture.appreciation', 'Appreciation')}
-                </label>
-                <div className="flex gap-2">
-                  {[
-                    { value: 1, label: 'Not for me', icon: '👎' },
-                    { value: 2, label: 'It was OK', icon: '👍' },
-                    { value: 3, label: 'Loved it!', icon: '💚' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.value}
-                      data-testid={`capture-rating-${opt.value}`}
-                      onClick={() => setRating(opt.value as any)}
-                      className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all ${rating === opt.value ? 'border-terracotta bg-terracotta/5 text-terracotta-600 scale-100 shadow-sm' : 'border-charcoal/5 bg-white text-charcoal/50 hover:bg-charcoal/5 scale-[0.98]'}`}
-                    >
-                      <span className="text-2xl leading-none">{opt.icon}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider">
-                        {t(`capture.rating.${opt.value}`, opt.label)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {renderAppreciationFieldset()}
 
               <div className="flex flex-col gap-3 px-2">
-                <label className="text-sm font-bold text-charcoal/80">
-                  {t('capture.notes', 'Notes (Optional)')}
+                <label htmlFor={urlNotesId} className="text-sm font-bold text-ink-body">
+                  {t('capture.notes', 'Notes (Optional)', locale)}
                 </label>
                 <textarea
+                  id={urlNotesId}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder={t('capture.notesPlaceholder', 'Any tweaks for next time?')}
-                  className="w-full rounded-3xl border-2 border-charcoal/10 bg-white p-5 text-sm text-charcoal placeholder:text-charcoal/30 focus:border-terracotta focus:outline-none focus:ring-4 focus:ring-terracotta/10 min-h-[120px] resize-none transition-all"
+                  placeholder={t('capture.notesPlaceholder', 'Any tweaks for next time?', locale)}
+                  className={`${fieldInputBase} min-h-[120px] resize-y rounded-3xl p-5`}
                 />
               </div>
             </div>
@@ -1437,16 +1655,17 @@ export default function MinimalCapture({
               isLoading={isUrlCapturing}
               onClick={() => handleUrlCapture(urlInput.trim())}
               disabled={!urlInput.trim() || isUrlCapturing}
-              className="rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-terracotta/20"
+              className="rounded-[2rem] py-6 text-lg font-bold"
             >
-              Save Recipe
+              {t('capture.saveRecipe', 'Save Recipe', locale)}
             </Button>
           </div>
 
           {urlCaptureError && (
             <p
+              role="alert"
               data-testid="capture-url-error"
-              className="px-4 text-center text-sm font-medium text-pink animate-in shake duration-300"
+              className={`${alertClass} text-center animate-in shake duration-300 motion-reduce:animate-none`}
             >
               {urlCaptureError}
             </p>
@@ -1456,42 +1675,58 @@ export default function MinimalCapture({
 
       {/* ── Describe form ────────────────────────────────────────────────────── */}
       {!preparedOnly && showDescribe && (
-        <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+        <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <h2 className="font-heading text-2xl font-black text-charcoal tracking-tight">
-              Describe your recipe
+            <h2 className="font-heading text-2xl font-bold text-ink-body tracking-tight">
+              {t('capture.describeYourRecipe', 'Describe your recipe', locale)}
             </h2>
-            <p className="text-sm text-charcoal/50">
-              Give it a name and we&apos;ll synthesize the full recipe for you.
+            <p className="text-sm text-ink-muted">
+              {t(
+                'capture.describeSubtext',
+                "Give it a name and we'll synthesize the full recipe for you.",
+                locale
+              )}
             </p>
           </div>
 
           <div className="flex flex-col gap-4">
             {/* Name — required */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-charcoal/80">
-                Recipe name <span className="text-terracotta">*</span>
+              <label htmlFor={describeNameId} className="text-sm font-bold text-ink-body">
+                {t('capture.recipeName', 'Recipe name', locale)}{' '}
+                <span className="text-hearth-ink" aria-hidden="true">
+                  *
+                </span>
               </label>
               <input
+                id={describeNameId}
                 type="text"
+                required
                 value={describeName}
                 onChange={(e) => setDescribeName(e.target.value)}
-                placeholder="e.g. Our family spaghetti"
-                className="w-full rounded-2xl border-2 border-charcoal/10 bg-white px-5 py-4 text-sm text-charcoal placeholder:text-charcoal/30 focus:border-ochre focus:outline-none focus:ring-4 focus:ring-ochre/10 transition-all"
+                placeholder={t(
+                  'capture.recipeNamePlaceholder',
+                  'e.g. Our family spaghetti',
+                  locale
+                )}
+                className={`${fieldInputBase} rounded-2xl px-5 py-4`}
               />
               {describeDuplicate && (
-                <div
-                  data-testid="duplicate-recipe-warning"
-                  className="w-full rounded-2xl border border-ochre/20 bg-ochre/5 px-4 py-3 text-sm text-ochre flex flex-col gap-2 items-center"
-                >
-                  <span>A recipe with this name already exists in your library.</span>
+                <div data-testid="duplicate-recipe-warning" className={duplicateCardClass}>
+                  <span>
+                    {t(
+                      'capture.duplicateName',
+                      'A recipe with this name already exists in your library.',
+                      locale
+                    )}
+                  </span>
                   <button
                     type="button"
                     data-testid="view-existing-recipe-btn"
                     onClick={() => setDuplicateRecipeId(describeDuplicate.id || null)}
-                    className="underline font-bold text-xs hover:text-ochre/80"
+                    className={viewExistingBtnClass}
                   >
-                    View existing recipe
+                    {t('capture.viewExistingRecipe', 'View existing recipe', locale)}
                   </button>
                 </div>
               )}
@@ -1499,19 +1734,31 @@ export default function MinimalCapture({
 
             {/* Description — optional */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-charcoal/80">
-                Description <span className="text-charcoal/30 font-normal">(optional)</span>
+              <label htmlFor={describeNotesId} className="text-sm font-bold text-ink-body">
+                {t('capture.descriptionLabel', 'Description', locale)}{' '}
+                <span className="text-ink-muted font-normal">
+                  {t('capture.optionalSuffix', '(optional)', locale)}
+                </span>
               </label>
               <textarea
+                id={describeNotesId}
                 value={describeText}
                 onChange={(e) => setDescribeText(e.target.value)}
-                placeholder="Any details — key ingredients, cooking style, family notes…"
-                className="w-full rounded-2xl border-2 border-charcoal/10 bg-white px-5 py-4 text-sm text-charcoal placeholder:text-charcoal/30 focus:border-ochre focus:outline-none focus:ring-4 focus:ring-ochre/10 min-h-[120px] resize-none transition-all"
+                placeholder={t(
+                  'capture.descriptionPlaceholder',
+                  'Any details — key ingredients, cooking style, family notes…',
+                  locale
+                )}
+                className={`${fieldInputBase} min-h-[120px] resize-y rounded-2xl px-5 py-4`}
               />
             </div>
           </div>
 
-          {describeError && <p className="text-sm font-medium text-pink">{describeError}</p>}
+          {describeError && (
+            <p role="alert" className={alertClass}>
+              {describeError}
+            </p>
+          )}
 
           <Button
             variant="primary"
@@ -1519,18 +1766,12 @@ export default function MinimalCapture({
             size="lg"
             data-testid="capture-synthesize-btn"
             isLoading={isDescribing}
+            loadingText={t('capture.buildingRecipe', 'Building your recipe…', locale)}
             onClick={handleDescribeSubmit}
             disabled={!describeName.trim() || isDescribing}
-            className="rounded-[2rem] py-6 text-lg font-bold shadow-xl shadow-ochre/20 bg-ochre hover:bg-ochre/90 disabled:opacity-40"
+            className="rounded-[2rem] py-6 text-lg font-bold shadow-sm"
           >
-            {isDescribing ? (
-              <span className="flex items-center gap-2">
-                <Loader2 size={18} className="animate-spin" />
-                {t('capture.buildingRecipe', 'Building your recipe…')}
-              </span>
-            ) : (
-              t('capture.saveAndBuild', 'Save & build recipe')
-            )}
+            {t('capture.saveAndBuild', 'Save & build recipe', locale)}
           </Button>
 
           <Button
@@ -1544,9 +1785,9 @@ export default function MinimalCapture({
               setDescribeDuplicate(null);
               setDescribeError(null);
             }}
-            className="rounded-[2rem] py-6 text-lg font-bold text-charcoal/60"
+            className="rounded-[2rem] py-6 text-lg font-bold text-ink-muted hover:bg-cream-100 hover:text-ink-body"
           >
-            Cancel
+            {t('common.cancel', 'Cancel', locale)}
           </Button>
         </div>
       )}

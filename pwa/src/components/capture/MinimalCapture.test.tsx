@@ -40,8 +40,11 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock @/locales — avoids localStorage.getItem call in getLocale() during jsdom render
+let mockCaptureLocale: 'en' | 'fr' = 'en';
+
 vi.mock('@/locales', () => ({
-  t: (_key: string, defaultValue: string) => defaultValue,
+  t: (_key: string, defaultValue: string, localeArg?: 'en' | 'fr') =>
+    localeArg === 'fr' && _key.startsWith('capture.') ? `fr:${_key}:${defaultValue}` : defaultValue,
   tWithVars: (_key: string, defaultValue: string, vars: any) => {
     let result = defaultValue;
     if (vars) {
@@ -51,6 +54,12 @@ vi.mock('@/locales', () => ({
     }
     return result;
   },
+  getLocale: () => mockCaptureLocale,
+  setLocale: vi.fn(),
+}));
+
+vi.mock('@/components/common/LocaleProvider', () => ({
+  useLocale: () => ({ locale: mockCaptureLocale, setCurrentLocale: vi.fn() }),
 }));
 
 // Mock useCapture — controls the async submit path
@@ -62,6 +71,8 @@ const mockSetRating = vi.fn();
 const mockSetNotes = vi.fn();
 const mockSetSelectedDishPhotoIndex = vi.fn();
 let mockCaptureImages: File[] = [];
+let mockCaptureError: string | null = null;
+let mockCaptureRating = 0;
 
 vi.mock('@/hooks/useCapture', () => ({
   useCapture: () => ({
@@ -72,8 +83,8 @@ vi.mock('@/hooks/useCapture', () => ({
     submitRecipe: mockSubmitRecipe,
     submitUrl: mockSubmitUrl,
     clearError: vi.fn(),
-    error: null,
-    rating: 0,
+    error: mockCaptureError,
+    rating: mockCaptureRating,
     setRating: mockSetRating,
     notes: '',
     setNotes: mockSetNotes,
@@ -192,7 +203,10 @@ async function renderAndTriggerSuccess(intent?: string): Promise<void> {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockCaptureLocale = 'en';
   mockCaptureImages = [];
+  mockCaptureError = null;
+  mockCaptureRating = 0;
   mockNotifications = [];
   mockRecipesGet.mockResolvedValue({ recipes: [] });
   mockRecipeDelete.mockResolvedValue(undefined);
@@ -355,7 +369,8 @@ describe('MinimalCapture — preservation unit tests', () => {
     await act(async () => {
       fireEvent.dragOver(captureArea);
     });
-    expect(captureArea.className).toContain('bg-terracotta/10');
+    expect(captureArea.className).toContain('border-hearth-fill');
+    expect(captureArea.className).toContain('bg-terracotta-50');
 
     const file = new File(['hello'], 'hello.png', { type: 'image/png' });
 
@@ -369,7 +384,7 @@ describe('MinimalCapture — preservation unit tests', () => {
 
     expect(mockAddImage).toHaveBeenCalledWith(file);
     // Verify visual feedback is cleared
-    expect(captureArea.className).not.toContain('bg-terracotta/10');
+    expect(captureArea.className).not.toContain('border-hearth-fill');
   });
 });
 
@@ -601,5 +616,141 @@ describe('MinimalCapture — describe form validation', () => {
     await waitFor(() => expect(mockRecipeDelete).toHaveBeenCalledWith('new-recipe-id'));
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/'));
     expect(useUiStore.getState().toasts).toHaveLength(0);
+  });
+});
+
+describe('MinimalCapture — Family Cookbook dual-mode contrast & accessibility', () => {
+  it('uses semantic role tokens and accessible 48px+ targets on the landing screen', () => {
+    render(<MinimalCapture />);
+
+    const shutter = screen.getByTestId('capture-take-photo-btn');
+    expect(shutter.className).toContain('bg-hearth-fill');
+    expect(shutter.className).toContain('text-cream-100');
+
+    const galleryBtn = screen.getByTestId('capture-pick-gallery-btn');
+    expect(galleryBtn.className).toContain('min-h-12');
+    expect(galleryBtn.className).toContain('text-hearth-ink');
+    expect(galleryBtn.className).not.toContain('uppercase');
+
+    const urlAction = screen.getByTestId('capture-secondary-action-link');
+    expect(urlAction.className).toContain('min-h-12');
+    expect(urlAction.className).toContain('text-ink-body');
+    expect(urlAction.className).toContain('border-chrome-line');
+    expect(urlAction.className).not.toContain('uppercase');
+  });
+
+  it('uses accessible labels, resize-y notes, and clean primary Button in describe mode', () => {
+    render(<MinimalCapture mode="describe" />);
+
+    const nameInput = screen.getByLabelText(/recipe name/i);
+    expect(nameInput).toHaveAttribute('id');
+    expect(nameInput.className).toContain('border-icon-affordance');
+    expect(nameInput.className).toContain('text-ink-body');
+    expect(nameInput.className).not.toContain('focus:outline-none');
+
+    const notesInput = screen.getByLabelText(/description/i);
+    expect(notesInput).toHaveAttribute('id');
+    expect(notesInput.className).toContain('resize-y');
+    expect(notesInput.className).not.toContain('resize-none');
+
+    const submitBtn = screen.getByTestId('capture-synthesize-btn');
+    expect(submitBtn.className).not.toContain('bg-terracotta');
+  });
+
+  it('associates URL input label, 48px+ rating polarity buttons, and renders URL error with role=alert', async () => {
+    mockSubmitUrl.mockRejectedValueOnce(new Error('Could not extract recipe from this URL.'));
+    render(<MinimalCapture initialUrl="https://example.com/recipe" />);
+
+    const urlInput = screen.getByLabelText(/link url/i);
+    expect(urlInput).toHaveAttribute('id');
+    expect(urlInput.className).toContain('border-icon-affordance');
+
+    const rating1 = screen.getByTestId('capture-rating-1');
+    expect(rating1).toHaveAttribute('type', 'button');
+    expect(rating1).toHaveAttribute('aria-pressed', 'false');
+    expect(rating1.className).toContain('min-h-12');
+    fireEvent.click(rating1);
+    expect(mockSetRating).toHaveBeenCalledWith(1);
+
+    fireEvent.click(screen.getByTestId('capture-url-save-btn'));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Could not extract recipe from this URL.');
+    expect(alert.className).toContain('border-hearth-line');
+    expect(alert.className).toContain('bg-terracotta-50');
+    expect(alert.className).toContain('text-hearth-ink');
+  });
+
+  it('uses native button thumbnails, >=48px remove target, polarity rating, alert error, and revokes blob URLs on remove and unmount', () => {
+    const createSpy = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation((file: Blob | MediaSource) => `blob:${(file as File).name}`);
+    const originalRevokeDesc = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL');
+    const revokeMock = vi.fn();
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      writable: true,
+      value: revokeMock,
+    });
+
+    try {
+      const photoA = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
+      const photoB = new File(['b'], 'b.jpg', { type: 'image/jpeg' });
+      mockCaptureImages = [photoA, photoB];
+      mockCaptureRating = 2;
+      mockCaptureError = 'Photo upload failed.';
+
+      const view = render(<MinimalCapture />);
+
+      const thumb0 = screen.getByTestId('capture-photo-thumb-0');
+      expect(thumb0.tagName).toBe('BUTTON');
+      expect(thumb0).toHaveAttribute('type', 'button');
+
+      const removeBtn = screen.getByRole('button', { name: /remove photo 1/i });
+      expect(removeBtn.className).toContain('h-12');
+      expect(removeBtn.className).toContain('w-12');
+
+      const rating2 = screen.getByTestId('capture-rating-2');
+      expect(rating2).toHaveAttribute('aria-pressed', 'true');
+      expect(rating2.className).toContain('text-garden-ink');
+      expect(rating2.className).toContain('border-garden-line');
+
+      const photoNotes = screen.getByLabelText(/notes/i);
+      expect(photoNotes.className).toContain('resize-y');
+
+      const photoAlert = screen.getByRole('alert');
+      expect(photoAlert).toHaveTextContent('Photo upload failed.');
+      expect(photoAlert.className).toContain('text-hearth-ink');
+
+      expect(createSpy).toHaveBeenCalledTimes(2);
+
+      // Removing photoA should revoke blob:a.jpg
+      mockCaptureImages = [photoB];
+      view.rerender(<MinimalCapture />);
+      expect(revokeMock).toHaveBeenCalledWith('blob:a.jpg');
+
+      // Unmounting should revoke remaining blob:b.jpg
+      view.unmount();
+      expect(revokeMock).toHaveBeenCalledWith('blob:b.jpg');
+    } finally {
+      createSpy.mockRestore();
+      if (originalRevokeDesc) {
+        Object.defineProperty(URL, 'revokeObjectURL', originalRevokeDesc);
+      } else {
+        delete (URL as unknown as Record<string, unknown>).revokeObjectURL;
+      }
+    }
+  });
+
+  it('reacts to locale changes via useLocale in MinimalCapture', () => {
+    mockCaptureLocale = 'fr';
+    render(<MinimalCapture />);
+
+    expect(screen.getByTestId('capture-pick-gallery-btn')).toHaveTextContent(
+      'fr:capture.pickFromGallery:'
+    );
+    expect(screen.getByTestId('capture-secondary-action-link')).toHaveTextContent(
+      'fr:capture.pasteRecipeLink:'
+    );
   });
 });

@@ -68,7 +68,8 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
             id,
             dto.BrowseViewMode,
             dto.PreferredLanguage,
-            dto.CookingViewMode);
+            dto.CookingViewMode,
+            dto.ContrastMode);
         return Ok(ToDto(member));
     }
 
@@ -86,6 +87,7 @@ public class FamilyController(FamilyService familyService, DemoModeOptions demoM
         BrowseViewMode = member.BrowseViewMode,
         PreferredLanguage = member.PreferredLanguage,
         CookingViewMode = member.CookingViewMode,
+        ContrastMode = member.ContrastMode,
         CreatedAt = member.CreatedAt,
         UpdatedAt = member.UpdatedAt
     };

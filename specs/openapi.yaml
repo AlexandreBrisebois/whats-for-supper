@@ -2367,6 +2367,9 @@ paths:
                         preferredLanguage:
                           type: [string, 'null']
                           enum: [en, fr]
+                        contrastMode:
+                          type: [string, 'null']
+                          enum: [standard, high]
                         createdAt: { type: string, format: date-time }
                         updatedAt: { type: string, format: date-time }
               examples:
@@ -2378,6 +2381,7 @@ paths:
                         browseViewMode: 'stack'
                         cookingViewMode: 'all-steps'
                         preferredLanguage: 'en'
+                        contrastMode: null
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440002'
@@ -2385,6 +2389,7 @@ paths:
                         browseViewMode: 'list'
                         cookingViewMode: 'step-by-step'
                         preferredLanguage: 'en'
+                        contrastMode: 'high'
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
                       - id: '550e8400-e29b-41d4-a716-446655440003'
@@ -2392,6 +2397,7 @@ paths:
                         browseViewMode: 'stack'
                         cookingViewMode: null
                         preferredLanguage: 'en'
+                        contrastMode: null
                         createdAt: '2024-01-01T00:00:00Z'
                         updatedAt: '2024-01-01T00:00:00Z'
 
@@ -2442,6 +2448,9 @@ paths:
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
+                      contrastMode:
+                        type: [string, 'null']
+                        enum: [standard, high]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
               example:
@@ -2451,6 +2460,7 @@ paths:
                   browseViewMode: 'stack'
                   cookingViewMode: null
                   preferredLanguage: 'en'
+                  contrastMode: null
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
         '403':
@@ -2510,6 +2520,9 @@ paths:
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
+                      contrastMode:
+                        type: [string, 'null']
+                        enum: [standard, high]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
         '401':
@@ -2576,6 +2589,9 @@ paths:
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
+                      contrastMode:
+                        type: [string, 'null']
+                        enum: [standard, high]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
               example:
@@ -2585,6 +2601,7 @@ paths:
                   browseViewMode: 'stack'
                   cookingViewMode: null
                   preferredLanguage: 'en'
+                  contrastMode: null
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
     delete:
@@ -2633,6 +2650,9 @@ paths:
                 cookingViewMode:
                   type: string
                   enum: [step-by-step, all-steps]
+                contrastMode:
+                  type: [string, 'null']
+                  enum: [standard, high]
               minProperties: 1
               description: Only supplied properties are updated; omitted preferences retain their persisted values.
       responses:
@@ -2668,6 +2688,9 @@ paths:
                       preferredLanguage:
                         type: [string, 'null']
                         enum: [en, fr]
+                      contrastMode:
+                        type: [string, 'null']
+                        enum: [standard, high]
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
               example:
@@ -2677,6 +2700,7 @@ paths:
                   browseViewMode: 'list'
                   cookingViewMode: 'all-steps'
                   preferredLanguage: 'fr'
+                  contrastMode: 'high'
                   createdAt: '2024-01-01T00:00:00Z'
                   updatedAt: '2024-01-01T00:00:00Z'
         '400':

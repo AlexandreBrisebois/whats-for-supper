@@ -12,4 +12,7 @@ public class UpdateFamilyMemberPreferencesDto
 
     [JsonPropertyName("cookingViewMode")]
     public string? CookingViewMode { get; set; }
+
+    [JsonPropertyName("contrastMode")]
+    public string? ContrastMode { get; set; }
 }

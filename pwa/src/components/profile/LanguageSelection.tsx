@@ -22,11 +22,11 @@ export function LanguageSelection() {
     <section
       role="group"
       aria-labelledby={headingId}
-      className="w-full rounded-3xl bg-white/50 border border-white/80 p-[20px] shadow-[0_6px_24px_-10px_rgba(31,41,55,0.12)]"
+      className="w-full rounded-3xl bg-white/50 border border-chrome-line p-[20px] shadow-[0_6px_24px_-10px_rgba(31,41,55,0.12)]"
     >
       <div className="mb-4 flex items-center gap-3">
-        <Languages aria-hidden="true" className="h-5 w-5 text-terracotta-700" />
-        <h2 id={headingId} className="text-base font-semibold text-charcoal">
+        <Languages aria-hidden="true" className="h-5 w-5 text-hearth-ink" />
+        <h2 id={headingId} className="text-base font-semibold text-ink-body">
           {t('profile.language', 'Language')}
         </h2>
       </div>
@@ -39,10 +39,10 @@ export function LanguageSelection() {
             aria-pressed={locale === choice}
             onClick={() => handleLanguageChange(choice)}
             className={[
-              'flex min-h-12 min-w-12 flex-1 basis-[8rem] items-center justify-center gap-2 rounded-2xl px-3 py-3 text-base font-semibold scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-terracotta-700',
+              'flex min-h-12 min-w-12 flex-1 basis-[8rem] items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-base font-semibold scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-hearth-ink',
               locale === choice
-                ? 'bg-terracotta-50 text-terracotta-700 hover:bg-terracotta-100 active:bg-terracotta-100'
-                : 'bg-white/80 text-charcoal hover:bg-cream active:bg-terracotta-50',
+                ? 'bg-terracotta-50 text-hearth-ink border-hearth-line hover:border-hearth-ink'
+                : 'bg-white/80 text-ink-body border-chrome-line hover:bg-cream active:bg-terracotta-50',
             ].join(' ')}
           >
             {locale === choice && (

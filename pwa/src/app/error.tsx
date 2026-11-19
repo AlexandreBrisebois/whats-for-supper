@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { t } from '@/locales';
 
 interface ErrorProps {
@@ -15,21 +16,22 @@ export default function Error({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 py-12 text-center">
-      <h2 className="text-2xl font-bold text-charcoal">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-cream px-6 py-12 text-center">
+      <h2 className="font-heading text-2xl font-bold text-charcoal">
         {t('errors.genericTitle', 'Something went wrong')}
       </h2>
-      <p className="text-charcoal-400">
+      <p className="text-charcoal-600">
         {t('errors.genericDescription', 'An unexpected error occurred. Please try again.')}
       </p>
-      <button
+      <Button
+        variant="primary"
+        size="md"
         onClick={() => {
           reset();
         }}
-        className="rounded-xl bg-indigo px-6 py-3 font-semibold text-lavender transition-opacity hover:opacity-90"
       >
         {t('errors.tryAgain', 'Try again')}
-      </button>
+      </Button>
     </main>
   );
 }

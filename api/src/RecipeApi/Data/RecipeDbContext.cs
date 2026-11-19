@@ -104,6 +104,8 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             entity.Property(e => e.BrowseViewMode)
                   .HasDefaultValue("list");
             entity.Property(e => e.CookingViewMode);
+            entity.Property(e => e.ContrastMode)
+                  .HasColumnName("contrast_mode");
             entity.Property(e => e.CreatedAt)
                   .HasDefaultValueSql("NOW()");
             entity.Property(e => e.UpdatedAt)
@@ -116,6 +118,9 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                 t.HasCheckConstraint(
                     "CK_family_members_cooking_view_mode",
                     "cooking_view_mode IS NULL OR cooking_view_mode IN ('step-by-step', 'all-steps')");
+                t.HasCheckConstraint(
+                    "CK_family_members_contrast_mode",
+                    "contrast_mode IS NULL OR contrast_mode IN ('standard', 'high')");
             });
         });
 

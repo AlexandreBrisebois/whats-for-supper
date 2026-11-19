@@ -87,7 +87,7 @@ function categoryCorrectionKey(item: GroceryLineItemDto) {
 }
 
 const CATEGORY_BUTTON_CLASS =
-  'min-h-12 min-w-12 shrink-0 rounded-full text-charcoal/60 hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-sage';
+  'min-h-12 min-w-12 shrink-0 rounded-full text-icon-affordance hover:text-ink-body hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-garden-ink';
 
 function formatQuantityHint(
   quantity: GroceryLineItemDto['quantity'],
@@ -761,12 +761,12 @@ export function GroceryList({
               id={`extra-name-${id}`}
               value={editingName}
               onChange={(event) => setEditingName(event.target.value)}
-              className="min-h-11 w-full min-w-0 flex-1 rounded-xl border border-sage/30 bg-white px-3 focus:outline-none focus:ring-2 focus:ring-sage"
+              className="min-h-11 w-full min-w-0 flex-1 rounded-xl border border-garden-line bg-white px-3 text-ink-body focus:outline-none focus:ring-2 focus:ring-garden-ink"
               autoFocus
             />
             <button
               type="button"
-              className="h-11 w-11 shrink-0 rounded-full bg-sage text-white focus:outline-none focus:ring-2 focus:ring-charcoal disabled:opacity-50"
+              className="h-11 w-11 shrink-0 rounded-full bg-garden-fill hover:bg-garden-fill-deep text-white focus:outline-none focus:ring-2 focus:ring-ink-body disabled:opacity-50"
               disabled={!editingName.trim() || pending}
               onClick={() => void mutateExtra(extra, { name: editingName.trim() })}
               aria-label={t('grocery.save', 'Save')}
@@ -775,7 +775,7 @@ export function GroceryList({
             </button>
             <button
               type="button"
-              className="h-11 w-11 shrink-0 rounded-full text-terracotta focus:outline-none focus:ring-2 focus:ring-terracotta disabled:opacity-50"
+              className="h-11 w-11 shrink-0 rounded-full text-hearth-ink focus:outline-none focus:ring-2 focus:ring-hearth-ink disabled:opacity-50"
               onClick={() => void handleDeleteExtra(extra)}
               disabled={pending}
               aria-label={t('grocery.delete', 'Delete')}
@@ -798,19 +798,22 @@ export function GroceryList({
                   preserveCheckFocus(control.element, control.keyboard);
                   void mutateExtra(extra, { checked: extra.checked !== true }, control);
                 }}
-                className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left focus:outline-none focus:ring-2 focus:ring-sage"
+                className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left focus:outline-none focus:ring-2 focus:ring-garden-ink"
                 data-testid="grocery-extra-checkbox"
               >
                 {extra.checked ? (
-                  <CheckCircle2 className="shrink-0 text-sage" size={20} />
+                  <CheckCircle2 className="shrink-0 text-garden-ink" size={20} />
                 ) : (
-                  <Circle className="shrink-0 text-charcoal/20" size={20} />
+                  <Circle className="shrink-0 text-icon-affordance" size={20} />
                 )}
                 <span className={cn('min-w-0 flex-1', extra.checked && 'line-through opacity-60')}>
-                  <span className="block font-medium" data-testid="grocery-extra-name">
+                  <span
+                    className="block font-medium text-ink-body"
+                    data-testid="grocery-extra-name"
+                  >
                     {extra.name}
                   </span>
-                  <span className="text-xs font-bold text-ochre-800">
+                  <span className="text-xs font-bold text-sunlight-ink">
                     {t('grocery.extra', 'Extra')}
                   </span>
                 </span>
@@ -818,18 +821,21 @@ export function GroceryList({
             ) : (
               <div className="flex min-h-11 min-w-0 flex-1 items-center gap-3">
                 {extra.checked ? (
-                  <CheckCircle2 className="shrink-0 text-sage" size={20} aria-hidden="true" />
+                  <CheckCircle2 className="shrink-0 text-garden-ink" size={20} aria-hidden="true" />
                 ) : (
-                  <Circle className="shrink-0 text-charcoal/30" size={20} aria-hidden="true" />
+                  <Circle className="shrink-0 text-icon-affordance" size={20} aria-hidden="true" />
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium" data-testid="grocery-extra-name">
+                  <span
+                    className="block font-medium text-ink-body"
+                    data-testid="grocery-extra-name"
+                  >
                     {extra.name}
                   </span>
-                  <span className="text-xs font-bold text-ochre-800">
+                  <span className="text-xs font-bold text-sunlight-ink">
                     {t('grocery.extra', 'Extra')}
                   </span>
-                  <span className="ml-2 text-xs font-bold text-charcoal/70">
+                  <span className="ml-2 text-xs font-bold text-ink-muted">
                     {extra.checked
                       ? t('grocery.bought', 'Bought')
                       : t('grocery.notBought', 'Not bought')}
@@ -854,7 +860,7 @@ export function GroceryList({
                     if (node) editButtons.current.set(id, node);
                     else editButtons.current.delete(id);
                   }}
-                  className="min-h-11 min-w-11 rounded-full focus:ring-2 focus:ring-sage"
+                  className="min-h-11 min-w-11 rounded-full text-icon-affordance hover:text-ink-body focus:ring-2 focus:ring-garden-ink"
                   aria-label={`${t('grocery.edit', 'Edit')} ${extra.name ?? ''}`}
                   onClick={() => {
                     setEditingExtra(id);
@@ -878,7 +884,7 @@ export function GroceryList({
                 type="button"
                 key={nextSection}
                 disabled={pending}
-                className="min-h-11 rounded-full bg-charcoal/5 px-3 text-xs font-bold focus:ring-2 focus:ring-sage"
+                className="min-h-11 rounded-full bg-charcoal/5 px-3 text-xs font-bold text-ink-body focus:ring-2 focus:ring-garden-ink"
                 onClick={() => {
                   if (extra.grocerySection === nextSection) setReclassifyOpen(null);
                   else void mutateExtra(extra, { grocerySection: nextSection });
@@ -909,13 +915,13 @@ export function GroceryList({
       {/* Header */}
       <div
         className={cn(
-          'flex items-center justify-between border-b border-charcoal/5 bg-white/50 backdrop-blur-md',
+          'flex items-center justify-between border-b border-chrome-line bg-white/50 backdrop-blur-md',
           isEmbedded ? 'px-6 py-2.5' : 'p-8'
         )}
       >
         <div className={cn(isEmbedded ? 'py-0.5' : 'py-0')}>
           {!isEmbedded && (
-            <p className="text-[10px] font-black uppercase tracking-widest text-sage/60">
+            <p className="text-xs font-semibold text-garden-ink">
               {t('grocery.smartShopping', 'Smart Shopping')}
             </p>
           )}
@@ -923,7 +929,7 @@ export function GroceryList({
             ref={headingRef}
             tabIndex={-1}
             className={cn(
-              'font-heading font-black text-charcoal',
+              'font-heading font-black text-ink-body',
               isEmbedded ? 'text-lg' : 'text-xl'
             )}
           >
@@ -935,7 +941,7 @@ export function GroceryList({
             variant="secondary"
             onClick={onClose}
             aria-label={t('grocery.close', 'Close grocery list')}
-            className="rounded-full h-14 w-14 p-0 border-charcoal/10"
+            className="rounded-full h-14 w-14 p-0 border-chrome-line"
           >
             ×
           </Button>
@@ -998,13 +1004,13 @@ export function GroceryList({
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center py-20 px-6"
               >
-                <div className="h-24 w-24 bg-sage/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <ShoppingCart size={40} className="text-sage" />
+                <div className="h-24 w-24 bg-sage-50 border border-garden-line rounded-full flex items-center justify-center mx-auto mb-6">
+                  <ShoppingCart size={40} className="text-garden-ink" />
                 </div>
-                <h3 className="text-xl font-heading font-black text-charcoal mb-2">
+                <h3 className="text-xl font-heading font-black text-ink-body mb-2">
                   {t('grocery.emptyTitle', 'Your list is empty')}
                 </h3>
-                <p className="text-charcoal/40 font-medium mb-12 max-w-[240px] mx-auto">
+                <p className="text-ink-muted font-medium mb-12 max-w-[240px] mx-auto">
                   {t(
                     'grocery.emptySubtext',
                     'Add meals to your planner and your grocery list will build itself — organized by store section.'
@@ -1013,7 +1019,7 @@ export function GroceryList({
                 {onClose && (
                   <Button
                     onClick={onClose}
-                    className="bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white rounded-3xl h-16 px-10 font-bold shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
+                    className="bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-white rounded-3xl h-16 px-10 font-bold shadow-xl shadow-terracotta/20 active:scale-95 transition-all"
                   >
                     {t('grocery.startPlanning', 'Start Planning')}
                   </Button>
@@ -1062,7 +1068,7 @@ export function GroceryList({
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className="@container bg-white rounded-3xl border border-charcoal/5 overflow-hidden shadow-sm"
+                      className="@container bg-white rounded-3xl border border-chrome-line overflow-hidden shadow-sm"
                       data-testid={`aisle-section-${aisle}`}
                     >
                       {/* Aisle Header */}
@@ -1072,7 +1078,7 @@ export function GroceryList({
                           <button
                             type="button"
                             onClick={() => toggleAisle(aisle)}
-                            className={`px-6 py-4 border-b border-charcoal/5 ${
+                            className={`px-6 py-4 border-b border-chrome-line ${
                               isComplete
                                 ? 'bg-sage/20'
                                 : 'bg-gradient-to-r from-charcoal/2 to-transparent'
@@ -1087,10 +1093,10 @@ export function GroceryList({
                               <div className="flex items-center space-x-3">
                                 <span className="text-3xl">{AISLE_ICONS[aisle]}</span>
                                 <div>
-                                  <h3 className="font-black text-charcoal text-lg">
+                                  <h3 className="font-black text-ink-body text-lg">
                                     {t(`grocery.aisles.${aisle}`, aisle)}
                                   </h3>
-                                  <p className="text-xs text-charcoal/40 font-medium">
+                                  <p className="text-xs text-ink-muted font-medium">
                                     {tWithVars(
                                       'grocery.itemsCount',
                                       `${checkedCount}/${totalCount} items`,
@@ -1103,15 +1109,15 @@ export function GroceryList({
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-full bg-sage/10 flex items-center justify-center">
+                                <div className="h-8 w-8 rounded-full bg-sage-50 flex items-center justify-center">
                                   {isComplete ? (
                                     <CheckCircle2
                                       size={18}
-                                      className="text-sage"
+                                      className="text-garden-ink"
                                       data-testid="section-complete-icon"
                                     />
                                   ) : (
-                                    <span className="text-xs font-black text-sage">
+                                    <span className="text-xs font-black text-garden-ink">
                                       {Math.round((checkedCount / totalCount) * 100)}%
                                     </span>
                                   )}
@@ -1119,7 +1125,7 @@ export function GroceryList({
                                 <ChevronDown
                                   size={18}
                                   className={cn(
-                                    'text-charcoal/40 transition-transform',
+                                    'text-icon-affordance transition-transform',
                                     isCollapsed && '-rotate-90'
                                   )}
                                   aria-hidden="true"
@@ -1160,8 +1166,8 @@ export function GroceryList({
                               <div
                                 className={`flex flex-wrap items-center gap-1 px-1.5 py-2 rounded-2xl transition-all ${
                                   isChecked
-                                    ? 'bg-sage/5 text-charcoal/40'
-                                    : 'hover:bg-charcoal/2 text-charcoal'
+                                    ? 'bg-sage-50 text-ink-muted'
+                                    : 'hover:bg-charcoal-50 text-ink-body'
                                 }`}
                               >
                                 {/* Toggle button — takes up the left portion */}
@@ -1190,13 +1196,13 @@ export function GroceryList({
                                   {isChecked ? (
                                     <CheckCircle2
                                       size={20}
-                                      className="text-sage flex-shrink-0"
+                                      className="text-garden-ink flex-shrink-0"
                                       aria-hidden="true"
                                     />
                                   ) : (
                                     <Circle
                                       size={20}
-                                      className="text-charcoal/20 flex-shrink-0"
+                                      className="text-icon-affordance flex-shrink-0"
                                       aria-hidden="true"
                                     />
                                   )}
@@ -1221,8 +1227,8 @@ export function GroceryList({
                                         className={cn(
                                           'mt-1 block text-sm font-normal',
                                           item.quantityComplete === false
-                                            ? 'text-charcoal'
-                                            : 'text-charcoal/50'
+                                            ? 'text-ink-body'
+                                            : 'text-ink-muted'
                                         )}
                                       >
                                         {quantityHint}
@@ -1232,7 +1238,7 @@ export function GroceryList({
                                   {hasError && (
                                     <AlertCircle
                                       size={12}
-                                      className="text-terracotta flex-shrink-0 ml-1"
+                                      className="text-hearth-ink flex-shrink-0 ml-1"
                                       data-testid="grocery-item-error"
                                     />
                                   )}
@@ -1248,7 +1254,7 @@ export function GroceryList({
                                     <button
                                       type="button"
                                       data-testid="grocery-recipe-sources-toggle"
-                                      className="inline-flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-full text-charcoal/60 hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-terracotta"
+                                      className="inline-flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-full text-icon-affordance hover:text-ink-body hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-hearth-ink"
                                       aria-label={tWithVars(
                                         'grocery.sourceRecipesFor',
                                         'Source recipes for {{ingredient}}',
@@ -1282,7 +1288,7 @@ export function GroceryList({
                                     {hasReclassifyError && (
                                       <AlertCircle
                                         size={10}
-                                        className="text-terracotta absolute -top-1 -right-1"
+                                        className="text-hearth-ink absolute -top-1 -right-1"
                                         data-testid="reclassify-error"
                                       />
                                     )}
@@ -1299,7 +1305,7 @@ export function GroceryList({
                                     >
                                       <h4
                                         id={`grocery-sources-heading-${encodeURIComponent(renderKey)}`}
-                                        className="mb-1 font-semibold text-charcoal"
+                                        className="mb-1 font-semibold text-ink-body"
                                       >
                                         {t('grocery.usedIn', 'Used in')}
                                       </h4>
@@ -1315,7 +1321,7 @@ export function GroceryList({
                                           <li key={id}>
                                             <Link
                                               prefetch={false}
-                                              className="inline-block min-h-[48px] max-w-full break-words py-3 text-sage-800 underline underline-offset-4"
+                                              className="inline-block min-h-[48px] max-w-full break-words py-3 text-garden-ink underline underline-offset-4"
                                               href={`/recipes?open=${encodeURIComponent(id)}&reviewAmounts=true${sourceReturnParams}`}
                                               aria-describedby={`grocery-source-purpose-${encodeURIComponent(renderKey)}`}
                                             >
@@ -1356,7 +1362,7 @@ export function GroceryList({
                                   aria-busy={isReclassifyPending}
                                 >
                                   {item.categoryStatus === 'conflict' && (
-                                    <div className="w-full text-sm text-charcoal/70">
+                                    <div className="w-full text-sm text-ink-muted">
                                       <p>
                                         {t(
                                           'grocery.categoryConflict',
@@ -1386,10 +1392,10 @@ export function GroceryList({
                                       type="button"
                                       key={section}
                                       onClick={() => handleReclassify(item, section)}
-                                      className={`min-h-11 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                      className={`min-h-12 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
                                         item.section === section
-                                          ? 'bg-sage text-white'
-                                          : 'bg-white text-charcoal/60 hover:bg-sage/10'
+                                          ? 'bg-garden-fill text-white'
+                                          : 'bg-white text-ink-muted hover:bg-sage-50 border border-chrome-line'
                                       }`}
                                       data-testid={`section-option-${section}`}
                                       disabled={isReclassifyPending}
@@ -1418,7 +1424,7 @@ export function GroceryList({
       {composerIsEligible && (
         <div
           ref={composerRef}
-          className="relative border-t border-charcoal/10 bg-cream p-3"
+          className="relative border-t border-chrome-line bg-cream p-3"
           data-testid="grocery-extra-composer"
           onFocusCapture={() => setComposerFocused(true)}
           onBlurCapture={(event) => {
@@ -1434,7 +1440,7 @@ export function GroceryList({
               id="grocery-extra-suggestions"
               role="listbox"
               aria-label={t('grocery.extraSuggestions', 'Extra suggestions')}
-              className="absolute bottom-full left-3 right-3 z-20 mb-2 max-h-40 overflow-auto rounded-2xl border border-charcoal/10 bg-white p-1 shadow-xl"
+              className="absolute bottom-full left-3 right-3 z-20 mb-2 max-h-40 overflow-auto rounded-2xl border border-chrome-line bg-white p-1 shadow-xl"
             >
               {suggestions.map((suggestion, index) => (
                 <li
@@ -1445,7 +1451,7 @@ export function GroceryList({
                 >
                   <button
                     type="button"
-                    className="min-h-11 w-full rounded-xl px-3 text-left focus:bg-sage/10 focus:outline-none"
+                    className="min-h-11 w-full rounded-xl px-3 text-left text-ink-body focus:bg-sage/10 focus:outline-none"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
                       setExtraName(suggestion);
@@ -1520,13 +1526,13 @@ export function GroceryList({
                 }
               }}
               placeholder={t('grocery.extraPlaceholder', 'Add milk, coffee, foil…')}
-              className="min-h-12 min-w-0 flex-1 rounded-2xl border border-charcoal/10 bg-white px-4 focus:outline-none focus:ring-2 focus:ring-sage"
+              className="min-h-12 min-w-0 flex-1 rounded-2xl border border-chrome-line bg-white px-4 text-ink-body focus:outline-none focus:ring-2 focus:ring-garden-ink"
             />
             <button
               type="submit"
               disabled={!extraName.trim() || addState === 'pending'}
               onPointerDown={(event) => event.preventDefault()}
-              className="h-12 w-12 shrink-0 rounded-2xl bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white disabled:opacity-50 focus:ring-2 focus:ring-charcoal"
+              className="h-12 w-12 shrink-0 rounded-2xl bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-white disabled:opacity-50 focus:ring-2 focus:ring-ink-body"
               aria-label={
                 addState === 'pending'
                   ? t('grocery.addingExtra', 'Adding…')
@@ -1542,7 +1548,7 @@ export function GroceryList({
             </button>
           </form>
           {(addState === 'error' || suggestionError) && (
-            <p className="mx-auto mt-1 max-w-2xl text-xs font-bold text-terracotta" role="alert">
+            <p className="mx-auto mt-1 max-w-2xl text-xs font-bold text-hearth-ink" role="alert">
               {addState === 'error'
                 ? t(
                     'grocery.addExtraError',

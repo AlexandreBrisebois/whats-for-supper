@@ -5,7 +5,6 @@ export const ROUTES = {
   ONBOARDING: '/onboarding',
   HOME: '/home',
   CAPTURE: '/capture',
-  CAPTURE_CONFIRM: '/capture/confirm',
   PLANNER: '/planner',
   DISCOVERY: '/discovery',
   PROFILE: '/profile',

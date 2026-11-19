@@ -700,7 +700,7 @@ export default function PlannerPage() {
   const canOpenVoting = !weekIsPast && (status === 0 || status === 2);
 
   return (
-    <div className="flex flex-col solar-earth-bg pb-6">
+    <div className="flex flex-col cookbook-bg pb-6">
       {visibleConfirmation && (
         <div
           role="status"
@@ -768,8 +768,8 @@ export default function PlannerPage() {
                 onClick={() => setActiveTab('planner')}
                 data-testid="planner-tab"
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
-                  activeTab === 'planner' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
+                  'flex-1 min-h-12 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-semibold transition-all z-10',
+                  activeTab === 'planner' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal-600'
                 )}
               >
                 <Calendar size={14} /> {t('planner.planner', 'Planner')}
@@ -778,8 +778,8 @@ export default function PlannerPage() {
                 onClick={() => portions.requestDeparture(() => setActiveTab('grocery'))}
                 data-testid="grocery-tab"
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all z-10',
-                  activeTab === 'grocery' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'
+                  'flex-1 min-h-12 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-semibold transition-all z-10',
+                  activeTab === 'grocery' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal-600'
                 )}
               >
                 <ShoppingCart size={14} /> {t('planner.groceryList', 'Grocery list')}
@@ -815,8 +815,8 @@ export default function PlannerPage() {
               <h2 className="text-lg font-heading font-bold text-charcoal flex items-center justify-center">
                 {isVotingOpen && (
                   <span className="relative flex h-2 w-2 mr-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-ochre"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre-600 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-ochre-600"></span>
                   </span>
                 )}
                 {schedule.length >= 7
@@ -850,7 +850,7 @@ export default function PlannerPage() {
                   type="button"
                   data-testid="planner-this-week-pill"
                   onClick={() => navigateToWeekOffset(0)}
-                  className="mx-auto mt-2 inline-flex min-h-[48px] min-w-[48px] items-center justify-center gap-2 rounded-full border border-terracotta/15 bg-white/75 px-4 text-[9px] font-black uppercase tracking-[0.18em] text-terracotta-600 shadow-sm shadow-terracotta/5 transition-all hover:bg-terracotta/5 active:scale-95"
+                  className="mx-auto mt-2 inline-flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-full border border-terracotta-200 bg-white px-4 text-xs font-semibold text-terracotta-700 shadow-sm transition-all hover:bg-terracotta-50 active:scale-95"
                   aria-label={t('planner.backToThisWeek', 'Back to this week')}
                   title={t('planner.backToThisWeek', 'Back to this week')}
                 >
@@ -936,9 +936,9 @@ export default function PlannerPage() {
                         <button
                           onClick={handleNudgeFamily}
                           data-testid="nudge-family-cta"
-                          className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-2 rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-normal text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                          className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full bg-sage-700 hover:bg-sage-800 px-4 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
                         >
-                          <Share2 size={10} />
+                          <Share2 size={14} />
                           {t('planner.nudgeFamily', 'Nudge family')}
                         </button>
                       )}
@@ -950,9 +950,9 @@ export default function PlannerPage() {
                         <button
                           onClick={handleAskFamily}
                           data-testid="ask-family-cta"
-                          className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-2 rounded-full bg-sage px-4 text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-sage/15 transition-all active:scale-95"
+                          className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full bg-sage-700 hover:bg-sage-800 px-4 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
                         >
-                          <Users size={12} />
+                          <Users size={14} />
                           {t('planner.askFamily', 'Ask the Family')}
                         </button>
                       )}
@@ -960,9 +960,9 @@ export default function PlannerPage() {
                         <button
                           onClick={handleCloseVoting}
                           data-testid="close-voting-btn"
-                          className="flex min-h-[48px] min-w-[48px] max-w-full items-center gap-2 rounded-full border border-terracotta/10 bg-white/80 px-4 text-[9px] font-black uppercase tracking-normal text-terracotta transition-all hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white active:scale-95"
+                          className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full border border-terracotta-200 bg-white px-4 text-xs font-semibold text-terracotta-700 transition-all hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white active:scale-95"
                         >
-                          <Ban size={10} />
+                          <Ban size={14} />
                           {t('planner.closeVoting', 'Close Voting')}
                         </button>
                       )}
@@ -1064,7 +1064,7 @@ export default function PlannerPage() {
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-24 left-6 right-6 z-50 bg-sage text-white p-6 rounded-3xl shadow-2xl flex items-center gap-4"
+          className="fixed bottom-24 left-6 right-6 z-50 bg-sage-700 text-white p-6 rounded-3xl shadow-2xl flex items-center gap-4"
         >
           <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
             <Check size={24} />
@@ -1076,7 +1076,7 @@ export default function PlannerPage() {
             >
               {t('planner.weekFinalized', "Menu's in!")}
             </h4>
-            <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-1">
+            <p className="text-xs font-medium text-cream-100 mt-1">
               {t(
                 'planner.discoveryVotesPurged',
                 "Votes have been recorded and reset, we're ready for the next family voting session."
@@ -1423,7 +1423,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
             data-testid="planner-date-marker"
             className="w-full flex flex-col items-center justify-center rounded-xl py-2"
           >
-            <span className="max-w-full break-all text-center text-[10px] font-bold tracking-normal text-charcoal-600 leading-none mb-1">
+            <span className="max-w-full break-all text-center text-xs font-semibold tracking-normal text-charcoal-600 leading-none mb-1">
               {day.date
                 ? new Intl.DateTimeFormat(getLocale() === 'fr' ? 'fr-CA' : 'en-CA', {
                     weekday: 'short',
@@ -1438,7 +1438,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                 return d.getUTCDate();
               })()}
             </span>
-            <span className="max-w-full break-all text-center text-[10px] font-bold tracking-normal text-charcoal-600 leading-none mt-1">
+            <span className="max-w-full break-all text-center text-xs font-semibold tracking-normal text-charcoal-600 leading-none mt-1">
               {(() => {
                 if (!day.date) return '';
                 const d = new Date(day.date);
@@ -1501,12 +1501,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                       {nonCookingLabel(day.nonCooking)}
                     </span>
                     {day.nonCooking?.kind === 'mystery' ? (
-                      <span
-                        className={cn(
-                          'text-[10px] font-medium',
-                          isPast ? 'text-charcoal-600' : 'text-charcoal/30'
-                        )}
-                      >
+                      <span className="text-xs font-medium text-charcoal-600">
                         {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
                       </span>
                     ) : nonCookingNote(day.nonCooking) ? (
@@ -1569,16 +1564,12 @@ const PlannerDayCard = memo(function PlannerDayCard({
                           <span
                             data-testid="vote-count"
                             className={cn(
-                              'text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
-                              hasVotes ? 'visible' : 'visible',
+                              'text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
                               hasVotes
                                 ? isUnanimous
-                                  ? cn('bg-sage/20', isPast ? 'text-sage-700' : 'text-sage')
-                                  : cn('bg-ochre/20', isPast ? 'text-ochre-700' : 'text-ochre')
-                                : cn(
-                                    'bg-charcoal/8',
-                                    isPast ? 'text-charcoal-600' : 'text-charcoal/55'
-                                  )
+                                  ? 'bg-sage-50 text-sage-800'
+                                  : 'bg-ochre-50 text-ochre-800'
+                                : 'bg-charcoal-100 text-charcoal-600'
                             )}
                           >
                             {hasVotes
@@ -1632,10 +1623,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                       e.stopPropagation();
                       onPivot();
                     }}
-                    className={cn(
-                      'h-9 w-9 rounded-xl bg-ochre/8 flex items-center justify-center active:scale-90 transition-transform',
-                      isPast ? 'text-ochre-700' : 'text-ochre'
-                    )}
+                    className="h-9 w-9 rounded-xl bg-ochre-50 text-ochre-800 flex items-center justify-center active:scale-90 transition-transform"
                     data-testid="change-recipe-button"
                     title={t('planner.choosePathTitle', 'Change this recipe')}
                     aria-label={t('planner.choosePathTitle', 'Change this recipe')}

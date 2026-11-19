@@ -93,3 +93,36 @@ class ToolingSetupTests(unittest.TestCase):
         self.assertIn('npm install --global @fission-ai/openspec', commands)
         self.assertNotIn('@fission-ai/openspec@', commands)
         self.assertIn('openspec validate --all --strict --no-interactive', commands)
+
+    def test_spec_search_falls_back_to_grep_when_rg_is_missing(self):
+        config = self.tasks()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'openspec/specs/demo').mkdir(parents=True)
+            (root / 'openspec/changes').mkdir(parents=True)
+            (root / 'openspec/specs/demo/spec.md').write_text('Demo mode requirement\n')
+            (root / 'openspec/specs/demo/notes.txt').write_text('Demo mode ignored file\n')
+            bin_dir = root / 'bin'
+            bin_dir.mkdir()
+            for cmd in ('bash', 'grep', 'task'):
+                found = shutil.which(cmd)
+                self.assertIsNotNone(found, f'missing prerequisite {cmd}')
+                (bin_dir / cmd).symlink_to(found)
+            (root / 'Taskfile.yml').write_text(yaml.safe_dump({
+                'version': '3',
+                'tasks': {'spec:search': config['tasks']['spec:search']},
+            }))
+            result = subprocess.run(
+                [str(bin_dir / 'task'), 'spec:search', '--', 'demo'],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                env={
+                    'PATH': str(bin_dir),
+                    'HOME': os.environ.get('HOME', str(root)),
+                },
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('openspec/specs/demo/spec.md:1:Demo mode requirement', result.stdout)
+            self.assertNotIn('notes.txt', result.stdout)

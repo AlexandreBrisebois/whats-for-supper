@@ -167,4 +167,27 @@ describe('FailedCapturesSection', () => {
       expect(screen.queryByTestId(`failed-capture-${failure.id}`)).not.toBeInTheDocument();
     });
   });
+
+  it('uses Family Cookbook >= 48px controls, >= 12px copy, and terracotta destructive styling', async () => {
+    const failure = buildFailure({ previewText: 'https://example.com/recipe' });
+    mockGetCaptureFailures.mockResolvedValue([failure]);
+
+    const { container } = render(<FailedCapturesSection />);
+    const retry = await screen.findByTestId(`action-retry-${failure.id}`);
+    const clear = screen.getByTestId(`action-clear-${failure.id}`);
+
+    expect(retry).toHaveClass('min-h-12', 'text-xs');
+    expect(retry).not.toHaveClass('text-[10px]', 'h-10');
+    expect(clear).toHaveClass(
+      'h-12',
+      'w-12',
+      'border-hearth-line',
+      'bg-terracotta-50',
+      'text-hearth-ink'
+    );
+    expect(clear).not.toHaveClass('h-10', 'w-10');
+    expect(container.innerHTML).not.toContain('text-[10px]');
+    expect(container.innerHTML).not.toContain('text-charcoal/40');
+    expect(container.innerHTML).not.toContain('backdrop-blur-xl');
+  });
 });

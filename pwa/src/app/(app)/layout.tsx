@@ -6,6 +6,7 @@ import { ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { t } from '@/locales';
+import { useLocale } from '@/components/common/LocaleProvider';
 import { useScheduleStream } from '@/hooks/useScheduleStream';
 import { WeekStoreInitializer } from '@/components/WeekStoreInitializer';
 import { LibraryToast } from '@/components/capture/LibraryToast';
@@ -14,7 +15,6 @@ import { useEffect } from 'react';
 import { useVisualViewportOffset } from '@/hooks/useVisualViewportOffset';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useCaptureStore } from '@/store/captureStore';
-import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
 import { ToastContainer } from '@/components/ui';
 import { LanguageSwitchProposal } from '@/components/common/LanguageSwitchProposal';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
@@ -24,6 +24,7 @@ import { DemoModeProvider } from '@/components/demo/DemoModeProvider';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { locale } = useLocale();
   const visualViewportOffset = useVisualViewportOffset();
   const pdfActive = usePdfCaptureStore((state) => Boolean(state.selection));
 
@@ -41,22 +42,22 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
 
   // Map pathnames to titles
   const getHeaderProps = (path: string) => {
-    if (path === ROUTES.HOME) return { title: t('navigation.home', 'Home') };
-    if (path === '/recipes') return { title: t('navigation.recipes', 'Recipes') };
-    if (path === ROUTES.PLANNER) return { title: t('navigation.planner', 'Planner') };
-    if (path === ROUTES.DISCOVERY) return { title: t('navigation.discover', 'Discovery') };
-    if (path === ROUTES.PROFILE) return { title: t('navigation.profile', 'Profile') };
+    if (path === ROUTES.HOME) return { title: t('navigation.home', 'Home', locale) };
+    if (path === '/recipes') return { title: t('navigation.recipes', 'Recipes', locale) };
+    if (path === ROUTES.PLANNER) return { title: t('navigation.planner', 'Planner', locale) };
+    if (path === ROUTES.DISCOVERY) return { title: t('navigation.discover', 'Discovery', locale) };
+    if (path === ROUTES.PROFILE) return { title: t('navigation.profile', 'Profile', locale) };
     if (path.startsWith(ROUTES.CAPTURE)) {
       return {
-        title: t('capture.addRecipe', 'Add a Recipe'),
+        title: t('capture.addRecipe', 'Add a Recipe', locale),
         rightAction: pdfActive ? undefined : (
           <Link
             href={ROUTES.HOME}
             data-testid="capture-cancel-btn"
-            aria-label="Cancel capture"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-charcoal/60 hover:bg-terracotta/5 active:scale-95 transition-all"
+            aria-label={t('capture.cancelCapture', 'Cancel capture', locale)}
+            className="flex h-12 w-12 items-center justify-center rounded-full text-ink-muted hover:bg-terracotta-50 hover:text-hearth-ink active:scale-95 transition-transform focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
           >
-            <X size={20} />
+            <X size={20} aria-hidden="true" />
           </Link>
         ),
       };
@@ -84,6 +85,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   const usesStackBackground =
     isHome ||
     isDiscovery ||
+    isCapture ||
     pathname === ROUTES.PROFILE ||
     pathname === '/recipes' ||
     pathname === '/profile/settings';
@@ -117,7 +119,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
               pathname === ROUTES.PROFILE ||
               pathname === '/recipes'
             }
-            className={usesStackBackground ? 'solar-earth-bg' : ''}
+            className={usesStackBackground ? 'cookbook-bg' : ''}
             showBackgroundBlobs={isHome || isDiscovery}
           >
             {children}

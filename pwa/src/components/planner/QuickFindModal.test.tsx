@@ -243,8 +243,70 @@ describe('QuickFindModal — initial fetch', () => {
 
     fireEvent.click(nextButton);
     expect(await screen.findByText("Didn't find a match?")).toBeInTheDocument();
-    expect(screen.getByTestId('quick-find-search-library')).toBeInTheDocument();
+    expect(screen.getByTestId('quick-find-search-library')).toHaveClass(
+      'bg-terracotta',
+      'text-cream-100'
+    );
+    expect(screen.getByTestId('quick-find-search-library')).not.toHaveClass('bg-ochre');
     expect(nextButton).toHaveTextContent('Start Over');
+  });
+
+  it('expands recipe description and ingredients inline via aria-expanded without 3D flip and uses Family Cookbook contrast', async () => {
+    mockGetFillTheGap.mockResolvedValue([
+      {
+        id: 'r1',
+        name: 'Pasta Primavera',
+        image: '/img/pasta.jpg',
+        description: 'Bright spring vegetables with lemon pasta.',
+        ingredients: ['200g spaghetti', '1 lemon'],
+        totalTime: 'PT20M',
+      },
+      {
+        id: 'r2',
+        name: 'Risotto',
+        image: '',
+        description: 'Creamy parmesan risotto.',
+        ingredients: ['1 cup arborio rice'],
+        totalTime: 'PT30M',
+      },
+    ]);
+    const { onSelect } = renderModal();
+
+    await screen.findByText('Pasta Primavera');
+    const modal = screen.getByTestId('quick-find-modal');
+    expect(modal.innerHTML).not.toContain('rotate-y-180');
+    expect(modal.innerHTML).not.toContain('backface-hidden');
+    expect(modal.innerHTML).not.toContain('perspective-1000');
+
+    expect(screen.getByTestId('quick-find-close')).toHaveClass('h-12', 'w-12');
+    const selectBtn = screen.getByTestId('quick-find-select');
+    expect(selectBtn).toHaveClass('bg-terracotta');
+    expect(selectBtn).not.toHaveClass('bg-ochre');
+
+    const toggle = screen.getByTestId('quick-find-details-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveClass('min-h-12');
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Bright spring vegetables with lemon pasta.')).toBeVisible();
+    expect(screen.getByText('200g spaghetti')).toBeVisible();
+    expect(screen.getByText('1 lemon')).toBeVisible();
+    expect(screen.getByText('Pasta Primavera')).toBeVisible();
+    expect(selectBtn).toBeVisible();
+    expect(onSelect).not.toHaveBeenCalled();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByTestId('quick-find-next'));
+    await screen.findByText('Risotto');
+    expect(screen.getByTestId('quick-find-details-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
   });
 });
 

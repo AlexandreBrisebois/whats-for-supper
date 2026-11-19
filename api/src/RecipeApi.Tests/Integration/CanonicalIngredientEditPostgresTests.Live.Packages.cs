@@ -32,7 +32,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         Assert.Equal("tomatoes", row.Description);
         Assert.Equal(QuantityMath.Parse("4"), row.Amount);
         Assert.Equal("4", row.AmountText);
-        Assert.Equal(new RecipeUnitDto("cans", null), row.Unit);
+        Assert.Equal(new RecipeUnitDto("can", null), row.Unit);
         Assert.Null(row.Package);
         Assert.Equal("human", row.Provenance.Origin);
         Assert.Null(row.Provenance.SourceRef);
@@ -44,8 +44,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         Assert.Equal("tomatoes", other.Description);
         Assert.Equal(QuantityMath.Parse("2"), other.Amount);
         Assert.Equal("2", other.AmountText);
-        Assert.Equal(new RecipeUnitDto("cans", null), other.Unit);
-        Assert.Equal(new RecipePackageDto(new("cans", null),
+        Assert.Equal(new RecipeUnitDto("can", null), other.Unit);
+        Assert.Equal(new RecipePackageDto(new("can", null),
             new(QuantityMath.Parse("800")!, new("g", null)), "net"), other.Package);
         foreach (var human in new[] { row, other })
         {
@@ -64,14 +64,14 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         var tomatoes = rows.Where(item => item.NormalizedKey == "tomato" && item.RecipeIds.Contains(Id)).ToArray();
         Assert.Equal(2, tomatoes.Length);
         var demand = Assert.Single(tomatoes, item => item.DisplayName == "tomato");
-        var otherDemand = Assert.Single(tomatoes, item => item.DisplayName == "tomato (800 g / cans; net)");
+        var otherDemand = Assert.Single(tomatoes, item => item.DisplayName == "tomato (800 g / can; net)");
         Assert.NotEqual(demand.RowId, otherDemand.RowId);
         Assert.NotEqual(demand.DemandIdentity, otherDemand.DemandIdentity);
         Assert.Equal(QuantityMath.Parse("8"), demand.ExactQuantity);
         Assert.Equal(QuantityMath.Parse("4"), otherDemand.ExactQuantity);
         Assert.All(tomatoes, item =>
         {
-            Assert.Equal("cans", item.UnitText);
+            Assert.Equal("can", item.UnitText);
             Assert.True(item.QuantityComplete);
             Assert.Equal(new[] { Id }, item.RecipeIds);
         });

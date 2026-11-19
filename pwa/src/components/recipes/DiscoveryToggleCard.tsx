@@ -17,7 +17,7 @@ export const DiscoveryToggleCard: React.FC<DiscoveryToggleCardProps> = ({
   onToggle,
   isLoading = false,
   testId = 'action-toggle-discovery',
-  descriptionClassName = 'text-charcoal/50',
+  descriptionClassName = 'text-ink-muted',
   compactReading = false,
 }) => {
   return (
@@ -25,10 +25,10 @@ export const DiscoveryToggleCard: React.FC<DiscoveryToggleCardProps> = ({
       type="button"
       onClick={onToggle}
       disabled={isLoading}
-      className={`flex w-full items-center justify-between rounded-[1.5rem] border text-left transition-all duration-300 backdrop-blur-2xl shadow-glass ${compactReading ? 'min-h-[80px] flex-wrap gap-[12px] px-[16px] py-[12px]' : 'min-h-[5rem] gap-4 px-6 py-4'} ${
+      className={`flex w-full items-center justify-between rounded-[1.5rem] border text-left transition-all duration-300 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body ${compactReading ? 'min-h-[80px] flex-wrap gap-[12px] px-[16px] py-[12px]' : 'min-h-[5rem] gap-4 px-6 py-4'} ${
         isDiscoverable
-          ? 'bg-sage/15 text-charcoal border-sage/30 shadow-sm shadow-sage/10'
-          : 'bg-white/85 text-charcoal/65 border-charcoal/8 hover:bg-white/95 hover:text-charcoal'
+          ? 'bg-sage-50 text-ink-body border-garden-line shadow-sm'
+          : 'bg-white text-ink-body border-chrome-line hover:bg-cream-100'
       } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
       data-testid={testId}
       aria-pressed={isDiscoverable}
@@ -41,16 +41,16 @@ export const DiscoveryToggleCard: React.FC<DiscoveryToggleCardProps> = ({
       <span
         className={`flex min-w-0 flex-1 flex-col gap-0.5 leading-tight ${compactReading ? 'basis-[192px]' : ''}`}
       >
-        <span className="text-sm font-black tracking-wide text-charcoal">
+        <span className="text-sm font-bold leading-tight text-ink-body">
           {t('planner.askFamily', 'Ask the Family')}
         </span>
-        <span className={`text-[11px] font-bold ${descriptionClassName}`}>
+        <span className={`text-xs font-semibold leading-tight ${descriptionClassName}`}>
           {t('discovery.showsInDiscovery', 'Shows in Discovery voting')}
         </span>
       </span>
       <div
         className={`relative shrink-0 rounded-full transition-colors duration-300 ${compactReading ? 'h-[32px] w-[56px]' : 'h-8 w-14'} ${
-          isDiscoverable ? 'bg-sage' : 'bg-charcoal/20'
+          isDiscoverable ? 'bg-garden-fill' : 'bg-charcoal-200'
         }`}
         aria-hidden="true"
       >

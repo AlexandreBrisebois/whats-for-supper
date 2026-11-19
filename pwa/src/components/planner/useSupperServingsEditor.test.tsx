@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 const { read, save } = vi.hoisted(() => ({ read: vi.fn(), save: vi.fn() }));
 vi.mock('@/lib/api/supper-servings', () => ({
@@ -27,12 +27,22 @@ function Editor({
   offset = 1,
   anchor = reference,
   start = monday,
+  meals,
+  today,
 }: {
   offset?: number;
   anchor?: string | null;
   start?: string;
+  meals?: any[];
+  today?: string | null;
 }) {
-  const editor = useSupperServingsEditor(offset, anchor ?? undefined, [{ date: start }] as any);
+  const editor = useSupperServingsEditor(
+    offset,
+    anchor ?? undefined,
+    meals ?? ([{ date: start }] as any),
+    undefined,
+    today
+  );
   return (
     <>
       <button onClick={editor.open}>Open</button>
@@ -189,18 +199,126 @@ it('keeps unavailable usual honest and direct date entry valid', async () => {
   expect(screen.getByTestId('save-portions')).toBeEnabled();
 });
 
-it('does not mark a known-usual null reset invalid', async () => {
+it('never renders a default serving button while stepping inherited or overridden counts', async () => {
   read.mockResolvedValue({
     ...baseline,
-    days: days.map((day) => ({ ...day, servings: 6, overrideServings: 6 })),
+    days: days.map((day) =>
+      day.date === '2026-10-16' ? { ...day, servings: 6, overrideServings: 6 } : day
+    ),
   });
   render(<Editor />);
   fireEvent.click(screen.getByText('Open'));
-  fireEvent.click(await screen.findByTestId('reset-portions-2026-10-14'));
+  await screen.findByTestId('portion-input-2026-10-14');
+  expect(screen.queryByTestId('reset-portions-2026-10-14')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('reset-portions-2026-10-16')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'More portions 2026-10-14' }));
+  expect(screen.getByTestId('portion-input-2026-10-14')).toHaveValue(5);
+  expect(screen.queryByTestId('reset-portions-2026-10-14')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Fewer portions 2026-10-14' }));
   expect(screen.getByTestId('portion-input-2026-10-14')).toHaveValue(4);
-  expect(screen.getByTestId('portion-input-2026-10-14')).not.toHaveAttribute(
-    'aria-invalid',
-    'true'
+  expect(screen.queryByTestId('reset-portions-2026-10-14')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByTestId('save-portions'));
+  expect(save).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByText('Open'));
+  await screen.findByTestId('portion-input-2026-10-16');
+  fireEvent.click(screen.getByRole('button', { name: 'Fewer portions 2026-10-16' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Fewer portions 2026-10-16' }));
+  expect(screen.getByTestId('portion-input-2026-10-16')).toHaveValue(4);
+  expect(screen.queryByTestId('reset-portions-2026-10-16')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByTestId('save-portions'));
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+  expect(save.mock.calls[0][0].days).toHaveLength(1);
+  expect(String(save.mock.calls[0][0].days[0].date)).toBe('2026-10-16');
+  expect(save.mock.calls[0][0].days[0].servings).toBe(4);
+});
+
+it('renders photo-only past rows, quiet plain-text upcoming prepared rows, and active steppers only on editable rows', async () => {
+  read.mockResolvedValue({
+    ...baseline,
+    days: days.map((day) =>
+      day.date === '2026-10-12'
+        ? { ...day, servings: 6, editable: false }
+        : day.date === '2026-10-13'
+          ? { ...day, servings: null, editable: false }
+          : day.date === '2026-10-16'
+            ? { ...day, servings: 6, editable: false }
+            : day.date === '2026-10-17'
+              ? { ...day, servings: 1, editable: false }
+              : day
+    ),
+  });
+  const meals = days.map((d) =>
+    d.date === '2026-10-12' || d.date === '2026-10-14'
+      ? { date: d.date, status: 2 }
+      : d.date === '2026-10-16'
+        ? {
+            date: d.date,
+            status: 2,
+            preparation: { preparedOn: '2026-10-14', servings: 6 },
+          }
+        : d.date === '2026-10-17'
+          ? {
+              date: d.date,
+              status: 2,
+              preparation: { preparedOn: '2026-10-14', servings: 1 },
+            }
+          : { date: d.date, status: 0 }
   );
-  expect(screen.getByTestId('save-portions')).toBeEnabled();
+  render(<Editor meals={meals} today="2026-10-14" />);
+  fireEvent.click(screen.getByText('Open'));
+
+  const pastCookedRow = await screen.findByTestId('portion-row-2026-10-12');
+  expect(within(pastCookedRow).queryByTestId('portion-input-2026-10-12')).not.toBeInTheDocument();
+  expect(
+    within(pastCookedRow).queryByTestId('portion-controls-2026-10-12')
+  ).not.toBeInTheDocument();
+  expect(
+    within(pastCookedRow).queryByTestId('portion-cooked-badge-2026-10-12')
+  ).not.toBeInTheDocument();
+  expect(
+    within(pastCookedRow).queryByTestId('portion-prepared-status-2026-10-12')
+  ).not.toBeInTheDocument();
+  expect(pastCookedRow).not.toHaveTextContent(/Cooked|Already prepared|\b6\b/);
+  expect(within(pastCookedRow).queryAllByRole('button')).toHaveLength(0);
+
+  const pastEmptyRow = screen.getByTestId('portion-row-2026-10-13');
+  expect(within(pastEmptyRow).queryByTestId('portion-input-2026-10-13')).not.toBeInTheDocument();
+  expect(
+    within(pastEmptyRow).queryByTestId('portion-prepared-status-2026-10-13')
+  ).not.toBeInTheDocument();
+  expect(within(pastEmptyRow).queryAllByRole('button')).toHaveLength(0);
+
+  const editableCookedRow = screen.getByTestId('portion-row-2026-10-14');
+  expect(
+    within(editableCookedRow).queryByTestId('portion-prepared-status-2026-10-14')
+  ).not.toBeInTheDocument();
+  expect(within(editableCookedRow).getByTestId('portion-input-2026-10-14')).toBeEnabled();
+  expect(
+    within(editableCookedRow).getByRole('button', { name: 'Fewer portions 2026-10-14' })
+  ).toBeEnabled();
+  expect(
+    within(editableCookedRow).getByRole('button', { name: 'More portions 2026-10-14' })
+  ).toBeEnabled();
+
+  const futurePreparedRow = screen.getByTestId('portion-row-2026-10-16');
+  expect(
+    within(futurePreparedRow).getByTestId('portion-prepared-status-2026-10-16')
+  ).toHaveTextContent('Already prepared');
+  expect(
+    within(futurePreparedRow).getByTestId('portion-prepared-count-2026-10-16')
+  ).toHaveTextContent('6 portions');
+  expect(
+    within(futurePreparedRow).queryByTestId('portion-input-2026-10-16')
+  ).not.toBeInTheDocument();
+  expect(within(futurePreparedRow).queryAllByRole('button')).toHaveLength(0);
+
+  const futureSinglePreparedRow = screen.getByTestId('portion-row-2026-10-17');
+  expect(
+    within(futureSinglePreparedRow).getByTestId('portion-prepared-count-2026-10-17')
+  ).toHaveTextContent('1 portion');
 });

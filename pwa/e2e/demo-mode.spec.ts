@@ -211,7 +211,7 @@ test.describe('Demo context explanation', () => {
           await expect(dialog).not.toBeVisible();
           await expect(band).toBeFocused();
           await page.screenshot({ path: info.outputPath('band.png') });
-          await page.touchscreen.tap(8, 80);
+          await page.getByTestId('pivot-card-header').tap();
           await expect(band).not.toBeFocused();
           await expect(band).toHaveCSS('outline-style', 'none');
           await page.screenshot({ path: info.outputPath('touch-band.png') });

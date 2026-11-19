@@ -5,7 +5,9 @@ export interface CookbookVisualA11yOptions {
   rootSelector?: string;
   /** CSS selectors for subtrees to exempt (e.g. unmigrated legacy chrome). */
   excludeSelectors?: string[];
-  /** Check computed WCAG 2.2 AA foreground/background contrast. Defaults to `true`. */
+  /** Target WCAG contrast level (`'aa'` = 4.5/3.0, `'aaa'` = 7.0/4.5). Defaults to `'aa'`. */
+  contrastLevel?: 'aa' | 'aaa';
+  /** Check computed WCAG foreground/background contrast. Defaults to `true`. */
   checkContrast?: boolean;
   /** Check interactive control hit target dimensions. Defaults to `true`. */
   checkTargetSize?: boolean;
@@ -22,6 +24,7 @@ export async function assertCookbookVisualA11y(
   const {
     rootSelector = 'body',
     excludeSelectors = [],
+    contrastLevel = 'aa',
     checkContrast = true,
     checkTargetSize = true,
     checkHorizontalReflow = true,
@@ -34,6 +37,7 @@ export async function assertCookbookVisualA11y(
     ({
       rootSelector: rootSel,
       excludeSelectors: excluded,
+      contrastLevel: level,
       checkContrast: runContrast,
       checkTargetSize: runTargetSize,
       checkHorizontalReflow: runReflow,
@@ -259,13 +263,15 @@ export async function assertCookbookVisualA11y(
                 ? 400
                 : parseFloat(style.fontWeight) || 400;
           const isLargeText = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700);
-          const minimum = isLargeText ? 3.0 : 4.5;
+          const normalMin = level === 'aaa' ? 7.0 : 4.5;
+          const largeMin = level === 'aaa' ? 4.5 : 3.0;
+          const minimum = isLargeText ? largeMin : normalMin;
           const ratio = contrastRatio(fgComposite, bg);
 
           if (ratio + 1e-4 < minimum) {
             const backdropNote = hasTranslucentBackdrop ? ' [translucent-backdrop]' : '';
             issues.push(
-              `[contrast] ${describeElement(el)} has ${ratio.toFixed(2)}:1 (requires >= ${minimum.toFixed(1)}:1; font ${fontSize.toFixed(1)}px/${fontWeight})${backdropNote}`
+              `[contrast:${level.toUpperCase()}] ${describeElement(el)} has ${ratio.toFixed(2)}:1 (requires >= ${minimum.toFixed(1)}:1; font ${fontSize.toFixed(1)}px/${fontWeight})${backdropNote}`
             );
           }
         }
@@ -294,9 +300,22 @@ export async function assertCookbookVisualA11y(
           }
 
           const rect = control.getBoundingClientRect();
-          if (rect.width < targetMin - 0.5 || rect.height < targetMin - 0.5) {
+          let effectiveWidth = rect.width;
+          let effectiveHeight = rect.height;
+          if (
+            control instanceof HTMLInputElement &&
+            (control.type === 'checkbox' || control.type === 'radio')
+          ) {
+            const enclosingLabel = control.closest('label');
+            if (enclosingLabel) {
+              const labelRect = enclosingLabel.getBoundingClientRect();
+              effectiveWidth = Math.max(rect.width, labelRect.width);
+              effectiveHeight = Math.max(rect.height, labelRect.height);
+            }
+          }
+          if (effectiveWidth < targetMin - 0.5 || effectiveHeight < targetMin - 0.5) {
             issues.push(
-              `[target-size] ${describeElement(control)} measured ${Math.round(rect.width)}x${Math.round(rect.height)}px (requires >= ${targetMin}x${targetMin} CSS px)`
+              `[target-size] ${describeElement(control)} measured ${Math.round(effectiveWidth)}x${Math.round(effectiveHeight)}px (requires >= ${targetMin}x${targetMin} CSS px)`
             );
           }
         }
@@ -327,6 +346,7 @@ export async function assertCookbookVisualA11y(
     {
       rootSelector,
       excludeSelectors,
+      contrastLevel,
       checkContrast,
       checkTargetSize,
       checkHorizontalReflow,

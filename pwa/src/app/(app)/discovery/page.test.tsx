@@ -314,4 +314,30 @@ describe('DiscoveryPage card order', () => {
     expect(screen.getByRole('button', { name: 'Capture a New Recipe' })).toBeVisible();
     expect(screen.getByTestId('discovery-nudge-family')).toBeVisible();
   });
+
+  it('uses Family Cookbook contrast classes on voting buttons, Just planned badge, and empty-state CTA', async () => {
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+
+    const likeBtn = screen.getByTestId('like-button');
+    const dislikeBtn = screen.getByTestId('dislike-button');
+    expect(likeBtn).toHaveClass('text-garden-ink');
+    expect(likeBtn).not.toHaveClass('text-sage');
+    expect(dislikeBtn).toHaveClass('text-hearth-ink');
+
+    mocks.getDiscoveryStack.mockResolvedValue(
+      ORDERED_RECIPES.filter((r) => r.id !== MOCK_IDS.RECIPE_GNOCCHI)
+    );
+    await act(async () => useDiscoveryStore.getState().invalidateFillTheGap(0));
+    const badge = await screen.findByTestId('just-planned-badge');
+    expect(badge).toHaveClass('bg-sage-50', 'border-garden-line', 'text-garden-ink');
+    expect(badge).not.toHaveClass('text-sage');
+
+    mocks.getDiscoveryStack.mockResolvedValue([]);
+    await act(async () => useDiscoveryStore.getState().setStack([]));
+    const emptyState = await screen.findByTestId('discovery-empty-state');
+    const primaryCta = emptyState.querySelector('button');
+    expect(primaryCta).toHaveClass('bg-hearth-fill', 'text-cream-100', 'min-h-12');
+    expect(primaryCta).not.toHaveClass('bg-ochre', 'hover:bg-ochre-dark');
+  });
 });

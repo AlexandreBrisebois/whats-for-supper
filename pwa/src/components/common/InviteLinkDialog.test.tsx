@@ -59,3 +59,17 @@ it('retains nested invite readiness and dismissal without closing the parent mod
     view.unmount();
   }
 });
+
+it('renders Share action with Family Cookbook terracotta contrast and >= 48px close target', async () => {
+  Object.defineProperty(navigator, 'share', { configurable: true, value: vi.fn() });
+  render(<InviteLinkDialog memberId="m-1" memberName="Alex" onClose={vi.fn()} />);
+  await screen.findByText('https://private.example/PRIVATE_INVITE_URL');
+  const shareBtn = screen.getByTestId('invite-dialog-share');
+  expect(shareBtn).toHaveClass('bg-terracotta', 'text-cream-100', 'min-h-12');
+  expect(shareBtn).not.toHaveClass('bg-ochre');
+  expect(screen.getByTestId('invite-dialog-close')).toHaveClass(
+    'h-12',
+    'w-12',
+    'text-charcoal-600'
+  );
+});
