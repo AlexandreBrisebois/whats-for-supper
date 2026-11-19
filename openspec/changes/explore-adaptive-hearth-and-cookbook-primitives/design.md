@@ -78,8 +78,8 @@ In Track 2, sRGB measurements exposed why naive hex tokens broke contrast: Terra
 | `--hearth-fill` | `oklch(0.545 0.145 28)` | `#B85542` | `#FDFCF0` ink: `4.61:1` / $L_c \approx 68$ | Single primary CTA per surface (`Cook`, `Save`, `Make this tonight`) |
 | `--hearth-hover` / `--hearth-pressed` | `oklch(0.485 0.140 28)` / `oklch(0.395 0.125 28)` | `#A44A37` / `#7B3829` | `#FFFFFF` ink: `5.81:1` / `8.61:1` | Interactive hover/active depth |
 | `--hearth-tint` / `--hearth-ink` | `oklch(0.945 0.025 28)` / `oklch(0.395 0.125 28)` | `#F9ECE9` / `#7B3829` | `7.46:1` paired together | Duration blush pill, error surfaces, destructive buttons |
-| `--sunlight-fill` | `oklch(0.775 0.165 86)` | `#E1AD01` | `--ink-primary`: `7.4:1` / $L_c \approx 75$ | Family voting hero invitation (`Vote` active state, GOTO highlight) |
-| `--sunlight-tint` / `--sunlight-ink` | `oklch(0.965 0.045 92)` / `oklch(0.410 0.095 82)` | `#FFF7CC` / `#664E01` | `8.3:1` paired together | Warm nudge banners, active discovery filter, `Extra` cue |
+| `--sunlight-accent` | `oklch(0.775 0.165 86)` | `#E1AD01` | Non-text accent only | Filled star glyph, active voting pulse halo, ambient warmth (never a text/button background) |
+| `--sunlight-tint` / `--sunlight-ink` | `oklch(0.965 0.045 92)` / `oklch(0.410 0.095 82)` | `#FFF7CC` / `#664E01` | `7.32:1`–`8.3:1` paired (`--sunlight-ink` on `--paper-card`: `7.9:1`) | Family voting invitations, `Vote` nav medallion, `GOTO` pill, warm nudge banners, active discovery filter, `Extra` cue (zero black-on-yellow) |
 | `--garden-fill-strong` | `oklch(0.455 0.065 122)` | `#525B37` | `#FFFFFF` ink: `7.22:1` | Solid participation actions (`Ask the Family`, `Nudge family`) |
 | `--garden-tint` / `--garden-ink` | `oklch(0.950 0.022 122)` / `oklch(0.365 0.055 122)` | `#F1F3EB` / `#373D25` | `8.8:1` paired together | Cooked badges, gathered ingredients, selected toggles, match chips |
 
@@ -116,9 +116,9 @@ Feature routes inside the exploration branch compose UI exclusively from six sem
 4. **`<Typography variant="hero | title | section | body | supporting | caption | meta" tone="primary | secondary | quiet | inverse" clamp={1|2}>`**
    - Maps Outfit (`hero`, `title`, `section`) and Inter (`body`, `supporting`, `caption`, `meta`) scales with a strict `12px` (`0.75rem`) floor (`meta`), sentence-case defaults, and automatic EN/FR line-height comfort (`leading-snug`/`leading-relaxed`).
 5. **`<Action intent="primary | secondary | quiet | sunlight | garden | destructive" size="standard | compact | icon" pending={boolean} icon={ReactNode}>`**
-   - Pre-baked role-locked foreground/background contrast pairs (`hearth` primary, quiet terracotta outlined secondary, warm `sunlight` ochre + dark umber ink, solid `garden` `sage-700` + white, and `hearth-tint` destructive). Enforces `min-h-12` (`>= 48 CSS px`), `min-w-12` on icon actions, stable label layout when `pending` is true, and `focus-visible` outlines.
+   - Pre-baked role-locked foreground/background contrast pairs (`hearth` primary, quiet terracotta outlined secondary, warm `sunlight` tonal parchment (`--sunlight-tint` or `--paper-card` + `--sunlight-ink` golden-umber, never black on saturated yellow), solid `garden` `sage-700` + white, and `hearth-tint` destructive). Enforces `min-h-12` (`>= 48 CSS px`), `min-w-12` on icon actions, stable label layout when `pending` is true, and `focus-visible` outlines.
 6. **`<StatusBadge tone="hearth | sunlight | garden | neutral" icon={ReactNode}>`**
-   - Semantic non-interactive status pill (duration, Cooked, GOTO, Extra text label, Family Table Progress) guaranteed never to pair white on ochre/base-sage or render `< 12px`.
+   - Semantic non-interactive status pill (duration, Cooked, GOTO, Extra text label, Family Table Progress) guaranteed never to render solid saturated ochre behind text, pair white on base-sage, or render `< 12px`.
 
 ---
 

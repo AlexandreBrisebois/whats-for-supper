@@ -205,15 +205,16 @@ During detail planning, pending state SHALL suppress duplicate submission and ex
 - **THEN** detail remains available with visible failure feedback; a confirmed no-write rejection permits another attempt, while an uncertain write requires checking first
 
 ### Requirement: Return targeted Search assignment to Planner
-After confirmed recipe-detail assignment, Search SHALL return to the captured Planner week/day and reference Monday. Planner SHALL read that week, bring the day into view and provide one accessible, transient recipe/date confirmation. Routine success SHALL leave no persistent banner or Refresh control. A success query or temporary ring alone SHALL NOT establish persistence. If refresh fails after confirmed save, Planner SHALL report saved-but-not-refreshed without repeating assignment.
+
+After confirmed recipe-detail assignment, Search SHALL return to the captured Planner week/day and reference Monday. Planner SHALL read that week, scroll the target day card into view, and apply the temporary highlight ring without showing a redundant confirmation toast. Replacement disposition and saved-but-unrefreshed states SHALL retain their existing inline banners without adding a Refresh control.
 
 #### Scenario: Search assignment resolves
 - **WHEN** explicit-target Search assignment resolves for index two in week one
-- **THEN** navigation targets Planner index two in week one with the captured reference and transient accessible recipe/date confirmation after authoritative reading, without a persistent success banner or Refresh
+- **THEN** navigation targets Planner index two in week one with the captured reference, scrolls the day into view after authoritative reading, highlights the card, and emits no redundant success toast or persistent banner
 
 #### Scenario: Planner receives success feedback parameters
-- **WHEN** Planner receives a truthy success value and a dayIndex
-- **THEN** it reads the captured week and brings the matching card into view with reduced-motion support; any temporary highlight supplements the transient accessible confirmed-result text
+- **WHEN** Planner receives a truthy success value and a dayIndex for an empty-slot assignment
+- **THEN** it reads the captured week, clears the transient `success` URL parameter, scrolls the matching day card into view with reduced-motion support, and applies the temporary highlight ring without showing a toast
 
 ### Requirement: Advance Quick Find suggestions without changing the plan
 
@@ -621,7 +622,12 @@ Home, Planner and recipe-selection recovery SHALL retain the captured original, 
 - **THEN** it explains completed changes and the unsaved or unknown replacement before allowing departure
 
 ### Requirement: Confirm completed planning without inventing work
-Recipe detail SHALL confirm the new recipe and Planner date. Replacement SHALL state the original's confirmed removal or actual moved date, including Next Week spillover. Ordinary completion SHALL use transient accessible feedback. Replacement/spillover feedback SHALL stay readable until dismissal or context departure. Success SHALL offer no Refresh and require no further acceptance, rating or planning task. Saved-but-unrefreshed feedback SHALL distinguish persistence from unavailable refresh.
+
+Ordinary single-day planning completion SHALL rely on Planner navigation, scroll-into-view, and card highlighting without showing a separate toast notification. Replacement/spillover feedback SHALL state the original's confirmed removal or moved date and remain readable until dismissal or departure. Saved-but-unrefreshed feedback SHALL distinguish persistence from unavailable refresh.
+
+#### Scenario: Ordinary single-day completion omits toast
+- **WHEN** Curry is saved to Wednesday without displacing another meal and Planner finishes refreshing Wednesday
+- **THEN** Wednesday displays Curry in view with its highlight ring and no redundant confirmation toast appears
 
 #### Scenario: Replacement and deferred original complete
 - **WHEN** Curry is saved to Wednesday and Lasagna was deferred past a full next week to the following Monday

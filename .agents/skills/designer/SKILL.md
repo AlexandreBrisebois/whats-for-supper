@@ -1,6 +1,6 @@
 ---
 name: designer
-description: Implement or review WFS journeys, information architecture, interactions, content, accessibility and Shared Table UI when the selected task needs UX work.
+description: Implement or review WFS journeys, information architecture, interactions, content, accessibility and Shared Table / Family Cookbook UI when the selected task needs UX work.
 ---
 
 # WFS UX/UI designer
@@ -22,17 +22,17 @@ from marketing promises; neither establishes the other.
 
 Use semantic controls, accessible names, keyboard focus and appropriate ARIA state.
 Check text contrast on the actual background, including translucent surfaces;
-do not rely on color alone. Preserve touch targets, reduced-motion support and
-interaction test IDs; use semantic assertions for accessibility. Use Canadian
+do not rely on color alone. Preserve touch targets (`>= 48 x 48 CSS px`), reduced-motion
+support and interaction test IDs; use semantic assertions for accessibility. Use Canadian
 practical guidance and the chosen WCAG 2.2 AA target without claiming blanket
 compliance from partial checks.
 
-Load [designer judgment and guidance](../../../docs/agent-designer-identity.md)
-for evidence, research, accessibility references or marketing evaluation, and the
-[North Star](../../../docs/creative-direction-north-star.md) for emotional/creative
-alignment when needed. Load [visual identity](visual-identity.md) for token/typography
-work and [Shared Table](solar-earth-design.md) for surfaces or motion only when relevant.
-Compare with current components and CSS before adding a new pattern.
+## Required Guidance & Visual Contract Workflow
+
+1. **Normative tokens & surfaces:** Load [visual identity](visual-identity.md) for the Role-Locked Color Matrix, warm charcoal ramp, typography floor (`>= 12 CSS px`), and Do/Do Not rules, and [Family Cookbook surfaces and motion](cookbook-surfaces-and-motion.md) for card/sheet anatomy, targets, focus, and motion. Also reference [designer judgment and guidance](../../../docs/agent-designer-identity.md) and the [North Star](../../../docs/creative-direction-north-star.md) when needed.
+2. **Modern web platform guidance:** Before writing or updating HTML/CSS, client-side UI interactions, overlays/dialogs, forms, or focus/contrast styles, invoke the `modern-web-guidance` skill (`search` + `retrieve`) so platform patterns (`:focus-visible`, Forced Colors `outline`, `min-*` target sizing, predefined sRGB tokens vs low-chroma `oklch` neutral pitfalls) follow current standards.
+3. **Automated & browser verification:** Verify code edits against the static ratchet in [visual-contract.test.ts](../../../pwa/src/test/visual-contract.test.ts) and [tokens.test.ts](../../../pwa/src/test/tokens.test.ts) (reducing/removing `LEGACY_ERA_ALLOWLIST` entries as legacy files migrate). For rendered UI review and accessibility checks, use the `a11y-debugging` skill (Chrome DevTools MCP snapshot, focus order, tap-target, and contrast snippets) alongside `assertCookbookVisualA11y` in [visual-a11y-contract.ts](../../../pwa/e2e/visual-a11y-contract.ts).
+4. **Reference alignment:** Compare with clean Era 3 components ([TonightMenuCard](../../../pwa/src/components/home/TonightMenuCard.tsx), [ui/button.tsx](../../../pwa/src/components/ui/button.tsx)) before adding a new pattern; never copy Era 1–2 patterns from files on `LEGACY_ERA_ALLOWLIST`.
 
 The [Everyday Household lens](../../prompts/mere-designer.md) is optional when
 explicitly requested. Its legacy invocation remains `mere-designer`; it is not an
@@ -41,7 +41,7 @@ owners; this skill adds no second completion workflow.
 
 Distinguish observed, documented, reported and hypothesized findings. Explain the
 human consequence and smallest useful correction; preserve strengths and allow no
-findings. Match verification to the claim: inspect rendered results for visual
+unfounded claims. Match verification to the claim: inspect rendered results for visual
 changes and exercise affected interactions for behavior changes. Report actual
 focused validation and what was unavailable; source inspection or a screenshot
 alone cannot establish interaction behavior. Recommendations do not authorize edits.

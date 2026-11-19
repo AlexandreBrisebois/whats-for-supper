@@ -77,7 +77,7 @@ for (const locale of ['en', 'fr'] as const) {
       await edit();
       await page.getByTestId('recipe-add-ingredient').click();
       await page.getByTestId('recipe-edit-amount-1').fill('2');
-      await page.getByTestId('recipe-edit-unit-1').fill('cans');
+      await page.getByTestId('recipe-edit-unit-1').selectOption('can');
       await page.getByTestId('recipe-edit-ingredient-1').fill('tomatoes');
       const options = page
         .locator('details')
@@ -90,16 +90,16 @@ for (const locale of ['en', 'fr'] as const) {
         })
         .fill('tomato');
       await page.getByTestId('recipe-edit-package-enabled-1').check();
-      await expect(page.getByTestId('recipe-edit-package-count-unit-1')).toHaveValue('cans');
+      await expect(page.getByTestId('recipe-edit-package-count-unit-1')).toHaveValue('can');
       await page.getByTestId('recipe-edit-package-capacity-1').fill('400');
-      await page.getByTestId('recipe-edit-package-unit-1').fill('g');
+      await page.getByTestId('recipe-edit-package-unit-1').selectOption('g');
       await page.getByTestId('recipe-edit-package-basis-1').selectOption('net');
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true
       );
       const sent = await save();
       expect(sent.ingredientLines[1].package).toEqual({
-        countUnit: { text: 'cans', definitionId: null },
+        countUnit: { text: 'can', definitionId: null },
         capacity: {
           amount: { kind: 'scalar', value: { n: '400', d: '1' } },
           unit: { text: 'g', definitionId: null },
@@ -145,14 +145,14 @@ for (const locale of ['en', 'fr'] as const) {
         if (target !== 8) await setCount(target);
         await openPlanned();
         await expect(page.getByTestId('recipe-ingredient-projection')).toContainText(
-          `${count} cans tomatoes (400 g / cans; net)`
+          `${count} can tomatoes (400 g / can; net)`
         );
         const rows = await page.evaluate(
           async () => (await (await fetch('/api/schedule?weekOffset=0')).json()).data.groceryItems
         );
         const packages = rows.filter((row: any) => row.normalizedKey === 'tomato');
         expect(packages).toHaveLength(1);
-        expect(packages[0].displayName).toBe('tomato (400 g / cans; net)');
+        expect(packages[0].displayName).toBe('tomato (400 g / can; net)');
         expect(packages[0].quantity).toEqual({ kind: 'scalar', value: { n, d } });
         if (groceryId) expect(packages[0].rowId).toBe(groceryId);
         groceryId = packages[0].rowId;
@@ -160,12 +160,12 @@ for (const locale of ['en', 'fr'] as const) {
       await page.getByTestId('action-gear-menu').click();
       await page.getByTestId('action-original-quantities').click();
       await expect(page.getByTestId('recipe-ingredient-projection')).toContainText(
-        '2 cans tomatoes (400 g / cans; net)'
+        '2 can tomatoes (400 g / can; net)'
       );
       await page.getByTestId('action-gear-menu').click();
       await page.getByTestId('action-reset-view').click();
       await expect(page.getByTestId('recipe-ingredient-projection')).toContainText(
-        '1/2 cans tomatoes (400 g / cans; net)'
+        '1/2 can tomatoes (400 g / can; net)'
       );
       await page.getByTestId('action-cooks-mode').click();
       await expect(page.getByTestId('cooks-mode-overlay')).toHaveCSS('opacity', '1');
@@ -173,7 +173,7 @@ for (const locale of ['en', 'fr'] as const) {
         .getByTestId('ingredient-toggle')
         .filter({ hasText: 'tomatoes' });
       await expect(packageIngredient).toBeVisible();
-      await expect(packageIngredient).toContainText('1/2 cans tomatoes (400 g / cans; net)');
+      await expect(packageIngredient).toContainText('1/2 can tomatoes (400 g / can; net)');
       await packageIngredient.scrollIntoViewIfNeeded();
       await expect(packageIngredient).toBeInViewport();
       await page.screenshot({ path: info.outputPath(`package-fraction-${locale}.png`) });

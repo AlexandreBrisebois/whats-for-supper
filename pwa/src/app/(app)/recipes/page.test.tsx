@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
   const saveSetting = vi.fn();
   const assignRecipeToDay = vi.fn();
   const getSchedule = vi.fn();
+  const getFillTheGap = vi.fn();
   const getTrashItems = vi.fn();
   const restoreRecipe = vi.fn();
   const purgeRecipe = vi.fn();
@@ -29,6 +30,10 @@ const mocks = vi.hoisted(() => {
   const updateMemberPreferences = vi.fn();
   let searchParams = new URLSearchParams('');
   let familySettings: Record<string, unknown> = {};
+  let selectedFamilyMemberId: string | null = 'member-1';
+  let familyMembers: Array<{ id: string; name: string; browseViewMode?: string | null }> = [
+    { id: 'member-1', name: 'Alex', browseViewMode: 'stack' },
+  ];
 
   return {
     ingredientProjectionRead: vi.fn(),
@@ -44,6 +49,7 @@ const mocks = vi.hoisted(() => {
     saveSetting,
     assignRecipeToDay,
     getSchedule,
+    getFillTheGap,
     getTrashItems,
     restoreRecipe,
     purgeRecipe,
@@ -63,6 +69,15 @@ const mocks = vi.hoisted(() => {
       familySettings = value;
     },
     getFamilySettings: () => familySettings,
+    setFamilyMembers: (
+      members: Array<{ id: string; name: string; browseViewMode?: string | null }>,
+      selectedId: string | null = members[0]?.id ?? null
+    ) => {
+      familyMembers = members;
+      selectedFamilyMemberId = selectedId;
+    },
+    getFamilyMembers: () => familyMembers,
+    getSelectedFamilyMemberId: () => selectedFamilyMemberId,
   };
 });
 
@@ -180,8 +195,8 @@ vi.mock('@/store/familyStore', () => ({
       saveGoTo: mocks.saveGoTo,
       loadActiveGoTo: mocks.loadActiveGoTo,
       gotoMembershipVersion: mocks.gotoMembershipVersion,
-      selectedFamilyMemberId: 'member-1',
-      familyMembers: [{ id: 'member-1', name: 'Alex', browseViewMode: 'stack' }],
+      selectedFamilyMemberId: mocks.getSelectedFamilyMemberId(),
+      familyMembers: mocks.getFamilyMembers(),
       loadFamilyMembers: vi.fn().mockResolvedValue(undefined),
       updateMemberPreferences: mocks.updateMemberPreferences,
     };
@@ -223,6 +238,7 @@ vi.mock('@/lib/api/api-client', () => ({
 vi.mock('@/lib/api/planner', () => ({
   assignRecipeToDay: (...args: unknown[]) => mocks.assignRecipeToDay(...args),
   getSchedule: (...args: unknown[]) => mocks.getSchedule(...args),
+  getFillTheGap: (...args: unknown[]) => mocks.getFillTheGap(...args),
   normalizeScheduleRecipe: (recipe: unknown) => recipe ?? null,
   referenceRequest: (reference: string) => ({
     queryParameters: { referenceWeekStartDate: reference },
@@ -305,6 +321,7 @@ describe('RecipesPage', () => {
     mocks.searchRecipes.mockReset();
     mocks.setSearchParams('focus=search');
     mocks.setFamilySettings({});
+    mocks.setFamilyMembers([{ id: 'member-1', name: 'Alex', browseViewMode: 'stack' }], 'member-1');
     mocks.searchRecipes.mockResolvedValue(makeSearchResponse());
     mocks.librarySummaryGet.mockResolvedValue({ data: { total: 1 } });
     mocks.recipesGet.mockResolvedValue({
@@ -345,6 +362,7 @@ describe('RecipesPage', () => {
         status: 0,
       })),
     });
+    mocks.getFillTheGap.mockReset().mockResolvedValue([]);
     mocks.getTrashItems.mockResolvedValue([]);
     mocks.restoreRecipe.mockResolvedValue(undefined);
     mocks.purgeRecipe.mockResolvedValue(undefined);
@@ -400,6 +418,57 @@ describe('RecipesPage', () => {
     expect(screen.queryByTestId('browse-all-exit')).not.toBeInTheDocument();
   });
 
+  it('defaults library presentation to list (limit 12) when member has no saved stack preference', async () => {
+    mocks.setSearchParams('');
+    mocks.setFamilyMembers([{ id: 'member-1', name: 'Alex', browseViewMode: null }], 'member-1');
+
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(1));
+    expect(mocks.recipesGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({
+          limit: 12,
+          order: 'explore',
+          discoverableOnly: false,
+        }),
+      })
+    );
+    expect(screen.getByTestId('browse-view-list')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByTestId('stack-card-front')).not.toBeInTheDocument();
+  });
+
+  it('defaults to list when no member is selected and honors explicit stack when saved', async () => {
+    mocks.setSearchParams('');
+    mocks.setFamilyMembers([{ id: 'member-1', name: 'Alex', browseViewMode: 'stack' }], null);
+
+    const view = render(<UnifiedRecipesPage />);
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('browse-view-list')).toHaveAttribute('aria-pressed', 'true');
+    expect(mocks.recipesGet).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({ limit: 12 }),
+      })
+    );
+
+    view.unmount();
+    mocks.recipesGet.mockClear();
+    mocks.setFamilyMembers([{ id: 'member-1', name: 'Alex', browseViewMode: 'stack' }], 'member-1');
+
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('browse-view-stack')).toHaveAttribute('aria-pressed', 'true');
+    expect(mocks.recipesGet).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        queryParameters: expect.objectContaining({ limit: 20 }),
+      })
+    );
+  });
+
   it('does not let delayed detail focus restoration steal a newly focused filter', async () => {
     mocks.setSearchParams('');
     await act(async () => render(<UnifiedRecipesPage />));
@@ -444,7 +513,7 @@ describe('RecipesPage', () => {
     await act(async () => render(<UnifiedRecipesPage />));
     fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
     const input = screen.getByTestId('recipe-search-input');
-    expect(input).toHaveAttribute('placeholder', 'Something spicy for 4...');
+    expect(input).toHaveAttribute('placeholder', "Try 'Chicken' or 'Quick'…");
     expect(input.parentElement?.querySelector('.lucide-search')).toBeInTheDocument();
     expect(screen.getByTestId('mobile-filters-button')).toHaveAccessibleName('Filters');
 
@@ -2407,6 +2476,60 @@ describe('RecipesPage', () => {
         )
       );
       expect(mocks.assignRecipeToDay).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('search toolbar layout and dynamic fill-the-gap placeholder', () => {
+    it('places Filters, Similar chip, and icon-only Clear on a single horizontal toolbar row', async () => {
+      mocks.setSearchParams('similarTo=22222222-2222-2222-2222-222222222222');
+      await act(async () => render(<UnifiedRecipesPage />));
+
+      const toolbar = screen.getByTestId('recipes-search-toolbar');
+      expect(toolbar.className).toContain('flex');
+      expect(toolbar.className).toContain('items-center');
+
+      const filtersBtn = within(toolbar).getByTestId('mobile-filters-button');
+      const similarChip = within(toolbar).getByTestId('search-similar-chip-remove');
+      const clearBtn = within(toolbar).getByTestId('recipes-clear-search');
+
+      const children = Array.from(toolbar.children);
+      expect(children.indexOf(filtersBtn)).toBeLessThan(children.indexOf(similarChip));
+      expect(children.indexOf(similarChip)).toBeLessThan(children.indexOf(clearBtn));
+
+      expect(clearBtn).toHaveAccessibleName('Clear search and browse');
+      expect(clearBtn.textContent?.trim()).toBe('');
+      expect(clearBtn.querySelector('svg')).toBeInTheDocument();
+      expect(clearBtn.className).toContain('h-12');
+      expect(clearBtn.className).toContain('w-12');
+      expect(clearBtn.className).toContain('ml-auto');
+    });
+
+    it('uses the top getFillTheGap(0) suggestion as search placeholder and falls back safely', async () => {
+      mocks.setSearchParams('');
+      mocks.getFillTheGap.mockResolvedValueOnce([
+        { id: 'sug-1', name: 'Thai Basil Chicken' },
+        { id: 'sug-2', name: 'Lentil Soup' },
+      ]);
+      const view = render(<UnifiedRecipesPage />);
+      await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalled());
+
+      fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+      await waitFor(() => expect(mocks.getFillTheGap).toHaveBeenCalledWith(0));
+      const input = screen.getByTestId('recipe-search-input');
+      await waitFor(() => expect(input).toHaveAttribute('placeholder', 'Thai Basil Chicken'));
+      expect(input).toHaveValue('');
+
+      view.unmount();
+      mocks.setSearchParams('referenceWeekStartDate=2026-05-04');
+      mocks.getFillTheGap.mockReset().mockRejectedValueOnce(new Error('offline'));
+      await act(async () => render(<UnifiedRecipesPage />));
+      fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+      await waitFor(() => expect(mocks.getFillTheGap).toHaveBeenCalledWith(0, '2026-05-04'));
+      const fallbackInput = await screen.findByTestId('recipe-search-input');
+      await waitFor(() =>
+        expect(fallbackInput).toHaveAttribute('placeholder', "Try 'Chicken' or 'Quick'…")
+      );
+      expect(fallbackInput).toHaveValue('');
     });
   });
 });

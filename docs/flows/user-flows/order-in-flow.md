@@ -1,7 +1,7 @@
 # Take Out Flow
 
 **What's for Supper — PWA**
-Documents the two paths a user can take to log an "Take Out" night, plus how that state persists across a page reload via SSR.
+Documents the two paths a user can take to log a "Take Out" night, plus how that state persists across a page reload via SSR.
 
 ---
 
@@ -80,7 +80,7 @@ sequenceDiagram
 
     HCC->>HCC: setIsSkipped(true), setSessionDone(true)
 
-    Note over HCC: "Ordered In" success state shown.<br/>TonightPivotCard remains visible<br/>(isSkipped=true, sessionDone=true).
+    Note over HCC: "Take Out" success state shown.<br/>TonightPivotCard remains visible<br/>(isSkipped=true, sessionDone=true).
 
     Note over HCC: On page reload — see Scenario C
 ```
@@ -117,7 +117,7 @@ sequenceDiagram
 
     alt todaysEntry.status === 2 (Cooked)
         HCC->>HCC: setIsCooked(true), setSessionDone(true)
-    else todaysEntry.status === 3 (Skipped / Ordered In)
+    else todaysEntry.status === 3 (Skipped / Take Out)
         HCC->>HCC: setIsSkipped(true), setSessionDone(true)
     else todaysEntry has a recipe
         HCC->>HCC: setCurrentRecipe(recipe)
@@ -139,6 +139,6 @@ What `HomeCommandCenter` renders for each `todayStatus` value after the client-s
 | `0` — Draft (recipe assigned) | `false` | `false` | `false` | **TonightMenuCard** |
 | `0` — Draft (no recipe) | `false` | `false` | `false` | **TonightPivotCard** |
 | `2` — Cooked | `false` | `true` | `true` | **CookedSuccessCard** |
-| `3` — Skipped / Ordered In | `true` | `false` | `true` | **TonightPivotCard** (done state — pivot visible but session is over) |
+| `3` — Skipped / Take Out | `true` | `false` | `true` | **TonightPivotCard** (done state — pivot visible but session is over) |
 
-> **Why TonightPivotCard for status 3?** The render condition is `(!currentRecipe || isSkipped || sessionDone) && !isCooked`. When `isSkipped=true` and `sessionDone=true`, the pivot card renders but the user has already acted — no further action is expected this session. On reload, the same state is re-derived from the API, so the pivot card is shown in its neutral state (no "Ordered In" toast, just the card).
+> **Why TonightPivotCard for status 3?** The render condition is `(!currentRecipe || isSkipped || sessionDone) && !isCooked`. When `isSkipped=true` and `sessionDone=true`, the pivot card renders but the user has already acted — no further action is expected this session. On reload, the same state is re-derived from the API, so the pivot card is shown in its neutral state (no "Take Out" toast, just the card).

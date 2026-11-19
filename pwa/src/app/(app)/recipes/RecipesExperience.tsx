@@ -26,7 +26,7 @@ import {
 import React, { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
-import { Search, Loader2, Compass, Recycle, Layers3, Grid3X3, Star } from 'lucide-react';
+import { Search, Loader2, Compass, Recycle, Layers3, Grid3X3, Star, RotateCcw } from 'lucide-react';
 import { RecipeStackCard } from '@/components/recipes/RecipeStackCard';
 import { StackActionBar } from '@/components/recipes/StackActionBar';
 import { EndCard } from '@/components/recipes/EndCard';
@@ -51,6 +51,7 @@ import {
   type Recipe,
   type RecipeSearchResponse,
 } from '@/lib/api/recipes';
+import { getFillTheGap } from '@/lib/api/planner';
 import {
   assignRecipeToEmptySlot,
   findFirstOpenPlannerSlot,
@@ -220,7 +221,7 @@ function RecipesContent() {
   const lastSearchPromotionVersionRef = useRef(searchPromotionVersion);
   const selectedMember = familyMembers.find((member) => member.id === selectedFamilyMemberId);
   const savedBrowseViewMode: BrowseViewMode =
-    selectedMember?.browseViewMode === 'list' ? 'list' : 'stack';
+    selectedMember?.browseViewMode === 'stack' ? 'stack' : 'list';
 
   // Store state
   const {
@@ -301,6 +302,29 @@ function RecipesContent() {
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
+  const fillTheGapReference =
+    absoluteMonday(searchParams.get('referenceWeekStartDate')) ?? undefined;
+  const [placeholderSuggestion, setPlaceholderSuggestion] = useState<string | null>(null);
+  useEffect(() => {
+    if (!searchControlsExpanded) return;
+    let active = true;
+    void Promise.resolve(
+      fillTheGapReference ? getFillTheGap(0, fillTheGapReference) : getFillTheGap(0)
+    )
+      .then((suggestions) => {
+        if (!active || !Array.isArray(suggestions)) return;
+        const topName = suggestions
+          .map((item) => item?.name?.trim())
+          .find((name): name is string => Boolean(name));
+        setPlaceholderSuggestion(topName ?? null);
+      })
+      .catch(() => {
+        if (active) setPlaceholderSuggestion(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [searchControlsExpanded, fillTheGapReference]);
   const [query, setQuery] = useState('');
   const [similarToRecipeId, setSimilarToRecipeId] = useState<string | null>(() =>
     searchParams.get('similarTo')
@@ -1783,7 +1807,10 @@ function RecipesContent() {
               ref={searchInputRef}
               data-testid="recipe-search-input"
               aria-label={t('recipes.search', 'Search')}
-              placeholder={t('recipes.searchPlaceholder', 'Something spicy for 4...')}
+              placeholder={
+                placeholderSuggestion ||
+                t('recipes.searchPlaceholderFallback', "Try 'Chicken' or 'Quick'…")
+              }
               value={query}
               onChange={(event) => {
                 const value = event.target.value;
@@ -1839,75 +1866,79 @@ function RecipesContent() {
               className="min-h-12 w-full rounded-full border border-charcoal/15 bg-white/85 pl-12 pr-4 text-charcoal shadow-sm placeholder:text-charcoal/55 focus:border-terracotta focus:outline-none focus:ring-2 focus:ring-terracotta/40"
             />
           </div>
-          <button
-            ref={filtersTriggerRef}
-            type="button"
-            data-testid="mobile-filters-button"
-            onClick={() => {
-              setIsFiltersOpen(true);
-              if (!filterMetadata)
-                void apiClient.api.recipes.search.filters
-                  .get()
-                  .then((metadata) => setFilterMetadata(metadata ?? null))
-                  .catch(() => {});
-            }}
-            aria-label={
-              appliedCount > 0
-                ? tWithVars('recipes.filtersActiveCount', 'Filters, {{count}} active', {
-                    count: appliedCount,
-                  })
-                : t('recipes.filters', 'Filters')
-            }
-            className="mt-2 inline-flex min-h-12 items-center gap-2 rounded-full border border-charcoal/15 bg-white/85 px-4 font-bold text-charcoal shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
-          >
-            {t('recipes.filters', 'Filters')}
-            {appliedCount > 0 && (
-              <span
-                aria-hidden="true"
-                className="rounded-full bg-terracotta/15 px-2 py-0.5 text-xs font-black text-terracotta-700"
-              >
-                {appliedCount}
-              </span>
-            )}
-          </button>
-          {searchActive && (
+          <div data-testid="recipes-search-toolbar" className="mt-2 flex items-center gap-2">
             <button
+              ref={filtersTriggerRef}
               type="button"
-              data-testid="recipes-clear-search"
-              onClick={clearSearch}
-              className="ml-2 min-h-12 rounded-full border border-charcoal/20 bg-white px-4 font-bold"
-            >
-              {t('recipes.clearSearchAndBrowse', 'Clear search and browse')}
-            </button>
-          )}
-          {similarToRecipeId && (
-            <button
-              type="button"
-              data-testid="search-similar-chip-remove"
+              data-testid="mobile-filters-button"
               onClick={() => {
-                setSimilarToRecipeId(null);
-                if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-                if (hasSearchIntent(query, activeFilters, activePreferences))
-                  void runSearch(
-                    query,
-                    activeFilters,
-                    activePreferences,
-                    { discoverableOnly: isDiscoverableOnly, gotoOnly },
-                    null
-                  );
-                else {
-                  searchGenerationRef.current += 1;
-                  searchRequestRef.current = null;
-                  setSearchData(null);
-                  setSearchIndex(0);
-                  setSearchActive(false);
-                }
+                setIsFiltersOpen(true);
+                if (!filterMetadata)
+                  void apiClient.api.recipes.search.filters
+                    .get()
+                    .then((metadata) => setFilterMetadata(metadata ?? null))
+                    .catch(() => {});
               }}
-              className="ml-2 min-h-12 rounded-full border border-charcoal/20 bg-white px-4 font-bold"
+              aria-label={
+                appliedCount > 0
+                  ? tWithVars('recipes.filtersActiveCount', 'Filters, {{count}} active', {
+                      count: appliedCount,
+                    })
+                  : t('recipes.filters', 'Filters')
+              }
+              className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full border border-charcoal/15 bg-white/85 px-4 font-bold text-charcoal shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
             >
-              {t('recipes.similar', 'Similar')} ×
+              {t('recipes.filters', 'Filters')}
+              {appliedCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="rounded-full bg-terracotta/15 px-2 py-0.5 text-xs font-black text-terracotta-700"
+                >
+                  {appliedCount}
+                </span>
+              )}
             </button>
-          )}
+            {similarToRecipeId && (
+              <button
+                type="button"
+                data-testid="search-similar-chip-remove"
+                onClick={() => {
+                  setSimilarToRecipeId(null);
+                  if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                  if (hasSearchIntent(query, activeFilters, activePreferences))
+                    void runSearch(
+                      query,
+                      activeFilters,
+                      activePreferences,
+                      { discoverableOnly: isDiscoverableOnly, gotoOnly },
+                      null
+                    );
+                  else {
+                    searchGenerationRef.current += 1;
+                    searchRequestRef.current = null;
+                    setSearchData(null);
+                    setSearchIndex(0);
+                    setSearchActive(false);
+                  }
+                }}
+                className="inline-flex min-h-12 shrink-0 items-center rounded-full border border-charcoal/20 bg-white px-4 font-bold text-charcoal"
+              >
+                {t('recipes.similar', 'Similar')} ×
+              </button>
+            )}
+            {searchActive && (
+              <button
+                type="button"
+                data-testid="recipes-clear-search"
+                aria-label={t('recipes.clearSearchAndBrowse', 'Clear search and browse')}
+                title={t('recipes.clearSearchAndBrowse', 'Clear search and browse')}
+                onClick={clearSearch}
+                className="ml-auto inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-charcoal/20 bg-white text-charcoal shadow-sm transition hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
+              >
+                <RotateCcw size={18} aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -2082,6 +2113,7 @@ function RecipesContent() {
                     type="button"
                     key={recipe.id}
                     data-testid="browse-list-recipe-card"
+                    data-recipe-id={recipe.id}
                     onClick={() => handleCardTap(recipe.id!)}
                     className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal focus:ring-2 focus:ring-ochre focus:ring-offset-2"
                   >

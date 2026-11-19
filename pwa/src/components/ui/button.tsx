@@ -5,16 +5,18 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    'bg-terracotta text-white hover:bg-terracotta-600 active:bg-terracotta-700 active:scale-[0.98] transition-all shadow-sm',
-  secondary: 'bg-cream text-terracotta-600 border border-terracotta/20 hover:bg-terracotta/5',
-  ghost: 'text-terracotta-600 hover:bg-terracotta/5',
-  danger: 'bg-ochre text-white hover:bg-ochre/90 active:scale-[0.98] transition-all shadow-sm',
+    'bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700 active:scale-[0.98] transition-all shadow-sm',
+  secondary:
+    'bg-white text-terracotta-700 border border-terracotta-200 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors',
+  ghost: 'text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors',
+  danger:
+    'bg-terracotta-50 text-terracotta-700 border border-terracotta-200 hover:bg-terracotta-100 active:bg-terracotta-200 transition-colors',
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-sm rounded-xl',
-  md: 'px-6 py-3 text-base rounded-2xl',
-  lg: 'px-8 py-4 text-lg rounded-2xl',
+  sm: 'px-3 py-1.5 text-sm rounded-xl min-h-11',
+  md: 'px-6 py-3 text-base rounded-2xl min-h-12',
+  lg: 'px-8 py-4 text-lg rounded-2xl min-h-14',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -40,8 +42,10 @@ export function Button({
     <button
       {...props}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       className={[
         'inline-flex items-center justify-center font-semibold transition-opacity',
+        'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal',
         'disabled:cursor-not-allowed disabled:opacity-50',
         VARIANT_CLASSES[variant],
         SIZE_CLASSES[size],

@@ -1,0 +1,316 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="1930" viewBox="0 0 920 1930" role="img" aria-labelledby="title desc">
+<title id="title">Recipe domain: card family, Browse toolbar and RecipeDetailSheet (Era 3)</title><desc id="desc">Layer 3B Recipe domain board for WFS Family Cookbook Era 3.</desc>
+<!-- Icon outlines reused from Lucide 1.60.0. ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+—-
+
+The following Lucide icons are derived from the Feather project:
+
+The MIT License (MIT)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+ -->
+<defs>
+  <filter id="cardShadow" x="-8%" y="-8%" width="116%" height="124%">
+    <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#28231F" flood-opacity="0.10"/>
+  </filter>
+  <filter id="smShadow" x="-8%" y="-8%" width="116%" height="124%">
+    <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#28231F" flood-opacity="0.08"/>
+  </filter>
+  <linearGradient id="herbGrad" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#6E7A49"/>
+    <stop offset="100%" stop-color="#525B37"/>
+  </linearGradient>
+</defs>
+<style>text { font-family: Inter, "DejaVu Sans", sans-serif; } .heading { font-family: Outfit, Inter, "DejaVu Sans", sans-serif; }</style>
+<rect x="0" y="0" width="920" height="1930" rx="0" fill="#FDFCF0"/>
+<rect x="0" y="0" width="920" height="140" rx="0" fill="#FDFCF0"/>
+<text x="32" y="42" font-size="14" fill="#7B3829" font-weight="700">WFS / Shared Table · Family Cookbook Era 3</text>
+<rect x="706" y="26" width="182" height="24" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="716" y="42.2" font-size="12" fill="#524A43" font-weight="600">Layer 3B · Domain: Recipe</text>
+<text x="32" y="82" font-size="30" fill="#28231F" font-weight="700" class="heading">04  Recipe: cards, Browse &amp; Detail sheet</text>
+<text x="32" y="112" font-size="15" fill="#524A43" font-weight="400">One recipe speaks the same visual language on Home, Browse stack/grid, Discovery voting, and Detail sheet.</text>
+<line x1="32" y1="132" x2="888" y2="132" stroke="#E5DFD7" stroke-width="1"/>
+<text x="32" y="166" font-size="18" fill="#28231F" font-weight="700" class="heading">Part 1 · Unified Recipe Card Family across 4 contexts</text>
+<rect x="32" y="184" width="416" height="232" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="50" y="212" font-size="14" fill="#28231F" font-weight="700">1 · Home Planned (TonightMenuCard)</text>
+<rect x="328" y="194" width="104" height="24" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+<text x="338" y="210.2" font-size="12" fill="#525B37" font-weight="600">Shipped Era 3</text>
+<text x="50" y="244" font-size="12.5" fill="#524A43" font-weight="600">Tonight’s menu</text>
+<rect x="312" y="227" width="118" height="24" rx="12" fill="#F9ECE9"/>
+<g transform="translate(321 232) scale(0.5833)" fill="none" stroke="#7B3829" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10"/>
+  <path d="M12 6v6l4 2"/>
+</g>
+<text x="340" y="243.025" font-size="11.5" fill="#7B3829" font-weight="600">Ready in 30m</text>
+<rect x="50" y="258" width="380" height="62" rx="14" fill="#FDFCF0"/>
+<g transform="translate(228 277) scale(1.0000)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+  <path d="M7 2v20"/>
+  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+</g>
+<text x="50" y="342" font-size="16" fill="#28231F" font-weight="700" class="heading">Ground Beef Fajitas</text>
+<text x="50" y="364" font-size="12.5" fill="#7B3829" font-weight="600">[Cook] + [Change plan] row · View ingredients ▾</text>
+<text x="50" y="398" font-size="11.5" fill="#524A43" font-weight="400">Card body header holds Ready in blush pill (white surface)</text>
+<rect x="472" y="184" width="416" height="232" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="490" y="212" font-size="14" fill="#28231F" font-weight="700">2 · Browse Stack &amp; Quick Find</text>
+<rect x="742" y="194" width="130" height="24" rx="12" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
+<text x="752" y="210.2" font-size="12" fill="#664E01" font-weight="600">Target disclosure</text>
+<rect x="490" y="228" width="380" height="86" rx="16" fill="#3D3630"/>
+<rect x="502" y="278" width="118" height="24" rx="12" fill="#FDFCF0"/>
+<g transform="translate(511 283) scale(0.5833)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10"/>
+  <path d="M12 6v6l4 2"/>
+</g>
+<text x="530" y="294.025" font-size="11.5" fill="#28231F" font-weight="600">Ready in 30m</text>
+<text x="490" y="338" font-size="16" fill="#28231F" font-weight="700" class="heading">Ground Beef Fajitas</text>
+<text x="490" y="362" font-size="12" fill="#7B3829" font-weight="600">QuickFind adds inline View details ▾ · Select CTA stays reachable</text>
+<text x="490" y="398" font-size="11.5" fill="#524A43" font-weight="400">Photo holds solid bg-cream Ready in; inline details replaces 3D flip</text>
+<rect x="32" y="434" width="416" height="232" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="50" y="462" font-size="14" fill="#28231F" font-weight="700">3 · Family Voting (DiscoveryCard)</text>
+<rect x="276" y="444" width="156" height="24" rx="12" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
+<text x="286" y="460.2" font-size="12" fill="#664E01" font-weight="600">Target Era 3 · Wave B</text>
+<rect x="50" y="478" width="380" height="74" rx="16" fill="#3D3630"/>
+<rect x="62" y="518" width="118" height="24" rx="12" fill="#FDFCF0"/>
+<g transform="translate(71 523) scale(0.5833)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10"/>
+  <path d="M12 6v6l4 2"/>
+</g>
+<text x="90" y="534.025" font-size="11.5" fill="#28231F" font-weight="600">Ready in 30m</text>
+<rect x="318" y="490" width="69" height="26" rx="13" fill="#525B37"/>
+<g transform="translate(329 496) scale(0.5833)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>
+</g>
+<text x="348" y="507.2" font-size="12" fill="#FFFFFF" font-weight="600">LOVE</text>
+<text x="50" y="574" font-size="16" fill="#28231F" font-weight="700" class="heading">Ground Beef Fajitas</text>
+<text x="50" y="596" font-size="12" fill="#524A43" font-weight="400">Warm tortillas, spiced beef and colourful peppers ready for</text>
+<text x="50" y="614" font-size="12" fill="#524A43" font-weight="400">everyone to assemble at the table (line-clamp-2 if non-empty).</text>
+<text x="50" y="648" font-size="11.5" fill="#524A43" font-weight="400">Adds concise line-clamp-2 description; zero cuisine/meal-type clutter</text>
+<rect x="472" y="434" width="416" height="232" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="490" y="462" font-size="14" fill="#28231F" font-weight="700">4 · Browse List Grid (Compact Card)</text>
+<rect x="774" y="444" width="98" height="24" rx="12" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
+<text x="784" y="460.2" font-size="12" fill="#664E01" font-weight="600">Target Era 3</text>
+<rect x="490" y="478" width="182" height="138" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<rect x="500" y="488" width="162" height="68" rx="10" fill="#FFFFFF"/>
+<g transform="translate(569 510) scale(0.9167)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+  <path d="M7 2v20"/>
+  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+</g>
+<text x="500" y="576" font-size="13" fill="#28231F" font-weight="700">Lemon Herb Pasta</text>
+<text x="500" y="598" font-size="12" fill="#524A43" font-weight="600">Ready in 25m</text>
+<rect x="684" y="478" width="182" height="138" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<rect x="694" y="488" width="162" height="68" rx="10" fill="#FFFFFF"/>
+<g transform="translate(763 510) scale(0.9167)" fill="none" stroke="#525B37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+  <path d="M7 2v20"/>
+  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+</g>
+<text x="694" y="576" font-size="13" fill="#28231F" font-weight="700">Missing-photo slot</text>
+<text x="694" y="598" font-size="12" fill="#524A43" font-weight="600">Ready in 25m</text>
+<text x="490" y="648" font-size="11.5" fill="#524A43" font-weight="400">Opaque white 1px border card · 4:3 photo + 12px sentence Ready in</text>
+<text x="32" y="704" font-size="18" fill="#28231F" font-weight="700" class="heading">Part 2 · Recipes Browse toolbar &amp; planning banner</text>
+<rect x="32" y="720" width="856" height="146" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<rect x="52" y="736" width="816" height="44" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+<text x="68" y="763" font-size="13.5" fill="#28231F" font-weight="700">Choosing for Wednesday, Nov 18</text>
+<text x="798" y="763" font-size="13.5" fill="#7B3829" font-weight="700">Cancel</text>
+<rect x="52" y="796" width="48" height="48" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(66 810) scale(0.8333)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m21 21-4.34-4.34"/>
+  <circle cx="11" cy="11" r="8"/>
+</g>
+<circle cx="92" cy="804" r="5" fill="#B85542"/>
+<text x="112" y="825" font-size="12.5" fill="#524A43" font-weight="400">Search input + Filters expand progressively below trigger</text>
+<rect x="516" y="800" width="102" height="40" rx="20" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
+<g transform="translate(527 813) scale(0.5833)" fill="none" stroke="#664E01" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10"/>
+  <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/>
+</g>
+<text x="546" y="824.55" font-size="13" fill="#664E01" font-weight="600">Discovery</text>
+<rect x="632" y="796" width="48" height="48" rx="24" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
+<g transform="translate(646 810) scale(0.8333)" fill="#E1AD01" stroke="#664E01" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+</g>
+<rect x="692" y="796" width="112" height="48" rx="24" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<rect x="696" y="800" width="50" height="40" rx="20" fill="#FFFFFF" filter="url(#smShadow)"/>
+<g transform="translate(711 810) scale(0.8333)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/>
+  <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/>
+  <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>
+</g>
+<g transform="translate(766 810) scale(0.8333)" fill="none" stroke="#524A43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect width="18" height="18" x="3" y="3" rx="2"/>
+  <path d="M3 9h18"/>
+  <path d="M3 15h18"/>
+  <path d="M9 3v18"/>
+  <path d="M15 3v18"/>
+</g>
+<rect x="816" y="796" width="48" height="48" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(830 810) scale(0.8333)" fill="none" stroke="#524A43" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/>
+  <path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/>
+  <path d="m14 16-3 3 3 3"/>
+  <path d="M8.293 13.596 7.196 9.5 3.1 10.598"/>
+  <path d="m9.344 5.811 1.093-1.892A1.83 1.83 0 0 1 11.985 3a1.784 1.784 0 0 1 1.546.888l3.943 6.843"/>
+  <path d="m13.378 9.633 4.096 1.098 1.097-4.096"/>
+</g>
+<text x="32" y="904" font-size="18" fill="#28231F" font-weight="700" class="heading">Part 3 · Annotated RecipeDetailSheet (protects Nov 5–6 refinements)</text>
+<rect x="718" y="886" width="170" height="24" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+<text x="728" y="902.2" font-size="12" fill="#525B37" font-weight="600">Shipped Era 3 Structure</text>
+<rect x="32" y="920" width="856" height="980" rx="26" fill="#28231F" fill-opacity="0.12"/>
+<rect x="50" y="938" width="820" height="944" rx="24" fill="#FDFCF0" stroke="#CFC6BC" stroke-width="1" filter="url(#cardShadow)"/>
+<rect x="50" y="938" width="820" height="68" rx="24" fill="#FDFCF0"/>
+<line x1="50" y1="1006" x2="870" y2="1006" stroke="#E5DFD7" stroke-width="1"/>
+<rect x="70" y="948" width="120" height="48" rx="24" fill="#B85542"/>
+<g transform="translate(103.38 964) scale(0.6667)" fill="none" stroke="#FDFCF0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/>
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/>
+  <path d="m2.1 21.8 6.4-6.3"/>
+  <path d="m19 5-7 7"/>
+</g>
+<text x="126.38" y="976.9" font-size="14" fill="#FDFCF0" font-weight="600">Cook</text>
+<text x="200" y="976" font-size="12" fill="#524A43" font-weight="400">Primary when confirmed planned; neutral white otherwise</text>
+<rect x="570" y="948" width="76" height="48" rx="24" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
+<text x="584" y="976.55" font-size="13" fill="#664E01" font-weight="700">★ GOTO</text>
+<rect x="682" y="948" width="48" height="48" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(696 962) scale(0.8333)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="18" cy="5" r="3"/>
+  <circle cx="6" cy="12" r="3"/>
+  <circle cx="18" cy="19" r="3"/>
+  <line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/>
+  <line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>
+</g>
+<rect x="738" y="948" width="48" height="48" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(752 962) scale(0.8333)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="1"/>
+  <circle cx="19" cy="12" r="1"/>
+  <circle cx="5" cy="12" r="1"/>
+</g>
+<rect x="794" y="948" width="48" height="48" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(808 962) scale(0.8333)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M18 6 6 18"/>
+  <path d="m6 6 12 12"/>
+</g>
+<rect x="70" y="1022" width="780" height="118" rx="20" fill="#3D3630"/>
+<rect x="86" y="1036" width="122" height="30" rx="15" fill="#FDFCF0"/>
+<g transform="translate(97 1044) scale(0.5833)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10"/>
+  <path d="M12 6v6l4 2"/>
+</g>
+<text x="116" y="1055.55" font-size="13" fill="#28231F" font-weight="600">Ready in 30m</text>
+<g transform="translate(442 1064) scale(1.4167)" fill="none" stroke="#FDFCF0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+  <path d="M7 2v20"/>
+  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+</g>
+<rect x="700" y="1094" width="129" height="34" rx="17" fill="#FDFCF0" stroke="#CFC6BC" stroke-width="1"/>
+<g transform="translate(711 1104) scale(0.5833)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M15 3h6v6"/>
+  <path d="M10 14 21 3"/>
+  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+</g>
+<text x="730" y="1115.38" font-size="12.5" fill="#28231F" font-weight="600">View Original</text>
+<text x="70" y="1158" font-size="12" fill="#524A43" font-weight="400">View Original sits at hero bottom-right on bg-cream/80 translucent capsule (never obscures title; keyboard-focusable outline-charcoal).</text>
+<text x="70" y="1198" font-size="26" fill="#28231F" font-weight="700" class="heading">Ground Beef Fajitas</text>
+<text x="348" y="1196" font-size="14" fill="#373D25" font-weight="600" text-decoration="underline">Family notes ↓</text>
+<rect x="474" y="1178" width="71" height="26" rx="13" fill="#FFF7CC"/>
+<text x="486" y="1195.2" font-size="12" fill="#664E01" font-weight="600">Mexican</text>
+<rect x="554" y="1178" width="64" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+<text x="566" y="1195.2" font-size="12" fill="#525B37" font-weight="600">Dinner</text>
+<rect x="702" y="1170" width="148" height="44" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(722.38 1184) scale(0.6667)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m21 21-4.34-4.34"/>
+  <circle cx="11" cy="11" r="8"/>
+</g>
+<text x="745.38" y="1196.55" font-size="13" fill="#28231F" font-weight="600">Find Similar</text>
+<rect x="70" y="1226" width="360" height="212" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="90" y="1256" font-size="18" fill="#28231F" font-weight="700" class="heading">Ingredients</text>
+<rect x="200" y="1237" width="91" height="26" rx="13" fill="#F3EFEA"/>
+<text x="212" y="1254.2" font-size="12" fill="#3D3630" font-weight="600">4 servings</text>
+<text x="90" y="1286" font-size="13" fill="#524A43" font-weight="600">Preview portions:</text>
+<rect x="216" y="1266" width="46" height="34" rx="10" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<text x="239" y="1288" font-size="14" fill="#28231F" font-weight="700" text-anchor="middle">2</text>
+<rect x="270" y="1266" width="46" height="34" rx="10" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+<text x="293" y="1288" font-size="14" fill="#7B3829" font-weight="700" text-anchor="middle">4</text>
+<rect x="324" y="1266" width="46" height="34" rx="10" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<text x="347" y="1288" font-size="14" fill="#28231F" font-weight="700" text-anchor="middle">6</text>
+<text x="90" y="1326" font-size="13" fill="#28231F" font-weight="400">• 500 g ground beef (dated/preview scaled)</text>
+<text x="90" y="1352" font-size="13" fill="#28231F" font-weight="400">• 8 warm flour tortillas</text>
+<text x="90" y="1380" font-size="12" fill="#373D25" font-weight="600" text-decoration="underline">• Unknown yield shows &quot;Set recipe portions&quot;</text>
+<text x="90" y="1418" font-size="11.5" fill="#524A43" font-weight="400">Original quantities live under ••• progressive menu.</text>
+<rect x="448" y="1226" width="402" height="212" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="468" y="1256" font-size="18" fill="#28231F" font-weight="700" class="heading">Instructions</text>
+<text x="468" y="1284" font-size="14.5" fill="#373D25" font-weight="700">Prepare &amp; brown filling</text>
+<rect x="468" y="1298" width="28" height="28" rx="14" fill="#E3E7D7"/>
+<text x="482" y="1317" font-size="13" fill="#373D25" font-weight="700" text-anchor="middle">1</text>
+<text x="506" y="1317" font-size="13" fill="#28231F" font-weight="400">Slice onions &amp; peppers; brown beef over medium.</text>
+<rect x="468" y="1340" width="28" height="28" rx="14" fill="#E3E7D7"/>
+<text x="482" y="1359" font-size="13" fill="#373D25" font-weight="700" text-anchor="middle">2</text>
+<text x="506" y="1359" font-size="13" fill="#28231F" font-weight="400">Simmer with seasoning and assemble tortillas.</text>
+<text x="468" y="1404" font-size="11.5" fill="#524A43" font-weight="400">Scaled notice appears quietly when factor != 1 without hiding steps.</text>
+<text x="70" y="1466" font-size="13.5" fill="#28231F" font-weight="700">Locked Household Order:  1 Rating  →  2 Notes (directly writable)  →  3 Ask the Family</text>
+<rect x="70" y="1478" width="370" height="88" rx="16" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<text x="86" y="1500" font-size="12.5" fill="#524A43" font-weight="600">1 · Rating (borderless · neutral white when selected)</text>
+<text x="138" y="1537" font-size="14" fill="#28231F" font-weight="500" text-anchor="middle">Dislike</text>
+<text x="252" y="1537" font-size="14" fill="#28231F" font-weight="500" text-anchor="middle">Like</text>
+<rect x="314" y="1510" width="104" height="44" rx="14" fill="#FFFFFF" filter="url(#smShadow)"/>
+<text x="366" y="1537" font-size="14" fill="#28231F" font-weight="700" text-anchor="middle">Love</text>
+<rect x="458" y="1478" width="392" height="88" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="474" y="1502" font-size="14" fill="#28231F" font-weight="700">2 · Notes</text>
+<text x="550" y="1502" font-size="13" fill="#373D25" font-weight="600">✓ Saved</text>
+<text x="474" y="1528" font-size="12" fill="#524A43" font-weight="400">Directly writable field (no wrapping card/duplicate title);</text>
+<text x="474" y="1546" font-size="12" fill="#524A43" font-weight="400">unconfirmed edits keep draft + inline Retry save.</text>
+<rect x="70" y="1582" width="780" height="68" rx="18" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+<text x="92" y="1612" font-size="14.5" fill="#28231F" font-weight="700">3 · Ask the Family</text>
+<text x="92" y="1632" font-size="12" fill="#524A43" font-weight="400">Shows in Discovery voting (switch updated to sage-700 in Wave C)</text>
+<rect x="772" y="1600" width="56" height="32" rx="16" fill="#525B37"/>
+<circle cx="812" cy="1616" r="12" fill="#FFFFFF"/>
+<rect x="70" y="1664" width="780" height="72" rx="16" fill="#FFFBE6" stroke="#FFEE99" stroke-width="1"/>
+<text x="92" y="1692" font-size="13" fill="#664E01" font-weight="700">Inline Planning Consequence &amp; Recovery (before commit)</text>
+<text x="92" y="1716" font-size="12.5" fill="#664E01" font-weight="400">Occupied supper disposition · Replace Take Out confirmation · Unconfirmed reply → Retry check / Review plan.</text>
+<rect x="50" y="1780" width="820" height="102" rx="24" fill="#FDFCF0"/>
+<line x1="50" y1="1780" x2="870" y2="1780" stroke="#E5DFD7" stroke-width="1"/>
+<text x="70" y="1804" font-size="12" fill="#524A43" font-weight="400">Bottom Planning Dock (scrollable max-h-[45dvh], safe-area bottom padding)</text>
+<rect x="70" y="1816" width="718" height="48" rx="14" fill="#B85542"/>
+<text x="429" y="1845.25" font-size="15" fill="#FDFCF0" font-weight="600" text-anchor="middle">Plan for Wednesday, November 18</text>
+<rect x="802" y="1816" width="48" height="48" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(816 1830) scale(0.8333)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m16 3 4 4-4 4"/>
+  <path d="M20 7H4"/>
+  <path d="m8 21-4-4 4-4"/>
+  <path d="M4 17h16"/>
+</g>
+<text x="70" y="1756" font-size="12.5" fill="#524A43" font-weight="400">Phone (&lt; 768px): full-screen sheet; Tablet (&gt;= 768px): max-w-5xl rounded dialog.</text>
+</svg>

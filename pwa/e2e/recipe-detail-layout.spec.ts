@@ -918,7 +918,8 @@ test.describe('automatic planning date freshness', () => {
     expect(mutations).toEqual([]);
     await action.click();
     await expect(page).toHaveURL(/\/planner\?.*weekOffset=0&referenceWeekStartDate=2026-05-04/);
-    await expect(page.getByTestId('toast')).toContainText('May 5');
+    await expect(page.getByTestId('toast')).toHaveCount(0);
+    await expect(page.getByTestId('day-card-1').getByTestId('planner-meal')).toHaveClass(/ring-4/);
     await expect(page.getByTestId('planner-planning-confirmation')).toHaveCount(0);
     await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
     expect(writes).toEqual([

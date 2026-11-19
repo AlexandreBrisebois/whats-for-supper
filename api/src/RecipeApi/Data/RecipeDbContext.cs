@@ -102,7 +102,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.BrowseViewMode)
-                  .HasDefaultValue("stack");
+                  .HasDefaultValue("list");
             entity.Property(e => e.CookingViewMode);
             entity.Property(e => e.CreatedAt)
                   .HasDefaultValueSql("NOW()");

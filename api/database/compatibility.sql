@@ -139,6 +139,7 @@ $$;
 DO $$
 BEGIN
     IF to_regclass('public.family_members') IS NOT NULL THEN
+        ALTER TABLE family_members ALTER COLUMN browse_view_mode SET DEFAULT 'list';
         ALTER TABLE family_members ADD COLUMN IF NOT EXISTS cooking_view_mode text;
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'family_members_cooking_view_mode_check' AND conrelid = 'family_members'::regclass) THEN
             ALTER TABLE family_members ADD CONSTRAINT family_members_cooking_view_mode_check CHECK (cooking_view_mode IS NULL OR cooking_view_mode IN ('step-by-step', 'all-steps'));

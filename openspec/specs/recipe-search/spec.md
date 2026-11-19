@@ -572,7 +572,7 @@ Activating Find similar in Recipes detail SHALL dismiss detail, expand search co
 
 #### Scenario: Recognize and remove Similar
 - **WHEN** Similar is active with controls expanded
-- **THEN** a localized removable Similar indicator identifies its context without requiring the source name to be available
+- **THEN** a localized removable `Similar ×` indicator identifies its context immediately beside the `Filters` button on the same single-line row without requiring the source name to be available
 - **AND** removing it retains text, filters, scope and planner context and resolves Search or Explore from the remaining criteria
 
 ### Requirement: Rank Similar using source recipe facts with lexical recovery
@@ -629,7 +629,12 @@ For a successful semantic attempt alongside typed lexical retrieval, Search SHAL
 
 ### Requirement: Keep browse rediscovery eligibility on the server
 
-Browse promotion eligibility SHALL require positive saved affinity, a saved last-cooked event date at or before the configured rediscovery cutoff, and no calendar guard. The cutoff SHALL use server UTC today and the configured interval. Active Planned, Locked or AwaitingConsensus entries dated today or later, and Cooked entries in the selected server week, SHALL block promotion without removing ordinary result membership.
+Browse promotion eligibility SHALL require positive saved affinity, a saved last-cooked event date at or before the configured rediscovery cutoff, and no calendar guard. The cutoff and week bounds SHALL use deployment-local today via `DeploymentCalendar` and the configured interval. Active Planned, Locked or AwaitingConsensus entries dated today or later, and Cooked entries in the selected deployment week, SHALL block promotion without removing ordinary membership.
+
+#### Scenario: Deployment timezone shifts browse rediscovery date
+
+- **WHEN** UTC has crossed midnight while `America/Toronto` deployment-local time is still the previous civil evening
+- **THEN** browse rediscovery cutoff and active/cooked calendar blocking use `DeploymentCalendar` Toronto local `Today` rather than UTC date
 
 #### Scenario: No cooked evidence
 
@@ -998,10 +1003,10 @@ The collapsed Search toolbar control SHALL visibly and accessibly distinguish ac
 
 ### Requirement: Clear Search explicitly while retaining library scope
 
-Clear search and browse SHALL clear text, Similar, Focus and other non-scope Search filters/preferences, cancel obsolete debounce, invalidate Search requests/cursors and load Explore from its beginning. It SHALL retain current Discovery/Go-To scope, presentation and planner context. Hiding Search SHALL NOT perform this action.
+Toolbar `Clear search and browse` SHALL render as a compact icon button with an accessible localized name inline beside `Filters` and any `Similar` chip on a single row, clearing text, Similar, Focus and non-scope Search filters, cancelling debounce, and loading scoped Explore while keeping scope, presentation and planner context. Empty-state recovery SHALL retain its text button.
 
 #### Scenario: Clear active Search
-- **WHEN** a person activates Clear search and browse while Search is loaded, pending, empty or failed
+- **WHEN** a person activates the compact `Clear search and browse` icon button in the Search toolbar (sitting inline on one row with `Filters` and optional `Similar ×`) while Search is loaded, pending, empty or failed
 - **THEN** scoped Explore replaces it without stale Search results or errors arriving later
 - **AND** scope, presentation, planning context and current disclosure visibility are retained
 
@@ -1050,12 +1055,16 @@ Search disclosure SHALL use semantic keyboard-operable controls with visible foc
 
 ### Requirement: Make expanded Search recognizable and localized
 
-When Search controls are expanded, the input SHALL show a magnifier, a localized example placeholder and a soft light surface with a visible terracotta focus state. The field SHALL retain its accessible Search name, current text and existing Enter, debounce, disclosure and focus-return behavior.
+When Search controls are expanded, the input SHALL show a magnifier, a soft light surface with terracotta focus state, and dynamic placeholder shadow text drawn from the top eligible `fill-the-gap` suggestion (ranked by influencers/likes, unplanned in the target week, and not on cooldown), falling back to a localized default placeholder when no suggestion is loaded.
 
 #### Scenario: Expand Search in either view
-- **WHEN** a person expands Search in stack or list presentation in English or French
-- **THEN** the field appears directly below the toolbar with its magnifier and localized example, and receives visible focus
+- **WHEN** a person expands Search in stack or list presentation in English or French and no eligible suggestion is available
+- **THEN** the field appears directly below the toolbar with its magnifier and localized fallback placeholder (`Try 'Chicken' or 'Quick'…` / `Ex. 'Poulet' ou 'Rapide'…`), and receives visible focus
 - **AND** expansion alone does not submit or replace the current collection
+
+#### Scenario: Dynamic placeholder displays top eligible suggestion
+- **WHEN** Search expands in English or French and `fill-the-gap` returns an eligible non-planned, non-cooled suggested recipe such as `"Thai Basil Chicken"`
+- **THEN** the search input placeholder displays `"Thai Basil Chicken"` while leaving the input value empty so typing searches without deleting example text
 
 #### Scenario: Return to a hidden active Search
 - **WHEN** a current Search is active and its controls are hidden, then the person reopens them

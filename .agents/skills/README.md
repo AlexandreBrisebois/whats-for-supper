@@ -10,7 +10,7 @@ Load skills on demand only — never globally. A skill is loaded when the active
 | `nextjs-qa` | [nextjs-qa/SKILL.md](nextjs-qa/SKILL.md) | Diagnosing Next.js test failures, hydration/UI state or E2E flakiness | New feature implementation |
 | `openapi-expert` | [openapi-expert/SKILL.md](openapi-expert/SKILL.md) | Maintaining approved API contracts, generated clients, examples or stateful mocks | No API seam work in scope |
 | `workflow-author` | [workflow-author/SKILL.md](workflow-author/SKILL.md) | Creating a new YAML workflow wired into the WorkflowOrchestrator | Editing existing workflow logic only |
-| `designer` | [designer/SKILL.md](designer/SKILL.md) | Making UI/UX or visual design decisions (Shared Table aesthetic) | Non-visual backend or infra work |
+| `designer` | [designer/SKILL.md](designer/SKILL.md) | Making UI/UX or visual design decisions (Family Cookbook / Shared Table [visual identity](designer/visual-identity.md) & [surfaces/motion](designer/cookbook-surfaces-and-motion.md)) | Non-visual backend or infra work |
 | `aws-well-architected` | [aws-architect/SKILL.md](aws-architect/SKILL.md) | Designing AWS infrastructure, choosing services, landing zone setup, cost decisions, or GitHub Actions CI/CD targeting AWS | No AWS infrastructure in scope |
 
 OpenSpec owns specification planning, review, artifact formats and task application.

@@ -17,7 +17,7 @@ public class FamilyMember
 
     [Required]
     [Column("browse_view_mode")]
-    public string BrowseViewMode { get; set; } = "stack";
+    public string BrowseViewMode { get; set; } = "list";
 
     [Column("preferred_language")]
     public string? PreferredLanguage { get; set; }

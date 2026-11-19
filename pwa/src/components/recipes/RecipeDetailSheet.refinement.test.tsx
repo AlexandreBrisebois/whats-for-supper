@@ -837,7 +837,7 @@ describe('canonical original ingredient editing', () => {
     const first = render(<RecipeDetailSheet {...props} />);
     await screen.findByTestId('recipe-detail-name');
     fireEvent.change(await edit(), { target: { value: '2' } });
-    fireEvent.change(screen.getByTestId('recipe-edit-unit-0'), { target: { value: 'cans' } });
+    fireEvent.change(screen.getByTestId('recipe-edit-unit-0'), { target: { value: 'can' } });
     fireEvent.click(screen.getByTestId('recipe-edit-package-enabled-0'));
     fireEvent.change(screen.getByTestId('recipe-edit-package-count-unit-0'), {
       target: { value: 'tins' },
@@ -859,7 +859,7 @@ describe('canonical original ingredient editing', () => {
         ingredientLines: expect.arrayContaining([
           expect.objectContaining({
             amountText: '2',
-            unit: { text: 'cans', definitionId: null },
+            unit: { text: 'can', definitionId: null },
             packageEscaped: {
               countUnit: { text: 'tins', definitionId: null },
               capacity: {
@@ -1486,5 +1486,183 @@ describe('canonical original ingredient editing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep my draft: Instructions' }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply reviewed draft' }));
     expect(screen.getByTestId('recipe-edit-section-header-0')).toHaveValue('My header');
+  });
+
+  it('uses a right-aligned joined servings stepper with direct input and below-row error', async () => {
+    mockGetRecipe.mockResolvedValue({ ...canonical, servings: null });
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    await edit();
+
+    const input = screen.getByTestId('recipe-edit-servings-input');
+    const decrement = screen.getByTestId('recipe-edit-servings-decrement');
+    const increment = screen.getByTestId('recipe-edit-servings-increment');
+    const label = screen.getByText('Servings');
+    const row = label.parentElement!;
+
+    expect(row.className).toContain('flex');
+    expect(row.className).toContain('items-center');
+    expect(row.className).toContain('justify-between');
+    expect(increment.closest('div')?.className).toContain('ml-auto');
+    expect(decrement).toHaveAccessibleName('Decrease servings');
+    expect(increment).toHaveAccessibleName('Increase servings');
+    expect(input).toHaveValue('');
+    expect(decrement).toBeDisabled();
+
+    fireEvent.click(increment);
+    expect(input).toHaveValue('1');
+    expect(decrement).toBeDisabled();
+
+    fireEvent.click(increment);
+    expect(input).toHaveValue('2');
+    expect(decrement).toBeEnabled();
+
+    fireEvent.click(decrement);
+    expect(input).toHaveValue('1');
+
+    fireEvent.change(input, { target: { value: '0' } });
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText('Enter a whole number from 1 to 2147483647.')).toBeVisible();
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: '4' } });
+    expect(input).toHaveAttribute('aria-invalid', 'false');
+    expect(
+      screen.queryByText('Enter a whole number from 1 to 2147483647.')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders standardized unit selects and preserves unrecognized legacy units until changed', async () => {
+    const standardUnits = [
+      '',
+      'tsp',
+      'tbsp',
+      'cup',
+      'ml',
+      'cl',
+      'dl',
+      'l',
+      'mg',
+      'g',
+      'kg',
+      'piece',
+      'clove',
+      'pinch',
+      'slice',
+      'can',
+      'jar',
+      'pkg',
+      'bunch',
+      'head',
+      'sprig',
+      'stalk',
+      'leaf',
+    ];
+    mockGetRecipe.mockResolvedValue({
+      ...canonical,
+      ingredientLines: [
+        {
+          ...canonical.ingredientLines[0],
+          unit: { text: 'dash', definitionId: null },
+          packageEscaped: {
+            countUnit: { text: 'jar', definitionId: null },
+            capacity: {
+              amount: { kind: 'scalar', value: { n: '250', d: '1' } },
+              unit: { text: 'Gousses', definitionId: null },
+            },
+            basis: 'net',
+          },
+        },
+      ],
+    });
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    await edit();
+
+    const unitSelect = screen.getByTestId('recipe-edit-unit-0') as HTMLSelectElement;
+    expect(unitSelect.tagName).toBe('SELECT');
+    expect(unitSelect).toHaveValue('dash');
+    const unitValues = Array.from(unitSelect.options).map((opt) => opt.value);
+    for (const unit of standardUnits) expect(unitValues).toContain(unit);
+    expect(unitValues).toContain('dash');
+
+    fireEvent.change(unitSelect, { target: { value: 'g' } });
+    expect(unitSelect).toHaveValue('g');
+    expect(Array.from(unitSelect.options).map((opt) => opt.value)).not.toContain('dash');
+
+    const pkgSelect = screen.getByTestId('recipe-edit-package-unit-0') as HTMLSelectElement;
+    expect(pkgSelect.tagName).toBe('SELECT');
+    expect(pkgSelect).toHaveValue('Gousses');
+    const pkgValues = Array.from(pkgSelect.options).map((opt) => opt.value);
+    for (const unit of standardUnits) expect(pkgValues).toContain(unit);
+    expect(pkgValues).toContain('Gousses');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add ingredient' }));
+    const addedUnitSelect = screen.getByTestId('recipe-edit-unit-1') as HTMLSelectElement;
+    expect(addedUnitSelect.tagName).toBe('SELECT');
+    expect(addedUnitSelect).toHaveValue('');
+  });
+
+  it('uses compact mobile cards, Solar Earth labels, icon remove buttons, and omits footer micro-caption', async () => {
+    const sectioned = {
+      ...canonical,
+      instructionSections: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440330',
+          name: 'Prep',
+          steps: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440331',
+              text: 'Chop herbs.',
+              textRevision: 't1',
+              bindings: [],
+            },
+          ],
+        },
+      ],
+      recipeInstructions: [
+        {
+          '@type': 'HowToSection',
+          name: 'Prep',
+          itemListElement: [{ '@type': 'HowToStep', text: 'Chop herbs.' }],
+        },
+      ],
+    };
+    mockGetRecipe.mockResolvedValue(sectioned);
+    render(<RecipeDetailSheet {...props} />);
+    await screen.findByTestId('recipe-detail-name');
+    await edit();
+
+    const topRow = screen.getByTestId('recipe-ingredient-top-row-0');
+    expect(within(topRow).getByTestId('recipe-edit-amount-0')).toBeInTheDocument();
+    expect(within(topRow).getByTestId('recipe-edit-unit-0')).toBeInTheDocument();
+    const removeIngredient = within(topRow).getByTestId('recipe-remove-ingredient-0');
+    expect(removeIngredient.className).toContain('h-12');
+    expect(removeIngredient.className).toContain('w-12');
+    expect(removeIngredient.textContent?.trim()).toBe('');
+    expect(removeIngredient).toHaveAccessibleName('Remove ingredient');
+    expect(topRow.contains(screen.getByTestId('recipe-edit-ingredient-0'))).toBe(false);
+
+    const removeSection = screen.getByTestId('recipe-remove-section-0');
+    expect(removeSection.className).toContain('h-12');
+    expect(removeSection.className).toContain('w-12');
+    expect(removeSection.textContent?.trim()).toBe('');
+    expect(removeSection).toHaveAccessibleName('Remove section 1');
+
+    const removeStep = screen.getByTestId('recipe-remove-step-0');
+    expect(removeStep.className).toContain('h-12');
+    expect(removeStep.className).toContain('w-12');
+    expect(removeStep.textContent?.trim()).toBe('');
+    expect(removeStep).toHaveAccessibleName('Remove step 1');
+
+    for (const labelText of ['Name', 'Cuisine', 'Meal types', 'Description', 'Section 1 header']) {
+      const labelEl = screen.getAllByText(labelText)[0];
+      expect(labelEl.className).toContain('text-sm');
+      expect(labelEl.className).toContain('font-semibold');
+      expect(labelEl.className).not.toContain('text-[10px]');
+      expect(labelEl.className).not.toContain('uppercase');
+    }
+
+    expect(screen.queryByText('Save recipe edits')).not.toBeInTheDocument();
   });
 });

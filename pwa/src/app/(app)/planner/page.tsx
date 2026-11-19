@@ -280,7 +280,8 @@ export default function PlannerPage() {
     currentWeekOffset,
     referenceWeekStartDate,
     schedule,
-    portionReturn ? () => router.replace(portionReturn) : undefined
+    portionReturn ? () => router.replace(portionReturn) : undefined,
+    authoritativeToday
   );
   const portionEntry = searchParams.get('portions') === 'true' ? searchParams.toString() : null;
   const enteredPortions = useRef<string | null>(null);
@@ -465,7 +466,6 @@ export default function PlannerPage() {
           );
         } else {
           setPlanningConfirmation(null);
-          useUiStore.getState().addToast({ type: 'success', message });
           const params = new URLSearchParams(confirmationQuery);
           params.delete('success');
           router.replace(`/planner${params.size ? `?${params}` : ''}`, { scroll: false });

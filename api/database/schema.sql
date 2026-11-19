@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE TABLE family_members (
     id uuid PRIMARY KEY,
     name varchar(100) NOT NULL,
-    browse_view_mode text DEFAULT 'stack' NOT NULL,
+    browse_view_mode text DEFAULT 'list' NOT NULL,
     cooking_view_mode text,
     preferred_language text,
     created_at timestamptz DEFAULT now() NOT NULL,

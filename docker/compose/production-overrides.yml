@@ -2,6 +2,7 @@ services:
   api:
     image: ${WFS_REGISTRY}/whats-for-supper-api:${TAG}
     environment:
+      Calendar__TimeZone: ${Calendar__TimeZone:-America/Toronto}
       ASPNETCORE_ENVIRONMENT: Production
       ELEVATED_ACTIONS_PIN: ${ELEVATED_ACTIONS_PIN:-}
       EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-gemini-embedding-2}

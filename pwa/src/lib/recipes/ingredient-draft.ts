@@ -81,6 +81,50 @@ export function ingredientDraft(row?: RecipeIngredientLine): IngredientDraft {
   };
   return withIngredientPackageDraft(draft);
 }
+
+export const STANDARD_INGREDIENT_UNITS = [
+  '',
+  'tsp',
+  'tbsp',
+  'cup',
+  'ml',
+  'cl',
+  'dl',
+  'l',
+  'mg',
+  'g',
+  'kg',
+  'piece',
+  'clove',
+  'pinch',
+  'slice',
+  'can',
+  'jar',
+  'pkg',
+  'bunch',
+  'head',
+  'sprig',
+  'stalk',
+  'leaf',
+] as const;
+
+export type StandardIngredientUnit = (typeof STANDARD_INGREDIENT_UNITS)[number];
+
+export function isStandardIngredientUnit(unit: string): unit is StandardIngredientUnit {
+  return (STANDARD_INGREDIENT_UNITS as readonly string[]).includes(unit);
+}
+
+/**
+ * Returns standardized unit select options, keeping any non-empty legacy
+ * unit temporarily selectable until the user chooses a standard unit or saves.
+ */
+export function ingredientUnitOptions(currentUnit?: string | null): string[] {
+  const value = currentUnit ?? '';
+  if (!value.trim() || isStandardIngredientUnit(value)) {
+    return [...STANDARD_INGREDIENT_UNITS];
+  }
+  return [...STANDARD_INGREDIENT_UNITS, value];
+}
 export function prepareIngredientDrafts(drafts: IngredientDraft[]): {
   lines: RecipeIngredientLineInput[];
   invalid: boolean;

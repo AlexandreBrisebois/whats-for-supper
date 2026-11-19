@@ -384,16 +384,46 @@ describe('RecipeDetailSheet', () => {
     expect(selected).toHaveTextContent('GOTO');
     expect(selected).toHaveAccessibleName('Remove from GOTO');
     expect(selected).toHaveAttribute('aria-pressed', 'true');
-    expect(mockAddToast).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Added to GOTO list' })
+    expect(mockAddToast).not.toHaveBeenCalled();
+
+    let removeFinish!: () => void;
+    mockSaveGoTo.mockImplementationOnce(
+      (dto) =>
+        new Promise<void>((resolve) => {
+          removeFinish = () => {
+            mockGotoItems = dto.items;
+            resolve();
+          };
+        })
     );
-    mockSaveGoTo.mockRejectedValueOnce(new Error('offline'));
     fireEvent.click(selected);
-    await waitFor(() => expect(selected).not.toBeDisabled());
-    expect(selected).toHaveAttribute('aria-pressed', 'true');
+    await act(async () => removeFinish());
+    const removed = await screen.findByTestId('action-set-goto');
+    expect(removed).toHaveAttribute('aria-pressed', 'false');
+    expect(mockAddToast).not.toHaveBeenCalled();
+
+    let readdFinish!: () => void;
+    mockSaveGoTo.mockImplementationOnce(
+      (dto) =>
+        new Promise<void>((resolve) => {
+          readdFinish = () => {
+            mockGotoItems = dto.items;
+            resolve();
+          };
+        })
+    );
+    fireEvent.click(removed);
+    await act(async () => readdFinish());
+    const reselected = await screen.findByTestId('action-current-goto');
+
+    mockSaveGoTo.mockRejectedValueOnce(new Error('offline'));
+    fireEvent.click(reselected);
+    await waitFor(() => expect(reselected).not.toBeDisabled());
+    expect(reselected).toHaveAttribute('aria-pressed', 'true');
     expect(mockAddToast).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Could not update GOTO' })
     );
+    expect(mockAddToast).toHaveBeenCalledTimes(1);
   });
 
   it('recovers a failed first read through Retry while Close remains available', async () => {
@@ -607,7 +637,113 @@ describe('RecipeDetailSheet', () => {
     );
     expect(screen.queryByRole('dialog', { name: 'Review issue' })).toBeNull();
     expect(screen.queryByLabelText(/Recipe (reported|updated)/)).toBeNull();
-    expect(mockAddToast).toHaveBeenCalledWith({ type: 'success', message: 'Marked as resolved' });
+    expect(mockAddToast).not.toHaveBeenCalled();
+  });
+
+  it('omits toasts for manual import-issue saves while keeping re-import failure toast guidance', async () => {
+    const initialRecipe = await mockGetRecipe();
+    mockSaveRecipeImportIssue.mockResolvedValueOnce({
+      recipe: {
+        ...initialRecipe,
+        importIssue: { reasons: ['ingredients'], note: null, status: 'reported' },
+      },
+      reimportStarted: false,
+      reimportLaunchFailed: false,
+      importId: null,
+    });
+    const view = render(
+      <RecipeDetailSheet
+        recipeId={initialRecipe.id}
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-sheet');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Report issue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ingredients' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockSaveRecipeImportIssue).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('dialog', { name: 'Report issue' })).toBeNull();
+    expect(mockAddToast).not.toHaveBeenCalled();
+
+    mockSaveRecipeImportIssue.mockResolvedValue({
+      recipe: {
+        ...initialRecipe,
+        importIssue: {
+          reasons: ['steps'],
+          note: 'Updated note',
+          status: 'reported',
+          reimportFailureMessage: 'We could not re-import this recipe.',
+        },
+      },
+      reimportStarted: false,
+      reimportLaunchFailed: false,
+      importId: null,
+    });
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByRole('button', { name: 'Review issue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Steps' }));
+    fireEvent.change(screen.getByLabelText('What should we check?'), {
+      target: { value: 'Updated note' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(mockAddToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Saved for review. Add new detail if you want us to try re-importing again.',
+      })
+    );
+  });
+
+  it('uploads detail photos without an intermediate toast while keeping regeneration and failure toasts', async () => {
+    mockUploadRecipeOriginal.mockResolvedValueOnce(undefined);
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByTestId('action-edit-recipe'));
+
+    const input = await screen.findByLabelText('Take a photo for hero image');
+    const file = new File(['photo-bytes'], 'dish.jpg', { type: 'image/jpeg' });
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+
+    expect(mockUploadRecipeOriginal).toHaveBeenCalledWith(
+      '550e8400-e29b-41d4-a716-446655440111',
+      file
+    );
+    expect(mockAddToast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Uploading photo...' })
+    );
+    expect(mockAddToast).toHaveBeenCalledWith({
+      type: 'success',
+      message: 'Regenerating hero image...',
+    });
+
+    mockAddToast.mockClear();
+    mockUploadRecipeOriginal.mockRejectedValueOnce(new Error('upload failed'));
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+    expect(mockAddToast).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'Failed to upload photo',
+    });
   });
 
   it('keeps the parent-safe re-import failure message visible on recipe detail', async () => {

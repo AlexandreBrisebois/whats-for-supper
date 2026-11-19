@@ -642,11 +642,11 @@ describe('MinimalCapture recipe import', () => {
     expect(mockById).toHaveBeenCalledWith(newRecipeId);
     expect(mockDeleteRecipe).toHaveBeenCalled();
 
-    // Verify toast is triggered and redirect to home happens
+    // Verify redirect to home happens without a redundant discard toast
     await waitFor(() => {
-      expect(mockAddToast).toHaveBeenCalledWith('Duplicate recipe discarded.');
       expect(mockPush).toHaveBeenCalledWith('/');
     });
+    expect(mockAddToast).not.toHaveBeenCalled();
   });
   it('observes bundle review/reject/reopen and the actual ready panel without picker or import-result facts', async () => {
     const view = render(<MinimalCapture preparedOnly />);

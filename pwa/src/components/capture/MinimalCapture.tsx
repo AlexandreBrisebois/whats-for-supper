@@ -19,7 +19,6 @@ import { validatePdfSelection } from '@/lib/pdfCapture';
 import { useFamilyStore } from '@/store/familyStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { useLibraryStore } from '@/store/libraryStore';
-import { useUiStore } from '@/store/uiStore';
 import { apiClient } from '@/lib/api/api-client';
 import { importRecipeShareBundle, parseRecipeBundleFile } from '@/lib/api/recipes';
 import { Button } from '@/components/ui/button';
@@ -69,7 +68,6 @@ export default function MinimalCapture({
 }: MinimalCaptureProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const addToast = useUiStore((state) => state.addToast);
   const familySettings = useFamilyStore((state) => state.familySettings);
   const loadGoTo = useFamilyStore((state) => state.loadGoTo);
   const saveGoTo = useFamilyStore((state) => state.saveGoTo);
@@ -560,7 +558,6 @@ export default function MinimalCapture({
     setIsDiscardingDuplicate(true);
     try {
       await apiClient.api.recipes.byId(pendingRecipeId).delete();
-      addToast('Duplicate recipe discarded.');
       router.push('/' as any);
     } catch (err) {
       console.error('Error discarding duplicate recipe:', err);

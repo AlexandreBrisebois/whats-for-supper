@@ -386,4 +386,34 @@ describe('quiet grocery source refinement', () => {
     expect(url.searchParams.get('sourceGroceryReferenceWeekStartDate')).toBe('2026-10-19');
     expect(mockToggleGroceryItem).not.toHaveBeenCalled();
   });
+
+  it('maximizes grocery item width without nested @min-[18rem]:p-4 padding and right-aligns BookOpen and Tag icons', () => {
+    render(<GroceryList weekOffset={0} items={[item]} />);
+
+    const checkbox = screen.getByTestId('grocery-item-checkbox');
+    const row = checkbox.parentElement!;
+    const itemWrapper = row.parentElement!;
+    const itemsRegion = itemWrapper.parentElement!;
+
+    expect(itemsRegion.className).not.toContain('@min-[18rem]:p-4');
+    expect(row.className).not.toContain('@min-[18rem]:p-4');
+    expect(checkbox.className).toContain('@min-[18rem]:basis-0');
+
+    const actions = within(row).getByTestId('grocery-row-actions');
+    expect(actions.className).toContain('ml-auto');
+    expect(actions.className).toContain('flex');
+    expect(actions.className).toContain('shrink-0');
+
+    const sourcesToggle = within(actions).getByTestId('grocery-recipe-sources-toggle');
+    const reclassifyBtn = within(actions).getByTestId('reclassify-btn');
+    expect(sourcesToggle.className).toContain('min-h-[48px]');
+    expect(sourcesToggle.className).toContain('min-w-[48px]');
+    expect(reclassifyBtn.querySelector('svg')).toHaveClass('mx-auto');
+
+    fireEvent.click(sourcesToggle);
+    const sourcesRegion = within(row).getByTestId('grocery-recipe-sources-region');
+    expect(actions.contains(sourcesRegion)).toBe(false);
+    expect(sourcesRegion.className).toContain('order-last');
+    expect(sourcesRegion.className).toContain('w-full');
+  });
 });

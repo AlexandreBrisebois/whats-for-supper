@@ -50,7 +50,7 @@ public class FamilyControllerTests : IAsyncLifetime
         using var doc = JsonDocument.Parse(json);
         var data = doc.RootElement.GetProperty("data");
         Assert.Equal("Test Member", data.GetProperty("name").GetString());
-        Assert.Equal("stack", data.GetProperty("browseViewMode").GetString());
+        Assert.Equal("list", data.GetProperty("browseViewMode").GetString());
         Assert.NotEqual(Guid.Empty, data.GetProperty("id").GetGuid());
         Assert.Equal(JsonValueKind.Null, data.GetProperty("preferredLanguage").ValueKind);
         Assert.Equal(JsonValueKind.Null, data.GetProperty("cookingViewMode").ValueKind);
@@ -161,7 +161,7 @@ public class FamilyControllerTests : IAsyncLifetime
         var updateJson = await updateResponse.Content.ReadAsStringAsync();
         using var updateDoc = JsonDocument.Parse(updateJson);
         Assert.Equal("Updated Name", updateDoc.RootElement.GetProperty("data").GetProperty("name").GetString());
-        Assert.Equal("stack", updateDoc.RootElement.GetProperty("data").GetProperty("browseViewMode").GetString());
+        Assert.Equal("list", updateDoc.RootElement.GetProperty("data").GetProperty("browseViewMode").GetString());
     }
 
     [Fact]
@@ -248,7 +248,7 @@ public class FamilyControllerTests : IAsyncLifetime
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var data = document.RootElement.GetProperty("data");
         Assert.Equal(cookingViewMode, data.GetProperty("cookingViewMode").GetString());
-        Assert.Equal("stack", data.GetProperty("browseViewMode").GetString());
+        Assert.Equal("list", data.GetProperty("browseViewMode").GetString());
         Assert.Equal(created.GetProperty("name").GetString(), data.GetProperty("name").GetString());
     }
 

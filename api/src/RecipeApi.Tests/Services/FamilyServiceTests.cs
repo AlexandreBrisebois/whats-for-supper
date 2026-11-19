@@ -38,14 +38,14 @@ public class FamilyServiceTests
     }
 
     [Fact]
-    public async Task CreateFamilyMember_Defaults_BrowseViewMode_To_Stack()
+    public async Task CreateFamilyMember_Defaults_BrowseViewMode_To_List()
     {
         await using var ctx = TestDbContextFactory.Create();
         var service = CreateService(ctx);
 
         var member = await service.CreateFamilyMember("Alice");
 
-        Assert.Equal("stack", member.BrowseViewMode);
+        Assert.Equal("list", member.BrowseViewMode);
     }
 
     [Fact]
@@ -231,7 +231,7 @@ public class FamilyServiceTests
         var updated = await service.UpdateFamilyMemberPreferences(member.Id, null, null, cookingViewMode);
 
         Assert.Equal(cookingViewMode, updated.CookingViewMode);
-        Assert.Equal("stack", updated.BrowseViewMode);
+        Assert.Equal("list", updated.BrowseViewMode);
         Assert.Equal("fr", updated.PreferredLanguage);
         Assert.Equal("Alex", updated.Name);
     }

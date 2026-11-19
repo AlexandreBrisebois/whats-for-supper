@@ -24,7 +24,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import * as fc from 'fast-check';
 
 // ---------------------------------------------------------------------------
@@ -61,10 +61,11 @@ const mockSubmitUrl = vi.fn().mockResolvedValue(null);
 const mockSetRating = vi.fn();
 const mockSetNotes = vi.fn();
 const mockSetSelectedDishPhotoIndex = vi.fn();
+let mockCaptureImages: File[] = [];
 
 vi.mock('@/hooks/useCapture', () => ({
   useCapture: () => ({
-    images: [],
+    images: mockCaptureImages,
     addImage: mockAddImage,
     removeImage: mockRemoveImage,
     isSubmitting: false,
@@ -95,11 +96,17 @@ vi.mock('@/store/familyStore', () => ({
   },
 }));
 
-// Mock apiClient — used by handleDescribeSubmit
+// Mock apiClient — used by handleDescribeSubmit & duplicate discard
+const mockRecipesGet = vi.fn().mockResolvedValue({ recipes: [] });
+const mockRecipeDelete = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/lib/api/api-client', () => ({
   apiClient: {
     api: {
       recipes: {
+        get: (...args: unknown[]) => mockRecipesGet(...args),
+        byId: (id: string) => ({
+          delete: () => mockRecipeDelete(id),
+        }),
         describe: {
           post: vi.fn().mockResolvedValue({ data: { id: 'test-recipe-id' } }),
         },
@@ -114,14 +121,15 @@ vi.mock('@/lib/api/api-client', () => ({
 }));
 
 // Mock libraryStore — used for notification detection
+let mockNotifications: any[] = [];
 vi.mock('@/store/libraryStore', () => {
   const subscribers: Set<(state: any) => void> = new Set();
   return {
     useLibraryStore: Object.assign(
-      (selector: (state: any) => any) => selector({ notifications: [] }),
+      (selector: (state: any) => any) => selector({ notifications: mockNotifications }),
       {
         getState: () => ({
-          notifications: [],
+          notifications: mockNotifications,
           dismissNotification: vi.fn(),
         }),
         subscribe: vi.fn((callback: (state: any) => void) => {
@@ -138,6 +146,7 @@ vi.mock('@/store/libraryStore', () => {
 // ---------------------------------------------------------------------------
 import MinimalCapture from './MinimalCapture';
 import { useCapture } from '@/hooks/useCapture';
+import { useUiStore } from '@/store/uiStore';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -183,6 +192,11 @@ async function renderAndTriggerSuccess(intent?: string): Promise<void> {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockCaptureImages = [];
+  mockNotifications = [];
+  mockRecipesGet.mockResolvedValue({ recipes: [] });
+  mockRecipeDelete.mockResolvedValue(undefined);
+  useUiStore.setState({ toasts: [] });
 });
 
 // No global afterEach needed if timers are managed per test
@@ -567,5 +581,25 @@ describe('MinimalCapture — describe form validation', () => {
 
     const synthesizeBtn = screen.getByTestId('capture-synthesize-btn');
     expect(synthesizeBtn).toBeDisabled();
+  });
+
+  it('discards a duplicate photo capture and navigates home without showing a toast', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-photo');
+    mockCaptureImages = [new File(['img'], 'pasta.jpg', { type: 'image/jpeg' })];
+    mockSubmitRecipe.mockResolvedValueOnce('new-recipe-id');
+    mockNotifications = [{ recipeId: 'new-recipe-id', type: 'ready', name: 'Pasta' }];
+    mockRecipesGet.mockResolvedValueOnce({
+      recipes: [{ id: 'existing-recipe-id', name: 'Pasta' }],
+    });
+
+    render(<MinimalCapture />);
+    fireEvent.click(screen.getByTestId('capture-save-btn'));
+
+    const discardBtn = await screen.findByTestId('discard-duplicate-btn');
+    fireEvent.click(discardBtn);
+
+    await waitFor(() => expect(mockRecipeDelete).toHaveBeenCalledWith('new-recipe-id'));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/'));
+    expect(useUiStore.getState().toasts).toHaveLength(0);
   });
 });

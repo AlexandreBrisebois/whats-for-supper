@@ -35,8 +35,14 @@ function snapshot(override: number | null = 5, usual: number | null = 4): Supper
   };
 }
 
-function Editor({ meals = schedule }: { meals?: UILocalScheduleDay[] }) {
-  const editor = useSupperServingsEditor(1, reference, meals);
+function Editor({
+  meals = schedule,
+  today,
+}: {
+  meals?: UILocalScheduleDay[];
+  today?: string | null;
+}) {
+  const editor = useSupperServingsEditor(1, reference, meals, undefined, today);
   return (
     <>
       {editor.strip}
@@ -45,8 +51,8 @@ function Editor({ meals = schedule }: { meals?: UILocalScheduleDay[] }) {
   );
 }
 
-async function openEditor(meals = schedule) {
-  render(<Editor meals={meals} />);
+async function openEditor(meals = schedule, today?: string | null) {
+  render(<Editor meals={meals} today={today} />);
   fireEvent.click(screen.getByTestId('at-the-table-mode'));
   await screen.findByTestId(`portion-input-${sunday}`);
 }
@@ -170,7 +176,11 @@ it('keeps frozen dates and non-cooking dates protected', async () => {
     )
   );
   expect(screen.getByTestId(`portion-input-${sunday}`)).toBeDisabled();
-  expect(screen.getByTestId(`portion-row-${sunday}`)).toHaveClass('bg-charcoal/10');
+  expect(screen.getByTestId(`portion-row-${sunday}`)).not.toHaveClass('bg-charcoal/10');
+  expect(screen.getByTestId(`portion-row-${sunday}`)).not.toHaveClass('grayscale');
+  expect(
+    within(screen.getByTestId(`portion-row-${sunday}`)).getByTestId('planner-meal')
+  ).toHaveClass('glass');
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(5);
   expect(screen.getByTestId(`reset-portions-${sunday}`)).toBeDisabled();
   expect(screen.queryByTestId(`portion-input-${monday}`)).not.toBeInTheDocument();
@@ -466,5 +476,60 @@ describe('frozen inherited portions correction', () => {
     fireEvent.click(screen.getByTestId('save-portions'));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0][0].days[0].servings).toBeNull();
+  });
+});
+
+describe('Planner Portions Meals-parity layout and calm Cooked badge', () => {
+  it('matches Meals view split date column, Today divider, and temporal card surfaces', async () => {
+    const today = '2026-10-14';
+    await openEditor(schedule, today);
+
+    const todayRow = screen.getByTestId(`portion-row-${today}`);
+    expect(todayRow).toHaveAttribute('data-temporal', 'today');
+    expect(within(todayRow).getByTestId('planner-today-label')).toHaveTextContent('Today');
+    expect(within(todayRow).getByTestId('planner-today-separator')).toBeInTheDocument();
+    const todayDateCol = within(todayRow).getByTestId('planner-date');
+    expect(todayDateCol).toHaveClass('w-10');
+    expect(todayDateCol).toHaveAttribute('aria-current', 'date');
+    expect(within(todayDateCol).getByTestId('planner-date-marker')).toBeInTheDocument();
+    expect(within(todayRow).getByTestId('planner-meal')).toHaveClass('glass');
+
+    const pastRow = screen.getByTestId(`portion-row-${monday}`);
+    expect(pastRow).toHaveAttribute('data-temporal', 'past');
+    expect(pastRow).not.toHaveClass('grayscale');
+    expect(within(pastRow).queryByTestId('planner-today-label')).not.toBeInTheDocument();
+    expect(within(pastRow).getByTestId('planner-meal')).toHaveClass('bg-cream');
+
+    const futureRow = screen.getByTestId(`portion-row-${sunday}`);
+    expect(futureRow).toHaveAttribute('data-temporal', 'neutral');
+    expect(within(futureRow).getByTestId('planner-meal')).toHaveClass('glass');
+  });
+
+  it('right-aligns stepper and reset controls in the thumb zone and shows a calm sage Cooked badge on read-only cooked days', async () => {
+    const state = snapshot();
+    state.days = state.days?.map((day) =>
+      String(day.date) === monday ? { ...day, editable: false } : day
+    );
+    read.mockResolvedValue(state);
+    await openEditor(
+      schedule.map((day) => (day.date === monday ? { ...day, status: 2 } : day)),
+      '2026-10-14'
+    );
+
+    const editableControls = screen.getByTestId(`portion-controls-${sunday}`);
+    expect(editableControls).toHaveClass('ml-auto');
+    expect(editableControls).toContainElement(screen.getByTestId(`reset-portions-${sunday}`));
+    expect(editableControls).toContainElement(
+      within(screen.getByTestId(`portion-row-${sunday}`)).getByRole('group')
+    );
+
+    const cookedRow = screen.getByTestId(`portion-row-${monday}`);
+    expect(cookedRow).not.toHaveClass('grayscale');
+    const cookedBadge = within(cookedRow).getByTestId(`portion-cooked-badge-${monday}`);
+    expect(cookedBadge).toHaveTextContent('Cooked');
+    expect(cookedBadge).toHaveClass('bg-sage/15', 'text-sage-800');
+    expect(cookedBadge.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    const cookedGroup = within(cookedRow).getByRole('group');
+    expect(cookedGroup).toHaveAttribute('aria-describedby', `portion-cooked-${monday}`);
   });
 });

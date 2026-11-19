@@ -5,7 +5,7 @@
   --color-ochre: #e1ad01;
   --color-sage: #8a9a5b;
   --color-cream: #fdfcf0;
-  --color-charcoal: #1f2937;
+  --color-charcoal: #28231f;
 
   --color-terracotta-50: #f9ece9;
   --color-terracotta-100: #f2d9d4;
@@ -47,16 +47,16 @@
   --color-cream-400: #f4f093;
   --color-cream-500: #f1ed74;
 
-  --color-charcoal-50: #f9fafb;
-  --color-charcoal-100: #f3f4f6;
-  --color-charcoal-200: #e5e7eb;
-  --color-charcoal-300: #d1d5db;
-  --color-charcoal-400: #9ca3af;
-  --color-charcoal-500: #1f2937;
-  --color-charcoal-600: #4b5563;
-  --color-charcoal-700: #374151;
-  --color-charcoal-800: #1f2937;
-  --color-charcoal-900: #111827;
+  --color-charcoal-50: #faf8f5;
+  --color-charcoal-100: #f3efea;
+  --color-charcoal-200: #e5dfd7;
+  --color-charcoal-300: #cfc6bc;
+  --color-charcoal-400: #9b9085;
+  --color-charcoal-500: #6e645b;
+  --color-charcoal-600: #524a43;
+  --color-charcoal-700: #3d3630;
+  --color-charcoal-800: #28231f;
+  --color-charcoal-900: #191512;
 
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-heading: 'Outfit', system-ui, sans-serif;
@@ -207,6 +207,7 @@
     height: 250px;
   }
 
+  .cookbook-bg,
   .solar-earth-bg {
     background-color: var(--color-cream);
     overflow: hidden;

@@ -17,7 +17,7 @@ export async function qualifyCookingFixed(
       await page.getByTestId('action-edit-recipe').click();
       if (phase === 'corrected') {
         await page.getByTestId('recipe-edit-amount-0').fill('3');
-      } else await page.getByTestId('recipe-edit-unit-0').fill('tsp');
+      } else await page.getByTestId('recipe-edit-unit-0').selectOption('tsp');
       const saved = page.waitForResponse(
         (r) =>
           r.request().method() === 'PATCH' && new URL(r.url()).pathname === `/api/recipes/${id}`

@@ -1039,7 +1039,7 @@ test.describe('French Recipes controls', () => {
     await page.getByTestId('recipes-search-disclosure').click();
     await expect(page.getByTestId('recipe-search-input')).toHaveAttribute(
       'placeholder',
-      'Un truc épicé pour 4...'
+      "Ex. 'Poulet' ou 'Rapide'…"
     );
     await page.getByTestId('stack-toggle-discoverable').click();
     await expect(page.getByTestId('mobile-filters-button')).toHaveAccessibleName(
@@ -1083,7 +1083,7 @@ test('expanded Search restores field cues, applied count and ordinary list headi
   await expect(page.getByRole('heading', { name: 'Results' })).toHaveCount(0);
   await page.getByTestId('recipes-search-disclosure').click();
   const input = page.getByTestId('recipe-search-input');
-  await expect(input).toHaveAttribute('placeholder', 'Something spicy for 4...');
+  await expect(input).toHaveAttribute('placeholder', "Try 'Chicken' or 'Quick'…");
   await expect(input.locator('..').locator('.lucide-search')).toBeVisible();
   await page.getByTestId('stack-toggle-discoverable').click();
   await expect(page.getByTestId('mobile-filters-button')).toHaveAccessibleName('Filters, 1 active');
@@ -2321,7 +2321,8 @@ test('dated empty-day save is reachable immediately, single-submit and authorita
   await expect(page).toHaveURL(
     /planner\?(?:success=1&)?dayIndex=2&weekOffset=1&referenceWeekStartDate=2026-05-04/
   );
-  await expect(page.getByTestId('toast')).toContainText('May 13');
+  await expect(page.getByTestId('toast')).toHaveCount(0);
+  await expect(page.getByTestId('day-card-2').getByTestId('planner-meal')).toHaveClass(/ring-4/);
   expect(writes).toBe(1);
 });
 
@@ -2390,7 +2391,11 @@ test('dated chooser saves the alternate date, preserves Planner source and avoid
   await expect(page.getByTestId('action-add-to-day')).toContainText('May 15');
   expect(saves).toBe(0);
   await page.getByTestId('action-add-to-day').click();
-  await expect(page.getByTestId('toast')).toContainText('May 15');
+  await expect(page).toHaveURL(
+    /\/planner\?(?:success=1&)?dayIndex=4&weekOffset=1&referenceWeekStartDate=2026-05-04/
+  );
+  await expect(page.getByTestId('toast')).toHaveCount(0);
+  await expect(page.locator('#day-card-4').getByTestId('planner-meal')).toHaveClass(/ring-4/);
   const snapshot = await page.evaluate(
     async () =>
       (await (await fetch('/api/schedule?weekOffset=1&referenceWeekStartDate=2026-05-04')).json())
@@ -2450,7 +2455,11 @@ test('Sunday recommendation crosses to Monday and stays shown before saving', as
   await expect(page.getByTestId('action-add-to-day')).toContainText('May 11');
   expect(saves).toBe(0);
   await page.getByTestId('action-add-to-day').click();
-  await expect(page.getByTestId('toast')).toContainText('May 11');
+  await expect(page).toHaveURL(
+    /\/planner\?(?:success=1&)?dayIndex=0&weekOffset=1&referenceWeekStartDate=2026-05-04/
+  );
+  await expect(page.getByTestId('toast')).toHaveCount(0);
+  await expect(page.getByTestId('day-card-0').getByTestId('planner-meal')).toHaveClass(/ring-4/);
   expect(saves).toBe(1);
   const snapshot = await page.evaluate(
     async () =>

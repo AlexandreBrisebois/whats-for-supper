@@ -421,10 +421,11 @@ export function GroceryList({
         return;
       }
       upsertExtra(extra);
+      const rawSection = extra.grocerySection ?? 'Grocery';
       addToast({
         type: 'success',
         message: tWithVars('grocery.extraSavedToSection', 'Saved to {{section}}', {
-          section: extra.grocerySection ?? 'Grocery',
+          section: t(`grocery.aisles.${rawSection}`, rawSection),
         }),
       });
       createAttempt.current = null;
@@ -1132,7 +1133,7 @@ export function GroceryList({
                       {/* Items */}
                       <div
                         id={itemsRegionId}
-                        className="divide-y divide-charcoal/5 p-[8px] space-y-2 @min-[18rem]:p-4"
+                        className="divide-y divide-charcoal/5 px-1.5 py-2 space-y-1.5"
                         hidden={isCollapsed}
                         aria-hidden={isCollapsed}
                       >
@@ -1157,7 +1158,7 @@ export function GroceryList({
                           return (
                             <div key={renderKey} className="relative">
                               <div
-                                className={`flex flex-wrap items-center p-[8px] @min-[18rem]:p-4 rounded-2xl transition-all ${
+                                className={`flex flex-wrap items-center gap-1 px-1.5 py-2 rounded-2xl transition-all ${
                                   isChecked
                                     ? 'bg-sage/5 text-charcoal/40'
                                     : 'hover:bg-charcoal/2 text-charcoal'
@@ -1178,7 +1179,7 @@ export function GroceryList({
                                       void handleToggle(item);
                                     }
                                   }}
-                                  className="flex min-h-12 min-w-0 flex-1 basis-full items-center gap-2 text-left @min-[18rem]:basis-0 @min-[18rem]:gap-4"
+                                  className="flex min-h-12 min-w-0 flex-1 basis-full items-center gap-2.5 text-left @min-[18rem]:basis-0"
                                   data-testid="grocery-item-checkbox"
                                   data-row-id={item.rowId}
                                   data-item-name={key}
@@ -1237,27 +1238,56 @@ export function GroceryList({
                                   )}
                                 </button>
 
-                                {(item.recipeIds ?? []).some(
-                                  (id) => typeof id === 'string' && id.length > 0
-                                ) && (
+                                <div
+                                  data-testid="grocery-row-actions"
+                                  className="ml-auto flex shrink-0 items-center gap-0.5"
+                                >
+                                  {(item.recipeIds ?? []).some(
+                                    (id) => typeof id === 'string' && id.length > 0
+                                  ) && (
+                                    <button
+                                      type="button"
+                                      data-testid="grocery-recipe-sources-toggle"
+                                      className="inline-flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-full text-charcoal/60 hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-terracotta"
+                                      aria-label={tWithVars(
+                                        'grocery.sourceRecipesFor',
+                                        'Source recipes for {{ingredient}}',
+                                        { ingredient: key }
+                                      )}
+                                      aria-expanded={reviewKey === renderKey}
+                                      aria-controls={`grocery-sources-${encodeURIComponent(renderKey)}`}
+                                      onClick={() =>
+                                        setReviewKey(reviewKey === renderKey ? null : renderKey)
+                                      }
+                                    >
+                                      <BookOpen size={18} aria-hidden="true" />
+                                    </button>
+                                  )}
+                                  {/* Reclassify button — separate tap target */}
                                   <button
                                     type="button"
-                                    data-testid="grocery-recipe-sources-toggle"
-                                    className="inline-flex min-h-[48px] min-w-[48px] shrink-0 items-center justify-center rounded-full text-charcoal/60 hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-terracotta"
-                                    aria-label={tWithVars(
-                                      'grocery.sourceRecipesFor',
-                                      'Source recipes for {{ingredient}}',
-                                      { ingredient: key }
-                                    )}
-                                    aria-expanded={reviewKey === renderKey}
-                                    aria-controls={`grocery-sources-${encodeURIComponent(renderKey)}`}
                                     onClick={() =>
-                                      setReviewKey(reviewKey === renderKey ? null : renderKey)
+                                      setReclassifyOpen(
+                                        isPickerOpen ? null : (item.rowId ?? categoryKey)
+                                      )
                                     }
+                                    className={cn(CATEGORY_BUTTON_CLASS, 'relative')}
+                                    aria-label={`${t('grocery.changeSection', 'Change section for')} ${key}`}
+                                    aria-expanded={isPickerOpen}
+                                    data-testid="reclassify-btn"
+                                    data-item-name={key}
+                                    disabled={isReclassifyPending}
                                   >
-                                    <BookOpen size={18} aria-hidden="true" />
+                                    <Tag size={16} className="mx-auto" aria-hidden="true" />
+                                    {hasReclassifyError && (
+                                      <AlertCircle
+                                        size={10}
+                                        className="text-terracotta absolute -top-1 -right-1"
+                                        data-testid="reclassify-error"
+                                      />
+                                    )}
                                   </button>
-                                )}
+                                </div>
                                 {reviewKey === renderKey && (
                                   <>
                                     <div
@@ -1315,33 +1345,6 @@ export function GroceryList({
                                     </span>
                                   </>
                                 )}
-                                {/* Reclassify button — separate tap target */}
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setReclassifyOpen(
-                                      isPickerOpen ? null : (item.rowId ?? categoryKey)
-                                    )
-                                  }
-                                  className={cn(
-                                    CATEGORY_BUTTON_CLASS,
-                                    'relative ml-auto @min-[18rem]:ml-2'
-                                  )}
-                                  aria-label={`${t('grocery.changeSection', 'Change section for')} ${key}`}
-                                  aria-expanded={isPickerOpen}
-                                  data-testid="reclassify-btn"
-                                  data-item-name={key}
-                                  disabled={isReclassifyPending}
-                                >
-                                  <Tag size={16} className="mx-auto" aria-hidden="true" />
-                                  {hasReclassifyError && (
-                                    <AlertCircle
-                                      size={10}
-                                      className="text-terracotta absolute -top-1 -right-1"
-                                      data-testid="reclassify-error"
-                                    />
-                                  )}
-                                </button>
                               </div>
 
                               {/* Inline section picker */}

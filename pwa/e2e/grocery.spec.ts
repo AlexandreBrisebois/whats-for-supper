@@ -741,9 +741,10 @@ for (const appLocale of ['en', 'fr'] as const) {
         const box = await tag.evaluate((element) => {
           const button = element.getBoundingClientRect();
           const icon = element.querySelector('svg')!.getBoundingClientRect();
-          const check = element
-            .parentElement!.querySelector('[role="checkbox"] svg')!
-            .getBoundingClientRect();
+          const row =
+            element.closest('[data-testid="grocery-row-actions"]')?.parentElement ??
+            element.parentElement!;
+          const check = row.querySelector('[role="checkbox"] svg')!.getBoundingClientRect();
           return {
             width: icon.width,
             offset: Math.abs(icon.x + icon.width / 2 - button.x - button.width / 2),
@@ -778,7 +779,13 @@ for (const appLocale of ['en', 'fr'] as const) {
         2
       );
       await extraTag.click();
-      await page.getByRole('group').getByRole('button', { name: 'Produce', exact: true }).click();
+      await page
+        .getByRole('group')
+        .getByRole('button', {
+          name: appLocale === 'en' ? 'Produce' : 'Fruits et légumes',
+          exact: true,
+        })
+        .click();
       await expect(
         page.getByTestId('aisle-section-Produce').locator('[data-extra-id]')
       ).toHaveCount(1);

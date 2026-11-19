@@ -34,6 +34,10 @@ vars:
     sh: (grep "^POSTGRES_PASSWORD=" docker/.env.local 2>/dev/null || grep "^POSTGRES_PASSWORD=" docker/.env 2>/dev/null || echo "POSTGRES_PASSWORD=secure_dev_password") | cut -d'=' -f2-
   POSTGRES_DB:
     sh: (grep "^POSTGRES_DB=" docker/.env.local 2>/dev/null || grep "^POSTGRES_DB=" docker/.env 2>/dev/null || echo "POSTGRES_DB=recipe_app_db") | cut -d'=' -f2-
+  CALENDAR_TIMEZONE:
+    sh: |
+      val="${Calendar__TimeZone:-$( (grep "^Calendar__TimeZone=" docker/.env.local 2>/dev/null || grep "^Calendar__TimeZone=" docker/.env 2>/dev/null) | tail -n1 | cut -d'=' -f2- )}"
+      printf '%s' "${val:-America/Toronto}"
 
 tasks:
   default:
@@ -68,6 +72,7 @@ tasks:
       RECIPES_ROOT: "/Users/alex/Code/whats-for-supper/data/recipes"
       ASPNETCORE_URLS: http://localhost:9001
       HEARTH_SECRET: "{{.HEARTH_SECRET}}"
+      Calendar__TimeZone: "{{.CALENDAR_TIMEZONE}}"
       POSTGRES_CONNECTION_STRING: "Host=localhost;Port=5432;Database={{.POSTGRES_DB}};Username={{.POSTGRES_USER}};Password={{.POSTGRES_PASSWORD}}"
     cmds:
       - dotnet watch run --project RecipeApi.csproj

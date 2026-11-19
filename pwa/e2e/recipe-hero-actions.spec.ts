@@ -225,8 +225,8 @@ test.describe('Recipe Hero Actions', () => {
       buffer: Buffer.from('fake-image-data'),
     });
 
-    // Should show uploading toast then success toast
-    await expect(page.getByText('Uploading photo...')).toBeVisible();
+    // Should skip intermediate upload toast and show regeneration toast
+    await expect(page.getByText('Uploading photo...')).toHaveCount(0);
     await expect(page.getByText('Regenerating hero image...')).toBeVisible();
     expect(uploadCalled).toBe(true);
   });

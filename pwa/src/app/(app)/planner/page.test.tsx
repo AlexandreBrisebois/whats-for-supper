@@ -535,15 +535,15 @@ describe('Planner result trust', () => {
   it('reads authoritative state then confirms once transiently, retiring old URL/reload receipts', async () => {
     remember();
     const view = renderPlanner(0);
+    await waitFor(() => expect(mocks.getSchedule).toHaveBeenCalledWith(0, '2026-05-11', true));
     await waitFor(() =>
-      expect(mocks.addToast).toHaveBeenCalledWith({
-        type: 'success',
-        message: expect.stringMatching(/Pasta Carbonara.*May 11/),
-      })
+      expect(within(screen.getByTestId('day-card-0')).getByTestId('planner-meal')).toHaveClass(
+        'ring-4'
+      )
     );
+    expect(mocks.addToast).not.toHaveBeenCalled();
     expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
     expect(screen.queryByTestId('planner-confirmation-refresh')).not.toBeInTheDocument();
-    expect(mocks.getSchedule).toHaveBeenCalledWith(0, '2026-05-11', true);
     expect(mocks.applySnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ days: makeSchedule('2026-05-17') })
     );
@@ -551,9 +551,6 @@ describe('Planner result trust', () => {
       behavior: 'auto',
       block: 'center',
     });
-    expect(within(screen.getByTestId('day-card-0')).getByTestId('planner-meal')).toHaveClass(
-      'ring-4'
-    );
     expect(sessionStorage.getItem('wfs.planning-result')).toBeNull();
     expect(mocks.replace).toHaveBeenCalledWith(
       '/planner?dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11',
@@ -563,7 +560,7 @@ describe('Planner result trust', () => {
     view.unmount();
     renderPlanner(0);
     await act(async () => {});
-    expect(mocks.addToast).toHaveBeenCalledTimes(1);
+    expect(mocks.addToast).not.toHaveBeenCalled();
     expect(mocks.getSchedule).toHaveBeenCalledTimes(1);
     noWrites();
   });
@@ -630,9 +627,9 @@ describe('Planner result trust', () => {
       expect(sessionStorage.getItem('wfs.planning-result')).not.toBeNull();
       expect(mocks.addToast).not.toHaveBeenCalled();
       fireEvent.click(screen.getByTestId('planner-confirmation-refresh'));
-      await waitFor(() => expect(mocks.addToast).toHaveBeenCalledTimes(1));
-      expect(mocks.getSchedule).toHaveBeenCalledTimes(2);
+      await waitFor(() => expect(mocks.getSchedule).toHaveBeenCalledTimes(2));
       expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+      expect(mocks.addToast).not.toHaveBeenCalled();
       noWrites();
     }
   );

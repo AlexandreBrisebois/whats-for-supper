@@ -18,7 +18,7 @@ export async function qualifyCookingPerItem(
       if (phase === 'corrected') {
         await page.getByTestId('recipe-edit-amount-0').fill('6');
         await page.getByTestId('recipe-edit-amount-1').fill('3');
-      } else await page.getByTestId('recipe-edit-unit-0').fill('g');
+      } else await page.getByTestId('recipe-edit-unit-0').selectOption('g');
       const saved = page.waitForResponse(
         (r) =>
           r.request().method() === 'PATCH' && new URL(r.url()).pathname === `/api/recipes/${id}`

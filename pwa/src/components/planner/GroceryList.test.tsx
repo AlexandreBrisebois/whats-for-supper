@@ -1,3 +1,5 @@
+import enCommon from '@/locales/en/common.json';
+import frCommon from '@/locales/fr/common.json';
 import { scalarQuantity, fixtureGroceryId, fixtureGroceryChecks } from '@/testing/grocery-fixtures';
 /**
  * Unit tests for GroceryList — section completion UI (task 7.5).
@@ -14,6 +16,7 @@ import { render, screen, fireEvent, act, within, waitFor } from '@testing-librar
 import { DateOnly } from '@microsoft/kiota-abstractions';
 
 const {
+  mockLocale,
   mockReadSchedule,
   mockGetSourceRecipe,
   mockRefreshServings,
@@ -24,6 +27,7 @@ const {
   mockDeleteExtra,
   mockAddToast,
 } = vi.hoisted(() => ({
+  mockLocale: { value: 'en' as 'en' | 'fr' },
   mockReadSchedule: vi.fn(),
   mockGetSourceRecipe: vi.fn(),
   mockRefreshServings: vi.fn(),
@@ -115,16 +119,31 @@ vi.mock('framer-motion', () => ({
 
 // ── Locales mock ──────────────────────────────────────────────────────────────
 
-vi.mock('@/locales', () => ({
-  getLocale: () => 'en',
-  setLocale: vi.fn(),
-  t: (_key: string, fallback: string) => fallback,
-  tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
-    Object.entries(vars).reduce(
-      (result, [name, value]) => result.replace(`{{${name}}}`, String(value)),
-      fallback
-    ),
-}));
+vi.mock('@/locales', () => {
+  const resolveLocaleKey = (key: string) => {
+    const dict: unknown = mockLocale.value === 'fr' ? frCommon : enCommon;
+    const hit = key
+      .split('.')
+      .reduce<unknown>(
+        (acc, part) =>
+          acc != null && typeof acc === 'object'
+            ? (acc as Record<string, unknown>)[part]
+            : undefined,
+        dict
+      );
+    return typeof hit === 'string' ? hit : undefined;
+  };
+  return {
+    getLocale: () => mockLocale.value,
+    setLocale: vi.fn(),
+    t: (key: string, fallback: string) => resolveLocaleKey(key) ?? fallback,
+    tWithVars: (key: string, fallback: string, vars: Record<string, string | number>) =>
+      Object.entries(vars).reduce(
+        (result, [name, value]) => result.replace(`{{${name}}}`, String(value)),
+        resolveLocaleKey(key) ?? fallback
+      ),
+  };
+});
 
 // ── Import component AFTER mocks ──────────────────────────────────────────────
 
@@ -290,6 +309,7 @@ beforeEach(() => {
   mockUpdateExtra.mockReset();
   mockDeleteExtra.mockReset();
   mockAddToast.mockReset();
+  mockLocale.value = 'en';
 });
 
 describe('quiet reset notices across absolute weeks', () => {
@@ -510,6 +530,44 @@ describe('GroceryList — everyday extras', () => {
       expect(mockAddToast).toHaveBeenCalledWith({
         type: 'success',
         message: 'Saved to Pantry',
+      })
+    );
+  });
+
+  it('localizes the section name in the Saved to {{section}} toast across EN and FR', async () => {
+    mockLocale.value = 'fr';
+    mockCreateExtra
+      .mockImplementationOnce(async (_name, weekStartDate, clientId) => ({
+        ...extra,
+        id: clientId,
+        grocerySection: 'Pantry',
+        occurrenceWeekStartDate: weekStartDate,
+      }))
+      .mockImplementationOnce(async (name, weekStartDate, clientId) => ({
+        ...extra,
+        id: clientId,
+        name,
+        normalizedKey: name.toLowerCase(),
+        grocerySection: 'Produce',
+        occurrenceWeekStartDate: weekStartDate,
+      }));
+    render(<GroceryList weekOffset={0} items={[]} extras={[]} />);
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Coffee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter' }));
+    await waitFor(() =>
+      expect(mockAddToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Enregistré dans Épicerie',
+      })
+    );
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Apples' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter' }));
+    await waitFor(() =>
+      expect(mockAddToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Enregistré dans Fruits et légumes',
       })
     );
   });

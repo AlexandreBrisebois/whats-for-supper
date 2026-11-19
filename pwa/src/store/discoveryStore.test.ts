@@ -13,8 +13,27 @@ const makeRecipe = (id: string, hasFamilyInterest = false): DiscoveryRecipe => (
   hasFamilyInterest,
 });
 
+const makeSession = (phase: 'unowned' | 'collecting' | 'converged', revision = 1) =>
+  ({
+    incarnationId: 'inc-1',
+    revision,
+    phase,
+    ...(phase === 'unowned'
+      ? {}
+      : {
+          roundId: 'round-1',
+          weekStartDate: '2026-10-12',
+          requiredSlots: 5,
+          coveredSlots: 2,
+          candidateCount: 10,
+          smartDefaults: { slots: [] },
+        }),
+  }) as any;
+
 beforeEach(() => {
   useDiscoveryStore.setState({
+    session: null,
+    sessionStatus: 'unknown',
     hasPendingCards: false,
     fillTheGapVersion: 0,
     fillTheGapVersions: {},
@@ -28,9 +47,34 @@ describe('discoveryStore — hasPendingCards', () => {
     expect(useDiscoveryStore.getState().hasPendingCards).toBe(false);
   });
 
-  it('setHasPendingCards updates the flag', () => {
+  it('stays false when session is absent, unowned, or converged even when pending cards exist', () => {
+    useDiscoveryStore.getState().setHasPendingCards(true);
+    expect(useDiscoveryStore.getState().hasPendingCards).toBe(false);
+
+    useDiscoveryStore.getState().applySession(makeSession('unowned', 1), true);
+    useDiscoveryStore.getState().setHasPendingCards(true);
+    expect(useDiscoveryStore.getState().hasPendingCards).toBe(false);
+
+    useDiscoveryStore.getState().applySession(makeSession('converged', 2), true);
+    useDiscoveryStore.getState().setHasPendingCards(true);
+    expect(useDiscoveryStore.getState().hasPendingCards).toBe(false);
+  });
+
+  it('pulses only when session phase is collecting and pending cards exist, regardless of arrival order', () => {
+    useDiscoveryStore.getState().setHasPendingCards(true);
+    expect(useDiscoveryStore.getState().hasPendingCards).toBe(false);
+
+    useDiscoveryStore.getState().applySession(makeSession('collecting', 1), true);
+    expect(useDiscoveryStore.getState().hasPendingCards).toBe(true);
+
+    useDiscoveryStore.getState().setHasPendingCards(false);
+    expect(useDiscoveryStore.getState().hasPendingCards).toBe(false);
+
     useDiscoveryStore.getState().setHasPendingCards(true);
     expect(useDiscoveryStore.getState().hasPendingCards).toBe(true);
+
+    useDiscoveryStore.getState().applySession(makeSession('converged', 2), true);
+    expect(useDiscoveryStore.getState().hasPendingCards).toBe(false);
   });
 });
 

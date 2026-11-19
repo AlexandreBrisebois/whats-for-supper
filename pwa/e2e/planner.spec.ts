@@ -824,7 +824,7 @@ test.describe('Supper Planner', () => {
         );
         const meal = page.getByTestId(`day-card-${index}`).getByTestId('planner-meal');
         if (index === 0) {
-          await expect(page.getByTestId('toast')).toContainText('Monday Lasagna');
+          await expect(page.getByTestId('toast')).toHaveCount(0);
           await expect(page.getByTestId('planner-planning-confirmation')).toHaveCount(0);
           await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
           await expect(meal).toHaveClass(/ring-4/);
@@ -1132,9 +1132,9 @@ test.describe('Supper Planner', () => {
     // 5. Verify redirect back to planner with success params
     await expect(page).toHaveURL(/\/planner\?.*referenceWeekStartDate=2026-05-04/);
 
-    // 6. Confirm the persisted recipe/date explicitly; the ring supplements it.
-    await expect(page.getByTestId('toast')).toContainText('Homemade Lasagna');
-    await expect(page.getByTestId('toast')).toContainText('May 6');
+    // 6. Confirm the persisted recipe/date explicitly without a redundant toast.
+    await expect(page.getByTestId('toast')).toHaveCount(0);
+    await expect(targetCard).toContainText('Homemade Lasagna');
     await expect(page.getByTestId('planner-planning-confirmation')).toHaveCount(0);
     await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
     await expect(targetCard.getByTestId('planner-meal')).toHaveClass(/ring-sage/, {
@@ -1297,19 +1297,10 @@ test.describe('Supper Planner', () => {
               await page.getByTestId('planner-confirmation-dismiss').click();
             } else {
               await expect(feedback).toHaveCount(0);
-              await expect(page.getByTestId('toast')).toContainText('Monday Lasagna');
-              await expect(page.getByTestId('toast')).toHaveAttribute('role', 'status');
-              // Timer expiry belongs to ToastContainer's focused unit test. Keep
-              // one browser boundary for actual dismissal and return to planning.
-              if (locale === 'en') {
-                await page
-                  .getByTestId('toast')
-                  .getByRole('button', { name: 'Dismiss notification' })
-                  .click();
-                await expect(page.getByTestId('toast')).toHaveCount(0);
-                await page.getByTestId('day-card-0').focus();
-                await expect(page.getByTestId('day-card-0')).toBeFocused();
-              }
+              await expect(page.getByTestId('toast')).toHaveCount(0);
+              await expect(page.getByTestId('day-card-0').getByTestId('planner-meal')).toHaveClass(
+                /ring-4/
+              );
             }
             expect(reads).toBe(2);
             expect(writes).toEqual([]);

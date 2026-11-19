@@ -1235,8 +1235,9 @@ for (const locale of ['en', 'fr'] as const)
         const row = page.getByTestId('portion-row-2026-05-06');
         const measure = await row.evaluate((row) => {
           const date = row.querySelector('time')!;
-          const photo = row.children[1];
-          const stepper = row.children[2];
+          const meal = row.querySelector('[data-testid="planner-meal"]')!;
+          const photo = meal.querySelector('[aria-label]')!;
+          const stepper = row.querySelector('[role="group"]')!;
           const d = date.getBoundingClientRect(),
             p = photo.getBoundingClientRect(),
             s = stepper.getBoundingClientRect();
@@ -1961,7 +1962,7 @@ test.describe('unknown prior amount without review in French', () => {
       }));
     await expect
       .poll(readWideStyle)
-      .toEqual({ rowPadding: '16px', flexGrow: '1', containerType: 'inline-size' });
+      .toEqual({ rowPadding: '6px', flexGrow: '1', containerType: 'inline-size' });
     const wideStyle = await readWideStyle();
     expectReadable(await measureText());
     fs.writeFileSync(
@@ -2109,7 +2110,9 @@ for (const appLocale of ['en', 'fr'] as const) {
         );
         await page.getByTestId('recipe-search-input').fill('spaghetti');
         await page.getByTestId('recipe-search-input').press('Enter');
-        const card = page.getByTestId('stack-card-front');
+        const card = configured
+          ? page.getByTestId('stack-card-front')
+          : page.getByTestId('browse-list-recipe-card').first();
         await expect(card).toHaveAttribute('data-recipe-id', id);
         await card.focus();
         await card.press('Enter');

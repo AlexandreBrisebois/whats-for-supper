@@ -2,6 +2,8 @@
 import {
   ingredientDraft,
   ingredientPackageDraft,
+  ingredientUnitOptions,
+  isStandardIngredientUnit,
   prepareIngredientDrafts,
   type IngredientDraft,
 } from '@/lib/recipes/ingredient-draft';
@@ -48,8 +50,10 @@ import {
   Clock,
   ArrowRightLeft,
   Check,
+  Minus,
   Plus,
   Save,
+  Trash2,
   Camera,
   RefreshCw,
   Star,
@@ -672,6 +676,23 @@ export function RecipeDetailSheet({
     (!/^[0-9]+$/.test(draftServings) ||
       Number(draftServings) < 1 ||
       Number(draftServings) > 2147483647);
+  const parsedDraftServings =
+    /^[0-9]+$/.test(draftServings) &&
+    Number(draftServings) >= 1 &&
+    Number(draftServings) <= 2147483647
+      ? Number(draftServings)
+      : null;
+
+  const renderUnitOptions = (currentUnit: string) =>
+    ingredientUnitOptions(currentUnit).map((unitOption) => (
+      <option key={unitOption || '__none__'} value={unitOption}>
+        {unitOption === ''
+          ? t('recipes.unitNone', '—')
+          : isStandardIngredientUnit(unitOption)
+            ? t(`recipes.units.${unitOption}`, unitOption)
+            : unitOption}
+      </option>
+    ));
 
   const handleSaveRecipeFields = async () => {
     if (
@@ -826,14 +847,12 @@ export function RecipeDetailSheet({
       addToast({ type: 'success', message: 'Reimporting in background' });
       return;
     }
-    addToast({
-      type: 'success',
-      message: submission.recipe.importIssue?.reimportFailureMessage
-        ? 'Saved for review. Add new detail if you want us to try re-importing again.'
-        : recipe.importIssue
-          ? 'Changes saved'
-          : 'Marked for review',
-    });
+    if (submission.recipe.importIssue?.reimportFailureMessage) {
+      addToast({
+        type: 'success',
+        message: 'Saved for review. Add new detail if you want us to try re-importing again.',
+      });
+    }
   };
 
   const handleResolveImportIssue = async () => {
@@ -841,7 +860,6 @@ export function RecipeDetailSheet({
     const updated = await resolveRecipeImportIssue(recipe.id);
     setRecipe(updated);
     setShowImportIssueSheet(false);
-    addToast({ type: 'success', message: 'Marked as resolved' });
   };
 
   const handleHeroCameraClick = () => {
@@ -887,12 +905,6 @@ export function RecipeDetailSheet({
       }
 
       await saveGoTo({ items: newList });
-      addToast({
-        type: 'success',
-        message: isRemoving
-          ? t('recipes.gotoRemoved', 'Removed from GOTO list')
-          : t('recipes.gotoUpdated', 'Added to GOTO list'),
-      });
     } catch (error) {
       console.error('Failed to update GOTO recipe', error);
       addToast({
@@ -907,11 +919,6 @@ export function RecipeDetailSheet({
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !recipe) return;
-
-    addToast({
-      type: 'info',
-      message: t('recipes.photoUploading', 'Uploading photo...'),
-    });
 
     try {
       await uploadRecipeOriginal(recipe.id, file);
@@ -1257,7 +1264,7 @@ export function RecipeDetailSheet({
               )}
               {isEditing ? (
                 <label className="grid gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                  <span className="text-sm font-semibold text-charcoal">
                     {t('recipes.name', 'Name')}
                   </span>
                   <input
@@ -1297,7 +1304,7 @@ export function RecipeDetailSheet({
               {isEditing ? (
                 <div className="grid gap-3">
                   <label className="grid gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                    <span className="text-sm font-semibold text-charcoal">
                       {t('recipes.cuisineType', 'Cuisine')}
                     </span>
                     <input
@@ -1309,7 +1316,7 @@ export function RecipeDetailSheet({
                     />
                   </label>
                   <div className="grid gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                    <span className="text-sm font-semibold text-charcoal">
                       {t('recipes.mealTypes', 'Meal types')}
                     </span>
                     <div className="flex flex-wrap gap-2">
@@ -1367,7 +1374,7 @@ export function RecipeDetailSheet({
               )}
               {isEditing ? (
                 <label className="grid gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                  <span className="text-sm font-semibold text-charcoal">
                     {t('recipes.description', 'Description')}
                   </span>
                   <textarea
@@ -1578,26 +1585,66 @@ export function RecipeDetailSheet({
                         'This updates the saved recipe and may change your shopping list.'
                       )}
                     </p>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-3">
                       <label
                         htmlFor="recipe-edit-servings"
-                        className="shrink-0 text-sm font-bold text-charcoal"
+                        className="shrink-0 text-sm font-semibold text-charcoal"
                       >
                         {t('recipes.servingsLabel', 'Servings')}
                       </label>
-                      <input
-                        id="recipe-edit-servings"
-                        ref={servingsInputRef}
-                        data-testid="recipe-edit-servings-input"
-                        disabled={isSavingRecipe}
-                        type="text"
-                        inputMode="numeric"
-                        value={draftServings}
-                        onChange={(event) => setDraftServings(event.target.value)}
-                        aria-invalid={servingsInvalid}
-                        aria-describedby={servingsInvalid ? 'recipe-servings-error' : undefined}
-                        className="min-h-12 min-w-0 flex-1 rounded-2xl border border-charcoal/10 bg-white/90 px-3 py-2 text-sm text-charcoal shadow-sm outline-none transition focus:border-terracotta/30"
-                      />
+                      <div className="ml-auto inline-flex shrink-0 items-center rounded-full border border-charcoal/15 bg-white/90 shadow-sm">
+                        <button
+                          type="button"
+                          data-testid="recipe-edit-servings-decrement"
+                          aria-label={t('recipes.fewerServings', 'Decrease servings')}
+                          title={t('recipes.fewerServings', 'Decrease servings')}
+                          disabled={
+                            isSavingRecipe ||
+                            parsedDraftServings === null ||
+                            parsedDraftServings <= 1
+                          }
+                          onClick={() => {
+                            if (parsedDraftServings !== null && parsedDraftServings > 1) {
+                              setDraftServings(String(parsedDraftServings - 1));
+                            }
+                          }}
+                          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-l-full text-charcoal transition hover:bg-charcoal/5 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
+                        >
+                          <Minus size={16} aria-hidden="true" />
+                        </button>
+                        <input
+                          id="recipe-edit-servings"
+                          ref={servingsInputRef}
+                          data-testid="recipe-edit-servings-input"
+                          disabled={isSavingRecipe}
+                          type="text"
+                          inputMode="numeric"
+                          value={draftServings}
+                          onChange={(event) => setDraftServings(event.target.value)}
+                          aria-invalid={servingsInvalid}
+                          aria-describedby={servingsInvalid ? 'recipe-servings-error' : undefined}
+                          className="min-h-12 w-14 bg-transparent text-center text-sm font-semibold text-charcoal outline-none"
+                        />
+                        <button
+                          type="button"
+                          data-testid="recipe-edit-servings-increment"
+                          aria-label={t('recipes.moreServings', 'Increase servings')}
+                          title={t('recipes.moreServings', 'Increase servings')}
+                          disabled={
+                            isSavingRecipe ||
+                            (draftServings !== '' && parsedDraftServings === null) ||
+                            (parsedDraftServings !== null && parsedDraftServings >= 2147483647)
+                          }
+                          onClick={() =>
+                            setDraftServings(
+                              parsedDraftServings === null ? '1' : String(parsedDraftServings + 1)
+                            )
+                          }
+                          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-r-full text-charcoal transition hover:bg-charcoal/5 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
+                        >
+                          <Plus size={16} aria-hidden="true" />
+                        </button>
+                      </div>
                     </div>
                     {servingsInvalid && (
                       <p
@@ -1623,56 +1670,76 @@ export function RecipeDetailSheet({
                           return (
                             <div
                               key={row.key}
-                              className="space-y-2 rounded-2xl border border-charcoal/10 p-3"
+                              className="space-y-3 rounded-2xl border border-charcoal/10 bg-white/75 p-3"
                             >
-                              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-2">
-                                <label>
-                                  {t('recipes.ingredientAmount', 'Amount')}
+                              <div
+                                data-testid={`recipe-ingredient-top-row-${index}`}
+                                className="flex items-end gap-2"
+                              >
+                                <label className="grid min-w-0 flex-1 gap-1 text-sm font-semibold text-charcoal">
+                                  <span>{t('recipes.ingredientAmount', 'Amount')}</span>
                                   <input
                                     data-testid={`recipe-edit-amount-${index}`}
                                     disabled={isSavingRecipe}
                                     value={row.amount}
                                     onChange={(event) => change({ amount: event.target.value })}
-                                    className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                    className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
                                   />
                                 </label>
-                                <label>
-                                  {t('recipes.ingredientUnit', 'Unit')}
-                                  <input
+                                <label className="grid min-w-0 flex-[1.2] gap-1 text-sm font-semibold text-charcoal">
+                                  <span>{t('recipes.ingredientUnit', 'Unit')}</span>
+                                  <select
                                     data-testid={`recipe-edit-unit-${index}`}
                                     disabled={isSavingRecipe}
                                     value={row.unit}
                                     onChange={(event) => change({ unit: event.target.value })}
-                                    className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
-                                  />
+                                    className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-2 text-sm font-normal text-charcoal"
+                                  >
+                                    {renderUnitOptions(row.unit)}
+                                  </select>
                                 </label>
+                                <button
+                                  type="button"
+                                  data-testid={`recipe-remove-ingredient-${index}`}
+                                  disabled={isSavingRecipe}
+                                  aria-label={t('recipes.removeIngredient', 'Remove ingredient')}
+                                  title={t('recipes.removeIngredient', 'Remove ingredient')}
+                                  onClick={() =>
+                                    setCanonicalDrafts((rows) =>
+                                      rows.filter((item) => item.key !== row.key)
+                                    )
+                                  }
+                                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-charcoal/70 transition hover:bg-charcoal/5 hover:text-charcoal disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
+                                >
+                                  <Trash2 size={18} aria-hidden="true" />
+                                </button>
                               </div>
-                              <label className="block">
-                                {t('recipes.ingredientDescription', 'Description')}
+                              <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                <span>{t('recipes.ingredientDescription', 'Description')}</span>
                                 <input
                                   data-testid={`recipe-edit-ingredient-${index}`}
                                   disabled={isSavingRecipe}
                                   value={row.description}
                                   onChange={(event) => change({ description: event.target.value })}
-                                  className="min-h-12 w-full rounded-xl border border-charcoal/10 px-3"
+                                  className="min-h-12 w-full rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
                                 />
                               </label>
-                              <details>
-                                <summary className="min-h-12 cursor-pointer py-3">
+                              <details className="rounded-xl bg-charcoal/3 px-3 py-1">
+                                <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold text-charcoal/80">
                                   {t('recipes.ingredientOptions', 'Shopping and scaling')}
                                 </summary>
-                                <label className="block">
-                                  {t('recipes.shoppingName', 'Shopping name')}
+                                <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                  <span>{t('recipes.shoppingName', 'Shopping name')}</span>
                                   <input
                                     disabled={isSavingRecipe}
                                     value={row.shoppingName}
                                     onChange={(event) =>
                                       change({ shoppingName: event.target.value })
                                     }
-                                    className="min-h-12 w-full rounded-xl border border-charcoal/10 px-3"
+                                    className="min-h-12 w-full rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
                                   />
                                 </label>
-                                <label className="flex min-h-12 items-center gap-2">
+                                <label className="flex min-h-12 items-center gap-2 text-sm text-charcoal">
                                   <input
                                     type="checkbox"
                                     disabled={isSavingRecipe}
@@ -1684,7 +1751,7 @@ export function RecipeDetailSheet({
                                     'Keep amount fixed when portions change'
                                   )}
                                 </label>
-                                <label className="flex min-h-12 items-center gap-2">
+                                <label className="flex min-h-12 items-center gap-2 text-sm text-charcoal">
                                   <input
                                     type="checkbox"
                                     data-testid={`recipe-edit-package-enabled-${index}`}
@@ -1700,9 +1767,9 @@ export function RecipeDetailSheet({
                                   {t('recipes.packageDetails', 'Package details')}
                                 </label>
                                 {pack.enabled && (
-                                  <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
-                                    <label>
-                                      {t('recipes.packageCountUnit', 'Package label')}
+                                  <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2 pb-2">
+                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                      <span>{t('recipes.packageCountUnit', 'Package label')}</span>
                                       <input
                                         data-testid={`recipe-edit-package-count-unit-${index}`}
                                         disabled={isSavingRecipe}
@@ -1710,11 +1777,16 @@ export function RecipeDetailSheet({
                                         onChange={(event) =>
                                           change({ packageCountUnit: event.target.value })
                                         }
-                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
                                       />
                                     </label>
-                                    <label>
-                                      {t('recipes.packageCapacityAmount', 'Amount in each package')}
+                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                      <span>
+                                        {t(
+                                          'recipes.packageCapacityAmount',
+                                          'Amount in each package'
+                                        )}
+                                      </span>
                                       <input
                                         data-testid={`recipe-edit-package-capacity-${index}`}
                                         disabled={isSavingRecipe}
@@ -1722,23 +1794,27 @@ export function RecipeDetailSheet({
                                         onChange={(event) =>
                                           change({ packageCapacityAmount: event.target.value })
                                         }
-                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-3 text-sm font-normal text-charcoal"
                                       />
                                     </label>
-                                    <label>
-                                      {t('recipes.packageCapacityUnit', 'Unit in each package')}
-                                      <input
+                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                      <span>
+                                        {t('recipes.packageCapacityUnit', 'Unit in each package')}
+                                      </span>
+                                      <select
                                         data-testid={`recipe-edit-package-unit-${index}`}
                                         disabled={isSavingRecipe}
                                         value={pack.capacityUnit}
                                         onChange={(event) =>
                                           change({ packageCapacityUnit: event.target.value })
                                         }
-                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
-                                      />
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-2 text-sm font-normal text-charcoal"
+                                      >
+                                        {renderUnitOptions(pack.capacityUnit)}
+                                      </select>
                                     </label>
-                                    <label>
-                                      {t('recipes.packageBasis', 'Amount refers to')}
+                                    <label className="grid min-w-0 gap-1 text-sm font-semibold text-charcoal">
+                                      <span>{t('recipes.packageBasis', 'Amount refers to')}</span>
                                       <select
                                         data-testid={`recipe-edit-package-basis-${index}`}
                                         disabled={isSavingRecipe}
@@ -1749,7 +1825,7 @@ export function RecipeDetailSheet({
                                               .value as IngredientDraft['packageBasis'],
                                           })
                                         }
-                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/10 px-3"
+                                        className="min-h-12 w-full min-w-0 rounded-xl border border-charcoal/15 bg-white px-2 text-sm font-normal text-charcoal"
                                       >
                                         <option value="unspecified">
                                           {t('recipes.packageBasisUnspecified', 'Not specified')}
@@ -1765,19 +1841,6 @@ export function RecipeDetailSheet({
                                   </div>
                                 )}
                               </details>
-                              <button
-                                type="button"
-                                data-testid={`recipe-remove-ingredient-${index}`}
-                                disabled={isSavingRecipe}
-                                onClick={() =>
-                                  setCanonicalDrafts((rows) =>
-                                    rows.filter((item) => item.key !== row.key)
-                                  )
-                                }
-                                className="min-h-12 px-3"
-                              >
-                                {t('recipes.removeIngredient', 'Remove ingredient')}
-                              </button>
                             </div>
                           );
                         })
@@ -1897,9 +1960,9 @@ export function RecipeDetailSheet({
                               data-testid={`recipe-edit-section-${section.sectionIndex}`}
                               className="grid min-w-0 gap-3 rounded-2xl border border-charcoal/10 p-3"
                             >
-                              <div className="flex flex-wrap items-end gap-2">
+                              <div className="flex items-end gap-2">
                                 <label className="grid min-w-0 flex-1 gap-2">
-                                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-charcoal/45">
+                                  <span className="text-sm font-semibold text-charcoal">
                                     {tWithVars(
                                       'recipes.sectionHeader',
                                       'Section {{number}} header',
@@ -1941,6 +2004,13 @@ export function RecipeDetailSheet({
                                       number: section.sectionIndex + 1,
                                     }
                                   )}
+                                  title={tWithVars(
+                                    'recipes.removeSection',
+                                    'Remove section {{number}}',
+                                    {
+                                      number: section.sectionIndex + 1,
+                                    }
+                                  )}
                                   onClick={() =>
                                     setDraftInstructions(
                                       removeInstructionSection(
@@ -1950,17 +2020,18 @@ export function RecipeDetailSheet({
                                       )
                                     )
                                   }
-                                  className="min-h-12 rounded-xl px-3 text-sm text-charcoal"
+                                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-charcoal/70 transition hover:bg-charcoal/5 hover:text-charcoal disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
                                 >
-                                  {tWithVars('recipes.removeSection', 'Remove section {{number}}', {
-                                    number: section.sectionIndex + 1,
-                                  })}
+                                  <Trash2 size={18} aria-hidden="true" />
                                 </button>
                               </div>
                               {section.steps.map((row) => (
                                 <div key={row.path.join(':')} className="grid min-w-0 gap-2">
-                                  <label className="grid min-w-0 gap-2">
-                                    <span>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <label
+                                      htmlFor={`recipe-edit-step-${row.stepNumber - 1}-input`}
+                                      className="text-sm font-semibold text-charcoal"
+                                    >
                                       {tWithVars(
                                         'recipes.stepInstructions',
                                         'Step {{number}} instructions',
@@ -1968,52 +2039,58 @@ export function RecipeDetailSheet({
                                           number: row.stepNumber,
                                         }
                                       )}
-                                    </span>
-                                    <textarea
-                                      rows={3}
-                                      data-testid={`recipe-edit-step-${row.stepNumber - 1}`}
+                                    </label>
+                                    <button
+                                      type="button"
+                                      data-testid={`recipe-remove-step-${row.stepNumber - 1}`}
                                       disabled={isSavingRecipe}
-                                      value={row.text}
-                                      onChange={(event) =>
+                                      aria-label={tWithVars(
+                                        'recipes.removeStep',
+                                        'Remove step {{number}}',
+                                        {
+                                          number: row.stepNumber,
+                                        }
+                                      )}
+                                      title={tWithVars(
+                                        'recipes.removeStep',
+                                        'Remove step {{number}}',
+                                        {
+                                          number: row.stepNumber,
+                                        }
+                                      )}
+                                      onClick={() =>
                                         setDraftInstructions(
                                           changeInstruction(
                                             currentInstructions,
                                             canonicalEditing,
                                             row.path,
-                                            event.target.value
+                                            null
                                           )
                                         )
                                       }
-                                      className="min-w-0 w-full rounded-2xl border border-charcoal/15 bg-white p-3 text-base"
-                                    />
-                                  </label>
-                                  <button
-                                    type="button"
-                                    data-testid={`recipe-remove-step-${row.stepNumber - 1}`}
+                                      className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-charcoal/70 transition hover:bg-charcoal/5 hover:text-charcoal disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-terracotta"
+                                    >
+                                      <Trash2 size={18} aria-hidden="true" />
+                                    </button>
+                                  </div>
+                                  <textarea
+                                    id={`recipe-edit-step-${row.stepNumber - 1}-input`}
+                                    rows={3}
+                                    data-testid={`recipe-edit-step-${row.stepNumber - 1}`}
                                     disabled={isSavingRecipe}
-                                    aria-label={tWithVars(
-                                      'recipes.removeStep',
-                                      'Remove step {{number}}',
-                                      {
-                                        number: row.stepNumber,
-                                      }
-                                    )}
-                                    onClick={() =>
+                                    value={row.text}
+                                    onChange={(event) =>
                                       setDraftInstructions(
                                         changeInstruction(
                                           currentInstructions,
                                           canonicalEditing,
                                           row.path,
-                                          null
+                                          event.target.value
                                         )
                                       )
                                     }
-                                    className="min-h-12 justify-self-end rounded-xl px-3 text-sm text-charcoal"
-                                  >
-                                    {tWithVars('recipes.removeStep', 'Remove step {{number}}', {
-                                      number: row.stepNumber,
-                                    })}
-                                  </button>
+                                    className="min-w-0 w-full rounded-2xl border border-charcoal/15 bg-white p-3 text-base text-charcoal"
+                                  />
                                 </div>
                               ))}
                               <button
@@ -2246,9 +2323,6 @@ export function RecipeDetailSheet({
         )}
         {isEditing && (
           <div className="shrink-0 max-h-[45dvh] overflow-y-auto flex flex-wrap gap-3 border-t border-charcoal/10 bg-cream px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-8">
-            <p className="w-full text-[10px] font-black uppercase tracking-[0.24em] text-charcoal/45 sm:hidden">
-              {t('recipes.saveEditingLabel', 'Save recipe edits')}
-            </p>
             {draftStorageIssue && (
               <p role="alert" className="w-full text-sm">
                 {t(

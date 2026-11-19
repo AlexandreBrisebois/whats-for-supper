@@ -494,12 +494,22 @@ Planner's existing recipe-row change action SHALL use the same opposing horizont
 - **THEN** those actions retain their existing icons and behavior
 ### Requirement: Switch Planner rows into At the table inline
 
-Planner SHALL expose Portions as a quiet rounded plate/cutlery-and-label control aligned with Ask the Family's visual language, below week dates and above voting. The adjacent Recipes heading SHALL stay absent; bottom Recipes navigation remains. Its inline ordered-date editor SHALL retain photo, joined minus/value/plus and direct entry without long recipe names. Week and Grocery navigation and visible voting actions SHALL remain available under existing guards.
+Planner SHALL expose Portions as a quiet plate-and-label control aligned with Ask the Family, using the same split date column, Today divider, card surfaces and spacing as Meals view. Each row SHALL right-align its joined minus/value/plus stepper and reset control in the thumb zone, replace full-row grayscale on read-only cooked days with a calm sage Cooked badge, and keep Week, Grocery and voting controls available.
 
 #### Scenario: Enter portions mode on a phone
 - **WHEN** Portions is activated for the loaded week
 - **THEN** the same ordered dates show effective counts and permitted editing while saved recipes remain unchanged
 - **AND** the entry is quieter than Ask the Family without looking disabled or hiding its label
+
+#### Scenario: Portions view matches Meals date column and Today divider
+- **WHEN** Portions renders the loaded week including deployment-local Today and past dates
+- **THEN** each row uses the same left-hand weekday/day/month column and compact Today divider above Today's row as Meals view
+- **AND** editable and past cards match Meals view card surface styling (`glass` for current/future and quiet `cream` for past) without applying full-row `grayscale`
+
+#### Scenario: Thumb-zone stepper alignment and calm Cooked status badge
+- **WHEN** Portions renders an editable day or a read-only cooked day
+- **THEN** the joined minus/value/plus stepper (and compact usual-reset button when active) is right-aligned in the card's trailing thumb zone
+- **AND** a read-only cooked day shows a calm sage `Cooked` badge beside its read-only portion count instead of greying out the entire row
 
 #### Scenario: Long recipe name or missing photo
 - **WHEN** a recipe has a long name or unavailable hero

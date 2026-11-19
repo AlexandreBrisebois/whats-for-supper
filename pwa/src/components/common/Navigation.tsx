@@ -39,20 +39,25 @@ interface NavigationProps {
 export function Navigation({ className = '' }: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { hasPendingCards, setHasPendingCards } = useDiscoveryStore();
+  const { hasPendingCards, session, setHasPendingCards, refreshSession } = useDiscoveryStore();
 
-  // Background check for pending cards on app load
+  // Background check for pending cards and authoritative session phase on app load
   useEffect(() => {
+    let active = true;
     const checkDiscovery = async () => {
-      try {
-        const categories = await getCategories();
-        setHasPendingCards(categories.length > 0);
-      } catch (error) {
+      const [categoriesResult] = await Promise.allSettled([getCategories(), refreshSession()]);
+      if (!active) return;
+      if (categoriesResult.status === 'fulfilled') {
+        setHasPendingCards(categoriesResult.value.length > 0);
+      } else {
         console.warn('Failed to background check discovery status');
       }
     };
-    checkDiscovery();
-  }, [setHasPendingCards]);
+    void checkDiscovery();
+    return () => {
+      active = false;
+    };
+  }, [setHasPendingCards, refreshSession]);
 
   return (
     <nav
@@ -81,7 +86,9 @@ export function Navigation({ className = '' }: NavigationProps) {
               <div
                 className={[
                   'flex h-20 w-20 items-center justify-center rounded-full bg-ochre ring-4 ring-cream-100 shadow-ochre-floating transition-all',
-                  hasPendingCards && !active ? 'animate-pulse-ochre' : '',
+                  hasPendingCards && session?.phase === 'collecting' && !active
+                    ? 'animate-pulse-ochre'
+                    : '',
                 ].join(' ')}
               >
                 <Icon size={32} strokeWidth={2.5} className="text-white" aria-hidden="true" />

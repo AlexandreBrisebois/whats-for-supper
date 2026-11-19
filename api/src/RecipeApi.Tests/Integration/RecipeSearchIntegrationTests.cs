@@ -335,6 +335,99 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Browse_Rediscovery_Uses_DeploymentCalendar_Toronto_Today_Across_UtcMidnight()
+    {
+        // 2026-09-21T01:30:00Z is Monday Sep 21 in UTC, but still Sunday evening Sep 20 in America/Toronto.
+        var utcMondayMorning = new DateTimeOffset(2026, 9, 21, 1, 30, 0, TimeSpan.Zero);
+        await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(
+            new FixedClock(utcMondayMorning),
+            new Dictionary<string, string?> { ["Calendar:TimeZone"] = "America/Toronto" });
+        using var client = factory.CreateAuthenticatedClient();
+
+        var cookedThisTorontoWeek = CreateRecipe("Toronto Week Cooked Favorite", "Loved long ago", "30 min");
+        cookedThisTorontoWeek.AddedBy = factory.DefaultFamilyMemberId;
+        cookedThisTorontoWeek.IsReady = true;
+        var cooked27DaysAgoToronto = CreateRecipe("Toronto 27 Days Ago Favorite", "Loved recently", "30 min");
+        cooked27DaysAgoToronto.AddedBy = factory.DefaultFamilyMemberId;
+        cooked27DaysAgoToronto.IsReady = true;
+        var plannedTonightToronto = CreateRecipe("Toronto Tonight Planned Favorite", "Planned Sunday", "30 min");
+        plannedTonightToronto.AddedBy = factory.DefaultFamilyMemberId;
+        plannedTonightToronto.IsReady = true;
+        var eligibleFallback = CreateRecipe("Toronto Eligible Fallback", "Ready to rediscover", "30 min");
+        eligibleFallback.AddedBy = factory.DefaultFamilyMemberId;
+        eligibleFallback.IsReady = true;
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.Recipes.AddRange(
+                cookedThisTorontoWeek,
+                cooked27DaysAgoToronto,
+                plannedTonightToronto,
+                eligibleFallback);
+            db.RecipeSearchAffinityFacts.AddRange(
+                new RecipeSearchAffinityFact
+                {
+                    RecipeId = cookedThisTorontoWeek.Id,
+                    Affinity = 4,
+                    LastCookedOn = new DateOnly(2026, 8, 1),
+                    GeneratedAt = utcMondayMorning
+                },
+                new RecipeSearchAffinityFact
+                {
+                    RecipeId = cooked27DaysAgoToronto.Id,
+                    Affinity = 4,
+                    LastCookedOn = new DateOnly(2026, 8, 24),
+                    GeneratedAt = utcMondayMorning
+                },
+                new RecipeSearchAffinityFact
+                {
+                    RecipeId = plannedTonightToronto.Id,
+                    Affinity = 4,
+                    LastCookedOn = new DateOnly(2026, 7, 15),
+                    GeneratedAt = utcMondayMorning
+                },
+                new RecipeSearchAffinityFact
+                {
+                    RecipeId = eligibleFallback.Id,
+                    Affinity = 2,
+                    LastCookedOn = new DateOnly(2026, 7, 1),
+                    GeneratedAt = utcMondayMorning
+                });
+            db.CalendarEvents.AddRange(
+                // Same deployment week as Sunday 2026-09-20 (Mon 2026-09-14..Sun 2026-09-20), previous week in UTC
+                new CalendarEvent
+                {
+                    Id = Guid.NewGuid(),
+                    RecipeId = cookedThisTorontoWeek.Id,
+                    Date = new DateOnly(2026, 9, 17),
+                    Status = CalendarEventStatus.Cooked,
+                    MealSlot = 0
+                },
+                // Today in Toronto (2026-09-20), already past in UTC (2026-09-21)
+                new CalendarEvent
+                {
+                    Id = Guid.NewGuid(),
+                    RecipeId = plannedTonightToronto.Id,
+                    Date = new DateOnly(2026, 9, 20),
+                    Status = CalendarEventStatus.Planned,
+                    MealSlot = 0
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsJsonAsync("/api/recipes/search", new { query = "", limit = 12, weekOffset = 0 });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await ReadDataAsync(response);
+        Assert.Equal(eligibleFallback.Id, document.RootElement.GetProperty("topPick").GetProperty("id").GetGuid());
+        var results = document.RootElement.GetProperty("results").EnumerateArray().ToList();
+        Assert.False(results.Single(r => r.GetProperty("id").GetGuid() == cookedThisTorontoWeek.Id).GetProperty("isPromotionEligible").GetBoolean());
+        Assert.False(results.Single(r => r.GetProperty("id").GetGuid() == cooked27DaysAgoToronto.Id).GetProperty("isPromotionEligible").GetBoolean());
+        Assert.False(results.Single(r => r.GetProperty("id").GetGuid() == plannedTonightToronto.Id).GetProperty("isPromotionEligible").GetBoolean());
+    }
+
+    [Fact]
     public async Task FindSimilar_UsesCurrentRecipeFacts()
     {
         var source = new Recipe
