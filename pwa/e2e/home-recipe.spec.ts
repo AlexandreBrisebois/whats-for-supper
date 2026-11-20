@@ -2216,6 +2216,26 @@ for (const appLocale of ['en', 'fr'] as const) {
       test('Go back meets target size, focus, contrast and hover requirements', async ({
         page,
       }) => {
+        const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+        await page
+          .context()
+          .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+        await setupCommonRoutes(page);
+        await page.addInitScript((id) => {
+          localStorage.setItem(
+            'family-storage',
+            JSON.stringify({
+              state: {
+                selectedFamilyMemberId: id,
+                familyMembers: [{ id, name: 'Alex' }],
+                _hasHydrated: true,
+                hasLoaded: true,
+              },
+              version: 0,
+            })
+          );
+        }, MOCK_IDS.MEMBER_ALEX);
+
         await page.setViewportSize({ width: 390, height: 844 });
         const today = toDateStr(currentMonday());
         const lasagnaRecipe = builders.scheduleRecipe({
@@ -2259,7 +2279,7 @@ for (const appLocale of ['en', 'fr'] as const) {
                 body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
               });
             } else {
-              await route.continue();
+              await route.fallback();
             }
           }
         );
