@@ -923,7 +923,7 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('planned-count-badge')).toHaveCount(0);
   });
 
-  for (const width of [320, 390, 1280]) {
+  for (const width of [320, 390, 412, 1280]) {
     for (const locale of ['en', 'fr'] as const) {
       for (const [status, past] of [
         [0, false],
@@ -1011,6 +1011,13 @@ test.describe('Supper Planner', () => {
               expect(nudge.x + nudge.width).toBeLessThanOrEqual(close.x + 1);
               expect(nudge.height).toBeLessThan(60);
               expect(close.height).toBeLessThan(60);
+              if (width >= 412) {
+                // Pixel-class phones keep Portions, Nudge and Close Voting on one line.
+                const portions = (await page.getByTestId('at-the-table-mode').boundingBox())!;
+                expect(
+                  Math.abs(portions.y + portions.height / 2 - (nudge.y + nudge.height / 2))
+                ).toBeLessThan(2);
+              }
             }
           }
           await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('opacity', '1');

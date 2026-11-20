@@ -61,12 +61,18 @@ test('original correction, refresh recovery and concurrent grocery checks use th
         { member: members[index], family: currentFamily }
       );
       // No application API is mocked. External network boundaries are closed.
-      await context.route('**/*', (route) => {
+      // Host guard only. A request already settled by the lost-reply route or a reload can still
+      // reach this handler; that race is not a test outcome, every other route error still fails.
+      await context.route('**/*', async (route) => {
         const url = new URL(route.request().url());
-        return ['127.0.0.1', 'localhost'].includes(url.hostname) ||
-          ['data:', 'blob:'].includes(url.protocol)
-          ? route.continue()
-          : route.abort('blockedbyclient');
+        const local =
+          ['127.0.0.1', 'localhost'].includes(url.hostname) ||
+          ['data:', 'blob:'].includes(url.protocol);
+        try {
+          await (local ? route.continue() : route.abort('blockedbyclient'));
+        } catch (error) {
+          if (!String(error).includes('Route is already handled')) throw error;
+        }
       });
     }
     const [editor, shopper] = await Promise.all(contexts.map((context) => context.newPage()));
@@ -256,6 +262,9 @@ test('original correction, refresh recovery and concurrent grocery checks use th
       },
       { times: 1 }
     );
+    // Save now submits directly (a stale save is a real 409 write that opens reconcile), so
+    // count from here: the lost reply is exactly one write and is never replayed.
+    const writesBeforeLost = editorWrites.length;
     await editor.getByTestId('recipe-save-edits').click();
     await expect(
       editor.getByText('Could not save changes. Try again.', { exact: true })
@@ -264,7 +273,7 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     await expect(editor.getByTestId('recipe-edit-amount-0')).toHaveValue('2');
     await expect(editor.getByTestId('recipe-edit-unit-0')).toHaveValue('cup');
     await expect(editor.getByTestId('recipe-save-edits')).toBeEnabled();
-    expect(editorWrites).toHaveLength(2);
+    expect(editorWrites).toHaveLength(writesBeforeLost + 1);
     await editor.reload();
     await expect(editor.getByTestId('recipe-edit-amount-0')).toHaveValue('2');
     await expect(editor.getByTestId('recipe-edit-unit-0')).toHaveValue('cup');
@@ -280,7 +289,7 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     // Adopt the reread; do not submit the possibly committed operation again.
     await editor.getByTestId('recipe-cancel-edits').click();
     await expect(editor.getByTestId('recipe-detail-name')).toHaveText(draftName);
-    expect(editorWrites).toHaveLength(2);
+    expect(editorWrites).toHaveLength(writesBeforeLost + 1);
     expect((await request.post(`${baseURL}/_test/canonical/recompute`, { headers })).status()).toBe(
       200
     );

@@ -62,7 +62,9 @@ for (const locale of ['en', 'fr'] as const)
 
 for (const locale of ['en', 'fr'] as const)
   test.describe(`stable Portions geometry and Option A Cooked row ${locale}`, () => {
-    test.use({ appLocale: locale });
+    // Geometry is measured in pixels, so the Planner's framer-motion entrance must run on the
+    // native performance/RAF timeline; page.clock.setFixedTime can leave it mid-slide in CI.
+    test.use({ appLocale: locale, dateOnlyClock: true });
 
     test('keeps stepper geometry stable without a default serving button when stepping portions', async ({
       page,
@@ -120,6 +122,20 @@ for (const locale of ['en', 'fr'] as const)
           nextRow: (await nextRow.boundingBox())!,
         });
 
+        // Baseline only once the week view's entrance slide has settled (identical boxes on
+        // consecutive frames); the stability assertions below stay at < 1 px.
+        let previous = JSON.stringify(await measure());
+        await expect
+          .poll(async () => {
+            await page.evaluate(
+              () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+            );
+            const current = JSON.stringify(await measure());
+            const settled = current === previous;
+            previous = current;
+            return settled;
+          })
+          .toBe(true);
         const initial = await measure();
 
         await plusBtn.click();

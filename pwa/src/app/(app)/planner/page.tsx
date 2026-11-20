@@ -1002,10 +1002,7 @@ export default function PlannerPage() {
                 {(isVotingOpen || canOpenVoting) && (
                   <div
                     data-testid="planner-action-row"
-                    className={cn(
-                      'mb-4 flex flex-wrap items-center justify-end gap-1.5',
-                      isVotingOpen && !isConvergedWeek ? 'basis-full' : 'flex-1'
-                    )}
+                    className="mb-4 flex grow basis-auto flex-wrap items-center justify-end gap-1.5"
                   >
                     {/* Left Slot: Secondary Actions */}
                     <div className="flex max-w-full justify-start" />

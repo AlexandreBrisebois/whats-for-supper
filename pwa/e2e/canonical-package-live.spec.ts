@@ -83,12 +83,18 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
         { language: locale, member: members[index], family }
       );
       // No application response is mocked. The deliberate lost reply below is forwarded to the actual API first.
-      await context.route('**/*', (route) => {
+      // Host guard only. A request already settled by the lost-reply route or a reload can still
+      // reach this handler; that race is not a test outcome, every other route error still fails.
+      await context.route('**/*', async (route) => {
         const url = new URL(route.request().url());
-        return ['127.0.0.1', 'localhost'].includes(url.hostname) ||
-          ['data:', 'blob:'].includes(url.protocol)
-          ? route.continue()
-          : route.abort('blockedbyclient');
+        const local =
+          ['127.0.0.1', 'localhost'].includes(url.hostname) ||
+          ['data:', 'blob:'].includes(url.protocol);
+        try {
+          await (local ? route.continue() : route.abort('blockedbyclient'));
+        } catch (error) {
+          if (!String(error).includes('Route is already handled')) throw error;
+        }
       });
     }
     const [editor, shopper] = await Promise.all(contexts.map((context) => context.newPage()));
