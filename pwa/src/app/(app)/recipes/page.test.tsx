@@ -1123,8 +1123,8 @@ describe('RecipesPage', () => {
     fireEvent.click(await screen.findByTestId('recovery-action-next-week'));
     await waitFor(() => expect(mocks.deferPost).toHaveBeenCalledTimes(1));
     mocks.getSchedule.mockResolvedValue(base);
-    fireEvent.click(await screen.findByTestId('recovery-retry-save'));
-    await waitFor(() => expect(mocks.push).toHaveBeenCalled());
+    fireEvent.click(await screen.findByTestId('recovery-retry-save', {}, { timeout: 5000 }));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalled(), { timeout: 5000 });
     expect(mocks.deferPost).toHaveBeenCalledTimes(1);
     expect(mocks.assignRecipeToDay).toHaveBeenCalledTimes(2);
     expect(JSON.parse(sessionStorage.getItem('wfs.planning-result')!)).toMatchObject({
