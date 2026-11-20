@@ -4,7 +4,7 @@
 
 ### Requirement: Return targeted Search assignment to Planner
 
-After confirmed recipe-detail assignment, Search SHALL return to the captured Planner week/day and reference Monday. Planner SHALL read that week, scroll the target day card into view, and apply a temporary highlight ring without showing a redundant confirmation toast. The ring SHALL fade out and be removed on its own about 3 seconds after it first appears (immediately removed under `prefers-reduced-motion: reduce`), regardless of whether a replacement receipt remains. Replacement disposition and saved-but-unrefreshed states SHALL retain their existing inline banners without adding a Refresh control.
+After confirmed recipe-detail assignment, Search SHALL return to the captured Planner week/day and reference Monday. Planner SHALL read that week, scroll the target day card into view, and apply a temporary highlight ring that removes itself after about 3 seconds, without a redundant confirmation toast. Existing inline banners SHALL be retained without adding a Refresh control.
 
 #### Scenario: Search assignment resolves
 
