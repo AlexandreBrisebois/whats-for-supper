@@ -824,6 +824,12 @@ test('reload retains the exact draft and captured baseline in a calm Garden noti
   const restoredNotice = page.getByTestId('portions-restored');
   await expect(restoredNotice).toBeVisible();
   await expect(restoredNotice).toHaveClass(/bg-sage-50/);
+  // Measure the settled Planner, rather than its initial entrance spring's translated frame.
+  await expect
+    .poll(() =>
+      restoredNotice.evaluate((el) => getComputedStyle(el.parentElement!.parentElement!).transform)
+    )
+    .toBe('none');
   await assertCookbookVisualA11y(page, {
     rootSelector: '[data-testid="portions-restored"]',
     contrastLevel: 'aa',
