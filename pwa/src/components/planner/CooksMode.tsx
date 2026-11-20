@@ -1154,7 +1154,7 @@ export function CooksMode({
           {(quantitiesAvailable || quantityRefreshError || preparationReview) && (
             <div
               data-testid={preparationReview ? 'preparation-review' : 'cooking-update-bar'}
-              className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-y border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body md:px-6"
+              className="sticky top-0 z-10 shrink-0 flex flex-wrap items-center justify-between gap-3 border-y border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body md:px-6"
             >
               <div className="min-w-0 flex-1 space-y-1">
                 {preparationReview === 'required' ? (

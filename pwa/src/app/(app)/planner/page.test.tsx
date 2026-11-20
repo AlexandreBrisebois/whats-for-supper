@@ -568,6 +568,67 @@ describe('Planner result trust', () => {
     expect(mocks.getSchedule).toHaveBeenCalledTimes(1);
     noWrites();
   });
+  it('fades the planning highlight ring after about three seconds, then removes it', async () => {
+    remember();
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderPlanner(0);
+    const meal = () => within(screen.getByTestId('day-card-0')).getByTestId('planner-meal');
+    await waitFor(() => expect(meal()).toHaveClass('ring-4', 'ring-sage'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(meal()).toHaveClass('ring-4', 'ring-sage');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(meal()).toHaveClass('ring-transparent', 'transition-shadow');
+    expect(meal()).not.toHaveClass('ring-sage');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(meal()).not.toHaveClass('ring-4');
+    expect(meal()).not.toHaveClass('ring-transparent');
+  });
+  it('removes the planning highlight ring without a transition under reduced motion', async () => {
+    remember();
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderPlanner(0);
+    const meal = () => within(screen.getByTestId('day-card-0')).getByTestId('planner-meal');
+    await waitFor(() => expect(meal()).toHaveClass('ring-4', 'ring-sage'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2800);
+    });
+    expect(meal()).toHaveClass('ring-sage');
+    expect(meal()).not.toHaveClass('ring-transparent');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    expect(meal()).not.toHaveClass('ring-4');
+  });
+  it('keeps a replacement receipt after the highlight ring has faded', async () => {
+    remember({
+      original: {
+        action: 'next_week',
+        recipeName: 'Lasagna',
+        sourceDate: receipt.date,
+        destinationDate: '2026-05-25',
+        spillover: true,
+      },
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderPlanner(0);
+    await screen.findByTestId('planner-planning-confirmation');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3500);
+    });
+    expect(within(screen.getByTestId('day-card-0')).getByTestId('planner-meal')).not.toHaveClass(
+      'ring-4'
+    );
+    expect(screen.getByTestId('planner-planning-confirmation')).toBeInTheDocument();
+  });
   it('keeps replacement spillover readable without Refresh until keyboard dismissal, then prevents replay', async () => {
     remember({
       original: {

@@ -923,7 +923,7 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('planned-count-badge')).toHaveCount(0);
   });
 
-  for (const width of [390, 1280]) {
+  for (const width of [320, 390, 1280]) {
     for (const locale of ['en', 'fr'] as const) {
       for (const [status, past] of [
         [0, false],
@@ -1001,6 +1001,17 @@ test.describe('Supper Planner', () => {
               expect(await button.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
             }
             expect(await row.locator(':scope > div').count()).toBe(2);
+            if (status === 1) {
+              // Nudge family and Close Voting share one line, side by side, unwrapped.
+              const nudge = (await row.getByTestId('nudge-family-cta').boundingBox())!;
+              const close = (await row.getByTestId('close-voting-btn').boundingBox())!;
+              expect(
+                Math.abs(nudge.y + nudge.height / 2 - (close.y + close.height / 2))
+              ).toBeLessThan(2);
+              expect(nudge.x + nudge.width).toBeLessThanOrEqual(close.x + 1);
+              expect(nudge.height).toBeLessThan(60);
+              expect(close.height).toBeLessThan(60);
+            }
           }
           await expect(page.getByTestId('reorder-group').locator('..')).toHaveCSS('opacity', '1');
           await expect(page.getByTestId('day-card-6')).toHaveCSS('opacity', '1');
@@ -1140,6 +1151,10 @@ test.describe('Supper Planner', () => {
     await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
     await expect(targetCard.getByTestId('planner-meal')).toHaveClass(/ring-sage/, {
       timeout: 10_000,
+    });
+    // The highlight is a brief confirmation: it fades out and is removed on its own.
+    await expect(targetCard.getByTestId('planner-meal')).not.toHaveClass(/ring-(4|sage)/, {
+      timeout: 6_000,
     });
   });
 

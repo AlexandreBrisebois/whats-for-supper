@@ -1358,6 +1358,8 @@ describe('CooksMode', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Close review issue' }));
       } else await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
       expect(await screen.findByTestId('cooking-quantities-available')).toBeVisible();
+      // The prompt stays pinned to the top of the scrolling cooking area so it is never scrolled away.
+      expect(screen.getByTestId('cooking-update-bar')).toHaveClass('sticky', 'top-0');
       expect(screen.getByText('Add 400 g pasta.')).toBeVisible();
       // Report metadata applies immediately, without installing its new instruction source.
       fireEvent.click(screen.getByTestId('cooks-mode-report-steps'));

@@ -149,13 +149,6 @@ export function Navigation({ className = '' }: NavigationProps) {
                 ].join(' ')}
               >
                 <Icon size={28} strokeWidth={2.5} aria-hidden="true" />
-                {collecting ? (
-                  <span
-                    data-testid="nav-discovery-pip"
-                    aria-hidden="true"
-                    className="absolute right-0 top-0 h-3 w-3 rounded-full bg-sunlight-ink ring-2 ring-cream-100"
-                  />
-                ) : null}
               </div>
               <span
                 className={[

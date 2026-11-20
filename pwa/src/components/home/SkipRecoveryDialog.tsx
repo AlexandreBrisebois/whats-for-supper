@@ -8,6 +8,7 @@ import {
   Search,
   RefreshCw,
   Calendar,
+  ArrowLeft,
   ArrowRight,
   Trash2,
   CircleHelp,
@@ -450,13 +451,18 @@ export function SkipRecoveryDialog({
                     </button>
                   </div>
 
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="md"
+                    fullWidth
                     disabled={pending}
                     onClick={pending ? undefined : onBack}
-                    className="mt-2 min-h-12 rounded-2xl text-xs font-semibold text-charcoal-600 hover:text-charcoal hover:bg-charcoal-100 transition-colors"
+                    className="mt-1 gap-2 text-sm"
                   >
+                    <ArrowLeft size={18} aria-hidden="true" />
                     {t('home.goBack', 'Go back')}
-                  </button>
+                  </Button>
                 </motion.div>
               )}
             </AnimatePresence>

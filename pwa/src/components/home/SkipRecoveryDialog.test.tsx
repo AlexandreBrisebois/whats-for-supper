@@ -73,8 +73,42 @@ describe('SkipRecoveryDialog', () => {
     expect(consequence).toHaveClass('text-xs', 'text-charcoal-600');
     expect(consequence).not.toHaveClass('text-[10px]', 'uppercase', 'text-charcoal/30');
     const goBack = screen.getByRole('button', { name: 'Go back' });
-    expect(goBack).toHaveClass('min-h-12', 'text-xs', 'text-charcoal-600');
-    expect(goBack).not.toHaveClass('uppercase', 'text-charcoal/30');
+    expect(goBack).toHaveClass('min-h-12', 'text-sm', 'text-hearth-ink', 'w-full');
+    expect(goBack).not.toHaveClass('text-xs', 'text-charcoal-600', 'uppercase', 'text-charcoal/30');
+  });
+
+  it('presents Go back as a secondary ghost button with a back arrow after the options', () => {
+    const onBack = vi.fn();
+    render(
+      <SkipRecoveryDialog isOpen step={2} onClose={vi.fn()} onBack={onBack} onAction={vi.fn()} />
+    );
+    const goBack = screen.getByRole('button', { name: 'Go back' });
+    expect(goBack.querySelector('.lucide-arrow-left')).not.toBeNull();
+    expect(goBack.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(goBack).toHaveClass('focus-visible:outline-2');
+    const drop = screen.getByTestId('recovery-action-drop');
+    expect(drop.compareDocumentPosition(goBack) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(goBack);
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('recovery-close')).toBeInTheDocument();
+  });
+
+  it('disables Go back while a disposition is pending', () => {
+    const onBack = vi.fn();
+    render(
+      <SkipRecoveryDialog
+        isOpen
+        pending
+        step={2}
+        onClose={vi.fn()}
+        onBack={onBack}
+        onAction={vi.fn()}
+      />
+    );
+    const goBack = screen.getByRole('button', { name: 'Go back' });
+    expect(goBack).toBeDisabled();
+    fireEvent.click(goBack);
+    expect(onBack).not.toHaveBeenCalled();
   });
 });
 

@@ -144,6 +144,21 @@ export default function PlannerPage() {
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [pendingQuickFindDayIndex, setPendingQuickFindDayIndex] = useState<number | null>(null);
   const [successDay, setSuccessDay] = useState<number | null>(null);
+  const [successSeq, setSuccessSeq] = useState(0);
+  const [fadedSeq, setFadedSeq] = useState<number | null>(null);
+  const successFading = successDay !== null && fadedSeq === successSeq;
+  // The ring is a brief confirmation: fade it, then remove it. A newer highlight or a
+  // context change restarts or cancels these timers, so a stale one never clears it.
+  useEffect(() => {
+    if (successDay === null) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const fade = reduced ? undefined : window.setTimeout(() => setFadedSeq(successSeq), 2500);
+    const clear = window.setTimeout(() => setSuccessDay(null), 3000);
+    return () => {
+      if (fade !== undefined) window.clearTimeout(fade);
+      window.clearTimeout(clear);
+    };
+  }, [successDay, successSeq]);
   const [planningConfirmation, setPlanningConfirmation] = useState<{
     context: string;
     identity: string;
@@ -510,6 +525,7 @@ export default function PlannerPage() {
           router.replace(`/planner${params.size ? `?${params}` : ''}`, { scroll: false });
         }
         setSuccessDay(result.dayIndex);
+        setSuccessSeq((seq) => seq + 1);
         document.getElementById(`day-card-${result.dayIndex}`)?.scrollIntoView({
           behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
             ? 'auto'
@@ -987,7 +1003,12 @@ export default function PlannerPage() {
                   <div
                     data-testid="planner-action-row"
                     className={cn(
-                      'flex flex-1 flex-wrap items-center justify-end gap-1',
+                      'flex items-center gap-1',
+                      // Nudge family + Close Voting take their own full line, side by side at
+                      // default text size; at enlarged text they stack rather than overflow.
+                      isVotingOpen && !isConvergedWeek
+                        ? 'basis-full flex-wrap justify-between'
+                        : 'flex-1 flex-wrap justify-end',
                       isWide ? 'mb-4' : 'mb-5'
                     )}
                   >
@@ -997,7 +1018,7 @@ export default function PlannerPage() {
                         <button
                           onClick={handleNudgeFamily}
                           data-testid="nudge-family-cta"
-                          className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full bg-sage-700 hover:bg-sage-800 px-4 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
+                          className="flex min-h-12 min-w-12 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-sage-700 hover:bg-sage-800 px-3 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
                         >
                           <Share2 size={14} />
                           {t('planner.nudgeFamily', 'Nudge family')}
@@ -1022,7 +1043,8 @@ export default function PlannerPage() {
                           onClick={handleCloseVoting}
                           data-testid="close-voting-btn"
                           className={cn(
-                            'flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full px-4 text-xs font-semibold transition-all active:scale-95',
+                            'flex min-h-12 min-w-12 max-w-full items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all active:scale-95',
+                            !isConvergedWeek && 'whitespace-nowrap',
                             isConvergedWeek
                               ? 'bg-garden-fill hover:bg-garden-fill-deep text-white py-2 text-center leading-tight'
                               : 'border border-terracotta-200 bg-white text-terracotta-700 hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white'
@@ -1049,6 +1071,7 @@ export default function PlannerPage() {
                       day={day}
                       index={index}
                       successDay={pendingResult ? null : successDay}
+                      successFading={successFading}
                       onPivot={() => {
                         setSelectedDayIndex(index);
                         setShowPivot({ dayIndex: index });
@@ -1380,6 +1403,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
   day,
   index,
   successDay,
+  successFading,
   onPivot,
   onViewRecipe,
   startDrag,
@@ -1392,6 +1416,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
   day: UILocalScheduleDay;
   index: number;
   successDay: number | null;
+  successFading: boolean;
   onPivot: () => void;
   onViewRecipe: (recipeId: string) => void;
   startDrag: (from: number, event: PointerEvent) => void;
@@ -1526,7 +1551,11 @@ const PlannerDayCard = memo(function PlannerDayCard({
               ? 'outline outline-1 outline-dashed outline-charcoal/70'
               : 'border-white/20',
             isDropTarget && 'outline outline-2 outline-sage-700',
-            successDay === index && 'ring-4 ring-sage ring-offset-4'
+            successDay === index &&
+              cn(
+                'ring-4 ring-offset-4 transition-shadow duration-500 motion-reduce:transition-none',
+                successFading ? 'ring-transparent ring-offset-transparent' : 'ring-sage'
+              )
           )}
           data-testid="planner-meal"
         >

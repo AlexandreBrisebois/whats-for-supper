@@ -176,7 +176,7 @@ describe('Navigation', () => {
       }
     );
 
-    it('shows pulse, static pip and descriptive label while collecting off /discovery, and clears on /discovery or no cards', async () => {
+    it('shows pulse and descriptive label, with no dot, while collecting off /discovery, and clears on /discovery or no cards', async () => {
       mocks.pathname = '/home';
       mocks.getCategories.mockResolvedValue(['Poultry']);
       mocks.getVotingSession.mockResolvedValue(sessionFor('collecting'));
@@ -187,9 +187,7 @@ describe('Navigation', () => {
       );
       await waitFor(() => expect(orbOf()).toHaveClass('animate-pulse-ochre'));
       const link = screen.getByTestId('nav-item-discovery');
-      const pip = link.querySelector('[data-testid="nav-discovery-pip"]');
-      expect(pip).toHaveClass('bg-sunlight-ink');
-      expect(pip).toHaveAttribute('aria-hidden', 'true');
+      expect(link.querySelector('[data-testid="nav-discovery-pip"]')).not.toBeInTheDocument();
       expect(link).toHaveAttribute('aria-label', 'Discovery — family is voting');
 
       await act(async () => {

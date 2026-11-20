@@ -503,6 +503,9 @@ test('real dated detail, cooking and groceries share inputs across two independe
     await expect(foreign.getByTestId('recipe-ingredient-projection')).toContainText('400 g pasta');
     await foreign.getByTestId('action-cooks-mode').click();
     await expect(foreign.getByTestId('ingredient-toggle')).toContainText('400 g pasta');
+    // cooking spec: a remote change before any cooking progress applies silently; the
+    // refresh prompt only appears once the cook has progress to protect.
+    await foreign.getByTestId('ingredient-toggle').click();
     await saveDefault(5);
     await expect(foreign.getByTestId('cooking-quantities-available')).toBeInViewport();
     await foreign.getByRole('button', { name: 'Refresh quantities', exact: true }).click();

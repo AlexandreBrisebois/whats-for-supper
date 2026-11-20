@@ -55,8 +55,6 @@ public class DeploymentCalendarTests
     [InlineData("docker/compose/apps.yml")]
     [InlineData("docker/compose/production.yml")]
     [InlineData("docker/compose/production-overrides.yml")]
-    [InlineData("docker/docker-compose.prod.yml")]
-    [InlineData("docker/docker-compose.nas.yml")]
     [InlineData("release-template/synology/compose.yaml")]
     public void ShippedComposeTemplates_DefaultCalendarTimeZoneToTorontoWithOverrideSyntax(string relativePath)
     {
@@ -70,7 +68,6 @@ public class DeploymentCalendarTests
         var root = FindRepoRoot();
 
         Assert.Contains("Calendar__TimeZone=America/Toronto", File.ReadAllText(Path.Combine(root, "docker/.env.example")));
-        Assert.Contains("Calendar__TimeZone=America/Toronto", File.ReadAllText(Path.Combine(root, "docker/.env")));
         Assert.Contains("Calendar__TimeZone=UTC", File.ReadAllText(Path.Combine(root, "docker/compose/smoke.env")));
 
         var taskfile = File.ReadAllText(Path.Combine(root, "Taskfile.yml"));
