@@ -10,7 +10,7 @@
 
 ## A supper plan the family helps choose
 
-What's for Supper? helps you **involve the whole family in choosing what’s for supper** — turning a daily question into a fun, shared choice that leaves the household with one clear feeling: *"That’s one less thing weighing on me. We chose this together, it feels like us, and I’m looking forward to supper."* Bring your favourite recipes, weekly meal plan, and shared grocery list together in a self-hosted app for your household.
+What's for Supper? helps you **involve the whole family in choosing what’s for supper** — turning a daily question into a fun, shared choice that leaves the household with one clear feeling: _"That’s one less thing weighing on me. We chose this together, it feels like us, and I’m looking forward to supper."_ Bring your favourite recipes, weekly meal plan, and shared grocery list together in a self-hosted app for your household.
 
 **Built by your home, for your home.** Your household curates the collection, one recipe at a time. Keep the meals you love, add new favourites, and let it grow with you.
 

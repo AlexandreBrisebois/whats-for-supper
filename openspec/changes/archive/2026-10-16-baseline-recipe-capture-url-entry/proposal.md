@@ -17,9 +17,11 @@ Document the baseline requirements for ordinary-household recipe capture from ex
 ## Capabilities
 
 ### New Capabilities
+
 - `recipe-capture`: Baseline capability covering ordinary-household recipe capture from external web URLs, encompassing entry, validation, workflow dispatch, background processing, progress/notification tracking, error feedback, and initial recipe creation into the library.
 
 ### Modified Capabilities
+
 <!-- None: Reuses existing recipe-library and household-identity specifications without altering their approved requirements. -->
 
 ## Impact

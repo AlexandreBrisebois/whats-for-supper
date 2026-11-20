@@ -9,6 +9,7 @@
 **Migration**: Remove observation only; preserve report persistence, explicit resolution, compensation, polling, draft/error handling and local raw-response validity classification. No business data is deleted.
 
 #### Scenario: Issue operation after retirement
+
 - **WHEN** a Save or resolution succeeds, partially succeeds, fails or returns an unusable response
 - **THEN** existing business behavior and local response validity handling remain, with no Sentrame issue fact or result event
 
@@ -19,6 +20,7 @@
 **Migration**: Remove observation only; preserve report persistence, explicit resolution, compensation, polling, draft/error handling and local raw-response validity classification. No business data is deleted.
 
 #### Scenario: Issue operation after retirement
+
 - **WHEN** a Save or resolution succeeds, partially succeeds, fails or returns an unusable response
 - **THEN** existing business behavior and local response validity handling remain, with no Sentrame issue fact or result event
 
@@ -29,6 +31,7 @@
 **Migration**: Remove observation only; preserve report persistence, explicit resolution, compensation, polling, draft/error handling and local raw-response validity classification. No business data is deleted.
 
 #### Scenario: Issue operation after retirement
+
 - **WHEN** a Save or resolution succeeds, partially succeeds, fails or returns an unusable response
 - **THEN** existing business behavior and local response validity handling remain, with no Sentrame issue fact or result event
 
@@ -39,6 +42,7 @@
 **Migration**: Remove observation only; preserve report persistence, explicit resolution, compensation, polling, draft/error handling and local raw-response validity classification. No business data is deleted.
 
 #### Scenario: Issue operation after retirement
+
 - **WHEN** a Save or resolution succeeds, partially succeeds, fails or returns an unusable response
 - **THEN** existing business behavior and local response validity handling remain, with no Sentrame issue fact or result event
 
@@ -49,6 +53,7 @@
 **Migration**: Remove observation only; preserve report persistence, explicit resolution, compensation, polling, draft/error handling and local raw-response validity classification. No business data is deleted.
 
 #### Scenario: Issue operation after retirement
+
 - **WHEN** a Save or resolution succeeds, partially succeeds, fails or returns an unusable response
 - **THEN** existing business behavior and local response validity handling remain, with no Sentrame issue fact or result event
 
@@ -59,5 +64,6 @@
 **Migration**: Remove observation only; preserve report persistence, explicit resolution, compensation, polling, draft/error handling and local raw-response validity classification. No business data is deleted.
 
 #### Scenario: Issue operation after retirement
+
 - **WHEN** a Save or resolution succeeds, partially succeeds, fails or returns an unusable response
 - **THEN** existing business behavior and local response validity handling remain, with no Sentrame issue fact or result event

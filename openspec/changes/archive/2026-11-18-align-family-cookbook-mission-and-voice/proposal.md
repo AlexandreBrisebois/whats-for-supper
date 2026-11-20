@@ -2,7 +2,7 @@
 
 ## Why
 
-`.agents/core/mission.md` currently defines product intent solely as building a *"high-performance Meal Planning Progressive Web App"*, omitting both the playful collaborative spark (**Swipe, Match, Cook!** from the October 18 post—where kids and household members want to help decide around recipes they love and a shared grocery list) and the North Star emotional relief anchor (*"That’s one less thing weighing on me. We chose this together, it feels like us, and I’m looking forward to supper."*). Meanwhile, `"Solar Earth"` nomenclature persists across 9 repository guidance/design docs and 3 capability specifications instead of the unified **`Shared Table`** identity paired with its **contemporary family cookbook** visual aesthetic. Finally, borrowed ops, dating, and ML microcopy (`"Command Center"`, `"Matchmaking"`, `"Synthesizing…"`, `"Synthesize Recipe"`, `"AI synthesizes..."`, the stale `'Recovery Flow'` code fallback, and missing-apostrophe `"Whats for Supper?"`) undermines the warm household voice already present in **`Table's Set!`** (`À table !`), **`Menu's In`** (`Le menu est prêt`), and **`Plan B`**.
+`.agents/core/mission.md` currently defines product intent solely as building a _"high-performance Meal Planning Progressive Web App"_, omitting both the playful collaborative spark (**Swipe, Match, Cook!** from the October 18 post—where kids and household members want to help decide around recipes they love and a shared grocery list) and the North Star emotional relief anchor (_"That’s one less thing weighing on me. We chose this together, it feels like us, and I’m looking forward to supper."_). Meanwhile, `"Solar Earth"` nomenclature persists across 9 repository guidance/design docs and 3 capability specifications instead of the unified **`Shared Table`** identity paired with its **contemporary family cookbook** visual aesthetic. Finally, borrowed ops, dating, and ML microcopy (`"Command Center"`, `"Matchmaking"`, `"Synthesizing…"`, `"Synthesize Recipe"`, `"AI synthesizes..."`, the stale `'Recovery Flow'` code fallback, and missing-apostrophe `"Whats for Supper?"`) undermines the warm household voice already present in **`Table's Set!`** (`À table !`), **`Menu's In`** (`Le menu est prêt`), and **`Plan B`**.
 
 ## Outcome and Scope
 
@@ -32,7 +32,7 @@ Establish one coherent product identity (**`Shared Table`** with a preserved **c
 
 ### New Capabilities
 
-*(None — refines identity, voice, copy, and shortcut declarations across existing capabilities.)*
+_(None — refines identity, voice, copy, and shortcut declarations across existing capabilities.)_
 
 ### Modified Capabilities
 

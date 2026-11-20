@@ -33,7 +33,7 @@ Exclusions: No server-side backfill rewriting existing stored household members'
 
 ### New Capabilities
 
-*(None — all changes refine existing household capabilities.)*
+_(None — all changes refine existing household capabilities.)_
 
 ### Modified Capabilities
 

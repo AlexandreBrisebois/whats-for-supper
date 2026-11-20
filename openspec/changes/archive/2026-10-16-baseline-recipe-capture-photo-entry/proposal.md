@@ -19,9 +19,11 @@ Document baseline requirements for ordinary-household recipe capture via photo c
 ## Capabilities
 
 ### New Capabilities
+
 <!-- None: Reuses existing recipe-capture specification without creating a new capability root. -->
 
 ### Modified Capabilities
+
 - `recipe-capture`: Baseline capability covering ordinary-household recipe capture. Extends the approved specification with requirements for photo capture, client image staging, multipart upload, OCR vision workflow dispatch, background progress/failure tracking, and initial entity creation.
 
 ## Impact

@@ -23,12 +23,12 @@ The original preamble and qualification records above describe earlier combined-
 
 Preserved references to the former combined owners resolve through these current capability links. Each requirement retains its original normative text.
 
-| Capability | Requirements / scenarios |
-|---|---:|
-| [recipe-search](../recipe-search/spec.md) | 39 / 90 |
-| [search-indexing](../search-indexing/spec.md) | 10 / 19 |
-| [data-backup-and-recovery](../data-backup-and-recovery/spec.md) | 24 / 58 |
-| [scheduled-maintenance](../scheduled-maintenance/spec.md) | 5 / 14 |
+| Capability                                                      | Requirements / scenarios |
+| --------------------------------------------------------------- | -----------------------: |
+| [recipe-search](../recipe-search/spec.md)                       |                  39 / 90 |
+| [search-indexing](../search-indexing/spec.md)                   |                  10 / 19 |
+| [data-backup-and-recovery](../data-backup-and-recovery/spec.md) |                  24 / 58 |
+| [scheduled-maintenance](../scheduled-maintenance/spec.md)       |                   5 / 14 |
 
 - [Repair derived search state in bounded batches](../search-indexing/spec.md#requirement-repair-derived-search-state-in-bounded-batches)
 - [Acknowledge background backfill dispatch separately](../search-indexing/spec.md#requirement-acknowledge-background-backfill-dispatch-separately)
@@ -45,14 +45,17 @@ Shared management-status selection and result projection are owned by [Project t
 Management operations SHALL apply the household-identity requirement “Authenticate protected API requests independently”. Successful ordinary workflow acceptance SHALL return HTTP 202 with a flat message and taskId identifying the accepted workflow instance.
 
 #### Scenario: Backup acceptance
+
 - **WHEN** an authenticated POST /api/management/backup successfully accepts db-backup
 - **THEN** the response contains message “Backup task enqueued.” and the accepted instance identity as taskId
 
 #### Scenario: Restore acceptance
+
 - **WHEN** an authenticated POST /api/management/seed successfully accepts db-restore
 - **THEN** the response contains message “Restore task enqueued.” and the accepted instance identity as taskId
 
 #### Scenario: Recovery acceptance
+
 - **WHEN** an authenticated POST /api/management/disaster-recovery successfully accepts db-disaster-recovery
 - **THEN** the response contains message “Disaster recovery task enqueued.” and the accepted instance identity as taskId
 
@@ -61,6 +64,7 @@ Management operations SHALL apply the household-identity requirement “Authenti
 Management acceptance SHALL use the background-processing persisted lifecycle and automatic retry rules. A successful HTTP acceptance SHALL identify accepted work without asserting that export or recovery side effects have completed.
 
 #### Scenario: Accepted work
+
 - **WHEN** a management request returns its accepted instance identity
 - **THEN** later workflow/task state remains independently observable through the shared background-processing lifecycle
 
@@ -69,18 +73,22 @@ Management acceptance SHALL use the background-processing persisted lifecycle an
 GET /api/management/status SHALL select the newest created instance among db-backup, db-restore, db-disaster-recovery, demo-capture and demo-restore. When found, it SHALL return its instance identity as workflowId, workflowType, persisted status, createdAt and updatedAt, with the most recently updated completed task result that is non-null, or a null result.
 
 #### Scenario: Completed result
+
 - **WHEN** the selected ordinary instance has multiple completed tasks with non-null results
 - **THEN** the response result comes from the most recently updated such task
 
 #### Scenario: No completed result
+
 - **WHEN** the selected ordinary instance has no completed task with a non-null result
 - **THEN** the response result is null
 
 #### Scenario: Latest management selection
+
 - **WHEN** several selected management workflows exist and status is read successfully
 - **THEN** the newest by createdAt is returned even if it differs from the caller's earlier taskId
 
 #### Scenario: Completed task result
+
 - **WHEN** the selected instance has completed tasks with stored results
 - **THEN** result is taken from the newest updated such task, which can be reschedule rather than restore
 
@@ -89,14 +97,17 @@ GET /api/management/status SHALL select the newest created instance among db-bac
 Application export SHALL replace family-members.json with current members and their current supported preferences, including an empty array when there are no members. The separate disaster-recovery attribution-repair helper SHALL retain its append-only behavior.
 
 #### Scenario: New member identity
+
 - **WHEN** the database contains a member ID absent from the previous member file
 - **THEN** export includes that current member
 
 #### Scenario: Repeated identity
+
 - **WHEN** a current member changes name or preferences
 - **THEN** export replaces the old values with the current values
 
 #### Scenario: Removed member
+
 - **WHEN** a previously exported member no longer exists
 - **THEN** the next export omits that identity, including writing an empty array after the last member is removed
 
@@ -105,14 +116,17 @@ Application export SHALL replace family-members.json with current members and th
 For non-deleted recipes, export SHALL write metadata when a retained source PDF exists, or a nonempty name has images or synthesis, or raw metadata, notes or a known rating provides payload. Otherwise it SHALL skip the recipe.
 
 #### Scenario: Ready-shaped recipe
+
 - **WHEN** a non-deleted recipe has a name and positive image count but no metadata, notes or known rating
 - **THEN** export writes recipe.info
 
 #### Scenario: Empty placeholder
+
 - **WHEN** a recipe has no source PDF, name, images, synthesis, raw metadata, notes or known rating
 - **THEN** export skips its metadata file
 
 #### Scenario: Retained PDF
+
 - **WHEN** a non-deleted unfinished recipe retains source.pdf
 - **THEN** export includes its metadata regardless of the ordinary payload test
 
@@ -121,22 +135,27 @@ For non-deleted recipes, export SHALL write metadata when a retained source PDF 
 For an included recipe, export SHALL refresh recipe.info and replace recipe.json from current supported database content, including cleared content, omitting retired health, dietary and balance fields. Actual original, PDF/page and hero media SHALL remain untouched.
 
 #### Scenario: Existing recipe content
+
 - **WHEN** an included recipe already has recipe.json
 - **THEN** export replaces stale content with current database content
 
 #### Scenario: New recipe content
+
 - **WHEN** recipe.json is absent and ingredients are present
 - **THEN** export creates serialized recipe content
 
 #### Scenario: Metadata refresh
+
 - **WHEN** an included recipe has changed notes or rating
 - **THEN** export updates those fields in recipe.info
 
 #### Scenario: Cleared content
+
 - **WHEN** an included recipe has cleared ingredients or raw metadata since its previous export
 - **THEN** the new file represents the cleared values and cannot replay the old values
 
 #### Scenario: Repeated current-content round trip
+
 - **WHEN** a current recipe export is restored and exported repeatedly
 - **THEN** supported raw recipe content remains unchanged instead of nesting the export envelope into raw metadata
 
@@ -145,10 +164,12 @@ For an included recipe, export SHALL refresh recipe.info and replace recipe.json
 Export SHALL replace weekly-plans.json and calendar-events.json with current projections including explicit empty arrays, preserving represented grocery state and recipe-free calendar fields.
 
 #### Scenario: Nonempty planning state
+
 - **WHEN** weekly plans and recipe-free calendar events exist
 - **THEN** export writes their JSON projections including grocery and non-cooking fields
 
 #### Scenario: Cleared planning state
+
 - **WHEN** a table is empty after a previous nonempty export
 - **THEN** its export becomes an empty array
 
@@ -157,18 +178,22 @@ Export SHALL replace weekly-plans.json and calendar-events.json with current pro
 Export SHALL overwrite ingredient-categories.csv with the header normalized_key,grocery_section,confidence,source,created_at and one row per category. Fields containing commas, quotes or line breaks SHALL be quoted with doubled internal quotes. Numeric values SHALL use invariant culture.
 
 #### Scenario: Empty categories
+
 - **WHEN** there are no ingredient categories
 - **THEN** export replaces the artifact with a header-only file
 
 #### Scenario: Comma in category key
+
 - **WHEN** a category key contains a comma
 - **THEN** its CSV field is quoted
 
 #### Scenario: Repeated export
+
 - **WHEN** a previous category export exists
 - **THEN** the next export replaces its rows rather than appending
 
 #### Scenario: Decimal-comma culture
+
 - **WHEN** export runs under a culture using decimal commas
 - **THEN** confidence is still serialized using a decimal point
 
@@ -177,10 +202,12 @@ Export SHALL overwrite ingredient-categories.csv with the header normalized_key,
 Restore SHALL add member IDs absent from the database and update existing members’ name, browse view mode and preferred language from family-members.json. It SHALL create placeholder members for missing AddedBy identities referenced by successfully loaded recipes.
 
 #### Scenario: Existing member
+
 - **WHEN** a readable member file contains an existing database member ID
 - **THEN** restore updates its represented preferences and name
 
 #### Scenario: Missing attribution member
+
 - **WHEN** a successfully loaded recipe refers to an absent member ID
 - **THEN** restore creates that ID with a Recovered Member name prefix
 
@@ -189,10 +216,12 @@ Restore SHALL add member IDs absent from the database and update existing member
 Restore SHALL scan retained recipe IDs and skip IDs with neither recipe.info nor recipe.json. Valid recipe.info SHALL provide the primary recipe metadata; recipe.json SHALL provide raw metadata and supported content fallback fields.
 
 #### Scenario: Metadata and content
+
 - **WHEN** valid recipe.info and recipe.json exist for a recipe ID
 - **THEN** restore uses info metadata and reads supported ingredient content from recipe.json
 
 #### Scenario: No metadata files
+
 - **WHEN** a recipe directory has neither metadata file
 - **THEN** restore skips that recipe ID
 
@@ -201,14 +230,17 @@ Restore SHALL scan retained recipe IDs and skip IDs with neither recipe.info nor
 Restore SHALL add absent recipe IDs or update the supported metadata/content fields of existing IDs, including IDs hidden by soft deletion. Existing deletion markers, attribution and creation time SHALL remain unchanged during that update.
 
 #### Scenario: Existing recipe
+
 - **WHEN** a loaded recipe ID already exists with different notes and name
 - **THEN** restore updates notes and name without adding another recipe
 
 #### Scenario: Soft-deleted existing recipe
+
 - **WHEN** a loaded recipe ID is soft-deleted in the database
 - **THEN** restore updates its supported fields while retaining its deletion marker
 
 #### Scenario: Database-only recipe
+
 - **WHEN** a database recipe has no loaded disk record
 - **THEN** restore leaves that row in place
 
@@ -217,14 +249,17 @@ Restore SHALL add absent recipe IDs or update the supported metadata/content fie
 Restore SHALL accept ingredient arrays from recipeIngredient or ingredients, and JSON-array strings from ingredients. It SHALL remove the named retired health, dietary and balance fields from loaded recipe JSON and normalize undefined recipe.info ratings to Unknown.
 
 #### Scenario: Legacy ingredient array
+
 - **WHEN** recipe.json contains an ingredients array without recipeIngredient
 - **THEN** restore stores the array as ingredient JSON
 
 #### Scenario: Serialized ingredient array
+
 - **WHEN** recipe.json contains ingredients as a string holding a JSON array
 - **THEN** restore stores that array string
 
 #### Scenario: Retired content
+
 - **WHEN** recipe JSON includes a named retired dietaryProfile or balanceSummary field
 - **THEN** restore excludes that field from loaded raw metadata
 
@@ -233,14 +268,17 @@ Restore SHALL accept ingredient arrays from recipeIngredient or ingredients, and
 When source.pdf is retained and recipe.info is read, restore SHALL treat the recipe as pending unless its info explicitly records isReady true. Retained source and page files SHALL remain in the recipe store during metadata reconstruction.
 
 #### Scenario: Named unfinished PDF
+
 - **WHEN** retained source.pdf accompanies valid named info with isReady false
 - **THEN** restore keeps database readiness false
 
 #### Scenario: Unnamed pending PDF
+
 - **WHEN** retained source.pdf accompanies matching info without a name and without isReady true
 - **THEN** restore permits pending metadata reconstruction
 
 #### Scenario: Ready PDF
+
 - **WHEN** retained source.pdf accompanies valid info with isReady true
 - **THEN** restore reconstructs ready metadata without replacing the retained PDF bytes
 
@@ -249,10 +287,12 @@ When source.pdf is retained and recipe.info is read, restore SHALL treat the rec
 A recipe-load exception SHALL increment the restore Errors count and skip that record while scanning can continue. A recipe.info ID mismatch or missing name without pending PDF eligibility SHALL be treated as a recipe-load error.
 
 #### Scenario: Invalid current metadata
+
 - **WHEN** recipe.info has no required name and no pending source PDF
 - **THEN** restore records a load error and does not queue that record
 
 #### Scenario: Later valid recipe
+
 - **WHEN** an invalid recipe is followed by a valid readable recipe
 - **THEN** the later recipe remains eligible for reconstruction
 
@@ -261,18 +301,22 @@ A recipe-load exception SHALL increment the restore Errors count and skip that r
 Restore SHALL upsert readable weekly plans and calendar events by ID, retain recipe-free events, and skip recipe-linked events whose recipe is unavailable. For calendar weeks lacking a weekly plan, it SHALL create a Locked plan for that week’s Monday.
 
 #### Scenario: Grocery plan state
+
 - **WHEN** a readable weekly plan contains groceryState and groceryItems
 - **THEN** restore preserves those represented values
 
 #### Scenario: Recipe-free legacy event
+
 - **WHEN** a readable calendar event has no recipeId and lacks non-cooking kind/label
 - **THEN** restore retains its status and null legacy fields
 
 #### Scenario: Missing linked recipe
+
 - **WHEN** a calendar event refers to an unavailable recipe
 - **THEN** restore skips the event
 
 #### Scenario: Missing event week
+
 - **WHEN** a restored event belongs to a week with no plan
 - **THEN** restore initializes a Locked weekly plan for that Monday
 
@@ -281,18 +325,22 @@ Restore SHALL upsert readable weekly plans and calendar events by ID, retain rec
 Restore SHALL skip an absent category CSV. For present files it SHALL parse logical CSV records including quoted multiline fields and upsert rows by normalized key when at least five fields, nonblank key/section, parseable confidence and timestamp are present; malformed rows SHALL be logged and skipped.
 
 #### Scenario: Valid category update
+
 - **WHEN** a valid CSV row names an existing key
 - **THEN** restore updates section, confidence and source without duplicating the key
 
 #### Scenario: Malformed row among valid rows
+
 - **WHEN** a CSV contains a row with missing fields and a valid category row
 - **THEN** restore skips the malformed row and upserts the valid row
 
 #### Scenario: Absent CSV
+
 - **WHEN** ingredient-categories.csv is absent
 - **THEN** restore continues without category import
 
 #### Scenario: Multiline field
+
 - **WHEN** an exported category has embedded newlines, commas and quotes
 - **THEN** merge restore reconstructs the field without splitting it into separate records
 
@@ -301,10 +349,12 @@ Restore SHALL skip an absent category CSV. For present files it SHALL parse logi
 After category recovery, restore SHALL update finished-dish indices from readable recipe.info entries with a nonnegative finishedDishImageIndex and return a backfill count. A backfill exception SHALL be logged and return zero for that phase.
 
 #### Scenario: Nonnegative index
+
 - **WHEN** readable info contains a nonnegative finished-dish index
 - **THEN** restore applies that index to the matching stored recipe
 
 #### Scenario: Backfill read failure
+
 - **WHEN** a metadata read throws during finished-dish backfill
 - **THEN** the phase returns zero after logging the failure
 
@@ -313,10 +363,12 @@ After category recovery, restore SHALL update finished-dish indices from readabl
 Export SHALL replace recipe-import-reports.json with current report projections, including reasons, note, status, attribution, timestamps and attempt diagnostics, and SHALL write an empty array when no reports remain.
 
 #### Scenario: Reported content
+
 - **WHEN** active reports include duplicate and content reasons
 - **THEN** export retains their reasons and note in the report artifact
 
 #### Scenario: Resolved reports
+
 - **WHEN** reports were removed before a later export
 - **THEN** the later report artifact contains an empty array
 
@@ -325,14 +377,17 @@ Export SHALL replace recipe-import-reports.json with current report projections,
 Restore SHALL skip reports for missing recipes and upsert other reports by recipe ID. Missing member attribution SHALL become null. Reimporting reports SHALL return to Reported with workflow identity, last attempt, reimported time and error cleared.
 
 #### Scenario: Interrupted re-import
+
 - **WHEN** a saved report is Reimporting and its recipe exists
 - **THEN** restore yields Reported with prior attempt linkage and diagnostics cleared
 
 #### Scenario: Missing reporter
+
 - **WHEN** a saved report refers to an unavailable reporting member
 - **THEN** restore keeps the report with null reportedBy
 
 #### Scenario: Missing recipe
+
 - **WHEN** a report references a recipe absent even when deleted recipes are considered
 - **THEN** restore skips that report
 
@@ -341,10 +396,12 @@ Restore SHALL skip reports for missing recipes and upsert other reports by recip
 Restore SHALL skip a missing report artifact for legacy compatibility and SHALL log and skip report artifact JSON or I/O read failures.
 
 #### Scenario: Legacy export
+
 - **WHEN** recipe-import-reports.json does not exist
 - **THEN** restore continues without report import
 
 #### Scenario: Invalid report JSON
+
 - **WHEN** the report file cannot be parsed as the report list
 - **THEN** restore logs the failure and continues without importing that list
 
@@ -353,14 +410,17 @@ Restore SHALL skip a missing report artifact for legacy compatibility and SHALL 
 Export SHALL write search.index.json for ready search documents joined to non-deleted recipes, rebuilding lexical content and source fingerprint from current recipe facts. Reusable embedding status SHALL require ready embedding status and matching stored source and embedding fingerprints.
 
 #### Scenario: Ready search document
+
 - **WHEN** a visible recipe has an index-ready search document
 - **THEN** export writes schema, identity, rebuilt text/metadata, model, fingerprints and export time in its sidecar
 
 #### Scenario: Non-ready document
+
 - **WHEN** a recipe has only a pending or failed search document and no prior sidecar
 - **THEN** export does not create a sidecar for it
 
 #### Scenario: Changed source
+
 - **WHEN** the stored embedding fingerprint differs from current recipe facts
 - **THEN** the exported embedding is marked pending
 
@@ -369,10 +429,12 @@ Export SHALL write search.index.json for ready search documents joined to non-de
 For a sidecar with the current schema version, restore SHALL rebuild lexical text, metadata and source fingerprint from restored recipe facts and upsert the search document with ready lexical index status. It SHALL not rehydrate the sidecar’s lexical text or metadata.
 
 #### Scenario: Compatible sidecar
+
 - **WHEN** a readable sidecar has the current schema
 - **THEN** restore writes ready lexical content built from the restored recipe
 
 #### Scenario: Legacy terms
+
 - **WHEN** a current-schema sidecar contains obsolete dietary text or metadata
 - **THEN** restore replaces that content with the current recipe-derived projection
 
@@ -381,10 +443,12 @@ For a sidecar with the current schema version, restore SHALL rebuild lexical tex
 Restore SHALL mark a compatible sidecar’s embedding ready only when its model equals the configured EMBEDDING_MODEL_ID, its embedding fingerprint matches restored source facts and its embedding status is ready. The default model SHALL be gemini-embedding-2 when the environment variable is absent.
 
 #### Scenario: Incompatible model
+
 - **WHEN** a current-schema sidecar names another embedding model
 - **THEN** restore retains ready lexical content while marking embedding pending
 
 #### Scenario: Matching embedding
+
 - **WHEN** a current-schema sidecar has the configured model, matching fingerprint and ready embedding status
 - **THEN** restore marks the embedding ready under those compatibility checks
 
@@ -393,10 +457,12 @@ Restore SHALL mark a compatible sidecar’s embedding ready only when its model 
 When a restored recipe has no search sidecar or its sidecar schema differs from the current schema, restore SHALL upsert pending lexical and embedding status for that recipe.
 
 #### Scenario: Missing sidecar
+
 - **WHEN** a recipe was reconstructed without search.index.json
 - **THEN** restore marks its search document pending
 
 #### Scenario: Obsolete schema
+
 - **WHEN** a readable sidecar has an incompatible schema version
 - **THEN** restore marks its search document pending
 
@@ -405,10 +471,12 @@ When a restored recipe has no search sidecar or its sidecar schema differs from 
 The existing backup workflow SHALL write a versioned, complete aggregate-history artifact, including an explicit empty dataset. Export SHALL use a consistent history generation and preserve recipe/week keys, counts and selection snapshots without historical voter fields.
 
 #### Scenario: Export after touched zero
+
 - **WHEN** a row was removed by a zero-like revote before export
 - **THEN** the complete artifact omits it and cannot leave an older nonempty artifact masquerading as current
 
 #### Scenario: Concurrent export and close
+
 - **WHEN** history changes while export runs
 - **THEN** the artifact represents one committed generation, never a partially applied close
 
@@ -417,26 +485,32 @@ The existing backup workflow SHALL write a versioned, complete aggregate-history
 A valid complete history artifact SHALL replace history within its declared household scope after dependencies are resolved. Repeating restore SHALL not accumulate counts. An absent legacy artifact SHALL preserve existing destination history or leave an empty destination empty; an explicit empty artifact SHALL clear the declared scope.
 
 #### Scenario: Repeat restore
+
 - **WHEN** the same snapshot is restored twice
 - **THEN** the resulting aggregates and snapshot fields are identical, not doubled
 
 #### Scenario: Absent versus empty
+
 - **WHEN** one restore omits history and another supplies an explicitly empty versioned history artifact
 - **THEN** absence preserves destination history; explicit empty replaces it with empty
 
 #### Scenario: Bad artifact
+
 - **WHEN** history version, week key or positive-count validation fails
 - **THEN** history replacement is not committed; the management result reports failure rather than treating it as empty
 
 #### Scenario: Missing dependency
+
 - **WHEN** a history artifact references a recipe unavailable after dependency restore
 - **THEN** history restore does not create a phantom recipe or partially replace its scope; the failure is reported
 
 #### Scenario: Removed row
+
 - **WHEN** the destination has a stale positive row absent from a valid complete snapshot
 - **THEN** successful scoped replacement removes it instead of resurrecting it through merge
 
 #### Scenario: Restore invalidates stale requests
+
 - **WHEN** a complete history snapshot is successfully restored
 - **THEN** operational close receipts from the prior restored world cannot mutate a new round, and affected historical continuation generations are invalidated for restart
 
@@ -445,37 +519,45 @@ A valid complete history artifact SHALL replace history within its declared hous
 Current recipe exports SHALL identify content format version 1. Merge restore SHALL decode its raw metadata separately from the envelope and reject unsupported content versions as recipe-load errors. Unversioned legacy representations SHALL retain their existing interpretation.
 
 #### Scenario: Current recipe envelope
+
 - **WHEN** version 1 contains a string or null rawMetadata
 - **THEN** restore uses that value as the recipe's raw content
 
 #### Scenario: Disk sync after export
+
 - **WHEN** the existing disk-sync workflow reads a freshly exported version-1 recipe envelope
 - **THEN** it preserves raw recipe instructions and the current serialized ingredients instead of treating the envelope as raw content
 
 #### Scenario: Unsupported content version
+
 - **WHEN** a recipe envelope declares an unsupported version
 - **THEN** merge restore counts that recipe as a load error instead of interpreting its envelope as raw content
 
 ### Requirement: Online independent exact recovery
+
 The system SHALL provide explicit exact snapshot and restore operations distinct from merge/import, with operator-configured independent storage outside live roots. Snapshot version 1 SHALL contain authoritative supported row membership, explicit empty collections, complete version-1 history and verified media bytes. Soft-deleted recipes SHALL retain history dependencies; permanently purged recipes and history SHALL be absent.
 
 #### Scenario: Concurrent online snapshot
+
 - **WHEN** an authenticated operator captures a snapshot while requests and workers operate
 - **THEN** cooperating writes drain and coordinate for a bounded interval, reads remain available, and the published independent set contains mutually consistent database facts and media
 - **AND** timeout or missing media fails capture without replacing a prior complete snapshot
 
 #### Scenario: Online exact restore with preflight
+
 - **WHEN** an operator selects a complete snapshot
 - **THEN** all format, schema, membership, relationships and media integrity are validated in staging before any live change
 - **AND** exact publication replaces supported destination facts, invalidates stale rounds/continuations/work and rebuilds derived state
 - **AND** health and recovery status remain available while final publication briefly coordinates household requests
 
 #### Scenario: Interrupted cross-store publication
+
 - **WHEN** interruption occurs around file-generation activation or database commit
 - **THEN** recovery selects the complete committed state or restores the complete prior state before household operations resume
 - **AND** retry neither duplicates facts/history nor reports an incomplete restore as successful
 
 #### Scenario: Legacy omission is not exact emptiness
+
 - **WHEN** exact restore receives an unsupported version or missing required artifact including history
 - **THEN** preflight rejects it without changing live state
 - **AND** ordinary merge missing-history preservation remains unchanged; demo baseline compatibility and missing-history behavior follow the demo-household capability
@@ -485,10 +567,12 @@ The system SHALL provide explicit exact snapshot and restore operations distinct
 Application export SHALL replace `grocery-extras.json` with every retained extra occurrence and its stable identity, lineage, absolute week, snapshotted name, section, checked state, removal state, version, and timestamps. An empty source SHALL replace any older artifact with an explicit empty array.
 
 #### Scenario: Extra history exists
+
 - **WHEN** extras span several weekly snapshots with different names, categories, and checked states
 - **THEN** export writes each retained occurrence and its lineage without collapsing rows by name
 
 #### Scenario: Extras were cleared
+
 - **WHEN** no retained extra occurrences remain after a previous nonempty export
 - **THEN** the next export writes an empty grocery-extras collection
 
@@ -497,14 +581,17 @@ Application export SHALL replace `grocery-extras.json` with every retained extra
 Ordinary restore SHALL accept a supported `grocery-extras.json` artifact and upsert occurrences by stable identity while preserving represented lineage and weekly snapshot state. It SHALL reject invalid lineage, week, section, or version records without creating partial phantom history.
 
 #### Scenario: Restore existing and missing occurrences
+
 - **WHEN** a valid artifact contains one existing occurrence and one absent occurrence
 - **THEN** restore updates the represented fields of the existing identity and adds the absent identity without name-based merging
 
 #### Scenario: Invalid lineage reference
+
 - **WHEN** an occurrence references an invalid or inconsistent lineage predecessor
 - **THEN** that invalid history is reported and is not partially applied as a new outstanding extra
 
 #### Scenario: Repeat restore
+
 - **WHEN** the same valid artifact is restored twice
 - **THEN** occurrence membership and lineage remain identical rather than duplicating weekly snapshots
 
@@ -513,14 +600,17 @@ Ordinary restore SHALL accept a supported `grocery-extras.json` artifact and ups
 Ordinary merge restore SHALL treat an absent `grocery-extras.json` as a legacy export and preserve existing destination extras. An unreadable or unsupported present artifact SHALL be reported and skipped without treating it as an explicit empty collection.
 
 #### Scenario: Legacy export omits extras
+
 - **WHEN** an ordinary restore has no grocery-extras artifact
 - **THEN** existing destination extra history remains unchanged
 
 #### Scenario: Explicit empty artifact
+
 - **WHEN** a supported grocery-extras artifact contains an explicit empty collection
 - **THEN** ordinary merge adds or updates no occurrences and does not infer deletion of destination-only history
 
 #### Scenario: Unreadable artifact
+
 - **WHEN** the grocery-extras artifact cannot be parsed or has an unsupported version
 - **THEN** restore reports the artifact failure without replacing destination extras
 
@@ -529,14 +619,17 @@ Ordinary merge restore SHALL treat an absent `grocery-extras.json` as a legacy e
 Independent exact snapshot and restore SHALL treat grocery-extra occurrence membership and relationships as authoritative supported database facts. Exact preflight SHALL require and validate that table for the snapshot version before live publication.
 
 #### Scenario: Exact snapshot contains extras
+
 - **WHEN** an online exact snapshot is captured with extra history present
 - **THEN** its manifest and table artifacts include every committed grocery-extra occurrence under the same consistent database boundary
 
 #### Scenario: Exact restore replaces extras
+
 - **WHEN** a complete exact snapshot passes preflight and publication succeeds
 - **THEN** destination extra membership and weekly history exactly match the snapshot
 
 #### Scenario: Exact snapshot omits required extra membership
+
 - **WHEN** an exact snapshot version requiring grocery extras lacks that table artifact or has invalid lineage
 - **THEN** preflight rejects it without changing live state
 
@@ -545,26 +638,32 @@ Independent exact snapshot and restore SHALL treat grocery-extra occurrence memb
 Recipe exports SHALL preserve the database serving count, including null, in their recipe.json envelope and retain raw recipeYield metadata. Export SHALL NOT add either field to recipe.info. Current-format disk sync and merge restore SHALL honor an explicitly exported count or null; legacy content without that field SHALL derive its count from unambiguous raw serving-yield metadata.
 
 #### Scenario: Current export and restore
+
 - **WHEN** a recipe with database servings 4 and raw recipeYield “4 portions” is exported and successfully restored or synchronized from that export
 - **THEN** the database has servings 4, raw yield and ingredients remain retained, and recipe.info has no added yield/count field
 
 #### Scenario: Manually corrected count
+
 - **WHEN** a recipe corrected through editing to servings 3 still has raw recipeYield “4 portions” and is exported, merge-restored or synchronized from that export
 - **THEN** its authoritative count remains 3, raw yield and ingredient quantities remain unchanged, and recipe.info gains no yield/count field
 
 #### Scenario: Explicit unknown count
+
 - **WHEN** a current recipe export explicitly has servings null despite retaining older yield text
 - **THEN** restore and disk sync retain null rather than treating it as a legacy missing field
 
 #### Scenario: Legacy exported envelope
+
 - **WHEN** an older recipe.json envelope lacks servings but its rawMetadata string contains recipeYield “2 portions”
 - **THEN** restore and disk sync derive database servings 2 from the decoded raw metadata, without treating the outer envelope as source recipe content
 
 #### Scenario: Legacy direct recipe content
+
 - **WHEN** a legacy recipe.json directly contains recipeYield “4 portions” without an export envelope
 - **THEN** restore and disk sync derive database servings 4 without changing the printed ingredient quantities
 
 #### Scenario: Invalid exported count
+
 - **WHEN** a present exported servings field is negative, zero, fractional, out of integer range, or of the wrong JSON type
 - **THEN** that record is reported as invalid through existing recipe-load failure handling rather than silently inferring a replacement count
 
@@ -573,21 +672,26 @@ Recipe exports SHALL preserve the database serving count, including null, in the
 Compatible exact snapshots SHALL include the serving column as an authoritative recipe-table fact and restore it with the rest of that row. Existing exact schema compatibility checks SHALL remain applicable; an incompatible pre-column snapshot SHALL be rejected before live publication rather than implicitly migrated during exact restore.
 
 #### Scenario: Compatible exact round trip
+
 - **WHEN** an exact snapshot containing recipes with servings 4 and null is restored into a compatible schema
 - **THEN** the restored counts are exactly 4 and null, independent of yield parsing
 
 #### Scenario: Exact recovery of a manual correction
+
 - **WHEN** a compatible exact snapshot contains manually corrected servings 3 and raw recipeYield “4 portions”
 - **THEN** exact restore retains servings 3 independently of the raw yield
 
 #### Scenario: Schema mismatch
+
 - **WHEN** a pre-column exact snapshot is selected against the changed schema
 - **THEN** existing preflight rejects the mismatch without changing live state
+
 ### Requirement: Export serving intent independently of recipe quantities
 
 Ordinary export SHALL replace a versioned supper-servings.json containing the explicitly configured household default or null and all retained date overrides, inherited snapshots, concurrency versions and timestamps. An empty collection SHALL replace older exported dates. Recipe exports SHALL retain their original basis and ingredient quantities rather than a planned projection.
 
 #### Scenario: Export six on an empty date
+
 - **WHEN** a future empty Saturday has override six and the household default is four
 - **THEN** export retains both facts independently of calendar recipe entries and recipe amounts
 
@@ -596,10 +700,12 @@ Ordinary export SHALL replace a versioned supper-servings.json containing the ex
 Supported ordinary merge restore SHALL upsert dated serving state by absolute date, validate counts and preserve represented overrides/snapshots. A present valid default, including explicit null, SHALL be restored. Missing legacy serving artifacts SHALL preserve destination serving state. Malformed/unsupported artifacts SHALL be reported and not partially applied. Repeating the same valid restore SHALL NOT duplicate dates.
 
 #### Scenario: Legacy or invalid artifact
+
 - **WHEN** the serving artifact is missing, malformed or unsupported
 - **THEN** legacy absence leaves destination counts unchanged and invalid present content is reported without replacing them
 
 #### Scenario: Repeated valid merge
+
 - **WHEN** the same supported artifact is restored twice
 - **THEN** one serving record exists per date with the represented default, exceptions and snapshots
 
@@ -608,10 +714,12 @@ Supported ordinary merge restore SHALL upsert dated serving state by absolute da
 Exact recovery SHALL include serving dates and the household default under its consistent snapshot boundary. Its version/schema preflight SHALL reject missing required state before publication. Successful exact restore SHALL reproduce portions membership, not merge destination-only overrides. Demo reset SHALL clear visitor date edits and restore the prepared baseline's declared usual size, with no invented profile-derived count.
 
 #### Scenario: Exact snapshot is incomplete
+
 - **WHEN** a format requiring supper serving state lacks its dated artifact/table
 - **THEN** preflight fails before live publication without changing destination counts or plans
 
 #### Scenario: Reset a demo edited for six
+
 - **WHEN** a visitor changes a demo date to six and reset completes
 - **THEN** visitor overrides are removed, the prepared usual-size setting is restored and the baseline plan/groceries remain coherent
 
@@ -620,9 +728,11 @@ Exact recovery SHALL include serving dates and the household default under its c
 Calendar exports and supported restore modes SHALL retain occurrence identity, actual preparation date and frozen prepared portion context. Exact recovery SHALL reproduce them; ordinary merge SHALL preserve their represented association. Legacy absence SHALL not fabricate actual preparation. Demo reset SHALL restore the prepared baseline and clear visitor preparation changes under its declared policy.
 
 #### Scenario: Restore Friday prepared Tuesday
+
 - **WHEN** Friday lasagna was prepared Tuesday for six portions and its backup is restored
 - **THEN** Friday still shows Already prepared and Prepared Tuesday with six prepared portions; neither a second occurrence nor a Friday cooking-history date is invented
 
 #### Scenario: Legacy Cooked entry
+
 - **WHEN** an older export has Cooked status without actual preparation metadata
 - **THEN** restore preserves that status without claiming an observed preparation date

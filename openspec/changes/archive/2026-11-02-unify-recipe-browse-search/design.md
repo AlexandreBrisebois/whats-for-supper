@@ -4,16 +4,16 @@
 
 The [proposal](proposal.md) defines scope; the four deltas define observable behavior. The following facts are source-inspected, not browser-validated:
 
-| Current owner | Relevant mechanism and insertion point |
-| --- | --- |
-| `pwa/src/app/(app)/browse-all-stack/page.tsx` | Explore GET after library summary; stack 20/list 12; All/Discovery and Go-To; page cache, history generation, adjacent/wrap navigation, prefetch and retained-card retries. Currently a fixed `z-50` overlay with Close. |
-| `pwa/src/store/browseStackStore.ts` | Transient Browse records, index, total and page state; reset on departure. Page/history ownership remains distinct from Search. |
-| `pwa/src/app/(app)/recipes/page.tsx` | Local query/filter/preferences/Similar state, POST search, 500 ms timer, cursor and request generations, invalidation subscriptions, detail and planning/recovery handlers. Currently always expanded and renders a hero plus alternatives. Debounce retains Similar while Enter clears it, so they need one intent-resolution path. |
-| `pwa/src/lib/api/recipes.ts` | `searchRecipes` accepts raw/enveloped responses, retains error status and maps Search DTOs. `RecipeSearchResult`/`mapSearchResult` currently drop description. `readField` already supports generated `additionalData`. |
-| Search DTO/service and `specs/openapi.yaml` | `RecipeSearchResultDto` and `RecipeSearchService.MapResult` already return description; the OpenAPI result does not explicitly declare that property. Preserve this existing optional payload through the adapter's established `readField`/additional-data handling. Do not add an API field, regenerate types merely to add it, or synthesize detail DTOs. |
-| Recipe components | Reuse `RecipeStackCard`, `StackActionBar`, compact Browse grid, `RecipeDetailSheet`, `RecipeFiltersSheet`, `RecipeImportIssueBadge`, `RecycleBinSheet` and existing gesture/focus hooks. No voting-card business logic belongs in Recipes. |
-| Shell and entry points | `Navigation.tsx` labels `/recipes` Search; `(app)/layout.tsx` hides navigation for legacy Browse. `HomeSections.tsx` supplies the Browse tile. Planner and Home already supply day/week/reference context. `baseManifest.json` feeds `pdfManifest.ts` and `manifest.json/route.ts`. |
-| Browser fixtures | `pwa/e2e/mock-api.ts` owns method-sensitive Explore, summary, Search, filter-vocabulary, membership and mutation handlers, with `MOCK_IDS` and builders. Existing recipes/browse/search-hardening/invalidation specs exercise their consumers. |
+| Current owner                                 | Relevant mechanism and insertion point                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pwa/src/app/(app)/browse-all-stack/page.tsx` | Explore GET after library summary; stack 20/list 12; All/Discovery and Go-To; page cache, history generation, adjacent/wrap navigation, prefetch and retained-card retries. Currently a fixed `z-50` overlay with Close.                                                                                                                                     |
+| `pwa/src/store/browseStackStore.ts`           | Transient Browse records, index, total and page state; reset on departure. Page/history ownership remains distinct from Search.                                                                                                                                                                                                                              |
+| `pwa/src/app/(app)/recipes/page.tsx`          | Local query/filter/preferences/Similar state, POST search, 500 ms timer, cursor and request generations, invalidation subscriptions, detail and planning/recovery handlers. Currently always expanded and renders a hero plus alternatives. Debounce retains Similar while Enter clears it, so they need one intent-resolution path.                         |
+| `pwa/src/lib/api/recipes.ts`                  | `searchRecipes` accepts raw/enveloped responses, retains error status and maps Search DTOs. `RecipeSearchResult`/`mapSearchResult` currently drop description. `readField` already supports generated `additionalData`.                                                                                                                                      |
+| Search DTO/service and `specs/openapi.yaml`   | `RecipeSearchResultDto` and `RecipeSearchService.MapResult` already return description; the OpenAPI result does not explicitly declare that property. Preserve this existing optional payload through the adapter's established `readField`/additional-data handling. Do not add an API field, regenerate types merely to add it, or synthesize detail DTOs. |
+| Recipe components                             | Reuse `RecipeStackCard`, `StackActionBar`, compact Browse grid, `RecipeDetailSheet`, `RecipeFiltersSheet`, `RecipeImportIssueBadge`, `RecycleBinSheet` and existing gesture/focus hooks. No voting-card business logic belongs in Recipes.                                                                                                                   |
+| Shell and entry points                        | `Navigation.tsx` labels `/recipes` Search; `(app)/layout.tsx` hides navigation for legacy Browse. `HomeSections.tsx` supplies the Browse tile. Planner and Home already supply day/week/reference context. `baseManifest.json` feeds `pdfManifest.ts` and `manifest.json/route.ts`.                                                                          |
+| Browser fixtures                              | `pwa/e2e/mock-api.ts` owns method-sensitive Explore, summary, Search, filter-vocabulary, membership and mutation handlers, with `MOCK_IDS` and builders. Existing recipes/browse/search-hardening/invalidation specs exercise their consumers.                                                                                                               |
 
 Shared authorities remain [member-preferences](../../../specs/member-preferences/spec.md), [meal-assignment](../../../specs/meal-assignment/spec.md), [recipe-editing](../../../specs/recipe-editing/spec.md), [recipe-quality](../../../specs/recipe-quality/spec.md), [recipe-recycle-bin](../../../specs/recipe-recycle-bin/spec.md) and [household-live-updates](../../../specs/household-live-updates/spec.md). Their persistence, eligibility, mutation and recovery rules are reused. Unified collection refresh specializes the former route-specific Search callback at `/recipes`: successful deletion refreshes GET in Explore and POST in active Search, without changing deletion itself.
 
@@ -41,31 +41,31 @@ The first slice includes actual route/layout/controller integration and both emp
 
 ### State ownership
 
-| State | Lifetime and change rules |
-| --- | --- |
-| Presentation | Existing member preference plus member-scoped mounted override; position resets on view change. No new persistence. |
-| Disclosure | Mounted Recipes session; normal entry collapsed, explicit Search/Similar/planner entry expanded. No request effects. |
-| Intent | Current text/Similar, applied filters/preferences and scope; chooser draft is independent. Nonblank typing clears Similar consistently before debounce or Enter. |
-| Browse | Summary/filtered total, page size, pages/cache, global position, history generation and retries; never populated from Search results. |
-| Search | Submitted immutable request context, loaded sequence, cursor, current position/scroll, exhaustion, request generation, invalidation version and failure state. Never populated from Browse pages. |
-| Context | Captured planner target and reference week, detail identity and return trigger/position; independent of disclosure and source. |
+| State        | Lifetime and change rules                                                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Presentation | Existing member preference plus member-scoped mounted override; position resets on view change. No new persistence.                                                                               |
+| Disclosure   | Mounted Recipes session; normal entry collapsed, explicit Search/Similar/planner entry expanded. No request effects.                                                                              |
+| Intent       | Current text/Similar, applied filters/preferences and scope; chooser draft is independent. Nonblank typing clears Similar consistently before debounce or Enter.                                  |
+| Browse       | Summary/filtered total, page size, pages/cache, global position, history generation and retries; never populated from Search results.                                                             |
+| Search       | Submitted immutable request context, loaded sequence, cursor, current position/scroll, exhaustion, request generation, invalidation version and failure state. Never populated from Browse pages. |
+| Context      | Captured planner target and reference week, detail identity and return trigger/position; independent of disclosure and source.                                                                    |
 
 Keep input text distinct from the submitted request snapshot when necessary: continuation must use the query/filters/Similar/planner target that produced its cursor, not newer unsubmitted typing. A criterion/scope change legitimately supersedes the old collection; a visibility change never does. Clear or Similar actions cancel obsolete timers so an old typing closure cannot reintroduce a removed criterion. Enter cancels its timer, blurs, then uses the same resolver as debounce. Blank input retains Similar until its removable indicator or explicit clear is activated.
 
 ### Transition decisions
 
-| Action | Collection and request effects | Position/context |
-| --- | --- | --- |
-| Normal entry/return | Fresh scoped-state defaults: Explore, All, empty criteria, collapsed | Start position; saved presentation |
-| Reveal / hide / reopen | No request, invalidation or debounce cancellation | Preserve sequence, cursor/pages, position, mode and planning context; restore values |
-| Apply text/Similar/Focus/non-scope filter | New Search generation through POST | Reset to start; keep scope, presentation and planner context |
-| Change toolbar scope | Reload active source with intersected scope | Reset to start; keep other intent |
-| Apply a scope-only draft / remove last Search criterion | GET Explore under resulting scope | Start position; presentation/context retained |
-| Clear Filters | Clear scope plus filters/preferences; keep text and Similar; resolve remaining intent | Start position after commit; chooser Clear stays draft until Apply |
-| Clear search and browse | Clear non-scope Search criteria; cancel obsolete debounce/cursor; GET scoped Explore | Start position; keep scope, presentation, planner context and disclosure visibility |
-| Change presentation | Search reuses data/cursor; Explore reloads with the new page size | Reset position; save existing preference |
-| Detail dismissal | No replacement request | Restore same ordinal/scroll and focus to connected trigger |
-| Page departure | Retire lifecycle, invalidate outstanding generations, clear timers and transient state | Next ordinary entry is fresh |
+| Action                                                  | Collection and request effects                                                         | Position/context                                                                     |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Normal entry/return                                     | Fresh scoped-state defaults: Explore, All, empty criteria, collapsed                   | Start position; saved presentation                                                   |
+| Reveal / hide / reopen                                  | No request, invalidation or debounce cancellation                                      | Preserve sequence, cursor/pages, position, mode and planning context; restore values |
+| Apply text/Similar/Focus/non-scope filter               | New Search generation through POST                                                     | Reset to start; keep scope, presentation and planner context                         |
+| Change toolbar scope                                    | Reload active source with intersected scope                                            | Reset to start; keep other intent                                                    |
+| Apply a scope-only draft / remove last Search criterion | GET Explore under resulting scope                                                      | Start position; presentation/context retained                                        |
+| Clear Filters                                           | Clear scope plus filters/preferences; keep text and Similar; resolve remaining intent  | Start position after commit; chooser Clear stays draft until Apply                   |
+| Clear search and browse                                 | Clear non-scope Search criteria; cancel obsolete debounce/cursor; GET scoped Explore   | Start position; keep scope, presentation, planner context and disclosure visibility  |
+| Change presentation                                     | Search reuses data/cursor; Explore reloads with the new page size                      | Reset position; save existing preference                                             |
+| Detail dismissal                                        | No replacement request                                                                 | Restore same ordinal/scroll and focus to connected trigger                           |
+| Page departure                                          | Retire lifecycle, invalidate outstanding generations, clear timers and transient state | Next ordinary entry is fresh                                                         |
 
 Selecting the already active Recipes tab is not departure and must not erase the mounted session. Browser back/forward or a cached route must not restore departed search state; logical route departure must have the same cleanup as unmount. Existing explicit entry parameters are applied as entry intent, not saved session state.
 
@@ -83,13 +83,13 @@ Recovery remains source-specific: Explore page/wrap failure retains its card and
 
 ### Correctness properties for acceptance
 
-| Preconditions/input domain | Invariant | Suitable evidence |
-| --- | --- | --- |
-| Loaded Explore or Search, any disclosure sequence, including a pending debounce/request | Visibility changes preserve collection identity, criteria, sequence, paging, position and presentation; requests only arise from their original triggers | Fake-timer/deferred-response unit tests plus browser hide/reopen scenarios |
-| Initial optional topPick and overlapping continuation pages | Displayed IDs equal stable first-occurrence concatenation; initial topPick appears exactly once | Adapter/controller examples with duplicate IDs and browser first-card assertions |
-| Stable Explore collections spanning full/partial pages | Every scoped ID appears once per cycle with correct ordinal, including both wraps | Existing 40/46/180-record fixtures and real API ordering preservation checks |
-| Search cursor is present or exhausted | Back visits loaded matches; forward only follows that cursor; no wrapping or premature exact total | Deferred continuation, duplicate/empty page, exhausted, failed and expired cases in both views |
-| Arbitrary old outcomes after scope/source/departure changes | Old outcomes cannot change current cards/counts/position/loading/errors | Controlled resolution-order tests and browser delayed-response scenarios |
+| Preconditions/input domain                                                              | Invariant                                                                                                                                                | Suitable evidence                                                                              |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Loaded Explore or Search, any disclosure sequence, including a pending debounce/request | Visibility changes preserve collection identity, criteria, sequence, paging, position and presentation; requests only arise from their original triggers | Fake-timer/deferred-response unit tests plus browser hide/reopen scenarios                     |
+| Initial optional topPick and overlapping continuation pages                             | Displayed IDs equal stable first-occurrence concatenation; initial topPick appears exactly once                                                          | Adapter/controller examples with duplicate IDs and browser first-card assertions               |
+| Stable Explore collections spanning full/partial pages                                  | Every scoped ID appears once per cycle with correct ordinal, including both wraps                                                                        | Existing 40/46/180-record fixtures and real API ordering preservation checks                   |
+| Search cursor is present or exhausted                                                   | Back visits loaded matches; forward only follows that cursor; no wrapping or premature exact total                                                       | Deferred continuation, duplicate/empty page, exhausted, failed and expired cases in both views |
+| Arbitrary old outcomes after scope/source/departure changes                             | Old outcomes cannot change current cards/counts/position/loading/errors                                                                                  | Controlled resolution-order tests and browser delayed-response scenarios                       |
 
 ## Compatibility, Rollout and Reversal
 
@@ -131,16 +131,16 @@ The Search toggle can hide its region; an explicit hide action inside the region
 
 Reviewed on 2026-11-02 by Codex applying the repository [designer skill](../../../../.agents/skills/designer/SKILL.md), with its visual-identity/Solar Earth guidance. This is a source- and specification-based interaction review; it is not an independent human sign-off, rendered layout inspection or observed usability result.
 
-| Review area | Finding and design resolution | Remaining validation |
-| --- | --- | --- |
-| Toolbar placement | Search first preserves a stable starting point; retained scope/view/bin remain usable in Search. Wrapped order and 48 px targets are explicit. | Both views, keyboard order, measured targets and responsive rows |
-| Expanded controls | Progressive disclosure avoids permanent extra rows; opening alone retains Explore. Planning context stays outside disclosure. | Input focus and toolbar-to-controls adjacency, virtual keyboard |
-| Collapsed active Search | An invisible active query would mislead members about their library. Marker plus accessible active description distinguish it from scope-only Explore. | Loading, zero results, failure and successful hidden Search with assistive technology |
-| Both presentations | Shared cards preserve familiar photography and details. Search boundaries differ visibly from circular Explore. | Full Browse traversal, Search continuation, long titles/descriptions and returned issue badges |
-| Contextual entry | Details and Search autofocus could compete; detail takes focus first. Explicit targets remain visible and do not assign on entry. | Home/planner links, Similar, open, shortcut and combined legacy context |
-| Recovery | Empty and failure are different states; clearing and hiding have separate labels and effects. Retained-card retry prevents lost place. | Initial/replacement errors, pagination failure, 409 restart, saved mutation then failed read |
-| Keyboard/focus return | Native controls, drawer focus containment and connected-trigger fallback avoid stranded or stolen focus. | Tab/Shift+Tab, Enter, Space, Escape, route departure and result deletion |
-| Space/style/motion | Existing Solar Earth tokens and adaptive card dimensions preserve the cookbook treatment with safe-area app navigation. | EN/FR; 320×568, 390×667, 667×375, 360/390/430 widths, tablet portrait/landscape, 200% text, reduced motion and actual composite contrast |
+| Review area             | Finding and design resolution                                                                                                                          | Remaining validation                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Toolbar placement       | Search first preserves a stable starting point; retained scope/view/bin remain usable in Search. Wrapped order and 48 px targets are explicit.         | Both views, keyboard order, measured targets and responsive rows                                                                         |
+| Expanded controls       | Progressive disclosure avoids permanent extra rows; opening alone retains Explore. Planning context stays outside disclosure.                          | Input focus and toolbar-to-controls adjacency, virtual keyboard                                                                          |
+| Collapsed active Search | An invisible active query would mislead members about their library. Marker plus accessible active description distinguish it from scope-only Explore. | Loading, zero results, failure and successful hidden Search with assistive technology                                                    |
+| Both presentations      | Shared cards preserve familiar photography and details. Search boundaries differ visibly from circular Explore.                                        | Full Browse traversal, Search continuation, long titles/descriptions and returned issue badges                                           |
+| Contextual entry        | Details and Search autofocus could compete; detail takes focus first. Explicit targets remain visible and do not assign on entry.                      | Home/planner links, Similar, open, shortcut and combined legacy context                                                                  |
+| Recovery                | Empty and failure are different states; clearing and hiding have separate labels and effects. Retained-card retry prevents lost place.                 | Initial/replacement errors, pagination failure, 409 restart, saved mutation then failed read                                             |
+| Keyboard/focus return   | Native controls, drawer focus containment and connected-trigger fallback avoid stranded or stolen focus.                                               | Tab/Shift+Tab, Enter, Space, Escape, route departure and result deletion                                                                 |
+| Space/style/motion      | Existing Solar Earth tokens and adaptive card dimensions preserve the cookbook treatment with safe-area app navigation.                                | EN/FR; 320×568, 390×667, 667×375, 360/390/430 widths, tablet portrait/landscape, 200% text, reduced motion and actual composite contrast |
 
 No unresolved product decision blocks these tasks. Responsive measurements and assistive/browser behavior remain required acceptance work on the implemented screen; this planning review does not claim them passed.
 

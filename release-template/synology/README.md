@@ -64,9 +64,9 @@ Run `bash setup.sh` from the matching release bundle, or rename `.env.example`
 to `.env` and configure manually. Set the four required application secrets.
 Choose one scenario through `COMPOSE_FILE` in that private file:
 
-| Scenario | `COMPOSE_FILE` | Additional settings |
-| --- | --- | --- |
-| Bundled tunnel | `compose.yaml:compose.tunnel.yaml` | App-local `CLOUDFLARE_TUNNEL_TOKEN` |
+| Scenario                           | `COMPOSE_FILE`                            | Additional settings                                                  |
+| ---------------------------------- | ----------------------------------------- | -------------------------------------------------------------------- |
+| Bundled tunnel                     | `compose.yaml:compose.tunnel.yaml`        | App-local `CLOUDFLARE_TUNNEL_TOKEN`                                  |
 | Existing independent/shared tunnel | `compose.yaml:compose.shared-tunnel.yaml` | `WFS_PROXY_NETWORK` and unique `WFS_PROXY_ALIAS`; no app-local token |
 
 The helper saves this choice so later plain `docker compose` commands include the
@@ -169,9 +169,9 @@ Users must access this application through an HTTPS Cloudflare hostname;
 authentication requires HTTPS. Choose either setup in the
 [Cloudflare HTTPS guide](../../docs/install/cloudflare.md):
 
-| Setup | What to configure | Cloudflare service URL |
-| --- | --- | --- |
-| One tunnel per deployment (supplied default) | Token in the app's private `.env`; keep the bundled connector | `http://127.0.0.1:80` |
+| Setup                                        | What to configure                                                                                   | Cloudflare service URL                                |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| One tunnel per deployment (supplied default) | Token in the app's private `.env`; keep the bundled connector                                       | `http://127.0.0.1:80`                                 |
 | One independent tunnel shared by deployments | Token in the connector project only; attach each Traefik to an external network with a unique alias | `http://wfs-prod-proxy:80` (one alias per deployment) |
 
 The guide includes standalone connector Compose, attaching to an existing tunnel,
@@ -245,18 +245,18 @@ This is an IANA timezone identifier, not a fixed `EST` offset. It automatically
 follows **EST in winter and EDT in summer**. Change the value in `.env` if
 your household lives elsewhere. Ten common examples:
 
-| City | `Calendar__TimeZone` |
-| --- | --- |
-| Toronto | `America/Toronto` |
-| New York | `America/New_York` |
-| London | `Europe/London` |
-| Paris | `Europe/Paris` |
-| Berlin | `Europe/Berlin` |
-| Tokyo | `Asia/Tokyo` |
-| Seoul | `Asia/Seoul` |
-| New Delhi | `Asia/Kolkata` |
-| Canberra / Sydney | `Australia/Sydney` |
-| Wellington / Auckland | `Pacific/Auckland` |
+| City                  | `Calendar__TimeZone` |
+| --------------------- | -------------------- |
+| Toronto               | `America/Toronto`    |
+| New York              | `America/New_York`   |
+| London                | `Europe/London`      |
+| Paris                 | `Europe/Paris`       |
+| Berlin                | `Europe/Berlin`      |
+| Tokyo                 | `Asia/Tokyo`         |
+| Seoul                 | `Asia/Seoul`         |
+| New Delhi             | `Asia/Kolkata`       |
+| Canberra / Sydney     | `Australia/Sydney`   |
+| Wellington / Auckland | `Pacific/Auckland`   |
 
 The table provides examples, not a complete list; use the IANA identifier for
 your own location. The Compose configuration retains `UTC` as a compatibility

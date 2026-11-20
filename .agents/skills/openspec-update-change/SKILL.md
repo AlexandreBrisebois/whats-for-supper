@@ -6,7 +6,7 @@ license: MIT
 compatibility: Requires openspec CLI.
 metadata:
   author: openspec
-  version: "1.0"
+  version: '1.0'
 ---
 
 Revise a change's existing planning artifacts and keep them coherent. Never edit code.
@@ -47,9 +47,11 @@ Revise existing artifacts. If an artifact is missing, identify it and show the n
    Always announce: "Using change: <name>" and how to override (e.g., `openspec-update-change <other>`).
 
 2. **Get the change's artifacts**
+
    ```bash
    openspec status --change "<name>" --json
    ```
+
    Parse the JSON to understand current state. The response includes:
    - `schemaName`: The workflow schema being used (e.g., "spec-driven")
    - `artifacts`: Array of artifacts with their status ("done", "skipped", "ready", "blocked")
@@ -94,15 +96,17 @@ Revise existing artifacts. If an artifact is missing, identify it and show the n
 **Output**
 
 After each invocation, show:
+
 - Which artifacts were revised (and which proposed revisions were rejected)
 - Any file created under a glob artifact that was already partially populated
 - Missing artifacts deferred to a separate step (ready or blocked, excluding skipped artifacts)
 - Where the change stands and the recommended next skill
 
 **Guardrails**
+
 - Planning artifacts only - NEVER edit implementation code. If the revised plan implies code changes, stop after revising the plan and identify any code changes it calls for.
 - Use the artifact ids and paths reported by `openspec status`; never branch on hardcoded artifact names.
 - Edit only the concrete files in `existingOutputPaths`, plus any confirmed concrete path allowed under a partly populated glob artifact (step 4); never write to a glob `resolvedOutputPath`.
 - Do not advance the build frontier: if an artifact has empty `existingOutputPaths` and status `ready` or `blocked`, create missing artifacts in a separate step. Leave `skipped` artifacts untouched. The only new-file scope is a confirmed concrete path under a glob artifact whose `existingOutputPaths` is non-empty.
 - Confirm every edit with the user before writing.
-- If the request changes the change's *intent* rather than refining it, ask for a distinct unused name and recommend `openspec new change "<new-change-name>"`.
+- If the request changes the change's _intent_ rather than refining it, ask for a distinct unused name and recommend `openspec new change "<new-change-name>"`.

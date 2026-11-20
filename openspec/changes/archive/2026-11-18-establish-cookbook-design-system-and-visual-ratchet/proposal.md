@@ -13,10 +13,10 @@ Turn the Era 3 **Family Cookbook** identity into a color-science-grounded, self-
    - Repair the inverted `charcoal` ramp (`50 -> 900` strictly monotonic in lightness) and warm the neutral undertone slightly toward espresso-ink so muted text/borders harmonize with `#FDFCF0` cream without simultaneous-contrast chill, preserving `>= 14:1` primary body and `>= 7:1` supporting ink contrast on cream.
    - Synchronize `terracotta` `#B85542` across `globals.css` and `pwa/tailwind.config.ts`, add `.cookbook-bg` alongside compatibility alias `.solar-earth-bg`, and add `CookbookLoader` alongside `SolarLoader` re-export until legacy callers migrate.
    - Formalize role-locked semantic pairings compensating for perceptual lightness asymmetry across brand hues (Terracotta $L \approx 0.56$, Sage $L \approx 0.66$, Ochre $L \approx 0.77$):
-     - *Hearth Primary:* `bg-terracotta` (`#B85542`) + `text-cream-100` / `text-white` (`>= 4.61:1`)
-     - *Sunlight Voting & Highlight:* Tonal sunlit parchment `bg-ochre-50` (`#FFFBE6`) / `bg-ochre-100` (`#FFF7CC`, hover `bg-ochre-200` `#FFEE99`) + warm golden-umber `text-ochre-800` (`#664E01`, `7.61:1` / `7.32:1`), or raised `bg-white text-ochre-800 border-ochre-300` (`7.91:1`) inside an `ochre-50` callout. Reserve saturated `#E1AD01` strictly for non-text accents (star glyph fill, pulse halo, ambient warmth) and ban solid `bg-ochre` behind text/icons with either light or dark/black ink (and never bare `text-ochre` on light surfaces)
-     - *Garden Two-Pole Sage (Option A):* Tonal botanical `bg-sage-50`/`100` + `text-sage-700`/`800` (`>= 5.5:1`), or Deep Herb solid/celebration `bg-sage-600`/`700` (`#6E7A49` / `#525B37`) + `text-white` / `text-cream-100` (`>= 4.62:1` / `7.22:1`); ban both white-on-mid-sage (`#8A9A5B`) and dark-ink-on-mid-sage
-     - *Error & Destructive:* `bg-terracotta-50` + `text-terracotta-700` + `border-terracotta-200` (`7.46:1`)
+     - _Hearth Primary:_ `bg-terracotta` (`#B85542`) + `text-cream-100` / `text-white` (`>= 4.61:1`)
+     - _Sunlight Voting & Highlight:_ Tonal sunlit parchment `bg-ochre-50` (`#FFFBE6`) / `bg-ochre-100` (`#FFF7CC`, hover `bg-ochre-200` `#FFEE99`) + warm golden-umber `text-ochre-800` (`#664E01`, `7.61:1` / `7.32:1`), or raised `bg-white text-ochre-800 border-ochre-300` (`7.91:1`) inside an `ochre-50` callout. Reserve saturated `#E1AD01` strictly for non-text accents (star glyph fill, pulse halo, ambient warmth) and ban solid `bg-ochre` behind text/icons with either light or dark/black ink (and never bare `text-ochre` on light surfaces)
+     - _Garden Two-Pole Sage (Option A):_ Tonal botanical `bg-sage-50`/`100` + `text-sage-700`/`800` (`>= 5.5:1`), or Deep Herb solid/celebration `bg-sage-600`/`700` (`#6E7A49` / `#525B37`) + `text-white` / `text-cream-100` (`>= 4.62:1` / `7.22:1`); ban both white-on-mid-sage (`#8A9A5B`) and dark-ink-on-mid-sage
+     - _Error & Destructive:_ `bg-terracotta-50` + `text-terracotta-700` + `border-terracotta-200` (`7.46:1`)
 3. **Era 3 `Button` Primitive (`pwa/src/components/ui/button.tsx`):** Align `primary`, `secondary`, `ghost`, and `danger` (replacing `bg-ochre text-white` 2.06:1 with accessible terracotta destructive tokens), enforce `min-h-12` (`>= 48px`) hit targets on `md`/`lg` buttons, and standardize on `focus-visible:outline-charcoal` (`#28231F`).
 4. **Pulled-Forward Automated Visual Ratchet & Browser A11y Helper:**
    - Create `pwa/src/test/visual-contract.test.ts` running on every `task test:unit` to fail on: (a) off-palette tokens (`indigo`, `lavender`, `pink`, `red-*`, `ochre-dark`), (b) banned contrast pairs (opaque `bg-ochre` / `bg-ochre-400` / `bg-ochre-500` behind text/icons regardless of ink color — catching both `text-white` and `text-charcoal`/`text-ochre-900`, `bg-sage` with `text-white`, bare `text-ochre`/`text-sage` on light surfaces, `text-charcoal/20`–`40` copy), and (c) `< 12px` micro-text (`text-[8px]`..`text-[11px]`).
@@ -41,7 +41,7 @@ Turn the Era 3 **Family Cookbook** identity into a color-science-grounded, self-
 
 ### Modified Capabilities
 
-*(None — introduces `visual-design-contract` without changing existing product feature flows.)*
+_(None — introduces `visual-design-contract` without changing existing product feature flows.)_
 
 ## Impact
 
@@ -52,6 +52,7 @@ Turn the Era 3 **Family Cookbook** identity into a color-science-grounded, self-
 ## Review Checkpoints Before Apply
 
 Before running `/openspec-apply-change establish-cookbook-design-system-and-visual-ratchet`, review and adjust these items via `/openspec-explore` or `/openspec-update-change`:
+
 - **Checkpoint 1 — Warm Charcoal Neutral Scale:** Confirm shifting `charcoal-50..900` in `globals.css` from cool Tailwind slate (`#1F2937` / `#4B5563` / `#9CA3AF`) to warm espresso-ink neutrals (while keeping `#1F2937` or `#231F1D` >= 14:1 on `#FDFCF0` cream) vs. fixing only the inverted `charcoal-500` step.
 - **Checkpoint 2 — Button `danger` Styling:** Confirm `danger` uses soft destructive terracotta (`bg-terracotta-50 text-terracotta-700 border-terracotta-200`) rather than solid `bg-terracotta-700 text-white`, avoiding accidental confusion with primary Hearth CTAs.
 - **Checkpoint 3 — Ratchet Rule Strictness:** Review the initial rule list in `design.md` (`indigo`, `pink`, `lavender`, `red-*`, `ochre-dark`, opaque `bg-ochre` (`DEFAULT`/`400`/`500`) control fills banned across both light and dark ink, `bg-sage` + `text-white`, bare `text-ochre`/`text-sage` small copy, `text-[8px]`–`text-[11px]`) and verify whether any subtle `11px` utility case (e.g., dense calendar markers) should be promoted to `12px` (`text-xs`) immediately or kept temporarily allowlisted.

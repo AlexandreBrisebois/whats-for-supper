@@ -74,7 +74,6 @@
 - Final scope review: the date/meal separation, Planner-local pointer owner, fixed-slot targeting, native hold cleanup, focus, EN/FR cues and narrow layout deliver the authorized behavior. Source/target identity, one terminal commit, original-arrangement previews, cancellation and existing store/snapshot failure ownership are exercised. Removed test-side row-reorder simulations are replaced by explicit store contract/property coverage and actual browser gestures; nearby badge/arrow, detail/pivot and voting behavior is retained. No dependency, API, generated client, production store or backend changes. All 12 task paths were prepared and reviewed; no staged or unrelated edits. No commit, push, sync or archive performed.
 - Checkpoint: **9/10 tasks complete**. Task 4.1 remains unchecked because the required repository gate is not green. Further Home/Cook Mode investigation is outside this change's selected scope; a scope question was raised without extending implementation. Physical iOS/Android remains not-run; live endpoint/database/model qualification and harness self-tests remain not-applicable. This final evidence/handoff update is later documentation content, verified separately; the application gate above describes its original tested identity and remains failed.
 
-
 ### Authorized Home test investigation (2026-10-27)
 
 - User explicitly chose “Also investigate the Home test” after the Planner-only checkpoint. This adds bounded diagnosis/repair of the blocking existing Cook Mode acceptance test; no Home product change was inferred from the failure.
@@ -84,7 +83,6 @@
 - Green: the same twelve untraced 1180px repeats **12 passed** (12.9s). The complete Cook Mode file is being checked repeatedly before the refreshed repository gate. All temporary click probes and CPU/trace instrumentation were removed from the source file.
 
 - Surrounding Cook acceptance: `task test:e2e -- e2e/cook-mode-steps.spec.ts --repeat-each=3 --workers=5 --trace=off` **24 passed** (19.4s), covering all four reading-layout viewports, cooking-view preference and assigned-recipe completion behavior. The refreshed final reviewed scope includes 14 paths, adding the authorized Cook test and this handoff. No application source changed in the Home investigation.
-
 
 ### Final implementation result
 

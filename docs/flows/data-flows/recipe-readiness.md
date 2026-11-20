@@ -7,6 +7,7 @@ How a recipe transitions from the moment of capture (image upload or text descri
 A recipe is **ready** when the full capture-to-import pipeline has completed for its path:
 
 **Photo-upload path:**
+
 1. User uploads images → stored in `data/recipes/{id}/original/`, `recipe.info` written, DB row inserted (`ImageCount > 0`)
 2. `ExtractRecipe` — AI reads the images and produces `recipe.json`
 3. `GenerateHero` — hero image created
@@ -15,6 +16,7 @@ A recipe is **ready** when the full capture-to-import pipeline has completed for
 6. `RecipeReady` — validates Name is set and `ImageCount > 0` → **ready**
 
 **Describe path (goto-synthesis):**
+
 1. User submits name + description → `recipe.info` written with description, DB row inserted (`ImageCount = 0`, `IsSynthesized = false`)
 2. `SynthesizeRecipe` — AI generates full `recipe.json` from description; sets `IsSynthesized = true`
 3. `GenerateHero` — hero image created
@@ -23,6 +25,7 @@ A recipe is **ready** when the full capture-to-import pipeline has completed for
 6. `RecipeReady` — validates Name is set and `IsSynthesized = true` → **ready**
 
 **URL import path:**
+
 1. User shares a recipe URL → DB row stub created, `recipe.info` written
 2. `FetchUrl` — downloads page, extracts schema.org JSON-LD
 3. `GenerateHero` — hero image created
@@ -110,7 +113,7 @@ Returns `RecipeStatusDto { Id, Name, Status, ImageCount, IsSynthesized }`.
 
 ## Enrichment processors
 
-| Processor | Workflow(s) | What it writes |
-|-----------|-------------|----------------|
+| Processor               | Workflow(s)                               | What it writes                                              |
+| ----------------------- | ----------------------------------------- | ----------------------------------------------------------- |
 | `CategorizeIngredients` | recipe-import, url-import, goto-synthesis | Grocery section per ingredient into `ingredient_categories` |
-| `RecipeReady` | recipe-import, url-import, goto-synthesis | Emits `recipe_ready` SSE event |
+| `RecipeReady`           | recipe-import, url-import, goto-synthesis | Emits `recipe_ready` SSE event                              |

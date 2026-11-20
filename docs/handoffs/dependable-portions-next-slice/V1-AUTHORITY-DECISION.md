@@ -28,13 +28,13 @@ V1 has neither a writer identity nor a hash binding its saved result.
 The targeted [historical evidence report](V1-HISTORICAL-AUTHORITY.json) joins
 retained campaign, deployment, browser observations and preservation records:
 
-| Recovered evidence | What it establishes | Limit |
-| --- | --- | --- |
-| Ten named campaign reports covering all 46 receipt recipe IDs | Campaign/recipe correlation, candidate claims, observed edits | No authenticated per-request writer/build/serializer binding |
-| Reproduced historical sorted compact whole-row hashes for 42 receipts, zero mismatches | The retained request, input hash, IDs, timestamp and saved JSON value match those historical row observations | Local evidence integrity/correlation, not independent cryptographic execution authorship |
-| Explicit operation/revision review for the other four, from annotated-half and C05 | Reviewers linked exact operations to accepted edit revisions | An equivalent whole-row hash match was not recovered in the inspected representation |
-| Deployment read-backs and candidate reports | Runtime image/commit claims associated with a campaign | Candidate names, time proximity and source-family resemblance do not authenticate each writer or serializer |
-| Original dump restore/read-back retained by the predecessor | These 46 rows were present in that exact recovery set | The recovery capture happened after the writes; it cannot prove their original authorship |
+| Recovered evidence                                                                     | What it establishes                                                                                           | Limit                                                                                                       |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Ten named campaign reports covering all 46 receipt recipe IDs                          | Campaign/recipe correlation, candidate claims, observed edits                                                 | No authenticated per-request writer/build/serializer binding                                                |
+| Reproduced historical sorted compact whole-row hashes for 42 receipts, zero mismatches | The retained request, input hash, IDs, timestamp and saved JSON value match those historical row observations | Local evidence integrity/correlation, not independent cryptographic execution authorship                    |
+| Explicit operation/revision review for the other four, from annotated-half and C05     | Reviewers linked exact operations to accepted edit revisions                                                  | An equivalent whole-row hash match was not recovered in the inspected representation                        |
+| Deployment read-backs and candidate reports                                            | Runtime image/commit claims associated with a campaign                                                        | Candidate names, time proximity and source-family resemblance do not authenticate each writer or serializer |
+| Original dump restore/read-back retained by the predecessor                            | These 46 rows were present in that exact recovery set                                                         | The recovery capture happened after the writes; it cannot prove their original authorship                   |
 
 The report lists every recipe/operation, campaign path/candidate claim, evidence
 hash and missing proof. Some fixed-use rows precede the final successful campaign
@@ -47,11 +47,11 @@ raw request/result transcript. No historical serializer identity is invented.
 
 ## Options
 
-| Option | Decision and consequence |
-| --- | --- |
-| A. Admission from recovered historical authority | Not established. The recovered records strengthen correlation and saved-value continuity, but do not complete the per-receipt writer/build/serializer and original-result binding. Do not authorize a general recorded-ID or duplicate exception from this evidence. |
-| B. One-time exact-source attestation | Recommended for Alex's decision. Replace the missing historical provenance requirement only for this exact approved recovery set and 46 receipt/result pairs with Alex's explicit present-day trust designation. Preserve structural/input/baseline/result checks and reject every unlisted variant. Implementation and migration still need separate authorization and qualification. |
-| C. Continued rejection | Current/default disposition, also the fallback if B is rejected or any required artifact cannot be retained/verified. Preserves the approved contract fully; copied-library admission and dependent migration remain blocked. No deletion, receipt repair or removal of source members is an alternative. |
+| Option                                           | Decision and consequence                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A. Admission from recovered historical authority | Not established. The recovered records strengthen correlation and saved-value continuity, but do not complete the per-receipt writer/build/serializer and original-result binding. Do not authorize a general recorded-ID or duplicate exception from this evidence.                                                                                                                   |
+| B. One-time exact-source attestation             | Recommended for Alex's decision. Replace the missing historical provenance requirement only for this exact approved recovery set and 46 receipt/result pairs with Alex's explicit present-day trust designation. Preserve structural/input/baseline/result checks and reject every unlisted variant. Implementation and migration still need separate authorization and qualification. |
+| C. Continued rejection                           | Current/default disposition, also the fallback if B is rejected or any required artifact cannot be retained/verified. Preserves the approved contract fully; copied-library admission and dependent migration remain blocked. No deletion, receipt repair or removal of source members is an alternative.                                                                              |
 
 B is useful because it gives a finite, reviewable path toward the selected copied
 library without pretending the absent provenance was recovered. It knowingly
@@ -72,11 +72,11 @@ can add members. Whole-row hashes additionally bind the retained row metadata.
 The sole proposed trusted source is the retained predeployment recovery set at
 `.task/dependable-portions-coordinator/pdf3/release/predeploy-8585db24-8ac9-4b9d-97aa-d21800055f82/`:
 
-| Artifact | SHA256 |
-| --- | --- |
+| Artifact      | SHA256                                                             |
+| ------------- | ------------------------------------------------------------------ |
 | database.dump | `25eab5f9bdc4f35b8385f05c86a0c384fe0b3da89c2576f04f89566d96cc9ecc` |
-| data.tar | `07e26b87a47805f9abdfad69ce6a54d15a03236c13607d50e7b0d0edd1ccb76b` |
-| files.sha256 | `4cb537857d48de963ae91044457828c14643708a4e9d99ee23248e6af84a99ce` |
+| data.tar      | `07e26b87a47805f9abdfad69ce6a54d15a03236c13607d50e7b0d0edd1ccb76b` |
+| files.sha256  | `4cb537857d48de963ae91044457828c14643708a4e9d99ee23248e6af84a99ce` |
 | readback.json | `ff367e7662ce7eea8c8a6e05783ade721e2b61f3832d25dc6f0e61cc6c84052a` |
 
 All four artifact hashes and 138 raw receipt artifacts were checked this slice.

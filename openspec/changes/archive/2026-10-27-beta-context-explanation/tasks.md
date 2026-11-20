@@ -27,7 +27,6 @@ Current review uses GitHub-connector source reads and immutable main/PR identiti
 
 Behavior red/green, Beta unit/browser/API/device tests, production tests, implementation, merge, deployment, spec sync and archive remain unrun or outside this phase. The design's future verification matrix is a plan, not evidence. Alex has now approved the reviewed behavior and continuing the existing implementation task. This planning writer releases branch ownership to that task; no merge, deployment or production-test authorization is implied.
 
-
 ## 3. Beta Welcome and guarded Home slice
 
 Approved source: `c0a3c6de9d1d8321167206ec1b8fbcbabf0679c8`, exact baseline tree `df5943cfd1b01c63fe26856990c59d4d055dfec0`, including main `0a8b7850a26578551beb723713fcf8b3e920a863`. Worktree `/workspace/beta-implementation`; original checkout and earlier spec work preserved. Repository changes are limited to approved presentation/state, existing test/locale owners, the feedback form and task evidence. No API contract or generated-client change is planned.
@@ -44,7 +43,6 @@ Approved source: `c0a3c6de9d1d8321167206ec1b8fbcbabf0679c8`, exact baseline tree
 
 - [ ] 5.1 Review the complete owned diff, run supported preparation, strict selected/full spec validation, `task verify:plan` and `task verify` with all changed paths, reconcile scenario evidence and report exact record/content identity. Diagnose failures without weakening gates.
 - [ ] 5.2 Obtain independent read-only review, address findings within approved scope, publish through the GitHub connector with expected-head lease to the same draft PR351, read back changed bytes and monitor exact-head CI. Keep issue open and preserve unrelated state; no merge, deployment, production testing, spec sync or archive.
-
 
 ## Implementation evidence before the final gate
 

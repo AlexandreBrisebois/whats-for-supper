@@ -458,6 +458,7 @@ export function SkipRecoveryDialog({
                     fullWidth
                     disabled={pending}
                     onClick={pending ? undefined : onBack}
+                    data-testid="recovery-go-back"
                     className="mt-1 gap-2 text-sm"
                   >
                     <ArrowLeft size={18} aria-hidden="true" />

@@ -33,7 +33,6 @@ Alex approved implementation in the cloud after reviewing the diagnosis. Tasks a
 - [ ] 4.2 Qualify grabbing, incomplete-drag→first-tap and interruption on a narrow phone and iPad/Safari before release acceptance. If the beta-only complaint persists, record exact OS/viewport/input/start location, computed touch policy, scroll positions and pointercancel sequence for stable and beta full layouts; return evidence for review before speculative scroll/dimension changes. Record actual device results or a precise blocker.
 - [ ] 4.3 Reconcile every scenario against evidence, run task prepare -- <reviewed changed paths>, review the complete diff, then task verify -- <complete reviewed changed paths> once. Cite record_path and classify passed/failed/blocked/not-run checks; required missing acceptance prevents completion. No tag, release, manual build dispatch or PR is included; Alex subsequently authorized branch integration.
 
-
 ## Implementation evidence (cloud)
 
 - Source rechecked: intended remote branch and beta17 both remain 74ed426925896fa01b28f093e399e4f93e48d9a0. Only task-owned source/test/spec files changed; nothing staged or published.
@@ -47,7 +46,6 @@ Alex approved implementation in the cloud after reviewing the diagnosis. Tasks a
 - Broader aggregate verification is next. Backend tooling is currently blocked: the required RC2 SDK was installed in scratch, but dotnet tool restore fails because its runtime requires /home/agent/.dotnet on a read-only filesystem, even with the supported additional path grant. No automatic-approval rejection occurred; this is a filesystem/runtime failure. No live API is running for endpoint parity. Physical Safari/iPad/phone testing is unrun. These limits keep final qualification tasks open.
 
 Logs are under /workspace/scratch/wfs-gesture-review/. Final aggregate records belong under .task/agent-finish/runs/; the handoff reports their exact paths and results without claiming missing acceptance.
-
 
 ## Terminal verification and integration checkpoint
 

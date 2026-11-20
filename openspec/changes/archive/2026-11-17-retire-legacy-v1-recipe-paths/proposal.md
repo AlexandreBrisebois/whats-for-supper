@@ -7,6 +7,7 @@
 ## Outcome and Scope
 
 Retire the three deprecated V1 fallback and offline migration code paths in `RecipeApi` while preserving startup migration (`RecipeStartupMigrator`), fresh capture/conversion ingestion (`CanonicalRecipeContentStore.PrepareFreshSource` and `ConvertAsync`), general recovery snapshot/restore, historical `CanonicalRecipeMigrationReceipt` vocabulary/epoch continuity, and all existing OpenAPI/Kiota/PWA contracts. Success is established when:
+
 - `Program.cs` no longer intercepts `--canonical-migration`, and `CanonicalRecipeMigrationOperator` plus its unreferenced offline manifest/admission/execution/week-rebuild partials and tests are removed.
 - `SupperIngredientProjection.Read` projects exclusively from structured v2 `CanonicalRecipeContent`, returning empty lines only for unready empty capture placeholders and failing closed (`InvalidDataException`) when a populated recipe lacks v2 canonical content.
 - All one-time V1 attestation, schema/history/snapshot/coverage continuation, and authority-transition helpers and their reflection-only test suites and fixtures are removed.

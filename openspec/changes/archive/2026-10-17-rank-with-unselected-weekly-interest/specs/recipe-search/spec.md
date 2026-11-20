@@ -28,22 +28,27 @@ Browse SHALL rank promotion-eligible candidates first by affinity descending and
 Standard ranked Search SHALL retain retrieval, existing score components, planner demotion and explicit cooked-recency ties. After those substantive keys it SHALL apply H descending before creation/identity presentation ties. Similar mode SHALL remain unchanged; H SHALL not create new TopPick or promotion eligibility.
 
 #### Scenario: Unequal relevance scores
+
 - **WHEN** A has higher final existing score but B greater H
 - **THEN** A remains ahead of B
 
 #### Scenario: Equivalent intent
+
 - **WHEN** two standard candidates have equal final scores and applicable cooked-recency keys
 - **THEN** higher H resolves the tie before creation/identity
 
 #### Scenario: Similar request
+
 - **WHEN** Similar mode retrieves related recipes
 - **THEN** historical family interest does not alter its ordering
 
 #### Scenario: Cooled exact match
+
 - **WHEN** a recently cooked non-Discovery recipe matches typed intent and existing filters
 - **THEN** it remains findable with its qualifying H; no new cooldown gate applies
 
 #### Scenario: No eligible TopPick
+
 - **WHEN** history exists but the existing Browse promotion or report-free conditions fail
 - **THEN** history does not manufacture a TopPick, badge or Surprise Me eligibility
 
@@ -52,13 +57,16 @@ Standard ranked Search SHALL retain retrieval, existing score components, planne
 Historical ranking SHALL apply before result limits and remain stable throughout a valid continuation chain. A changed historical generation or window SHALL either preserve the chain snapshot or cause an explicit restart; clients SHALL not silently append a newly reordered historical sequence.
 
 #### Scenario: Window turns Monday
+
 - **WHEN** the historical window changes between Browse pages
 - **THEN** the chain uses its original historical inputs or requests restart, without silent duplicates or omissions caused by that change
 
 #### Scenario: Revote between pages
+
 - **WHEN** a closed historical week is updated after page one
 - **THEN** the old chain is pinned or rejected for restart; existing cards remain until recovery
 
 #### Scenario: Typed continuation
+
 - **WHEN** a typed ranked continuation loads after new history arrives
 - **THEN** stored ranked order is preserved and existing eligibility rechecks remain in force

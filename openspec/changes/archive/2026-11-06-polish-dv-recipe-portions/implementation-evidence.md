@@ -22,15 +22,15 @@ Implemented only tasks2.1–2.2 in RecipeDetailSheet and its existing component/
 
 Preserve/reset matrix:
 
-| Event | Selected count | Read behavior |
-|---|---|---|
-| First automatic target resolution after early tap | Preserve and bind to resolved target | Read that same preview target |
-| Equivalent schedule/grocery replacement; source hint; focus/visible resume | Preserve | Retire old response, reread same selected count and recipe |
-| Same recipe's basis/ingredient correction | Preserve | Fresh response/version; stale lines absent while loading or failed |
-| Failed preview refresh | Preserve | Honest error, explicit Retry or return; no write/replay |
-| Deliberate recipe/date/occurrence replacement | Reset | Retired results cannot restore prior selection |
-| Original/Planned quantities; entering editing | Reset | Return to source/dated or edit context |
-| Reselect same count after returning | New explicit selection | Fresh attempt; cached old preview is not displayed as current |
+| Event                                                                      | Selected count                       | Read behavior                                                      |
+| -------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| First automatic target resolution after early tap                          | Preserve and bind to resolved target | Read that same preview target                                      |
+| Equivalent schedule/grocery replacement; source hint; focus/visible resume | Preserve                             | Retire old response, reread same selected count and recipe         |
+| Same recipe's basis/ingredient correction                                  | Preserve                             | Fresh response/version; stale lines absent while loading or failed |
+| Failed preview refresh                                                     | Preserve                             | Honest error, explicit Retry or return; no write/replay            |
+| Deliberate recipe/date/occurrence replacement                              | Reset                                | Retired results cannot restore prior selection                     |
+| Original/Planned quantities; entering editing                              | Reset                                | Return to source/dated or edit context                             |
+| Reselect same count after returning                                        | New explicit selection               | Fresh attempt; cached old preview is not displayed as current      |
 
 Observed red: `task test:unit -- src/components/recipes/RecipeDetailSheet.test.tsx` produced3 intended failures and81 passes in `group2-unit-red.log` (early target resolution, equivalent schedule invalidation and editing cancellation). `BASE_URL=http://127.0.0.1:3311 HEARTH_SECRET=<configured> task test:e2e -- recipe-ingredient-preview.spec.ts --workers=1 --reporter=line` produced2 new intended failures and2 existing passes in `group2-browser-red.log` (early resolution clears selection; resume fails to request the preserved target). The reselect regression was separately run before its fix: `task test:unit -- src/components/recipes/RecipeDetailSheet.test.tsx -t 'previews four portions independently'` produced1 intended failure/83 filtered skips in `group2-reselect-unit-red.log` because cached prior quantities appeared instead of Loading preview.
 

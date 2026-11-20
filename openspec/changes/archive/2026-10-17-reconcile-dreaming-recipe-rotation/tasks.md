@@ -12,7 +12,6 @@
 
 Existing Dreaming workflow/processor → recipe persistence → Discovery and FillTheGap. Add real-database cases for stale manual writes, duplicate run, partial batch, changed cooked date and failed publication. Extend Dreaming workflow service tests and run `task test:api -- --filter FullyQualifiedName~Dreaming`; verify actual processor persistence separately from seed/dispatch tests. Update deployment env/cutoff and delayed-run explanation with this slice.
 
-
 ## 3. Explicit rotation controls and legacy migration
 
 - [x] 3.1 Add failing contract/integration tests at the seams below before runtime edits; verify the intended failure.
@@ -20,14 +19,12 @@ Existing Dreaming workflow/processor → recipe persistence → Discovery and Fi
 
 Recipe PATCH DTO/OpenAPI, generated client, detail and stack controls, pwa/e2e/mock-api.ts. Red/green tests cover temporary return then next pass, explicit persistent exclusion surviving expiry, unsuitable recipe bridge, conflicting payload and error rollback/focus. Use focused API/unit tests plus Playwright existing detail/Discovery paths. Validate live endpoint parity and migration/backup/demo roundtrip; update Family Guide and rollout/reversal instructions in this slice.
 
-
 ## 4. Current-plan Discovery eligibility
 
 - [x] 4.1 Add failing contract/integration tests at the seams below before runtime edits; verify the intended failure.
 - [x] 4.2 Implement the bounded slice, synchronize affected API/client/mock contracts, and pass its focused tests.
 
 Exercise manual Quick Find and Search assignment before close → assignment commit → Discovery invalidation/read/category counts. Verify pending suggestions do not exclude, future-week-only assignments remain under the defined current-week scope, removed/replaced selection returns only if other guards allow, and stale queue responses do not restore selected cards. Preserve Search/Browse access and live votes. Use real assignment/Discovery API seams plus focused queue UI recovery tests; do not tie selection removal to the cooked timer. Use the settled immediate post-commit timing and deployment-calendar current week.
-
 
 ## Final verification
 

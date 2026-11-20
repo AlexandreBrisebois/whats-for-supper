@@ -30,6 +30,7 @@ None.
 ## Impact
 
 Documentation only: this proposal, recipe-library ADDED delta, extraction design/tasks, and `docs/openspec-baseline-plan.md`. The traced path connects:
+
 - Detail sheet gear menu → `handleMoveToBin` → client `deleteRecipe` → `DELETE /api/recipes/{id}` → `RecipeController.Delete` → `RecipeService.SoftDeleteRecipe` → EF `RecipeDbContext` / `RecipeSearchDocuments`
 - Browse header button → `RecycleBinSheet` → client `getTrashItems` → `GET /api/recipes/trash` → `RecipeController.GetTrash` → `RecipeService.GetTrash`
 - Bin restore button → `handleRestore` → client `restoreRecipe` → `POST /api/recipes/{id}/restore` → `RecipeController.Restore` → `RecipeService.RestoreRecipe` → `SearchFingerprintService` / `IWorkflowOrchestrator`

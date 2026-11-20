@@ -58,7 +58,7 @@
 **Acceptance boundary:** Vitest tests across all 4 components and locale integrity check.
 
 - [x] 6.1 Update/add tests asserting zero toast calls on GOTO toggle success, single-day Planner arrival highlight, detail photo upload start, manual import-issue save/resolve, and duplicate capture discard (while retaining failure error toasts, `Regenerating hero image...`, `Reimporting in background`, and localized Grocery `Saved to {{section}}` toast). Run `cd pwa && npm run test:unit -- src/components/recipes/RecipeDetailSheet.test.tsx src/app/\(app\)/planner/page.test.tsx src/components/capture/MinimalCapture.test.tsx src/components/planner/GroceryList.test.tsx` to observe failures before implementation.
-- [x] 6.2 Remove redundant `addToast` calls in `RecipeDetailSheet.tsx`, `planner/page.tsx`, and `MinimalCapture.tsx`; localize `section` in `GroceryList.tsx` (`t(\`grocery.aisles.${section}\`, section)`) and add missing `grocery.aisles` EN/FR keys in `pwa/src/locales/{en,fr}/common.json`. Rerun all four Vitest suites plus `src/locales/locale-integrity.test.ts` and confirm pass.
+- [x] 6.2 Remove redundant `addToast` calls in `RecipeDetailSheet.tsx`, `planner/page.tsx`, and `MinimalCapture.tsx`; localize `section` in `GroceryList.tsx` (`t(\`grocery.aisles.${section}\`, section)`) and add missing `grocery.aisles`EN/FR keys in`pwa/src/locales/{en,fr}/common.json`. Rerun all four Vitest suites plus `src/locales/locale-integrity.test.ts` and confirm pass.
 
 ## 7. Grocery Checklist Row Spacing and Right-Aligned Action Icons
 

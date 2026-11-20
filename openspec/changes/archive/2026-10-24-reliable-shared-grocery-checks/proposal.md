@@ -35,4 +35,3 @@ None.
 Source reviewed at `3d1bd68ea0965bb6df2c3689dd8f4aed1c6e598e`: `ScheduleController` item/full-map PATCH; `ScheduleService.ToggleGroceryItemAsync` and `UpdateGroceryStateAsync`; `GroceryRecomputeService.RecomputeForWeekAsync`; EF weekly-plan JSON persistence; `IScheduleEventPublisher`; PWA `GroceryList`, `plannerStore`, `weekStore`, `useScheduleStream` and method-sensitive E2E mocks. Reuse the host-local async gate/fresh-scope pattern in `VotingSession`, not its voting lock or domain ownership.
 
 A future authorized implementation must reconcile the existing atomicity wording in `specs/openapi.yaml`, regenerate Kiota output and synchronize affected tests/mocks. This draft changes only its own OpenSpec change directory; canonical specs and shared configuration remain untouched.
-

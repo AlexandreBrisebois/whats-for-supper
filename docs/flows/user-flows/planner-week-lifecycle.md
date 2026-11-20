@@ -201,11 +201,11 @@ flowchart LR
 
 ## State Decision Table — Planner Header CTAs
 
-| `status` | `isVotingOpen` | `isLocked` | "Ask the Family" CTA | "Voting live" badge | "Close Voting" btn | "Plan next week" btn |
-|----------|---------------|------------|---------------------|--------------------|--------------------|---------------------|
-| 0 (Draft) | false | false | ✅ Always shown | ❌ | ❌ | ✅ if ≥4 planned |
-| 1 (VotingOpen) | true | false | ❌ | ✅ | ✅ | ✅ if ≥4 planned |
-| 2 (Locked) | false | true | ❌ | ❌ | ❌ | ❌ ("Menu's In!") |
+| `status`       | `isVotingOpen` | `isLocked` | "Ask the Family" CTA | "Voting live" badge | "Close Voting" btn | "Plan next week" btn |
+| -------------- | -------------- | ---------- | -------------------- | ------------------- | ------------------ | -------------------- |
+| 0 (Draft)      | false          | false      | ✅ Always shown      | ❌                  | ❌                 | ✅ if ≥4 planned     |
+| 1 (VotingOpen) | true           | false      | ❌                   | ✅                  | ✅                 | ✅ if ≥4 planned     |
+| 2 (Locked)     | false          | true       | ❌                   | ❌                  | ❌                 | ❌ ("Menu's In!")    |
 
 > **Current bug:** "Ask the Family" only shows when `plannedCount > 0`. After fix (Req 6): shows whenever `status === 0` and week is not in the past.
 
@@ -213,8 +213,8 @@ flowchart LR
 
 ## Contract Gaps (to fix in spec)
 
-| Gap | Current state | Required fix |
-|-----|--------------|--------------|
+| Gap                                                                   | Current state                                                       | Required fix                                             |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------- |
 | `GET /api/schedule` response missing `status` field in OpenAPI schema | `ScheduleDays` schema has `locked` and `weekOffset` but no `status` | Add `status: integer (0\|1\|2)` to `ScheduleDays` schema |
-| `GET /api/schedule/fill-the-gap` has no `weekOffset` param | No query param in contract | Add optional `weekOffset: integer` query param |
-| `fill-the-gap` sort order not documented | No sort description | Document rotation sort in OpenAPI description |
+| `GET /api/schedule/fill-the-gap` has no `weekOffset` param            | No query param in contract                                          | Add optional `weekOffset: integer` query param           |
+| `fill-the-gap` sort order not documented                              | No sort description                                                 | Document rotation sort in OpenAPI description            |

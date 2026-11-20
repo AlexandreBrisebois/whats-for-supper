@@ -4,12 +4,12 @@ Apply the additive database migration before starting the new API. Existing vote
 
 API environment settings (also forwarded by the supported Compose files):
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `HISTORICAL_INTEREST_WEEKS` | `4` | Previous complete deployment-calendar weeks used for ranking |
-| `HISTORICAL_INTEREST_ENABLED` | `true` | Enable historical ranking without changing retention |
-| `COOKED_COOLDOWN_WEEKS` | `4` | Dreaming cooked-date cutoff in complete calendar weeks |
-| `DREAMING_ROTATION_ENABLED` | `true` | Enable Dreaming rotation writes |
+| Setting                       | Default | Meaning                                                      |
+| ----------------------------- | ------- | ------------------------------------------------------------ |
+| `HISTORICAL_INTEREST_WEEKS`   | `4`     | Previous complete deployment-calendar weeks used for ranking |
+| `HISTORICAL_INTEREST_ENABLED` | `true`  | Enable historical ranking without changing retention         |
+| `COOKED_COOLDOWN_WEEKS`       | `4`     | Dreaming cooked-date cutoff in complete calendar weeks       |
+| `DREAMING_ROTATION_ENABLED`   | `true`  | Enable Dreaming rotation writes                              |
 
 Week settings accept integers 1–5200; malformed values fail startup. Booleans accept true/false. These settings are independent of Search rediscovery days. `Calendar__TimeZone` owns calendar boundaries. On Monday 2026-10-12 with four weeks, September 14 is recent and September 13 has aged out. Null cooked date means never eaten. Cooking corrections take effect on the next successful Dreaming pass; reads do not run cooldown reconciliation.
 

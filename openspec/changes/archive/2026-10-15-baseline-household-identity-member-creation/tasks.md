@@ -44,20 +44,20 @@ Full vertical slice implemented test-first across contract, schema, domain, API,
    - `e2e/onboarding.spec.ts`: verified duplicate member creation returns 409 without adding a duplicate to the list.
    - All 7 tests in `e2e/onboarding.spec.ts` and `e2e/member-creation.spec.ts` passed.
 
-| Check | Outcome / exact scope |
-| --- | --- |
-| `npm --prefix pwa run test:unit -- src/lib/api/family.test.ts` | Passed, 3 tests (409 rejection, 201 creation contract, generated client acceptance). |
-| Focused family and Settings component tests (`FamilyManagement.creation.test.tsx`) | Passed, 2 tests (creation with retained selection, duplicate error handling). |
-| `task test:unit` | Passed, 78 files / 740 tests. |
-| `task typecheck` | Passed, exit 0. |
-| `task lint:pwa` / `task format:check:pwa` | Passed, exit 0 each. |
-| `task lint:api` | Passed: `dotnet format --verify-no-changes` exited with code 0 (212 files checked, 0 modified). |
-| Strict OpenSpec / static route/schema/mock checks (`task check:contracts`) | Passed: static routes match, 0 schema drift, 0 mock GUID drift. |
-| `task gen:client:check` | Passed: Kiota 1.36.0 confirmed client is up to date with `specs/openapi.yaml`. |
-| `dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj` (`task test:api`) | Passed: 898 passed, 0 failed, 40 skipped (PostgreSQL integration fixtures without local connection). |
-| `npx playwright test e2e/onboarding.spec.ts e2e/member-creation.spec.ts` | Passed: 7/7 Playwright tests passed in browser. |
-| `task agent:drift:endpoints` | Blocked: live API server not running locally on port 5001. |
-| Disposable PostgreSQL check | Skipped: `WFS_TEST_POSTGRES_CONNECTION` absent and Docker daemon not running. |
+| Check                                                                              | Outcome / exact scope                                                                                |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `npm --prefix pwa run test:unit -- src/lib/api/family.test.ts`                     | Passed, 3 tests (409 rejection, 201 creation contract, generated client acceptance).                 |
+| Focused family and Settings component tests (`FamilyManagement.creation.test.tsx`) | Passed, 2 tests (creation with retained selection, duplicate error handling).                        |
+| `task test:unit`                                                                   | Passed, 78 files / 740 tests.                                                                        |
+| `task typecheck`                                                                   | Passed, exit 0.                                                                                      |
+| `task lint:pwa` / `task format:check:pwa`                                          | Passed, exit 0 each.                                                                                 |
+| `task lint:api`                                                                    | Passed: `dotnet format --verify-no-changes` exited with code 0 (212 files checked, 0 modified).      |
+| Strict OpenSpec / static route/schema/mock checks (`task check:contracts`)         | Passed: static routes match, 0 schema drift, 0 mock GUID drift.                                      |
+| `task gen:client:check`                                                            | Passed: Kiota 1.36.0 confirmed client is up to date with `specs/openapi.yaml`.                       |
+| `dotnet test api/src/RecipeApi.Tests/RecipeApi.Tests.csproj` (`task test:api`)     | Passed: 898 passed, 0 failed, 40 skipped (PostgreSQL integration fixtures without local connection). |
+| `npx playwright test e2e/onboarding.spec.ts e2e/member-creation.spec.ts`           | Passed: 7/7 Playwright tests passed in browser.                                                      |
+| `task agent:drift:endpoints`                                                       | Blocked: live API server not running locally on port 5001.                                           |
+| Disposable PostgreSQL check                                                        | Skipped: `WFS_TEST_POSTGRES_CONNECTION` absent and Docker daemon not running.                        |
 
 Local handoff from repository root (zsh/bash; explicit task-owned files only):
 

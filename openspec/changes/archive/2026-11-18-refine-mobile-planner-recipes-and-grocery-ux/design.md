@@ -37,18 +37,18 @@ This change spans eight coordinated UX, configuration, and temporal refinements 
 ## Decisions and Tradeoffs
 
 - **Planner Portions visual alignment (Item 1):** Reuse the exact `PlannerDayCard` outer structure (`day-card` temporal data attributes, compact `Today` divider, `w-10` `.planner-date` left column, `.planner-meal` `glass` / `bg-cream` card surface, `py-2.5 min-h-[72px]`) directly inside `useSupperServingsEditor.tsx` rows, passing `todayDate` (`useWeekStore((s) => s.calendar?.today)`) alongside `schedule`. On read-only cooked days (`meal?.status === 2 && !day.editable`), drop `grayscale` and move the status into a quiet sage badge (`bg-sage/15 text-sage-800` with check icon and read-only count) right-aligned in the thumb zone alongside the disabled/static count.
-  - *Tradeoff:* Keeping `data-testid="portion-row-${key}"`, `portion-input-${key}`, and `reset-portions-${key}` intact avoids breaking existing state/aria contracts while unifying visual geometry across Meals and Portions tabs.
+  - _Tradeoff:_ Keeping `data-testid="portion-row-${key}"`, `portion-input-${key}`, and `reset-portions-${key}` intact avoids breaking existing state/aria contracts while unifying visual geometry across Meals and Portions tabs.
 
 - **Toronto default in templates, UTC retained in code & smoke tests (Item 2):** Default `Calendar__TimeZone: ${Calendar__TimeZone:-America/Toronto}` across Compose/env deployment templates (`docker/compose/apps.yml`, `docker/compose/production.yml`, `docker/compose/production-overrides.yml`, `docker/docker-compose.prod.yml`, `docker/docker-compose.nas.yml`, `release-template/synology/compose.yaml`, `docker/.env.example`, `docker/.env`) and `Taskfile.yml` `dev:api`, while **preserving** `UTC` as the unconfigured in-process default in `DeploymentCalendar` and in `docker/compose/smoke.env`. Inject `DeploymentCalendar` into `RecipeSearchService` (optional or constructor parameter; fall back gracefully or resolve `DeploymentCalendar.Capture(_clock.UtcNow).Today`) so browse rediscovery cutoff and active/cooked calendar blocking follow the same deployment timezone as Planner.
-  - *Alternative rejected:* Changing `DeploymentCalendar`'s C# fallback from `"UTC"` to `"America/Toronto"` was rejected because unit tests explicitly verify unconfigured `DeploymentCalendar` falls back to `UTC` (`Resolve supper dates through the deployment calendar`).
+  - _Alternative rejected:_ Changing `DeploymentCalendar`'s C# fallback from `"UTC"` to `"America/Toronto"` was rejected because unit tests explicitly verify unconfigured `DeploymentCalendar` falls back to `UTC` (`Resolve supper dates through the deployment calendar`).
 
 - **Standardized unit dropdown with legacy fallback (Item 3d):** Extract a shared constant list of standard culinary units in `pwa/src/lib/recipes/ingredient-draft.ts`:
   - Blank option `""` (none / unitless count),
   - Volume: `tsp`, `tbsp`, `cup`, `ml`, `cl`, `dl`, `l`,
   - Weight: `mg`, `g`, `kg`,
   - Count/packaging: `piece`, `clove`, `pinch`, `slice`, `can`, `jar`, `pkg`, `bunch`, `head`, `sprig`, `stalk`, `leaf`.
-  Render both `recipe-edit-unit-${index}` and `recipe-edit-package-unit-${index}` as styled `<select>` elements (`min-h-12`). When a loaded draft carries a non-empty unit not in the standard set (legacy data such as `"Gousses"` or `"dash"`), prepend that legacy value as a labeled option so loading/editing never silently erases existing data before the user picks a standard unit.
-  - *Alternative rejected:* Free-text `<datalist>` leaves typos and arbitrary strings submittable, whereas a strict `<select>` enforces standardized units for future scaling and unit conversion without losing existing values on open.
+    Render both `recipe-edit-unit-${index}` and `recipe-edit-package-unit-${index}` as styled `<select>` elements (`min-h-12`). When a loaded draft carries a non-empty unit not in the standard set (legacy data such as `"Gousses"` or `"dash"`), prepend that legacy value as a labeled option so loading/editing never silently erases existing data before the user picks a standard unit.
+  - _Alternative rejected:_ Free-text `<datalist>` leaves typos and arbitrary strings submittable, whereas a strict `<select>` enforces standardized units for future scaling and unit conversion without losing existing values on open.
 
 - **Servings `- (val) +` stepper & mobile edit layout (Items 3a–3c):** Replace `<input data-testid="recipe-edit-servings-input">` standalone box with the joined `[-] [input] [+]` stepper group (`ml-auto`, keeping `data-testid="recipe-edit-servings-input"`, numeric keyboard entry, `aria-invalid`, and `aria-describedby="recipe-servings-error"` below the row). Refactor structured ingredient rows so `[Amount]` (`w-20`), `[Unit <select>]` (`flex-1`), and an icon-only `Trash2` remove button (`h-12 w-12`) occupy a single compact top row above `[Description]` (`w-full`), fold `Shopping and scaling` quietly below, replace `text-[10px] uppercase tracking-[...]` edit headings with Solar Earth `text-sm font-semibold text-charcoal`, convert `Remove section` / `Remove step` to compact icon buttons with full localized `aria-label`s, and remove the redundant `SAVE RECIPE EDITS` mobile caption above Save/Cancel.
 
@@ -66,6 +66,7 @@ This change spans eight coordinated UX, configuration, and temporal refinements 
 ## First Observable Slice
 
 The smallest end-to-end slice validating backend + deployment + frontend seams together is **Slice 1 (Toronto Timezone & Default List Browse Mode)** paired immediately with **Slice 2 (Navigation Discover Pulse & Planner Portions Parity)**:
+
 - Updating Compose templates + `RecipeSearchService` (`DeploymentCalendar.Capture(_clock.UtcNow).Today`) + `FamilyMember` default `'list'` exercises Compose config rendering, `.NET` xUnit/Postgres integration tests, and PWA `RecipesExperience` defaults across API and browser boundaries before UI refinements proceed.
 
 ## State, Concurrency and Recovery
@@ -84,6 +85,7 @@ The smallest end-to-end slice validating backend + deployment + frontend seams t
 ## User Experience
 
 Guided by Solar Earth tokens and the `designer` + `mere-designer` principles ("calm, tactile kitchen prep tool; reduce decisions and thumb strain"):
+
 - **One-handed thumb ergonomics:** Planner Portions aligns steppers (`- val +`) and usual-reset pills to the right trailing edge matching Meals cards; Recipe edit mode puts Servings stepper on the right and condenses ingredient `[Amount] [Unit <select>] [Trash]` onto a single scannable header row above the description; Recipes places `[Filters] [Similar ×] [Clear icon]` in one compact horizontal row; Grocery rows reclaim horizontal padding so long ingredient names don't prematurely wrap beside right-aligned `BookOpen`/`Tag` icons.
 - **Calm status hierarchy:** Replaced harsh full-row `grayscale` and plain `Cooked` text with a gentle `bg-sage/15 text-sage-800` badge; removed jarring `10px uppercase` caps on edit section headings and redundant footer captions; silenced 6 self-evident toasts (`GOTO`, single-day `Planner` arrival, `Uploading photo...`, `Marked for review`/`Changes saved`/`Marked as resolved`, `Duplicate recipe discarded.`) so toasts regain signal value for errors, background work, and out-of-view Grocery aisle confirmation.
 - **Accessible targets & focus:** Every stepper button, unit select, clear-search icon, Grocery `BookOpen`/`Tag` button, and ingredient remove icon preserves `>= 48px` (`min-h-12` / `min-w-12` or `min-h-11` where established in Grocery extra controls) tap targets, explicit `aria-label`s, visible focus rings, and EN/FR translations.

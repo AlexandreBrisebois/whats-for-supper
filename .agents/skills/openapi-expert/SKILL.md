@@ -57,12 +57,12 @@ and behavior tests require their own evidence. Record unavailable checks as bloc
 Choose evidence for the affected operation, not merely a test with "contract" in
 its name. Existing examples:
 
-| Evidence | What it establishes when run successfully |
-|---|---|
-| `pwa/src/lib/api/recipe-import-report-contract.test.ts` | Selected schema/generated-text assertions, not network serialization or schema validation |
-| `pwa/src/lib/api/grocery-extras.test.ts` | Wrapper arguments and version/week handling against replacement SDK methods |
-| `api/src/RecipeApi.Tests/Infrastructure/SuccessWrappingFilterTests.cs` | Status-dependent wrapping behavior |
-| `api/src/RecipeApi.Tests/Integration/PdfCaptureIntegrationTests.cs` | Selected multipart, response and published OpenAPI assertions through the test factory |
+| Evidence                                                               | What it establishes when run successfully                                                 |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `pwa/src/lib/api/recipe-import-report-contract.test.ts`                | Selected schema/generated-text assertions, not network serialization or schema validation |
+| `pwa/src/lib/api/grocery-extras.test.ts`                               | Wrapper arguments and version/week handling against replacement SDK methods               |
+| `api/src/RecipeApi.Tests/Infrastructure/SuccessWrappingFilterTests.cs` | Status-dependent wrapping behavior                                                        |
+| `api/src/RecipeApi.Tests/Integration/PdfCaptureIntegrationTests.cs`    | Selected multipart, response and published OpenAPI assertions through the test factory    |
 
 The factory has its own pipeline/replacements. These checks do not by themselves
 qualify production publication; endpoint drift compares routes/methods, not full

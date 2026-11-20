@@ -12,14 +12,14 @@ The predecessor `2026-11-06-refine-today-portions-grocery-cook` exists in the ar
 - Exact main `RecipeDetailSheet.tsx` obtained through the GitHub connector, Git blob **730026e9a2165bd16aa00353747c8fab3f68ae53**. Local reference hashes identically. Main uses spaced borderless emoji/label choices, selected `bg-white shadow-md scale-110`, unselected `opacity-35 hover:opacity-70`, and small uppercase labels. It exposes Similar as a visible Search button. This is a source anchor, not a restored whole-page layout.
 - An inspected isolated static board at `.task/recipe-dock-review/ratings-reference/comparison.{html,png}` illustrates main/current/proposed control styling. It is manually reconstructed, uses available system fonts/emoji and approximated surfaces, and is explicitly **not** a running-main or pixel-identical full-sheet render. The main-source comparison above remains exact; no physical-device or rendered accessibility certification is claimed.
 
-| Owner | Current responsibility / change seam |
-|---|---|
-| RecipeDetailSheet | Top toolbar, dated/source context, rating, Notes, footer and existing CooksMode entry; move its one Cook, change composition, expose Similar |
-| RecipesExperience | Explicit/chosen/suggested date, identical-target/read/error classification, guarded assignment/recovery and View-plan route; reuse date identity and search callback |
-| Planner page | Captured saved source occurrence/date and recipe detail return; provide exact-date Planned navigation rather than planning another occurrence from detail |
-| ActionGearMenu | Existing optional Similar entry; omit its detail duplicate while preserving other consumers/actions |
-| Similar search owner | Recipes uses the existing `similarTo` search flow. Planner currently routes to `/recipes?open=…`, reopening detail; correct that adapter to existing Similar entry, without ranking/retrieval change |
-| Visual language and EN/FR resources | Terracotta primary, readable white secondary, reachable targets and localized action semantics |
+| Owner                               | Current responsibility / change seam                                                                                                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RecipeDetailSheet                   | Top toolbar, dated/source context, rating, Notes, footer and existing CooksMode entry; move its one Cook, change composition, expose Similar                                                         |
+| RecipesExperience                   | Explicit/chosen/suggested date, identical-target/read/error classification, guarded assignment/recovery and View-plan route; reuse date identity and search callback                                 |
+| Planner page                        | Captured saved source occurrence/date and recipe detail return; provide exact-date Planned navigation rather than planning another occurrence from detail                                            |
+| ActionGearMenu                      | Existing optional Similar entry; omit its detail duplicate while preserving other consumers/actions                                                                                                  |
+| Similar search owner                | Recipes uses the existing `similarTo` search flow. Planner currently routes to `/recipes?open=…`, reopening detail; correct that adapter to existing Similar entry, without ranking/retrieval change |
+| Visual language and EN/FR resources | Terracotta primary, readable white secondary, reachable targets and localized action semantics                                                                                                       |
 
 ## Decisions and Tradeoffs
 
@@ -32,17 +32,17 @@ The predecessor `2026-11-06-refine-today-portions-grocery-cook` exists in the ar
 
 ## State Matrix
 
-| Starting state | Top Cook | One bottom action row | Preserved behavior |
-|---|---|---|---|
-| Recipes, ordinary unassigned displayed target | Quiet Cook | Accent Plan for date + existing quiet target-date arrows | Chooser changes proposal only; separate guarded Plan writes |
-| Recipes, same recipe confirmed at displayed ordinary target | Accent Cook | White Planned/date, no arrows | Opens exact Planner date, no reassignment or duplicate body status |
-| Planner, confirmed ordinary saved source occurrence | Accent Cook | White Planned/date, no arrows | Navigate/return to source day; no direct duplicate-occurrence shortcut |
-| Recipes explicitly targets Friday but recipe exists Wednesday | Quiet Cook | Friday's ordinary dated planning controls | Do not silently replace Friday with Wednesday |
-| Different recipe or non-cooking target | Existing Cook under safe availability | Existing permitted planning/recovery/confirmation entry in one row | No direct overwrite; guarded replacement/non-cooking consent remains |
-| Cooked/prepared/consensus context | Existing readable Cook behavior only | Existing truthful completed/review state, never a false uncompleted Planned claim | No new completion, date invention, frozen-count mutation or consensus reset |
-| Target loading, failed read or uncertain save | Existing safety/operation ownership | Loading/Retry/Review as appropriate; no false Planned | Necessary feedback can wrap above the single controls row |
-| Grocery original review | Existing Cook at top-left | Existing deliberate Plan transition | Original evidence, source-week return and separate later assignment remain |
-| Editing/loading/unavailable recipe | Preserve existing Cook eligibility | Save/Cancel or existing unavailable state; never duplicate planning controls | Keep edit/draft/focus/retry protections |
+| Starting state                                                | Top Cook                              | One bottom action row                                                             | Preserved behavior                                                          |
+| ------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Recipes, ordinary unassigned displayed target                 | Quiet Cook                            | Accent Plan for date + existing quiet target-date arrows                          | Chooser changes proposal only; separate guarded Plan writes                 |
+| Recipes, same recipe confirmed at displayed ordinary target   | Accent Cook                           | White Planned/date, no arrows                                                     | Opens exact Planner date, no reassignment or duplicate body status          |
+| Planner, confirmed ordinary saved source occurrence           | Accent Cook                           | White Planned/date, no arrows                                                     | Navigate/return to source day; no direct duplicate-occurrence shortcut      |
+| Recipes explicitly targets Friday but recipe exists Wednesday | Quiet Cook                            | Friday's ordinary dated planning controls                                         | Do not silently replace Friday with Wednesday                               |
+| Different recipe or non-cooking target                        | Existing Cook under safe availability | Existing permitted planning/recovery/confirmation entry in one row                | No direct overwrite; guarded replacement/non-cooking consent remains        |
+| Cooked/prepared/consensus context                             | Existing readable Cook behavior only  | Existing truthful completed/review state, never a false uncompleted Planned claim | No new completion, date invention, frozen-count mutation or consensus reset |
+| Target loading, failed read or uncertain save                 | Existing safety/operation ownership   | Loading/Retry/Review as appropriate; no false Planned                             | Necessary feedback can wrap above the single controls row                   |
+| Grocery original review                                       | Existing Cook at top-left             | Existing deliberate Plan transition                                               | Original evidence, source-week return and separate later assignment remain  |
+| Editing/loading/unavailable recipe                            | Preserve existing Cook eligibility    | Save/Cancel or existing unavailable state; never duplicate planning controls      | Keep edit/draft/focus/retry protections                                     |
 
 Here, an unplanned target means the candidate recipe is not already assigned to the displayed date; the destination may still contain a different recipe or non-cooking plan. Its existing guarded replacement/confirmation flow remains available. Routing changes to the shown saved occurrence through Planner does not remove that unplanned selection flow.
 
@@ -68,7 +68,6 @@ Use matched EN/FR phone320/390, tablet834, short landscape and 200%-text renders
 
 No behavior question remains unanswered for this bounded design. Remaining concerns are explicit: the predecessor is not verified complete, the white Planned control must remain visibly enabled, header crowding may require reflow, and global “planned anywhere” discovery is not introduced. Implementation was separately approved after review. Alex subsequently authorized redeploying the existing nonproduction DV instance after verification.
 
-
 ## Applied slice evidence · 6 November 2026
 
 Alex separately approved this reviewed design before application. Two focused existing-session workers owned the date adapters and live/visual acceptance; root owned the detail sheet and integration. No new remote session, deployment, production test, commit, push or archive occurred. The predecessor's unchecked portions/grocery obligations remain unchanged.
@@ -82,9 +81,7 @@ Alex separately approved this reviewed design before application. Two focused ex
 
 Invocation logs and beforeimages are in `.task/recipe-dock-apply/`; applicable final repository verification is tracked by task3.1 and invocation-specific agent-finish records, rather than inferred from these focused passes.
 
-
 **Final eligibility/cleanup review:** Capture's three detail callers had supplied empty Similar callbacks. Revealing the shared action would expose a dead control there. A no-callback regression was observed red, then the callback became optional and the action is omitted only for those ineligible callers; their empty callbacks were removed. Planner, Recipes and cooking detail retain real Similar routing. ActionGearMenu has only the detail consumer, so its now-unused optional Similar prop/branch/icon were removed while retaining all Edit/Report/Bin and dismissal behavior. Focused Sheet/Menu/Capture tests passed122/122. These four files were refreshed into the isolated CI source copy before production qualification; dependencies did not change.
-
 
 ## Final integration corrections and CI qualification boundaries
 
@@ -102,7 +99,6 @@ Native ARM Linux with the same pinned Node/npm and workflow build flags produced
 
 DV preflight verified the existing nonproduction `whats-for-supper` Compose project and local `dv.srvrlss.dev` Host routing through port3310. Its PWA-only recreation can preserve API, database volumes, credentials and tunnel; capture the currently running image for rollback first. Deployment is authorized only after verification. Public unauthenticated health returned403 during preflight; local DV Host health/home returned200, so public/authenticated reachability must be reported separately rather than inferred.
 
-
 ## Final repository qualification and requested DV deployment
 
 Final Task verification record `.task/agent-finish/runs/865c10c8507a42b9b40355e5486c47c7.json` passes all applicable checks with stable full input identity `50cfce97cfa2ccf62c2340698582db0cbf8d31a1ae6176048ce298a6b84f6bd7`. No application/test source changed afterward; later documentation publication is separately checked. Exact Node26.12/npm11.21/OpenSpec1.15 pins and isolated production server3343 were used. Units1783/1783; full1007 browser cases/fourworkers:946 expected,60skipped,one flaky retry-pass,zero unexpected failures,427.5s. The known-to-unknown serving-badge retry is retained as a limitation, not relabeled clean. Native Mac API1400pass/284skip is complemented by pinned Linux ARM64 SDK11RC2/Release/disposable PostgreSQL full CI sequence1703pass/25explicit opt-in/manual/provider skips, zero failures and no ordinary relational skips. Contract/client/schema/mock checks, types/lint/format and37spec validations pass. Required real browser/API/PostgreSQL journey1/1zero skips and cleanup pass separately. Welcome Demo14pass/18intentional Beta skips and separate Beta17pass; harness219pass plus separately qualified offline parser1pass and Node inventory10/10.
@@ -112,6 +108,5 @@ Two earlier standard invocations failed runtime identity after passing units; th
 Hosted x64 is not qualified here: QEMU's default x64 build segfaulted before compile; a concurrent emulated unit run had unchanged5s timeouts. Native ARM production build passed. Alex will validate x64 in CI, and it does not block the requested DV review deployment. No physical-device/screen-reader blanket claim is made.
 
 Alex explicitly said deploy to DV without waiting for the pending full browser or x64 check. Only the existing nonproduction PWA was built/recreated. `.task/recipe-dock-apply/dv-deployment.json` records healthy image `sha256:2016225ee192e527febc9b26ce112535b365c6fc31174e5b53d2157a0ab75655`, rollback tag `whats-for-supper-pwa:rollback-recipe-docks-20261106T174056Z`, unchanged API/PG/Traefik IDs/images/mounts and local DV Host health/home/static200. Data, credentials and tunnel were preserved. Public automated HTTPS returns Cloudflare1010 `browser_signature_banned`; no bypass or access change was attempted, and phone access remains user validation. No production test, commit, push or archive occurred.
-
 
 Serving-badge flaky trace finding: the failed snapshot shows a dated two-serving heading and original four-serving basis, rather than a prior recipe badge leak. The test overrides only the detail GET to unknown yield, while shared projection `basisFor(id)` still supplies its independent original4 and day target2. The retry succeeds before the pending projection resolves. This is an inconsistent mock/test seam for existing portions semantics; no product change or assertion removal was made. A coherent correction must align both mock owners and wait for the actual new identity/projection. It remains separate from the approved dock/rating/Similar work and incoming portions investigation. Evidence is preserved in `.task/recipe-dock-apply/final-browser-artifacts/`.

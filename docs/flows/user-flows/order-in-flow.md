@@ -134,11 +134,11 @@ sequenceDiagram
 
 What `HomeCommandCenter` renders for each `todayStatus` value after the client-side reconcile completes.
 
-| `todaysEntry.status` | `isSkipped` | `isCooked` | `sessionDone` | Card shown |
-|---|---|---|---|---|
-| `0` — Draft (recipe assigned) | `false` | `false` | `false` | **TonightMenuCard** |
-| `0` — Draft (no recipe) | `false` | `false` | `false` | **TonightPivotCard** |
-| `2` — Cooked | `false` | `true` | `true` | **CookedSuccessCard** |
-| `3` — Skipped / Take Out | `true` | `false` | `true` | **TonightPivotCard** (done state — pivot visible but session is over) |
+| `todaysEntry.status`          | `isSkipped` | `isCooked` | `sessionDone` | Card shown                                                            |
+| ----------------------------- | ----------- | ---------- | ------------- | --------------------------------------------------------------------- |
+| `0` — Draft (recipe assigned) | `false`     | `false`    | `false`       | **TonightMenuCard**                                                   |
+| `0` — Draft (no recipe)       | `false`     | `false`    | `false`       | **TonightPivotCard**                                                  |
+| `2` — Cooked                  | `false`     | `true`     | `true`        | **CookedSuccessCard**                                                 |
+| `3` — Skipped / Take Out      | `true`      | `false`    | `true`        | **TonightPivotCard** (done state — pivot visible but session is over) |
 
 > **Why TonightPivotCard for status 3?** The render condition is `(!currentRecipe || isSkipped || sessionDone) && !isCooked`. When `isSkipped=true` and `sessionDone=true`, the pivot card renders but the user has already acted — no further action is expected this session. On reload, the same state is re-derived from the API, so the pivot card is shown in its neutral state (no "Take Out" toast, just the card).

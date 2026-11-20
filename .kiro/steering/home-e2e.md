@@ -15,6 +15,7 @@ relying on implementation details.
 The home page (`/home`) is a **Next.js Server Component**. It calls `serverFetch()` which hits the backend directly via `API_INTERNAL_URL` (a Docker-internal or localhost URL). This fetch happens on the Node.js server process — **not in the browser** — so `page.route()` cannot intercept it.
 
 Concretely:
+
 - `serverFetch('/api/schedule?weekOffset=0')` → goes to `http://127.0.0.1:5001/api/schedule?weekOffset=0` from the server process.
 - `page.route(/...schedule.../)` → only intercepts browser-originated requests.
 - Result: SSR always returns real backend data regardless of Playwright mocks.

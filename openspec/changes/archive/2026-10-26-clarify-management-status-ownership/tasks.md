@@ -21,21 +21,20 @@ Application authorized by the user on 2026-10-26 after proposal review. Checkbox
 
 - [x] 2.1 Record task 1 acceptance and the application checkpoint in task/audit evidence without changing historical audit findings; review staged/unstaged/untracked scope against before-images, then run `git diff --check` and `task verify -- <complete-reviewed-changed-file-set>` using concrete paths for both canonical specs, all changed artifacts and any tracker/evidence updates. Documentation needs no preparation run. Report durable record_path and passed/failed/blocked/not-run/not-applicable evidence; confirm HEAD/index and unrelated work are preserved. Stop before archive, commit or PR.
 
-
 ## Application evidence — 2026-10-26
 
 Entry HEAD: `e680fb7966978da3fbde25453a241c7e69e2b2a1`; index empty. Existing five-line Taskfile edit, inventory script/tests, audit package and reviewed proposal preserved. Full 2,402-file SHA-256/status/diff baseline and before-images are at `/var/folders/7x/450tvgfj1lg2gx9p89txzx0w0000gn/T/wfs-management-status-apply-cycp0lau`; no canonical drift from proposal source hashes.
 
-| Acceptance | Observed result |
-|---|---|
-| 1.1 Full initial review and counts | Passed; DBR 32/90 and DH 37/120; source hashes equal the design-review checkpoint. |
-| 1.2 Shared ownership and navigation | Applied the reviewed DBR description, moved both DH scenarios verbatim, removed the superseded requirement, added exactly the three navigation edits and old-anchor compatibility target. Demo diagnostics remain authoritative at DH. |
-| 1.3 Exact conservation | Passed; four shared scenario contents match source, all other 67 requirement blocks byte-identical, all 210 scenarios conserved, qualification sections byte-identical, and preambles differ only by the three planned edits. Source-span separators are excluded only when comparing moved scenario content. |
-| 1.3 Counts | DBR 32/92; DH 36/118; combined 68/210; corpus 807/2165. No scenarios added or removed. |
-| 1.3 Preservation | 2,398 other baseline files SHA-256-identical; recipe-capture (both URL/photo finalization requirements), application, OpenAPI, P0 scripts/tests and Taskfile remain unchanged. |
-| 1.4 Ownership links | Passed; 18 relative links/anchors in both affected specs resolve, and explicit old DH anchor is retained. Inbound-reference search found only design/task references and new canonical navigation; no additional document rewrite needed. |
-| 1.4 Full final review | Passed; both complete post-edit specs reviewed, preserving ordinary/demo selection, persisted status/null result, acceptance/completion, reset/successor distinctions and all failure/qualification boundaries. |
-| Pinned validation | `task spec:check -- clarify-management-status-ownership --type change` passed; `task spec:check` passed 35/35 items, zero failures. OpenSpec 1.14.3. |
+| Acceptance                          | Observed result                                                                                                                                                                                                                                                                                               |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.1 Full initial review and counts  | Passed; DBR 32/90 and DH 37/120; source hashes equal the design-review checkpoint.                                                                                                                                                                                                                            |
+| 1.2 Shared ownership and navigation | Applied the reviewed DBR description, moved both DH scenarios verbatim, removed the superseded requirement, added exactly the three navigation edits and old-anchor compatibility target. Demo diagnostics remain authoritative at DH.                                                                        |
+| 1.3 Exact conservation              | Passed; four shared scenario contents match source, all other 67 requirement blocks byte-identical, all 210 scenarios conserved, qualification sections byte-identical, and preambles differ only by the three planned edits. Source-span separators are excluded only when comparing moved scenario content. |
+| 1.3 Counts                          | DBR 32/92; DH 36/118; combined 68/210; corpus 807/2165. No scenarios added or removed.                                                                                                                                                                                                                        |
+| 1.3 Preservation                    | 2,398 other baseline files SHA-256-identical; recipe-capture (both URL/photo finalization requirements), application, OpenAPI, P0 scripts/tests and Taskfile remain unchanged.                                                                                                                                |
+| 1.4 Ownership links                 | Passed; 18 relative links/anchors in both affected specs resolve, and explicit old DH anchor is retained. Inbound-reference search found only design/task references and new canonical navigation; no additional document rewrite needed.                                                                     |
+| 1.4 Full final review               | Passed; both complete post-edit specs reviewed, preserving ordinary/demo selection, persisted status/null result, acceptance/completion, reset/successor distinctions and all failure/qualification boundaries.                                                                                               |
+| Pinned validation                   | `task spec:check -- clarify-management-status-ownership --type change` passed; `task spec:check` passed 35/35 items, zero failures. OpenSpec 1.14.3.                                                                                                                                                          |
 
 Canonical SHA-256 after application:
 

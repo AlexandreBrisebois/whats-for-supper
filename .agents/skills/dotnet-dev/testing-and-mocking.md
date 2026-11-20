@@ -11,12 +11,12 @@ tests and incidental call-count assertions that only mirror implementation.
 Inspect `api/src/RecipeApi.Tests/Infrastructure/TestWebApplicationFactory.cs` and
 the selected tests before attributing coverage to the factory's name:
 
-| Boundary | Current fixture behavior and implication |
-|---|---|
-| Authentication | `CreateAsync` disables auth; use `CreateWithAuthAsync` for auth assertions. `AuthEnforcementTests.cs` covers missing/wrong credentials, valid access and anonymous health. |
-| Persistence | Defaults to EF InMemory and ignores its transaction warning. A PostgreSQL override and dedicated PostgreSQL fixtures exercise relational paths; InMemory cannot establish PostgreSQL constraints, transactions, raw SQL or LINQ translation. |
-| Orchestration | Replacement triggers persist workflow/task state needed by subsequent reads. Their acceptance does not establish real worker execution, retries or background delivery. |
-| Application startup | The factory constructs its own registrations/pipeline rather than running production `Program.cs` unchanged. TestServer acceptance does not establish production wiring, deployment or live browser behavior. |
+| Boundary            | Current fixture behavior and implication                                                                                                                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authentication      | `CreateAsync` disables auth; use `CreateWithAuthAsync` for auth assertions. `AuthEnforcementTests.cs` covers missing/wrong credentials, valid access and anonymous health.                                                                   |
+| Persistence         | Defaults to EF InMemory and ignores its transaction warning. A PostgreSQL override and dedicated PostgreSQL fixtures exercise relational paths; InMemory cannot establish PostgreSQL constraints, transactions, raw SQL or LINQ translation. |
+| Orchestration       | Replacement triggers persist workflow/task state needed by subsequent reads. Their acceptance does not establish real worker execution, retries or background delivery.                                                                      |
+| Application startup | The factory constructs its own registrations/pipeline rather than running production `Program.cs` unchanged. TestServer acceptance does not establish production wiring, deployment or live browser behavior.                                |
 
 For provider behavior, use the affected PostgreSQL regression fixture and the
 [shared database runner guidance](../../core/execution-harness.md#effects-blockers-and-supporting-commands).

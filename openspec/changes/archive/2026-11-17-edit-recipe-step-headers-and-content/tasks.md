@@ -2,7 +2,7 @@
 
 ## 1. Instruction draft section-header and step-content manipulation
 
-**Outcome and scenarios:** Section headers (`name`) and step contents (`text`) can be read, renamed, cleared, added, and removed in instruction drafts for both canonical v2 (`instructionSections`) and legacy v1 (`recipeInstructions`) shapes, while preserving `id`/`clientId` identities. Covers *Initialize section header and step content drafts in detail edit mode* and *Edit step headers and step content in the detail draft*.
+**Outcome and scenarios:** Section headers (`name`) and step contents (`text`) can be read, renamed, cleared, added, and removed in instruction drafts for both canonical v2 (`instructionSections`) and legacy v1 (`recipeInstructions`) shapes, while preserving `id`/`clientId` identities. Covers _Initialize section header and step content drafts in detail edit mode_ and _Edit step headers and step content in the detail draft_.
 **Owners and boundaries:** `pwa/src/lib/recipes/instruction-draft.ts`, `pwa/src/lib/recipes/instruction-draft.test.ts`.
 **Dependencies and prerequisites:** None.
 **Acceptance boundary:** Unit tests against `instruction-draft.ts` functions with canonical v2 and legacy v1 fixtures.
@@ -12,7 +12,7 @@
 
 ## 2. RecipeDetailSheet edit mode for step headers and step content
 
-**Outcome and scenarios:** Opening Edit in `RecipeDetailSheet` displays editable section header inputs alongside each section's step textareas, supports adding/removing steps per section and adding/removing sections, submits normalized headers/steps on Save (`PATCH /api/recipes/{id}`), and discards unsubmitted edits on Cancel. Covers *Initialize section header and step content drafts in detail edit mode*, *Edit step headers and step content in the detail draft*, and *Submit edited step headers and step content on detail Save*.
+**Outcome and scenarios:** Opening Edit in `RecipeDetailSheet` displays editable section header inputs alongside each section's step textareas, supports adding/removing steps per section and adding/removing sections, submits normalized headers/steps on Save (`PATCH /api/recipes/{id}`), and discards unsubmitted edits on Cancel. Covers _Initialize section header and step content drafts in detail edit mode_, _Edit step headers and step content in the detail draft_, and _Submit edited step headers and step content on detail Save_.
 **Owners and boundaries:** `pwa/src/components/recipes/RecipeDetailSheet.tsx`, `pwa/src/locales/` (EN/FR labels), `pwa/src/components/recipes/RecipeDetailSheet.test.tsx`, `pwa/src/components/recipes/RecipeDetailSheet.refinement.test.tsx`.
 **Dependencies and prerequisites:** Slice 1 complete.
 **Acceptance boundary:** Component tests in `RecipeDetailSheet.test.tsx` and `RecipeDetailSheet.refinement.test.tsx` with mocked API handlers verifying rendered inputs, `updateRecipe` PATCH payload (`instructionSections` / `recipeInstructions`), view-mode header/step rendering after Save, and Cancel restoration.
@@ -22,7 +22,7 @@
 
 ## 3. Draft persistence and conflict reconciliation for instruction headers
 
-**Outcome and scenarios:** Unsaved section header and step content edits persist across detail reload/reopen and appear in conflict reconciliation diffs when the saved recipe revision changes concurrently. Covers *Preserve and reconcile instruction header drafts across reload and conflicts*.
+**Outcome and scenarios:** Unsaved section header and step content edits persist across detail reload/reopen and appear in conflict reconciliation diffs when the saved recipe revision changes concurrently. Covers _Preserve and reconcile instruction header drafts across reload and conflicts_.
 **Owners and boundaries:** `pwa/src/lib/recipes/editor-draft.ts`, `pwa/src/lib/recipes/editor-draft.test.ts`, `pwa/src/components/recipes/RecipeDetailSheet.tsx` (`editorFieldText`), `pwa/src/components/recipes/RecipeDetailSheet.refinement.test.tsx`.
 **Dependencies and prerequisites:** Slice 2 complete.
 **Acceptance boundary:** Unit tests in `editor-draft.test.ts` and component reconciliation tests in `RecipeDetailSheet.refinement.test.tsx`.

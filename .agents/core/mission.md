@@ -1,12 +1,15 @@
 # Mission
 
 ## 1. Purpose
+
 Deliver the "What's For Supper" (WFS) project.
 
 ## 2. Product Intent
-Turn *"What's for supper?"* from a dreaded daily question into a fun, collaborative household activity (**Swipe, Match, Cook!**) where everyone—kids included—helps choose the week's meals around recipes they love and a shared grocery list, leaving the household with one clear feeling: *"That’s one less thing weighing on me. We chose this together, it feels like us, and I’m looking forward to supper."* Deliver this experience as a reliable, high-performance Progressive Web App (PWA) using a contract-first, test-driven approach.
+
+Turn _"What's for supper?"_ from a dreaded daily question into a fun, collaborative household activity (**Swipe, Match, Cook!**) where everyone—kids included—helps choose the week's meals around recipes they love and a shared grocery list, leaving the household with one clear feeling: _"That’s one less thing weighing on me. We chose this together, it feels like us, and I’m looking forward to supper."_ Deliver this experience as a reliable, high-performance Progressive Web App (PWA) using a contract-first, test-driven approach.
 
 ## 3. Engineering posture
+
 Build reliable, maintainable capabilities. Avoid zombie code and speculative
 abstractions. Shared correctness policy lives in [contract/testing](contract-testing.md),
 and change boundaries live in [context loading](context-loading.md).
@@ -47,6 +50,7 @@ boundary. Preserve required behavior and safeguards without treating the old
 implementation as an invariant.
 
 ## 4. Core Design & UX Patterns
+
 - **Trust First**: Prioritize understandable tasks, honest outcomes and accessibility.
   Support them with warm, distinctive Shared Table design, a contemporary family cookbook
   aesthetic, and established tokens; use the

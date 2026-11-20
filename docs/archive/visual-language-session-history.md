@@ -14,6 +14,7 @@ This archive retains chronological design-checkpoint logs, historical source sna
 **Creative revision: 27 October 2026.** Alex reported that the implemented Home cards lost their refinement and cookbook feel; dark text on yellow was explicitly rejected for that Home direction. The planned-card and pivot cookbook treatments were implemented locally in Sessions 5–6 and reconciled in Session 7. The pre-refinement Home source snapshot was `e4d5be7e`; the original composition reference is its parent `a4d360558d35c2f79e9cca08a9d31638d8d25569`.
 
 User-supplied composition anchors retained under `docs/visual-language/references/`:
+
 - [Screenshot_20261026-212933.png](../visual-language/references/Screenshot_20261026-212933.png) — portrait-shaped white card on cream, dominant nearly square photograph, deeply rounded image/card corners, substantial soft elevation, bold recipe title, and subtle blush duration pill.
 - [Screenshot_20261026-212918.png](../visual-language/references/Screenshot_20261026-212918.png) — rounded frame, shadow, and bold title with a wider image, one primary CTA, and a compact row of two secondary actions (its historical yellow primary and faint `Order In` label were not reinstated).
 

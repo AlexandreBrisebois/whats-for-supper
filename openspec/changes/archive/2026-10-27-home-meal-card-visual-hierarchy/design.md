@@ -9,6 +9,7 @@ Current source at `e4d5be7e` uses `TonightMenuCard.tsx` / `TonightCardBase` and 
 Retained Session 4 contact sheets show the current treatment, including missing-photo and long-text stress cases. They help assess hierarchy but do not demonstrate an appetizing photo-led composition. Earlier command/contrast/geometry evidence in tasks.md remains historical evidence for its tested identity. It does not satisfy the two new aesthetic requirements.
 
 Ownership remains local:
+
 - Home's two cards own presentation, and the planned card owns disclosure visibility.
 - `HomeCommandCenter.tsx`, Today/GOTO stores and existing services own branch selection, callbacks, freshness, eligibility, optimism and recovery; do not duplicate or revise their policy.
 - `globals.css` owns existing Solar Earth tokens, Outfit/Inter and surface utilities. No font, palette, shared button primitive or package change is needed.
@@ -60,13 +61,13 @@ Disclosure remains explicit and local: a new recipe collapses it, same-recipe hy
 
 All eight delta requirements apply: retain the original six functional/accessibility obligations and add refined cookbook composition plus Home action styling. Use a focused visual rubric in each implementation session:
 
-| Criterion | Evidence of the intended result | Rejection signal |
-|---|---|---|
-| Photography | Food/title lead; meal image near-square, pivot wider as in their respective references; subject retained | Shallow thumbnail, empty gray slab or controls dominate the card |
-| Type | Recipe title anchors the composition, with quiet readable context/duration | Equally loud labels, oversized context or dense application-form appearance |
-| Material | Warm canvas/card, coherent rounding, considered spacing and soft depth | Flat utilitarian panel or heavy borders enclosing each item |
-| Actions | One terracotta/light-text primary; directly discoverable secondary and text-style disclosure | Dark-on-yellow action, three equally prominent boxed controls or faded enabled alternatives |
-| Adaptation | Same character across planned/ready/empty states, with reflow for EN/FR and larger text | Fixed-height clipping, shrunk labels, forced columns or huge decorative fallback |
+| Criterion   | Evidence of the intended result                                                                          | Rejection signal                                                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Photography | Food/title lead; meal image near-square, pivot wider as in their respective references; subject retained | Shallow thumbnail, empty gray slab or controls dominate the card                            |
+| Type        | Recipe title anchors the composition, with quiet readable context/duration                               | Equally loud labels, oversized context or dense application-form appearance                 |
+| Material    | Warm canvas/card, coherent rounding, considered spacing and soft depth                                   | Flat utilitarian panel or heavy borders enclosing each item                                 |
+| Actions     | One terracotta/light-text primary; directly discoverable secondary and text-style disclosure             | Dark-on-yellow action, three equally prominent boxed controls or faded enabled alternatives |
+| Adaptation  | Same character across planned/ready/empty states, with reflow for EN/FR and larger text                  | Fixed-height clipping, shrunk labels, forced columns or huge decorative fallback            |
 
 Retain both supplied screenshots alongside the review as the respective meal-card and pivot visual anchors. Capture controlled side-by-side comparisons using the same actual food photograph, ordinary recipe content, viewport and locale. Compare available original reconstruction, current pre-correction and corrected renderings. If the exact original photo/source is unavailable, identify that limitation and use the supplied screenshot for original composition plus matched representative photos for current/corrected comparisons; do not block on reconstructing a historical deployment or imply pixel equivalence. Record a short assessment per rubric row, describing what changed and any remaining mismatch. A designer assessment is qualitative evidence; do not claim that a pixel ratio or passing test proves beauty or that Alex approved an unseen result. This is part of normal scoped acceptance, not an extra approval workflow.
 

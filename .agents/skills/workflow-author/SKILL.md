@@ -25,25 +25,27 @@ These are application runtime entities, not agent tasks or Taskfile commands.
 
 ## 2. YAML Schema
 
-| Field | Required | Notes |
-|---|---|---|
-| `name` | ✅ | Definition name; follow the bundled filename/name convention |
-| `parameters` | ✅ | List of required parameter names. All must be present at trigger time. |
-| `tasks[].name` | ✅ | Unique within this workflow |
-| `tasks[].processor` | ✅ | Must match the `ProcessorName` of a registered `IWorkflowProcessor` |
-| `tasks[].depends_on` | ❌ | List of task names that must complete before this task runs |
-| `tasks[].payload` | ❌ | Key/value pairs interpolated with `{{ paramName }}` syntax |
+| Field                | Required | Notes                                                                  |
+| -------------------- | -------- | ---------------------------------------------------------------------- |
+| `name`               | ✅       | Definition name; follow the bundled filename/name convention           |
+| `parameters`         | ✅       | List of required parameter names. All must be present at trigger time. |
+| `tasks[].name`       | ✅       | Unique within this workflow                                            |
+| `tasks[].processor`  | ✅       | Must match the `ProcessorName` of a registered `IWorkflowProcessor`    |
+| `tasks[].depends_on` | ❌       | List of task names that must complete before this task runs            |
+| `tasks[].payload`    | ❌       | Key/value pairs interpolated with `{{ paramName }}` syntax             |
 
 ---
 
 ## 3. Adding a New Workflow — Checklist
 
 ### Step 1: Define the YAML
+
 Create a bundled YAML under `api/src/RecipeApi/Workflows/` using `name`, `parameters`,
 `tasks[].name`, `processor`, optional `depends_on` and `payload`. Processor names
 and dependency names must resolve. Follow the canonical example above.
 
 ### Step 2: Implement Processors
+
 Each `processor:` value must map to a class that implements `IWorkflowProcessor`.
 
 ```csharp
@@ -67,28 +69,35 @@ public class YourProcessor(/* inject deps */) : IWorkflowProcessor
 ```
 
 Register in `api/src/RecipeApi/Program.cs`:
+
 ```csharp
 builder.Services.AddScoped<IWorkflowProcessor, YourProcessor>();
 ```
 
 ### Step 3: Add a Trigger Endpoint
+
 The generic trigger already exists:
+
 ```
 POST /api/workflows/{workflowId}/trigger
 { "parameters": { "paramName": "value" } }
 ```
+
 Reuse it when the approved behavior and authorization boundary fit; a specialized
 endpoint requires approved contract and tests first.
 
 ### Step 4: Add a Bulk Trigger (optional)
+
 When you need to queue a workflow for many items at once (e.g., all unprocessed records), follow the `RecipeImportBulkService` pattern:
 
 **Service:** `api/src/RecipeApi/Services/{Feature}BulkService.cs`
+
 - Query the DB for eligible records
 - Loop and call `IWorkflowOrchestrator.TriggerAsync(workflowId, parameters)` for each
 - Return `{ QueuedCount, InstanceIds }`
 
 **Endpoint:** Add to the relevant controller:
+
 ```csharp
 [HttpPost("{your-workflow-id}/bulk-trigger")]
 public async Task<IActionResult> BulkTrigger()
@@ -101,10 +110,12 @@ public async Task<IActionResult> BulkTrigger()
 Register the service in `Program.cs`.
 
 ### Step 5: Update affected REST examples
+
 When the selected change adds or alters an operation exercised by a REST client,
 update its example in `api/src/RestClient/` before final verification.
 
 ### Step 6: Verify the approved seam
+
 The contract and tests were established before implementation. Run `task gen:client`
 for approved API edits, `task typecheck` and affected tests. Follow the shared
 execution harness for completion.
@@ -115,15 +126,15 @@ execution harness for completion.
 
 Paths below are relative to `api/src/RecipeApi/`.
 
-| Type | File | Purpose |
-|---|---|---|
-| `IWorkflowOrchestrator` | `Services/IWorkflowOrchestrator.cs` | Entry point for triggering workflows |
-| `WorkflowOrchestrator` | `Services/WorkflowOrchestrator.cs` | Reads YAML, creates DB records |
-| `IWorkflowProcessor` | `Workflow/IWorkflowProcessor.cs` | Implement per task processor |
-| `WorkflowWorker` | `Services/WorkflowWorker.cs` | Polls DB and dispatches tasks |
-| `WorkflowInstance` | `Models/WorkflowInstance.cs` | DB entity for a workflow run |
-| `WorkflowTask` | `Models/WorkflowTask.cs` | DB entity for a single task execution |
-| `RecipeDbContext` | `Data/RecipeDbContext.cs` | `WorkflowInstances`, `WorkflowTasks` DbSets |
+| Type                    | File                                | Purpose                                     |
+| ----------------------- | ----------------------------------- | ------------------------------------------- |
+| `IWorkflowOrchestrator` | `Services/IWorkflowOrchestrator.cs` | Entry point for triggering workflows        |
+| `WorkflowOrchestrator`  | `Services/WorkflowOrchestrator.cs`  | Reads YAML, creates DB records              |
+| `IWorkflowProcessor`    | `Workflow/IWorkflowProcessor.cs`    | Implement per task processor                |
+| `WorkflowWorker`        | `Services/WorkflowWorker.cs`        | Polls DB and dispatches tasks               |
+| `WorkflowInstance`      | `Models/WorkflowInstance.cs`        | DB entity for a workflow run                |
+| `WorkflowTask`          | `Models/WorkflowTask.cs`            | DB entity for a single task execution       |
+| `RecipeDbContext`       | `Data/RecipeDbContext.cs`           | `WorkflowInstances`, `WorkflowTasks` DbSets |
 
 ---
 

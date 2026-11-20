@@ -2207,3 +2207,98 @@ test('Home expanded assigned ingredients and captured Cook share six portions wi
   expect(writes).toEqual([]);
   expect(await snapshot()).toEqual(before);
 });
+
+for (const appLocale of ['en', 'fr'] as const) {
+  for (const contrast of ['standard', 'high'] as const) {
+    test.describe(`Plan B Go back chrome ${appLocale} ${contrast}`, () => {
+      test.use({ appLocale });
+
+      test('Go back meets target size, focus, contrast and hover requirements', async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        const today = toDateStr(currentMonday());
+        const lasagnaRecipe = builders.scheduleRecipe({
+          id: MOCK_IDS.RECIPE_LASAGNA,
+          name: 'Test Lasagna',
+          image: `/api/recipes/${MOCK_IDS.RECIPE_LASAGNA}/hero`,
+        });
+        await mockSseWithSlotUpdate(page, { date: today, recipe: lasagnaRecipe, status: 0 });
+        await page.route(
+          (url) => url.pathname.includes('/api/schedule'),
+          async (route) => {
+            const url = new URL(route.request().url());
+            if (url.pathname.endsWith('/fill-the-gap')) {
+              await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                  data: [
+                    builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_CHICKEN, name: 'Test Chicken' }),
+                  ],
+                }),
+              });
+            } else if (
+              url.pathname.endsWith('/api/schedule') &&
+              route.request().method() === 'GET'
+            ) {
+              const monday = currentMonday();
+              const days = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(monday);
+                d.setUTCDate(monday.getUTCDate() + i);
+                const dateStr = toDateStr(d);
+                return {
+                  date: dateStr,
+                  status: 0,
+                  recipe: dateStr === today ? lasagnaRecipe : null,
+                };
+              });
+              await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ data: { ...builders.scheduleDays(), weekOffset: 0, days } }),
+              });
+            } else {
+              await route.continue();
+            }
+          }
+        );
+
+        await page.goto('/home');
+        await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+        if (contrast === 'high') {
+          await page.evaluate(() => {
+            document.documentElement.dataset.contrast = 'high';
+          });
+        }
+        await page.getByTestId('skip-tonight-btn').click();
+        await page.getByTestId('recovery-action-pick-else').click();
+        await page.getByTestId('quick-find-select').click();
+        await expect(page.getByTestId('recovery-action-tomorrow')).toBeVisible();
+
+        const back = page.getByTestId('recovery-go-back');
+        await expect(back).toBeVisible();
+        const box = await back.boundingBox();
+        expect(box!.height).toBeGreaterThanOrEqual(48);
+        expect(box!.width).toBeGreaterThanOrEqual(48);
+
+        await back.focus();
+        await page.keyboard.press('Shift+Tab');
+        await page.keyboard.press('Tab');
+        await expect(back).toBeFocused();
+        const outline = await back.evaluate((el) => {
+          const s = getComputedStyle(el);
+          return { style: s.outlineStyle, width: parseFloat(s.outlineWidth) };
+        });
+        expect(outline.style).not.toBe('none');
+        expect(outline.width).toBeGreaterThanOrEqual(2);
+
+        await back.hover();
+        await assertCookbookVisualA11y(page, {
+          rootSelector: '[data-testid="recovery-go-back"]',
+          contrastLevel: contrast === 'high' ? 'aaa' : 'aa',
+        });
+      });
+    });
+  }
+}

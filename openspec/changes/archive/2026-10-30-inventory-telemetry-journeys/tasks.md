@@ -482,7 +482,6 @@ after complete task-owned diff review. The actual final invocation owns tested-b
 identity; its exact checks/status/`record_path` are reported in the handoff, without
 editing evidence after the final gate or implying automated task acceptance.
 
-
 ## I5 investigation evidence — 2026-10-30
 
 Selected tasks 5.1–5.2, mode investigate, J13–J16. I4 reconciled first from final
@@ -535,7 +534,6 @@ evidence. No instrumentation/product/API/auth/cookie/preferences/cooking UI/coll
 Sentrame, commit, deploy, sync or archive changes. I-V 6.1 starts only after I5 scoped
 verification; final reconciliation keeps unavailable evidence distinct from runtime.
 
-
 I5 completion checkpoint: scoped verification record
 `.task/agent-finish/runs/b5b93b1160f540d0bbe9c2c78bb3fddb.json` passed documentation,
 selected strict OpenSpec and content stability; application/harness gates not-applicable.
@@ -543,7 +541,6 @@ selected strict OpenSpec and content stability; application/harness gates not-ap
 overall 10/11. The checkbox/checkpoint updates are later bytes requiring final scoped
 verification with I-V. Runtime qualification remains not-run. Begin selected I-V/6.1
 only now; its reconciliation will preserve prior source/checkpoint identities.
-
 
 ## I-V reconciliation evidence — 2026-10-30
 
@@ -581,7 +578,6 @@ source/reconciliation work is complete, and proposed observations respect truste
 owners, boundedness and privacy while unresolved semantics remain explicit. All
 unrelated tracked diffs/staged state/status paths and prior shared-file content are
 preserved. Stop after this authorized investigation; no commit/deploy/sync/archive.
-
 
 Final documentation review: complete task-owned diff compared with all three private
 before-images. `.venv/bin/python -B .task/telemetry-inventory/i5/check-docs.py` passed

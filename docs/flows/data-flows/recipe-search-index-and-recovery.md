@@ -3,6 +3,7 @@
 **Scope:** normal hybrid recipe search, indexing, recovery, and Find Similar.
 
 This document defines the data flow for:
+
 - hybrid recipe search (lexical + vector),
 - planner-aware and family-fit reranking,
 - vector indexing workflow (`SearchIndexWorkflow`),
@@ -17,6 +18,7 @@ This document defines the data flow for:
 Every search path — normal typed search and Find Similar — flows through the same `RecipeSearchService` and returns the same `RecipeSearchResponseDto`. Retrieval and ranking semantics remain mode-specific: normal search uses hybrid retrieval and its applicable modifiers, while Similar uses its source-recipe path.
 
 The implementation is staged:
+
 1. Canonical document indexing (`SearchIndexWorkflow`, `recipe_search_documents` table)
 2. Bounded PostgreSQL lexical retrieval
 3. Optional pgvector retrieval fused with lexical candidates
@@ -72,11 +74,11 @@ When the source embedding is missing, incompatible, or semantic retrieval fails,
 
 ### `resultPath` values
 
-| Value | Meaning |
-|-------|---------|
-| `lexical-only` | No vector retrieval attempted (no embeddings configured or available) |
-| `hybrid` | Both lexical and vector candidates contributed |
-| `fallback-lexical` | Vector retrieval timed out or failed; lexical results served |
+| Value              | Meaning                                                               |
+| ------------------ | --------------------------------------------------------------------- |
+| `lexical-only`     | No vector retrieval attempted (no embeddings configured or available) |
+| `hybrid`           | Both lexical and vector candidates contributed                        |
+| `fallback-lexical` | Vector retrieval timed out or failed; lexical results served          |
 
 ---
 
@@ -86,17 +88,17 @@ All score constants are named constants in `RecipeSearchService` — not magic n
 
 ### Family-fit modifiers (normal searches only)
 
-| Signal | Modifier | Constant |
-|--------|----------|----------|
-| `rating == 3` (Love) | `+0.15` | `BoostLove` |
-| `rating == 2` (Like) | `+0.08` | `BoostLike` |
-| `rating == 1` (Dislike) | `−0.10` | `BoostDislike` |
+| Signal                                | Modifier                       | Constant                         |
+| ------------------------------------- | ------------------------------ | -------------------------------- |
+| `rating == 3` (Love)                  | `+0.15`                        | `BoostLove`                      |
+| `rating == 2` (Like)                  | `+0.08`                        | `BoostLike`                      |
+| `rating == 1` (Dislike)               | `−0.10`                        | `BoostDislike`                   |
 | Positive discovery votes (normalised) | `+min(0.15, voteCount × 0.05)` | `BoostVotesMax / BoostVotesRate` |
 
 ### Planner-aware modifier (when `weekOffset` is provided)
 
-| Signal | Modifier |
-|--------|----------|
+| Signal                                       | Modifier                                                |
+| -------------------------------------------- | ------------------------------------------------------- |
 | Recipe already assigned in the selected week | Demoted, with an "Already planned for this week" reason |
 
 ### Top Pick rule
@@ -135,6 +137,7 @@ This exact field set and sort order is the single source of truth, implemented i
 ### Index enqueue trigger points
 
 A `SearchIndexWorkflow` workflow is triggered when a recipe is:
+
 - created,
 - updated in: `name`, `description`, `ingredients`, `notes`, `rating`, `isDiscoverable`, `category`, `totalTime`,
 - restored from the Recycle Bin.
@@ -160,7 +163,7 @@ sequenceDiagram
     App->>Orch: TriggerAsync("index-recipe-search", {recipeId, fingerprint})
     Orch->>DB: INSERT workflow_instances & workflow_tasks (status: pending)
     Note over Worker: Worker polls for pending tasks
-    
+
     Worker->>WF: ExecuteAsync(task)
     WF->>DB: Read recipe + recompute fingerprint
     WF->>DB: Compare job fingerprint vs current fingerprint
@@ -191,12 +194,12 @@ stale → indexing    (stale job picked up)
 
 ### Failure handling
 
-| Failure | Action |
-|---------|--------|
-| Embedding provider timeout/error | `index_status = failed`; emit `recipe_index_job_failed` |
-| DB write conflict | Retry once; if it fails again, `index_status = failed` |
-| Hard-deleted recipe (`deleted_at IS NOT NULL`) | Job exits without writing |
-| Stale fingerprint | Job exits without writing; no error raised |
+| Failure                                        | Action                                                  |
+| ---------------------------------------------- | ------------------------------------------------------- |
+| Embedding provider timeout/error               | `index_status = failed`; emit `recipe_index_job_failed` |
+| DB write conflict                              | Retry once; if it fails again, `index_status = failed`  |
+| Hard-deleted recipe (`deleted_at IS NOT NULL`) | Job exits without writing                               |
+| Stale fingerprint                              | Job exits without writing; no error raised              |
 
 Recipes with `embedding IS NULL` or `index_status != ready` are still searchable lexically via `document_text`.
 
@@ -361,48 +364,48 @@ Do not build separate service logic for callers. The same `RecipeSearchService` 
 
 All events are structured log entries via `ISearchTelemetry` (default impl: `LoggingSearchTelemetry`).
 
-| Event | Payload |
-|-------|---------|
-| `recipe_search_requested` | `{ mode, hasPlanner, hasFilters }` |
-| `recipe_search_completed` | `{ mode, resultPath, resultCount, topPickPresent, durationMs }` |
-| `recipe_search_fallback_served` | `{ reason: "vector_timeout \| vector_unavailable" }` |
-| `recipe_search_empty_results` | `{ mode, filtersApplied }` |
-| `recipe_index_job_started` | `{ recipeId, fingerprint }` |
-| `recipe_index_job_completed` | `{ recipeId, durationMs }` |
-| `recipe_index_job_failed` | `{ recipeId, error }` |
-| `recipe_index_job_stale` | `{ recipeId, reason: "fingerprint_mismatch" }` |
-| `recipe_index_restore_rehydrated` | `{ recipeId }` |
-| `recipe_index_restore_marked_pending` | `{ recipeId, reason: "missing \| incompatible" }` |
-| `pantry_photo_processing_started` | `{ requestId, photoCount }` |
-| `pantry_photo_processing_completed` | `{ requestId, durationMs, ingredientCount }` |
-| `pantry_photo_processing_busy` | `{ requestId }` |
+| Event                                 | Payload                                                         |
+| ------------------------------------- | --------------------------------------------------------------- |
+| `recipe_search_requested`             | `{ mode, hasPlanner, hasFilters }`                              |
+| `recipe_search_completed`             | `{ mode, resultPath, resultCount, topPickPresent, durationMs }` |
+| `recipe_search_fallback_served`       | `{ reason: "vector_timeout \| vector_unavailable" }`            |
+| `recipe_search_empty_results`         | `{ mode, filtersApplied }`                                      |
+| `recipe_index_job_started`            | `{ recipeId, fingerprint }`                                     |
+| `recipe_index_job_completed`          | `{ recipeId, durationMs }`                                      |
+| `recipe_index_job_failed`             | `{ recipeId, error }`                                           |
+| `recipe_index_job_stale`              | `{ recipeId, reason: "fingerprint_mismatch" }`                  |
+| `recipe_index_restore_rehydrated`     | `{ recipeId }`                                                  |
+| `recipe_index_restore_marked_pending` | `{ recipeId, reason: "missing \| incompatible" }`               |
+| `pantry_photo_processing_started`     | `{ requestId, photoCount }`                                     |
+| `pantry_photo_processing_completed`   | `{ requestId, durationMs, ingredientCount }`                    |
+| `pantry_photo_processing_busy`        | `{ requestId }`                                                 |
 
 Latency targets (initial defaults, to be tuned after first production telemetry pass):
 
-| Path | Target p95 |
-|------|-----------|
-| Lexical-only | ≤ 350 ms |
-| Hybrid (lexical + vector) | ≤ 800 ms |
-| Pantry-photo assisted | ≤ 15 s (or HTTP 202 busy) |
-| Vector budget inside request | ≤ 300 ms |
+| Path                         | Target p95                |
+| ---------------------------- | ------------------------- |
+| Lexical-only                 | ≤ 350 ms                  |
+| Hybrid (lexical + vector)    | ≤ 800 ms                  |
+| Pantry-photo assisted        | ≤ 15 s (or HTTP 202 busy) |
+| Vector budget inside request | ≤ 300 ms                  |
 
 ---
 
 ## Primary Failure Modes
 
-| Failure | Expected behavior |
-|---------|-------------------|
-| Vector provider unavailable | Lexical search still returns results (`fallback-lexical`) |
-| Vector lookup exceeds 300 ms budget | Lexical fallback served, telemetry records fallback |
-| Indexing failed for one recipe | Recipe still searchable lexically |
-| Stale index job completes late | Worker exits without overwriting newer state |
-| Restored backup missing search sidecar | Recipe restores, `index_status = pending`, lexically searchable immediately |
-| Restored backup has incompatible sidecar | Recipe restores, `index_status = pending`, reindex scheduled |
-| Recipe soft-deleted | Excluded from all active surfaces via global query filter |
-| Elevated PIN missing or invalid for purge | HTTP 403 — dangerous action safely denied |
-| Elevated PIN env var not configured | HTTP 503 — purge unavailable until configured |
-| Filesystem cleanup fails during purge | Operation surfaces error, DB row not touched |
-| Capture retry already in progress | HTTP 409 — second enqueue blocked by CAS guard |
+| Failure                                   | Expected behavior                                                           |
+| ----------------------------------------- | --------------------------------------------------------------------------- |
+| Vector provider unavailable               | Lexical search still returns results (`fallback-lexical`)                   |
+| Vector lookup exceeds 300 ms budget       | Lexical fallback served, telemetry records fallback                         |
+| Indexing failed for one recipe            | Recipe still searchable lexically                                           |
+| Stale index job completes late            | Worker exits without overwriting newer state                                |
+| Restored backup missing search sidecar    | Recipe restores, `index_status = pending`, lexically searchable immediately |
+| Restored backup has incompatible sidecar  | Recipe restores, `index_status = pending`, reindex scheduled                |
+| Recipe soft-deleted                       | Excluded from all active surfaces via global query filter                   |
+| Elevated PIN missing or invalid for purge | HTTP 403 — dangerous action safely denied                                   |
+| Elevated PIN env var not configured       | HTTP 503 — purge unavailable until configured                               |
+| Filesystem cleanup fails during purge     | Operation surfaces error, DB row not touched                                |
+| Capture retry already in progress         | HTTP 409 — second enqueue blocked by CAS guard                              |
 
 ---
 

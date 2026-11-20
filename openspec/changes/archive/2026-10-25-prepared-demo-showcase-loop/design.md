@@ -16,27 +16,27 @@ Restore prepared members, recipe facts, preferences, approved overrides, declare
 
 Every public table must be classified; schema or ownership drift fails compatibility before destructive publication.
 
-| Table | Reset disposition |
-|---|---|
-| family_members | Restore supported fields and stable IDs |
-| recipes | Restore facts/readiness/rotation/deletion; clear cooked date/suppression; retain audit meaning |
-| recipe_search_documents | Rebuild lexical projection; reuse only compatible prepared vectors |
-| weekly_household_interest | Clear aggregate voting history |
-| voting_round_state | Fresh current-week round/history identity |
-| recipe_votes | Clear |
-| weekly_plans | Clear old containers/groceries/checks; create one empty current-week voting owner |
-| calendar_events | Clear all saved meals and non-cooking plans |
-| grocery_extra_occurrences | Clear occurrences, checks, tombstones and lineage |
-| feature_flag_overrides | Restore approved member overrides subordinate to demo policy |
-| family_settings | Restore declared family_goto references; reject unclassified keys rather than erase operator state |
-| ingredient_categories | Restore prepared mappings |
-| recipe_import_reports | Clear, never replay reimport authority |
-| recipe_search_filter_state | Rebuild without providers |
-| recipe_search_affinity_facts | Rebuild from fresh facts without providers |
-| workflow_instances | Preserve active reset and qualified future Dreaming; fence other old work |
-| workflow_tasks | Same preserved instance set; invalidate obsolete runnable tasks |
-| maintenance_commands | Invalidate queued/processing commands |
-| recovery_publication | Publish fresh operation identity; never replay captured marker |
+| Table                        | Reset disposition                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| family_members               | Restore supported fields and stable IDs                                                            |
+| recipes                      | Restore facts/readiness/rotation/deletion; clear cooked date/suppression; retain audit meaning     |
+| recipe_search_documents      | Rebuild lexical projection; reuse only compatible prepared vectors                                 |
+| weekly_household_interest    | Clear aggregate voting history                                                                     |
+| voting_round_state           | Fresh current-week round/history identity                                                          |
+| recipe_votes                 | Clear                                                                                              |
+| weekly_plans                 | Clear old containers/groceries/checks; create one empty current-week voting owner                  |
+| calendar_events              | Clear all saved meals and non-cooking plans                                                        |
+| grocery_extra_occurrences    | Clear occurrences, checks, tombstones and lineage                                                  |
+| feature_flag_overrides       | Restore approved member overrides subordinate to demo policy                                       |
+| family_settings              | Restore declared family_goto references; reject unclassified keys rather than erase operator state |
+| ingredient_categories        | Restore prepared mappings                                                                          |
+| recipe_import_reports        | Clear, never replay reimport authority                                                             |
+| recipe_search_filter_state   | Rebuild without providers                                                                          |
+| recipe_search_affinity_facts | Rebuild from fresh facts without providers                                                         |
+| workflow_instances           | Preserve active reset and qualified future Dreaming; fence other old work                          |
+| workflow_tasks               | Same preserved instance set; invalidate obsolete runnable tasks                                    |
+| maintenance_commands         | Invalidate queued/processing commands                                                              |
+| recovery_publication         | Publish fresh operation identity; never replay captured marker                                     |
 
 The two discovery/matches SQL views derive from these facts. They are not snapshot tables. Explicit collection emptiness and relationship constraints are validated against staging before replacement.
 

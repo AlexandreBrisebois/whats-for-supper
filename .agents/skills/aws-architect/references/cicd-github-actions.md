@@ -8,7 +8,6 @@ account topology or deployment. Verify prices, limits, versions and policy scope
 against current provider documentation before relying on them. Existing authorization
 and shared repository policy govern any actual action.
 
-
 ## Core Principle: OIDC Authentication
 
 Never use long-lived IAM access keys in GitHub Actions. Use OIDC federation — GitHub exchanges a short-lived JWT for temporary AWS credentials scoped to an IAM role. No secrets to rotate, no credentials to leak.
@@ -18,6 +17,7 @@ Never use long-lived IAM access keys in GitHub Actions. Use OIDC federation — 
 ## Step 1 — Set Up the OIDC Trust (One-Time, Per AWS Account)
 
 ### CloudFormation Template
+
 ```yaml
 # oidc-github-trust.yaml
 AWSTemplateFormatVersion: '2010-09-09'
@@ -32,7 +32,7 @@ Parameters:
     Description: Repository name (or * for all repos in org)
   AllowedBranches:
     Type: String
-    Default: "refs/heads/main"
+    Default: 'refs/heads/main'
     Description: Branch filter (refs/heads/main or * for any branch)
 
 Resources:
@@ -49,7 +49,7 @@ Resources:
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "GitHubActions-${GitHubRepo}"
+      RoleName: !Sub 'GitHubActions-${GitHubRepo}'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -61,8 +61,7 @@ Resources:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
               StringLike:
-                token.actions.githubusercontent.com:sub:
-                  !Sub "repo:${GitHubOrg}/${GitHubRepo}:ref:${AllowedBranches}"
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:${AllowedBranches}'
 
 Outputs:
   RoleArn:
@@ -72,6 +71,7 @@ Outputs:
 ```
 
 ### CDK Equivalent
+
 ```typescript
 import * as iam from 'aws-cdk-lib/aws-iam';
 
@@ -91,8 +91,7 @@ const deployRole = new iam.Role(this, 'GitHubActionsRole', {
       'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
     },
     StringLike: {
-      'token.actions.githubusercontent.com:sub':
-        'repo:MyOrg/MyRepo:ref:refs/heads/main',
+      'token.actions.githubusercontent.com:sub': 'repo:MyOrg/MyRepo:ref:refs/heads/main',
     },
   }),
 });
@@ -105,7 +104,7 @@ const deployRole = new iam.Role(this, 'GitHubActionsRole', {
 ```yaml
 # Every workflow that deploys to AWS
 permissions:
-  id-token: write   # Required for OIDC
+  id-token: write # Required for OIDC
   contents: read
 
 jobs:
@@ -128,11 +127,11 @@ jobs:
 
 ### Branch → Environment → AWS Account Mapping
 
-| Branch | Environment | AWS Account | Deployment |
-|---|---|---|---|
-| `feature/*` | dev | Non-prod account | Automatic on push |
-| `main` | staging | Non-prod account | Automatic on push |
-| `main` (tag `v*`) | prod | Prod account | Manual approval required |
+| Branch            | Environment | AWS Account      | Deployment               |
+| ----------------- | ----------- | ---------------- | ------------------------ |
+| `feature/*`       | dev         | Non-prod account | Automatic on push        |
+| `main`            | staging     | Non-prod account | Automatic on push        |
+| `main` (tag `v*`) | prod        | Prod account     | Manual approval required |
 
 ### GitHub Environments for Manual Approval
 
@@ -143,7 +142,7 @@ jobs:
 ```yaml
 jobs:
   deploy-prod:
-    environment: production   # triggers approval gate
+    environment: production # triggers approval gate
     runs-on: ubuntu-latest
     steps:
       # ...deploy steps
@@ -153,13 +152,13 @@ jobs:
 
 ## Secrets Management Strategy
 
-| Secret Type | Where to Store | How to Access in Actions |
-|---|---|---|
-| AWS credentials | OIDC (no secret needed) | `aws-actions/configure-aws-credentials` |
-| Database passwords | AWS Secrets Manager | `aws secretsmanager get-secret-value` in workflow step |
-| App config / feature flags | SSM Parameter Store | `aws ssm get-parameter` or CDK deploy reads at synth time |
-| Build-time secrets (NPM token, etc.) | GitHub encrypted secrets | `${{ secrets.NPM_TOKEN }}` |
-| Environment-specific values | GitHub Environment secrets | `${{ secrets.PROD_API_KEY }}` |
+| Secret Type                          | Where to Store             | How to Access in Actions                                  |
+| ------------------------------------ | -------------------------- | --------------------------------------------------------- |
+| AWS credentials                      | OIDC (no secret needed)    | `aws-actions/configure-aws-credentials`                   |
+| Database passwords                   | AWS Secrets Manager        | `aws secretsmanager get-secret-value` in workflow step    |
+| App config / feature flags           | SSM Parameter Store        | `aws ssm get-parameter` or CDK deploy reads at synth time |
+| Build-time secrets (NPM token, etc.) | GitHub encrypted secrets   | `${{ secrets.NPM_TOKEN }}`                                |
+| Environment-specific values          | GitHub Environment secrets | `${{ secrets.PROD_API_KEY }}`                             |
 
 Account IDs, role ARNs and region names identify configuration rather than credentials. Follow the existing repository storage convention; migrating GitHub secrets/variables is a separate scoped change.
 
@@ -277,6 +276,7 @@ The prod account's `DeployRole` trust policy must allow assumption from the non-
 ## IAM Role Scoping — Least Privilege
 
 The deploy role should have only the permissions needed for the deployment. See per-target IAM policies in:
+
 - [cicd-targets/lambda.md](cicd-targets/lambda.md)
 - [cicd-targets/ecs-fargate.md](cicd-targets/ecs-fargate.md)
 - [cicd-targets/s3-cloudfront.md](cicd-targets/s3-cloudfront.md)

@@ -5,14 +5,17 @@
 Track 4 runs exclusively on a dedicated exploration branch (`explore/adaptive-family-cookbook`) created from `main` after Tracks 1–3 (`align-family-cookbook-mission-and-voice`, `establish-cookbook-design-system-and-visual-ratchet`, `refine-mobile-planner-recipes-and-grocery-ux`, and `unify-legacy-surfaces-to-family-cookbook`) have stabilized the production baseline.
 
 ### Preserved Runtime & Store Boundaries (Zero Backend Changes Required)
+
 This prototype re-architects **presentation, chrome adaptation, and design-system enforcement** while keeping every backend API operation (`specs/openapi.yaml`), database invariant, and Zustand store contract intact:
+
 - [`pwa/src/store/todayStore.ts`](../../../pwa/src/store/todayStore.ts): Owns monotonic deployment-calendar freshness (`calendarAnchor`), tonight's slot state, and active GOTO readiness.
 - [`pwa/src/store/weekStore.ts`](../../../pwa/src/store/weekStore.ts): Owns Monday-anchored week slots, proposed voting suggestions vs. committed meals, groceries, extras, and SSE reconciliation.
 - [`pwa/src/store/discoveryStore.ts`](../../../pwa/src/store/discoveryStore.ts): Owns `session.phase` (`unowned` | `collecting` | `converged`), coverage metrics, voting stack, and generation guards.
 - [`pwa/src/components/planner/useSupperServingsEditor.tsx`](../../../pwa/src/components/planner/useSupperServingsEditor.tsx) & [`pwa/src/lib/planner/useReplacementRecovery.ts`](../../../pwa/src/lib/planner/useReplacementRecovery.ts): Own dirty-draft persistence, version-conflict review, and partial replacement state machines.
 
 The core hypothesis being tested on `explore/adaptive-family-cookbook` is two-fold:
-1. **Behavioral & Cognitive UX:** Adapting chrome prominence and focal density to the household's **Four Energies** keeps *"Swipe, Match, Cook!"* joyful at the start of the week while creating genuine cognitive silence at 5:15 PM.
+
+1. **Behavioral & Cognitive UX:** Adapting chrome prominence and focal density to the household's **Four Energies** keeps _"Swipe, Match, Cook!"_ joyful at the start of the week while creating genuine cognitive silence at 5:15 PM.
 2. **Structural Drift Elimination:** Replacing ad-hoc per-component Tailwind styling with **six locked semantic Cookbook Primitives** backed by native CSS `oklch(L C H)` contracts makes visual drift structurally impossible rather than relying on discipline alone.
 
 ---
@@ -20,6 +23,7 @@ The core hypothesis being tested on `explore/adaptive-family-cookbook` is two-fo
 ## Behavioral UX & Cognitive Ergonomics Architecture (The Four Household Energies)
 
 ### Why Family Voting MUST Remain the Hero Catalyst
+
 Household meal planning fails when one adult becomes the sole "supper project manager" while everyone else experiences dinner either as a surprise complaint or an uninvited chore. In cognitive-labor terms (anticipate -> identify -> decide -> monitor), **identifying options everyone actually wants to eat** is the hardest emotional bottleneck.
 
 Keeping **Family Voting ("Swipe, Match, Cook!")** as the unmistakable front door of the weekly loop solves this by splitting **playful preference expression** (60 seconds, zero commitment anxiety, kid-friendly) from **weekly commitment** (one calm confirmation pass in Planner):
@@ -53,38 +57,41 @@ Keeping **Family Voting ("Swipe, Match, Cook!")** as the unmistakable front door
 
 ### Cognitive Budget Matrix Across the Four Energies
 
-| Energy Mode | Primary Surfaces | User Mental Bandwidth | Session Target | Max Focal Groups / Screen | Dominant Visual Tone | Motion Profile (`prefers-reduced-motion` -> opacity only) |
-|---|---|---|---|---|---|---|
-| **1. Playful Convergence** | Discovery Voting, Family Nudge | Curious, social, kid-friendly | 45–90 sec burst | **2** (Heirloom Card Stack + Thumb Vote Bar + quiet Progress Pill) | Warm Sunlight Ochre + appetizing full-bleed food photography | Tactile card physics (`spring(260, 24)`), crisp drag feedback |
-| **2. Reflective Curation** | Planner Menu, Recipe Detail, Capture | Moderate, unhurried | 2–4 min | **3** (Week Rhythm Header, 7-Day Editorial Cards, Inline Portions/Status) | Layered Cream & White Paper + Sage Participation accents | Smooth layout shifts (`180ms cubic-bezier(0.2, 0.8, 0.2, 1)`) |
-| **3. In-Motion Utility** | Grocery Checklist | Divided, one-handed, walking | Rapid glances | **2** (Aisle Progress Bar + Wide-Label Checklist + Bottom Extra Input) | High-contrast Paper (`>= 7:1` ink), muted aisle dividers, bold checks | Minimal instant check transitions (`120ms ease-out`); zero scroll jump |
-| **4. Depleted Execution** | 5:00 PM Home, Cook's Mode, Pivot Sheet | Low, fatigued, time-pressured | 5–15 sec (Home) | **<= 3** on Home (Tonight Card, optional Vote Bridge, Quiet Add/Browse) | Quiet Paper + single Hearth Terracotta primary action (`Cook`) | Ultra-calm opacity/collapse (`150ms ease-out`); zero pulse/bounce chrome |
+| Energy Mode                | Primary Surfaces                       | User Mental Bandwidth         | Session Target  | Max Focal Groups / Screen                                                 | Dominant Visual Tone                                                  | Motion Profile (`prefers-reduced-motion` -> opacity only)                |
+| -------------------------- | -------------------------------------- | ----------------------------- | --------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **1. Playful Convergence** | Discovery Voting, Family Nudge         | Curious, social, kid-friendly | 45–90 sec burst | **2** (Heirloom Card Stack + Thumb Vote Bar + quiet Progress Pill)        | Warm Sunlight Ochre + appetizing full-bleed food photography          | Tactile card physics (`spring(260, 24)`), crisp drag feedback            |
+| **2. Reflective Curation** | Planner Menu, Recipe Detail, Capture   | Moderate, unhurried           | 2–4 min         | **3** (Week Rhythm Header, 7-Day Editorial Cards, Inline Portions/Status) | Layered Cream & White Paper + Sage Participation accents              | Smooth layout shifts (`180ms cubic-bezier(0.2, 0.8, 0.2, 1)`)            |
+| **3. In-Motion Utility**   | Grocery Checklist                      | Divided, one-handed, walking  | Rapid glances   | **2** (Aisle Progress Bar + Wide-Label Checklist + Bottom Extra Input)    | High-contrast Paper (`>= 7:1` ink), muted aisle dividers, bold checks | Minimal instant check transitions (`120ms ease-out`); zero scroll jump   |
+| **4. Depleted Execution**  | 5:00 PM Home, Cook's Mode, Pivot Sheet | Low, fatigued, time-pressured | 5–15 sec (Home) | **<= 3** on Home (Tonight Card, optional Vote Bridge, Quiet Add/Browse)   | Quiet Paper + single Hearth Terracotta primary action (`Cook`)        | Ultra-calm opacity/collapse (`150ms ease-out`); zero pulse/bounce chrome |
 
 ---
 
 ## Perceptual Color Science & Tactile Materiality (`oklch(L C H)`)
 
 ### Solving Luminance Asymmetry Mathematically
+
 In Track 2, sRGB measurements exposed why naive hex tokens broke contrast: Terracotta (`#B85542`, $L \approx 0.56$), Sage (`#8A9A5B`, $L \approx 0.66$), and Ochre (`#E1AD01`, $L \approx 0.77$) live in incompatible perceptual lightness bands. Using CSS **OKLCH (`oklch(L C H)`)** aligns perceptual lightness $L$ directly with human contrast sensitivity (supporting both WCAG 2.2 AA ratios and APCA $L_c$ polarity checks).
 
-| Token Name | CSS `oklch(L C H)` | sRGB Fallback | Contrast Partner & Ratio (WCAG / APCA) | Permitted Semantic Role |
-|---|---|---|---|---|
-| `--paper-canvas` | `oklch(0.988 0.014 98)` | `#FDFCF0` | Primary page canvas | App background & sheet canvas |
-| `--paper-card` | `oklch(0.998 0.004 95)` | `#FFFEF9` | Warm cookbook card surface | Recipe, planner & voting cards |
-| `--paper-inset` | `oklch(0.958 0.012 85)` | `#F4EFE6` | Subtle depressed surface | Input wells, collapsed sections, past days |
-| `--ink-primary` | `oklch(0.235 0.018 55)` | `#26201B` | `15.4:1` / $L_c \approx 101$ on `--paper-card` | Headings, recipe names, body text |
-| `--ink-secondary` | `oklch(0.415 0.016 55)` | `#524A43` | `8.5:1` / $L_c \approx 82$ on `--paper-card` | Descriptions, metadata, supporting copy |
-| `--ink-quiet` | `oklch(0.515 0.015 55)` | `#6D645B` | `5.6:1` / $L_c \approx 67$ on `--paper-card` | Helper captions, secondary labels (`>= 4.5:1` guaranteed) |
-| `--hearth-fill` | `oklch(0.545 0.145 28)` | `#B85542` | `#FDFCF0` ink: `4.61:1` / $L_c \approx 68$ | Single primary CTA per surface (`Cook`, `Save`, `Make this tonight`) |
-| `--hearth-hover` / `--hearth-pressed` | `oklch(0.485 0.140 28)` / `oklch(0.395 0.125 28)` | `#A44A37` / `#7B3829` | `#FFFFFF` ink: `5.81:1` / `8.61:1` | Interactive hover/active depth |
-| `--hearth-tint` / `--hearth-ink` | `oklch(0.945 0.025 28)` / `oklch(0.395 0.125 28)` | `#F9ECE9` / `#7B3829` | `7.46:1` paired together | Duration blush pill, error surfaces, destructive buttons |
-| `--sunlight-accent` | `oklch(0.775 0.165 86)` | `#E1AD01` | Non-text accent only | Filled star glyph, active voting pulse halo, ambient warmth (never a text/button background) |
-| `--sunlight-tint` / `--sunlight-ink` | `oklch(0.965 0.045 92)` / `oklch(0.410 0.095 82)` | `#FFF7CC` / `#664E01` | `7.32:1`–`8.3:1` paired (`--sunlight-ink` on `--paper-card`: `7.9:1`) | Family voting invitations, `Vote` nav medallion, `GOTO` pill, warm nudge banners, active discovery filter, `Extra` cue (zero black-on-yellow) |
-| `--garden-fill-strong` | `oklch(0.455 0.065 122)` | `#525B37` | `#FFFFFF` ink: `7.22:1` | Solid participation actions (`Ask the Family`, `Nudge family`) |
-| `--garden-tint` / `--garden-ink` | `oklch(0.950 0.022 122)` / `oklch(0.365 0.055 122)` | `#F1F3EB` / `#373D25` | `8.8:1` paired together | Cooked badges, gathered ingredients, selected toggles, match chips |
+| Token Name                            | CSS `oklch(L C H)`                                  | sRGB Fallback         | Contrast Partner & Ratio (WCAG / APCA)                                | Permitted Semantic Role                                                                                                                       |
+| ------------------------------------- | --------------------------------------------------- | --------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--paper-canvas`                      | `oklch(0.988 0.014 98)`                             | `#FDFCF0`             | Primary page canvas                                                   | App background & sheet canvas                                                                                                                 |
+| `--paper-card`                        | `oklch(0.998 0.004 95)`                             | `#FFFEF9`             | Warm cookbook card surface                                            | Recipe, planner & voting cards                                                                                                                |
+| `--paper-inset`                       | `oklch(0.958 0.012 85)`                             | `#F4EFE6`             | Subtle depressed surface                                              | Input wells, collapsed sections, past days                                                                                                    |
+| `--ink-primary`                       | `oklch(0.235 0.018 55)`                             | `#26201B`             | `15.4:1` / $L_c \approx 101$ on `--paper-card`                        | Headings, recipe names, body text                                                                                                             |
+| `--ink-secondary`                     | `oklch(0.415 0.016 55)`                             | `#524A43`             | `8.5:1` / $L_c \approx 82$ on `--paper-card`                          | Descriptions, metadata, supporting copy                                                                                                       |
+| `--ink-quiet`                         | `oklch(0.515 0.015 55)`                             | `#6D645B`             | `5.6:1` / $L_c \approx 67$ on `--paper-card`                          | Helper captions, secondary labels (`>= 4.5:1` guaranteed)                                                                                     |
+| `--hearth-fill`                       | `oklch(0.545 0.145 28)`                             | `#B85542`             | `#FDFCF0` ink: `4.61:1` / $L_c \approx 68$                            | Single primary CTA per surface (`Cook`, `Save`, `Make this tonight`)                                                                          |
+| `--hearth-hover` / `--hearth-pressed` | `oklch(0.485 0.140 28)` / `oklch(0.395 0.125 28)`   | `#A44A37` / `#7B3829` | `#FFFFFF` ink: `5.81:1` / `8.61:1`                                    | Interactive hover/active depth                                                                                                                |
+| `--hearth-tint` / `--hearth-ink`      | `oklch(0.945 0.025 28)` / `oklch(0.395 0.125 28)`   | `#F9ECE9` / `#7B3829` | `7.46:1` paired together                                              | Duration blush pill, error surfaces, destructive buttons                                                                                      |
+| `--sunlight-accent`                   | `oklch(0.775 0.165 86)`                             | `#E1AD01`             | Non-text accent only                                                  | Filled star glyph, active voting pulse halo, ambient warmth (never a text/button background)                                                  |
+| `--sunlight-tint` / `--sunlight-ink`  | `oklch(0.965 0.045 92)` / `oklch(0.410 0.095 82)`   | `#FFF7CC` / `#664E01` | `7.32:1`–`8.3:1` paired (`--sunlight-ink` on `--paper-card`: `7.9:1`) | Family voting invitations, `Vote` nav medallion, `GOTO` pill, warm nudge banners, active discovery filter, `Extra` cue (zero black-on-yellow) |
+| `--garden-fill-strong`                | `oklch(0.455 0.065 122)`                            | `#525B37`             | `#FFFFFF` ink: `7.22:1`                                               | Solid participation actions (`Ask the Family`, `Nudge family`)                                                                                |
+| `--garden-tint` / `--garden-ink`      | `oklch(0.950 0.022 122)` / `oklch(0.365 0.055 122)` | `#F1F3EB` / `#373D25` | `8.8:1` paired together                                               | Cooked badges, gathered ingredients, selected toggles, match chips                                                                            |
 
 ### Paper Materiality Over Reading-Card Glassmorphism
+
 In earlier eras, `.glass` (`backdrop-filter: blur(12px)` over `rgba(253, 252, 240, 0.4)`) was applied to planner rows, settings panels, and sheets. On busy food imagery or scrolling feeds, translucency creates unpredictable contrast hotspots and mobile GPU jank. Under Track 4:
+
 - **Reading cards & modal bodies** use solid/near-opaque **warm cookbook paper** (`--paper-card` on `--paper-canvas`) separated by subtle hairline edges (`1px solid color-mix(in oklch, var(--ink-primary) 8%, transparent)`) and dual-layer ambient umber elevation (`0 2px 6px color-mix(in oklch, var(--ink-primary) 5%, transparent), 0 18px 42px -18px color-mix(in oklch, var(--ink-primary) 16%, transparent)`).
 - **Translucent material** is reserved strictly for floating overlays that sit directly over photography (`View Original` hero capsule) and the bottom navigation dock (`backdrop-blur-lg` over 88% opaque `--paper-canvas`).
 
@@ -93,9 +100,10 @@ In earlier eras, `.glass` (`backdrop-filter: blur(12px)` over `rgba(253, 252, 24
 ## Marketing, Onboarding & Two-Audience Narrative Arc
 
 The prototype connects external positioning directly to the in-app experience so a visitor moving from `README.md` or a family invite link experiences zero tonal whiplash:
-- **External / Coordinator Hook:** *"Swipe, Match, Cook! — Fun enough for the kids to pick Friday's dinner; calm enough to take supper off your mind all week."*
+
+- **External / Coordinator Hook:** _"Swipe, Match, Cook! — Fun enough for the kids to pick Friday's dinner; calm enough to take supper off your mind all week."_
 - **Invite & Onboarding Welcome ("Pull up a chair"):** When a partner or teenager taps an invite link from `FamilyNudgeDialog`, `/welcome` and `/onboarding` immediately greet them with warm cookbook typography, clear explanation of their household's shared kitchen table, and one clear path straight into tonight or open voting.
-- **No Guilt / No Notification Fatigue:** Unlike habit apps with streaks or red notification dots, adaptive navigation elevates `Vote` gently in warm Sunlight Ochre *only* when an authoritative voting round is collecting or the current week has open nights—celebrating togetherness when needed and disappearing into calm parity once dinner is sorted.
+- **No Guilt / No Notification Fatigue:** Unlike habit apps with streaks or red notification dots, adaptive navigation elevates `Vote` gently in warm Sunlight Ochre _only_ when an authoritative voting round is collecting or the current week has open nights—celebrating togetherness when needed and disappearing into calm parity once dinner is sorted.
 
 ---
 
@@ -126,7 +134,7 @@ Feature routes inside the exploration branch compose UI exclusively from six sem
 
 1. Create exploration branch `git switch -c explore/adaptive-family-cookbook` from stabilized `main`.
 2. Add the native `oklch()` token layer in `pwa/src/app/globals.css`, implement the 6 Cookbook Primitives (`pwa/src/components/cookbook/`), and mount `/dev/cookbook-lab` (guarded to `404` in standard production builds).
-3. Render **Energy 1** (*"Swipe, Match, Cook!"* card + Family Table Progress cue) and **Energy 4** (*5:00 PM Quiet Tonight card + `<CookbookSheet>` pivot*) inside `/dev/cookbook-lab` in both English and French, verified by Vitest unit/contract tests (`visual-contract.test.ts` primitive-only enforcement + `CookbookSheet` native `<dialog>` keyboard/focus tests) and Playwright `cookbook-lab.spec.ts` reusing `assertCookbookVisualA11y` at `320px`/200%, `390px`, and `834px`.
+3. Render **Energy 1** (_"Swipe, Match, Cook!"_ card + Family Table Progress cue) and **Energy 4** (_5:00 PM Quiet Tonight card + `<CookbookSheet>` pivot_) inside `/dev/cookbook-lab` in both English and French, verified by Vitest unit/contract tests (`visual-contract.test.ts` primitive-only enforcement + `CookbookSheet` native `<dialog>` keyboard/focus tests) and Playwright `cookbook-lab.spec.ts` reusing `assertCookbookVisualA11y` at `320px`/200%, `390px`, and `834px`.
 
 ---
 
@@ -142,10 +150,11 @@ Feature routes inside the exploration branch compose UI exclusively from six sem
 ## Compatibility, Graduation Rubric, and Reversal
 
 Because all prototype work lives on `explore/adaptive-family-cookbook`, **nothing on `main` is exposed to breaking changes or feature-flag bloat**. Individual innovations graduate back to `main` only after passing a five-point physical-device household rubric on `/dev/cookbook-lab` and live exploration flows:
+
 1. **Contrast & Optical Legibility (APCA + WCAG 2.2 AA):** All four energies verified in morning sun (grocery store simulation) and warm evening kitchen light (5:00 PM Home) on iPhone/Pixel/iPad.
 2. **One-Handed Thumb Ergonomics:** Every primary action (`Like`/`Pass`, `Cook`/`Change plan`, grocery check, sheet close/save) reachable and `>= 48 × 48 CSS px` without two-handed stretching.
 3. **Bilingual Parity (EN & FR):** Zero clipping, overlap, or wrapping regressions at 320 CSS px and 200% font scale.
-4. **Emotional Energy Fit (Qualitative Family Check):** Kids find Energy 1 (*"Swipe, Match, Cook!"*) inviting and effortless; the household cook reports Energy 4 (5:00 PM Home) feels visibly calmer than the pre-exploration baseline.
+4. **Emotional Energy Fit (Qualitative Family Check):** Kids find Energy 1 (_"Swipe, Match, Cook!"_) inviting and effortless; the household cook reports Energy 4 (5:00 PM Home) feels visibly calmer than the pre-exploration baseline.
 5. **Reversibility & Clean Graduation:** Winning primitives (`CookbookSheet` native `<dialog>`, OKLCH tokens, Family Table Progress, adaptive nav salience) are promoted to `main` via small, individually scoped OpenSpec changes; any experiment that adds clutter instead of calm stays behind on the branch.
 
 ---
@@ -153,5 +162,5 @@ Because all prototype work lives on `explore/adaptive-family-cookbook`, **nothin
 ## Open Exploration Questions (For Live Iteration on `explore/adaptive-family-cookbook`)
 
 - **Nav Bar Architecture:** Evaluate keeping 5 tabs (`Home`, `Recipes`, `Vote`, `Planner`, `Profile`) vs. testing a direct `Shop` tab on `/dev/cookbook-lab`.
-- **Family Table Progress Copy:** Test exact EN/FR phrasing for kids & parents (*"3 of 5 nights matched"* vs *"3 dinner picks ready for the week"*).
+- **Family Table Progress Copy:** Test exact EN/FR phrasing for kids & parents (_"3 of 5 nights matched"_ vs _"3 dinner picks ready for the week"_).
 - **Capture Multi-Photo Flow:** Evaluate whether a non-blocking ribbon lets someone photograph 3 cookbook pages back-to-back in under 30 seconds while glancing at their week.

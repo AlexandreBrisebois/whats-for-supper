@@ -1,15 +1,19 @@
 # Tasks
 
 ## 1. Affected parallel PWA coverage
+
 - [x] 1.1 Add completeness/selection regressions and implement affected capability suites sharing one build; Node tests, Playwright discovery and actionlint establish selection and workflow structure.
 
 ## 2. Database smoke and tag-only image packaging
+
 - [x] 2.1 Add no-build smoke/identity/tampering regressions and implement single-AMD database smoke plus tag-only native ARM/AMD build/smoke/archive; verify focused Python tests and Compose parser results.
 
 ## 3. Publication and workflow retirement
+
 - [x] 3.1 Add exact-source eligibility and workflow regression coverage; implement source-check reuse/fallback and image-only publication, narrow identity triggers and remove PDF workflow. Verify Python tests and actionlint; document behavior.
 
 ## 4. Verification
+
 - [ ] 4.1 Review the owned diff, run final task verify and reconcile actual results before claiming complete.
 - [ ] 4.2 Qualify hosted affected-suite fan-out/report merge, native ARM/AMD release smoke, source reuse/fallback and registry manifests in Actions before runtime completion.
 

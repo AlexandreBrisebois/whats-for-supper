@@ -9,6 +9,7 @@ Nine inline decision menus, conflict/recovery panels, and status banners across 
 All nine Tier 1 wireframe decision and recovery surfaces adopt Era 3 Family Cookbook styling (`bg-white` + `border-chrome-line`, `bg-terracotta-50` + `border-hearth-line`, `bg-sage-50` + `border-garden-line`, shared `<Button>`, `font-heading`, `focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body`, and `>= 48 × 48 CSS px` interactive targets passing Standard AA, High Contrast AAA, and `320 CSS px` / `200%` text reflow) while collapsing into pull-forward, smart-default interactions that remove ~15 redundant buttons and click gates without weakening concurrency, validation, or failure honesty.
 
 **In scope (Tier 1 decision, recovery, and status surfaces):**
+
 1. Portions editor departure guard, conflict review, error/restored banners, and retry controls in `pwa/src/components/planner/useSupperServingsEditor.tsx`.
 2. Planner result confirmation/refresh banner in `pwa/src/app/(app)/planner/page.tsx`.
 3. Grocery list Portions updating, updated summary, and refresh-failure banners in `pwa/src/components/planner/GroceryList.tsx`.
@@ -20,6 +21,7 @@ All nine Tier 1 wireframe decision and recovery surfaces adopt Era 3 Family Cook
 9. Recipes continuation pagination controls, planning-mode banner, and error/empty/restart boxes in `pwa/src/app/(app)/recipes/RecipesExperience.tsx`.
 
 **Out of scope:**
+
 - Tier 2 structured dialogs/sheets and Settings controls that already have card/modal chrome (`SkipRecoveryDialog`, `PlanningPivotSheet`, `QuickFindModal`, `NonCookingDaySheet`, `RecycleBinSheet`, `RecipeImportIssueSheet`, `RecipeFiltersSheet`, `ActionGearMenu`, `ToastContainer`, `LanguageSwitchProposal`, `FamilyNudgeDialog`, `InviteLinkDialog`, `Modal`, `Demo*`, `PreviewFeaturesSection`, `FailedCapturesSection`) — deferred to a separate visual-token migration change.
 - Backend API contracts, endpoints, database schemas, and request/response shapes (no API or schema changes are required).
 

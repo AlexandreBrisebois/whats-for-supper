@@ -41,7 +41,6 @@ Original planning checkpoint: all boxes began unchecked. F3-1 apply evidence bel
 
 Only this change's four existing artifacts are revised. F3 application code and runtime tests are not run; red/green is not-applicable to this documentation revision. Current F2 prerequisite status and source/document hashes are in the design; F2's local opening/navigation success does not qualify error collection. The plan replaces the former always-standalone Early error rule with availability-based correlation, moves actual error receipt/linkage into F3-1, retains standalone server authority and explicitly tightens the older ten/minute/document draft to the requested ten attempts/document lifetime. WFS implementation, receiver requirements/usability gaps and deferred business observations remain separate. Documentation validation and scoped repository verification are reported in the session handoff, without checking any implementation box.
 
-
 ## F3-1 apply evidence — 2026-10-29
 
 Scope: tasks 1.1–1.3 only, initially clean worktree at WFS
@@ -60,7 +59,7 @@ mutation-blocked note is superseded. Other groups are not inferred accepted.
 - Combined acceptance: explicit reviewed binary `/tmp/wfs-navigation-sentrame`,
   copied assets `/Users/alex/Code/sentrame/web/dist`, `WFS_ERROR_DURABLE=1` and
   unused `BASE_URL=http://127.0.0.1:1`; `task test:e2e -- telemetry-errors.spec.ts
-  telemetry-opening.spec.ts telemetry-navigation.spec.ts --project=chromium`
+telemetry-opening.spec.ts telemetry-navigation.spec.ts --project=chromium`
   passed 3/3 (`acceptance-qualified.log`). Business APIs alone are mocked.
 - Capture, durable protected reads, standalone no-definition discovery, prospective
   synthetic-goal derivation, actual UI and exact replay/restart are independently
@@ -84,7 +83,6 @@ mutation-blocked note is superseded. Other groups are not inferred accepted.
   not-applicable. F3-2/F3-3 remain unchecked. No root/render/server hook, business
   event, raw diagnostic, receiver source change, existing storage mutation,
   deployment, real enablement, commit, sync or archive.
-
 
 ## F3-2 apply evidence — 2026-10-30
 
@@ -143,7 +141,6 @@ an unrelated `scripts/ci/e2e-suites.cjs` edit is preserved/excluded from selecti
   business recovery, receiver source/existing storage change, deployment, real
   enablement, commit, sync or archive.
 
-
 F3-2 final-gate reconciliation: stable-content record
 `.task/agent-finish/runs/c07dfed9459049cfa62e6087e390d394.json` passed docs/spec,
 lint/format/types, 1,482 unit cases, API tests (1,259 passed; 156 existing skips)
@@ -154,7 +151,6 @@ suite failure, not a proven causal diagnosis. No unrelated UI/test was changed.
 A new stable scoped final-gate invocation follows; its returned record owns the
 final result and does not erase the failed attempt. Required durable acceptance
 remains separately passed (6/6); its source identity still matches.
-
 
 ## F3-3 apply evidence — 2026-10-30
 

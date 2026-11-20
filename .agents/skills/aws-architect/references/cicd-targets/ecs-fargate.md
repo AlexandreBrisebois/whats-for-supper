@@ -8,7 +8,6 @@ account topology or deployment. Verify prices, limits, versions and policy scope
 against current provider documentation before relying on them. Existing authorization
 and shared repository policy govern any actual action.
 
-
 ## Prerequisites
 
 - ECR repository created for the container image
@@ -35,7 +34,7 @@ env:
   ECR_REPOSITORY: my-service
   ECS_CLUSTER: my-cluster
   ECS_SERVICE: my-service-staging
-  CONTAINER_NAME: my-service   # must match containerName in task definition
+  CONTAINER_NAME: my-service # must match containerName in task definition
 
 jobs:
   test:
@@ -112,7 +111,7 @@ jobs:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true   # fails workflow if deploy fails
+          wait-for-service-stability: true # fails workflow if deploy fails
 
   deploy-prod:
     needs: deploy-staging
@@ -233,11 +232,7 @@ Build with `--platform linux/arm64` in CI to match Graviton-based Fargate tasks 
     {
       "Sid": "ECSDeployWrite",
       "Effect": "Allow",
-      "Action": [
-        "ecs:RegisterTaskDefinition",
-        "ecs:UpdateService",
-        "ecs:DeregisterTaskDefinition"
-      ],
+      "Action": ["ecs:RegisterTaskDefinition", "ecs:UpdateService", "ecs:DeregisterTaskDefinition"],
       "Resource": "*"
     },
     {
@@ -341,6 +336,7 @@ Prevent ECR storage costs from accumulating. Apply to every ECR repository:
 ```
 
 In CDK:
+
 ```typescript
 repo.addLifecycleRule({ maxImageCount: 10 });
 ```

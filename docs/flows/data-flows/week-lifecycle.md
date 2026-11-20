@@ -10,6 +10,7 @@
 A week plan moves through four server-side states. With SSE, every transition publishes an event that updates all connected clients immediately — no polling, no navigation required.
 
 This document covers:
+
 - The state machine with SSE events at each transition
 - Which stores update on each event
 - Multi-week correctness (week 0 vs week 1)
@@ -47,6 +48,7 @@ POST /api/schedule/assign
 ```
 
 **Stores updated:**
+
 - `weekStore.applySlotUpdate({ date, recipe, status })` — updates the day card
 - `discoveryStore.invalidateFillTheGap(weekOffset)` — triggers Discovery page silent refetch
 
@@ -72,6 +74,7 @@ POST /api/schedule/move
 Move affects multiple days, so a full snapshot is pushed rather than individual `slot_updated` events.
 
 **Stores updated:**
+
 - `weekStore.applySnapshot(schedule)` — replaces full week state
 
 ### Draft → VotingOpen
@@ -83,6 +86,7 @@ POST /api/schedule/voting/open
 ```
 
 **Stores updated:**
+
 - `weekStore.applySnapshot(schedule)` — `status` field updates to `1`; planner header shows "Voting live" badge
 
 ### VotingOpen → Vote Cast
@@ -95,6 +99,7 @@ POST /api/discovery/{id}/vote
 ```
 
 **Stores updated:**
+
 - `weekStore.applyVoteUpdate({ recipeId, voteCount })` — vote badge on planner day card
 - `discoveryStore.applyVoteUpdate({ recipeId, voteCount })` — `hasFamilyInterest` flag + re-rank in discovery stack
 - (on threshold) `weekStore.applySmartDefaultsUpdate(defaults)` — pending slots seeded with consensus picks
@@ -108,6 +113,7 @@ POST /api/schedule/lock
 ```
 
 **Stores updated:**
+
 - `weekStore.applySnapshot(schedule)` — `status` field updates to `2`; planner shows "Menu's In!"
 
 ### Any Day → Cooked
@@ -119,6 +125,7 @@ POST /api/schedule/day/{date}/validate { status: 2 }
 ```
 
 **Stores updated:**
+
 - `weekStore.applySlotUpdate({ date, recipe, status: 2 })` — day card shows cooked state
 - `todayStore.applyServerUpdate({ recipe, status: 2 })` — if date matches today → `CookedSuccessCard` on all home screens
 
@@ -210,6 +217,7 @@ data: { "type": "connected", "schedule": { "weekOffset": 0, "locked": false, "st
 ```
 
 **Handler in `useScheduleStream`:**
+
 ```typescript
 source.addEventListener('connected', (e) => {
   const { schedule } = JSON.parse(e.data);
@@ -276,12 +284,12 @@ The `WeekStoreInitializer` component (mounted at layout level) calls `init(0)` o
 
 The planner lets users navigate between weeks. SSE must work correctly for any week the user is viewing.
 
-| User is viewing | SSE event arrives for | `applySlotUpdate` result |
-|---|---|---|
-| Week 0 | Week 0 date | ✅ Applied — date is in loaded schedule |
-| Week 0 | Week 1 date | ✅ Silently ignored — date not in loaded schedule |
-| Week 1 | Week 1 date | ✅ Applied — `init(1)` loaded week 1 dates |
-| Week 1 | Week 0 date | ✅ Silently ignored — date not in loaded schedule |
+| User is viewing | SSE event arrives for | `applySlotUpdate` result                          |
+| --------------- | --------------------- | ------------------------------------------------- |
+| Week 0          | Week 0 date           | ✅ Applied — date is in loaded schedule           |
+| Week 0          | Week 1 date           | ✅ Silently ignored — date not in loaded schedule |
+| Week 1          | Week 1 date           | ✅ Applied — `init(1)` loaded week 1 dates        |
+| Week 1          | Week 0 date           | ✅ Silently ignored — date not in loaded schedule |
 
 **No special handling needed in `useScheduleStream`.** All `slot_updated` events are passed to `weekStore.applySlotUpdate` unconditionally. The `inCurrentWeek` guard in the store is the correct filter.
 
@@ -293,27 +301,27 @@ The planner lets users navigate between weeks. SSE must work correctly for any w
 
 ## Store Update Summary
 
-| SSE event | `weekStore` | `todayStore` | `discoveryStore` | `plannerStore` |
-|---|---|---|---|---|
-| `connected` | `applySnapshot` | `clearOptimisticGuard` | — | `setGroceryState` (via applySnapshot) |
-| `slot_updated` | `applySlotUpdate` | `applyServerUpdate` (if today) | — | — |
-| `week_updated` | `applySnapshot` | — | — | `setGroceryState` (via applySnapshot) |
-| `vote_updated` | `applyVoteUpdate` | — | `applyVoteUpdate` | — |
-| `smart_defaults_updated` | `applySmartDefaultsUpdate` | — | — | — |
-| `fill_the_gap_invalidated` | — | — | `invalidateFillTheGap` | — |
-| `grocery_updated` | — | — | — | `setGroceryState` |
-| `recipe_ready` | — | — | — | — (→ `gotoStore.markReady`, `libraryStore.pushNotification`) |
-| `recipe_failed` | — | — | — | — (→ `captureStore.removePending`, `libraryStore.pushNotification`) |
+| SSE event                  | `weekStore`                | `todayStore`                   | `discoveryStore`       | `plannerStore`                                                      |
+| -------------------------- | -------------------------- | ------------------------------ | ---------------------- | ------------------------------------------------------------------- |
+| `connected`                | `applySnapshot`            | `clearOptimisticGuard`         | —                      | `setGroceryState` (via applySnapshot)                               |
+| `slot_updated`             | `applySlotUpdate`          | `applyServerUpdate` (if today) | —                      | —                                                                   |
+| `week_updated`             | `applySnapshot`            | —                              | —                      | `setGroceryState` (via applySnapshot)                               |
+| `vote_updated`             | `applyVoteUpdate`          | —                              | `applyVoteUpdate`      | —                                                                   |
+| `smart_defaults_updated`   | `applySmartDefaultsUpdate` | —                              | —                      | —                                                                   |
+| `fill_the_gap_invalidated` | —                          | —                              | `invalidateFillTheGap` | —                                                                   |
+| `grocery_updated`          | —                          | —                              | —                      | `setGroceryState`                                                   |
+| `recipe_ready`             | —                          | —                              | —                      | — (→ `gotoStore.markReady`, `libraryStore.pushNotification`)        |
+| `recipe_failed`            | —                          | —                              | —                      | — (→ `captureStore.removePending`, `libraryStore.pushNotification`) |
 
 ---
 
 ## E2E Test Coverage
 
-| Scenario | Test file |
-|---|---|
-| SSE `slot_updated` → planner day card updates without poll | `planner-full-cycle.spec.ts` |
-| SSE `week_updated` → planner status transitions to "Voting live" | `planner-full-cycle.spec.ts` |
-| SSE `week_updated` → grocery checkboxes do not flash (jitter regression) | `grocery.spec.ts` |
-| SSE `vote_updated` → vote badge appears on planner day card | `planner-full-cycle.spec.ts` |
-| SSE `connected` on reconnect → smart-default pending slots preserved | unit test in `weekStore.test.ts` |
-| `applySlotUpdate` is no-op when schedule is `[]` | unit test in `weekStore.test.ts` |
+| Scenario                                                                 | Test file                        |
+| ------------------------------------------------------------------------ | -------------------------------- |
+| SSE `slot_updated` → planner day card updates without poll               | `planner-full-cycle.spec.ts`     |
+| SSE `week_updated` → planner status transitions to "Voting live"         | `planner-full-cycle.spec.ts`     |
+| SSE `week_updated` → grocery checkboxes do not flash (jitter regression) | `grocery.spec.ts`                |
+| SSE `vote_updated` → vote badge appears on planner day card              | `planner-full-cycle.spec.ts`     |
+| SSE `connected` on reconnect → smart-default pending slots preserved     | unit test in `weekStore.test.ts` |
+| `applySlotUpdate` is no-op when schedule is `[]`                         | unit test in `weekStore.test.ts` |

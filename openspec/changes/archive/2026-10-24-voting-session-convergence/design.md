@@ -4,15 +4,15 @@
 
 Scope and product decisions are in [proposal.md](proposal.md). This is a planning draft, not a claim of implemented or runtime-qualified behavior.
 
-| Existing owner | Observed behavior and bounded change |
-| --- | --- |
-| `DiscoveryService.SubmitVoteAsync` | Saves votes through `VotingBoundary`, publishes counts, duplicates smart defaults at threshold boundaries for week zero. Keep vote acceptance; refresh owned-session suggestions after every committed vote, including late votes. |
-| `ScheduleService.ReadSmartDefaultsAsync` | Counts consensus and places candidates into unoccupied dates. Extract this cohesive calculation/read owner for both consumers; exclude selected recipe IDs before placement/counting. Keep existing eligibility, threshold and ranking. |
-| `VotingRoundState`, `OpenVotingAsync`, `LockScheduleAsync`, `VotingBoundary` | Already own one round, early votes, week binding, durable close receipts and history. Reuse these; no new lifecycle persistence. |
-| `weekStore.closeVoting` | Captures displayed pending slots, assigns in separate sequential requests, then locks with round identity. Keep this lifecycle and existing recovery; convergence does not call it. |
-| `discoveryStore`, `useScheduleStream` | Existing queue state and one shell-owned SSE connection. Add a small authoritative session projection here, not another connection or global event bus. |
-| Discovery page | Local `matchCount` and exhausted queue currently drive wrap-up and destination. Retain these legacy empty-state decisions only when not converged; never use that count for household readiness. |
-| Planner page | Pending recipes omit Change. Nudge dialog, `getVotingLink`, clipboard and native share already exist inline. Extract only that cohesive dialog/behavior for reuse without changing Planner behavior or test IDs. |
+| Existing owner                                                               | Observed behavior and bounded change                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DiscoveryService.SubmitVoteAsync`                                           | Saves votes through `VotingBoundary`, publishes counts, duplicates smart defaults at threshold boundaries for week zero. Keep vote acceptance; refresh owned-session suggestions after every committed vote, including late votes.      |
+| `ScheduleService.ReadSmartDefaultsAsync`                                     | Counts consensus and places candidates into unoccupied dates. Extract this cohesive calculation/read owner for both consumers; exclude selected recipe IDs before placement/counting. Keep existing eligibility, threshold and ranking. |
+| `VotingRoundState`, `OpenVotingAsync`, `LockScheduleAsync`, `VotingBoundary` | Already own one round, early votes, week binding, durable close receipts and history. Reuse these; no new lifecycle persistence.                                                                                                        |
+| `weekStore.closeVoting`                                                      | Captures displayed pending slots, assigns in separate sequential requests, then locks with round identity. Keep this lifecycle and existing recovery; convergence does not call it.                                                     |
+| `discoveryStore`, `useScheduleStream`                                        | Existing queue state and one shell-owned SSE connection. Add a small authoritative session projection here, not another connection or global event bus.                                                                                 |
+| Discovery page                                                               | Local `matchCount` and exhausted queue currently drive wrap-up and destination. Retain these legacy empty-state decisions only when not converged; never use that count for household readiness.                                        |
+| Planner page                                                                 | Pending recipes omit Change. Nudge dialog, `getVotingLink`, clipboard and native share already exist inline. Extract only that cohesive dialog/behavior for reuse without changing Planner behavior or test IDs.                        |
 
 The app logo reference is [solar_earth_logo.png](../../../../specs/mockups/solar_earth_logo.png). The app palette is owned by `pwa/src/app/globals.css`; fonts are Outfit and Inter. See [image-generation-prompt.md](image-generation-prompt.md) for model trials, not a new logo or a selected generated asset.
 
@@ -34,15 +34,15 @@ Add one protected `GET /api/discovery/session` returning the standard success en
 
 Proposed snapshot fields, to be declared in `specs/openapi.yaml` before implementation:
 
-| Field | Meaning |
-| --- | --- |
-| `incarnationId` | Opaque UUID created once per host lifetime; never persisted. |
-| `revision` | Nonnegative, monotonically increasing within the incarnation across round transitions; unchanged identical reads need not increment it. |
-| `roundId` | Existing operational round identity; null only for a genuinely uninitialized unowned store. Reads do not create database rows just for this feature. |
-| `weekStartDate` | Active absolute Monday, or null when unowned. |
-| `phase` | `unowned`, `collecting`, or `converged`; closed-week status remains with schedule reads. Closing advances to the existing unowned next round. |
-| `requiredSlots`, `coveredSlots`, `candidateCount` | Nullable when unowned; nonnegative integers when owned. Unknown/unavailable is a failed read, never a zero-filled snapshot. |
-| `smartDefaults` | Existing `SmartDefaultsDto`, nullable when unowned; owned counts and suggestions originate from the same read. |
+| Field                                             | Meaning                                                                                                                                              |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `incarnationId`                                   | Opaque UUID created once per host lifetime; never persisted.                                                                                         |
+| `revision`                                        | Nonnegative, monotonically increasing within the incarnation across round transitions; unchanged identical reads need not increment it.              |
+| `roundId`                                         | Existing operational round identity; null only for a genuinely uninitialized unowned store. Reads do not create database rows just for this feature. |
+| `weekStartDate`                                   | Active absolute Monday, or null when unowned.                                                                                                        |
+| `phase`                                           | `unowned`, `collecting`, or `converged`; closed-week status remains with schedule reads. Closing advances to the existing unowned next round.        |
+| `requiredSlots`, `coveredSlots`, `candidateCount` | Nullable when unowned; nonnegative integers when owned. Unknown/unavailable is a failed read, never a zero-filled snapshot.                          |
+| `smartDefaults`                                   | Existing `SmartDefaultsDto`, nullable when unowned; owned counts and suggestions originate from the same read.                                       |
 
 Publish the same snapshot in `voting_session_updated` on the existing `/api/stream`. One new event is clearer and smaller than changing every legacy schedule/default frame to carry unrelated session metadata. Keep existing `vote_updated` and `smart_defaults_updated` publication for compatibility, but use the shared calculation and the owning week for active voting. When unowned, retain existing early-vote behavior. Do not send an active-week snapshot as the existing week-zero `connected.schedule` or change Today/grocery semantics.
 

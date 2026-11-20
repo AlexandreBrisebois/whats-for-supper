@@ -10,15 +10,15 @@
 ## Decisions and Tradeoffs
 
 1. **Section-grouped draft projection instead of flattened `instructionRows`**:
-   - *Choice*: Add a section-grouped projection helper (e.g., `instructionSectionsForEditor(content, canonical)`) in `instruction-draft.ts` that preserves each section's index, `name` (or `''` when `null`/absent), and its ordered steps (`path: [outer, inner]`, `text`), while keeping legacy flat string/`HowToStep` arrays working by treating them as a single unheaded section (or upgrading to `HowToSection` when a header or additional section is added).
-   - *Tradeoff*: Slightly more UI structure in `RecipeDetailSheet.tsx` (section card/group with header input + step list) vs. a flat list, but directly models `instructionSections` without losing section boundaries or leaving orphaned empty sections.
+   - _Choice_: Add a section-grouped projection helper (e.g., `instructionSectionsForEditor(content, canonical)`) in `instruction-draft.ts` that preserves each section's index, `name` (or `''` when `null`/absent), and its ordered steps (`path: [outer, inner]`, `text`), while keeping legacy flat string/`HowToStep` arrays working by treating them as a single unheaded section (or upgrading to `HowToSection` when a header or additional section is added).
+   - _Tradeoff_: Slightly more UI structure in `RecipeDetailSheet.tsx` (section card/group with header input + step list) vs. a flat list, but directly models `instructionSections` without losing section boundaries or leaving orphaned empty sections.
 2. **Blank section header normalizes to `null` (unheaded), not an error**:
-   - *Choice*: Trimming a blank header input produces `null` for `section.name` in canonical v2 (and omits/nulls `name` on legacy `HowToSection`), matching `RecipeInstructionSectionInput.name: { type: [string, 'null'] }`.
-   - *Tradeoff*: Users can clear a header without deleting the steps inside that section.
+   - _Choice_: Trimming a blank header input produces `null` for `section.name` in canonical v2 (and omits/nulls `name` on legacy `HowToSection`), matching `RecipeInstructionSectionInput.name: { type: [string, 'null'] }`.
+   - _Tradeoff_: Users can clear a header without deleting the steps inside that section.
 3. **Removing empty sections / last step**:
-   - *Choice*: Adding a section creates `{ clientId, name: '', steps: [{ clientId, text: '' }] }` (or `{ '@type': 'HowToSection', name: '', itemListElement: [...] }` for legacy). Removing a section removes the section and its steps; removing the last step of a section leaves the section (or allows removing the section explicitly), and on Save, empty-text steps can be filtered or kept as existing `handleSaveRecipeFields` behavior dictates—filtering blank-only new sections/steps or trimming header names on submit.
+   - _Choice_: Adding a section creates `{ clientId, name: '', steps: [{ clientId, text: '' }] }` (or `{ '@type': 'HowToSection', name: '', itemListElement: [...] }` for legacy). Removing a section removes the section and its steps; removing the last step of a section leaves the section (or allows removing the section explicitly), and on Save, empty-text steps can be filtered or kept as existing `handleSaveRecipeFields` behavior dictates—filtering blank-only new sections/steps or trimming header names on submit.
 4. **Keep `CooksMode.tsx` unchanged**:
-   - *Choice*: `CooksMode.tsx` is optimized for hands-free/in-kitchen single-step text tweaks and already renders `sectionTitle` as a read-only heading. Structural editing (headers, adding/removing sections and steps) belongs in `RecipeDetailSheet.tsx`.
+   - _Choice_: `CooksMode.tsx` is optimized for hands-free/in-kitchen single-step text tweaks and already renders `sectionTitle` as a read-only heading. Structural editing (headers, adding/removing sections and steps) belongs in `RecipeDetailSheet.tsx`.
 
 ## First Observable Slice
 

@@ -9,11 +9,13 @@ In `RecipeDetailSheet` edit mode, household members can edit recipe metadata and
 Household members opening Edit on a loaded recipe in `RecipeDetailSheet` can view and edit both **step section headers** and **step content** in one unified editor, add or remove steps and sections, and save or cancel those changes through the existing `PATCH /api/recipes/{id}` contract (`instructionSections` for canonical v2 recipes, `recipeInstructions` for legacy v1 recipes).
 
 **In scope:**
+
 - Section-aware instruction editing in `RecipeDetailSheet` edit mode: editing section headers (including clearing a header to `null`/ungrouped), adding/removing sections, and editing/adding/removing step content within sections.
 - Draft persistence, cancellation, and conflict reconciliation for both section headers and step content via `editor-draft.ts` and `instruction-draft.ts`.
 - Updating `recipe-editing` specification requirements to cover editing both step headers and step content in `RecipeDetailSheet`.
 
 **Out of scope:**
+
 - Backend API or OpenAPI schema changes (`RecipeInstructionSectionInput` in `specs/openapi.yaml` already accepts `id`/`clientId`, `name`, and `steps`).
 - Changing `CooksMode` inline single-step editing behavior.
 - Drag-and-drop step reordering across sections (beyond add/remove/edit within sections, unless explicitly requested later).

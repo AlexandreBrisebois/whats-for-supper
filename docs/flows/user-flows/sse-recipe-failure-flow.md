@@ -9,11 +9,11 @@
 
 The backend `WorkflowWorker` has three failure modes:
 
-| Mode | Action | SSE event? |
-|---|---|---|
-| Transient error (429, timeout) | Retry with backoff | **No** |
-| Max retries reached on a task | Task marked `TaskStatus.Failed`, workflow paused | **No** |
-| Workflow instance reaches `WorkflowStatus.Failed` | Final — no more retries | **Yes — `recipe_failed`** |
+| Mode                                              | Action                                           | SSE event?                |
+| ------------------------------------------------- | ------------------------------------------------ | ------------------------- |
+| Transient error (429, timeout)                    | Retry with backoff                               | **No**                    |
+| Max retries reached on a task                     | Task marked `TaskStatus.Failed`, workflow paused | **No**                    |
+| Workflow instance reaches `WorkflowStatus.Failed` | Final — no more retries                          | **Yes — `recipe_failed`** |
 
 Only the third mode triggers the SSE event. This is intentional — the parent should never be interrupted by a recoverable hiccup.
 
@@ -87,6 +87,7 @@ User taps banner
 ```
 
 **Dismiss without retry:** banner has a ✕ link. On dismiss:
+
 - `libraryStore.dismissNotification(recipeId)`
 - Banner disappears
 - Recipe remains in DB in failed state (user chose to ignore)

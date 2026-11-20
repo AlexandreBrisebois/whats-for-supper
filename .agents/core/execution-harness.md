@@ -56,13 +56,13 @@ Path selection never makes tests file-local: architectural impact checks still a
 No-change/review-only work records findings without implying tested implementation.
 Task-specific acceptance and isolated model/host qualification remain separate obligations.
 
-| Change class | Applicable checks |
-|---|---|
-| Documentation | Changed links, Python syntax where present, diff whitespace; review instruction meaning |
-| Harness | Documentation checks and `task test:agent`; selected loading/fixture checks remain explicit task evidence |
-| Application | Documentation, lint/types, unit/API/impact tests and static contract/client checks |
-| Contract/schema | Application checks plus live endpoint parity and task-specific real database behavior |
-| Unknown | Union of all classes; never silently reduce verification |
+| Change class    | Applicable checks                                                                                         |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| Documentation   | Changed links, Python syntax where present, diff whitespace; review instruction meaning                   |
+| Harness         | Documentation checks and `task test:agent`; selected loading/fixture checks remain explicit task evidence |
+| Application     | Documentation, lint/types, unit/API/impact tests and static contract/client checks                        |
+| Contract/schema | Application checks plus live endpoint parity and task-specific real database behavior                     |
+| Unknown         | Union of all classes; never silently reduce verification                                                  |
 
 OpenSpec planning documents, change `.openspec.yaml` metadata and spec/change
 `.gitkeep` markers are documentation. `openspec/config.yaml`, custom schema

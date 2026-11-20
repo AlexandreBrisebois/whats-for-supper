@@ -1,7 +1,7 @@
 # Flow: Recipe Search And Library Recovery
 
-
 This document describes the user experience for:
+
 - Discovery, Explicit and Similar search modes (standard and agent-supplied),
 - planner-aware recipe selection,
 - recipe detail actions (notes, rating, discovery, similar),
@@ -115,13 +115,13 @@ Any action that assigns a recipe into a day/meal slot must first determine wheth
 
 This invariant applies regardless of entry surface:
 
-| Entry surface | Target slot | Empty-slot behavior | Occupied-slot behavior |
-|---------------|-------------|---------------------|------------------------|
-| Planner day card → Quick Find → Select | Selected planner day | Assign selected recipe directly | Open recovery flow for that selected day |
-| Planner day card → Quick Find → Search Library → result → Add it to day | Selected planner day | Assign selected recipe directly | Open recovery flow for that selected day |
-| Home → Recipes Search → recipe → Cook this → Cook it tonight | Today's slot | Assign selected recipe to today | Open recovery flow for today |
-| Home → planned Tonight → Change plan → Suggestions → Select | Today's slot | Keep the selected replacement for Home's prior-meal disposition, then assign | Home resolves the prior meal before saving the selected recipe |
-| Home → planned Tonight → Change plan → Search → result → Add to day | Captured authoritative today's slot | Assign selected recipe after selection | Recipes opens occupied-slot recovery for today |
+| Entry surface                                                           | Target slot                         | Empty-slot behavior                                                          | Occupied-slot behavior                                         |
+| ----------------------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Planner day card → Quick Find → Select                                  | Selected planner day                | Assign selected recipe directly                                              | Open recovery flow for that selected day                       |
+| Planner day card → Quick Find → Search Library → result → Add it to day | Selected planner day                | Assign selected recipe directly                                              | Open recovery flow for that selected day                       |
+| Home → Recipes Search → recipe → Cook this → Cook it tonight            | Today's slot                        | Assign selected recipe to today                                              | Open recovery flow for today                                   |
+| Home → planned Tonight → Change plan → Suggestions → Select             | Today's slot                        | Keep the selected replacement for Home's prior-meal disposition, then assign | Home resolves the prior meal before saving the selected recipe |
+| Home → planned Tonight → Change plan → Search → result → Add to day     | Captured authoritative today's slot | Assign selected recipe after selection                                       | Recipes opens occupied-slot recovery for today                 |
 
 The planned Tonight sheet offers Take Out, Suggestions (the existing limited five-card deck), and Search as separate choices. Search carries the captured day and reference Monday into unified Recipes without changing the plan on entry. If the day or displayed planned recipe changed while the sheet was open, Home asks the person to start again from the current card rather than targeting a different slot. The ordinary unplanned pivot's direct Search remains unchanged. Home's existing Capture a Recipe tile precedes either Tonight card or pivot in document and visual order, while notices stay ahead of it.
 
@@ -213,22 +213,22 @@ When the source embedding is unavailable or incompatible, semantic search is dis
 
 ## Recipe Detail Sheet — Action Map
 
-| Context | Initial CTA `data-testid` | Label | Follow-up |
-|---------|---------------------------|-------|-----------|
-| Planner mode (`addToDay` in URL) | `action-add-to-day` | "Add it to {Day}" | Assigns to the target planner day and returns to planner |
-| Standard library/search | `action-cook-this` | "Cook this" | Reveals `action-cook-tonight` and `action-plan-later` |
-| Similar mode (from Find Similar) | `action-cook-this` | "Cook this" | Same discovery pivot unless planner context is present |
+| Context                          | Initial CTA `data-testid` | Label             | Follow-up                                                |
+| -------------------------------- | ------------------------- | ----------------- | -------------------------------------------------------- |
+| Planner mode (`addToDay` in URL) | `action-add-to-day`       | "Add it to {Day}" | Assigns to the target planner day and returns to planner |
+| Standard library/search          | `action-cook-this`        | "Cook this"       | Reveals `action-cook-tonight` and `action-plan-later`    |
+| Similar mode (from Find Similar) | `action-cook-this`        | "Cook this"       | Same discovery pivot unless planner context is present   |
 
 Secondary actions always available:
 
-| Action | `data-testid` |
-|--------|--------------|
-| Edit notes inline (auto-saves via PATCH) | `recipe-notes-input` |
-| Set rating (auto-saves via PATCH) | `recipe-rating-selector` |
-| Toggle discovery | `action-toggle-discovery` |
-| Find similar | `action-find-similar` |
-| Move to Recycle Bin | `action-move-to-bin` |
-| Close sheet (no re-fetch) | `action-close-sheet` |
+| Action                                   | `data-testid`             |
+| ---------------------------------------- | ------------------------- |
+| Edit notes inline (auto-saves via PATCH) | `recipe-notes-input`      |
+| Set rating (auto-saves via PATCH)        | `recipe-rating-selector`  |
+| Toggle discovery                         | `action-toggle-discovery` |
+| Find similar                             | `action-find-similar`     |
+| Move to Recycle Bin                      | `action-move-to-bin`      |
+| Close sheet (no re-fetch)                | `action-close-sheet`      |
 
 All PATCH calls go to `PATCH /api/recipes/{id}`. The sheet stays open; no navigation occurs.
 
@@ -238,15 +238,15 @@ All PATCH calls go to `PATCH /api/recipes/{id}`. The sheet stays open; no naviga
 
 Search uses one **Filters** chooser on narrow and wide layouts. Quick, Family Favorite and Never Tried appear first; **More filters** reveals the remaining shortcuts. Selected choices remain visible when their group is collapsed.
 
-| Shortcut | Meaning |
-|----------|---------|
-| New | Created within the preceding 30 days |
-| Never Tried | No last-cooked date |
-| Family Favorite | Rating at least Like, plus discoverability or saved notes |
-| Quick | A supported recorded duration of at most 30 minutes; unknown durations do not qualify |
-| It's Been a While | Has a last-cooked date; filter-only results put the oldest cooked recipes first |
-| Reported | Has a saved recipe issue report |
-| Ready to review | Has a report marked ready for review; takes precedence when both review shortcuts are selected |
+| Shortcut          | Meaning                                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| New               | Created within the preceding 30 days                                                           |
+| Never Tried       | No last-cooked date                                                                            |
+| Family Favorite   | Rating at least Like, plus discoverability or saved notes                                      |
+| Quick             | A supported recorded duration of at most 30 minutes; unknown durations do not qualify          |
+| It's Been a While | Has a last-cooked date; filter-only results put the oldest cooked recipes first                |
+| Reported          | Has a saved recipe issue report                                                                |
+| Ready to review   | Has a report marked ready for review; takes precedence when both review shortcuts are selected |
 
 Meal and Cuisine are hard filters: choices within a group are alternatives, while the groups constrain results together. Non-vegetarian Focus choices guide retrieval rather than impose exact ingredient membership. Vegetarian requires a known true recipe classification.
 
@@ -328,9 +328,9 @@ The `retrying` guard is an atomic compare-and-set in the database — not a read
 
 ### Friendly copy examples
 
-- *We couldn't read enough from that page to save it cleanly.*
-- *Those photos were too unclear to turn into a recipe.*
-- *The recipe service timed out. Try again in a moment.*
+- _We couldn't read enough from that page to save it cleanly._
+- _Those photos were too unclear to turn into a recipe._
+- _The recipe service timed out. Try again in a moment._
 
 The user does not need stack traces to recover.
 
@@ -338,12 +338,12 @@ The user does not need stack traces to recover.
 
 ## Decision Table
 
-| Surface | Primary action | Secondary action | Escape hatch |
-|---------|---------------|-----------------|--------------|
-| Recipes | Open ordinary result | Expand Search or open Filters | Clear search and browse |
-| Recipe detail sheet | Add to planner day or Cook this pivot | Find similar, discovery toggle, move to bin | Close — same results |
-| Recycle Bin | Restore | Permanent delete (PIN required) | Back to library |
-| Failed Captures | Retry | View friendly reason | Leave item for later |
+| Surface             | Primary action                        | Secondary action                            | Escape hatch            |
+| ------------------- | ------------------------------------- | ------------------------------------------- | ----------------------- |
+| Recipes             | Open ordinary result                  | Expand Search or open Filters               | Clear search and browse |
+| Recipe detail sheet | Add to planner day or Cook this pivot | Find similar, discovery toggle, move to bin | Close — same results    |
+| Recycle Bin         | Restore                               | Permanent delete (PIN required)             | Back to library         |
+| Failed Captures     | Retry                                 | View friendly reason                        | Leave item for later    |
 
 ---
 
@@ -352,8 +352,9 @@ The user does not need stack traces to recover.
 ### Search empty state (`data-testid="search-empty-state"`)
 
 Show:
+
 - A calm explanation.
-- One recovery suggestion: *No close matches yet. Try fewer ingredients or remove a filter.*
+- One recovery suggestion: _No close matches yet. Try fewer ingredients or remove a filter._
 - Recovery actions: **Clear Filters** and **Clear search and browse**.
 
 ### Filter over-constrained (`data-testid="filter-no-results"`)
@@ -362,11 +363,11 @@ Show a suggestion to relax filters. Removing one filter is often enough.
 
 ### Recycle Bin empty state (`data-testid="trash-empty-state"`)
 
-Show: *Nothing in the bin.* — CTA: **Back to Library**.
+Show: _Nothing in the bin._ — CTA: **Back to Library**.
 
 ### Failed Captures empty state (`data-testid="failed-captures-empty"`)
 
-Show: *No failed captures right now.* — no extra action required.
+Show: _No failed captures right now._ — no extra action required.
 
 ---
 

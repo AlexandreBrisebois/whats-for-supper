@@ -61,11 +61,11 @@ flowchart TD
 
 ### Pipeline summary
 
-| Trigger | Service | Reads | Writes |
-|---|---|---|---|
-| Recipe import | `CategorizeIngredientsProcessor` | `recipe.raw_metadata`, `ingredient_categories` | `ingredient_categories` |
-| Assign / remove / re-import | `GroceryRecomputeService` | `ingredient_categories`, `AisleMapper` | `weekly_plans.grocery_items` |
-| `GET /api/schedule` | `ScheduleService` | `weekly_plans.grocery_items` | — |
+| Trigger                     | Service                          | Reads                                          | Writes                       |
+| --------------------------- | -------------------------------- | ---------------------------------------------- | ---------------------------- |
+| Recipe import               | `CategorizeIngredientsProcessor` | `recipe.raw_metadata`, `ingredient_categories` | `ingredient_categories`      |
+| Assign / remove / re-import | `GroceryRecomputeService`        | `ingredient_categories`, `AisleMapper`         | `weekly_plans.grocery_items` |
+| `GET /api/schedule`         | `ScheduleService`                | `weekly_plans.grocery_items`                   | —                            |
 
 The client receives `groceryItems` as a pre-computed array and groups it by `section` for display only — no normalization, no keyword matching, no index lookups at load time.
 
@@ -78,6 +78,7 @@ The client receives `groceryItems` as a pre-computed array and groups it by `sec
 Runs as the fourth step in the `recipe-import` workflow (after `SyncRecipe`, before `RecipeReady`). Responsible for populating the `ingredient_categories` cache.
 
 **Steps:**
+
 1. Parse `recipeId` from the workflow payload.
 2. Read `supply[]` from `recipe.raw_metadata`.
 3. Normalize each ingredient name via `IngredientNormalizer.Normalize`.
@@ -91,6 +92,7 @@ Runs as the fourth step in the `recipe-import` workflow (after `SyncRecipe`, bef
 Triggered by `AssignRecipeAsync`, `RemoveRecipeAsync`, and `SyncRecipeProcessor`. Responsible for writing the pre-aggregated grocery list to `weekly_plans`.
 
 **Steps:**
+
 1. Load all `CalendarEvents` for the week with their `Recipe.RawMetadata`.
 2. Extract `supply[]` from each recipe's `raw_metadata` jsonb.
 3. Normalize each supply name via `IngredientNormalizer.Normalize`.
@@ -155,7 +157,18 @@ The processor sends a single batch request containing all uncached ingredient na
 {
   "ingredients": ["tomato sauce", "chicken breast", "heavy cream"],
   "task": "Assign each ingredient to exactly one grocery store section.",
-  "sections": ["Produce","Meat","Seafood","Dairy & Eggs","Frozen","Bakery","Pantry","Beverages","Deli","Grocery"]
+  "sections": [
+    "Produce",
+    "Meat",
+    "Seafood",
+    "Dairy & Eggs",
+    "Frozen",
+    "Bakery",
+    "Pantry",
+    "Beverages",
+    "Deli",
+    "Grocery"
+  ]
 }
 ```
 
@@ -179,11 +192,11 @@ Note: `Meat` and `Seafood` are **separate sections**. The value `"Meat & Seafood
 
 Each item in the response array contains:
 
-| Field | Type | Description |
-|---|---|---|
-| `normalizedKey` | string | The normalized ingredient name (matches what was sent) |
-| `section` | string | One of the 10 valid section values |
-| `confidence` | number | LLM confidence score (0–1); stored in `ingredient_categories` |
+| Field           | Type   | Description                                                   |
+| --------------- | ------ | ------------------------------------------------------------- |
+| `normalizedKey` | string | The normalized ingredient name (matches what was sent)        |
+| `section`       | string | One of the 10 valid section values                            |
+| `confidence`    | number | LLM confidence score (0–1); stored in `ingredient_categories` |
 
 ### Invalid response handling
 

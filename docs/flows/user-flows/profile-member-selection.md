@@ -11,12 +11,12 @@ selected ID does not match a loaded member.
 
 ## Member chooser states
 
-| State | Presentation and available actions |
-|---|---|
-| Loaded selected member | The chooser displays the member's complete name and a localised active-member label. Opening it exposes the household choices and marks the current member with a check and accessible current-member state. |
-| Family loading | A stable placeholder provides a localised loading description. Settings and available language controls remain usable. |
-| No matching selected member | The chooser displays `Select member` or `Choisir un membre`, without inventing an active name. Settings and language controls remain available. |
-| Open chooser | Choices scroll when necessary. Keyboard users can reach each choice; Escape closes the chooser and returns focus to its trigger. |
+| State                       | Presentation and available actions                                                                                                                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Loaded selected member      | The chooser displays the member's complete name and a localised active-member label. Opening it exposes the household choices and marks the current member with a check and accessible current-member state. |
+| Family loading              | A stable placeholder provides a localised loading description. Settings and available language controls remain usable.                                                                                       |
+| No matching selected member | The chooser displays `Select member` or `Choisir un membre`, without inventing an active name. Settings and language controls remain available.                                                              |
+| Open chooser                | Choices scroll when necessary. Keyboard users can reach each choice; Escape closes the chooser and returns focus to its trigger.                                                                             |
 
 Opening Profile does not navigate automatically. Toggling the chooser closed,
 clicking outside it or pressing Escape dismisses choices without requesting member
@@ -74,13 +74,13 @@ staging or chooser animation.
 
 ## Test evidence boundaries
 
-| Scenario | Owner |
-|---|---|
-| Exact EN/FR loaded titles, no subtitle or separate action, retained controls | `pwa/e2e/profile.spec.ts` |
-| Loading and unmatched-member composition | Adjacent Profile page unit test and isolated real-page browser fixture in `profile.spec.ts` |
-| Current/different-member selection and Home request; dismissal without selection/navigation | `profile.spec.ts`, Profile page and dropdown unit tests |
-| Language success, rejection and local-only choice | `profile.spec.ts` and language-selection unit tests |
-| Narrow/tablet viewports, long names, 200% text, keyboard and reduced motion | `profile.spec.ts` |
+| Scenario                                                                                    | Owner                                                                                       |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Exact EN/FR loaded titles, no subtitle or separate action, retained controls                | `pwa/e2e/profile.spec.ts`                                                                   |
+| Loading and unmatched-member composition                                                    | Adjacent Profile page unit test and isolated real-page browser fixture in `profile.spec.ts` |
+| Current/different-member selection and Home request; dismissal without selection/navigation | `profile.spec.ts`, Profile page and dropdown unit tests                                     |
+| Language success, rejection and local-only choice                                           | `profile.spec.ts` and language-selection unit tests                                         |
+| Narrow/tablet viewports, long names, 200% text, keyboard and reduced motion                 | `profile.spec.ts`                                                                           |
 
 The unselected/loading browser fixture deliberately mounts the real page outside
 the production identity guard. It qualifies the rendered state and client seams,

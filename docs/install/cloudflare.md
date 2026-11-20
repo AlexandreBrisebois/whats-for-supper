@@ -171,11 +171,11 @@ tunnel token. The helper does not create the independent connector or network.
 
 Choose a stable alias unique across the shared network:
 
-| Deployment | Alias | Example public hostname | Cloudflare service URL |
-| --- | --- | --- | --- |
-| Production | `wfs-prod-proxy` | `supper.example.com` | `http://wfs-prod-proxy:80` |
-| Beta | `wfs-beta-proxy` | `beta-supper.example.com` | `http://wfs-beta-proxy:80` |
-| Demo | `wfs-demo-proxy` | `demo-supper.example.com` | `http://wfs-demo-proxy:80` |
+| Deployment | Alias            | Example public hostname   | Cloudflare service URL     |
+| ---------- | ---------------- | ------------------------- | -------------------------- |
+| Production | `wfs-prod-proxy` | `supper.example.com`      | `http://wfs-prod-proxy:80` |
+| Beta       | `wfs-beta-proxy` | `beta-supper.example.com` | `http://wfs-beta-proxy:80` |
+| Demo       | `wfs-demo-proxy` | `demo-supper.example.com` | `http://wfs-demo-proxy:80` |
 
 **Set the network and alias in `.env`, then use your actual hostnames in
 Cloudflare. No Compose edits are required for a fresh standard installation.**
@@ -239,6 +239,7 @@ paths reach the PWA. Preserve `NEXT_PUBLIC_API_BASE_URL: ""` and
    and set the network and alias. Migrate demo, then beta, then production. Validate
    locally with `docker compose config --quiet`; do not share resolved config,
    which can expose secrets.
+
 3. Recreate only that deployment's proxy and bundled connector using the existing
    project identity. With CLI, from the same project directory and using the same
    project name/Compose overrides as before, run
@@ -257,6 +258,7 @@ paths reach the PWA. Preserve `NEXT_PUBLIC_API_BASE_URL: ""` and
    Substitute this deployment's alias. Expect API JSON with healthy database and
    schema checks. This checks the shared network path; use the public verification
    below to check the actual tunnel path.
+
 5. Move the existing hostname route to the independent tunnel and update its
    proxied DNS CNAME target to `<shared-tunnel-UUID>.cfargotunnel.com` where needed.
    Save the prior target first. Cloudflare may reject a duplicate hostname/DNS

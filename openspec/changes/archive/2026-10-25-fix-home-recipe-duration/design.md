@@ -6,16 +6,16 @@ Main ba8dca21 has one preformatted caller: HomeCommandCenter invokes lib/formatT
 
 Duration rendering ownership (all inputs are recipe totalTime strings, normally ISO 8601):
 
-| Surface | Handoff and rendering owner |
-| --- | --- |
-| Home | HomeCommandCenter → TonightMenuCard → formatRecipeTime; remove the earlier formatTotalTime call |
-| Discovery | DiscoveryCard formats raw totalTime |
-| Swipe stacks / Browse | RecipeStackCard formats raw totalTime |
-| Browse list | browse-all-stack/page formats raw recipe.totalTime |
-| Search top pick and results | recipes/page formats raw totalTime in both branches |
-| Quick Find | QuickFindModal formats raw currentRecipe.totalTime |
-| Recipe detail | RecipeDetailSheet formats raw fetched recipe.totalTime |
-| Planner, Cook's Mode, capture previews | Reuse RecipeDetailSheet; no separate prep/cook duration display |
+| Surface                                | Handoff and rendering owner                                                                     |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Home                                   | HomeCommandCenter → TonightMenuCard → formatRecipeTime; remove the earlier formatTotalTime call |
+| Discovery                              | DiscoveryCard formats raw totalTime                                                             |
+| Swipe stacks / Browse                  | RecipeStackCard formats raw totalTime                                                           |
+| Browse list                            | browse-all-stack/page formats raw recipe.totalTime                                              |
+| Search top pick and results            | recipes/page formats raw totalTime in both branches                                             |
+| Quick Find                             | QuickFindModal formats raw currentRecipe.totalTime                                              |
+| Recipe detail                          | RecipeDetailSheet formats raw fetched recipe.totalTime                                          |
+| Planner, Cook's Mode, capture previews | Reuse RecipeDetailSheet; no separate prep/cook duration display                                 |
 
 These are eight common.readyIn expressions across seven render files. Each uses tWithVars and the same formatter. English is READY IN {{time}}; French is PRÊT EN {{time}}. Formatter output remains the approved uppercase H/MINS vocabulary in both locales. Cooking step timers are distinct from recipe total duration.
 

@@ -10,12 +10,12 @@ Prototype and evaluate a next-generation **Adaptive Family Cookbook** experience
 
 1. **"Swipe, Match, Cook!" as the Hero Weekly Catalyst (Energy 1 — Playful Convergence):** Keep family voting unmistakably at the front of the weekly journey for kids and household members. Add a non-shaming **Family Table Progress** cue showing how close consensus candidates are to filling the week's open nights, tactile heirloom-card swipe physics with kid-friendly appetite cues, and a smooth **Match-to-Menu Bridge** when the family converges.
 2. **Adaptive 4-Energy Shell & State-Responsive Chrome (`adaptive-energy-shell`):** Adapt navigation prominence, cognitive density, and visual rhythm to the household's actual moment across four distinct energies:
-   - *Energy 1 — Playful Convergence (Discovery Voting):* Warm-sunlight ochre `Vote` prominence when a voting round is `collecting` or the week needs suppers.
-   - *Energy 2 — Reflective Curation (Weekly Menu & Calm Capture):* Editorial weekly menu spread plus non-blocking background capture status ribbon instead of full-screen countdown lock-in.
-   - *Energy 3 — In-Motion Utility (Aisle Shop Mode):* Glare-resistant high-contrast grocery rows (`WCAG >= 7:1` / high `APCA Lc`) with one-handed checkoffs and quiet partner sync.
-   - *Energy 4 — Depleted Execution (5:00 PM Home & Cook's Mode):* Strict cognitive budget (`<= 3` focal groups on Home), level low-salience navigation once tonight is set, full chrome recession inside Cook's Mode, and a unified guilt-free pivot sheet.
+   - _Energy 1 — Playful Convergence (Discovery Voting):_ Warm-sunlight ochre `Vote` prominence when a voting round is `collecting` or the week needs suppers.
+   - _Energy 2 — Reflective Curation (Weekly Menu & Calm Capture):_ Editorial weekly menu spread plus non-blocking background capture status ribbon instead of full-screen countdown lock-in.
+   - _Energy 3 — In-Motion Utility (Aisle Shop Mode):_ Glare-resistant high-contrast grocery rows (`WCAG >= 7:1` / high `APCA Lc`) with one-handed checkoffs and quiet partner sync.
+   - _Energy 4 — Depleted Execution (5:00 PM Home & Cook's Mode):_ Strict cognitive budget (`<= 3` focal groups on Home), level low-salience navigation once tonight is set, full chrome recession inside Cook's Mode, and a unified guilt-free pivot sheet.
 3. **Native CSS Perceptual Color Science (`oklch(L C H)`) & Paper Materiality:** Replace ad-hoc hex/opacity utilities and heavy reading-card `backdrop-blur` with perceptually uniform OKLCH surface, ink, and brand contracts paired with warm layered paper and ambient umber shadows.
-4. **Six Locked Semantic Cookbook Primitives (`cookbook-primitives-and-lab`):** Build `EnergyShell`, `CookbookCard`, `CookbookSheet` (native HTML `<dialog>` top layer), `Typography`, `Action`, and `StatusBadge` under `pwa/src/components/cookbook/` so exploration routes compose by *semantic intent and household energy* rather than raw color, font-size, or border-radius classes.
+4. **Six Locked Semantic Cookbook Primitives (`cookbook-primitives-and-lab`):** Build `EnergyShell`, `CookbookCard`, `CookbookSheet` (native HTML `<dialog>` top layer), `Typography`, `Action`, and `StatusBadge` under `pwa/src/components/cookbook/` so exploration routes compose by _semantic intent and household energy_ rather than raw color, font-size, or border-radius classes.
 5. **Living Specimen Lab (`/dev/cookbook-lab`) & Graduation Protocol:** Build a non-production specimen route rendering all 4 Energies side-by-side in EN/FR across `320px`/200%, `390px`, and `834px` viewports with interactive household-state toggles and live contrast/touch-target checks for physical-phone review with the family, enabling selective graduation back to `main`.
 
 **Exclusions:** No backend schema, OpenAPI contract, or `.NET` persistence changes; exploration work stays isolated on `explore/adaptive-family-cookbook` until proven slices are promoted through separate follow-up OpenSpec changes on `main`.
@@ -25,7 +25,7 @@ Prototype and evaluate a next-generation **Adaptive Family Cookbook** experience
 - Define native CSS `oklch(L C H)` perceptual token contracts (with sRGB fallbacks) and tactile paper elevation in `pwa/src/app/globals.css`.
 - Author six locked Cookbook Primitives (`EnergyShell`, `CookbookCard`, `CookbookSheet`, `Typography`, `Action`, `StatusBadge`) under `pwa/src/components/cookbook/` and extend `visual-contract.test.ts` to forbid raw color/type/radius classes in prototype routes.
 - Build `/dev/cookbook-lab` (guarded to return `404` outside development/exploration mode) rendering all 4 Household Energies in EN/FR across phone and tablet viewports.
-- Prototype Energy 1 (*"Swipe, Match, Cook!"* Family Table Progress + Match-to-Menu Bridge), Energy 4 (5:00 PM Quiet Home + `<CookbookSheet>` Pivot + Chrome-Receded Cook's Mode), Energy 2 (Editorial Planner + Non-Blocking Capture Ribbon), and Energy 3 (Glare-Proof Aisle Shop Mode) on `explore/adaptive-family-cookbook`.
+- Prototype Energy 1 (_"Swipe, Match, Cook!"_ Family Table Progress + Match-to-Menu Bridge), Energy 4 (5:00 PM Quiet Home + `<CookbookSheet>` Pivot + Chrome-Receded Cook's Mode), Energy 2 (Editorial Planner + Non-Blocking Capture Ribbon), and Energy 3 (Glare-Proof Aisle Shop Mode) on `explore/adaptive-family-cookbook`.
 
 ## Capabilities
 
@@ -36,7 +36,7 @@ Prototype and evaluate a next-generation **Adaptive Family Cookbook** experience
 
 ### Modified Capabilities
 
-- `recipe-discovery`: Add non-shaming Family Table Progress cues during open voting and a structured Match-to-Menu convergence bridge keeping *"Swipe, Match, Cook!"* effortless for kids and family members without individual shaming or premature week locking.
+- `recipe-discovery`: Add non-shaming Family Table Progress cues during open voting and a structured Match-to-Menu convergence bridge keeping _"Swipe, Match, Cook!"_ effortless for kids and family members without individual shaming or premature week locking.
 
 ## Impact
 
@@ -47,7 +47,8 @@ Prototype and evaluate a next-generation **Adaptive Family Cookbook** experience
 ## Review Checkpoints Before Apply
 
 Before creating `explore/adaptive-family-cookbook` and starting `/openspec-apply-change explore-adaptive-hearth-and-cookbook-primitives`, review and shape these creative exploration questions:
+
 - **Checkpoint 1 — Top-Level Navigation Structure:** Keep 5 items (`Home`, `Recipes`, `Vote`, `Planner`, `Profile`) with adaptive `Vote` prominence, OR test promoting `Shop` (Groceries) directly into the primary bar while folding `Recipes` + `Vote` under a clearer household rhythm?
-- **Checkpoint 2 — Family Table Progress Language:** For Energy 1 (*"Swipe, Match, Cook!"*), prefer playful milestone phrasing for kids (*"3 of 5 nights matched — 2 more to go!"*) vs. quiet numeric pills, ensuring zero tracking of who hasn't voted?
+- **Checkpoint 2 — Family Table Progress Language:** For Energy 1 (_"Swipe, Match, Cook!"_), prefer playful milestone phrasing for kids (_"3 of 5 nights matched — 2 more to go!"_) vs. quiet numeric pills, ensuring zero tracking of who hasn't voted?
 - **Checkpoint 3 — Paper Warmth & Tactility:** Decide during `/dev/cookbook-lab` physical-phone inspection whether cream `#FDFCF0` (`oklch(0.99 0.015 100)`) vs. slightly warmer cookbook stock (`oklch(0.975 0.02 90)`) feels calmer under kitchen evening lighting and bright store fluorescent lighting.
 - **Checkpoint 4 — Capture Ribbon vs. Confirmation Page:** Confirm keeping the non-blocking background capture status ribbon inside `EnergyShell` for quick multi-recipe cookbook additions while retaining `/capture`'s full-screen camera/PDF workspace.

@@ -40,7 +40,6 @@ Alex approved applying this written design in PR #354 on 2026-10-26 at 18:04 UTC
 
 For this five-file planning PR, behavior red/green and runtime/device checks are not applicable/unrun. Review proposal/delta/design/task consistency and preservation of existing scenarios. Use explicit paths for the change's `.openspec.yaml`, `proposal.md`, `design.md`, `tasks.md`, and `specs/demo-household/spec.md` with `task verify:plan` and `task verify`; run `task spec:check -- demo-experience-refinement --type change` and full `task spec:check`. Keep final evidence in the verifier record and PR description so publishing evidence does not invalidate validated file bytes. Publish as the authorized draft **Demo experience refinement** through the GitHub connector, read back the exact committed files, and stop for the parent's design-approval presentation. Future tasks above remain unexecuted.
 
-
 ## Application evidence checkpoint
 
 - Source baseline remains main `e680fb7966978da3fbde25453a241c7e69e2b2a1`; isolated checkout `/workspace/scratch/wfs-demo-refinement`. Original workspace and unrelated drafts are preserved.
@@ -52,7 +51,6 @@ For this five-file planning PR, behavior red/green and runtime/device checks are
 
 - Aggregate attempt `.task/agent-finish/runs/15fbd76151824ee7a4e4deb9ead83362.json` failed the React ref-safety lint rule in the first render-callback approach and rejected post-unit input identity. The lint fix keeps the same dismissal button inside DemoDialog. The installed Vitest 5 filesystem transform cache added two entries during the post-fix full-unit run (1068 passed); it is warmed before the replacement gate without changing the harness or excluding new paths. Rebuilt public Demo browser acceptance passed 14 tests afterward, and refreshed login/dialog pixels match the earlier inspected captures. Refreshed Home captures were inspected again.
 
-
 ## Final local verification
 
 - Full reviewed 34-path `task verify` record: `.task/agent-finish/runs/2a5b7abf1e1b4c19b5254775f455b841.json`, stable content identity `84cb05cf723c27fdd419d186972fa8ee136bf534c04cb43839bd72f771d0d3eb`. Documentation, full strict specs (35/35), harness, lint, formatting, types, 1068 unit tests, 359 browser tests (31 configuration/manual skips), 1249 API tests (154 existing prerequisite/manual skips), Kiota/static contract checks and isolated endpoint parity all passed. This aggregate record remains **failed** because nine database fixture tests could not create their owned home-directory roots; it is not relabeled green.
@@ -60,7 +58,6 @@ For this five-file planning PR, behavior red/green and runtime/device checks are
 - An additional real native-modal route-departure qualification passed with the optimized build: `CI=true task test:e2e -- --config=/tmp/wfs-route-tests/wfs-route-focus.config.ts` (one test, 3.2s; log `/tmp/wfs-route-focus.log`). The existing Home band remained connected during client navigation to Recipes, the dialog closed without acknowledgement or focusing that band, the destination input retained focus/value, and later manual reopening/Escape returned focus correctly. This temporary qualification adds browser evidence to the retained unit regression; it is not claimed as a checked-in CI case.
 - Controlled cache observation identified exactly `pwa/node_modules/.vitest-cache/68f57e186aff295f9aba8a1bfcfb38a947f30b6b` (DemoDialog transform) and `pwa/node_modules/.vitest-cache/c9c8c043178b56c1bf23d81cd1f0c21081a69855` (DemoExplanation transform) after the lint fix. They are generated installed-tool cache files. The original failed aggregate stored only digests, so its exact original per-file mutation delta cannot be reconstructed. No freshness rule or harness/configuration file was changed. The replacement full gate retained stable content through every check.
 - Only this final task record changes after those application/evidence checks. Its updated checkbox/results receive separate documentation-only verification before connector publication. PR description records immutable published refs, readback and final exact-head CI without making an evidence-only source commit.
-
 
 ## 4. Durable public Demo CI regression coverage
 

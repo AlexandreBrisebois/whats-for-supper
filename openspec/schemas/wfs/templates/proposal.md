@@ -22,6 +22,7 @@
 
 <!-- Prefer an existing cohesive behavior owner. Introduce a new capability only
      when it has a distinct responsibility. Use exact kebab-case capability paths. -->
+
 - `<capability-path>`: <owned behavior>
 
 ### Modified Capabilities
@@ -30,6 +31,7 @@
      complete affected requirements and scenarios first. Leave empty if none.
      If no specification behavior changes, use skip_specs: true in change metadata;
      do not invent requirements merely to satisfy validation. -->
+
 - `<existing-capability-path>`: <behavior changing>
 
 ## Impact

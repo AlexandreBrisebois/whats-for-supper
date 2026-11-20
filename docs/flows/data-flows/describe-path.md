@@ -41,15 +41,15 @@ sequenceDiagram
 
 ## Key facts
 
-| Field | Set when | Value |
-|-------|----------|-------|
-| `AddedBy` | At creation | From `X-Family-Member-Id` header (nullable) |
-| `CreatedAt` | At creation | `DateTimeOffset.UtcNow` |
-| `ImageCount` | At creation | `0` — stays `0` for the entire describe path |
-| `IsSynthesized` | After synthesis | `false` → `true` once `RecipeAgent.DoSynthesizeRecipeAsync` succeeds |
-| `recipe.info` | At creation | Written immediately with all identity fields |
-| `recipe.json` | After synthesis | Written by SyncRecipe processor |
-| Status | After RecipeReady runs | `pending` → `ready` (gated on `IsSynthesized`, not `ImageCount`) |
+| Field           | Set when               | Value                                                                |
+| --------------- | ---------------------- | -------------------------------------------------------------------- |
+| `AddedBy`       | At creation            | From `X-Family-Member-Id` header (nullable)                          |
+| `CreatedAt`     | At creation            | `DateTimeOffset.UtcNow`                                              |
+| `ImageCount`    | At creation            | `0` — stays `0` for the entire describe path                         |
+| `IsSynthesized` | After synthesis        | `false` → `true` once `RecipeAgent.DoSynthesizeRecipeAsync` succeeds |
+| `recipe.info`   | At creation            | Written immediately with all identity fields                         |
+| `recipe.json`   | After synthesis        | Written by SyncRecipe processor                                      |
+| Status          | After RecipeReady runs | `pending` → `ready` (gated on `IsSynthesized`, not `ImageCount`)     |
 
 ## Header injection
 

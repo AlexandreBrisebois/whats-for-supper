@@ -32,6 +32,7 @@ None.
 ## Impact
 
 Documentation only: this proposal, recipe-sharing specification, extraction design/tasks, and `docs/openspec-baseline-plan.md`. The traced paths connect:
+
 - Detail sheet share button → `RecipeDetailSheet.handleShareRecipe` → client `getRecipeShareBundle` → `GET /api/recipes/{id}/share` → `RecipeController.Share` → `RecipeService.ExportRecipeShareBundle` → `LocalRecipeStore` / `IImageService`
 - Client packaging and delivery → `downloadRecipeBundleFile` → `createRecipeBundleFile` → `navigator.share` or `URL.createObjectURL` / temporary anchor click
 - Capture intake → `MinimalCapture.handleRecipeBundleFileChange` → client `parseRecipeBundleFile` → client duplicate check `apiClient.api.recipes.get` → preview card

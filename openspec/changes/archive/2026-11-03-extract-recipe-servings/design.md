@@ -16,11 +16,11 @@ Original implementation baseline (the completed extraction slice is recorded in 
 
 Visual inspection of each supplied original/1.jpg agrees with existing stored metadata:
 
-| Recipe directory ID | Evidence | Expected count and unchanged quantities |
-| --- | --- | --- |
-| 6f0a0897-9066-4cf4-89ed-f78750311432 | Cook it utensil headings for 2 and 3 | 2; 360 g chicken, 500 g potatoes |
-| 6fe2e84a-b531-4cae-85e0-e8877db99930 | “2 ou 4”, “Double pour 4 portions” | 2; 2 chicken breasts, 225 g Brussels sprouts |
-| 7f823333-47c3-4dd3-ab85-6ff649477b5e | Explicit “Portions: 4” | 4; 510 g beef, 340 g pasta |
+| Recipe directory ID                  | Evidence                             | Expected count and unchanged quantities      |
+| ------------------------------------ | ------------------------------------ | -------------------------------------------- |
+| 6f0a0897-9066-4cf4-89ed-f78750311432 | Cook it utensil headings for 2 and 3 | 2; 360 g chicken, 500 g potatoes             |
+| 6fe2e84a-b531-4cae-85e0-e8877db99930 | “2 ou 4”, “Double pour 4 portions”   | 2; 2 chicken breasts, 225 g Brussels sprouts |
+| 7f823333-47c3-4dd3-ab85-6ff649477b5e | Explicit “Portions: 4”               | 4; 510 g beef, 340 g pasta                   |
 
 This is source and image evidence, not a new provider execution or runtime qualification.
 

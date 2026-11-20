@@ -39,7 +39,6 @@ Before production edits, exercise the current mouse and held-touch paths and cap
 
 If baseline movement works, record the human report as unreproduced; still implement and test the accepted layout. If a defect is reproduced, retain its focused failing regression and fix only the implicated gesture/session integration. Backend-policy or unrelated live reconciliation defects require separate scope rather than silently extending this change. Emulated browser touch does not qualify physical iOS/Android gestures; report device evidence separately.
 
-
 ## Implemented details and observed qualification (2026-10-27)
 
 - The Planner-local `usePlannerDrag` owns a native pointer session after the existing 250 ms hold. Date-keyed rows remain stable; viewport hit testing measures current rectangles on move, release and scroll. The original source index and arrangement drive every preview and one terminal commit. The existing store/API policy and snapshot handshake remain the owners of movement and reconciliation.

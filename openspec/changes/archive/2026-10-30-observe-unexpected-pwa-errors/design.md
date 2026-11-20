@@ -12,13 +12,13 @@ Prerequisite reconciliation at F3-1 apply, 2026-10-29: current F2-1 final record
 
 Local Sentrame is clean HEAD `a506dacbdc0f776238f2b3ebc769e42d2b4b9378`; schema 3, projection `structural-v2`, computation `journey-native-v3`. Reviewed local intake/store/journey/query/errors/privacy code, `web/src/Errors.svelte` and Workspace, plus these document SHA-256 identities:
 
-| Local Sentrame document | SHA-256 |
-| --- | --- |
-| `docs/integration/OTEL-CONTRACT.md` | `e2ebc1a72b1d700bcf04ed3c8faec6e0ebf6eca0390e9159398a51dcd5feaaf7` |
-| `docs/DEVELOPER-GUIDE.md` | `781cb9552dde612eafb1478dd30777f2761547046b00c7ef296f8b6da26ee961` |
+| Local Sentrame document                 | SHA-256                                                            |
+| --------------------------------------- | ------------------------------------------------------------------ |
+| `docs/integration/OTEL-CONTRACT.md`     | `e2ebc1a72b1d700bcf04ed3c8faec6e0ebf6eca0390e9159398a51dcd5feaaf7` |
+| `docs/DEVELOPER-GUIDE.md`               | `781cb9552dde612eafb1478dd30777f2761547046b00c7ef296f8b6da26ee961` |
 | `docs/integration/AGENT-INTEGRATION.md` | `3f9e407be5fdb235061fc1e979ac1e6f7e4513755535aa6dcb413bb70183e346` |
-| `docs/USER-GUIDE.md` | `95d706ba997bfd6577eebd35535d7fae5828682f7f24bbf94fb874b13d4aaf93` |
-| `docs/verification/standard-otel.md` | `1a2aa4acfb17830fbb08da0021c7c76c95e7b449de8530e07b69d36faf6aa35e` |
+| `docs/USER-GUIDE.md`                    | `95d706ba997bfd6577eebd35535d7fae5828682f7f24bbf94fb874b13d4aaf93` |
+| `docs/verification/standard-otel.md`    | `1a2aa4acfb17830fbb08da0021c7c76c95e7b449de8530e07b69d36faf6aa35e` |
 
 These are source/document inspections, not a built WFS error path or receiver UI execution. The receiver's .NET/Next/browser SDK sample cells use different package graphs/wire paths and do not qualify WFS JSON errors. Later tests must record actual receiver binary/assets hash, WFS source/build/lock identity, definition/configuration identity without secrets, wire hashes and clock basis.
 
@@ -38,22 +38,22 @@ At the observing callback, synchronously snapshot occurrence time, safe reason, 
 
 Standard OTLP/HTTP JSON logs, `Content-Type: application/json`, no compression, `/v1/logs`. All wire constants and resource values are server-owned. Browser observations retain browser authority even when forwarded by Node.
 
-| Emitted field / location | Owner | Availability | Meaning and limit |
-| --- | --- | --- | --- |
-| `eventName` on log | Fixed adapter/serializer | Always | `pwa.browser.error` or `pwa.server.error`; observing producer, not business outcome |
-| `severityNumber` on log | Serializer | Always, 17 | ERROR diagnostic eligibility; no automatic journey end |
-| `body.stringValue` on log | Serializer | Always, `WFS unexpected error observed` | Fixed safe text, no dynamic diagnostics |
-| `scope.name` in scopeLogs | Serializer | Always, `wfs.anonymous` | Instrumentation scope, distinct from anonymous session |
-| `service.name` resource | Server config/producer | Always | `wfs-pwa-browser` or `wfs-pwa-server`, with matching separate credential authority |
-| `service.version` resource | Deployment `WFS_VERSION` | Trimmed or `unknown` | WFS release/build; never browser-selected or individual identity |
-| `reason` log attribute | Observing adapter, validated server-side | Always, closed enum | Observing boundary only; not root cause, incident count, affected people or journey result |
-| `event.id` log attribute | Local record owner | Fresh random UUID per admitted record | Log replay identity, not failure or visit identity |
-| `exception.occurrence.id` log attribute | Occurrence owner | Fresh random UUID per identified episode | Observed failure occurrence, shared by demonstrably overlapping callbacks; no content hash |
-| `session.id`, `tab.id` log attributes | Existing enabled document coordinator | Browser only, together if already present | Anonymous document correlation; no session/tab generated solely for an error |
-| `source.sequence` log attribute | Same coordinator | With existing browser context, positive safe integer | One increasing stream across opening/navigation/errors, observation order rather than delivery or causality |
-| `stage.name` log attribute | Snapshot of coordinator's last presented primary | Browser only, when known | Approved static screen hint at observation; omit unknown, never invent `other` for absence |
-| `timeUnixNano` on log | Observing browser callback or Next hook | Always | Occurrence/observation time, not deferred export time |
-| `observedTimeUnixNano` on log | Node Action acceptance or Next hook | Always | Separate server observation clock; receiver receipt is another clock |
+| Emitted field / location                | Owner                                            | Availability                                         | Meaning and limit                                                                                           |
+| --------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `eventName` on log                      | Fixed adapter/serializer                         | Always                                               | `pwa.browser.error` or `pwa.server.error`; observing producer, not business outcome                         |
+| `severityNumber` on log                 | Serializer                                       | Always, 17                                           | ERROR diagnostic eligibility; no automatic journey end                                                      |
+| `body.stringValue` on log               | Serializer                                       | Always, `WFS unexpected error observed`              | Fixed safe text, no dynamic diagnostics                                                                     |
+| `scope.name` in scopeLogs               | Serializer                                       | Always, `wfs.anonymous`                              | Instrumentation scope, distinct from anonymous session                                                      |
+| `service.name` resource                 | Server config/producer                           | Always                                               | `wfs-pwa-browser` or `wfs-pwa-server`, with matching separate credential authority                          |
+| `service.version` resource              | Deployment `WFS_VERSION`                         | Trimmed or `unknown`                                 | WFS release/build; never browser-selected or individual identity                                            |
+| `reason` log attribute                  | Observing adapter, validated server-side         | Always, closed enum                                  | Observing boundary only; not root cause, incident count, affected people or journey result                  |
+| `event.id` log attribute                | Local record owner                               | Fresh random UUID per admitted record                | Log replay identity, not failure or visit identity                                                          |
+| `exception.occurrence.id` log attribute | Occurrence owner                                 | Fresh random UUID per identified episode             | Observed failure occurrence, shared by demonstrably overlapping callbacks; no content hash                  |
+| `session.id`, `tab.id` log attributes   | Existing enabled document coordinator            | Browser only, together if already present            | Anonymous document correlation; no session/tab generated solely for an error                                |
+| `source.sequence` log attribute         | Same coordinator                                 | With existing browser context, positive safe integer | One increasing stream across opening/navigation/errors, observation order rather than delivery or causality |
+| `stage.name` log attribute              | Snapshot of coordinator's last presented primary | Browser only, when known                             | Approved static screen hint at observation; omit unknown, never invent `other` for absence                  |
+| `timeUnixNano` on log                   | Observing browser callback or Next hook          | Always                                               | Occurrence/observation time, not deferred export time                                                       |
+| `observedTimeUnixNano` on log           | Node Action acceptance or Next hook              | Always                                               | Separate server observation clock; receiver receipt is another clock                                        |
 
 Browser reasons: `browser.script` (window error callback), `browser.rejection` (unhandled rejection callback), `browser.render` (client render boundary). Next reasons: `server.render`, `server.route`, `server.action`, `server.proxy` from fixed routeType mapping; `server.unknown` for unsupported/missing type. They prove the boundary observed an unexpected failure, not its underlying cause. No raw messages/stacks, arbitrary exception names/types, framework digest, request data, URLs/paths/queries, product/person/household identifiers, console arguments or content-derived hashes. The only identifiers allowed are reviewed random telemetry identities. Receiver ability to retain scrubbed diagnostics is not permission to send more.
 
@@ -73,12 +73,12 @@ Sentrame `store.go` keys stored log identity by source/signal/`event.id` within 
 
 Source evidence: `diagnostic_privacy.go` admits severity >=17 into errors without needing exception text/type. Protected app-scoped `GET /api/errors` in `errors.go` reads stored errors independently of journey membership. `intake.go` retains reason/exception occurrence/static stage plus context, source/observed time and service/version. These are required WFS compatibility tests, not runtime passes from this review.
 
-| Case | Expected receiver behavior | Configuration / limit |
-| --- | --- | --- |
-| Received standalone diagnostic | Errors & exceptions / Whole application and protected errors API show it | No error mapping, goal, trace ID or journey scope required |
-| Received browser diagnostic with supported existing context | Supporting evidence in the appropriate captured journey, available before/after path inspection | Opening/navigation mappings must have captured a journey; error itself stays unmapped; same scope/tab, supported time/segmentation/retention and captured definition matter |
-| Explicitly configured visible error step | Owner can select exact browser/log/service/name, optionally disjoint `reason` condition; Kind step, timing unavailable | Prospective deliberate path semantics, separate from mere diagnostic discovery; no default error mapping |
-| Missing context or unsupported linkage | Diagnostic remains discoverable, linkage unavailable/unknown | Never infer from time, cookies, digest, household, trace proximity or a nearby record; do not claim complete pre/post history |
+| Case                                                        | Expected receiver behavior                                                                                             | Configuration / limit                                                                                                                                                       |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Received standalone diagnostic                              | Errors & exceptions / Whole application and protected errors API show it                                               | No error mapping, goal, trace ID or journey scope required                                                                                                                  |
+| Received browser diagnostic with supported existing context | Supporting evidence in the appropriate captured journey, available before/after path inspection                        | Opening/navigation mappings must have captured a journey; error itself stays unmapped; same scope/tab, supported time/segmentation/retention and captured definition matter |
+| Explicitly configured visible error step                    | Owner can select exact browser/log/service/name, optionally disjoint `reason` condition; Kind step, timing unavailable | Prospective deliberate path semantics, separate from mere diagnostic discovery; no default error mapping                                                                    |
+| Missing context or unsupported linkage                      | Diagnostic remains discoverable, linkage unavailable/unknown                                                           | Never infer from time, cookies, digest, household, trace proximity or a nearby record; do not claim complete pre/post history                                               |
 
 `journey.go` groups scope/tab, orders unique source/service sequences when valid (otherwise event/receipt ordering), starts at a mapped occurrence and appends supporting evidence inside supported captured boundaries. Unmapped diagnostics do not update LastMapped. Missing beginning, inactivity, goal closure, out-of-order delivery, filtering or expired detail can limit association; same document scope does not promise one receiver journey. Goal completion and 30-minute mapped inactivity are separate boundaries. Severity alone changes neither. Do not map errors to exit, goal or activity for visibility: activity can start a capture and refresh inactivity, so it is not a neutral display workaround. Continued presentation does not prove repair of the failed operation; the receiver's completed/continued highlight is not business recovery.
 
@@ -112,25 +112,25 @@ F3-2 adds route/root render and actual Next hook standalone diagnostics, with it
 
 Receiver usability findings are source-backed, not a visual UI pass. `Errors.svelte` summarizes by exception.type or event name and preview text; WFS's fixed body therefore leaves `pwa.browser.error` / `pwa.server.error` as broad labels. Reason, stage and exception occurrence are inspectable in expanded Retained diagnostic fields and protected API attrs, not dedicated category labels/filters. `errors.go` free-text search includes name/source/signal/service/version/scope/trace/span and diagnostic text, but excludes `reason`, `stage.name`, `exception.occurrence.id` and event record identity. Searching those fields must not be claimed supported. Errors view limits are 100 returned records from a bounded scan of 10,000; detail expires at 30 days. Explore related context appears when scope exists; verify it reaches the intended captured path, not merely that a button is present.
 
-| Owner | Requirements / follow-up | Status and boundary |
-| --- | --- | --- |
-| WFS F3 | Closed safe envelope, shared snapshot/sequence, episode identity, standalone server errors, caps, real-seam acceptance and docs | Planned here; no application edits or runtime qualification |
-| Sentrame | Keep standalone Errors discovery and supporting journey evidence without an artificial error mapping | Source-supported; actual WFS compatibility must be qualified |
-| Sentrame usability | Category/stage/occurrence search/filtering, clearer labels and precise related-journey navigation where current UI is insufficient | Separate receiver work; do not add exception.type/free text or mappings to work around UI |
-| Sentrame modeling | Goal-free open-ended navigation activation/inspection | Separate receiver requirement already identified by F2 |
-| WFS request propagation | Explicit anonymous browser-to-server context carrier, validation, authority and request-local lifetime | Separate change required before browser/server journey linkage can be promised |
+| Owner                            | Requirements / follow-up                                                                                                                | Status and boundary                                                                                                                             |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| WFS F3                           | Closed safe envelope, shared snapshot/sequence, episode identity, standalone server errors, caps, real-seam acceptance and docs         | Planned here; no application edits or runtime qualification                                                                                     |
+| Sentrame                         | Keep standalone Errors discovery and supporting journey evidence without an artificial error mapping                                    | Source-supported; actual WFS compatibility must be qualified                                                                                    |
+| Sentrame usability               | Category/stage/occurrence search/filtering, clearer labels and precise related-journey navigation where current UI is insufficient      | Separate receiver work; do not add exception.type/free text or mappings to work around UI                                                       |
+| Sentrame modeling                | Goal-free open-ended navigation activation/inspection                                                                                   | Separate receiver requirement already identified by F2                                                                                          |
+| WFS request propagation          | Explicit anonymous browser-to-server context carrier, validation, authority and request-local lifetime                                  | Separate change required before browser/server journey linkage can be promised                                                                  |
 | Journey inventory J02–J16 owners | Handled votes/imports/assignments, post-commit publication failures, exhaustion/convergence, saved shopping/cooking and actual recovery | Deferred business observations at their authoritative owners; clicks/optimistic UI/HTTP/SSE/later navigation do not prove persistence or repair |
 
 ## Qualification Cells
 
-| Cell | Required evidence for F3 | This planning revision |
-| --- | --- | --- |
-| Source/artifact review | Current WFS/F2 and local receiver identity, docs/source limits | Inspected; documentation checks reported separately |
-| Unit/component/HTTP | Intended behavioral red then green for snapshot/identity/admission/closed payload | Not-run; behavior cycle not-applicable to planning |
-| Capture | Actual browser handler/boundary -> real Action -> Node JSON capture, private sentinels/tokens absent | Not-run for errors |
-| Durable-read | Actual disposable Sentrame intake, protected errors/evidence reads, unauthorized-read rejection and process restart/storage reopen | Not-run for errors |
-| Journey-derivation | Independent standalone no-definition diagnostic test; prospective synthetic presentation goal, unmapped linked error, continuation, status and exact replay | Not-run for errors |
-| Deployed-route | Selected disposable container/proxy/tunnel build/config and protected reads | Not-run; separately selected qualification |
-| Physical-device | Actual installed browser/device fresh/resume/unlock/error/navigation, exact identity | Not-run; separately selected qualification |
+| Cell                   | Required evidence for F3                                                                                                                                    | This planning revision                              |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Source/artifact review | Current WFS/F2 and local receiver identity, docs/source limits                                                                                              | Inspected; documentation checks reported separately |
+| Unit/component/HTTP    | Intended behavioral red then green for snapshot/identity/admission/closed payload                                                                           | Not-run; behavior cycle not-applicable to planning  |
+| Capture                | Actual browser handler/boundary -> real Action -> Node JSON capture, private sentinels/tokens absent                                                        | Not-run for errors                                  |
+| Durable-read           | Actual disposable Sentrame intake, protected errors/evidence reads, unauthorized-read rejection and process restart/storage reopen                          | Not-run for errors                                  |
+| Journey-derivation     | Independent standalone no-definition diagnostic test; prospective synthetic presentation goal, unmapped linked error, continuation, status and exact replay | Not-run for errors                                  |
+| Deployed-route         | Selected disposable container/proxy/tunnel build/config and protected reads                                                                                 | Not-run; separately selected qualification          |
+| Physical-device        | Actual installed browser/device fresh/resume/unlock/error/navigation, exact identity                                                                        | Not-run; separately selected qualification          |
 
 Use passed/failed/blocked/not-run/not-applicable per cell. HTTP success, mocks, source comments, another SDK sample and F2 presentation receipt do not qualify F3 error behavior. No receiver storage was opened/reset or changed by this planning review.

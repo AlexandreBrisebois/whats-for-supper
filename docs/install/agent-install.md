@@ -46,9 +46,9 @@ ingress change. Confirm the recovery set covers PostgreSQL and all app files.
 
 ## Select the shipped scenario
 
-| Intent | App files | App `.env` selection |
-| --- | --- | --- |
-| Dedicated bundled tunnel | `compose.yaml` + `compose.tunnel.yaml` | `COMPOSE_FILE=compose.yaml:compose.tunnel.yaml` |
+| Intent                    | App files                                     | App `.env` selection                                   |
+| ------------------------- | --------------------------------------------- | ------------------------------------------------------ |
+| Dedicated bundled tunnel  | `compose.yaml` + `compose.tunnel.yaml`        | `COMPOSE_FILE=compose.yaml:compose.tunnel.yaml`        |
 | Independent/shared tunnel | `compose.yaml` + `compose.shared-tunnel.yaml` | `COMPOSE_FILE=compose.yaml:compose.shared-tunnel.yaml` |
 
 For shared mode, set `WFS_PROXY_NETWORK` and a unique `WFS_PROXY_ALIAS`. Reuse the

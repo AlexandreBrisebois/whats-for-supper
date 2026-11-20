@@ -6,15 +6,15 @@ The [proposal](proposal.md) bounds this planning-only follow-up. The implementat
 
 Observed local owners:
 
-| Owner | Current source behavior and seam |
-|---|---|
-| `pwa/src/components/recipes/RecipeDetailSheet.tsx` | Rating precedes Ingredients; GOTO/source/notes shortcut occupy the identity utility row; Steps opens CooksMode; Ask the Family precedes reading; notes follow instructions with Add gating an empty field. The sibling persistent footer branches on planning/source context. |
-| `pwa/src/store/recipeNotesStore.ts` | Existing 800 ms debounce, one in-flight write per recipe, acknowledged text, tab-lifetime retained drafts, serialized newer edits and explicit retry. Detail cleanup flushes and reports retained failure. Reuse this owner, not a second notes state machine. |
-| `pwa/src/app/(app)/recipes/RecipesExperience.tsx` | Owns dated target/recovery and the recipe-to-Planner portions link. `reviewAmounts` removes ingredientContext and planningEnabled, but an asynchronously resolved plannerDayLabel can still satisfy the detail footer's OR condition. This is a source-level preservation risk, not a reproduced rendered defect. |
-| `pwa/src/components/planner/useSupperServingsEditor.tsx` | Already owns photo/date-only rows, numeric input, usual/default/reset, batch save, persisted draft restoration and three-way departure. Today its strip includes Recipes / At the table and its controls are separately boxed. |
-| `pwa/src/components/planner/GroceryList.tsx` | Warning-only Review amounts disclosure; uses recipeIds and loaded schedule names, otherwise Review recipe N. Expansion changes local state only; links use `reviewAmounts=true`. Checkbox and Tag aisle control are separate. |
-| `api/src/RecipeApi/Services/IngredientProjectionService.cs` and `SupperIngredientProjection.cs` | Coherent server recipe snapshot, shared numeric/uncertainty policy; dated endpoint additionally resolves date/occurrence and preparation guards. No arbitrary preview target is accepted. |
-| `specs/openapi.yaml`, `GroceryLineItemDto`, `ScheduleService.GetWeekAsync` | Grocery contributors contain IDs, not titles. Schedule reads deserialize derived grocery items. GroceryRecomputeService owns contribution identity and completeness; GroceryCheckCoordinator owns explicit acknowledgement of prior unknown checks. |
+| Owner                                                                                           | Current source behavior and seam                                                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pwa/src/components/recipes/RecipeDetailSheet.tsx`                                              | Rating precedes Ingredients; GOTO/source/notes shortcut occupy the identity utility row; Steps opens CooksMode; Ask the Family precedes reading; notes follow instructions with Add gating an empty field. The sibling persistent footer branches on planning/source context.                                     |
+| `pwa/src/store/recipeNotesStore.ts`                                                             | Existing 800 ms debounce, one in-flight write per recipe, acknowledged text, tab-lifetime retained drafts, serialized newer edits and explicit retry. Detail cleanup flushes and reports retained failure. Reuse this owner, not a second notes state machine.                                                    |
+| `pwa/src/app/(app)/recipes/RecipesExperience.tsx`                                               | Owns dated target/recovery and the recipe-to-Planner portions link. `reviewAmounts` removes ingredientContext and planningEnabled, but an asynchronously resolved plannerDayLabel can still satisfy the detail footer's OR condition. This is a source-level preservation risk, not a reproduced rendered defect. |
+| `pwa/src/components/planner/useSupperServingsEditor.tsx`                                        | Already owns photo/date-only rows, numeric input, usual/default/reset, batch save, persisted draft restoration and three-way departure. Today its strip includes Recipes / At the table and its controls are separately boxed.                                                                                    |
+| `pwa/src/components/planner/GroceryList.tsx`                                                    | Warning-only Review amounts disclosure; uses recipeIds and loaded schedule names, otherwise Review recipe N. Expansion changes local state only; links use `reviewAmounts=true`. Checkbox and Tag aisle control are separate.                                                                                     |
+| `api/src/RecipeApi/Services/IngredientProjectionService.cs` and `SupperIngredientProjection.cs` | Coherent server recipe snapshot, shared numeric/uncertainty policy; dated endpoint additionally resolves date/occurrence and preparation guards. No arbitrary preview target is accepted.                                                                                                                         |
+| `specs/openapi.yaml`, `GroceryLineItemDto`, `ScheduleService.GetWeekAsync`                      | Grocery contributors contain IDs, not titles. Schedule reads deserialize derived grocery items. GroceryRecomputeService owns contribution identity and completeness; GroceryCheckCoordinator owns explicit acknowledgement of prior unknown checks.                                                               |
 
 Source inspection is evidence of insertion points, not live/rendered acceptance. No application tests or device review are claimed for these new artifacts.
 
@@ -28,13 +28,13 @@ The following are concrete engineering/design proposals for this review, not pre
 
 The delta uses exact existing requirement names, including historical names mentioning identity/At the table, so later sync can replace rather than duplicate them. Required predecessor order is detail → portions → this follow-up. In particular:
 
-| Prior requirement | Explicit replacement |
-|---|---|
-| Appreciation/family controls near identity; Add a note when empty | Ending Rating → always-writable notes → Ask the Family; GOTO in toolbar; retained notes shortcut |
-| Source readable independently of hero | Same stable readable surface, now lower-right on hero/fallback |
-| One dated context / no preview calculator / noninteractive badge | Dated facts remain canonical; separate temporary 2/4/6 preview is allowed; badge remains noninteractive |
-| Retain recipe selection through portions editing | Remove recipe shortcut; Planner remains the saved-portions owner |
-| Recipes / At the table strip | Portions entry, no adjacent Recipes heading, ordinary recipe rows on Done/Cancel |
+| Prior requirement                                                 | Explicit replacement                                                                                    |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Appreciation/family controls near identity; Add a note when empty | Ending Rating → always-writable notes → Ask the Family; GOTO in toolbar; retained notes shortcut        |
+| Source readable independently of hero                             | Same stable readable surface, now lower-right on hero/fallback                                          |
+| One dated context / no preview calculator / noninteractive badge  | Dated facts remain canonical; separate temporary 2/4/6 preview is allowed; badge remains noninteractive |
+| Retain recipe selection through portions editing                  | Remove recipe shortcut; Planner remains the saved-portions owner                                        |
+| Recipes / At the table strip                                      | Portions entry, no adjacent Recipes heading, ordinary recipe rows on Done/Cancel                        |
 
 No main-spec sync or archive occurs here. `supper-servings` is an existing implemented dependency although not yet a main-spec directory. Validation of this change alone does not prove that predecessor archive merges have occurred.
 
@@ -95,18 +95,18 @@ The ingredient-preview contract addition is additive. Retain old dated projectio
 
 Top bar: existing Recipe actions, eligible sharing, distinct GOTO and Close with safe spacing. Hero: known Ready in as a quiet stable badge; View Original lower right on an opaque readable surface, including neutral missing-image fallback. Omit unknown duration and unavailable original access rather than showing empty badges or no-op buttons. Keep recipe identity/description and meaningful ingredient/instruction sections; ingredients still precede instructions, optionally side-by-side on spacious layouts. Ending order is Rating → Family notes → Ask the Family. Secondary management stays in named actions, so no extra content section follows Ask the Family.
 
-| Detail state | Footer / cooking proposal |
-|---|---|
-| Library/search with actionable proposed date | Dated Plan primary, trailing ArrowRightLeft icon; Change day retains chooser behavior. One secondary Cook replaces the old standalone Steps entry. |
-| Library target loading or read failure | Existing loading/Retry check; no enabled assignment while unresolved. Cook remains an independent reading/cooking entry where currently eligible, never an assignment fallback. |
-| Same recipe already planned | Existing View plan and Change day, no duplicate assignment; one Cook entry where eligible. |
-| Occupied target / disposition / partial or uncertain outcome | Existing guarded recovery surface, clear progress/errors and retry; no duplicate operation or conflicting enabled primary. |
-| Saved planned supper | Source date, Cook primary using former Steps icon; Plan another day uses Home Change Plan's quieter tonal/edge treatment. |
-| Explicitly prepared or legacy completed supper | Existing Already prepared/known actual date only, or honest legacy completed state; Cook opens instructions in read-only completed context without another finish prompt. No editable frozen portions. |
-| Completed/voting target requiring review | Existing Review plan rather than automatic replacement; preserve voting/consensus eligibility. |
-| Original-quantity grocery review | Original evidence, no assignment footer even after date reads. Cook, if available, retains the existing standalone reading path without inheriting a preview or date recommendation. |
-| Recipe editing | Save/Cancel replace planning; original-yield field and validation remain distinct. |
-| Detail loading, failed or unavailable | Existing close/loading/retry/unavailable controls, no action on missing recipe identity. |
+| Detail state                                                 | Footer / cooking proposal                                                                                                                                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Library/search with actionable proposed date                 | Dated Plan primary, trailing ArrowRightLeft icon; Change day retains chooser behavior. One secondary Cook replaces the old standalone Steps entry.                                                     |
+| Library target loading or read failure                       | Existing loading/Retry check; no enabled assignment while unresolved. Cook remains an independent reading/cooking entry where currently eligible, never an assignment fallback.                        |
+| Same recipe already planned                                  | Existing View plan and Change day, no duplicate assignment; one Cook entry where eligible.                                                                                                             |
+| Occupied target / disposition / partial or uncertain outcome | Existing guarded recovery surface, clear progress/errors and retry; no duplicate operation or conflicting enabled primary.                                                                             |
+| Saved planned supper                                         | Source date, Cook primary using former Steps icon; Plan another day uses Home Change Plan's quieter tonal/edge treatment.                                                                              |
+| Explicitly prepared or legacy completed supper               | Existing Already prepared/known actual date only, or honest legacy completed state; Cook opens instructions in read-only completed context without another finish prompt. No editable frozen portions. |
+| Completed/voting target requiring review                     | Existing Review plan rather than automatic replacement; preserve voting/consensus eligibility.                                                                                                         |
+| Original-quantity grocery review                             | Original evidence, no assignment footer even after date reads. Cook, if available, retains the existing standalone reading path without inheriting a preview or date recommendation.                   |
+| Recipe editing                                               | Save/Cancel replace planning; original-yield field and validation remain distinct.                                                                                                                     |
+| Detail loading, failed or unavailable                        | Existing close/loading/retry/unavailable controls, no action on missing recipe identity.                                                                                                               |
 
 The exact library/review Cook placement above is a proposed resolution of removing Steps while retaining its existing access. It does not add a second cooking engine or change standalone current-day completion policy. Ask Alex to assess it with the rest of this design before implementation.
 
@@ -122,16 +122,13 @@ Verify EN/FR phone and bounded tablet, 320 CSS px, short height, 200% text, long
 
 Review these concrete artifacts and the living visual reference before implementation. The material proposals to confirm are the separate preview read contract, honest unavailable-title/yield copy, and Cook's retained library/review placement. The grocery response-title contract proposal has been withdrawn in favor of loaded Planner names plus guarded lazy reads for exceptional missing IDs, as directed after source review. No behavior test has yet been updated or invalidated: earlier evidence describes the earlier source. During apply, replace only acceptance assertions made stale by these explicit supersessions and retain unrelated journey, visual-matrix, guard, quantity and recovery coverage. The unrelated E2E SSE fixture patch remains pending its own approval.
 
-
 ## Apply evidence — group 1
 
 Authorized by Alex's explicit apply-and-DV approval after the title-resolution revision. The existing recipe mutation is PATCH, not the planning draft's mistakenly named PUT; design/tasks now identify the real unchanged contract. Three intended component reds covered ending order, writable empty notes and shortcut field focus; a fourth red caught Find Similar remaining after the final family section. Real browser matrix red reproduced the section order. Green: 87 component/store/actual-mock-handler tests; 3 recipe-update API integration checks including exact nonempty/empty notes and fresh GET; 4 browser cases covering EN/FR notes failure/retry/clear/reopen and the unchanged 5-viewport × 2-text-scale matrix per language. Logs: `.task/refinement-apply/group1-unit-final.log`, `group1-api-qualified.log`, `group1-browser-final.log`. The initial sandbox-blocked browser/.NET launches are infrastructure failures, not behavioral reds. A transient 503 fixture was automatically retried by Kiota, so a non-retried rejected save now exercises explicit UI recovery. Designer inspection found the secondary Find Similar button after Ask the Family; its operation now lives in named Recipe actions, and final-reading focus tests target the unchanged family toggle. New render output lives under `.task/refinement-apply/renders/`; historical screenshot output from the first matrix run was reused by that test before its output path was moved. Physical-device and native accessibility checks remain user-reserved/not-run. No product deployment occurred.
 
-
 ## Apply evidence — group 2
 
 Initial intended reds: two component cases for toolbar/hero/Cook and missing-duration/source fallback, plus actual browser original-review context with a dated recommendation. Added a separate no-source-destination red before omitting its no-op original control. Unit green: 133 detail/Recipes page cases (`group2-unit-final-qualified.log`). Cumulative browser selection exercised 187 cases: 180 passed; six old section-focus assertions were reconciled to the approved writable-field focus, and one real 320×568 French/200% failure showed the oversized toolbar and family card starving reading space. A compact named GOTO toolbar with fixed 48 px targets and visually hidden generic dialog label, plus detail-only family-card reflow/fixed decorative switch geometry, fixes that failure without altering stack-browser presentation. The affected full layout/hero/context recheck passes all 35 cases (`group2-reflow-qualified.log`), retaining the strict fully-visible final-control assertion. Original review suppresses automatic assignment even after async target reads; cooking remains a single labeled Cook entry using the former Steps icon. Existing cooking/guarded movement/prepared tests passed in the cumulative run and remain selected for final full verification. EN/FR real-food renders under `.task/refinement-apply/renders/` were inspected; physical device/native accessibility remain not-run.
-
 
 ## Apply evidence — group 3
 
@@ -143,13 +140,11 @@ The four-portion tracer proves 400 g while five saved portions and groceries rem
 
 Actual generated-client live acceptance `LiveBrowser_IngredientPreviewReadOnly` passes 1/1, zero skips (`.task/refinement-apply/preview-live/preview-live.trx`). It reuses the existing owned API/gateway/Next harness with disposable PostgreSQL and a clearly seeded prepared-seven receipt, usual five and coherent original-two ingredients. Actual browser previews 2/4/6/4 for ordinary and prepared occurrences, returns to canonical quantities, compares independent persisted defaults/rows/recipes/occurrences/preparation/groceries/jobs and request counts before/after, and checks a separate client's authoritative schedule. Seeded preparation is a preservation fixture, not a new preparation-action claim. Runtime resources are removed; DV remains unchanged. Physical-device review remains not-run.
 
-
 ## Apply evidence — group 4
 
 Portions replaces the nearby Recipes/At the table presentation while retaining the stable interaction test ID and bottom Recipes navigation. Existing date/photo-only rows now join minus/input/plus, keep direct 5/7 entry and explicit reset, and present Save and continue / Keep editing / Discard changes in the approved order and hierarchy. Associated invalid-count feedback is exposed for usual/date inputs; a new reset regression caught the old override staying displayed after reset with no usual count, now correctly blank without an invalid marker. Existing batch/version, session restoration, pending/uncertain saves, voting and prepared/past/non-cooking guards remain owned by the same hook/services.
 
 Intended unit/browser reds cover entry/heading, joined semantics and exit order; a separate invalid-field red and reset-display red precede their corrections. Qualified units pass 119 cases after scoped preparation; types pass. Cumulative browser run passes 101 cases with one real individual-focus-outline regression; restoring the joined button's explicit outline retains the original strict assertion. Affected Portions/supper suite recheck passes all 47 cases, including EN/FR 320 px/200% draft-exit and 5/7 entry. Designer review inspected the enlarged French hierarchy and wrapping. The first database attempt ran 75 passing tests but was rejected for concurrent source mutation and is not qualified success. Stable formatted-source rerun `24dcaaeb586f4442b24a1325049b27d8` passes all 75 with zero skips and disposable resource cleanup. Logs: `.task/refinement-apply/group4-*`. Device/native accessibility remains not-run.
-
 
 ## Apply evidence — group 5
 
@@ -161,28 +156,21 @@ Actual API/gateway/generated-client/browser acceptance LiveBrowser_GrocerySource
 
 Read-only lint first failed on sandbox .NET IPC, then found scoped projection formatting and two new synchronous effect-state resets. Scoped preparation and a refactor derive display identity during render while keeping asynchronous ownership in effects; preview retry joins its read key. Requalification passes 191 focused units, types, API formatting and PWA lint with zero errors (one pre-existing search cleanup warning). Full Linux/PostgreSQL run `3bad917e6b56467fa51caeee5fa37d62` passes 311 tests, zero skips, with resource cleanup. Subsequent rendered EN/FR long-title review exposed enlarged rem gutters squeezing the source column; both intended width regressions fail before a bounded fixed-gutter correction. The affected browser recheck passes 4/4, including existing French quantity/check geometry. Final cumulative verification will include the spacing change. Physical devices/native accessibility remain not-run.
 
-
 ## Cumulative acceptance reconciliation
 
 The [scenario coverage index](acceptance.md) maps all accepted delta scenarios to their retained/added owners and slice evidence. No full journeys or visual matrices were removed. Supported legacy portions navigation remains. Source inspection proved seven labels belonged only to removed presentation; those unused EN/FR keys were removed while retaining the existing Cook screen title. Final full gate remains pending.
-
 
 Final review found a returning-contributor race: a pending ID removed from the list retained its attempt marker and could remain loading on return. An intended unit red reproduces it (76 pass/one named failure). The fix retires departed pending ownership as well as cached titles, and verifies request identity before accepting a reply. Both before-return and after-return reply orders pass in the 193-case focused recheck; full units pass 1663.
 
 The first complete final invocation `e8fbf02b5e5b4850b9c18ab783214906` passes documentation, all 39 OpenSpec items, harness tests, lint/format/types and 1661 units, but correctly rejects content identity after Vitest adds 12 transformation files under node_modules/.vitest-cache. Later checks are not-run, not success. No source edits occurred during that invocation. The installed Vitest implementation confirms this is its file-system transform cache; source and runtime are kept intact and warmed before the next complete invocation, without weakening identity checks or excluding new runtime paths. Complete preparation safely blocks before writes on two unknown CI paths; reviewed Node inventory passes six tests, recognized 60-path preparation passes, and all 62 paths remain in conservative final verification. The original unowned Kiota diagnostic is restored from the checked apply-entry before-image after generation; its generated replacement is retained privately. No user edits or pending grocery fixture were removed.
 
-
 Final-source live requalification passes both required browser methods (2/2, zero skips) under `.task/refinement-apply/refinement-live/`, with disposable resources removed. Full-unit warming passes 1663 and an immediate repeat changes zero of 1227 installed transform-cache files; the full fingerprint remains unchanged in policy. Additional verification-only cases cover blank/wrong-identity title metadata, and source browser rendering now covers both 390 px phone and 768 px tablet in EN/FR before the existing 320 px/200% checks. These expanded cases are pending the final preflight/gate; no new product behavior is inferred from them.
-
 
 Second full invocation `729998965f6048cb8c0f7ebf9ba67067` has stable content identity `06c4d9d4caa6ab64e8be369fdd8d9787ea56cebc1470cec759670f8131fb774e`. It passes all 1665 UI units, 1387 API cases (271 explicit opt-in skips), live endpoint parity and 311 Linux/PostgreSQL cases (zero skips, `fa56332daf5940458c791ac4fcac67ee`). Browser acceptance passes 891, skips 60 explicit opt-ins and fails one combined English configured-phone partial-projection geometry measurement; all other journeys/matrices remain. Static client generation/parity, route and mock checks pass; schema parsing fails because its current parser recognizes existing DTO get/set convention but not new init accessors. Using that existing DTO convention passes schema-only recheck without changing response fields. The combined case is being diagnosed with per-surface metrics and named assertion failures, retaining every geometry bound. Future combined render output moves to this change's private directory rather than continuing the predecessor's mutable render path. The pending grocery fixture stays unchanged and passes in this invocation.
 
-
 The geometry diagnosis retains every original bound and adds named/per-surface measurements before assertions. All six full combined journeys pass three repeats at the same five-worker concurrency (18/18, `group6-combined-diagnostic.log`), so the initial zero-text-rect failure is not reproduced and no product geometry fix is claimed. Its failure screenshot/context remain retained under combined-failure/. The strict assertions remain selected for another complete invocation. The last unused Portions-heading locale key is removed in both languages after confirming no source reference, bringing removed presentation keys to seven.
 
-
 Third full invocation `03a4d14154d44d33ba03d69a32012425` retains stable content and passes documentation/spec/harness/lint/format/types, 1665 units, 1387 API cases (271 opt-in skips), all static contracts, live endpoint parity and 311 Linux/PostgreSQL cases (`eac2c9f236b64e9c84732b855b83ba3b`, zero skips). All six combined journeys pass. Its browser result is 890 passed, 60 opt-in skips, two failures in unchanged adaptive Go-To keyboard activation and French pending-Search continuation tests. Both cases pass three unchanged repetitions at five workers (6/6, traces retained). Source review identifies plausible readiness races: asynchronous dialog focus restoration and Search's requestAnimationFrame scroll restoration; no product defect is reproduced and neither test is changed. A private, unapplied two-test readiness proposal remains separate from implementation. Another full invocation is required; this failed record is not deployment qualification.
-
 
 ## Systematic final-gate diagnosis and pending approvals
 
@@ -196,21 +184,17 @@ Two fixture proposals remain unapplied and require the pending scope approvals. 
 
 Evidence: `.task/refinement-apply/full-browser-diagnostic/`, `prepared-repro/`, `prepared-full-traces/`, `grocery-sse-trace/`, `grocery-retry-trace/`, `utility-probe-results/`, `retry-guard-*`, `retry-final-browser.log`. The utility full-run raw trace was not archived before a subsequent focused run cleared Playwright's default output directory; its full failure log and deterministic before/after probe traces remain. SSE/retry failure traces were archived first. This limitation is recorded in `full-browser-diagnostic/artifact-limitations.json`; subsequent runs use unique output directories. No final full-gate success or DV deployment is claimed. Groups 6.1–6.2 remain unchecked (16/18). Physical-device checks remain not-run.
 
-
 ## Approved fixture reconciliation
 
 Alex explicitly approved both fixture corrections after reviewing their state contradictions. The reviewed patches apply cleanly to the current Mac checkout; only the approved stateful GET/SSE/PATCH fixture changes and persisted-read assertions are applied, with selected formatting. Grocery SSE event/read state is coherent; the utility fixture shares per-test persisted state and retains both browser journeys. No product behavior changes through these patches. The complete reviewed closure is now 65 paths. Approval blockers above are historical and superseded; a fresh complete final gate is still required before DV deployment.
 
-
 The approved fixture cases pass nine repetitions at five workers, preserving the original UI checks and new persisted-read oracles (`approved-fixtures/focused.log`). Complete recognized preparation passes; unknown CI paths still block the initial all-path preparation before writes, remain manually reviewed, pass six inventory checks and stay in the complete conservative 65-path verification closure. Current-source native live qualification passes both methods (2/2, zero skips; disposable database removed). No outstanding fixture approval remains. A new complete final invocation now qualifies this corrected source; DV is still unchanged.
-
 
 ## Final implementation qualification
 
 All 18 tasks are implemented and their acceptance evidence is reconciled. Complete 65-path final verification passes (`429e4201b95846fbb91c543ccc0c0892`), full stable content identity `35b4cb9bcac01c6f3d481195f6227f7202abe63544ad4b3d1c6b5e7a576ae76c`. Every selected check passes: documentation, 39 OpenSpec items, harness tests, lint, formatting, types, 1667 unit tests, 892 browser cases (60 explicit opt-in skips), 1387 API cases (271 explicit opt-in skips), all static contracts/generated-client parity, live endpoint parity and 311 Linux/PostgreSQL cases (zero skips; `1b14f31c634c4bfca6de8c2807c3ff71`). Required native live preview/grocery qualification separately passes 2/2 with zero skips. Owned gate processes and disposable resources are cleaned up; browser artifacts are archived before any subsequent run. The older failing records and their limitations remain evidence, not exceptions to this passing gate.
 
 No source bytes changed during the complete invocation. Final task/evidence/visual-reference bookkeeping is followed by a fresh bounded documentation gate and explicit proof that only the reviewed documentation differs from the fully tested source. No application/test/contract source is altered after that passing invocation. Local DV deployment is the separately authorized next operation; no schema migration is needed. Physical phone/native keyboard/screen reader checks remain not-run and user-reserved.
-
 
 ## Local DV release
 

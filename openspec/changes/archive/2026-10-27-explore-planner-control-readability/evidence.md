@@ -10,20 +10,20 @@ Clean initial worktree. Production files unchanged during red runs. `task test:u
 
 Method: Chromium 1× raster, computed foreground converted through browser canvas to RGBA. Temporarily remove only that foreground, disabling its color transition; screenshot the actual composite (glass, background blobs, hover/pressed/grabbed fills retained). Sample every second interior pixel, alpha-composite foreground, calculate WCAG luminance ratio and retain the unrounded minimum. Raw records contain foreground/background/state/locale/viewport. Text threshold 4.5, meaningful Plus/grip threshold 3. The dashed action edge is decorative: text plus Plus identify the action independently. No global accessibility claim.
 
-| Element/state | Minimum ratio | Baseline result |
-|---|---:|---|
-| Week context | 1.856355561126319 | Fail |
-| Fixed weekday | 2.3240947256624334 | Fail |
-| Fixed month | 2.3304884821285414 | Fail |
-| Plan text default/focus | 2.6675674398236358 | Fail |
-| Plan text hover | 2.5120619879664177 | Fail |
-| Plan text pressed | 2.3152669425258745 | Fail |
-| Plus default/focus | 1.8921583973231206 | Fail |
-| Plus hover | 3.4077655035474175 | Pass |
-| Plus pressed | 3.073095682618538 | Pass |
-| Grip default | 5.479721035184486 | Pass |
-| Grip hover/focus | 6.991240671587401 | Pass |
-| Grip grabbed | 5.82427628546149 | Pass |
+| Element/state           |      Minimum ratio | Baseline result |
+| ----------------------- | -----------------: | --------------- |
+| Week context            |  1.856355561126319 | Fail            |
+| Fixed weekday           | 2.3240947256624334 | Fail            |
+| Fixed month             | 2.3304884821285414 | Fail            |
+| Plan text default/focus | 2.6675674398236358 | Fail            |
+| Plan text hover         | 2.5120619879664177 | Fail            |
+| Plan text pressed       | 2.3152669425258745 | Fail            |
+| Plus default/focus      | 1.8921583973231206 | Fail            |
+| Plus hover              | 3.4077655035474175 | Pass            |
+| Plus pressed            |  3.073095682618538 | Pass            |
+| Grip default            |  5.479721035184486 | Pass            |
+| Grip hover/focus        |  6.991240671587401 | Pass            |
+| Grip grabbed            |   5.82427628546149 | Pass            |
 
 Sampling calibration: early runs included a fading foreground in the background raster and captured entrance animation; those ratios/captures are superseded. A separate server-lifetime race produced connection-refused errors; that run establishes no red. The final baseline above has only intended failures.
 
@@ -53,18 +53,18 @@ Final focused units: `task test:unit -- 'src/app/(app)/planner/page.test.tsx' sr
 
 Raw final composites: `/tmp/wfs-planner-readability/final-control-contrasts.json` and `/tmp/wfs-planner-readability/final-temporal-contrasts.json`. The helper now centers measured content above fixed navigation, incorporates ancestor opacity, moves the drag overlay off the grip, and samples the straight exterior edge of the temporarily hidden marker ring. Decorative rule carries no independent state or contrast threshold. Measured minima (unrounded comparisons in raw records):
 
-| Affected temporal element | Minimum ratio | Result |
-|---|---:|---|
-| Today text | 5.4530848468898565 | Pass ≥4.5 |
-| Today outline | 5.586312406552003 | Pass ≥3 |
-| Past recipe text | 14.23101734183702 | Pass ≥4.5 |
-| Past Chosen status | 6.298899913715459 | Pass ≥4.5 |
-| Past change icon | 4.437335786280775 | Pass ≥3 |
-| Past grip | 7.326678327863883 | Pass ≥3 |
-| Past empty action | 5.634631156798954 | Pass ≥4.5 |
-| Past non-cooking label | 7.326678327863883 | Pass ≥4.5 |
-| Past non-cooking hover | 6.663941428181701 | Pass ≥4.5 |
-| Today outline with drag destination | 5.634631156798954 | Pass ≥3 |
+| Affected temporal element           |      Minimum ratio | Result    |
+| ----------------------------------- | -----------------: | --------- |
+| Today text                          | 5.4530848468898565 | Pass ≥4.5 |
+| Today outline                       |  5.586312406552003 | Pass ≥3   |
+| Past recipe text                    |  14.23101734183702 | Pass ≥4.5 |
+| Past Chosen status                  |  6.298899913715459 | Pass ≥4.5 |
+| Past change icon                    |  4.437335786280775 | Pass ≥3   |
+| Past grip                           |  7.326678327863883 | Pass ≥3   |
+| Past empty action                   |  5.634631156798954 | Pass ≥4.5 |
+| Past non-cooking label              |  7.326678327863883 | Pass ≥4.5 |
+| Past non-cooking hover              |  6.663941428181701 | Pass ≥4.5 |
+| Today outline with drag destination |  5.634631156798954 | Pass ≥3   |
 
 Observed refinements: (1) Initial 200% uppercase date labels touched the inset marker edge. Compact marker, normal-case labels, normal tracking and bounded wrapping preserve the 40px column and complete labels; the 320px cases assert no date-label overflow. (2) The marker and sage destination outlines originally touched: measured 1.2414857120777514. Offset the sage destination outline on Today, retaining its fill/arrow and fixed geometry; measured green above. (3) Existing non-cooking hover opacity reduced past text to 4.436964802767162. Past controls now use a light background feedback instead of fading their readable foreground; green above. Logs `/tmp/wfs-planner-refinement.log` and `/tmp/wfs-quiet-hover-red.log` retain those red observations.
 
@@ -124,18 +124,18 @@ Complete reviewed **11-path** preparation passed (`/tmp/wfs-planner-prepare-fina
 
 `record_path: .task/agent-finish/runs/fd51f55d48f2438fb72a9da92a4f8858.json`
 
-| Check | Result |
-|---|---|
-| Changed documentation | Passed |
-| Strict OpenSpec | Passed: 35/35 items |
-| Lint / formatting / types | Passed |
-| Repository PWA units | Passed: 1,204/1,204 |
-| Browser impact | Passed: 460; skipped: 47; failed: 0 |
-| API regression | Passed: 1,249; skipped: 154; failed: 0 |
-| Static contract/client checks | Passed |
-| Input/content identity | Passed |
-| Harness tests, live endpoints, database behavior | Not applicable to selected application/documentation scope |
-| Live backend, deployment/device timezone, physical devices, model/provider qualification | Not run / not applicable as described above |
-| Human task-based usability | Pending; direct visual feedback and resulting refinements are recorded above |
+| Check                                                                                    | Result                                                                       |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Changed documentation                                                                    | Passed                                                                       |
+| Strict OpenSpec                                                                          | Passed: 35/35 items                                                          |
+| Lint / formatting / types                                                                | Passed                                                                       |
+| Repository PWA units                                                                     | Passed: 1,204/1,204                                                          |
+| Browser impact                                                                           | Passed: 460; skipped: 47; failed: 0                                          |
+| API regression                                                                           | Passed: 1,249; skipped: 154; failed: 0                                       |
+| Static contract/client checks                                                            | Passed                                                                       |
+| Input/content identity                                                                   | Passed                                                                       |
+| Harness tests, live endpoints, database behavior                                         | Not applicable to selected application/documentation scope                   |
+| Live backend, deployment/device timezone, physical devices, model/provider qualification | Not run / not applicable as described above                                  |
+| Human task-based usability                                                               | Pending; direct visual feedback and resulting refinements are recorded above |
 
 Skipped cases are not passed live/database/device qualification. The targeted **130 browser / 124 unit** acceptance and final repository checks support the selected neutral-date treatment. No unresolved automated failure or blocked required check remains. The earlier long-requirement failure is resolved by the later passing strict validation. This evidence/task update is later documentation content, not an attempt to attach the application run to a new digest; a scoped documentation verification follows it. Application-file SHA-256 values are retained in `/tmp/wfs-planner-readability/final-application-sha256.json` to confirm no application input changed during this documentation reconciliation. Changes remain uncommitted; no spec sync, archive, publication or deployment.

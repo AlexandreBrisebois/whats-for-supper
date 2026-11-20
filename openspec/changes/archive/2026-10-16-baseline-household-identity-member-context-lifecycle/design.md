@@ -28,7 +28,6 @@ None. Documentation extraction only; human review and any acceptance/promotion/a
 
 ## Evidence and status (non-normative)
 
-
 **Evidence and status (non-normative):**
 
 Draft for human review, implementation-supported only; no acceptance, promotion, archival or runtime qualification. A34 and BSL-household-identity-014–016/U22 remain deferred.

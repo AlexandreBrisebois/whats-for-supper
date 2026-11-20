@@ -71,6 +71,7 @@ flowchart TD
 `POST /api/management/disaster-recovery` → `ManagementService.DisasterRecoveryAsync()`
 
 **Scope: family-member reconciliation only.** This endpoint:
+
 - Scans `recipe.info` / `recipe.json` files for `addedBy` GUIDs
 - Creates placeholder `FamilyMember` rows for any GUIDs not in the DB
 - Does **not** restore recipe rows or modify ready status
@@ -79,19 +80,19 @@ Full recipe restoration (including ready status) is handled exclusively by `Rest
 
 ## What recipe.info stores
 
-| Field | Immutable? | Notes |
-|-------|-----------|-------|
-| `id` | Yes | Set at creation |
-| `addedBy` | Yes | Set at creation from `X-Family-Member-Id` |
-| `createdAt` | Yes | Set at creation |
-| `imageCount` | Yes (on disk) | Mutable in DB via RecipeReady processor |
-| `name` | No | Updated by backup |
-| `description` | No | Updated by backup |
-| `notes` | No | Updated by backup |
-| `rating` | No | Updated by backup |
-| `category` | No | Updated by backup |
-| `isDiscoverable` | No | Updated by backup |
-| `isVegetarian` and classifier metadata | No | Updated by backup when confirmed by the WFS classifier |
+| Field                                  | Immutable?    | Notes                                                  |
+| -------------------------------------- | ------------- | ------------------------------------------------------ |
+| `id`                                   | Yes           | Set at creation                                        |
+| `addedBy`                              | Yes           | Set at creation from `X-Family-Member-Id`              |
+| `createdAt`                            | Yes           | Set at creation                                        |
+| `imageCount`                           | Yes (on disk) | Mutable in DB via RecipeReady processor                |
+| `name`                                 | No            | Updated by backup                                      |
+| `description`                          | No            | Updated by backup                                      |
+| `notes`                                | No            | Updated by backup                                      |
+| `rating`                               | No            | Updated by backup                                      |
+| `category`                             | No            | Updated by backup                                      |
+| `isDiscoverable`                       | No            | Updated by backup                                      |
+| `isVegetarian` and classifier metadata | No            | Updated by backup when confirmed by the WFS classifier |
 
 ## Compatibility boundary
 

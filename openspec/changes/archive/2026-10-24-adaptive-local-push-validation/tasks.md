@@ -1,13 +1,16 @@
 # Tasks
 
 ## 1. Committed-range push selection
+
 - [x] 1.1 Add regression tests for docs-only execution, full unpushed ranges, fallback, target/cleanliness guards and existing task routing; observe intended red before implementation.
 - [x] 1.2 Update existing push commands/guard and shared documentation baseline handling; pass focused range/routing/link tests and preserve full mode.
 
 ## 2. Shared E2E selection and documentation
+
 - [x] 2.1 Reuse the existing CI selector in the current PWA push task; verify production-build isolation, selected/full E2E and failure propagation; document flags and conservative fallbacks.
 
 ## 3. Final verification
+
 - [ ] 3.1 Review only owned diffs, run `task test:agent`, Node selector tests and scoped `task verify`; record actual evidence and blockers without changing unrelated work.
 
 ## Evidence

@@ -26,7 +26,6 @@ assertions establish no live integration guarantee.
 - Promotion requires separate authorization after review. Main remains 9/34; a future reviewed additive promotion could result in 11/37.
 - No application apply, sync, promotion, archive or runtime qualification is authorized in this generation session.
 
-
 Validation evidence (2026-10-16): selected strict validation passed; final all-item
 strict validation passed 89/89 with informational already-promoted-delta archive
 notices in other capabilities. Bounded verification of all seven owned paths
@@ -37,7 +36,6 @@ Main/original sharing artifacts and staging index match entry snapshots. Other
 actors changed unrelated grocery/member-preference/search/shared guidance files;
 these are excluded and were neither reverted nor adopted as task-owned work.
 
-
 ## Promotion follow-up — RS-P01, 2026-10-16
 
 - The user explicitly accepted both requirements and all three scenarios and authorized promotion into main, preservation of existing requirements/discrepancies, plan/routing/lifecycle updates and validation. This supersedes the generation-only restrictions and pending-review labels above solely for documentation promotion.
@@ -45,7 +43,6 @@ these are excluded and were neither reverted nor adopted as task-owned work.
 - Both recipe-sharing changes remain active. Delta/proposal/design/metadata and every discrepancy record remain unchanged. There is no application implementation or archival, and runtime qualification remains not-run under A34.
 - Required promotion checks: exact append and count/uniqueness/preservation checks; `openspec validate --specs --strict --no-interactive`; selected pending-actions strict validation; `openspec validate --all --strict --no-interactive`; `task verify -- openspec/specs/recipe-sharing/spec.md docs/openspec-baseline/recipe-sharing.md docs/openspec-baseline-plan.md openspec/changes/baseline-recipe-sharing-pending-actions/tasks.md`.
 - No further human review or promotion remains pending for these accepted additions. Disputed pre-existing claims remain non-normative review findings; this promotion neither resolves nor repairs them.
-
 
 Promotion validation results: main-spec strict validation 12/12 passed; selected
 change strict validation passed; all-artifact strict validation 90/90 passed;

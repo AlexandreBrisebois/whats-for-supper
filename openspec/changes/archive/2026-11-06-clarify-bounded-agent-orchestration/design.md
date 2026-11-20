@@ -6,14 +6,14 @@ The [proposal](proposal.md) bounds a guidance-only change. The [agent assessment
 
 The current checkout is `recipe-view-redesign` at `92bd234bfd156101a32e14ecacb053f421ee910e`, with two unrelated Planner edits. The earlier product proposals are already archived. No application requirement changes in this proposal; `skip_specs: true` prevents an invented canonical agent capability.
 
-| Existing owner | Already covers | Actual gap / proposed edit |
-|---|---|---|
-| `AGENT.md` | Authorization, selected task scope, trust and modes | None; leave unchanged |
-| `.agents/core/context-loading.md` | Conditional loading, minimal context, bounded scope, dependent work, conditional delegation, one writer, handoff scope/ownership/acceptance/stopping point and lead review | Add proportionate assignment selection, reuse/fresh-context judgment and elapsed-time/progress reassessment within these existing sections |
-| `.agents/adapters/codex.md` | Native mechanics, shared policy and host restrictions | No duplication or new settings; leave unchanged |
-| `.agents/core/execution-harness.md` | Worktree/resource caveat, command effects, invocation records/durations and final integration checks | Add practical coordination for concurrent ports/DBs/processes and broad CPU-heavy runs; reuse existing evidence rules |
-| OpenSpec config and task template | Dependency-ordered slices, test-first seams, actual acceptance and artifact context | Leave unchanged; delegation must preserve required context rather than summarize it away |
-| Taskfile/scripts/skills | Reproducible checks and reusable procedures | Leave unchanged; do not turn executors into agents |
+| Existing owner                      | Already covers                                                                                                                                                             | Actual gap / proposed edit                                                                                                                 |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AGENT.md`                          | Authorization, selected task scope, trust and modes                                                                                                                        | None; leave unchanged                                                                                                                      |
+| `.agents/core/context-loading.md`   | Conditional loading, minimal context, bounded scope, dependent work, conditional delegation, one writer, handoff scope/ownership/acceptance/stopping point and lead review | Add proportionate assignment selection, reuse/fresh-context judgment and elapsed-time/progress reassessment within these existing sections |
+| `.agents/adapters/codex.md`         | Native mechanics, shared policy and host restrictions                                                                                                                      | No duplication or new settings; leave unchanged                                                                                            |
+| `.agents/core/execution-harness.md` | Worktree/resource caveat, command effects, invocation records/durations and final integration checks                                                                       | Add practical coordination for concurrent ports/DBs/processes and broad CPU-heavy runs; reuse existing evidence rules                      |
+| OpenSpec config and task template   | Dependency-ordered slices, test-first seams, actual acceptance and artifact context                                                                                        | Leave unchanged; delegation must preserve required context rather than summarize it away                                                   |
+| Taskfile/scripts/skills             | Reproducible checks and reusable procedures                                                                                                                                | Leave unchanged; do not turn executors into agents                                                                                         |
 
 One bounded read-only reviewer compared shared owners while the lead investigated official docs and local compatibility. This is actual parallel research in the existing session; it is not evidence that the proposed guidance improves elapsed time or token consumption. No comparable performance benchmark was run.
 
@@ -51,16 +51,16 @@ The resource paragraph then adds a concrete cross-owner scenario: two source-ind
 
 ## Representative Acceptance Review
 
-| Situation | Expected interpretation | Evidence appropriate to this change |
-|---|---|---|
-| Small reversible single-file adjustment | Direct work is appropriate; no mandatory staffing or packet | Reviewer can follow the proposed wording without inventing an agent |
-| Two authorized independent read-heavy assignments | Bounded workers may run concurrently while lead preserves the selected critical path | Worked assignment scopes include required inputs, outcomes and stopping points |
-| Shared contract unresolved | Resolve its ownership/behavior before dependent parallel implementation | Plan does not dispatch competing writers or incompatible contracts |
-| Closely related follow-up with valid worker checkpoint | Reuse the worker after state/evidence/ownership check | Handoff states what remains relevant and what must be reread |
-| Unrelated history or independent second opinion | Fresh scoped context can reduce noise/bias | No full transcript dump, omitted required artifact or implied new-session permission |
-| Two tests need the same port/database or heavy broad gates | Allocate supported independent owned resources or serialize | No process killing, shared DB mutation or claimed speedup from contention |
-| Long test or stopped tool result | Inspect actual status/outcome; report known results and blockers | No blind retry, invented parallelism, unconditional cancel or quality shortcut |
-| Separate worker test passes | Lead reconciles raw records with current integration state and required acceptance | `record_path`/identity remain invocation-specific; no last-run substitution |
+| Situation                                                  | Expected interpretation                                                              | Evidence appropriate to this change                                                  |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Small reversible single-file adjustment                    | Direct work is appropriate; no mandatory staffing or packet                          | Reviewer can follow the proposed wording without inventing an agent                  |
+| Two authorized independent read-heavy assignments          | Bounded workers may run concurrently while lead preserves the selected critical path | Worked assignment scopes include required inputs, outcomes and stopping points       |
+| Shared contract unresolved                                 | Resolve its ownership/behavior before dependent parallel implementation              | Plan does not dispatch competing writers or incompatible contracts                   |
+| Closely related follow-up with valid worker checkpoint     | Reuse the worker after state/evidence/ownership check                                | Handoff states what remains relevant and what must be reread                         |
+| Unrelated history or independent second opinion            | Fresh scoped context can reduce noise/bias                                           | No full transcript dump, omitted required artifact or implied new-session permission |
+| Two tests need the same port/database or heavy broad gates | Allocate supported independent owned resources or serialize                          | No process killing, shared DB mutation or claimed speedup from contention            |
+| Long test or stopped tool result                           | Inspect actual status/outcome; report known results and blockers                     | No blind retry, invented parallelism, unconditional cancel or quality shortcut       |
+| Separate worker test passes                                | Lead reconciles raw records with current integration state and required acceptance   | `record_path`/identity remain invocation-specific; no last-run substitution          |
 
 ## Compatibility and Reversal
 
@@ -76,16 +76,16 @@ Whether a named scope reviewer offers enough repeated benefit is a later optimiz
 
 Alex explicitly authorized apply. The two shared owners now contain the accepted guidance; no adapter, script, Taskfile, skill, config/hook or custom-agent definition changed. The prior source observations and compatibility assessment remain scoped to their original preparation; this implementation adds no custom-agent discovery or runtime performance claim.
 
-| Representative case | Applied guidance / review outcome |
-|---|---|
-| Small single-file task | Decomposition explicitly keeps trivial work direct; no agent quota |
-| Independent authorized assignments | Dependency chain, bounded outcomes and expected coordination benefit determine parallelism; lead continues useful work |
-| Shared unresolved contract | Dependent changes remain sequential and unresolved-dependent work stays direct; one writer and existing handoff ownership remain intact |
-| Related valid follow-up | Worker reuse requires valid relevant context, evidence and ownership |
-| Unrelated history / independent review | Fresh scoped context is preferred without omitting required OpenSpec dependencies or mandatory reading |
-| Shared port/DB or heavy gates | Execution-harness requires resource ownership, distinct supported resources or serialization, and avoids redundant broad gates |
-| Long or uncertain command | Elapsed-time inspection checks actual progress/outcomes; it does not justify blind retry, cancelling an active check for status or weakening verification |
-| Separate worker passes | Each invocation retains its evidence and combined integration remains required; existing lead reconciliation still applies |
+| Representative case                    | Applied guidance / review outcome                                                                                                                         |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Small single-file task                 | Decomposition explicitly keeps trivial work direct; no agent quota                                                                                        |
+| Independent authorized assignments     | Dependency chain, bounded outcomes and expected coordination benefit determine parallelism; lead continues useful work                                    |
+| Shared unresolved contract             | Dependent changes remain sequential and unresolved-dependent work stays direct; one writer and existing handoff ownership remain intact                   |
+| Related valid follow-up                | Worker reuse requires valid relevant context, evidence and ownership                                                                                      |
+| Unrelated history / independent review | Fresh scoped context is preferred without omitting required OpenSpec dependencies or mandatory reading                                                    |
+| Shared port/DB or heavy gates          | Execution-harness requires resource ownership, distinct supported resources or serialization, and avoids redundant broad gates                            |
+| Long or uncertain command              | Elapsed-time inspection checks actual progress/outcomes; it does not justify blind retry, cancelling an active check for status or weakening verification |
+| Separate worker passes                 | Each invocation retains its evidence and combined integration remains required; existing lead reconciliation still applies                                |
 
 The lead reviewed the task-owned diff against before-images; a reused bounded read-only reviewer independently found no issue across the eight cases. The optional reviewer is not a completion gate. The actual two-file change is 31 added lines and two replaced lines. A malformed initial patch was rejected before edits; the corrected patch applied successfully. A later optional `ps` inspection was denied by the Mac sandbox before execution; no retry or escalation was needed, and the existing tool session supplied the check outcome.
 

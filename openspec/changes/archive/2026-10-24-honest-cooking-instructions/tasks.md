@@ -1,14 +1,17 @@
 # Tasks
 
 ## 1. Honest cooking recovery
+
 - [x] 1.1 Observe RED with `task test:unit -- src/components/planner/CooksMode.test.tsx` for failed read/Retry, absent/unusable steps, shared contextual report/reimport and Mark cooked recovery.
 - [x] 1.2 Remove fabricated fallback, expose honest recovery and retain original detail/views; pass the same focused suite including existing editing, presentation and completion cases.
 - [x] 1.3 Exercise generated-wrapper GET /api/recipes/{id} failure/retry and missing-content report recovery in focused Playwright; existing POST import-report mock response and server policy remain unchanged. No backend/database/contract generation applies.
 
 ## 2. Integrated verification
+
 - [x] 2.1 Lead prepares and reviews the complete integrated diff and runs task verify; reconcile acceptance evidence before completion.
 
 ## Evidence
+
 - `task test:unit -- src/components/planner/CooksMode.test.tsx`: RED 7 failed / 23 passed for the intended missing recovery behaviors; GREEN 31 passed, including later departed-ID coverage and explicit reread after background acknowledgement.
 - `task test:unit -- src/components/planner/CooksMode.test.tsx src/components/recipes/RecycleBinSheet.test.tsx src/components/recipes/RecipeDetailSheet.test.tsx`: 61 passed after owned-path formatting.
 - `task test:e2e -- cooking-instruction-recovery.spec.ts recipe-recovery.spec.ts`: 4 passed, Chromium; current generated wrapper + method-sensitive network failures/quality submission exercised. Real service/provider reimport and device qualification not run; existing APIs/server policy unchanged.

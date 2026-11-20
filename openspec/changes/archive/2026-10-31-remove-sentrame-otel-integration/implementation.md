@@ -43,7 +43,6 @@ Task4.1 prepares canonical synchronization; sync/archive are lifecycle follow-up
 
 The [actual logging inventory](logging-inventory.md) and [current callsite index](source-index.md) describe retained console/file/framework/container/search/error diagnostics. Recipe dumps, AI response/error detail and ordinary URL/identifier logs remain intentionally unchanged for later owner decisions. Local removal does not prove an older running deployment stopped exporting. All bounded agent ownership is released; final aggregate verification and lifecycle selection belong to the lead/owner.
 
-
 ## Final resources and limits
 
 Final outer Next host PID84559 exited; its loopback port62505 and copied root were removed. The independently owned API process/root and its dedicated PostgreSQL container report removed=true in `.task/removal-apply/owned-api-cleanup.json`. The final database runner reports its PostgreSQL container, Linux SDK container and private network removed=true. Retirement fixture browser context, app/sink ports and temporary root are closed/removed in its resource-cleanup artifact. npm's owned temporary clean-install workspace/cache are removed after retaining logs. No shared process/container/volume was stopped or changed.

@@ -17,7 +17,6 @@ Applied under Alex’s separate approval. Alex subsequently instructed: “when 
 
 - [x] 2.1 Review complete task-owned scope against before-images, format selected frontend files, sync only the approved recipe-library delta, validate change/main-spec structure and archive as explicitly requested. `task verify`, live no-write acceptance and all post-change runtime tests are waived by Alex and NOT RUN. Record the limits; no deployment, commit, push or other-spec application is authorized.
 
-
 ## Execution evidence and explicit verification waiver
 
 - Implemented only the approved detail/menu cleanup, dedicated EN/FR labels and corresponding unit/browser expectations. Original-count conditions and preview/projection owners are retained. No other active proposal was applied.

@@ -19,7 +19,7 @@ The original `handleToggle` sent the entire grocery map with one item changed:
 ```ts
 // OLD — do not restore this pattern
 await updateGroceryState(weekOffset, {
-  ...groceryState,   // stale closure snapshot of the whole map
+  ...groceryState, // stale closure snapshot of the whole map
   [ingredientName]: newState,
 });
 ```
@@ -27,7 +27,7 @@ await updateGroceryState(weekOffset, {
 If Mom and Dad both open the list when it is empty and each tap one item:
 
 1. Mom taps Carrots → reads `{}` → sends `{ Carrots: true }`
-2. Dad taps Onions  → reads `{}` → sends `{ Onions: true }`
+2. Dad taps Onions → reads `{}` → sends `{ Onions: true }`
 3. Server applies Mom → stored state: `{ Carrots: true }`
 4. Server applies Dad → stored state: `{ Onions: true }` — **Carrots is gone**
 
@@ -108,19 +108,19 @@ This contrasts with the planner move, where the echoed `week_updated` snapshot c
 
 ## SSE event table
 
-| Event | Payload | Trigger | Store updated |
-|---|---|---|---|
+| Event             | Payload                        | Trigger                                   | Store updated               |
+| ----------------- | ------------------------------ | ----------------------------------------- | --------------------------- |
 | `grocery_updated` | `{ weekOffset, groceryState }` | `PATCH /grocery/item` or `PATCH /grocery` | `plannerStore.groceryState` |
 
 ---
 
 ## Files
 
-| File | Change |
-|---|---|
-| `specs/openapi.yaml` | Added `PATCH /api/schedule/{weekOffset}/grocery/item` |
-| `api/src/RecipeApi/Dto/ToggleGroceryItemDto.cs` | New DTO: `IngredientName`, `Checked` |
-| `api/src/RecipeApi/Controllers/ScheduleController.cs` | New `ToggleGroceryItem` action |
-| `api/src/RecipeApi/Services/ScheduleService.cs` | New `ToggleGroceryItemAsync` — server-side merge |
-| `pwa/src/lib/api/schedule.ts` | New `toggleGroceryItem` — replaces `updateGroceryState` for per-tap calls |
-| `pwa/src/components/planner/GroceryList.tsx` | `handleToggle` calls `toggleGroceryItem` instead of full-map `updateGroceryState` |
+| File                                                  | Change                                                                            |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `specs/openapi.yaml`                                  | Added `PATCH /api/schedule/{weekOffset}/grocery/item`                             |
+| `api/src/RecipeApi/Dto/ToggleGroceryItemDto.cs`       | New DTO: `IngredientName`, `Checked`                                              |
+| `api/src/RecipeApi/Controllers/ScheduleController.cs` | New `ToggleGroceryItem` action                                                    |
+| `api/src/RecipeApi/Services/ScheduleService.cs`       | New `ToggleGroceryItemAsync` — server-side merge                                  |
+| `pwa/src/lib/api/schedule.ts`                         | New `toggleGroceryItem` — replaces `updateGroceryState` for per-tap calls         |
+| `pwa/src/components/planner/GroceryList.tsx`          | `handleToggle` calls `toggleGroceryItem` instead of full-map `updateGroceryState` |

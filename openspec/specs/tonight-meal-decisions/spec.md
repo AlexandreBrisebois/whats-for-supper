@@ -59,10 +59,12 @@ The accepted Tomorrow change from upstream commit `8357a8bd` (PR #242, merged at
 Home SHALL use returned schedule content to seed Tonight only when its supplied authoritative deployment date matches deployment-local today. A different supplied date SHALL leave seeding to client reconciliation. Page reading SHALL consume meal-planning’s protected schedule read and date projection requirements.
 
 #### Scenario: Matching date
+
 - **WHEN** Home receives an authoritative deployment date equal to deployment-local today
 - **THEN** the returned recipe, status and non-cooking context are offered for Tonight initialization
 
 #### Scenario: Different date
+
 - **WHEN** the supplied authoritative deployment date differs from deployment-local today
 - **THEN** that initialization does not seed another date’s plan
 
@@ -71,10 +73,12 @@ Home SHALL use returned schedule content to seed Tonight only when its supplied 
 Home SHALL request a current-week schedule read on mount and show Aligning your day while Tonight synchronization is loading. If returned dates exclude deployment-local today, it SHALL try the adjacent relative week in that date’s direction. Failed reads SHALL end loading and retain prior Tonight content without dedicated Retry feedback.
 
 #### Scenario: Local date outside returned week
+
 - **WHEN** deployment-local today precedes the first returned date
 - **THEN** Tonight requests the preceding relative week before selecting its date
 
 #### Scenario: Read failure
+
 - **WHEN** Tonight synchronization rejects
 - **THEN** loading ends with prior content retained and the error logged
 
@@ -83,14 +87,17 @@ Home SHALL request a current-week schedule read on mount and show Aligning your 
 For an ordinary day read, Tonight SHALL retain an assignment made less than twenty seconds ago when the returned recipe differs. A matching recipe SHALL refresh its details. A returned Cooked status SHALL update status; a returned Skipped day SHALL apply its returned recipe and non-cooking content. Live updates SHALL remain governed by household-live-updates.
 
 #### Scenario: Ordinary stale read
+
 - **WHEN** an ordinary read differs from an assignment made less than twenty seconds ago
 - **THEN** the recent recipe remains displayed
 
 #### Scenario: Matching details
+
 - **WHEN** an ordinary read returns the recently selected recipe identity
 - **THEN** its returned details can populate Tonight
 
 #### Scenario: Saved skipped plan
+
 - **WHEN** synchronization returns today as Skipped
 - **THEN** Tonight applies its returned recipe and non-cooking context
 
@@ -99,10 +106,12 @@ For an ordinary day read, Tonight SHALL retain an assignment made less than twen
 While Tonight is neither Cooked nor Skipped and its recipe has an ID and name, Home SHALL display that recipe’s menu card with available description, image, ingredients and formatted time. The card SHALL offer cooking entry and changed-plan recovery. Cooking itself SHALL remain cooking-owned.
 
 #### Scenario: Planned recipe
+
 - **WHEN** Tonight holds a named recipe with identity and ordinary status
 - **THEN** its menu card offers Cook’s Mode and recovery
 
 #### Scenario: Open cooking
+
 - **WHEN** a person activates cooking entry for that displayed recipe
 - **THEN** the cooking view opens with that recipe identity
 
@@ -111,10 +120,12 @@ While Tonight is neither Cooked nor Skipped and its recipe has an ID and name, H
 When Tonight status is Cooked, Home SHALL show its cooked-success card until dismissed within the mounted Home view. Dismissal SHALL show compact Cooked tonight feedback; activating that feedback with a current recipe identity SHALL reopen cooking. This presentation SHALL NOT itself submit cooking completion.
 
 #### Scenario: Cooked status
+
 - **WHEN** Tonight becomes Cooked before the success card has been dismissed
 - **THEN** Home displays cooked-success feedback without the planned menu card
 
 #### Scenario: Dismiss cooked feedback
+
 - **WHEN** a person dismisses the success card and a current recipe identity is available
 - **THEN** compact cooked feedback offers cooking entry
 
@@ -123,10 +134,12 @@ When Tonight status is Cooked, Home SHALL show its cooked-success card until dis
 With no current recipe and no Cooked status, Home SHALL offer supper choices for an ordinary unfinished night or a saved Mystery night. Opening Quick Find SHALL not itself clear the Mystery plan. Saved recipe-free non-Mystery plans SHALL use meal-planning’s Hand eligible Home plans back to Planner editing requirement.
 
 #### Scenario: Ordinary empty night
+
 - **WHEN** Tonight is ordinary and empty
 - **THEN** Home offers Search and Take Out alongside an available ready Go-To choice, without a setup link
 
 #### Scenario: Mystery night
+
 - **WHEN** Tonight is recipe-free Skipped with Mystery kind and a person opens Quick Find
 - **THEN** recipe choices open without submitting a plan-clear operation
 
@@ -135,14 +148,17 @@ With no current recipe and no Cooked status, Home SHALL offer supper choices for
 Where retained for saved Mystery or recovery, Home Quick Find SHALL target week zero and the deployment-local Monday-based weekday. Its deck, loading, exhaustion, inspection, dismissal and invalidation SHALL follow the accepted meal-planning Quick Find requirements. Ordinary selection SHALL close the modal and offer that recipe for Tonight assignment; dismissal SHALL not submit selection.
 
 #### Scenario: Select from empty Tonight
+
 - **WHEN** a person selects an available recipe through a retained Home Quick Find entry without replacement intent
 - **THEN** Quick Find closes and Tonight assignment receives its identity, name and image
 
 #### Scenario: Dismiss before selection
+
 - **WHEN** a person closes Home Quick Find before choosing a recipe
 - **THEN** Tonight receives no assignment through that dismissal
 
 #### Scenario: Continue to Search
+
 - **WHEN** the targeted terminal library card is displayed
 - **THEN** its Search link carries addToDay and weekOffset zero under the shared Quick Find requirement
 
@@ -151,10 +167,12 @@ Where retained for saved Mystery or recovery, Home Quick Find SHALL target week 
 Tonight choice SHALL immediately display the chosen recipe, clear non-cooking metadata and use ordinary status while dispatching the shared chosen-recipe assignment for week zero and the deployment-local weekday in the background. Rejection SHALL be logged without automatic local rollback or dedicated assignment-error feedback. Display SHALL NOT establish persisted assignment.
 
 #### Scenario: Assignment pending
+
 - **WHEN** a person chooses a Tonight recipe and its assignment request remains pending
 - **THEN** the chosen recipe is already displayed with non-cooking context cleared
 
 #### Scenario: Assignment rejects
+
 - **WHEN** the background Tonight assignment rejects
 - **THEN** the error is logged without this handler restoring the prior choice
 
@@ -163,10 +181,12 @@ Tonight choice SHALL immediately display the chosen recipe, clear non-cooking me
 After Tonight selection, a recipe-detail read SHALL request description, ingredients and time for display. Returned details SHALL apply only if the selected identity still matches. An unavailable or failed detail read SHALL leave the optimistic display available without dedicated hydration-error feedback.
 
 #### Scenario: Selection changes during detail read
+
 - **WHEN** recipe A’s details arrive after Tonight has switched to recipe B
 - **THEN** A’s returned details do not replace B’s display
 
 #### Scenario: Detail read fails
+
 - **WHEN** the eager recipe-detail request rejects
 - **THEN** the optimistic Tonight display remains and the failure is logged
 
@@ -175,10 +195,12 @@ After Tonight selection, a recipe-detail read SHALL request description, ingredi
 Active GOTO retrieval SHALL select a random configured recipe that exists, is not deleted and has persisted readiness. A successful result SHALL contain that configured item with ready status and use its image URL or the standard recipe hero URL when absent. Readiness SHALL follow recipe-library’s Represent persisted recipe attribution and readiness requirement.
 
 #### Scenario: Ready and pending configured
+
 - **WHEN** the configured list includes a ready recipe and a pending recipe
 - **THEN** GET /api/goto/active returns the eligible ready recipe under data with ready status
 
 #### Scenario: No eligible recipe
+
 - **WHEN** no configured recipe exists with nondeleted ready state
 - **THEN** active retrieval returns 404 without offering a pending recipe
 
@@ -187,10 +209,12 @@ Active GOTO retrieval SHALL select a random configured recipe that exists, is no
 Home SHALL load an active GOTO on mount. An active-read error, including the no-ready 404, SHALL leave no active GOTO. An unplanned pivot SHALL retain Search and Take Out without a setup link or false empty-list claim. Saved Mystery context SHALL retain its existing choices. A ready active choice SHALL offer Make this tonight through existing Tonight assignment behavior.
 
 #### Scenario: No ready result
+
 - **WHEN** active retrieval returns 404 while unplanned Tonight offers supper choices
 - **THEN** Home still offers Search and Take Out without a GOTO confirmation action or management link
 
 #### Scenario: Confirm ready choice
+
 - **WHEN** a person activates Make this tonight for the ready active recipe
 - **THEN** Tonight assignment receives that configured recipe identity
 
@@ -199,10 +223,12 @@ Home SHALL load an active GOTO on mount. An active-read error, including the no-
 Protected GET /api/goto SHALL return the stored household list under data; PUT /api/goto SHALL replace that list with the submitted items and return it under data after saving. The browser SHALL update its stored list only after PUT resolves. Access SHALL follow household-identity’s Authenticate protected API requests independently requirement.
 
 #### Scenario: Replace and reread
+
 - **WHEN** an authorized submitted list saves and is subsequently read
 - **THEN** the read represents the saved items and descriptions
 
 #### Scenario: Replacement rejects
+
 - **WHEN** the browser list PUT rejects
 - **THEN** that save does not apply its submitted list to browser settings
 
@@ -211,10 +237,12 @@ Protected GET /api/goto SHALL return the stored household list under data; PUT /
 Already submitted legacy GOTO captures SHALL finish accepted pending registration without replaying acquisition or list saves. Fresh legacy URLs SHALL use ordinary capture without auto-registration; confirmed memberships SHALL remain saved. Description capture SHALL use the entered name; photo SHALL use Your captured recipe; URL SHALL use Recipe from link. Acquisition, background acceptance and readiness SHALL retain their existing capability owners.
 
 #### Scenario: Description or photo returns identity
+
 - **WHEN** an already submitted legacy GOTO-intent description or photo capture returns a recipe identity and list save resolves
 - **THEN** the saved list includes that pending identity with its corresponding description
 
 #### Scenario: URL returns identity
+
 - **WHEN** an already submitted legacy URL capture with GOTO intent returns a recipe identity
 - **THEN** a separate list replacement appends that identity with Recipe from link and pending status
 
@@ -223,14 +251,17 @@ Already submitted legacy GOTO captures SHALL finish accepted pending registratio
 After GOTO capture and list registration resolve, the capture success view SHALL remain available without automatic Home navigation and offer localized Done to Home. This waiting view SHALL NOT establish that synthesis or recipe readiness has completed.
 
 #### Scenario: Registration succeeds
+
 - **WHEN** GOTO description submission and its list replacement resolve
 - **THEN** the success screen offers the GOTO preparation state without automatic navigation
 
 #### Scenario: Return explicitly
+
 - **WHEN** a person activates Done in that GOTO success view
 - **THEN** navigation targets Home without reopening management or a ready-only filtered list; accepted processing, confirmed membership and ready notifications remain available
 
 #### Scenario: Pending departure and readiness
+
 - **WHEN** a person leaves an already accepted legacy capture while it is pending or it becomes ready while the success view remains mounted
 - **THEN** pending status remains truthful, existing ready notification/in-place transition continues, and navigation neither resubmits capture nor deletes its recipe or membership
 
@@ -239,18 +270,22 @@ After GOTO capture and list registration resolve, the capture success view SHALL
 Recipe detail SHALL show a star and visible GOTO label in both states, pressed when configured and unpressed otherwise. Ochre state treatments SHALL keep the label and meaningful indicators readable. Activation SHALL remove the matching item or append its identity, name, image and represented readiness, save the replacement list, disable while pending, and show an error toast only on failure.
 
 #### Scenario: Add loaded recipe
+
 - **WHEN** a person activates Set as GOTO for an absent loaded recipe and saving resolves
 - **THEN** the list contains its identity and the inline GOTO control updates to pressed state without showing a redundant confirmation toast
 
 #### Scenario: Remove or fail
+
 - **WHEN** a person toggles an existing GOTO or its save rejects
 - **THEN** successful saving clears the pressed GOTO state without showing a confirmation toast; rejection reports Could not update GOTO and releases the pending action
 
 #### Scenario: Recognize GOTO before selecting
+
 - **WHEN** a loaded recipe is not configured as GOTO
 - **THEN** its action has a visible GOTO label beside the star and an accessible add name, with unpressed state
 
 #### Scenario: Selected and pending state
+
 - **WHEN** the recipe is configured or a membership save is pending
 - **THEN** the visible GOTO label remains, selected state includes a filled star and pressed semantics, and pending disablement and error toast feedback remain
 
@@ -259,10 +294,12 @@ Recipe detail SHALL show a star and visible GOTO label in both states, pressed w
 Outside saved Mystery replacement, activating Take Out with no current Tonight recipe SHALL immediately set local Skipped status, preserve existing non-cooking metadata or supply Take Out, and offer the same date as recipe-free Skipped to the loaded week. It SHALL dispatch status-only three validation for deployment-local today. Persistence and read fallback SHALL follow meal-planning’s Retain status-only day-validation compatibility requirement.
 
 #### Scenario: Empty night
+
 - **WHEN** a person activates Take Out with no current Tonight recipe
 - **THEN** local Tonight and the offered week slot show Skipped while date validation runs in the background
 
 #### Scenario: Validation rejects
+
 - **WHEN** the background status-only validation rejects
 - **THEN** failure is logged without automatic local rollback through that handler
 
@@ -271,26 +308,31 @@ Outside saved Mystery replacement, activating Take Out with no current Tonight r
 Planned Tonight recovery SHALL first offer Take Out, Suggestions and Search. Take Out SHALL open prior-recipe disposition without validation. Suggestions SHALL use the existing limited Quick Find deck and retain a chosen replacement for Home disposition without assignment. Search SHALL open day-specific Recipes planning for authoritative today without changing the plan on entry. Selection SHALL follow existing targeted assignment and occupied-slot recovery.
 
 #### Scenario: Order In selected
+
 - **WHEN** a person chooses Take Out in planned-recipe recovery
 - **THEN** the disposition step opens without yet marking Tonight skipped
 
 #### Scenario: Replacement selected
+
 - **WHEN** a person chooses Suggestions, then selects a recipe from Quick Find
 - **THEN** Quick Find closes and the disposition step retains the replacement without posting it
 - **AND** the choice is labeled Suggestions in English and French consistently with Planner
 
 #### Scenario: Search selected
+
 - **WHEN** a person chooses Search from a planned meal's Change plan sheet with authoritative today context available
 - **THEN** Recipes opens with its Search controls revealed and today’s Monday-based day index, weekOffset zero and reference Monday carried as the target
 - **AND** opening Search submits no plan mutation or Home Quick Find request
 
 #### Scenario: Search target is occupied or selection is cancelled
+
 - **WHEN** a recipe is chosen after Search and the target meal is still occupied
 - **THEN** the existing Recipes occupied-slot recovery resolves the prior meal before replacement and retains its established failure and partial-completion behavior
 - **WHEN** Search is left without choosing a recipe
 - **THEN** the original plan remains unchanged
 
 #### Scenario: Calendar context unavailable or source changed
+
 - **WHEN** the captured authoritative calendar cannot be resolved before Search navigation
 - **THEN** the existing calendar retry is available and no target is guessed or plan mutation submitted
 - **WHEN** the displayed meal or date has changed since Change plan opened
@@ -301,14 +343,17 @@ Planned Tonight recovery SHALL first offer Take Out, Suggestions and Search. Tak
 Before disposition starts, Close, backdrop dismissal and Back SHALL cancel without submitting a mutation; closing Quick Find before selection SHALL cancel its choice. While a mutation is pending, dismissal and Back SHALL be disabled. After partial completion, dismissal SHALL explain that completed work remains and offer explicit abandonment of the unsaved choice. Back SHALL NOT restart a completed disposition.
 
 #### Scenario: Abort order-in recovery
+
 - **WHEN** a person closes the disposition step before acting
 - **THEN** no validation, move, defer, deletion or replacement is submitted by closing
 
 #### Scenario: Return to backup choice
+
 - **WHEN** a person activates Back before disposition starts
 - **THEN** the initial Take Out / Pick Something Else choice returns without a mutation
 
 #### Scenario: Leave after partial completion
+
 - **WHEN** disposition succeeded, replacement is unsaved and the person closes recovery
 - **THEN** Home requires confirmation to abandon the pending replacement and explains that the original meal's completed disposition is retained
 
@@ -317,14 +362,17 @@ Before disposition starts, Close, backdrop dismissal and Back SHALL cancel witho
 For Take Out plus Tomorrow, Home SHALL include the source disposition in the Tomorrow operation without prior validation or optimistic source mutation. For Save for Next Week or Drop, Home SHALL retain prior local Skipped presentation and awaited status-only validation; defer follows validation and Drop sends no deletion.
 
 #### Scenario: Move after validation
+
 - **WHEN** Take Out recovery chooses Save for Next Week and validation remains pending
 - **THEN** deferral has not started through that invocation
 
 #### Scenario: Move with source disposition
+
 - **WHEN** Take Out recovery chooses Tomorrow and movement remains pending
 - **THEN** one Tomorrow request carries Take Out disposition while the displayed and persisted source remain unchanged until commit
 
 #### Scenario: Drop original cooking plan
+
 - **WHEN** a person chooses Drop in Take Out recovery and validation resolves
 - **THEN** no DELETE is sent through that branch
 
@@ -333,10 +381,12 @@ For Take Out plus Tomorrow, Home SHALL include the source disposition in the Tom
 Home Tomorrow recovery SHALL submit the explicit Tomorrow operation for the current Tonight recipe, week zero and the Monday-based source index of deployment-local today. Monday through Saturday SHALL target the following index in week zero; Sunday SHALL target index zero in week one. Destination, source disposition and rejection SHALL follow meal-planning Tomorrow requirements.
 
 #### Scenario: Weekday request
+
 - **WHEN** Tomorrow disposition starts on Thursday with a current recipe identity
 - **THEN** the move uses source index three and target index four in week zero
 
 #### Scenario: Sunday request
+
 - **WHEN** Tomorrow disposition starts on Sunday with a current recipe identity
 - **THEN** the move uses source index six and target index zero in week one
 
@@ -345,10 +395,12 @@ Home Tomorrow recovery SHALL submit the explicit Tomorrow operation for the curr
 Home Save for Next Week SHALL submit deployment-local today as sourceDate and the current Tonight recipe ID to the shared defer operation, without substituting a client-selected destination. A returned message SHALL be shown as a toast. Destination choice, conflicts and persisted consequences SHALL remain meal-planning-owned.
 
 #### Scenario: Defer returns a destination message
+
 - **WHEN** Save for Next Week resolves with a message
 - **THEN** Home shows that returned message without posting a separate movement request
 
 #### Scenario: Source is missing or awaiting consensus
+
 - **WHEN** the shared defer operation rejects a missing exact source or an awaiting-consensus source
 - **THEN** Home does not proceed to replacement through that rejected invocation
 
@@ -357,14 +409,17 @@ Home Save for Next Week SHALL submit deployment-local today as sourceDate and th
 In Pick Something Else recovery, Home SHALL await confirmed Tomorrow movement, successful defer or successful date deletion before saving the retained replacement. Drop SHALL present the confirmed empty slot before saving. Replacement SHALL target the captured source date using meal-assignment's guarded empty-supper operation. The two stages SHALL remain separate operations without implied rollback.
 
 #### Scenario: Move original then choose replacement
+
 - **WHEN** Pick Something Else recovery chooses Tomorrow and movement confirms commit
 - **THEN** the original is resolved before the retained replacement save starts against the captured source date
 
 #### Scenario: Drop original then choose replacement
+
 - **WHEN** Pick Something Else recovery chooses Drop and date deletion succeeds
 - **THEN** Tonight presents the empty source slot and starts the guarded replacement save
 
 #### Scenario: Save after deferral
+
 - **WHEN** the original meal's defer succeeds
 - **THEN** replacement saves to the original source date rather than the deferred destination
 
@@ -373,18 +428,22 @@ In Pick Something Else recovery, Home SHALL await confirmed Tomorrow movement, s
 Pick Something Else recovery SHALL close and perform success navigation only after replacement persistence is confirmed. Home SHALL refresh the captured week and Tonight; refresh failure after confirmed save SHALL show refresh feedback without repeating either mutation. Tomorrow and Drop SHALL navigate to the captured Planner target; defer SHALL remain on Home. Take Out SHALL retain its existing disposition and recipe-free Skipped follow-ups.
 
 #### Scenario: Tomorrow or Drop completes
+
 - **WHEN** disposition and replacement save are confirmed for Tomorrow or Drop
 - **THEN** recovery closes, affected views refresh and navigation targets the captured Planner week
 
 #### Scenario: Defer completes
+
 - **WHEN** defer and replacement save are confirmed for Save for Next Week
 - **THEN** recovery closes and affected views refresh without navigation
 
 #### Scenario: Replacement remains pending
+
 - **WHEN** disposition succeeded but replacement persistence is not yet confirmed
 - **THEN** recovery remains open with saving feedback and no success navigation
 
 #### Scenario: Refresh fails after save
+
 - **WHEN** replacement is confirmed saved but a subsequent view refresh fails
 - **THEN** Home identifies a refresh failure and offers refresh without replaying disposition or assignment
 
@@ -393,14 +452,17 @@ Pick Something Else recovery SHALL close and perform success navigation only aft
 Home SHALL stop subsequent recovery steps after a rejected await and show the failed stage. Disposition rejection SHALL withhold replacement. Completed work SHALL NOT be represented as rolled back. An uncertain mutation outcome SHALL block replay until authoritative reconciliation; Tomorrow's committed-result rules SHALL remain authoritative. Replacement failure SHALL follow the retained-stage recovery requirements.
 
 #### Scenario: Validation rejects first
+
 - **WHEN** Take Out validation rejects before Save for Next Week disposition
 - **THEN** that invocation does not submit its defer
 
 #### Scenario: Disposition rejects
+
 - **WHEN** Pick Something Else movement, defer or deletion rejects before replacement
 - **THEN** that invocation does not dispatch the retained replacement
 
 #### Scenario: Disposition response is lost
+
 - **WHEN** defer or deletion fails without an established outcome
 - **THEN** Home shows uncertain disposition, retains the original and replacement choices, and does not replay disposition or start replacement merely because a read fails or shows an empty source
 
@@ -409,14 +471,17 @@ Home SHALL stop subsequent recovery steps after a rejected await and show the fa
 SSR and mounted Home SHALL consume meal-planning's authoritative calendar context. Today assignment, Quick Find, Take Out and recovery SHALL use that context's date, weekday and captured reference Monday. A started recovery SHALL retain its date across awaits; a new action SHALL follow Refresh expired Today context before a new action. Browser timezone SHALL NOT select the supper slot.
 
 #### Scenario: SSR and browser have different local dates
+
 - **WHEN** Toronto deployment context identifies October 11 while the SSR host and Tokyo browser identify October 12 locally
 - **THEN** both Home renderings identify October 11 as Tonight and a new selection targets that date
 
 #### Scenario: Recovery crosses midnight
+
 - **WHEN** recovery begins on deployment October 11 and an awaited disposition finishes on October 12
 - **THEN** its subsequent replacement retains the captured October 11 target and reference Monday
 
 #### Scenario: Returning after the deployment day changed
+
 - **WHEN** Home resumes after its authoritative context expires
 - **THEN** it refreshes Today before another date-dependent action and does not display yesterday's recipe as the newly resolved Tonight
 
@@ -425,14 +490,17 @@ SSR and mounted Home SHALL consume meal-planning's authoritative calendar contex
 Home SHALL continue replacement or successful recovery only when Tomorrow confirms committed movement. While pending it SHALL suppress duplicate submission. A rejected move SHALL retain the original and pending choice with visible conflict feedback. A committed move with incomplete follow-ups SHALL trigger rereads and refresh feedback without resubmitting movement. Unknown outcomes SHALL withhold replacement until reconciled.
 
 #### Scenario: Cooked destination rejects Order In movement
+
 - **WHEN** Take Out plus Tomorrow is rejected because a Cooked entry would move
 - **THEN** Home retains the original source and recovery choice, shows the conflict and submits neither validation nor replacement
 
 #### Scenario: Move commits but refresh is incomplete
+
 - **WHEN** Tomorrow returns a committed result with incomplete follow-ups
 - **THEN** Home rereads affected state and identifies refresh failure without sending the move again
 
 #### Scenario: Transport fails without a known result
+
 - **WHEN** the response is lost and Home cannot establish whether Tomorrow committed
 - **THEN** Home withholds replacement and blocks repeat movement until authoritative reads reconcile the source and destination
 
@@ -441,22 +509,27 @@ Home SHALL continue replacement or successful recovery only when Tomorrow confir
 Home SHALL retain the original recipe identity, captured source date/reference Monday, chosen replacement and disposition outcome for the mounted recovery session. A failed replacement SHALL retain that choice and offer retry of assignment only. Pending actions SHALL suppress duplicate submissions; late responses from an abandoned session SHALL NOT change a newer session or its displayed date.
 
 #### Scenario: Save rejects after a confirmed move
+
 - **WHEN** Tomorrow commits and replacement is rejected before persistence
 - **THEN** recovery identifies that the original moved but replacement was not saved, retains the choice and offers Retry save without another move
 
 #### Scenario: Retry after defer or Drop
+
 - **WHEN** defer or deletion succeeded and replacement failed
 - **THEN** retry submits only guarded assignment to the captured source slot, without another defer or delete
 
 #### Scenario: Repeated activation
+
 - **WHEN** a disposition or replacement request is pending and the person activates recovery again
 - **THEN** no second mutation is submitted by that recovery session
 
 #### Scenario: Retry crosses deployment midnight
+
 - **WHEN** recovery captured Sunday October 11 with reference Monday October 5 and retry starts after Monday October 12 begins
 - **THEN** replacement still targets October 11, and the current Monday's Tonight state is not replaced by that response
 
 #### Scenario: New recovery replaces an abandoned session
+
 - **WHEN** an abandoned session's delayed read resolves after a new recovery starts
 - **THEN** it does not clear the new choice, show success for it or navigate on its behalf
 
@@ -465,18 +538,22 @@ Home SHALL retain the original recipe identity, captured source date/reference M
 An ambiguous replacement error SHALL trigger an authoritative read of the captured slot and retain the pending choice. The chosen recipe in Planned state SHALL confirm the desired saved outcome without another POST. A different recipe, non-cooking content or completed state SHALL block retry and show a changed-plan conflict. An ordinary empty slot SHALL permit explicit guarded Retry save. An unusable read SHALL leave the outcome unknown and retry blocked.
 
 #### Scenario: Reply lost after persistence
+
 - **WHEN** assignment commits but its reply or post-save follow-up fails and reread shows the chosen recipe Planned in the captured supper slot
 - **THEN** recovery treats the desired replacement as saved and does not post it again
 
 #### Scenario: Reply lost before persistence
+
 - **WHEN** the assignment outcome is unknown and a successful reread shows the captured supper slot ordinary and empty
 - **THEN** Home retains the choice and offers an explicit guarded Retry save without replaying disposition
 
 #### Scenario: Another household action occupies the source
+
 - **WHEN** reread shows different recipe or non-cooking content, or the guarded save returns conflict
 - **THEN** Home preserves that persisted content and offers review of the changed plan rather than an overwrite or another move
 
 #### Scenario: Reread fails
+
 - **WHEN** the captured slot cannot be authoritatively read
 - **THEN** Home shows an unknown outcome with Retry check and does not enable Retry save
 
@@ -485,10 +562,12 @@ An ambiguous replacement error SHALL trigger an authoritative read of the captur
 A recovery choice SHALL NOT be presented as a confirmed saved meal until assignment succeeds or authoritative reread confirms the desired outcome. Failure SHALL display persisted slot content alongside the retained unsaved choice. Feedback SHALL distinguish moving, saving, save failure, changed plan and uncertain outcome; retry controls SHALL identify whether they check or save.
 
 #### Scenario: Optimistic choice fails to save
+
 - **WHEN** the original was moved and the replacement save rejects before persistence
 - **THEN** the source slot is shown as empty with the retained replacement marked unsaved rather than as a saved Tonight meal
 
 #### Scenario: Failed check can be retried
+
 - **WHEN** the outcome is unknown after a failed read
 - **THEN** accessible feedback offers Retry check without describing the replacement as saved or offering another disposition
 
@@ -497,14 +576,17 @@ A recovery choice SHALL NOT be presented as a confirmed saved meal until assignm
 The planned Tonight recipe card SHALL display a usable supplied ISO 8601 total duration with hours and minutes preserved, using the existing localized Ready In wrapper. This total duration SHALL NOT be interpreted as preparation-only time. Without a usable supplied total duration, the planned card SHALL omit its duration badge instead of estimating a time. Detail, list, Discovery and Quick Find duration behavior SHALL remain unchanged.
 
 #### Scenario: Hour and minute durations
+
 - **WHEN** a planned named recipe supplies PT6H, PT1H30M, PT45M or PT360M as total duration
 - **THEN** Home displays respectively 6H, 1H 30 MINS, 45 MINS or 6H within its existing Ready In wrapper
 
 #### Scenario: English and French wrappers
+
 - **WHEN** that recipe is shown with English or French selected and a usable total duration
 - **THEN** Home uses respectively READY IN or PRÊT EN without changing the duration's units
 
 #### Scenario: No supplied duration
+
 - **WHEN** the planned recipe's total duration is missing, null, empty, zero or unformattable
 - **THEN** Home omits the Ready In badge and shows no default or estimated duration
 - **AND** the recipe image, name and existing actions remain available
@@ -514,11 +596,13 @@ The planned Tonight recipe card SHALL display a usable supplied ISO 8601 total d
 The planned-meal and supper-choice cards SHALL use readable context, supporting copy and enabled action labels, including checking and preparing feedback. Normal text SHALL reach 4.5:1 contrast, qualifying large text 3:1, and meaningful control/state graphics 3:1 on their actual adjacent backgrounds. State and action meaning SHALL remain available through labels rather than colour alone.
 
 #### Scenario: Essential copy on a card
+
 - **WHEN** either Tonight card displays context, duration, supporting copy or enabled actions
 - **THEN** those labels meet the relevant contrast threshold on their rendered backgrounds, including translucent surfaces
 - **AND** essential context and action labels use readable sentence case rather than tiny tracked all-caps, except the existing localized Ready In wrapper and duration units
 
 #### Scenario: Secondary action is available
+
 - **WHEN** Take Out or Change plan is enabled
 - **THEN** its label and control treatment visibly communicate an available action rather than an unavailable control
 
@@ -527,10 +611,12 @@ The planned-meal and supper-choice cards SHALL use readable context, supporting 
 Both Tonight cards SHALL accommodate long titles, localized labels and enlarged text without clipping essential content, overlapping controls or requiring horizontal page scrolling at 320 CSS px and wider. Action targets SHALL be at least 48 by 48 CSS px. Vertical page scrolling SHALL keep all card content and actions reachable above the bottom navigation.
 
 #### Scenario: Narrow layout and expanded copy
+
 - **WHEN** a card is shown at 320 CSS px with a long recipe title or French labels
 - **THEN** its content wraps, actions remain readable and reachable, and the page has no horizontal overflow
 
 #### Scenario: Enlarged text and tablet layout
+
 - **WHEN** text is enlarged to 200 percent or the viewport changes between tablet portrait and landscape
 - **THEN** all card text and controls remain available without overlap or truncation of action labels
 
@@ -539,10 +625,12 @@ Both Tonight cards SHALL accommodate long titles, localized labels and enlarged 
 A displayed planned recipe SHALL expose Cook and Change plan without opening ingredients or activating the card body. Cook SHALL open cooking for the displayed recipe without completing it. Change plan SHALL open existing recovery without a plan mutation on entry. Opening details SHALL NOT be a prerequisite for either action.
 
 #### Scenario: Cook from the initial card
+
 - **WHEN** a person activates Cook on the initial planned card
 - **THEN** cooking opens for that displayed recipe without requiring a flip or submitting cooking completion
 
 #### Scenario: Change plan from the initial card
+
 - **WHEN** a person activates Change plan on the initial planned card
 - **THEN** the existing backup-choice recovery opens for that recipe without submitting validation, movement, deferral, deletion or replacement
 - **AND** cancellation before mutation leaves tonight unchanged under existing recovery requirements
@@ -552,16 +640,19 @@ A displayed planned recipe SHALL expose Cook and Change plan without opening ing
 The planned card SHALL offer an explicit View ingredients control that reveals available ingredients and description inline, with a Hide ingredients control to collapse them. Expanding or collapsing details SHALL NOT mutate tonight or activate cooking/recovery. Details visibility SHALL be conveyed semantically, and hidden content SHALL NOT remain keyboard reachable.
 
 #### Scenario: Expand and collapse details
+
 - **WHEN** a person activates View ingredients, then Hide ingredients
 - **THEN** the recipe details are revealed, then collapsed, and Cook and Change plan remain available
 - **AND** both controls support keyboard activation with visible focus and an exposed expanded state
 
 #### Scenario: Missing details or recipe changes
+
 - **WHEN** ingredients are absent or the displayed recipe identity changes while details are expanded
 - **THEN** absent ingredients have readable empty feedback, and a different recipe starts with its own details collapsed
 - **AND** the former recipe's details are no longer displayed
 
 #### Scenario: Reduced motion or ordinary card activation
+
 - **WHEN** reduced motion is preferred or a person taps non-control card content
 - **THEN** details remain explicitly controlled without requiring a 3D flip or motion to understand the state
 - **AND** tapping non-control content does not trigger an action or toggle details
@@ -571,15 +662,18 @@ The planned card SHALL offer an explicit View ingredients control that reveals a
 When supper choices are offered, a ready GOTO SHALL make Make this tonight the primary action; otherwise Search SHALL be primary on an unplanned pivot. Take Out SHALL remain an available secondary action. No separate Go-To setup link SHALL appear. Saved Mystery SHALL retain its existing Quick Find alternative. Existing readiness and assignment rules SHALL determine action availability and effects.
 
 #### Scenario: Ready GOTO
+
 - **WHEN** the pivot has a ready active GOTO
 - **THEN** Make this tonight leads the actions, with Search and Take Out available secondarily on the unplanned pivot
 - **AND** merely viewing the card submits no assignment
 
 #### Scenario: No ready GOTO or active-read failure
+
 - **WHEN** no active GOTO is available, including after a 404 or failed active read
 - **THEN** Search leads on the unplanned pivot and Take Out remains available without a GOTO confirmation action
 
 #### Scenario: Checking or preparing a represented GOTO
+
 - **WHEN** the pivot receives an existing GOTO identity whose represented status is checking or pending
 - **THEN** it displays the corresponding readable feedback without Make this tonight, and keeps Search and Take Out available on the unplanned pivot
 - **AND** this presentation does not establish that the active-GOTO service returns pending recipes
@@ -589,16 +683,19 @@ When supper choices are offered, a ready GOTO SHALL make Make this tonight the p
 The pivot SHALL distinguish an ordinary unplanned night, an unassigned ready family GOTO and saved Mystery context using localized text. It SHALL NOT describe a ready GOTO as tonight's saved meal before selection, or imply that Take Out places a delivery order. Existing optimistic assignment and staged recovery presentation SHALL retain their established persistence meanings.
 
 #### Scenario: Unplanned night and ready family choice
+
 - **WHEN** an ordinary empty night is shown with or without a ready GOTO
 - **THEN** it identifies that nothing is planned for tonight
 - **AND** a ready recipe is identified as the family's GOTO choice rather than a saved assignment
 
 #### Scenario: Saved Mystery night
+
 - **WHEN** supper choices are offered for a saved Mystery night
 - **THEN** its saved non-cooking context remains visible without calling the day unplanned
 - **AND** opening and cancelling Quick Find leaves that context unchanged
 
 #### Scenario: English and French meaning
+
 - **WHEN** either card is displayed in English or French
 - **THEN** added or changed labels and feedback use the selected locale with equivalent state/action meaning and room to wrap
 - **AND** a supplied total duration retains its localized wrapper and units, while a missing or unusable planned-recipe duration is omitted
@@ -608,30 +705,36 @@ The pivot SHALL distinguish an ordinary unplanned night, an unassigned ready fam
 At ordinary text size, Tonight cards with recipe imagery SHALL give the food photograph and recipe title visual priority over their controls. The composition SHALL use generous state-appropriate imagery, warm surfaces, considered spacing and depth. Longer text and enlarged text SHALL remain readable in content-driven flow rather than being clipped to preserve proportions.
 
 #### Scenario: Planned recipe or ready family GOTO with a photograph
+
 - **WHEN** a planned recipe or ready family GOTO has usable imagery at ordinary mobile text size
 - **THEN** a generous photograph and prominent recipe title lead the card, with quieter context and duration where available
 - **AND** the composition preserves the respective supplied meal/pivot reference’s photographic presence, deep rounding, soft elevation and title emphasis while retaining the current visible actions and explicit details
 
 #### Scenario: Related meal and pivot compositions
+
 - **WHEN** the meal card and ready-GOTO pivot are shown at ordinary mobile text size
 - **THEN** they share a refined rounded frame and photo/title hierarchy while planned and ready-GOTO photographs use matching 5:4 proportions at equal inner widths
 - **AND** pivot alternatives are grouped side by side when complete labels and touch targets fit, with stacking when wrapping or text growth requires it
 
 #### Scenario: Empty or unavailable imagery
+
 - **WHEN** a represented ready recipe image is absent or fails to load
 - **THEN** warm spacing, readable state and the existing modest image fallback maintain a composed card
 - **AND** no fabricated image, unavailable recipe or false readiness/saved claim fills the space
 
 #### Scenario: Saved context without a ready proposal
+
 - **WHEN** a recipe-free saved non-cooking plan or Mystery without a ready proposal is displayed
 - **THEN** the card uses its generous corresponding icon and readable plan text through the recipe-free plan and Mystery requirements
 - **AND** it does not use a fabricated food photograph
 
 #### Scenario: Larger text or long content
+
 - **WHEN** EN/FR copy, recipe titles or text enlarged to 200 percent need more room
 - **THEN** the card grows and controls wrap/reflow without shrinking labels, truncating essential content or constraining card height to preserve the ordinary-size composition
 
 #### Scenario: Ordinary empty illustration
+
 - **WHEN** the pivot is ordinary and empty without a represented Go-To or saved context
 - **THEN** its larger fork-and-knife composition follows Enlarge only the ordinary empty pivot illustration, without altering shared recipe-image fallbacks
 
@@ -640,16 +743,19 @@ At ordinary text size, Tonight cards with recipe imagery SHALL give the food pho
 Each Tonight card SHALL have one visually dominant primary action, using light text on rich terracotta. Dark text on yellow SHALL NOT be used for its action surfaces. Secondary actions SHALL have less visual weight; ingredient disclosure SHALL use a text-style affordance. Readable contrast, visible focus, semantics and 48 by 48 CSS px targets SHALL remain intact without enclosing every action in a prominent border.
 
 #### Scenario: Planned-meal controls
+
 - **WHEN** the planned card is shown
 - **THEN** Cook is the dominant terracotta action, Change plan is a quieter secondary action, and View ingredients is a text-style disclosure with an indicator and generous hit area
 - **AND** all remain directly discoverable and operable without a whole-card flip or a stack of three equally prominent boxed controls
 
 #### Scenario: Pivot controls
+
 - **WHEN** the pivot is shown with or without a ready GOTO
 - **THEN** Make this tonight for a ready GOTO, otherwise Search on the unplanned pivot, receives the primary terracotta treatment
 - **AND** Take Out and other available alternatives remain visibly enabled but visually subordinate, with no separate Go-To setup link and retained saved-context alternatives keeping their existing meaning
 
 #### Scenario: Interactive states and accent color
+
 - **WHEN** Home card controls are hovered, pressed, focused or shown with ochre accents
 - **THEN** their labels and meaningful indicators retain the existing contrast requirements and keyboard focus remains visible
 - **AND** ochre contributes restrained warmth without becoming a yellow action field with dark text
@@ -659,26 +765,31 @@ Each Tonight card SHALL have one visually dominant primary action, using light t
 With usable imagery, the planned Tonight card SHALL show a landscape photograph filling its inner width, within a centred width-capped composition. The photograph SHALL use the ready-GOTO pivot's 5:4 proportions at equal inner widths. Long content SHALL grow the card in document flow rather than shrink or hide the photograph or truncate essential text.
 
 #### Scenario: Ordinary portrait phone composition
+
 - **WHEN** a planned recipe with usable imagery is displayed at ordinary text size on a portrait phone
 - **THEN** its photo fills the card's inner width, has 5:4 proportions matching the ready-GOTO pivot at the same inner width
 - **AND** the card retains a prominent recipe title, warm rounded frame and soft depth
 
 #### Scenario: Shorter viewport
+
 - **WHEN** the available viewport height decreases while the same planned recipe remains displayed
 - **THEN** the photograph retains its height when its inner width is unchanged
 - **AND** further space pressure is handled by page scrolling without clipping content or covering actions with navigation
 
 #### Scenario: Long title or enlarged text
+
 - **WHEN** a long recipe title, English or French text growth, or text enlarged to 200 percent needs additional space
 - **THEN** the full title and action labels wrap and the card grows in document flow
 - **AND** usable photography retains its 5:4 proportions at the available inner width, with all actions reachable by page scrolling
 
 #### Scenario: Missing or failed photograph
+
 - **WHEN** the planned recipe has no image or its image fails to load
 - **THEN** the existing modest icon fallback is displayed without reserving a large empty photograph area
 - **AND** the title and actions remain available without claiming the image loaded
 
 #### Scenario: Plan the ready family GOTO
+
 - **WHEN** a loaded ready-GOTO photograph becomes the planned meal through Make this tonight at an unchanged viewport and inner width
 - **THEN** the photograph retains matching width and height with 5:4 proportions
 - **AND** cover crop, rounded framing, planned actions and explicit ingredient disclosure remain available
@@ -688,16 +799,19 @@ With usable imagery, the planned Tonight card SHALL show a landscape photograph 
 The collapsed planned Tonight card and the complete label of Browse your library SHALL remain readable and reachable through normal page scrolling. Capture a Recipe SHALL precede the Tonight card under the requirement below. Taller photography SHALL take priority over fitting all content above bottom navigation in the initial viewport.
 
 #### Scenario: Initial ordinary Home view
+
 - **WHEN** Home settles at the top of the page at 412 by 915 CSS px with a usable photo, a title occupying at most two lines, ordinary text, collapsed ingredients and no intervening status cards or banners
 - **THEN** the Capture tile appears before the planned card and the complete planned card and Browse your library label remain reachable above bottom navigation through normal page scrolling
 - **AND** Cook, Change plan and View ingredients remain directly available with their existing meanings and touch targets
 
 #### Scenario: Expanded ingredients or exceptional content
+
 - **WHEN** ingredients are expanded, the title exceeds two lines, text is enlarged, additional Home notices or voting content appears, or the viewport is smaller than the primary acceptance viewport
 - **THEN** the page grows vertically and Capture and Browse remain reachable through normal page scrolling
 - **AND** Home does not hide status content, shrink usable photography below its width-driven 5:4 proportions, truncate essential text or reduce action targets to force everything into one screen
 
 #### Scenario: Wide viewport
+
 - **WHEN** the same planned meal is displayed on a tablet or wider screen
 - **THEN** its composition remains centred with capped width rather than stretching the photograph across the screen
 - **AND** content remains readable and actions reachable in portrait and landscape
@@ -707,15 +821,18 @@ The collapsed planned Tonight card and the complete label of Browse your library
 Users SHALL manage Go-To membership through recipe stars. Browse and Search SHALL NOT expose separate management, pending-management lists or Add a Go-To acquisition. Search SHALL retain its Go-To filter and Settings SHALL keep management absent. Retirement SHALL NOT delete recipes, memberships or accepted background work, or change backend membership filtering.
 
 #### Scenario: Existing saved membership
+
 - **WHEN** a household opens Browse, Search or recipe detail after management retirement
 - **THEN** saved Go-To membership remains available to filtering and recipe stars, with no management disclosure or acquisition entry
 
 #### Scenario: Legacy management URL
+
 - **WHEN** `/browse-all-stack?gotoOnly=true&manageGoto=true` opens
 - **THEN** the route redirects to `/recipes?gotoOnly=true`, opening normal GOTO-filtered Explore with collapsed search controls, the toolbar star pressed and no management/flyout
 - **AND** an empty result offers Clear Go-To without mutating membership or assigning a meal
 
 #### Scenario: Fresh legacy capture entry
+
 - **WHEN** a newly loaded legacy capture URL contains intent=goto and a description or photo mode
 - **THEN** ordinary recipe capture opens in that mode without automatic Go-To registration or creation on navigation
 - **AND** adding/removing Go-To membership remains a recipe-star action
@@ -725,18 +842,22 @@ Users SHALL manage Go-To membership through recipe stars. Browse and Search SHAL
 Only the settled ordinary empty pivot without a represented Go-To or saved non-cooking context SHALL show the short helper. It SHALL use the same recipe Star icon in place of helper word GOTO, with localized accessible “star” meaning, and SHALL NOT offer Choose GOTO recipes. Helper copy SHALL describe future suggestions without claiming an empty membership list or a saved meal.
 
 #### Scenario: Teach at the point of need
+
 - **WHEN** the initial active read settles without a represented Go-To on an ordinary unplanned night
 - **THEN** the short helper with inline recipe Star follows Search and Take Out in reading order, without a setup link
 
 #### Scenario: Initial active read is pending
+
 - **WHEN** the initial active read has not settled
 - **THEN** the helper remains absent
 
 #### Scenario: Represented recipe or saved context
+
 - **WHEN** the pivot presents a ready/checking/pending Go-To or saved Mystery/non-cooking context
 - **THEN** it omits the ordinary-empty helper and preserves truthful state content
 
 #### Scenario: Active read fails or returns no ready result
+
 - **WHEN** the settled active read fails or returns 404 without a represented Go-To
 - **THEN** supper choices remain available without claiming no saved memberships, false readiness or successful assignment
 
@@ -745,19 +866,23 @@ Only the settled ordinary empty pivot without a represented Go-To or saved non-c
 Search on Home’s unplanned pivot SHALL open the existing planner day-specific recipe selection flow at `/recipes` with search controls expanded and today selected using authoritative calendar context. It SHALL replace that pivot’s Quick Find action without creating another search mode. Unavailable calendar context SHALL use existing retry before navigation; selection, cancellation and occupied-slot recovery SHALL retain their planner meanings.
 
 #### Scenario: Select Search on an unplanned night
+
 - **WHEN** a person activates Search on the unplanned pivot, including one with a ready Go-To suggestion
 - **THEN** Recipes opens with expanded Search controls and today’s day index, weekOffset zero and reference week through the existing planning flow
 - **AND** opening it makes no assignment and does not launch the Home Quick Find modal
 
 #### Scenario: No usable calendar
+
 - **WHEN** authoritative Today context cannot be resolved
 - **THEN** existing calendar retry is available without guessing the target day or committing a plan
 
 #### Scenario: Concurrent occupancy or cancellation
+
 - **WHEN** the target becomes occupied before selection, or a person cancels without selecting
 - **THEN** existing planner recovery handles occupancy and cancellation commits no new meal
 
 #### Scenario: Hide Search during planning
+
 - **WHEN** a person hides and reopens Search after Home’s contextual entry
 - **THEN** the target day, reference week, planning banner and cancellation/assignment meanings remain
 - **AND** hiding, reopening, changing presentation or clearing criteria commits no meal
@@ -767,11 +892,13 @@ Search on Home’s unplanned pivot SHALL open the existing planner day-specific 
 The ordinary empty Home pivot SHALL use a larger fork-and-knife illustration with recipe-hero presence within its warm cookbook shell. Search SHALL be primary and Take Out secondary. Image space SHALL adapt before controls become unusable on short viewports. Ready recipe imagery, planned/non-cooking states and shared recipe-image fallbacks SHALL NOT be globally enlarged by this treatment.
 
 #### Scenario: Ordinary empty invitation
+
 - **WHEN** the settled unplanned pivot has no represented Go-To and no saved non-cooking context
 - **THEN** the larger decorative illustration invites Search or Take Out without pretending to be a food photo or available recipe
 - **AND** both CTAs are usable in the initial short portrait viewport at ordinary text size
 
 #### Scenario: Ready, represented or saved state
+
 - **WHEN** a ready Go-To, checking/pending identity, planned recipe or saved non-cooking state is shown
 - **THEN** it retains its own photography/icon, truthful status and action semantics without becoming the ordinary-empty invitation
 
@@ -780,10 +907,12 @@ The ordinary empty Home pivot SHALL use a larger fork-and-knife illustration wit
 Changed controls SHALL have equivalent EN/FR meaning, keyboard operation, visible focus, pressed/pending feedback and at least 48 by 48 CSS px targets. Layout SHALL accommodate short iPhone/Android viewports, iPad, 200% text, safe areas and reduced motion without horizontal overflow or essential clipped content. Selected meaning SHALL not rely on colour alone.
 
 #### Scenario: Filter and explanatory stars
+
 - **WHEN** a screen reader or keyboard user encounters the toolbar star or helper
 - **THEN** the filter exposes a localized membership-filter name and aria-pressed, while the helper announces localized explanatory star text without masquerading as a button
 
 #### Scenario: Text growth and safe areas
+
 - **WHEN** French, long names, 200% text, keyboard focus or safe-area insets require more room
 - **THEN** controls reflow or scroll intentionally with readable labels, visible focus and usable targets; reduced motion does not hide essential state
 
@@ -792,6 +921,7 @@ Changed controls SHALL have equivalent EN/FR meaning, keyboard operation, visibl
 For a saved Mystery night with a ready recipe proposal, Home Tonight SHALL show the localized Mystery label once in the normal header above the normal 5:4 recipe hero and suggestion content. Card geometry, typography and actions SHALL match the existing suggestion presentation. It SHALL add no decorative Mystery tile, large Mystery heading, below-photo label or invitation sentence. Displaying the proposal SHALL NOT assign it; Make this tonight remains explicit acceptance.
 
 #### Scenario: Ready Mystery proposal with usable photography
+
 - **WHEN** a saved recipe-free Mystery night has a ready proposal with a usable photograph
 - **THEN** the normal header says Mystery night in the selected locale above the ordinary 5:4 hero and normal suggestion recipe content
 - **AND** card/photo dimensions and recipe typography match the ordinary ready suggestion at the same viewport and inner width
@@ -799,11 +929,13 @@ For a saved Mystery night with a ready recipe proposal, Home Tonight SHALL show 
 - **AND** the saved Mystery plan remains unchanged by displaying the proposal
 
 #### Scenario: Explicit acceptance or cancelled search
+
 - **WHEN** a ready Mystery proposal is shown and the person opens and cancels Quick Find
 - **THEN** the saved Mystery plan remains intact
 - **AND** only explicit acceptance through Make this tonight assigns the displayed proposal through the existing flow
 
 #### Scenario: No ready proposal or unavailable photograph
+
 - **WHEN** Mystery night has no ready recipe proposal
 - **THEN** its presentation follows Explain Mystery without a ready recipe proposal, with checking/pending feedback and action availability preserved
 - **WHEN** a ready Mystery proposal has no usable photograph or its photograph fails to load
@@ -811,11 +943,13 @@ For a saved Mystery night with a ready recipe proposal, Home Tonight SHALL show 
 - **AND** no fabricated photograph or false assignment is implied
 
 #### Scenario: Locale and viewport preservation
+
 - **WHEN** the ready Mystery proposal uses English or French, a long title, 200 percent text, a short phone viewport or iPad portrait/landscape
 - **THEN** content wraps or scrolls without essential clipping, horizontal overflow, reduced action targets or a shrunken photograph/card
 - **AND** accessible image meaning, keyboard operation and visible focus remain available
 
 #### Scenario: Other Tonight states
+
 - **WHEN** the night is ordinary unplanned, planned, cooked or saved non-Mystery
 - **THEN** its established state precedence and action effects remain unchanged; saved recipe-free plan presentation follows Present saved recipe-free Tonight plans as full cards
 
@@ -824,17 +958,20 @@ For a saved Mystery night with a ready recipe proposal, Home Tonight SHALL show 
 Choosing Take Out on a saved recipe-free Mystery night SHALL save a recipe-free order_in plan with a null custom label for the captured authoritative date. It SHALL await save confirmation before showing Take Out, prevent repeated pending submission and preserve another local plan/date that supersedes the captured source. Failure SHALL retain or reconcile saved state with readable retry feedback.
 
 #### Scenario: Replace the stored plan
+
 - **WHEN** Take Out is chosen for saved Mystery and the dated save succeeds
 - **THEN** both the resulting Tonight card and subsequent schedule reads identify Take Out with no Mystery metadata
 - **AND** no food order or recipe assignment is submitted
 
 #### Scenario: Save is pending or fails
+
 - **WHEN** the replacement request remains pending
 - **THEN** choices are disabled and another activation sends no duplicate request
 - **WHEN** the save rejects
 - **THEN** saved state is retained or refreshed, controls recover and a localized failure offers retry without a status-only fallback
 
 #### Scenario: Source changes while pending
+
 - **WHEN** the captured date, recipe or local plan is superseded before the asynchronous action can apply its result
 - **THEN** the old completion does not overwrite that newer local state
 - **AND** an action whose source changed during calendar acquisition submits no replacement
@@ -844,20 +981,24 @@ Choosing Take Out on a saved recipe-free Mystery night SHALL save a recipe-free 
 A saved recipe-free Mystery night without a ready proposal SHALL show its localized saved-plan title, a generous Mystery icon and truthful availability text. It SHALL retain Quick Find and Take Out without Make this tonight. Display, request settlement and cancelling Quick Find SHALL NOT change the saved plan.
 
 #### Scenario: Active suggestion read has not settled
+
 - **WHEN** a saved Mystery night has no represented recipe and its initial active read is pending
 - **THEN** the card says Checking your GOTO in the selected locale rather than implying an empty recipe collection
 - **AND** Quick Find and Take Out remain available
 
 #### Scenario: No eligible suggestion or unsuccessful active read
+
 - **WHEN** a saved Mystery night has no represented recipe after its active read settles, whether from no eligible recipe or a request failure
 - **THEN** it says No GOTO suggestion available right now in the selected locale with the saved Mystery title and generous icon
 - **AND** it makes no claim that the household has no starred recipes and offers Quick Find and Take Out
 
 #### Scenario: Represented checking or pending recipe
+
 - **WHEN** a saved Mystery night has a represented recipe identity but no ready proposal
 - **THEN** the corresponding checking or preparing feedback remains readable without Make this tonight or a fabricated photograph
 
 #### Scenario: Proposal becomes ready
+
 - **WHEN** a ready proposal is represented for the saved Mystery night
 - **THEN** the normal quiet Mystery header, 5:4 photograph, recipe content and explicit acceptance specified by Show the normal recipe proposal beneath the Mystery header are retained
 - **AND** no large decorative Mystery tile is added to that ready-proposal composition
@@ -867,11 +1008,13 @@ A saved recipe-free Mystery night without a ready proposal SHALL show its locali
 Application-owned public copy SHALL name the former Order In choice Take Out in English, with equivalent French wording. This copy rule SHALL govern current labels, actions, summaries, accessibility text and supporting guidance. It SHALL preserve delivery support, stored identifiers, existing action effects and user-entered content.
 
 #### Scenario: Choose or review the plan in either locale
+
 - **WHEN** a person encounters the non-cooking choice on Home, Planner, a selection sheet or recovery dialog
 - **THEN** visible and accessible copy uses Take Out in English or À emporter in French consistently
 - **AND** explanatory copy can clarify takeout or delivery without implying that the app places an order
 
 #### Scenario: Compatibility and historical material
+
 - **WHEN** an existing order_in plan or legacy recipe-free Skipped entry is displayed
 - **THEN** it uses the new localized label without converting its persisted/API identity or editing user-entered labels
 - **AND** archived history and historical evidence remain unchanged
@@ -881,15 +1024,18 @@ Application-owned public copy SHALL name the former Order In choice Take Out in 
 Home SHALL display its existing Capture a Recipe tile before the Tonight decision card in visual, document and keyboard order. It SHALL remain a single direct Capture link with its existing appearance, label and behavior across planned, unplanned pivot, saved-plan and Cooked states. Status and error feedback SHALL remain perceivable. The page SHALL scroll naturally when content exceeds the viewport.
 
 #### Scenario: Planned or unplanned ordinary phone view
+
 - **WHEN** Home settles at its initial top position on a supported phone with ordinary text and no intervening notice
 - **THEN** the complete Capture a Recipe label and actionable tile are visible before the planned Tonight card or pivot
 - **AND** the tile precedes that card in screen-reader and keyboard order
 
 #### Scenario: Other Tonight states
+
 - **WHEN** Tonight displays a saved recipe-free plan, Mystery pivot, Cooked state or loading state
 - **THEN** Capture remains one reachable link before the applicable Tonight decision content, without changing that state's actions or data
 
 #### Scenario: Enlarged text, French and short viewport
+
 - **WHEN** Home is shown in English or French at 200 percent text or on a short phone viewport
 - **THEN** Capture and Tonight content reflow without clipped labels, overlapping controls, reduced action targets or concealment beneath navigation
 - **AND** content that cannot physically fit initially remains reachable by normal scrolling
@@ -899,15 +1045,18 @@ Home SHALL display its existing Capture a Recipe tile before the Tonight decisio
 Home SHALL NOT render a below-the-fold voting card, voting invitation, or voting status/retry section in any voting session phase; global voting state and entry SHALL live on the primary bottom-navigation control in recipe discovery. Capture a Recipe SHALL remain available on Home, and ordinary library entry SHALL use bottom Recipes without a Home Browse tile.
 
 #### Scenario: Active collecting or converged round while on Home
+
 - **WHEN** Home loads or receives live updates during an active `collecting` or `converged` voting round
 - **THEN** Home renders no below-the-fold voting card, `Vote Now` action, or `See your matches` action
 - **AND** Home retains `Capture a Recipe`, Tonight supper cards, and bottom `Recipes` navigation
 
 #### Scenario: Closed or unowned round on Home
+
 - **WHEN** confirmed household state has no active open voting round, including after closing voting
 - **THEN** Home displays no voting invitation while retaining `Capture a Recipe` and bottom `Recipes` navigation without a Browse Library handoff
 
 #### Scenario: Voting session check is pending or unavailable on Home
+
 - **WHEN** the voting session read is loading, fails, or returns an unusable response while Home is mounted
 - **THEN** Home displays no voting-status banner or voting `Retry` button beneath Tonight content
 - **AND** Tonight supper decisions and navigation remain operable

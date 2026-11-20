@@ -6,19 +6,19 @@ Start with the current request and [AGENT.md](../../AGENT.md), this document and
 only the active host's adapter. Reuse content already supplied in the session;
 do not re-read it merely because another document links to it.
 
-| Load | When |
-|---|---|
+| Load                                                    | When                                                                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Selected specification, task and immediate dependencies | Work on a change is selected; use its workflow to locate artifacts and load only relevant capability behavior |
-| [Mission](mission.md) | Product behavior, UX or engineering posture is relevant |
-| [Contract/testing](contract-testing.md) | Planning, implementing or verifying contract, code or test changes |
-| [Execution harness](execution-harness.md) | Running commands or validating/completing implementation |
-| [Ontology](ontology.md) | Terms or boundaries need clarification |
-| Relevant contract and directly affected source/tests | Needed to establish the selected change's behavior |
-| [Network topology](network-topology.md) | Network, deployment, cookies or SSE origin work; verify against current configuration |
-| [Home E2E reference](../../.kiro/steering/home-e2e.md) | Home SSR/Playwright investigation only |
-| HANDOVER via `task agent:status` | Resuming work or resolving active-state ambiguity |
-| JOURNAL, ADRs or a specific archived spec | A current question requires historical rationale |
-| A specific skill or prompt | Explicitly invoked, or its specialized procedure is needed for the selected task |
+| [Mission](mission.md)                                   | Product behavior, UX or engineering posture is relevant                                                       |
+| [Contract/testing](contract-testing.md)                 | Planning, implementing or verifying contract, code or test changes                                            |
+| [Execution harness](execution-harness.md)               | Running commands or validating/completing implementation                                                      |
+| [Ontology](ontology.md)                                 | Terms or boundaries need clarification                                                                        |
+| Relevant contract and directly affected source/tests    | Needed to establish the selected change's behavior                                                            |
+| [Network topology](network-topology.md)                 | Network, deployment, cookies or SSE origin work; verify against current configuration                         |
+| [Home E2E reference](../../.kiro/steering/home-e2e.md)  | Home SSR/Playwright investigation only                                                                        |
+| HANDOVER via `task agent:status`                        | Resuming work or resolving active-state ambiguity                                                             |
+| JOURNAL, ADRs or a specific archived spec               | A current question requires historical rationale                                                              |
+| A specific skill or prompt                              | Explicitly invoked, or its specialized procedure is needed for the selected task                              |
 
 Links are navigation, not recursive loading instructions. No skill is a mandatory
 startup dependency. Load only the supporting files needed by an activated skill;

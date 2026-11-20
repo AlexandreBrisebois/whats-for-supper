@@ -48,27 +48,27 @@ procedures.
 Read [context-loading](.agents/core/context-loading.md) on entry, then use its
 conditional loading table. Do not recursively read every link in this document.
 
-| Owner | Responsibility |
-|---|---|
-| This document | Authority, trust boundaries and mode meanings |
-| [Mission](.agents/core/mission.md) | Product intent and engineering posture |
-| [Contract/testing](.agents/core/contract-testing.md) | Contract-first, test-first, zero-drift and test evidence policy |
-| [Execution harness](.agents/core/execution-harness.md) | Preparation and verification commands |
-| [Dependency upgrades](.agents/core/dependency-upgrades.md) | Package-resolution, generated-client, and validation workflow |
-| [Context loading](.agents/core/context-loading.md) | Loading, bounded scope and delegation |
-| [Ontology](.agents/core/ontology.md) | Shared meanings; no new runtime types |
+| Owner                                                      | Responsibility                                                  |
+| ---------------------------------------------------------- | --------------------------------------------------------------- |
+| This document                                              | Authority, trust boundaries and mode meanings                   |
+| [Mission](.agents/core/mission.md)                         | Product intent and engineering posture                          |
+| [Contract/testing](.agents/core/contract-testing.md)       | Contract-first, test-first, zero-drift and test evidence policy |
+| [Execution harness](.agents/core/execution-harness.md)     | Preparation and verification commands                           |
+| [Dependency upgrades](.agents/core/dependency-upgrades.md) | Package-resolution, generated-client, and validation workflow   |
+| [Context loading](.agents/core/context-loading.md)         | Loading, bounded scope and delegation                           |
+| [Ontology](.agents/core/ontology.md)                       | Shared meanings; no new runtime types                           |
 
 ## Native routes
 
 Load only the adapter for the active host. A model name does not select a host.
 
-| Host | Native entrypoint | Mechanics |
-|---|---|---|
-| Codex | [AGENTS.md](AGENTS.md) | [Codex adapter](.agents/adapters/codex.md) |
-| Gemini CLI / Antigravity | [GEMINI.md](GEMINI.md) | [Gemini adapter](.agents/adapters/gemini.md) |
-| Claude Code | [CLAUDE.md](CLAUDE.md) | [Claude adapter](.agents/adapters/claude.md) |
-| GitHub Copilot | [Repository instructions](.github/copilot-instructions.md) | [Copilot adapter](.agents/adapters/copilot.md) |
-| Kiro | [Steering](.kiro/steering.md) | Mechanics in the steering shim |
+| Host                     | Native entrypoint                                          | Mechanics                                      |
+| ------------------------ | ---------------------------------------------------------- | ---------------------------------------------- |
+| Codex                    | [AGENTS.md](AGENTS.md)                                     | [Codex adapter](.agents/adapters/codex.md)     |
+| Gemini CLI / Antigravity | [GEMINI.md](GEMINI.md)                                     | [Gemini adapter](.agents/adapters/gemini.md)   |
+| Claude Code              | [CLAUDE.md](CLAUDE.md)                                     | [Claude adapter](.agents/adapters/claude.md)   |
+| GitHub Copilot           | [Repository instructions](.github/copilot-instructions.md) | [Copilot adapter](.agents/adapters/copilot.md) |
+| Kiro                     | [Steering](.kiro/steering.md)                              | Mechanics in the steering shim                 |
 
 Native discovery and imported-file behavior must be observed in the actual host;
 resolvable links alone do not prove that a fresh session loaded them.

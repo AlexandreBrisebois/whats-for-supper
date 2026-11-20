@@ -32,43 +32,52 @@ This file contains the historical session logs and technical archives for the "W
 ---
 
 ### [2026-08-05] Archive Reconciliation — Duplicate Recipe Capture Prevention (completed 2026-05-24)
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was built
+
 - Added contract and backend filtering by recipe `id`, `name`, and `url`, with GUID preservation for portable recipe imports.
 - Added duplicate detection and recovery across file, URL, describe, photo, and gallery capture paths.
 - Added warning banners, existing-recipe navigation, synthesized-duplicate discard handling, and state reset behavior.
 
 #### Verification
+
 - PWA unit and E2E coverage was added for the duplicate flows.
 - Contract drift and review gates were completed before the task plan was archived.
 
 ---
 
 ### [2026-08-05] Archive Reconciliation — High-Fidelity Recipe Sharing (completed 2026-05-24)
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was built
+
 - Preserved structured instructions during export and preview while supporting legacy flat instruction lists.
 - Scrubbed private notes and ratings from share bundles.
 - Hid sharing when a usable hero image is unavailable and aligned E2E mocks with the structured contract.
 - Added `pwa/e2e/sharing-fidelity.spec.ts` for export/import round-trip and privacy-scrubbing coverage.
 
 #### Verification
+
 - Backend integration, PWA unit, recipe-share E2E, and sharing-fidelity E2E coverage now represent the completed archived task plan.
 
 ---
 
 ### [2026-05-26] Session — Planner Page Enhancements
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was built
+
 Implemented planner slot layout and behavior enhancements to separate viewing recipe details from slot management actions, and added a "Plan Later" action to the pivot sheet.
 
 **Key Achievements:**
+
 1. **Separated Details from Management**: Clicking the recipe name on a planner slot card now opens the detailed recipe drawer instead of the pivot sheet. Added a dedicated `change-recipe-button` (`RefreshCw` icon) next to the drag handle to trigger the pivot sheet.
 2. **"Plan Later" (Save for Next Week)**: Added a "Save for Next Week" option in the `PlanningPivotSheet` grid. When clicked, it moves the recipe to next week's first available slot and clears the current slot.
 3. **Removed Cook's Mode from Card**: Removed direct Cook's Mode buttons from the planner cards, so they are only accessible from the recipe details drawer.
@@ -76,6 +85,7 @@ Implemented planner slot layout and behavior enhancements to separate viewing re
 5. **E2E and Unit Test Coverage**: Added unit tests for the "Plan Later" pivot sheet option and the planner page card triggers. Updated all planner E2E tests in `planner.spec.ts` to use the new details-to-cooks-mode drawer flow and card layout.
 
 #### Verification
+
 - `task test:unit` — ✅ Passed.
 - `npx playwright test e2e/planner.spec.ts` — ✅ Passed.
 - `task review` — ✅ Passed.
@@ -83,53 +93,63 @@ Implemented planner slot layout and behavior enhancements to separate viewing re
 ---
 
 ### [2026-05-16] Session — High-Fidelity Recipe Sharing — Preview UI
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was built
+
 Updated the PWA bundle preview interface to support structured instructions (Schema.org alignment) and optional recipe metadata.
 
 **Key Achievements:**
+
 1. **Structured Instruction Rendering**: Updated `MinimalCapture.tsx` to correctly render `HowToSection` headings and `HowToStep` lists using standard semantic HTML (h4, ul, li).
 2. **Standardized Test-IDs**: Aligned the UI with `design.md` by implementing `bundle-preview-section-title` and `bundle-preview-step-text` data-testids.
 3. **Optional Notes Preview**: Added a dedicated notes section to the bundle preview (`bundle-preview-notes`) that only renders when `notes` are present in the import bundle.
 4. **Resilient Testing**: Updated `MinimalCapture.recipe-import.test.tsx` to verify the new structured layout and added a regression test for optional notes rendering.
 
 #### Verification
+
 - `task test:unit` — ✅ Passed.
 - `task agent:drift` — ✅ No drift detected.
 
 ---
 
 ### [2026-05-15] Session — iPad Planner & CNF/Health Alignment
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was built
+
 Transformed the Planner into a high-utility dashboard for iPad/Desktop and finalized cross-spec alignment for CNF/Health features.
 
 **Key Achievements:**
+
 1. **iPad "Super Power" Planner**: Implemented 2-column layout (60/40) for large screens with embedded scrolling grocery list.
 2. **CNF/Health Decisions**: Resolved multiple architectural decisions (R1-R10) regarding explainability, confidence mapping, provider strategies, and allergy semantics.
 3. **Recipe Purge Hardening**: Fixed 500 errors during hard purge by ensuring explicit cleanup of dependent search docs, votes, and calendar events.
 4. **Hero Actions**: Integrated photo capture and AI regeneration into the recipe detail sheet.
 
 #### Verification
+
 - `task test:api` — ✅ Passed.
 - `task agent:drift` — ✅ No drift detected.
 - `task gate` — ✅ Passed.
 
 ---
 
- 
 ### [2026-05-14] Session — Multi-Recipe GOTO Rotation
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was built
+
 Expanded the "GOTO" system from a singular fallback to a dynamic list-based rotation to provide more variety when no meal is scheduled.
 
 **Key Achievements:**
+
 1. **Dynamic Rotation**: Implemented randomized cycling of GOTO recipes on the Home screen when no meal is scheduled.
 2. **GOTO Management List**: Transformed GOTO management in Settings into a list-based UI with quick-removal and an "Add a GOTO" sheet.
 3. **Recipe Details Integration**: Added a "GOTO" star toggle in the Recipe Detail Sheet for managing list membership.
@@ -137,6 +157,7 @@ Expanded the "GOTO" system from a singular fallback to a dynamic list-based rota
 5. **User Guide**: Updated `user-guide.md` to document the multi-recipe rotation and management flow.
 
 #### Verification
+
 - `npm run test:unit` — ✅ 340 passed.
 - `npx playwright test e2e/home-goto.spec.ts` — ✅ 5 passed.
 - `task gate` — ✅ passed.
@@ -144,26 +165,31 @@ Expanded the "GOTO" system from a singular fallback to a dynamic list-based rota
 ---
 
 ### [2026-05-11] Session — Recipe Purge 500 Hardening
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was fixed
+
 Hardened `DELETE /api/recipes/{id}/purge` so a valid elevated-PIN purge of a realistic Recycle Bin item does not fail with an unhandled 500 when dependent recipe state exists.
 
 **Key Achievements:**
+
 1. **Realistic Regression Coverage**: Added an API integration case for a soft-deleted recipe with an on-disk recipe directory, search document, recipe vote, and historical calendar event.
 2. **Explicit Dependent Cleanup**: Updated `RecipePurgeService` to remove `recipe_search_documents`, `recipe_votes`, and `calendar_events` before deleting the recipe row.
 3. **Atomic Purge Shape**: Kept validation first, then staged DB cleanup inside a transaction, performed filesystem cleanup before `SaveChangesAsync`, and committed only after the hard delete succeeds.
 4. **Contract Preservation**: No public API shape changed. Existing `200`, `403`, `404`, `409`, and `503` behavior remains intact.
 
 #### Documentation Updated
-| File | What changed |
-|------|-------------|
-| `specs/plans/2026-05-10-recipe-purge-500.md` | Marked implementation complete and recorded verification commands. |
+
+| File                                                         | What changed                                                                                        |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `specs/plans/2026-05-10-recipe-purge-500.md`                 | Marked implementation complete and recorded verification commands.                                  |
 | `specs/decisions/037-soft-delete-and-recycle-bin-pattern.md` | Clarified hard purge now explicitly removes known dependents and preserves filesystem-first safety. |
-| `docs/flows/data-flows/recipe-search-index-and-recovery.md` | Updated the hard-delete purge flowchart and notes to match the current service behavior. |
+| `docs/flows/data-flows/recipe-search-index-and-recovery.md`  | Updated the hard-delete purge flowchart and notes to match the current service behavior.            |
 
 #### Verification
+
 - `task test:api -- --filter RecipePurgeIntegrationTests` — ✅ 567 passed.
 - `task agent:test:impact` — ✅ no impacted tests identified.
 - `task gate` — ✅ passed, with existing PWA lint warnings only.
@@ -171,13 +197,16 @@ Hardened `DELETE /api/recipes/{id}/purge` so a valid elevated-PIN purge of a rea
 ---
 
 ### [2026-05-10] Session — Recipe Hero Actions Integration
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was built
+
 Implemented the "Cooked Photo" capture and AI hero regeneration experience for the recipe detail interface.
 
 **Key Achievements:**
+
 1. **Hero Action Overlays**: Integrated glassmorphism-styled "Camera" (photo upload) and "Regenerate" (AI hero refresh) buttons in the `RecipeDetailSheet` hero container.
 2. **Conditional Visibility**: Actions are restricted to `isEditing` mode to maintain a clean UI for standard viewing.
 3. **Global Toast System (ADR 042)**: Implemented a centralized `useUiStore` based toast system with a global `ToastContainer` for consistent user feedback (Success/Error/Info/Loading).
@@ -185,36 +214,44 @@ Implemented the "Cooked Photo" capture and AI hero regeneration experience for t
 5. **E2E Validation**: Created and passed `pwa/e2e/recipe-hero-actions.spec.ts` (3/3 tests) after hardening mocks and fixing auth fixtures.
 
 #### Technical Context & Decisions
+
 - **ADR 042**: Memorialized the global toast pattern.
 - **Testing pattern**: Fixed auth in E2E tests by using `test` from `./fixtures` to inject the `h_access` cookie, and ensured `x-family-member-id` was set correctly.
 
 #### Verification
+
 - `npx playwright test e2e/recipe-hero-actions.spec.ts` — ✅ 3 passed.
 - `task agent:drift` — ✅ No drift detected.
 
 ---
 
 ### [2026-05-09] Session — RecipeStackCard Test Alignment
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was fixed
+
 Synchronized unit test expectations in `RecipeStackCard.test.tsx` with the current UI implementation. The component had been updated to use `lucide-react` icons for swipe indicators, but the tests were still asserting the presence of legacy text arrows (`→` and `←`).
 
 #### Verification
+
 - `npm run test:unit -- src/components/recipes/RecipeStackCard.test.tsx` — ✅ 22 passed.
 - `task test:unit` — ✅ 333 passed (all PWA unit tests).
 
 ---
 
 ### [2026-05-09] Session — Recipe Action Pivot & E2E Stabilization
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was built
+
 This session implemented the **Recipe Action Pivot** feature, allowing the UI to dynamically switch between "Cook it tonight" and "Add it to {day}" based on navigation context.
 
 **Key Achievements:**
+
 1. **Context-Aware UI**: `RecipesPage` and `RecipeDetailSheet` now pivot labels and logic based on `addToDay` and `weekOffset` URL parameters.
 2. **Planner Integration**: "Quick Find" in the Planner now propagates specific slot context to the Search page.
 3. **Discovery Pivot**: Discovery-origin details now show `Cook this` first, then reveal `Cook it tonight` and `Plan for later`.
@@ -222,11 +259,13 @@ This session implemented the **Recipe Action Pivot** feature, allowing the UI to
 5. **Search Client Stabilization**: `searchRecipes` now uses a native fetch wrapper for `/api/recipes/search` to avoid Kiota nullable-union deserialization turning valid `topPick` payloads into empty marker objects.
 
 #### Technical Context & Decisions
+
 - **ADR 040**: Memorialized the requirement to use `route.fallback()` in Playwright to preserve the mocking hierarchy (Safety Gate -> Common Baseline -> Test Override).
 - **Mock fidelity**: `action-pivot.spec.ts` uses high-fidelity raw search result payloads so `mapSearchResult` receives the required fields (`id`, `name`, `imageUrl`, `totalTime`, `difficulty`, etc.).
 - **Unit contract alignment**: `RecipesPage` unit tests now assert the new CTA IDs (`action-cook-this`, `action-add-to-day`) and the planner redirect with `weekOffset`.
 
 #### Verification
+
 - `npm run test:unit -- src/app/(app)/recipes/page.test.tsx` — ✅ 38 passed.
 - `npx playwright test e2e/action-pivot.spec.ts` — ✅ 4 passed.
 - `npx playwright test e2e/planner-full-cycle.spec.ts` — ✅ 5 passed.
@@ -235,41 +274,49 @@ This session implemented the **Recipe Action Pivot** feature, allowing the UI to
 ---
 
 ### [2026-05-09] Session — Search UX & Intelligence Optimization
+
 **Status**: COMPLETED ✅
 **Branch**: `main`
 
 #### What was built
+
 This session focused on optimizing the **Recipe Search UX** for the PWA, specifically addressing layout density, visual redundancy, and the quality of search results through pantry intelligence.
 
 **Key Achievements:**
-1. **Layout Modernization**: Increased vertical spacing (`pt-6`) on the search page and added glassmorphism to the Agent Search textarea, aligning it with the *Mère-Designer* premium UI standards.
+
+1. **Layout Modernization**: Increased vertical spacing (`pt-6`) on the search page and added glassmorphism to the Agent Search textarea, aligning it with the _Mère-Designer_ premium UI standards.
 2. **Healthy Choice Filter**: Added an explicit `HealthyOnly` filter to the `RecipeSearchFiltersDto` and backend services. The agent now recognizes "healthy" intent in long-form text and automatically toggles the filter.
 3. **Pantry Boost**: Implemented a server-side scoring boost in `RecipeSearchService` that leverages `InventoryCaptureService` to prioritize recipes containing ingredients from user-uploaded photos.
 4. **Result Deduplication**: Restructured the search response to serve the highest-ranked result as a distinct `TopPick` and **explicitly exclude** it from the secondary `Results` list. This resolved React key conflicts and improved visual clarity.
 5. **Localization**: Updated English and French translation files with new keys for filters and UI labels.
 
 #### Technical Context & Decisions
+
 - **Zero Redundancy**: Moving the Top Pick out of the results collection ensures that the user never sees the same recipe twice on the search results screen, maximizing information density.
 - **Deduplication vs. Keys**: The separation of Top Pick and Results solved a persistent rendering issue where identical IDs in the Hero and Grid views caused React reconciliation conflicts.
 - **Pantry Normalization**: Ingredient matching between pantry photos and recipes is performed on normalized (lowercase, trimmed) strings to handle common data variations.
 
 #### Documentation Updated
-| File | What changed |
-|------|-------------|
+
+| File                               | What changed                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
 | `docs/search-experience-design.md` | Created new design document capturing the search UX and intelligence strategy. |
-| `HANDOVER.md` | Updated session entry for next developer. |
-| `JOURNAL.md` | Appended session summary to historical archive. |
+| `HANDOVER.md`                      | Updated session entry for next developer.                                      |
+| `JOURNAL.md`                       | Appended session summary to historical archive.                                |
 
 ---
 
 ### [2026-05-09] Session — Search Indexing Resiliency & Workflow Migration
+
 **Status**: COMPLETED ✅
 **Branch**: `main` (Stabilized indexing)
 
 #### What was built
+
 This session focused on transitioning the "Semantic Recipe Search" indexing logic from a synchronous service to a resilient, asynchronous workflow processed by the system's `WorkflowWorker` harness.
 
 **Key Achievements:**
+
 1. **Workflow Refactoring**: Refactored `SearchIndexWorkflow.cs` to implement the `IWorkflowProcessor` interface. This allows individual recipe indexing jobs to be managed by the `WorkflowOrchestrator`, providing built-in retry logic and state observability.
 2. **Workflow Definition**: Created and seeded `index-recipe-search.yaml` to define the new search indexing workflow.
 3. **API Integration**: Updated `RecipeService.cs` to trigger `index-recipe-search` workflows whenever a recipe is created, updated, or restored.
@@ -277,21 +324,23 @@ This session focused on transitioning the "Semantic Recipe Search" indexing logi
 5. **Native HTTP Resilience**: Implemented a native `HttpClient`-based `GeminiEmbeddingProvider` to bypass current SDK dependency resolution issues, ensuring immediate stability for vector indexing.
 
 #### Technical Context & Decisions
+
 - **Resiliency over Synchronicity**: Moving indexing into the workflow engine resolves the "failed status" trap where transient API errors from Gemini caused permanent indexing failures.
 - **ADR 041**: Formally documented the migration of search indexing to the workflow engine.
 - **SDK Bypass**: Used a native HTTP provider for embeddings to resolve a compilation mismatch with the `Microsoft.Extensions.AI` package.
 
 #### Documentation Updated
-| File | What changed |
-|------|-------------|
+
+| File                                                        | What changed                                                    |
+| ----------------------------------------------------------- | --------------------------------------------------------------- |
 | `docs/flows/data-flows/recipe-search-index-and-recovery.md` | Updated to reflect the workflow-based sequence and retry logic. |
-| `specs/decisions/041-*.md` | Created ADR 041. |
-| `JOURNAL.md` / `HANDOVER.md` | Updated session history and handoff notes. |
+| `specs/decisions/041-*.md`                                  | Created ADR 041.                                                |
+| `JOURNAL.md` / `HANDOVER.md`                                | Updated session history and handoff notes.                      |
 
 ---
 
-
 ### [2026-05-08] Session — Recipe Stack Browse Stabilization — Green State
+
 **Status**: COMPLETED ✅
 **Branch**: `browse-library` (merged/stabilized)
 
@@ -305,9 +354,9 @@ This session finalized and stabilized the **Recipe Stack Browse** feature, resol
 2. **Contract Synchronization**: Regenerated the Kiota API client and aligned `openapi.yaml` with the C# backend.
 3. **Logic Deduplication**: Centralized library summary retrieval and removed redundant logic in `RecipeService.cs`.
 4. **Validation & Greening**:
-    - **Unit Tests**: All 335 PWA unit tests passing (100% Green).
-    - **E2E Tests**: Verified `browse-stack.spec.ts` passes in a real browser environment.
-    - **Linting**: Resolved all React and TypeScript linting issues (including `setState-in-effect` violations).
+   - **Unit Tests**: All 335 PWA unit tests passing (100% Green).
+   - **E2E Tests**: Verified `browse-stack.spec.ts` passes in a real browser environment.
+   - **Linting**: Resolved all React and TypeScript linting issues (including `setState-in-effect` violations).
 5. **Documentation**: Finalized `README.md`, `user-guide.md`, and added comprehensive user/data flow diagrams for the browse feature.
 
 #### Technical Context & Decisions
@@ -320,16 +369,17 @@ This session finalized and stabilized the **Recipe Stack Browse** feature, resol
 
 #### Documentation Updated
 
-| File | What changed |
-|------|-------------|
-| `README.md` | Finalized feature status, pillar descriptions, and logo alignment. |
+| File            | What changed                                                              |
+| --------------- | ------------------------------------------------------------------------- |
+| `README.md`     | Finalized feature status, pillar descriptions, and logo alignment.        |
 | `user-guide.md` | Optimized library browsing and management instructions for busy families. |
-| `docs/flows/` | Added/Updated data and user flows for the Browse Stack experience. |
-| `HANDOVER.md` | Updated for next developer (Dietician Agent). |
+| `docs/flows/`   | Added/Updated data and user flows for the Browse Stack experience.        |
+| `HANDOVER.md`   | Updated for next developer (Dietician Agent).                             |
 
 ---
 
 ### [2026-05-08] Session — Semantic Recipe Search v2 (search-feature branch) — Close-Out Documentation
+
 **Status**: COMPLETED ✅
 **Branch**: `search-feature` → ready to merge into `main`
 
@@ -365,26 +415,26 @@ When search is entered from the Planner (`?addToDay=X&weekOffset=Y`), the servic
 
 Two new variables are required in production. Both were added to `docker/.env.example`, `docker/compose/apps.yml`, `docker/compose/production.yml`, `docker/compose/production-overrides.yml`, and `docker/docker-compose.prod.yml`.
 
-| Variable | Default | Notes |
-|----------|---------|-------|
-| `EMBEDDING_MODEL_ID` | `text-embedding-3-small` | Embedding model for vector indexing. Changing this after the index is built requires a full reindex. Leave empty to run lexical-only search. |
-| `ELEVATED_ACTIONS_PIN` | _(empty)_ | PIN required to purge from Recycle Bin. If unset, purge returns HTTP 503 (`PIN_NOT_CONFIGURED`). Set a 4–6 digit PIN in `.env.local` to enable. |
+| Variable               | Default                  | Notes                                                                                                                                           |
+| ---------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EMBEDDING_MODEL_ID`   | `text-embedding-3-small` | Embedding model for vector indexing. Changing this after the index is built requires a full reindex. Leave empty to run lexical-only search.    |
+| `ELEVATED_ACTIONS_PIN` | _(empty)_                | PIN required to purge from Recycle Bin. If unset, purge returns HTTP 503 (`PIN_NOT_CONFIGURED`). Set a 4–6 digit PIN in `.env.local` to enable. |
 
 ---
 
 #### Documentation updated this session
 
-| File | What changed |
-|------|-------------|
-| `README.md` | Status table updated (search and library management marked complete). Two new pillars added to "What it does." Documentation table links added. |
-| `DEPLOY.md` | New Section 8: semantic search configuration, `EMBEDDING_MODEL_ID`, `ELEVATED_ACTIONS_PIN`, sidecar backup/restore behaviour. |
-| `docker/.env.example` | New SEARCH section (`EMBEDDING_MODEL_ID`) and `ELEVATED_ACTIONS_PIN` in SECURITY section, both with full explanatory comments. |
-| `docker/compose/apps.yml` | Two new vars added to api service environment block. |
-| `docker/compose/production.yml` | Two new vars added to api service environment block. |
-| `docker/compose/production-overrides.yml` | Two new vars added to api service environment block. |
-| `docker/docker-compose.prod.yml` | Two new vars added to api service environment block. |
-| `docs/flows/user-flows/recipe-search-and-library-recovery.md` | Full rewrite: spec ref updated to v2, all three input paths, planner reranking rules with exact values, action map table, filter pill definitions, Recycle Bin flow with 409/403/503 paths, elevated-PIN rules, failed captures with CAS idempotency note. |
-| `docs/flows/data-flows/recipe-search-index-and-recovery.md` | Full rewrite: spec ref updated to v2, hybrid pipeline flowchart matches implementation, full ranking modifier table with constant names, agent translation described, inventory photo pipeline with temp-file lifecycle, `source_fingerprint` canonical field set, `SearchIndexWorkflow` sequence diagram with status transitions, sidecar schema, hard-delete purge flowchart with filesystem-first safety note, failed capture retry CAS, complete telemetry event table, failure mode table. |
+| File                                                          | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`                                                   | Status table updated (search and library management marked complete). Two new pillars added to "What it does." Documentation table links added.                                                                                                                                                                                                                                                                                                                                                 |
+| `DEPLOY.md`                                                   | New Section 8: semantic search configuration, `EMBEDDING_MODEL_ID`, `ELEVATED_ACTIONS_PIN`, sidecar backup/restore behaviour.                                                                                                                                                                                                                                                                                                                                                                   |
+| `docker/.env.example`                                         | New SEARCH section (`EMBEDDING_MODEL_ID`) and `ELEVATED_ACTIONS_PIN` in SECURITY section, both with full explanatory comments.                                                                                                                                                                                                                                                                                                                                                                  |
+| `docker/compose/apps.yml`                                     | Two new vars added to api service environment block.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `docker/compose/production.yml`                               | Two new vars added to api service environment block.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `docker/compose/production-overrides.yml`                     | Two new vars added to api service environment block.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `docker/docker-compose.prod.yml`                              | Two new vars added to api service environment block.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `docs/flows/user-flows/recipe-search-and-library-recovery.md` | Full rewrite: spec ref updated to v2, all three input paths, planner reranking rules with exact values, action map table, filter pill definitions, Recycle Bin flow with 409/403/503 paths, elevated-PIN rules, failed captures with CAS idempotency note.                                                                                                                                                                                                                                      |
+| `docs/flows/data-flows/recipe-search-index-and-recovery.md`   | Full rewrite: spec ref updated to v2, hybrid pipeline flowchart matches implementation, full ranking modifier table with constant names, agent translation described, inventory photo pipeline with temp-file lifecycle, `source_fingerprint` canonical field set, `SearchIndexWorkflow` sequence diagram with status transitions, sidecar schema, hard-delete purge flowchart with filesystem-first safety note, failed capture retry CAS, complete telemetry event table, failure mode table. |
 
 ---
 
@@ -407,6 +457,7 @@ These must not be revisited without an ADR:
 The remaining TODO item in the README is the Dietician Agent — a feature that will provide nutritional context, suggest weekly improvements, and potentially surface dietary-gap explanations in the planner. The search infrastructure built in this branch (grounded results with reasons, planner balance summary, family-fit signals) is the intended data source for that agent.
 
 Before starting that work:
+
 - Merge this branch and verify production deployment with `ELEVATED_ACTIONS_PIN` and `EMBEDDING_MODEL_ID` set.
 - Run `POST /api/management/backup` once to seed the `search.index.json` sidecars for all existing recipes.
 - Monitor `index_status` distribution (`pending`, `stale`, `failed`) via the management status endpoint. An `EMBEDDING_MODEL_ID` configured against a real provider will begin filling the vector index asynchronously.
@@ -414,6 +465,7 @@ Before starting that work:
 ---
 
 ### [2026-05-06] SSE fill_the_gap_invalidated Race Condition Fix
+
 **Status**: COMPLETED ✅
 
 **Objective**: Fix a flaky CI failure in `discovery.spec.ts` — the `just-planned-badge` element was never found after a `fill_the_gap_invalidated` SSE event.
@@ -424,9 +476,10 @@ The discovery page used a `pendingInvalidationRef` boolean to coordinate between
 - The `fillTheGapVersion` effect: fired when SSE arrived, set the flag if the stack wasn't loaded yet.
 - `initialize()`: checked and consumed the flag after the stack fetch completed.
 
-In CI (production build, `next start`), the two paths interleaved non-deterministically. The SSE could arrive and the effect could run *after* `stackIsLoadedRef.current = true` was set but *before* `initialize()` checked `pendingInvalidationRef`. In that window the effect took the "stack is ready" branch and called `refetchCurrentCategory()` directly — concurrently with `initialize()` which was still mid-flight. The concurrent refetch would complete against a partially-committed store state, find nothing to remove, and never set `showJustPlannedBadge = true`.
+In CI (production build, `next start`), the two paths interleaved non-deterministically. The SSE could arrive and the effect could run _after_ `stackIsLoadedRef.current = true` was set but _before_ `initialize()` checked `pendingInvalidationRef`. In that window the effect took the "stack is ready" branch and called `refetchCurrentCategory()` directly — concurrently with `initialize()` which was still mid-flight. The concurrent refetch would complete against a partially-committed store state, find nothing to remove, and never set `showJustPlannedBadge = true`.
 
 **Fix** (`pwa/src/app/(app)/discovery/page.tsx`)
+
 - Removed `pendingInvalidationRef` and its inline deferred-refetch path inside `initialize()`.
 - Added `recipes.length` as a dep to the `fillTheGapVersion` effect. When the stack loads (0 → N), the effect re-fires automatically and processes any SSE version that arrived earlier.
 - Added `lastHandledFillTheGapVersionRef` to prevent re-processing the same version when `recipes.length` changes for other reasons (e.g. card swipes).
@@ -437,6 +490,7 @@ In CI (production build, `next start`), the two paths interleaved non-determinis
 ---
 
 ### [2026-05-04] Session — Dev Loop Refactor (gate/review/test naming)
+
 **Status**: COMPLETED ✅
 
 **Objective**: Eliminate overlapping tasks in `Taskfile.yml` that were causing agent confusion and wasted context. Establish a clear two-loop model: `gate` (fast inner loop) and `review` (full pre-commit gate).
@@ -445,6 +499,7 @@ In CI (production build, `next start`), the two paths interleaved non-determinis
 `task review` had grown too large for the dev agent loop — it ran everything including full E2E. `task gate` was created as a workaround but the two tasks had overlapping deps (`agent:drift:schemas`, `gen:client:check`, `test:unit`) with no clear ordering contract. `test:pwa` was ambiguous (it ran E2E, not unit tests). `types:sync` was generating a file (`types.ts`) that nothing in the app or E2E tests imported.
 
 **Changes**
+
 - `Taskfile.yml`:
   - `test:pwa` → removed. Replaced by `test:e2e` (Playwright) and `test:unit` (Vitest) with unambiguous names.
   - `test:pwa:e2e` → removed (duplicate of `test:e2e`).
@@ -467,12 +522,14 @@ In CI (production build, `next start`), the two paths interleaved non-determinis
   - Quick start checklist updated.
 
 **Key Findings**
+
 - `pwa/src/lib/api/types.ts` (openapi-typescript) is not imported anywhere in `src/` or `e2e/`. The Kiota client (`src/lib/api/generated/`) is the sole source of truth for TypeScript types. `types:sync` was a dead task.
 - `gen:client:check` must run sequentially before `typecheck`, `test:unit`, and `agent:test:impact` — all three read from `src/lib/api/generated/` which `gen:client:check` may rewrite.
 - Python agent scripts (`drift.py`, `drift_mocks.py`, `test_ops.py`) are all read-only — safe to run in parallel.
 - `lint`, `typecheck`, `test:unit`, `agent:test:impact` have no shared write targets — safe to run in parallel via Taskfile `deps:`.
 
 **Verification**
+
 - `Taskfile.yml` syntax reviewed. No broken task references.
 - `LOCAL_DEV_LOOP.md` updated to match.
 - `HANDOVER.md` standing notes updated.
@@ -482,6 +539,7 @@ In CI (production build, `next start`), the two paths interleaved non-determinis
 ---
 
 ### [2026-05-04] Session — E2E Gate Repair & SSE Readiness
+
 **Status**: COMPLETED ✅
 
 **Objective**: Fix 8 failing E2E tests and 1 typecheck failure introduced by a session-prior refactor of route mocking from regex to predicate-function form. Mark never-passing tests as skipped with SSE TODOs.
@@ -490,6 +548,7 @@ In CI (production build, `next start`), the two paths interleaved non-determinis
 The refactor from `page.route(/regex/)` to `page.route((url) => ...)` introduced a closure scoping bug: `url` (the predicate parameter) was referenced inside `async (route) =>` handler bodies where TypeScript cannot see it. Additionally, `endsWith('/api/schedule')` predicates silently failed for URLs with query strings.
 
 **Changes**
+
 - `pwa/e2e/home-recipe.spec.ts` — 5 broken handlers fixed: replaced `url.searchParams.get(...)` closure with `new URL(route.request().url()).searchParams.get(...)` inside each handler.
 - `pwa/e2e/planner-social.spec.ts` — Fixed `endsWith('/api/schedule')` → `includes('/api/schedule')` in `beforeEach` and in the per-test "Nudge Family" route. "Nudge Family" test (Web Share mock not captured) skipped with TODO.
 - `pwa/e2e/capture-flow.spec.ts` — "failed URL capture" test (mock conflict + UI not wired) skipped with TODO.
@@ -500,6 +559,7 @@ The refactor from `page.route(/regex/)` to `page.route((url) => ...)` introduced
 All route handlers must use `new URL(route.request().url())` inside the handler body. Predicates check pathname/host only. Never reference the predicate's `url` param inside the handler.
 
 **Verification**
+
 - `task gate` passes: 65 passed, 4 skipped, 0 failed.
 - TypeCheck clean after `.next` cache clear.
 - `task agent:drift` — no schema drift.
@@ -509,16 +569,19 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-05-02] Session — SmartPivotCard Cleanup
+
 **Status**: COMPLETED ✅
 
 **Objective**: Remove the deprecated `SmartPivotCard` from `HomeSections.tsx` as it is no longer rendered and considered "zombie" code.
 
 **Changes**
+
 - `HomeSections.tsx`: Removed the `SmartPivotCard` component and unused `Search`, `Clock`, and `Utensils` icon imports.
 - `planner-feature-spec.md`: Updated to reflect the transition from `SmartPivotCard` to `TonightPivotCard`.
 - `ROADMAP.md`: Updated checklist to reflect the final implementation of `TonightPivotCard`.
 
 **Verification**:
+
 - `task typecheck` passed.
 - `task lint:pwa` passed.
 - Full grep search confirms no remaining usages of `SmartPivotCard` in `pwa/src`.
@@ -528,14 +591,17 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-05-01] Session — Phase 14 UX Hardening
+
 **Status**: COMPLETED ✅
 
 **Objective**: Fix six production UX issues identified after Phase 12/13 went live.
 
 **Phase A — Cook's Mode steps parser**
+
 - `parseRecipeSteps` extended with a `HowToSection` branch: detects `itemListElement` array, flattens sections → steps with sequential global index. Generic section names ("Preparation", "Instructions", "Steps", "Directions", "Method" — FR and EN) are not prefixed. Existing string array and flat `HowToStep` branches unchanged.
 
 **Phase B — Done = cooked (implicit)**
+
 - `CooksMode` gets `onCooked?: () => void` prop. Tapping "Done" on the last step calls `onCooked?.()` before `onClose()`.
 - `HomeCommandCenter` passes `handleCookedMark` as `onCooked`.
 - Planner page passes an inline handler that calls `POST /api/schedule/day/{date}/validate` with `status: 2`.
@@ -543,20 +609,24 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - E2E tests updated: "Flip card" asserts `cook-mode-btn` instead of `cooked-btn`. "Mark as cooked" test now opens Cook's Mode and steps through to "Done".
 
 **Phase C — Close Voting button**
+
 - `handleCloseVoting` added to planner page: calls `lockSchedule`, sets `isVotingOpen = false`, `isLocked = true`.
 - "Close" button rendered inline next to "Voting live" badge when `isVotingOpen` is true. `data-testid="close-voting-btn"`.
 
 **Phase E — Plan next week transition**
+
 - `plannerStore.setWeekOffset` now resets `isVotingOpen = false`, `isLocked = false` on every week navigation — stale state no longer bleeds across weeks.
 - `loadData` already synced `isVotingOpen`/`isLocked` from API `status` field (was already correct).
 - `handleFinalize` updated: after locking this week, calls `openVoting(currentWeekOffset + 1)`, then auto-navigates to next week after 2s success toast.
 
 **Phase D4 — Stale SSR fix (home card "Preparing recipe…")**
+
 - `HomeCommandCenter` client-side `getSchedule()` fetch now always runs on mount (removed `!todaysRecipe` guard).
 - SSR prop is optimistic initial value only — client fetch reconciles silently when SSR had a recipe (no spinner), shows loader only when SSR had nothing.
 - Fixes "Preparing recipe…" showing after moving a meal into today's slot from the planner.
 
 **Files changed**
+
 - `pwa/src/lib/cooking/stepParser.ts`
 - `pwa/src/components/planner/CooksMode.tsx`
 - `pwa/src/components/home/HomeCommandCenter.tsx`
@@ -572,13 +642,14 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 
 ---
 
-
 ### [2026-05-01] Session — Phase 13 F (AI Wiring), Phase 14 Spec, Discovery Fix
+
 **Status**: COMPLETED ✅
 
 **Objective**: Complete Phase 13 F (AI wiring, E2E hardening), fix production bugs discovered during smoke testing, write Phase 14 spec.
 
 **Phase 13 F — AI Wiring & E2E Hardening**
+
 - `SynthesizeRecipeProcessor` fully wired to `IChatClient` (Gemini). Prompt instructs Gemini to produce Schema.org Recipe JSON from text description. Same sanitize → deserialize → fallback → write `recipe.json` + `recipe.info` pattern as `RecipeAgent`.
 - `Program.cs` registration updated to factory lambda with `IChatClient` injection.
 - Removed `AdditionalProperties` (`num_ctx`) from `SynthesizeRecipeProcessor.GetChatOptions()` — this Ollama-specific parameter caused Gemini to return 400. Only `Temperature` and `MaxOutputTokens` sent.
@@ -590,12 +661,14 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - `task review` exits clean. Phase 13 fully complete (F3 smoke test pending live Gemini key).
 
 **Discovery Stack Ordering Fix**
+
 - `DiscoveryService.GetRecipesForDiscoveryAsync` ordering corrected: `VoteCount DESC`, then `LastCookedDate ASC NULLS FIRST`.
 - Implementation: `ThenBy(r => r.LastCookedDate ?? DateTimeOffset.MinValue)` — works in both PostgreSQL and EF in-memory provider.
 - Test assertion updated to match new ordering (NULL first, then oldest cooked date first within same vote group).
 - 12/12 discovery service tests pass.
 
 **Phase 14 Spec Written**
+
 - `.kiro/specs/phase-14-ux-hardening.md` created. Six issues identified from production smoke testing:
   1. Cook's Mode shows fallback steps (parser doesn't handle `HowToSection`)
   2. "Cooked" button confusing — should be implicit on Cook's Mode "Done"
@@ -606,6 +679,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - Five executable phases (A–E) + final review (F).
 
 **Files changed**
+
 - `api/src/RecipeApi/Services/DiscoveryService.cs` — ordering fix
 - `api/src/RecipeApi.Tests/Services/DiscoveryServiceTests.cs` — test assertion updated
 - `api/src/RecipeApi/Services/Processors/SynthesizeRecipeProcessor.cs` — AI wiring + `num_ctx` removal
@@ -622,13 +696,14 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 
 ---
 
-
 ### [2026-05-01] Session — Phase 13 Phases D1–D3, D fix, E
+
 **Status**: COMPLETED ✅
 
 **Objective**: Complete the PWA side of Phase 13 — "Change" bottom sheet in settings, GOTO status display states, E2E test fix, and capture page intent wiring.
 
 **Phase D1–D3 — FamilyGOTOSettings "Change" Sheet**
+
 - Replaced the single "Pick from library" / "Choose a GOTO recipe" buttons with a single "Change" / "Set your GOTO" button that opens a framer-motion bottom sheet.
 - Bottom sheet has three options: **Pick from library** (opens `QuickFindModal`, saves `status: 'ready'`), **Describe it** (navigates to `/capture?intent=goto`), **Capture it** (navigates to `/capture?intent=goto&mode=photo`).
 - Three display states in the card:
@@ -639,11 +714,13 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - Bottom sheet follows `QuickFindModal` pattern: `fixed inset-0 z-[60]`, spring animation, backdrop blur.
 
 **E2E fix — `confirm-goto-btn` always rendered**
+
 - Test `home-recovery.spec.ts:363` asserted `toBeDisabled()` on `confirm-goto-btn` when no GOTO is configured. The button was conditionally rendered (`{gotoReady && <button>}`), so the element didn't exist — Playwright reported "element(s) not found".
 - Fix: `confirm-goto-btn` is now always rendered with `disabled={!gotoReady}`. Disabled styling: `opacity-40`, `cursor-not-allowed`, `shadow-none`, `active:scale-100`.
 - All 8 tests in `home-recovery.spec.ts` now pass.
 
 **Phase E — Capture Intent Wiring**
+
 - `capture/page.tsx` converted to async Server Component — awaits `searchParams` and passes `intent` and `mode` as props to `MinimalCapture`.
 - `MinimalCapture` refactored with a three-tab switcher (Camera / Gallery / Describe) at the top.
 - **Describe tab**: required `name` field + optional `description` textarea. Submit calls `apiClient.api.recipes.describe.post(...)`. If `intent === 'goto'`: saves `{ description: name, recipeId: id, status: 'pending' }` to `family_goto` setting.
@@ -653,6 +730,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - `npm run typecheck` exits 0.
 
 **Files changed**
+
 - `pwa/src/components/profile/FamilyGOTOSettings.tsx` — full rewrite (bottom sheet, three display states)
 - `pwa/src/components/home/TonightPivotCard.tsx` — `confirm-goto-btn` always rendered, `disabled={!gotoReady}`
 - `pwa/src/app/(app)/capture/page.tsx` — async Server Component, passes `intent`/`mode` props
@@ -662,13 +740,14 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 
 ---
 
-
 ### [2026-04-30] Session — Phase 13 Phases A, B, C
+
 **Status**: COMPLETED ✅
 
 **Objective**: Execute Phase 13 (GOTO Recipe Synthesis) Phases A through C — contract, backend stub creation, and workflow plumbing.
 
 **Phase A — Contract**
+
 - Added `DescribeRecipeDto` (`name: string, description: string`) and `RecipeStatusDto` (`id, name?, status: pending|ready, imageCount`) schemas to `specs/openapi.yaml`.
 - Added `POST /api/recipes/describe` and `GET /api/recipes/{id}/status` paths.
 - Regenerated Kiota client — `apiClient.api.recipes.describe.post(...)` and `apiClient.api.recipes.byRecipeId(id).status.get()` confirmed.
@@ -678,6 +757,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - Zero drift confirmed.
 
 **Phase B — Backend Stub Creation**
+
 - `DescribeRecipeDto.cs` — `record` with `[Required] Name` and `[Required] Description`.
 - `RecipeStatusDto.cs` — `record` with `Id`, `Name?`, `Status`, `ImageCount`.
 - `RecipeService.DescribeRecipe()` — creates `Recipe` row (`ImageCount=0`, `IsDiscoverable=false`), returns `RecipeDto`. No workflow trigger yet.
@@ -687,6 +767,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - 134/134 tests pass.
 
 **Phase C — Workflow Plumbing**
+
 - `goto-synthesis.yaml` created in `api/src/RecipeApi/Workflows/` (seeded at startup) and `data/workflows/`. Chain: `SynthesizeRecipe → GenerateHero → MarkGotoReady`.
 - `SynthesizeRecipeProcessor` stub: creates recipe directory, writes minimal `recipe.json` and `recipe.info` from description text. No AI call (Phase F).
 - `MarkGotoReadyProcessor`: queries `family_settings` for `key='family_goto'` whose `value.recipeId` matches payload. If found: patches `status="ready"` via `JsonNode` round-trip, sets `recipe.image_count=1`. If not found or mismatched: no-op. Safe to append to any workflow.
@@ -698,9 +779,11 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - 138/138 tests pass. Perfect parity (43/43 endpoints). Zero drift.
 
 **Bug investigation (not a code bug)**
+
 - "Preparing recipe…" on home card for a recipe that's in the planner: caused by `recipe.name = null` in DB for one specific recipe. `SyncRecipeProcessor` writes the name — if it failed or never ran, the DB name stays null. The "Preparing recipe…" fallback text was introduced by commit `ffb41cd` as a Phase 13 UI change, exposing this pre-existing data condition. Fix: `POST /api/recipes/imports/bulk` re-triggers `recipe-import` for all `name IS NULL` recipes.
 
 **Files changed**
+
 - `specs/openapi.yaml` — `DescribeRecipeDto`, `RecipeStatusDto` schemas; two new paths
 - `pwa/src/lib/api/generated/` — Kiota regenerated (describe + status accessors + models)
 - `pwa/e2e/mock-api.ts` — `RECIPE_GOTO_STUB` ID, describe + status mock handlers
@@ -723,6 +806,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-05-01] Session — Phase 13 Phase D4 + TonightPivotCard UX
+
 **Status**: COMPLETED ✅
 
 **Objective**: Implement the GOTO status gate on the home card and redesign `TonightPivotCard` action layout to be conditional on GOTO availability.
@@ -730,6 +814,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 **Changes**
 
 `TonightPivotCard.tsx`:
+
 - Added optional `gotoStatus` prop (`"ready" | "pending" | null | undefined`).
 - `gotoReady` = recipeId present AND status is `"ready"` or absent (backward compat).
 - `gotoPending` = recipeId present AND status is `"pending"`.
@@ -740,6 +825,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - Removed `disabled` state on Confirm GOTO — button simply not rendered when no ready GOTO.
 
 `HomeCommandCenter.tsx`:
+
 - Extended `gotoValue` type to include `status?: string`.
 - Phase D4 gate: if `status` present and not `"ready"`, `gotoDescription` and `gotoRecipeId` are null for the home card — pending synthesis doesn't surface as a plannable meal.
 - Passes `gotoStatus` to `TonightPivotCard`.
@@ -748,6 +834,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 **Verification**: `tsc --noEmit` exits clean. Zero type errors.
 
 **Files changed**
+
 - `pwa/src/components/home/TonightPivotCard.tsx`
 - `pwa/src/components/home/HomeCommandCenter.tsx`
 
@@ -755,11 +842,10 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 
 ---
 
-
-
 **Objective**: Execute Phase 13 (GOTO Recipe Synthesis) Phases A through C — contract, backend stub creation, and workflow plumbing.
 
 **Phase A — Contract**
+
 - Added `DescribeRecipeDto` (`name: string, description: string`) and `RecipeStatusDto` (`id, name?, status: pending|ready, imageCount`) schemas to `specs/openapi.yaml`.
 - Added `POST /api/recipes/describe` and `GET /api/recipes/{id}/status` paths.
 - Regenerated Kiota client — `apiClient.api.recipes.describe.post(...)` and `apiClient.api.recipes.byRecipeId(id).status.get()` confirmed.
@@ -769,6 +855,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - Zero drift confirmed.
 
 **Phase B — Backend Stub Creation**
+
 - `DescribeRecipeDto.cs` — `record` with `[Required] Name` and `[Required] Description`.
 - `RecipeStatusDto.cs` — `record` with `Id`, `Name?`, `Status`, `ImageCount`.
 - `RecipeService.DescribeRecipe()` — creates `Recipe` row (`ImageCount=0`, `IsDiscoverable=false`), returns `RecipeDto`. No workflow trigger yet.
@@ -778,6 +865,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - 134/134 tests pass.
 
 **Phase C — Workflow Plumbing**
+
 - `goto-synthesis.yaml` created in `api/src/RecipeApi/Workflows/` (seeded at startup) and `data/workflows/`. Chain: `SynthesizeRecipe → GenerateHero → MarkGotoReady`.
 - `SynthesizeRecipeProcessor` stub: creates recipe directory, writes minimal `recipe.json` and `recipe.info` from description text. No AI call (Phase F).
 - `MarkGotoReadyProcessor`: queries `family_settings` for `key='family_goto'` whose `value.recipeId` matches payload. If found: patches `status="ready"` via `JsonNode` round-trip, sets `recipe.image_count=1`. If not found or mismatched: no-op. Safe to append to any workflow.
@@ -789,9 +877,11 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - 138/138 tests pass. Perfect parity (43/43 endpoints). Zero drift.
 
 **Bug investigation (not a code bug)**
+
 - "Preparing recipe…" on home card for a recipe that's in the planner: caused by `recipe.name = null` in DB for one specific recipe. `SyncRecipeProcessor` writes the name — if it failed or never ran, the DB name stays null. The "Preparing recipe…" fallback text was introduced by commit `ffb41cd` as a Phase 13 UI change, exposing this pre-existing data condition. Fix: `POST /api/recipes/imports/bulk` re-triggers `recipe-import` for all `name IS NULL` recipes.
 
 **Files changed**
+
 - `specs/openapi.yaml` — `DescribeRecipeDto`, `RecipeStatusDto` schemas; two new paths
 - `pwa/src/lib/api/generated/` — Kiota regenerated (describe + status accessors + models)
 - `pwa/e2e/mock-api.ts` — `RECIPE_GOTO_STUB` ID, describe + status mock handlers
@@ -813,12 +903,12 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 
 ---
 
-
 **Status**: COMPLETED ✅
 
 **Objective**: Author the Phase 13 spec, fix the `saveSetting` Kiota serialization bug, and clean up the planner empty slot animation.
 
 **Phase 13 Spec (`goto-synthesis`)**
+
 - Three-path GOTO model agreed with designer/product: Pick from library, Describe it (AI synthesis), Capture it (photo).
 - "Change" bottom sheet in `FamilyGOTOSettings` is the single entry point for all three paths.
 - `status: 'pending' | 'ready'` field added to GOTO setting value — home card gated by `status === 'ready'`.
@@ -830,11 +920,13 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - Kickoff prompt written for new chat handoff.
 
 **`saveSetting` Kiota serialization fix**
+
 - Root cause: `serializeSettingsDto_value` only writes `additionalData`. Plain object properties (`description`, `recipeId`) were silently dropped before the POST body was sent.
 - Fix: value fields passed via `{ additionalData: valueAsRecord }` in `familyStore.saveSetting`.
 - File: `pwa/src/store/familyStore.ts`.
 
 **Planner empty slot pulse removed**
+
 - Root cause: `motion.div` with infinite `borderColor`/`backgroundColor` animation on every empty day card — visually noisy, reads as error state.
 - Fix: replaced with static dashed border (`border-terracotta/30`) + hover transition. No animation.
 - File: `pwa/src/app/(app)/planner/page.tsx`.
@@ -844,16 +936,19 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-04-30] Phase 12 — No-Menu Home State ("Tonight Pivot")
+
 **Status**: COMPLETED ✅
 
 **Objective**: Replace the generic `SmartPivotCard` empty state on Home with a purposeful `TonightPivotCard` that surfaces the family's configured GOTO fallback meal.
 
 **Phase A — Contract & Client**
+
 - Added `SettingsDto` schema to `specs/openapi.yaml` with `GET/POST /api/settings/{key}`.
 - Regenerated Kiota client — `apiClient.api.settings.byKey(key).get()` / `.post()` confirmed.
 - Added settings mock handler to `pwa/e2e/mock-api.ts` inside `setupCommonRoutes` (per-test in-memory store, resets on each `beforeEach`).
 
 **Phase B — Backend Persistence**
+
 - `family_settings` table added to `api/database/schema.sql` (uuid PK, text key UNIQUE, jsonb value, timestamptz updated_at).
 - `FamilySetting` model, `RecipeDbContext` registration, `SettingsDto.cs` record.
 - `SettingsService` with `GetSettingAsync`, `UpsertSettingAsync`, and `SynthesizeRecipeAsync` stub (no AI call yet — hook for follow-on phase).
@@ -861,6 +956,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - Integration tests: 404 on unknown key, POST→GET round-trip, upsert idempotency, synthesis stub smoke test.
 
 **Phase C — PWA State & UI**
+
 - `familyStore` extended: `familySettings: Record<string, unknown>`, `loadSetting(key)`, `saveSetting(key, value)`.
 - `loadSetting` reads `response.data.value.additionalData` (Kiota `SettingsDto_value` is an `AdditionalDataHolder` — raw fields live in `additionalData`, not typed properties).
 - `TonightCardBase` extracted from `TonightMenuCard.tsx` — carries only the visual shell (`rounded-[3rem] bg-white shadow-2xl border-2 border-white/20`). `perspective-1000` and `preserve-3d` stay on `TonightMenuCard`'s outer wrapper.
@@ -870,16 +966,19 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - `HomeCommandCenter`: loads `family_goto` on mount, replaces `SmartPivotCard` with `TonightPivotCard`.
 
 **Phase D — E2E Hardening**
+
 - Updated `home-recovery.spec.ts`, `capture-flow.spec.ts`, `onboarding.spec.ts`: replaced all `smart-pivot-card` assertions with `tonight-pivot-card`; added settings mock to inline `beforeEach` blocks.
 - Added 4 new GOTO flow tests in `home-recovery.spec.ts` (Confirm GOTO, Discover, Order In, No GOTO prompt). Reached `TonightPivotCard` via the skip UI flow (not schedule mocking — see ADR 032).
 - `task review` exits clean.
 
 **Key technical decisions**
+
 - GOTO value shape: `{ description: string, recipeId: string }` stored as jsonb. Generic `key/value` schema supports future keys without contract changes.
 - `SmartPivotCard` not deleted — simply no longer rendered. Remove in a future cleanup pass.
 - SSR bypass constraint documented in ADR 032 and `.kiro/steering.md` §6.
 
 **Files changed (PWA)**
+
 - `pwa/src/store/familyStore.ts`
 - `pwa/src/components/home/TonightMenuCard.tsx` (+ `TonightCardBase` export)
 - `pwa/src/components/home/TonightPivotCard.tsx` (new)
@@ -892,6 +991,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - `.kiro/steering.md` (§6 added)
 
 **Files changed (API)**
+
 - `api/database/schema.sql`
 - `api/src/RecipeApi/Models/FamilySetting.cs` (new)
 - `api/src/RecipeApi/Data/RecipeDbContext.cs`
@@ -906,26 +1006,28 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-04-30] PWA Immersion & Polish
+
 **Status**: COMPLETED ✅
 
 - **Objective**: Achieve a native-like, immersive experience by hiding browser bars and adding PWA shortcuts.
 - **Refactoring**:
-    - **Viewport Optimization**: Added `viewport-fit=cover` in `layout.tsx` to utilize notch areas.
-    - **UI Locking**: Implemented `overscroll-behavior: none` and `min-height: 100dvh` in `globals.css` to prevent browser chrome from reappearing on scroll.
-    - **Manifest Polish**: Added OS-level shortcuts for "Quick Find" and "Capture Meal," enabled maskable icons, and synchronized theme/background colors.
+  - **Viewport Optimization**: Added `viewport-fit=cover` in `layout.tsx` to utilize notch areas.
+  - **UI Locking**: Implemented `overscroll-behavior: none` and `min-height: 100dvh` in `globals.css` to prevent browser chrome from reappearing on scroll.
+  - **Manifest Polish**: Added OS-level shortcuts for "Quick Find" and "Capture Meal," enabled maskable icons, and synchronized theme/background colors.
 - **Verification**: Verified via `tsc --noEmit` and passing E2E tests (`planner.spec.ts`).
 - **Files changed**: `pwa/src/app/layout.tsx`, `pwa/src/app/globals.css`, `pwa/public/manifest.json`.
 
 ---
 
 ### [2026-04-30] Home Page Cleanup & Roadmap Alignment
+
 **Status**: COMPLETED ✅
 
 - **Objective**: Clean up the Home Command Center by removing dead UI elements and rebranding "Surprise Me" to "Quick Find".
-- **Refactoring**: 
-    - Rebranded `SmartPivotCard` choices: `surprise` → `quick-find` (Search icon).
-    - Removed `NextPrepStepCard` (unused/non-functional).
-    - Updated `HomeCommandCenter` selection logic to explicitly no-op roadmap items (`15min`, `pantry`).
+- **Refactoring**:
+  - Rebranded `SmartPivotCard` choices: `surprise` → `quick-find` (Search icon).
+  - Removed `NextPrepStepCard` (unused/non-functional).
+  - Updated `HomeCommandCenter` selection logic to explicitly no-op roadmap items (`15min`, `pantry`).
 - **Roadmap**: Documented "15 Min Fix" and "Pantry Pasta" buttons as future features in `HANDOVER.md`.
 - **Verification**: Verified via `tsc` and E2E tests (`home-recovery.spec.ts`).
 - **Files changed**: `pwa/src/components/home/HomeSections.tsx`, `pwa/src/components/home/HomeCommandCenter.tsx`, `HANDOVER.md`.
@@ -933,6 +1035,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-04-29] API Reconciliation: Multi-line Detection & Schema Alignment
+
 **Status**: COMPLETED ✅
 
 - **Issue**: `GET /api/workflows/instances/{instanceId}` was incorrectly reported as missing in `MOCK` column.
@@ -945,8 +1048,8 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 
 ---
 
-
 ### [2026-04-29] E2E Fix: Service Worker Blocking + Grocery State Persistence
+
 **Status**: COMPLETED ✅
 
 - **Root cause 1**: `page.route()` intercepts were silently bypassed by a registered service worker (`public/sw.js`) that intercepted fetch requests before Playwright's network layer. No `[MOCK]` logs appeared; the catch-block fallback in `loadData` provided empty schedule data.
@@ -961,6 +1064,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-04-29] Prism Removal — Playwright Intercepts Only
+
 **Status**: COMPLETED ✅
 
 - **Root cause**: Prism (OpenAPI mock server on port 5001) held shared state across test runs, causing cross-spec pollution and flaky failures.
@@ -975,6 +1079,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-04-29] Phase 11 — UX Seams & Auth Layer
+
 **Status**: COMPLETED ✅
 
 - **Grocery Tab Wiring**: `GroceryList` component wired into planner page. Ingredients extracted from `day.recipe?.ingredients` across all schedule days.
@@ -988,6 +1093,7 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-04-29] Planner E2E Stabilization & Resilience
+
 **Status**: COMPLETED ✅
 
 - **Deterministic E2E Testing**: Established a new strategy for resilient E2E testing by freezing polling (60s interval) and using manual `page.reload()` for state verification.
@@ -999,10 +1105,11 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-04-29] Roadmap — Pantry Pasta button (Quick Fixes card)
+
 **Status**: PLANNED 📅
+
 - **Objective**: Implement a one-click "Pantry Pasta" recipe injection for the Quick Fixes card.
 - **Scope**: Create a built-in recipe (pasta, sauce, cheese, optional garlic bread) that populates a cook session immediately, bypassing external recipe lookup.
-
 
 ---
 
@@ -1014,7 +1121,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **[2026-04-17] Universal Agent Protocol**: Created `AGENT.md` and reorganized meta-docs.
 
 ### [2026-04-26] Agentic Framework Optimization (Flash & Haiku)
+
 **Status**: IN_PROGRESS 🚧
+
 - **Objective**: Refactor the project's meta-documentation and skill library for maximum performance on Gemini 3 Flash and Haiku 4.5.
 - **Uncompressed Protocol**: Refactored `AGENT.md` to eliminate intent diffusion, replacing metaphorical "Laws" with explicit "Operational Directives".
 - **Contract-First Testing**: Optimized `SKILL_TESTING.md` by removing legacy `mock-api.js` references and consolidating the workflow around OpenAPI/Prism.
@@ -1029,7 +1138,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ## Session History
 
 ### [2026-04-29] Phase 10 Complete — Kitchen & Grocery Hardening
+
 **Status**: COMPLETED ✅
+
 - **Prompts**: 01–07 (DB Foundation → API Logic → Social UI → Home Command Center → Kitchen & Grocery → E2E Hardening → Lint & Finalization)
 - **DB**: `weekly_plans` table (Draft/VotingOpen/Locked status, `grocery_state` JSONB). `CalendarEvent` gains `CandidateIds` + 4-state status. `ScheduleEntry` decommissioned. Unique constraint on `(date, meal_slot)`.
 - **API**: Full schedule state machine — `OpenVotingAsync`, `LockScheduleAsync` (with global vote purge), `ValidateMealAsync` (updates `last_cooked_date` on Cooked), `MoveScheduleAsync` (Swap + Push intent). Backup/restore forward-compatible with new schema.
@@ -1041,7 +1152,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **Commit**: `ee12511` — Phase 10 implementation + lint fixes committed.
 
 ### [2026-04-29] Prompt 05 — Kitchen & Grocery Hardening
+
 **Status**: COMPLETED ✅
+
 - **Objective**: Implement Cook's Mode step parsing and Aisle-First Grocery Checklist
 - **Cook's Mode**:
   - ✅ Recipe instructions parsing from `recipeInstructions` field (supports string arrays + HowToStep objects)
@@ -1073,7 +1186,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **References**: ADR 025, ADR 026
 
 ### [2026-04-27] Data Resilience & Routing Consolidation
+
 **Status**: COMPLETED ✅
+
 - **Objective**: Resolve 500 errors caused by legacy ingredient data and fix 404 errors in the bulk import workflow.
 - **Robust Deserialization**:
   - Refactored `RecipeService.DeserializeIngredients` into a robust, public static utility.
@@ -1092,7 +1207,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **References**: ADR 024.
 
 ### [2026-04-25] Full-Stack Contract & Schema Realignment
+
 **Status**: COMPLETED ✅
+
 - **Objective**: Resolve schema drift across the entire API surface and align DTOs with the OpenAPI contract.
 - **Drift Remediation**: Fixed 22+ issues by applying `[JsonPropertyName]` and aligning nullability/requiredness in C# DTOs.
 - **Route Mapping**: Updated `openapi.yaml` to include Management and Import routes, achieving 100% route coverage.
@@ -1100,7 +1217,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **Result**: Zero Drift verified via `task agent:drift`. All system tests passing via `task review`.
 
 ### [2026-04-23] Automated API Contract Workflow (Kiota & Prism)
+
 **Status**: COMPLETED ✅
+
 - **Architectural Shift**: Replaced manual `openapi-typescript` and custom Node mock server with an automated generation and mocking pipeline.
 - **Kiota**: Implemented `@microsoft/kiota` to generate a strictly-typed client SDK (`ApiClient`) directly from `specs/openapi.yaml`.
 - **Prism Mocking**: Replaced `mock-api.js` with Stoplight Prism (`prism mock`), guaranteeing 100% contract parity during frontend development.
@@ -1109,7 +1228,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **Documentation**: Updated `SKILL_API_DISCOVERY.md` to reflect the new automated "Contract-First" workflow. Added ADR `015-automated-api-contract-workflow.md`.
 
 ### [2026-04-26] Build Prompt 10: E2E Verification & Legacy Cleanup
+
 **Status**: COMPLETED ✅
+
 - **Objective**: Finalize the recipe-import workflow migration by verifying end-to-end execution and removing deprecated code.
 - **Deliverables**:
   - Created `/data/workflows/recipe-import.yaml` with 3-step workflow chain (ExtractRecipe → GenerateHero → SyncRecipe)
@@ -1123,7 +1244,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **Commit**: `2052241` — "feat: finalize recipe-import workflow migration and remove legacy services" (92 files)
 
 ### [2026-04-23] Merge SmartDefaults Into Planner Grid: Unified Grid Integration
+
 **Status**: COMPLETED ✅
+
 - **Feature**: Merged SmartDefaults component into the 7-day planner grid for a single unified view.
 - **Approach**: Test-first implementation with 5 new e2e tests. Parallel API fetching and smart merge logic.
 - **API Changes**: Added `getSmartDefaults(weekOffset)` to `pwa/src/lib/api/planner.ts` with `PreSelectedRecipe` and `SmartDefaultsResponse` interfaces.
@@ -1142,10 +1265,12 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
   - Drag/reorder works
   - Finalize assigns pending slots and locks
 - **Build Status**: ✅ TypeScript zero errors; `npm run build` succeeds; 10/10 planner tests passing
-- **References**: [pwa/src/lib/api/planner.ts](pwa/src/lib/api/planner.ts), [pwa/src/app/(app)/planner/page.tsx](pwa/src/app/(app)/planner/page.tsx), [pwa/e2e/planner.spec.ts](pwa/e2e/planner.spec.ts)
+- **References**: [pwa/src/lib/api/planner.ts](pwa/src/lib/api/planner.ts), [pwa/src/app/(app)/planner/page.tsx](<pwa/src/app/(app)/planner/page.tsx>), [pwa/e2e/planner.spec.ts](pwa/e2e/planner.spec.ts)
 
 ### [2026-04-23] Planner Voting Feature: Real-Time Vote Count Persistence
+
 **Status**: COMPLETED ✅
+
 - **Feature**: Implemented family voting consensus tracking with real-time display on planner.
 - **Design Approach**: Test-first design with 8 locked design decisions documented in `PLANNER_VOTING_DESIGN.md`.
 - **Backend Implementation**:
@@ -1165,17 +1290,19 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
   - Real-time vote counts in smart defaults
   - Unanimous vote detection
   - Historical vote count retrieval
-- **Data Flow Verified**: 
+- **Data Flow Verified**:
   1. Family votes in Discovery → RecipeVotes accumulates
   2. SmartDefaults reads live vote counts every 30 seconds
   3. Planner displays updating vote badges
   4. Mom clicks "End Voting" → counts persist to CalendarEvent, RecipeVotes cleared
   5. Historical vote counts available for data mining
 - **Documentation**: Created 3 comprehensive spec documents (design, tests, summary)
-- **Reference**: [api/docs/PLANNER_VOTING_DESIGN.md](api/docs/PLANNER_VOTING_DESIGN.md), [api/docs/VOTING_FEATURE_TESTS.md](api/docs/VOTING_FEATURE_TESTS.md), [pwa/src/app/(app)/planner/page.tsx:60-140](pwa/src/app/(app)/planner/page.tsx#L60).
+- **Reference**: [api/docs/PLANNER_VOTING_DESIGN.md](api/docs/PLANNER_VOTING_DESIGN.md), [api/docs/VOTING_FEATURE_TESTS.md](api/docs/VOTING_FEATURE_TESTS.md), [pwa/src/app/(app)/planner/page.tsx:60-140](<pwa/src/app/(app)/planner/page.tsx#L60>).
 
 ### [2026-04-23] Quick Find Modal: Hero Image Fix
+
 **Status**: COMPLETED ✅
+
 - **Issue**: QuickFindModal was rendering Image component with empty/undefined `src`, causing console errors: "empty string passed to src attribute" and "Image is missing required src property".
 - **Root Cause Analysis**:
   - Frontend: Image component rendered without checking if `image` prop existed or was empty
@@ -1191,7 +1318,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **Reference**: [pwa/src/components/planner/QuickFindModal.tsx](pwa/src/components/planner/QuickFindModal.tsx), [api/src/RecipeApi/Services/ScheduleService.cs](api/src/RecipeApi/Services/ScheduleService.cs), [api/src/RecipeApi/Dto/ScheduleDays.cs](api/src/RecipeApi/Dto/ScheduleDays.cs).
 
 ### [2026-04-23] Smart Voting Defaults: Consensus-Based Pre-Selection
+
 **Status**: COMPLETED ✅
+
 - **Feature**: Implemented intelligent pre-selection of meals based on family consensus (51%+ threshold using `Math.ceil((familySize + 1) / 2)`).
 - **Backend Logic** (`GetSmartDefaultsAsync`):
   - Calculates consensus threshold dynamically for families of any size
@@ -1214,14 +1343,16 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **Testing**:
   - Fixed e2e test (`planner.spec.ts::should trigger Cook Mode`) to find emoji button
   - Added `waitFor({ state: 'visible' })` to eliminate race condition
-- **Reference**: [api/src/RecipeApi/Services/ScheduleService.cs:152-239](api/src/RecipeApi/Services/ScheduleService.cs#L152), [api/src/RecipeApi/Dto/SmartDefaultsDto.cs](api/src/RecipeApi/Dto/SmartDefaultsDto.cs), [pwa/src/components/planner/SmartDefaults.tsx](pwa/src/components/planner/SmartDefaults.tsx), [pwa/src/app/(app)/planner/page.tsx:26-357](pwa/src/app/(app)/planner/page.tsx#L26), [pwa/e2e/planner.spec.ts:103-108](pwa/e2e/planner.spec.ts#L103).
+- **Reference**: [api/src/RecipeApi/Services/ScheduleService.cs:152-239](api/src/RecipeApi/Services/ScheduleService.cs#L152), [api/src/RecipeApi/Dto/SmartDefaultsDto.cs](api/src/RecipeApi/Dto/SmartDefaultsDto.cs), [pwa/src/components/planner/SmartDefaults.tsx](pwa/src/components/planner/SmartDefaults.tsx), [pwa/src/app/(app)/planner/page.tsx:26-357](<pwa/src/app/(app)/planner/page.tsx#L26>), [pwa/e2e/planner.spec.ts:103-108](pwa/e2e/planner.spec.ts#L103).
 - **Build Status**: ✅ Both API and PWA compile with zero warnings.
 
 ### [2026-04-23] Backend Schedule API Implementation & Migration Fix
+
 **Status**: COMPLETED ✅
+
 - **Core Implementation**: Created all 5 schedule endpoints (`GET /api/schedule`, `POST /api/schedule/lock`, `POST /api/schedule/move`, `POST /api/schedule/assign`, `GET /api/schedule/fill-the-gap`).
 - **Data Model**: Implemented `CalendarEvent` entity with `CalendarEventStatus` enum (Planned, Locked, Cooked, Skipped).
-- **Business Logic**: 
+- **Business Logic**:
   - `GetScheduleAsync` returns 7-day schedule with recipe data and week lock status.
   - `LockScheduleAsync` updates `Recipe.LastCookedDate` and purges all `RecipeVotes`.
   - `MoveScheduleEventAsync` swaps recipes between days, handles null cases.
@@ -1232,34 +1363,44 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **Reference**: [api/src/RecipeApi/Services/ScheduleService.cs](api/src/RecipeApi/Services/ScheduleService.cs), [api/src/RecipeApi/Controllers/ScheduleController.cs](api/src/RecipeApi/Controllers/ScheduleController.cs), [api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs](api/src/RecipeApi.Tests/Services/ScheduleServiceTests.cs), [api/Migrations/20260423151137_AddCalendarEvents.cs](api/Migrations/20260423151137_AddCalendarEvents.cs).
 
 ### [2026-04-23] Supper Planner PWA Implementation
+
 **Status**: COMPLETED ✅
+
 - **UI/UX**: Implemented the weekly dashboard with "Solar Earth" aesthetics, progress indicators, and reorderable daily cards.
 - **Planning Pivot**: Built the bottom sheet with Quick Find, Search, and Ask paths.
 - **Lockdown Flow**: Implemented the decisve "Finalize" workflow with success state transitions.
 - **Verification**: Passed 5/5 Playwright E2E tests (`planner.spec.ts`).
-- **Reference**: [pwa/src/app/(app)/planner/page.tsx](pwa/src/app/(app)/planner/page.tsx), [pwa/e2e/planner.spec.ts](pwa/e2e/planner.spec.ts).
+- **Reference**: [pwa/src/app/(app)/planner/page.tsx](<pwa/src/app/(app)/planner/page.tsx>), [pwa/e2e/planner.spec.ts](pwa/e2e/planner.spec.ts).
 
 ### [2026-04-22] Session Review & Documentation Stabilization
+
 **Status**: COMPLETED ✅
+
 - **Lanes Organization**: Reorganized `specs/` into a directory-based hierarchy.
 - **Lossless Consolidation**: Merged 10+ redundant files into 4 authoritative "Law" files.
 - **Reference**: [specs/00_STRATEGY/ROADMAP.md](specs/00_STRATEGY/ROADMAP.md).
 
 ### [2026-04-21] PWA Discovery UI Integration (TDD)
+
 **Status**: COMPLETED ✅
+
 - **Core Integration**: Connected `DiscoveryPage.tsx` to real API endpoints via `DiscoveryService`.
 - **Category Rotation**: Implemented sequential stack fetching.
 - **Identity**: Confirmed `x-family-member-id` as the authoritative key.
 - **Reference**: [pwa/src/lib/api/discovery.ts](pwa/src/lib/api/discovery.ts), [pwa/e2e/discovery.spec.ts](pwa/e2e/discovery.spec.ts).
 
 ### [2026-04-21] API Discovery Services & Match Logic (TDD)
+
 **Status**: COMPLETED ✅
+
 - **Core Logic**: Created `DiscoveryService.cs` with matching threshold (≥ 50%) and difficulty inference (<5 ingred + <20m).
 - **API Surface**: Exposed `GET /categories`, `GET /discovery`, and `POST /vote`.
 - **Reference**: `DiscoveryServiceTests.cs`.
 
 ### [2026-04-26] Phase 9 Task 01: Bulk Recipe Import Trigger
+
 **Status**: COMPLETED ✅
+
 - **Objective**: Implement a bulk trigger for the recipe-import workflow to process unimported recipes.
 - **Backend Implementation**:
   - Created `RecipeImportBulkService` to query recipes with `Name == null`.
@@ -1273,7 +1414,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **Result**: System can now trigger mass AI processing of legacy or raw captures with a single API call.
 
 ### [2026-04-27] Management Workflow Standardization & Automated Seeding
+
 **Status**: COMPLETED ✅
+
 - **Architectural Pivot**: Standardized database management (Backup, Restore, Disaster Recovery) by migrating them to the generic **Workflow System**.
   - Created `ManagementProcessor` and associated YAML workflow definitions.
   - Removed custom `ManagementWorker` and `ManagementTaskStore` (deleted 3 files).
@@ -1288,7 +1431,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **References**: ADR 019, ADR 020.
 
 ### [2026-04-27] Agentic Framework Evolution & Drift Resolution
+
 **Status**: COMPLETED ✅
+
 - **Objective**: Standardize agent workflows with explicit "Sequence of Work" and "Definition of Done" sections and resolve minor schema drift.
 - **Skill Evolution**:
   - Rethought `.agents/SKILL_DATABASE.md` to prioritize a "Schema-First" workflow (Authoritative SQL -> C# Models -> Drift Audit).
@@ -1304,7 +1449,9 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 - **Result**: Agent database evolution is now governed by a prescriptive, non-negotiable protocol, reducing the risk of future schema drift.
 
 ### [2026-04-27] API Centralization & Dev Workflow Hardening
+
 **Status**: COMPLETED ✅
+
 - **Architectural Shift**: Centralized successful API response wrapping into a global `SuccessWrappingFilter`.
   - Removed manual anonymous wrappers from all controllers.
   - Introduced `[SkipWrapping]` attribute for endpoints requiring raw responses (Health, Management, etc.).
@@ -1320,15 +1467,18 @@ All route handlers must use `new URL(route.request().url())` inside the handler 
 ---
 
 ### [2026-05-03] Session — URL Import Workflow Correction
+
 **Status**: COMPLETED ✅
 
 **Objective**: Correct the `url-import.yaml` workflow to ensure it works with the background orchestrator and respects the `workflow-author` skill.
 
 **Changes**
+
 - `data/workflows/url-import.yaml`: Rewritten to use `parameters`, `depends_on`, and `payload` properties. Standardized task names to snake_case.
 - Verified all task processors (`FetchUrlContent`, `ExtractRecipe`, `GenerateHero`, `SyncRecipe`, `RecipeReady`) against their C# implementations and `Program.cs` registration.
 
 **Verification**
+
 - `WorkflowOrchestratorTests` passed (6/6 tests).
 - Manual audit of `RecipeAgent`, `WebAcquisitionAgent`, and `RecipeHeroAgent` confirmed payload property names (`recipeId`, `url`) match the YAML templates.
 

@@ -3,6 +3,7 @@
 Stage 1 only; implementation and non-production DV deployment authorized by Alex on 2026-11-06. Sync/archive is conditional on passing tests and a demonstrably visible new DV version. No storage migration, provider repair or stage 2 prerequisite. Use disposable resources and synthetic fixtures; supplied production-derived files/database remain unchanged. Behavior checks below are future apply acceptance, not results from this planning split.
 
 ## 1. Home and Cook read the same dated ingredients
+
 **Outcome/scenarios:** supper-servings / Share one authoritative projection / Home ingredients and dated Cook agree.
 **Owners/boundaries:** HomeCommandCenter, TonightMenuCard, existing `pwa/src/lib/api/recipes.ts` projection wrapper and method-sensitive `pwa/e2e/mock-api.ts` GET `/api/recipes/{id}/ingredient-projection`. Existing contract and server projection; no local string scaler.
 **Acceptance boundary:** component/mock behavior plus generated client/API/disposable PostgreSQL; current captured occurrence and read-only effects.
@@ -11,6 +12,7 @@ Stage 1 only; implementation and non-production DV deployment authorized by Alex
 - [x] 1.2 Wire the existing projection owner into Home with captured identity and honest read states. Run 1.1 green and `task test:unit -- src/testing/mock-api.test.ts`; extend `LiveBrowser_IngredientPreviewReadOnly` to exercise Home expanded list → captured Cook using real generated client/API/PostgreSQL. Run `WFS_CALENDAR_LIVE=1 task test:api -- --filter FullyQualifiedName~LiveBrowser_IngredientPreviewReadOnly`; require actual amount agreement, stale rejection and unchanged recipe/plan/preparation/grocery/check/job state, zero required skips and owned-resource cleanup. Record this slice's evidence in design.
 
 ## 2. Quiet detail and deliberate preview/original reading
+
 **Outcome/scenarios:** recipe-library / Preview two four or six portions; Expose original evidence; Reveal portions explanation. Supper-servings / Report incomplete scaling; Keep previews independent.
 **Owners/boundaries:** RecipeDetailSheet, ActionGearMenu, existing GET detail/ingredient-preview/ingredient-projection wrappers, shared mocks and EN/FR. No API shape or scaling algorithm change.
 **Dependencies:** group 1; existing saved-basis editor remains the correction owner.
@@ -22,8 +24,10 @@ Stage 1 only; implementation and non-production DV deployment authorized by Alex
 - [x] 2.4 Review EN/FR 320/390 phone, 834 tablet, short height and 200% text renders for default/preview/original/unknown/mixed/error/editor/prepared/grocery entry. Verify 48 CSS px targets, menu keyboard/focus return, labels/pressed/status/error, contrast and Notes/footer clearance; run affected layout/Cook/source browser and locale-integrity checks. Update `docs/visual-language-reference.md` and design with actual screenshot/geometry evidence and physical-device limitations.
 
 ## 3. Final integration
+
 - [x] 3.1 Reconcile scenario acceptance and read-only/preservation evidence; review the complete changed-path diff, run applicable `task prepare -- <reviewed paths>` then `task verify -- <reviewed paths>`. Record invocation-specific identities and actual passes/failures/skips/retries; rerun full strict specs after all planning changes settle. No completion while a required live seam is blocked. Do not infer deployment/device acceptance from local tests.
 
 ## Workflow follow-up
+
 - Stage 1 apply approved; ingredient-data work remains outside this implementation.
 - PWA DV deployment and conditional sync/archive are explicitly authorized; no production release, reset, push or merge is included.

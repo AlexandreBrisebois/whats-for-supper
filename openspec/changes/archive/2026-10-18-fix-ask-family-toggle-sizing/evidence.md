@@ -19,28 +19,28 @@ Search's 16:9 image and mb-6 change appears in commit `c7bec241c32db74e33e704028
 
 ### Toggle geometry (CSS pixels)
 
-| Surface / initial state | Width | Before track width | Before thumb contained | After track | After thumb |
-| --- | ---: | ---: | --- | --- | --- |
-| Recipe detail / OFF | 320 | 21.08 | No | 56 × 32 | 24 × 24, contained |
-| Recipe detail / OFF | 390 | 29.66 | Yes | 56 × 32 | 24 × 24, contained |
-| Recipe detail / OFF | 1280 | 56 | Yes | 56 × 32 | 24 × 24, contained |
-| Stack / ON | 320 | 24.14 | No | 56 × 32 | 24 × 24, contained |
-| Stack / ON | 390 | 33.14 | No | 56 × 32 | 24 × 24, contained |
-| Stack / ON | 1280 | 46.75 | No | 56 × 32 | 24 × 24, contained |
+| Surface / initial state | Width | Before track width | Before thumb contained | After track | After thumb        |
+| ----------------------- | ----: | -----------------: | ---------------------- | ----------- | ------------------ |
+| Recipe detail / OFF     |   320 |              21.08 | No                     | 56 × 32     | 24 × 24, contained |
+| Recipe detail / OFF     |   390 |              29.66 | Yes                    | 56 × 32     | 24 × 24, contained |
+| Recipe detail / OFF     |  1280 |                 56 | Yes                    | 56 × 32     | 24 × 24, contained |
+| Stack / ON              |   320 |              24.14 | No                     | 56 × 32     | 24 × 24, contained |
+| Stack / ON              |   390 |              33.14 | No                     | 56 × 32     | 24 × 24, contained |
+| Stack / ON              |  1280 |              46.75 | No                     | 56 × 32     | 24 × 24, contained |
 
 After assertions cover both states and settled thumb offsets of 4px OFF / 28px ON, track containment and horizontal overflow. Detail also exercises a longer French subtitle in the real layout; component tests use the actual English/French translations. Browser API mocks test request and UI behavior, not database persistence.
 
 ### Search geometry at 360px (also checked at 390/430px)
 
-| Property | Before Search | After Search / Browse reference |
-| --- | ---: | ---: |
-| Image ratio | 1.78 (16:9) | 1.33 (4:3) |
-| Image inset from card edge | 13px | 1px border only |
-| Image bottom to title top | 67px | 12px |
-| Card radius | 32px | 8px |
-| Title lines shown for long fixture | 1 | 2 |
-| Time font size | 9px | 12px |
-| Mobile column gap | 16px | 12px |
+| Property                           | Before Search | After Search / Browse reference |
+| ---------------------------------- | ------------: | ------------------------------: |
+| Image ratio                        |   1.78 (16:9) |                      1.33 (4:3) |
+| Image inset from card edge         |          13px |                 1px border only |
+| Image bottom to title top          |          67px |                            12px |
+| Card radius                        |          32px |                             8px |
+| Title lines shown for long fixture |             1 |                               2 |
+| Time font size                     |           9px |                            12px |
+| Mobile column gap                  |          16px |                            12px |
 
 Both issue badges remain contained. Tests compare actual Browse geometry, cover Top Pick present/absent and preserve mounted results on detail return. Synthetic screenshots and JSON measurements are attached to Playwright reports; no household screenshots are included.
 
@@ -58,7 +58,6 @@ The initial workspace had Node 24 and older installed PWA packages. Initial togg
 ## Final verification
 
 The strengthened final toggle run passed all six cases, including exact false → true → false PATCH bodies, pressed states, same stack recipe ID and ordinal, and final OFF on detail reload. Scoped task prepare formatted only the six selected application/test files; no generation or unrelated writes occurred. The first final-harness invocation, `.task/agent-finish/runs/65e05e7218e94bc19018fa1d0551b449.json`, passed documentation/spec/lint/format/types and all 838 unit tests, then correctly rejected runtime mutation: the first full Vitest run populated additional files under node_modules/.vitest-cache. Browser/API/static-contract checks were not run in that invocation. A diagnostic full unit rerun passed all 838 tests with zero cache-content changes, establishing the cause was cache warm-up. No harness exclusions or application code were changed. The retry passed with that stable runtime.
-
 
 Full implementation verification passed in `.task/agent-finish/runs/ee46476629a344949e59f600d3c283f0.json`, content identity `6dd0bc088bd86fa346242c5641531fd8aaf5bdcd4af69ee1127efba6f24336af`: documentation, 34 spec checks, lint, format, typecheck, 838 unit tests, 280 browser tests (14 existing prerequisite/explicit skips, no retries), 987 API tests (93 conditional/manual skips), and five static contract checks. Database behavior, endpoint drift and agent-harness tests were not applicable to this presentation-only patch. Acceptance scenarios were separately reconciled against the geometry, request and screenshot evidence above.
 

@@ -101,12 +101,12 @@ The `recipe_ready` event also drives the GOTO flow (existing R requirement). Bot
 
 The success screen now shows TWO states depending on submit path:
 
-| Path | Immediate state | After recipe_ready |
-|---|---|---|
-| Photo upload | "Recipe queued — we'll notify you when it's ready" + solar loader pulse | Toast appears, success screen (if still open) transitions to checkmark |
-| URL capture | Same as photo | Same |
-| Describe (non-GOTO) | "Building your recipe…" + solar loader | Same |
-| Describe (GOTO intent) | "Your GOTO is being prepared" | GOTO button appears on /home |
+| Path                   | Immediate state                                                         | After recipe_ready                                                     |
+| ---------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Photo upload           | "Recipe queued — we'll notify you when it's ready" + solar loader pulse | Toast appears, success screen (if still open) transitions to checkmark |
+| URL capture            | Same as photo                                                           | Same                                                                   |
+| Describe (non-GOTO)    | "Building your recipe…" + solar loader                                  | Same                                                                   |
+| Describe (GOTO intent) | "Your GOTO is being prepared"                                           | GOTO button appears on /home                                           |
 
 **Auto-redirect removed (Mère-Designer ruling):** The 4-second auto-redirect to /home is removed. The user stays on the success screen and chooses: "Add another" (secondary) or "Done" (primary). This enables the multi-recipe batch submission flow without fighting the redirect.
 
