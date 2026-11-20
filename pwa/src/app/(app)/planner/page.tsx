@@ -1002,32 +1002,13 @@ export default function PlannerPage() {
                 {(isVotingOpen || canOpenVoting) && (
                   <div
                     data-testid="planner-action-row"
-                    className={cn(
-                      'flex items-center gap-1',
-                      // Nudge family + Close Voting take their own full line, side by side at
-                      // default text size; at enlarged text they stack rather than overflow.
-                      isVotingOpen && !isConvergedWeek
-                        ? 'basis-full flex-wrap justify-between'
-                        : 'flex-1 flex-wrap justify-end',
-                      isWide ? 'mb-4' : 'mb-5'
-                    )}
+                    className="mb-4 flex flex-1 flex-wrap items-center justify-end gap-1.5"
                   >
                     {/* Left Slot: Secondary Actions */}
-                    <div className="flex max-w-full justify-start">
-                      {isVotingOpen && !isConvergedWeek && (
-                        <button
-                          onClick={handleNudgeFamily}
-                          data-testid="nudge-family-cta"
-                          className="flex min-h-12 min-w-12 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-sage-700 hover:bg-sage-800 px-3 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
-                        >
-                          <Share2 size={14} />
-                          {t('planner.nudgeFamily', 'Nudge family')}
-                        </button>
-                      )}
-                    </div>
+                    <div className="flex max-w-full justify-start" />
 
                     {/* Right Slot: Primary Actions */}
-                    <div className="flex max-w-full justify-end">
+                    <div className="flex max-w-full items-center justify-end gap-1.5">
                       {canOpenVoting && (
                         <button
                           onClick={handleAskFamily}
@@ -1036,6 +1017,16 @@ export default function PlannerPage() {
                         >
                           <Users size={14} />
                           {t('planner.askFamily', 'Ask the Family')}
+                        </button>
+                      )}
+                      {isVotingOpen && !isConvergedWeek && (
+                        <button
+                          onClick={handleNudgeFamily}
+                          data-testid="nudge-family-cta"
+                          className="flex min-h-12 min-w-12 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-sage-700 hover:bg-sage-800 px-3 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
+                        >
+                          <Share2 size={14} />
+                          {t('planner.nudge', 'Nudge')}
                         </button>
                       )}
                       {isVotingOpen && (

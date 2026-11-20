@@ -331,6 +331,7 @@
     "nextWeek": "Semaine prochaine",
     "weekX": "Semaine {{count}}",
     "askFamily": "Demander à la famille",
+    "nudge": "Relancer",
     "nudgeFamily": "Relancer la famille",
     "curatingWeek": "Préparation de votre semaine...",
     "weekFinalized": "C'est validé !",

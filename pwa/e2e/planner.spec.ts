@@ -975,7 +975,7 @@ test.describe('Supper Planner', () => {
             const actions =
               status === 1
                 ? [
-                    ['nudge-family-cta', locale === 'fr' ? 'Relancer la famille' : 'Nudge family'],
+                    ['nudge-family-cta', locale === 'fr' ? 'Relancer' : 'Nudge'],
                     ['close-voting-btn', locale === 'fr' ? 'Fermer le vote' : 'Close Voting'],
                   ]
                 : [
