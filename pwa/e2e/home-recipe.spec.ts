@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { expectTonightLayout, recordTonightControlStates } from './helpers/tonight-card-layout';
 import { test, expect, type Page } from './fixtures';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import type { NonCookingPlanDto, ScheduleDays } from '../src/lib/api/generated/models';
 import {
   MOCK_IDS,
@@ -1869,7 +1870,7 @@ test.describe('Home Command Center — Planner → todayStore propagation (Group
   });
 });
 
-// Home's shared-session handoff uses the existing Home CI suite.
+// The app-shell nav medallion owns the shared-session handoff; Home carries no voting UI.
 test.describe('Home active voting handoff', () => {
   const round = (week = '2026-05-04', phase = 'collecting', revision = 1) => ({
     incarnationId: MOCK_IDS.MEMBER_TEST,
@@ -1927,8 +1928,36 @@ test.describe('Home active voting handoff', () => {
     }, snapshot);
   }
 
+  const medallion = (page: Page) =>
+    page.locator('[data-testid="nav-item-discovery"]:visible').first();
+  const homeVotingIds = [
+    'voting-nudge-card',
+    'voting-nudge-vote-now',
+    'home-see-matches',
+    'home-voting-status',
+    'voting-nudge-dismiss',
+  ];
+  async function assertNavA11y(page: Page) {
+    const rootSelector = '[data-testid="app-bottom-navigation"]';
+    await assertCookbookVisualA11y(page, { rootSelector, contrastLevel: 'aa' });
+    await page.evaluate(() => {
+      document.documentElement.dataset.contrast = 'high';
+    });
+    await assertCookbookVisualA11y(page, { rootSelector, contrastLevel: 'aaa' });
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.contrast;
+    });
+  }
+
+  async function expectNoHomeVoting(page: Page) {
+    for (const id of homeVotingIds) await expect(page.getByTestId(id)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Vote Now|See your matches|Retry/ })).toHaveCount(
+      0
+    );
+  }
+
   for (const week of ['2026-05-04', '2026-05-11', '2026-06-01']) {
-    test(`Home joins collecting round ${week} independently of Planner selection`, async ({
+    test(`Home stays voting-free while collecting round ${week}; the nav medallion enters Discovery`, async ({
       page,
     }) => {
       await prepare(page);
@@ -1936,14 +1965,11 @@ test.describe('Home active voting handoff', () => {
         route.fulfill({ json: { data: round(week) } })
       );
       await page.goto('/home');
-      await expect(page.getByRole('button', { name: 'Vote Now', exact: true })).toBeVisible();
-      await expect(page.getByTestId('voting-nudge-dismiss')).toHaveCount(0);
       await expect(page.getByTestId('quick-capture-trigger')).toBeVisible();
       await expect(page.getByTestId('home-browse-all-trigger')).toHaveCount(0);
-      await expect(
-        page.getByRole('navigation').getByRole('link', { name: 'Recipes' })
-      ).toBeVisible();
-      await page.getByRole('button', { name: 'Vote Now', exact: true }).click();
+      await expectNoHomeVoting(page);
+      await expect(medallion(page)).toHaveAttribute('href', '/discovery');
+      await medallion(page).click();
       await expect(page).toHaveURL(/\/discovery$/);
     });
   }
@@ -1953,9 +1979,9 @@ test.describe('Home active voting handoff', () => {
     { name: 'iPhone', width: 390, height: 844 },
     { name: 'Pixel', width: 412, height: 915 },
   ]) {
-    test(`Home matches handoff preserves absolute week and Planner tab on ${target.name}`, async ({
+    test(`Converged nav medallion preserves absolute week and Planner tab on ${target.name}`, async ({
       page,
-    }, testInfo) => {
+    }) => {
       await page.setViewportSize(target);
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await prepare(page);
@@ -1964,30 +1990,19 @@ test.describe('Home active voting handoff', () => {
         route.fulfill({ json: { data: current } })
       );
       await page.goto('/home');
-      await expect(page.getByTestId('home-see-matches')).toBeVisible();
+      await expect(medallion(page)).toContainText("Menu's in");
+      await expectNoHomeVoting(page);
+      await expect(page.getByText('Your matches are ready to review and save.')).toHaveCount(0);
       await page.getByRole('link', { name: 'Planner', exact: true }).click();
       await page.getByTestId('next-week').click();
       await page.getByTestId('grocery-tab').click();
       // Mobile groceries cover shell links. Browser Back preserves the in-memory tab.
       await page.goBack();
-      await expect(page.getByText("Menu's In", { exact: true })).toBeVisible();
-      await expect(
-        page.getByText('Your matches are ready to review and save.', { exact: true })
-      ).toBeVisible();
-      await expect(page.getByTestId('home-see-matches')).toBeEnabled();
-      await page.getByTestId('voting-nudge-card').scrollIntoViewIfNeeded();
+      await expect(medallion(page)).toContainText("Menu's in");
+      await assertNavA11y(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true
       );
-      await page.screenshot({
-        path: `/tmp/wfs-home-${target.name}.png`,
-        fullPage: true,
-        style: 'nextjs-portal { visibility: hidden; }',
-      });
-      await testInfo.attach(`Home ${target.name}`, {
-        path: `/tmp/wfs-home-${target.name}.png`,
-        contentType: 'image/png',
-      });
       // Browser week rollover must not reinterpret the round's absolute Monday.
       await page.clock.setFixedTime(new Date('2026-06-08T12:00:00Z'));
       const mutations: string[] = [];
@@ -2000,8 +2015,8 @@ test.describe('Home active voting handoff', () => {
           mutations.push(request.url());
         if (new URL(request.url()).pathname === '/api/schedule') reads.push(request.url());
       });
-      await page.getByTestId('home-see-matches').focus();
-      await expect(page.getByTestId('home-see-matches')).toBeFocused();
+      await medallion(page).focus();
+      await expect(medallion(page)).toBeFocused();
       await page.keyboard.press('Enter');
       await expect(page).toHaveURL(/\/planner\?weekOffset=0&referenceWeekStartDate=2026-06-01$/);
       await expect(page.getByTestId('planner-tab')).toHaveClass(/bg-white/);
@@ -2016,7 +2031,7 @@ test.describe('Home active voting handoff', () => {
     });
   }
 
-  test('Home reconciles live convergence, stale frames, close, reopen and resume', async ({
+  test('Nav medallion reconciles live convergence, stale frames, close, reopen and resume', async ({
     page,
   }) => {
     await prepare(page);
@@ -2025,129 +2040,80 @@ test.describe('Home active voting handoff', () => {
       route.fulfill({ json: { data: current } })
     );
     await page.goto('/home');
-    await expect(page.getByTestId('voting-nudge-vote-now')).toBeVisible();
+    await expectNoHomeVoting(page);
+    await expect(medallion(page)).toContainText('Discovery');
     current = round('2026-05-04', 'converged', 3);
     await emit(page, current);
-    await expect(page.getByTestId('home-see-matches')).toBeVisible();
+    await expect(medallion(page)).toContainText("Menu's in");
     await emit(page, round('2026-05-04', 'collecting', 2));
-    await expect(page.getByTestId('home-see-matches')).toBeVisible();
+    await expect(medallion(page)).toContainText("Menu's in");
     current = round('2026-05-04', 'unowned', 4);
     await emit(page, current);
-    await expect(page.getByTestId('voting-nudge-card')).toHaveCount(0);
+    await expect(medallion(page)).toContainText('Discovery');
+    await expectNoHomeVoting(page);
     current = { ...round('2026-05-11', 'collecting', 5), roundId: MOCK_IDS.MEMBER_JORDAN };
     // A missed reopen is recovered by the existing pageshow listener.
     await page.evaluate(() => dispatchEvent(new Event('pageshow')));
-    await expect(page.getByTestId('voting-nudge-vote-now')).toBeVisible();
+    await expect(medallion(page)).toContainText('Discovery');
     current = { ...current, phase: 'converged', revision: 6, coveredSlots: 3 };
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-    await expect(page.getByTestId('home-see-matches')).toBeVisible();
+    await expect(medallion(page)).toContainText("Menu's in");
+    await expectNoHomeVoting(page);
   });
 
-  test('Home retains confirmed navigation during recheck/failure and retries without guessing', async ({
+  test('Home shows no voting status or retry while the session read fails; the medallion stays ochre', async ({
     page,
   }) => {
     await prepare(page);
-    await page.addInitScript(() => {
-      (window as any).__homeVotingRetryClicks = 0;
-      document.addEventListener(
-        'click',
-        (event) => {
-          const button = event.target instanceof Element ? event.target.closest('button') : null;
-          if (
-            button?.closest('[data-testid="voting-nudge-card"]') &&
-            button.textContent?.trim() === 'Retry'
-          )
-            (window as any).__homeVotingRetryClicks++;
-        },
-        true
-      );
-    });
-    let mode: 'failed' | 'ready' | 'pending' = 'failed';
-    let readyAfterRetry = 1;
-    let release: (() => void) | undefined;
     await page.route('**/api/discovery/session', async (route) => {
       if (route.request().method() !== 'GET') return route.fallback();
-      if (mode === 'pending')
-        await new Promise<void>((resolve) => {
-          release = resolve;
-        });
-      // Background reconciliation must not consume a recovery reserved for Retry.
-      const retryClicks = await page.evaluate(() => (window as any).__homeVotingRetryClicks);
-      if (mode === 'failed' || (mode === 'ready' && retryClicks < readyAfterRetry))
-        return route.fulfill({ status: 400, json: { message: 'Unavailable' } });
-      return route.fulfill({ json: { data: round('2026-05-11', 'converged') } });
+      return route.fulfill({ status: 400, json: { message: 'Unavailable' } });
     });
     await page.goto('/home');
-    const retry = page
-      .getByTestId('voting-nudge-card')
-      .getByRole('button', { name: 'Retry', exact: true });
-    await expect(retry).toBeVisible({
-      timeout: 20000,
-    });
-    await expect(page.getByTestId('home-see-matches')).toHaveCount(0);
-    mode = 'ready';
-    // A reconnect may recheck voting before the person activates Retry.
-    await expect.poll(() => page.evaluate(() => !!(window as any).__sseSource)).toBe(true);
-    const backgroundRecheck = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' &&
-        new URL(response.url()).pathname === '/api/discovery/session'
-    );
-    await page.evaluate(() => (window as any).__sseSource.dispatchEvent(new Event('open')));
-    expect((await backgroundRecheck).status()).toBe(400);
-    await retry.click();
-    await expect(page.getByTestId('home-see-matches')).toBeEnabled();
-    mode = 'pending';
-    await page.evaluate(() => dispatchEvent(new Event('pageshow')));
-    await expect(page.getByTestId('home-voting-status')).toContainText('Checking voting');
-    await expect(page.getByTestId('home-see-matches')).toBeEnabled();
-    mode = 'failed';
-    release?.();
-    await expect(page.getByTestId('home-voting-status')).toContainText('last confirmed', {
-      timeout: 20000,
-    });
-    await expect(page.getByTestId('home-see-matches')).toBeEnabled();
-    readyAfterRetry = 2;
-    mode = 'ready';
-    await retry.click();
-    await expect(page.getByTestId('home-voting-status')).toHaveCount(0);
-    expect(await page.evaluate(() => (window as any).__homeVotingRetryClicks)).toBe(2);
+    await expect(page.getByTestId('quick-capture-trigger')).toBeVisible();
+    await expectNoHomeVoting(page);
+    await expect(medallion(page)).toContainText('Discovery');
+    await expect(medallion(page)).toHaveAttribute('href', '/discovery');
   });
 
-  test.describe('French Home voting', () => {
+  test.describe('French nav medallion', () => {
     test.use({ appLocale: 'fr' });
     for (const target of [
       { name: 'iPad', width: 820, height: 1180 },
       { name: 'iPhone', width: 390, height: 844 },
       { name: 'Pixel', width: 412, height: 915 },
     ]) {
-      test(`communicates unsaved matches on ${target.name} without changing Discovery copy`, async ({
+      test(`communicates the converged menu on ${target.name} without a Home card`, async ({
         page,
-      }, testInfo) => {
+      }) => {
         await page.setViewportSize(target);
         await prepare(page);
+        await page.route('**/api/family', (route) =>
+          route.request().method() === 'GET'
+            ? route.fulfill({
+                json: {
+                  data: [
+                    builders.familyMember({ id: MOCK_IDS.MEMBER_ALEX, preferredLanguage: 'fr' }),
+                  ],
+                },
+              })
+            : route.fallback()
+        );
         await page.route('**/api/discovery/session', (route) =>
           route.fulfill({ json: { data: round('2026-05-11', 'converged') } })
         );
         await page.goto('/home');
-        await expect(page.getByText('Le menu est prêt', { exact: true })).toBeVisible();
-        await expect(
-          page.getByText('Vos choix communs sont prêts à être consultés et enregistrés.', {
-            exact: true,
-          })
-        ).toBeVisible();
-        await expect(
-          page.getByRole('button', { name: 'Voir vos choix communs', exact: true })
-        ).toBeEnabled();
-        await page.screenshot({
-          path: `/tmp/wfs-home-fr-${target.name}.png`,
-          fullPage: true,
-          style: 'nextjs-portal { visibility: hidden; }',
-        });
-        await testInfo.attach('Home French', {
-          path: `/tmp/wfs-home-fr-${target.name}.png`,
-          contentType: 'image/png',
-        });
+        await expect(medallion(page)).toContainText('Menu prêt');
+        await expect(medallion(page)).toHaveAttribute(
+          'aria-label',
+          'Menu prêt — voir les choix du menu'
+        );
+        await expect(page.getByText('Le menu est prêt', { exact: true })).toHaveCount(0);
+        await assertNavA11y(page);
+        await expectNoHomeVoting(page);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+          true
+        );
       });
     }
   });

@@ -2370,7 +2370,7 @@ test('dated detail proposes before writing and chooser cancellation preserves it
   const proposed = await action.textContent();
   await page.getByTestId('action-change-day').click();
   await expect(page.getByTestId('planning-day-chooser')).toBeVisible();
-  await page.getByTestId('planning-day-cancel').click();
+  await page.getByTestId('planning-day-close').click();
   await expect(action).toHaveText(proposed!);
   expect(writes).toBe(0);
 });

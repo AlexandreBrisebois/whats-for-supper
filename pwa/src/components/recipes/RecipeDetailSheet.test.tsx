@@ -216,9 +216,13 @@ describe('RecipeDetailSheet', () => {
     await screen.findByText('Could not save changes. Try again.');
     expect(input).toHaveValue('3');
     expect(screen.getByTestId('recipe-servings')).toHaveTextContent('4 servings');
-    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Check saved recipe' }));
+    // The failed save automatically rereads the saved recipe; no manual check gate.
+    expect(screen.queryByRole('button', { name: 'Check saved recipe' })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId('recipe-save-edits')).toBeEnabled());
+    const failure = screen
+      .getByText('Could not save changes. Try again.')
+      .closest('[role="alert"]');
+    expect(failure).toHaveClass('bg-terracotta-50', 'border-hearth-line');
     mockUpdateRecipe.mockResolvedValueOnce(undefined);
     fireEvent.click(screen.getByTestId('recipe-save-edits'));
     await waitFor(() => expect(screen.queryByTestId('recipe-edit-servings-input')).toBeNull());
@@ -283,7 +287,8 @@ describe('RecipeDetailSheet', () => {
     // Returning to this tab's recipe recovers the pending original draft.
     const input = await screen.findByTestId('recipe-edit-servings-input');
     expect(input).toHaveValue('3');
-    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+    // The recovered draft is reconciled automatically; Save is directly available.
+    await waitFor(() => expect(screen.getByTestId('recipe-save-edits')).toBeEnabled());
     fireEvent.change(input, { target: { value: '2' } });
     await act(async () => finish());
     expect(input).toBeInTheDocument();

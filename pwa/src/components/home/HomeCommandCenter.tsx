@@ -4,7 +4,7 @@ import { PreparationStatus } from '@/components/planner/PreparationStatus';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Check } from 'lucide-react';
 import { NonCookingIcon } from '../planner/NonCookingIcon';
-import { QuickCaptureTrigger, CookedSuccessCard, VotingNudgeCard } from './HomeSections';
+import { QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
 import { TonightMenuCard, TonightCardBase } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
@@ -16,7 +16,7 @@ import { apiClient } from '@/lib/api/api-client';
 import { getSchedule, normalizeScheduleRecipe, saveNonCookingDay } from '@/lib/api/planner';
 import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly } from '@microsoft/kiota-abstractions';
-import { absoluteMonday, calendarDayIndex, type CalendarContext } from '@/lib/deployment-calendar';
+import { calendarDayIndex, type CalendarContext } from '@/lib/deployment-calendar';
 import {
   moveTomorrow,
   deferToFollowingWeek,
@@ -37,8 +37,6 @@ import { useTodayStore } from '@/store/todayStore';
 import { useGotoStore } from '@/store/gotoStore';
 import { useWeekStore } from '@/store/weekStore';
 import { useUiStore } from '@/store/uiStore';
-import { useDiscoveryStore } from '@/store/discoveryStore';
-import { usePlannerStore } from '@/store/plannerStore';
 import { t } from '@/locales';
 import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
 import { ROUTES } from '@/lib/constants/routes';
@@ -83,21 +81,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     kind?: string;
   } | null>(null);
   const [cookedDismissed, setCookedDismissed] = useState(false);
-  const session = useDiscoveryStore((state) => state.session);
-  const sessionStatus = useDiscoveryStore((state) => state.sessionStatus);
-  const refreshSession = useDiscoveryStore((state) => state.refreshSession);
-  const votingPhase =
-    session?.roundId &&
-    absoluteMonday(session.weekStartDate) &&
-    (session.phase === 'collecting' || session.phase === 'converged')
-      ? session.phase
-      : null;
-  const votingStatus =
-    sessionStatus === 'unknown' || sessionStatus === 'loading'
-      ? 'checking'
-      : sessionStatus === 'unavailable' || (session?.phase !== 'unowned' && !votingPhase)
-        ? 'unavailable'
-        : null;
 
   // ── Domain state from todayStore ──────────────────────────────────────────
   // NOTE: init() is intentionally excluded here — TodayStoreInitializer is the sole initialiser.
@@ -168,11 +151,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   // ── Reset cookedDismissed when no longer cooked ───────────────────────────
   // Note: cookedDismissed is only visually meaningful when isCooked is true.
   // Both badge conditions already gate on isCooked, so no explicit reset effect is needed.
-
-  // Reuse the shared read; the app layout owns reconnect and resume reconciliation.
-  useEffect(() => {
-    void refreshSession();
-  }, [refreshSession]);
 
   const router = useRouter();
 
@@ -912,29 +890,6 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               />
             )}
         </>
-      )}
-
-      {(votingPhase || votingStatus) && (
-        <VotingNudgeCard
-          phase={votingPhase}
-          status={votingStatus}
-          onRetry={() => void refreshSession()}
-          onNavigate={() => {
-            const current = useDiscoveryStore.getState().session;
-            const monday = absoluteMonday(current?.weekStartDate);
-            if (!current?.roundId || !monday) return;
-            if (current.phase === 'collecting') {
-              router.push(ROUTES.DISCOVERY);
-            } else if (current.phase === 'converged') {
-              usePlannerStore.getState().setActiveTab('planner');
-              const params = new URLSearchParams({
-                weekOffset: '0',
-                referenceWeekStartDate: monday,
-              });
-              router.push(`${ROUTES.PLANNER}?${params.toString()}`);
-            }
-          }}
-        />
       )}
 
       <AnimatePresence>

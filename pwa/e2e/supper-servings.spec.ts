@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import {
   setupCommonRoutes,
   builders,
@@ -135,12 +136,11 @@ test('Settings portions reconcile a dropped acknowledgement without replaying a 
   await section.getByTestId('usual-portions-input').fill('5');
   control.loseNextSaveReply();
   await section.getByTestId('save-usual-portions').click();
-  const review = section.getByRole('button', { name: 'Review current portions' });
-  await expect(review).toBeVisible();
+  // The lost reply is reconciled automatically: no manual Review gate.
+  await expect(section.getByText('Saved', { exact: true })).toBeVisible();
+  await expect(section.getByRole('button', { name: 'Review current portions' })).toHaveCount(0);
   await expect(section.getByTestId('usual-portions-input')).toHaveValue('5');
   expect(await read()).toMatchObject({ defaultServingsSource: 'explicit', defaultServings: 5 });
-  await review.click();
-  await expect(section.getByText('Saved', { exact: true })).toBeVisible();
   expect(writes).toBe(1);
 });
 
@@ -154,12 +154,11 @@ test('Settings portions protect a dirty baseline across a concurrent membership 
   await page.getByTestId('family-name-input').fill('Concurrent member');
   await page.getByTestId('add-member-submit').click();
   await expect(page.getByTestId('family-name-input')).toHaveValue('');
-  await expect(section.getByRole('button', { name: 'Review current portions' })).toBeVisible();
-  await expect(section.getByTestId('usual-portions-input')).toHaveValue('7');
-  await expect(section.getByTestId('save-usual-portions')).toBeDisabled();
-  const current = await read();
-  await section.getByRole('button', { name: 'Review current portions' }).click();
   await expect(section.getByText('Current saved portions: 3 (Family size)')).toBeVisible();
+  await expect(section.getByRole('button', { name: 'Review current portions' })).toHaveCount(0);
+  await expect(section.getByTestId('usual-portions-input')).toHaveValue('7');
+  await expect(section.getByTestId('save-usual-portions')).toBeEnabled();
+  const current = await read();
   const committed = page.waitForResponse(
     (response) =>
       response.request().method() === 'PUT' &&
@@ -239,9 +238,37 @@ test('Settings portions retain the draft after a real mock optimistic conflict',
   );
   await section.getByTestId('save-usual-portions').click();
   await conflict;
-  await section.getByRole('button', { name: 'Review current portions' }).click();
+  await expect(section.getByRole('button', { name: 'Review current portions' })).toHaveCount(0);
   await expect(section.getByTestId('usual-portions-input')).toHaveValue('7');
   await expect(section.getByText('Current saved portions: 5 (Your chosen total)')).toBeVisible();
+  await expect(section.getByTestId('usual-portions-recovery')).toHaveClass(/bg-terracotta-50/);
+  // Let the shared Button finish its opacity/color transition before measuring contrast.
+  await page.waitForTimeout(500);
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="usual-portions-section"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="usual-portions-section"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+    document.documentElement.style.fontSize = '32px';
+  });
+  await page.setViewportSize({ width: 320, height: 740 });
+  expect(
+    await section.evaluate(
+      (el) =>
+        document.documentElement.scrollWidth <= el.ownerDocument.documentElement.clientWidth + 1
+    )
+  ).toBe(true);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '';
+  });
   await expect(section.getByTestId('save-usual-portions')).toBeEnabled();
   await expect(section.getByText('Saved', { exact: true })).toHaveCount(0);
 });
@@ -526,6 +553,22 @@ test('saved portions return before refresh, then 600 g and one quiet check-reset
   await expect(page.getByTestId('grocery-portions-summary')).toHaveText(
     /Shopping list updated. Items needing more are unchecked./
   );
+  const notice = page.getByTestId('grocery-portions-summary');
+  await expect(notice).toHaveClass(/bg-sage-50/);
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="grocery-portions-summary"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="grocery-portions-summary"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+  });
   const aisle = page.getByRole('button', { name: /Pantry/ });
   if ((await aisle.getAttribute('aria-expanded')) === 'false') await aisle.click();
   await expect(page.getByTestId('grocery-item-quantity-hint')).toContainText('600');
@@ -534,8 +577,8 @@ test('saved portions return before refresh, then 600 g and one quiet check-reset
   await expect(page.getByText(/more needed|\+400/)).toHaveCount(0);
   await page.getByTestId('grocery-item-checkbox').filter({ hasText: 'pasta' }).click();
   await expect.poll(() => groceryChecked(schedule)).toBe(true);
-  await page.getByRole('button', { name: 'Dismiss', exact: true }).click();
-  await expect(page.getByTestId('grocery-portions-summary')).toHaveCount(0);
+  // Interacting with the list clears the quiet notice without a manual Dismiss tap.
+  await expect(notice).toHaveCount(0);
   expect(writes()).toBe(1);
 });
 
@@ -750,16 +793,14 @@ test('the same absolute portions draft survives a changed reference and saves it
   });
 });
 
-test('native Back keeps the draft until explicit discard and does not trap later history', async ({
+test('native Back pauses invalid drafts in a Hearth card until discard and does not trap later history', async ({
   page,
 }) => {
   const { bodies } = await draftFixture(page);
-  await page.getByTestId('portion-input-2026-05-06').fill('6');
+  await page.getByTestId('portion-input-2026-05-06').fill('0');
   await page.goBack();
   await expect(page.getByTestId('portions-departure')).toBeVisible();
-  await page.getByTestId('portions-keep-editing').click();
-  await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('6');
-  await page.goBack();
+  await expect(page.getByTestId('portions-save-continue')).toBeDisabled();
   await page.getByTestId('portions-discard').click();
   await expect(page).toHaveURL(/\/recipes$/);
   expect(bodies).toHaveLength(0);
@@ -768,7 +809,7 @@ test('native Back keeps the draft until explicit discard and does not trap later
   await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
 });
 
-test('reload retains the exact draft and captured baseline without an automatic save', async ({
+test('reload retains the exact draft and captured baseline in a calm Garden notice without an automatic save', async ({
   page,
 }) => {
   const { bodies } = await draftFixture(page, { usual: 4 });
@@ -780,7 +821,23 @@ test('reload retains the exact draft and captured baseline without an automatic 
   await page.getByTestId('portion-input-2026-05-06').fill('6');
   page.once('dialog', (dialog) => dialog.accept());
   await page.reload();
-  await expect(page.getByTestId('portions-restored')).toBeVisible();
+  const restoredNotice = page.getByTestId('portions-restored');
+  await expect(restoredNotice).toBeVisible();
+  await expect(restoredNotice).toHaveClass(/bg-sage-50/);
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="portions-restored"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="portions-restored"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+  });
   await expect(page.getByTestId('usual-portions')).toHaveCount(0);
   await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('6');
   expect(bodies).toHaveLength(0);
@@ -793,7 +850,7 @@ test('reload retains the exact draft and captured baseline without an automatic 
 });
 
 for (const destination of ['week', 'grocery', 'shell', 'back'] as const) {
-  test(`dirty ${destination} departure keeps editing then saves once and continues`, async ({
+  test(`dirty ${destination} departure auto-saves once and continues without confirmation`, async ({
     page,
   }) => {
     const { bodies } = await draftFixture(page);
@@ -812,12 +869,7 @@ for (const destination of ['week', 'grocery', 'shell', 'back'] as const) {
           .click();
     };
     await depart();
-    await expect(page.getByTestId('portions-departure')).toBeVisible();
-    await page.getByTestId('portions-keep-editing').click();
-    await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('6');
-    expect(bodies).toHaveLength(0);
-    await depart();
-    await page.getByTestId('portions-save-continue').click();
+    await expect(page.getByTestId('portions-departure')).toHaveCount(0);
     if (destination === 'week') await expect(page).toHaveURL(/weekOffset=1/);
     else if (destination === 'grocery')
       await expect(page.getByTestId('grocery-portions-updating')).toHaveCount(0);
@@ -854,7 +906,7 @@ test('returning to a clean draft releases native history and does not restore ob
   expect(bodies).toHaveLength(0);
 });
 
-test('remote serving conflict retains exact drafts until explicit review and one corrected save', async ({
+test('remote serving conflict automatically loads baseline into an Era 3 Hearth card for one corrected save', async ({
   page,
 }) => {
   const { bodies } = await draftFixture(page, { usual: 4 });
@@ -879,16 +931,15 @@ test('remote serving conflict retains exact drafts until explicit review and one
     async () => (await (await fetch('/api/schedule/servings?weekOffset=0')).json()).data.version
   );
   await page.getByTestId('save-portions').click();
-  await expect(page.getByTestId('portions-review')).toBeVisible();
+  await expect(page.getByTestId('portions-review')).toHaveCount(0);
+  const recovery = page.getByTestId('portions-saved-review');
+  await expect(recovery).toBeVisible();
+  await expect(recovery).toHaveClass(/bg-terracotta-50/);
+  await expect(page.getByTestId('portion-input-2026-05-09')).toHaveValue('8');
   await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('6');
   await expect(page.getByTestId('usual-portions')).toHaveCount(0);
   await expect(page.getByTestId('save-portions')).toBeDisabled();
-  await page.getByTestId('portions-review').click();
-  await page.getByTestId('portions-keep-draft').click();
-  await expect(page.getByTestId('save-portions')).toBeEnabled();
-  await expect(page.getByTestId('portion-input-2026-05-09')).toHaveValue('8');
-  await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('6');
-  await page.getByTestId('save-portions').dblclick();
+  await page.getByTestId('portions-save-recovered').click();
   await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
   expect(bodies).toHaveLength(3); // remote write, rejected stale batch, one reviewed batch
   expect(bodies[2]).toMatchObject({
@@ -1161,6 +1212,54 @@ test('Ask, Nudge and Close voting remain operational without erasing the portion
   expect(schedule.status).toBe(2);
 });
 
+test('confirmed convergence hides Nudge, promotes the Garden close action beside Portions and confirms Menu saved!', async ({
+  page,
+}) => {
+  const { schedule } = await draftFixture(page, { status: 1 });
+  schedule.votingRoundId = MOCK_IDS.VOTING_ROUND;
+  await page.route(
+    (url) => url.pathname === '/api/discovery/session',
+    (route) =>
+      route.fulfill({
+        json: {
+          data: {
+            incarnationId: MOCK_IDS.MEMBER_TEST,
+            revision: 1,
+            roundId: MOCK_IDS.VOTING_ROUND,
+            weekStartDate: schedule.weekStartDate,
+            phase: 'converged',
+            requiredSlots: 3,
+            coveredSlots: 3,
+            candidateCount: 3,
+            smartDefaults: { preSelectedRecipes: [], openSlots: [] },
+          },
+        },
+      })
+  );
+  await page.reload();
+  await expect(page.getByTestId('close-voting-btn')).toBeVisible();
+  await expect(page.getByTestId('nudge-family-cta')).toHaveCount(0);
+  const close = page.getByTestId('close-voting-btn');
+  await expect(close).toHaveClass(/bg-garden-fill/);
+  await expect(close).toHaveAccessibleName(/Close Voting|Save menu & close voting/);
+  // Measure the settled Planner rather than its initial spring's translated frame.
+  await expect
+    .poll(() =>
+      close.evaluate((el) => {
+        for (let node: Element | null = el; node; node = node.parentElement)
+          if (getComputedStyle(node).transform !== 'none') return false;
+        return true;
+      })
+    )
+    .toBe(true);
+  const bounds = await close.boundingBox();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await close.click();
+  await expect(page.getByTestId('planner-week-finalized')).toHaveText('Menu saved!');
+});
+
 test('conflict review exposes newer saved values before explicitly keeping local edits', async ({
   page,
 }, info) => {
@@ -1185,7 +1284,7 @@ test('conflict review exposes newer saved values before explicitly keeping local
     async () => (await (await fetch('/api/schedule/servings?weekOffset=0')).json()).data.version
   );
   await page.getByTestId('save-portions').click();
-  await page.getByTestId('portions-review').click();
+  await expect(page.getByTestId('portions-review')).toHaveCount(0);
   await expect(page.getByTestId('portions-saved-review')).toContainText('2026-05-06');
   await expect(page.getByTestId('portions-saved-review')).toContainText('Saved: 9');
   await expect(page.getByTestId('portions-saved-review')).toContainText('Your edits: 6');
@@ -1193,6 +1292,20 @@ test('conflict review exposes newer saved values before explicitly keeping local
   await expect(page.getByTestId('portion-input-2026-05-05')).toHaveValue('5');
   await expect(page.getByTestId('save-portions')).toBeDisabled();
   await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('6');
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="portions-saved-review"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="portions-saved-review"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+  });
   await page.setViewportSize({ width: 320, height: 740 });
   await page.evaluate(() => (document.documentElement.style.fontSize = '32px'));
   const recovery = page.getByTestId('portions-saved-review');
@@ -1204,8 +1317,7 @@ test('conflict review exposes newer saved values before explicitly keeping local
     animations: 'disabled',
     style: 'nextjs-portal{visibility:hidden}',
   });
-  await page.getByTestId('portions-keep-draft').click();
-  await page.getByTestId('save-portions').click();
+  await page.getByTestId('portions-save-recovered').click();
   await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
   expect(bodies[2]).toMatchObject({
     expectedVersion: remoteVersion,
@@ -1644,20 +1756,25 @@ test('grocery quantities identify incomplete known subtotals without warning on 
   await expect(page.getByTestId('action-view-original')).toBeVisible();
 });
 
-test('lost portions reply survives reload and reconciles committed intent without another PUT', async ({
+test('lost portions reply survives reload and reconciles committed intent automatically without another PUT', async ({
   page,
 }) => {
   const { bodies, control } = await draftFixture(page, { usual: 4 });
   await page.getByTestId('portion-input-2026-05-06').fill('6');
+  let blockReads = true;
+  await page.route('**/api/schedule/servings*', async (route) => {
+    if (route.request().method() === 'GET' && blockReads) {
+      return route.fulfill({ status: 503, json: { error: 'read temporarily unavailable' } });
+    }
+    return route.fallback();
+  });
   control.loseNextSaveReply();
   await page.getByTestId('save-portions').click();
-  await expect(page.getByTestId('portions-review')).toBeVisible();
+  await expect(page.getByTestId('portions-retry-review')).toBeVisible();
   expect(bodies).toHaveLength(1);
+  blockReads = false;
   page.once('dialog', (dialog) => dialog.accept());
   await page.reload();
-  await expect(page.getByTestId('portions-restored')).toBeVisible();
-  await expect(page.getByTestId('save-portions')).toBeDisabled();
-  await page.getByTestId('portions-review').click();
   await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
   expect(bodies).toHaveLength(1);
   const saved = await page.evaluate(

@@ -67,6 +67,7 @@ import type {
   RecipeSearchFilterDiscoveryDto,
 } from '@/lib/api/generated/models/index';
 import { BackgroundBlobs } from '@/components/ui/BackgroundBlobs';
+import { Button } from '@/components/ui/button';
 import { getImageUrl } from '@/lib/imageUtils';
 import { getLocale, t, tWithVars } from '@/locales';
 import { formatRecipeTime } from '@/lib/duration';
@@ -334,7 +335,6 @@ function RecipesContent() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [searchLoadMoreError, setSearchLoadMoreError] = useState(false);
-  const [searchCursorExpired, setSearchCursorExpired] = useState(false);
   const [searchLoadingMore, setSearchLoadingMore] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
   const [activeFilters, setActiveFilters] = useState<RecipeSearchFiltersDto>({});
@@ -345,6 +345,8 @@ function RecipesContent() {
   const recycleTriggerRef = useRef<HTMLButtonElement>(null);
   const searchGenerationRef = useRef(0);
   const searchContinuationRef = useRef(false);
+  const searchCursorRestartedRef = useRef(false);
+  const lastContinuationExpiredRef = useRef(false);
   const searchRequestRef = useRef<Parameters<typeof searchRecipes>[0] | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialSimilarStartedRef = useRef(false);
@@ -379,9 +381,10 @@ function RecipesContent() {
     ) => {
       const generation = ++searchGenerationRef.current;
       searchContinuationRef.current = false;
+      searchCursorRestartedRef.current = false;
+      lastContinuationExpiredRef.current = false;
       setSearchLoadingMore(false);
       setSearchLoadMoreError(false);
-      setSearchCursorExpired(false);
       setSearchActive(true);
       setSearchLoading(true);
       setSearchError(false);
@@ -491,6 +494,8 @@ function RecipesContent() {
     } else {
       searchGenerationRef.current += 1;
       searchContinuationRef.current = false;
+      searchCursorRestartedRef.current = false;
+      lastContinuationExpiredRef.current = false;
       searchRequestRef.current = null;
       setSearchActive(false);
       setSearchData(null);
@@ -539,6 +544,8 @@ function RecipesContent() {
     searchGenerationRef.current += 1;
     searchRequestRef.current = null;
     searchContinuationRef.current = false;
+    searchCursorRestartedRef.current = false;
+    lastContinuationExpiredRef.current = false;
     setQuery('');
     setSimilarToRecipeId(null);
     setActiveFilters({});
@@ -547,7 +554,6 @@ function RecipesContent() {
     setSearchIndex(0);
     setSearchError(false);
     setSearchLoadMoreError(false);
-    setSearchCursorExpired(false);
     setSearchLoading(false);
     setSearchLoadingMore(false);
     setSearchActive(false);
@@ -570,27 +576,38 @@ function RecipesContent() {
     async (retry = false) => {
       const cursor = searchData?.nextCursor;
       const request = searchRequestRef.current;
+      const useFreshSearch = retry && lastContinuationExpiredRef.current;
       if (
         !searchActive ||
         searchLoading ||
-        !cursor ||
+        (!cursor && !useFreshSearch) ||
         !request ||
         searchContinuationRef.current ||
-        (!retry && (searchLoadMoreError || searchCursorExpired))
+        (!retry && searchLoadMoreError)
       )
         return;
       const generation = searchGenerationRef.current;
       searchContinuationRef.current = true;
       setSearchLoadingMore(true);
       setSearchLoadMoreError(false);
-      setSearchCursorExpired(false);
       try {
+        if (useFreshSearch) {
+          const fresh = await searchRecipes(request);
+          if (generation !== searchGenerationRef.current) return;
+          searchCursorRestartedRef.current = false;
+          lastContinuationExpiredRef.current = false;
+          setSearchData(fresh);
+          setSearchIndex(0);
+          return;
+        }
         const response = await searchRecipes({
           ...request,
-          continuationToken: cursor,
+          continuationToken: cursor!,
           limit: searchData?.resultPath === 'browse' ? 24 : 12,
         });
         if (generation !== searchGenerationRef.current) return;
+        searchCursorRestartedRef.current = false;
+        lastContinuationExpiredRef.current = false;
         const before = new Set([
           searchData?.topPick?.id,
           ...(searchData?.results ?? []).map((item) => item.id),
@@ -615,8 +632,25 @@ function RecipesContent() {
         const status =
           (error as { status?: number; responseStatusCode?: number })?.responseStatusCode ??
           (error as { status?: number })?.status;
-        setSearchCursorExpired(status === 409);
-        setSearchLoadMoreError(status !== 409);
+        if (status === 409 && !useFreshSearch && !searchCursorRestartedRef.current) {
+          searchCursorRestartedRef.current = true;
+          lastContinuationExpiredRef.current = true;
+          try {
+            const restarted = await searchRecipes(request);
+            if (generation !== searchGenerationRef.current) return;
+            lastContinuationExpiredRef.current = false;
+            setSearchData(restarted);
+            setSearchIndex(0);
+            setSearchLoadMoreError(false);
+            return;
+          } catch {
+            if (generation !== searchGenerationRef.current) return;
+            setSearchLoadMoreError(true);
+            return;
+          }
+        }
+        if (status === 409) lastContinuationExpiredRef.current = true;
+        setSearchLoadMoreError(true);
       } finally {
         if (generation === searchGenerationRef.current) {
           searchContinuationRef.current = false;
@@ -624,14 +658,7 @@ function RecipesContent() {
         }
       }
     },
-    [
-      searchActive,
-      searchLoading,
-      searchData,
-      browseViewMode,
-      searchLoadMoreError,
-      searchCursorExpired,
-    ]
+    [searchActive, searchLoading, searchData, browseViewMode, searchLoadMoreError]
   );
 
   useEffect(() => {
@@ -1637,9 +1664,9 @@ function RecipesContent() {
       {addToDay !== null && weekOffset !== null && (
         <div
           data-testid="planning-mode-banner"
-          className="relative z-10 mx-4 sm:mx-6 flex min-h-12 flex-wrap items-center gap-x-2 rounded-xl border border-terracotta/20 bg-terracotta/10 px-3"
+          className="relative z-10 mx-4 sm:mx-6 flex min-h-12 flex-wrap items-center gap-2 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-0 text-ink-body shadow-sm"
         >
-          <p className="min-w-0 flex-1 text-sm font-bold text-charcoal">
+          <p className="min-w-0 flex-1 py-1 font-heading text-sm font-bold text-hearth-ink">
             {urlPlanningDayLabel
               ? tWithVars('recipes.choosingForDay', 'Choosing for {{day}}', {
                   day: urlPlanningDayLabel,
@@ -1649,8 +1676,11 @@ function RecipesContent() {
                 })}
           </p>
           {planningCalendarError && (
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="md"
+              className="max-w-full whitespace-normal text-center"
               onClick={() =>
                 void loadDeploymentCalendar()
                   .then((calendar) => {
@@ -1659,19 +1689,20 @@ function RecipesContent() {
                   })
                   .catch(() => {})
               }
-              className="min-h-12 px-2 font-bold text-terracotta-700"
             >
               {t('common.retry', 'Retry')}
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="md"
             data-testid="planning-mode-cancel"
+            className="max-w-full whitespace-normal text-center"
             onClick={() => router.push('/planner')}
-            className="min-h-12 px-2 font-bold text-terracotta-700"
           >
             {t('recipes.cancel', 'Cancel')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -1840,6 +1871,9 @@ function RecipesContent() {
                   );
                 } else if (searchActive && !similarToRecipeId) {
                   searchGenerationRef.current += 1;
+                  searchContinuationRef.current = false;
+                  searchCursorRestartedRef.current = false;
+                  lastContinuationExpiredRef.current = false;
                   searchRequestRef.current = null;
                   setSearchData(null);
                   setSearchIndex(0);
@@ -1985,60 +2019,66 @@ function RecipesContent() {
           <div
             data-testid="browse-request-error"
             role="alert"
-            className="flex flex-col items-center gap-4 text-center px-8"
+            className="mx-4 flex max-w-md flex-col items-center gap-4 rounded-2xl border border-hearth-line bg-terracotta-50 p-6 text-center text-ink-body shadow-sm"
           >
-            <p className="text-base font-semibold text-charcoal/70">
+            <p className="font-heading text-base font-bold text-hearth-ink">
               {t('recipes.browseFailed', 'Failed to load recipes.')}
             </p>
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="md"
               data-testid="browse-request-retry"
               onClick={() => fetchLibraryData(1, isDiscoverableOnly)}
-              className="min-h-12 px-6 py-3 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-cream-100 font-semibold text-sm shadow-sm"
             >
               {t('common.retry', 'Retry')}
-            </button>
+            </Button>
           </div>
         )}
 
         {!searchActive && historyRestartRequired && (
-          <div role="status" className="rounded-2xl bg-white/90 p-4 text-center">
+          <div
+            role="status"
+            className="mx-4 max-w-md space-y-3 rounded-2xl border border-chrome-line bg-white p-5 text-center text-sm text-ink-body shadow-sm"
+          >
             <p>
               {t(
                 'recipes.orderChanged',
                 'Recipe order changed. Your current cards are kept until the first page reloads.'
               )}
             </p>
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="md"
               disabled={isPrefetching}
               onClick={() => void fetchLibraryData(1, isDiscoverableOnly, true, true)}
-              className="mt-2 min-h-12 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-6 font-semibold text-cream-100"
             >
               {t('recipes.restartFirstPage', 'Restart from first page')}
-            </button>
+            </Button>
           </div>
         )}
 
         {!searchActive && !isInitialLoading && !loadError && gotoOnly && recipes.length === 0 && (
           <div
             data-testid="browse-goto-empty"
-            className="flex flex-col items-center gap-3 px-4 text-center text-charcoal"
+            className="mx-4 flex max-w-md flex-col items-center gap-4 rounded-2xl border border-chrome-line bg-white p-6 text-center text-ink-body shadow-sm"
           >
-            <p>
+            <p className="text-sm text-ink-body">
               {t(
                 'recipes.gotoNoMatches',
                 'No matching Go-To recipes. Clear this filter to find recipes and add stars.'
               )}
             </p>
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="md"
               data-testid="browse-goto-clear"
               onClick={() => setGotoOnly(false)}
-              className="min-h-12 px-4 font-bold text-terracotta-700 underline"
             >
               {t('recipes.clearFilters', 'Clear filters')}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -2048,22 +2088,28 @@ function RecipesContent() {
           <div
             data-testid="search-request-error"
             role="alert"
-            className="rounded-2xl bg-white p-6 text-center"
+            className="mx-4 max-w-md space-y-4 rounded-2xl border border-hearth-line bg-terracotta-50 p-6 text-center text-ink-body shadow-sm"
           >
-            <p>{t('recipes.searchFailed', 'Could not load recipes. Try again.')}</p>
-            <button
+            <p className="font-heading text-base font-bold text-hearth-ink">
+              {t('recipes.searchFailed', 'Could not load recipes. Try again.')}
+            </p>
+            <Button
               type="button"
+              variant="primary"
+              size="md"
               data-testid="search-request-retry"
               onClick={() => void runSearch(query)}
-              className="min-h-12 px-4 font-bold text-terracotta-700"
             >
               {t('common.retry', 'Retry')}
-            </button>
+            </Button>
           </div>
         )}
         {searchActive && !searchLoading && !searchError && visibleRecipes.length === 0 && (
-          <div data-testid="search-empty-state" className="rounded-2xl bg-white p-6 text-center">
-            <p>
+          <div
+            data-testid="search-empty-state"
+            className="mx-4 max-w-md rounded-2xl border border-chrome-line bg-white p-6 text-center text-ink-body shadow-sm"
+          >
+            <p className="text-sm text-ink-body">
               {Object.keys(activeFilters).length || Object.keys(activePreferences).length
                 ? t('recipes.filterNoResults', 'No matches with these filters. Try removing one.')
                 : t(
@@ -2071,23 +2117,25 @@ function RecipesContent() {
                     'No matches yet. Try a different description or clear filters.'
                   )}
             </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <button
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              <Button
                 type="button"
+                variant="secondary"
+                size="md"
                 data-testid="search-empty-clear-filters"
                 onClick={clearSearchFilters}
-                className="min-h-12 rounded-full border border-charcoal/20 bg-white px-4 font-bold"
               >
                 {t('recipes.clearFilters', 'Clear filters')}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                size="md"
                 data-testid="search-empty-clear-search"
                 onClick={clearSearch}
-                className="min-h-12 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-4 font-semibold text-cream-100"
               >
                 {t('recipes.clearSearchAndBrowse', 'Clear search and browse')}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -2138,7 +2186,7 @@ function RecipesContent() {
                       <p className="line-clamp-2 text-sm font-black leading-tight text-charcoal">
                         {recipe.name}
                       </p>
-                      <p className="mt-1 text-xs font-semibold text-charcoal/50">
+                      <p className="mt-1 text-xs font-semibold text-ink-muted">
                         {tWithVars('common.readyIn', 'READY IN {{time}}', {
                           time: formatRecipeTime(recipe.totalTime),
                         })}
@@ -2160,22 +2208,25 @@ function RecipesContent() {
                 <p role="status">{t('recipes.loadingMore', 'Loading more…')}</p>
               )}
               {searchActive && searchLoadMoreError && (
-                <button
-                  type="button"
-                  data-testid="search-load-more-retry"
-                  onClick={() => void loadMoreSearch(true)}
+                <div
+                  role="alert"
+                  data-testid="search-load-more-error"
+                  className="mt-3 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-center text-sm text-ink-body shadow-sm"
                 >
-                  {t('recipes.loadMore', 'Load more')}
-                </button>
-              )}
-              {searchActive && searchCursorExpired && (
-                <button
-                  type="button"
-                  data-testid="search-restart-expired"
-                  onClick={() => void runSearch(query)}
-                >
-                  {t('recipes.restartSearch', 'Restart search')}
-                </button>
+                  <p className="font-medium text-hearth-ink">
+                    {t('recipes.searchFailed', 'Could not load recipes. Try again.')}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    data-testid="search-load-more-retry"
+                    className="max-w-full whitespace-normal text-center"
+                    onClick={() => void loadMoreSearch(true)}
+                  >
+                    {t('common.retry', 'Retry')}
+                  </Button>
+                </div>
               )}
             </div>
           )}
@@ -2234,16 +2285,22 @@ function RecipesContent() {
                 </p>
               )}
               {!searchActive && failedNavigation && (
-                <div role="alert" className="text-center text-sm text-terracotta">
-                  {t('recipes.pageFailed', 'Could not load that page. Your place is kept.')}
-                  <button
+                <div
+                  role="alert"
+                  className="mt-3 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-center text-sm text-ink-body shadow-sm"
+                >
+                  <p className="font-medium text-hearth-ink">
+                    {t('recipes.pageFailed', 'Could not load that page. Your place is kept.')}
+                  </p>
+                  <Button
                     type="button"
+                    variant="primary"
+                    size="md"
                     data-testid="stack-page-retry"
-                    className="ml-2 font-bold underline"
                     onClick={() => void navigatePage(failedNavigation.page, failedNavigation.last)}
                   >
                     {t('common.retry', 'Retry')}
-                  </button>
+                  </Button>
                 </div>
               )}
               {/* Stack Action Bar */}
@@ -2270,24 +2327,25 @@ function RecipesContent() {
                 </p>
               )}
               {searchActive && searchLoadMoreError && (
-                <button
-                  type="button"
-                  data-testid="search-load-more-retry"
-                  onClick={() => void loadMoreSearch(true)}
-                  className="min-h-12 font-bold text-terracotta-700"
+                <div
+                  role="alert"
+                  data-testid="search-load-more-error"
+                  className="mt-3 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-center text-sm text-ink-body shadow-sm"
                 >
-                  {t('recipes.loadMore', 'Load more')}
-                </button>
-              )}
-              {searchActive && searchCursorExpired && (
-                <button
-                  type="button"
-                  data-testid="search-restart-expired"
-                  onClick={() => void runSearch(query)}
-                  className="min-h-12 font-bold text-terracotta-700"
-                >
-                  {t('recipes.restartSearch', 'Restart search')}
-                </button>
+                  <p className="font-medium text-hearth-ink">
+                    {t('recipes.searchFailed', 'Could not load recipes. Try again.')}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    data-testid="search-load-more-retry"
+                    className="max-w-full whitespace-normal text-center"
+                    onClick={() => void loadMoreSearch(true)}
+                  >
+                    {t('common.retry', 'Retry')}
+                  </Button>
+                </div>
               )}
             </div>
           )}

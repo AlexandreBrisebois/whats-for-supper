@@ -359,6 +359,61 @@ describe('quiet reset notices across absolute weeks', () => {
     expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
   });
 
+  it('renders the updated notice as a calm Garden status with a 48px explicit Dismiss', () => {
+    sessionStorage.clear();
+    showWeek('2025-01-06', 'garden-style');
+    renderList();
+    const notice = screen.getByTestId('grocery-portions-summary');
+    expect(notice).toHaveClass('bg-sage-50', 'border-garden-line');
+    expect(within(notice).getByRole('button', { name: 'Dismiss' })).toHaveClass(
+      'h-12',
+      'w-12',
+      'min-h-12',
+      'min-w-12'
+    );
+  });
+
+  it('clears the updated notice automatically when a grocery row is checked', () => {
+    sessionStorage.clear();
+    showWeek('2025-01-06', 'auto-clear-row');
+    renderList();
+    expect(screen.getByTestId('grocery-portions-summary')).toBeVisible();
+    fireEvent.click(screen.getByRole('checkbox', { name: /tomato/i }));
+    expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('serving-grocery-summary:2025-01-06')).toBe('auto-clear-row');
+  });
+
+  it('clears the updated notice automatically when an aisle is toggled', () => {
+    sessionStorage.clear();
+    showWeek('2025-01-06', 'auto-clear-aisle');
+    renderList();
+    expect(screen.getByTestId('grocery-portions-summary')).toBeVisible();
+    fireEvent.click(document.querySelector('button[aria-controls^="aisle-items"]')!);
+    expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+  });
+
+  it('shows updating as Garden status and a failed refresh as a Hearth alert with a primary Retry', () => {
+    useWeekStore.setState({
+      weekStartDate: '2025-01-06',
+      groceryRefresh: { status: 'updating', version: 'u1' },
+    });
+    const view = renderList();
+    expect(screen.getByTestId('grocery-portions-updating')).toHaveClass(
+      'bg-sage-50',
+      'border-garden-line'
+    );
+    view.unmount();
+    useWeekStore.setState({
+      weekStartDate: '2025-01-06',
+      groceryRefresh: { status: 'failed', version: 'f1' },
+    });
+    renderList();
+    const alert = screen.getByTestId('grocery-portions-failed');
+    expect(alert).toHaveAttribute('role', 'alert');
+    expect(alert).toHaveClass('bg-terracotta-50', 'border-hearth-line');
+    expect(within(alert).getByRole('button', { name: 'Retry' })).toHaveClass('min-h-12');
+  });
+
   it('keeps the list usable when reading notice acknowledgements is denied', () => {
     const storage = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('storage denied');

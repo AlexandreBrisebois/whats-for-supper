@@ -409,7 +409,7 @@ test('real dated detail saves through generated client and a second client prese
     await expect(page.getByTestId('action-add-to-day')).toContainText(displayDate(proposed!.date));
     expect((await counts()).assign).toBe(beforeProposal.assign);
     await page.getByTestId('action-change-day').click();
-    await page.getByTestId('planning-day-cancel').click();
+    await page.getByTestId('planning-day-close').click();
     await expect(page.getByTestId('action-add-to-day')).toContainText(displayDate(proposed!.date));
     expect((await counts()).assign).toBe(beforeProposal.assign);
     await page.getByTestId('action-add-to-day').click();

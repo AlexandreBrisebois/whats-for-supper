@@ -2514,7 +2514,7 @@ describe('CooksMode', () => {
 
     const reportAction = screen.getByRole('button', { name: 'Report issue with ingredients' });
     const topActions = screen.getByTestId('cooks-mode-top-actions');
-    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta-600');
+    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-hearth-ink');
     expect(reportAction).toHaveTextContent('');
     expect(topActions).toContainElement(reportAction);
     expect(topActions).toContainElement(screen.getByRole('button', { name: "Close cook's mode" }));
@@ -2583,7 +2583,7 @@ describe('CooksMode', () => {
 
     const reportAction = screen.getByRole('button', { name: 'Report issue with steps' });
     const editAction = screen.getByRole('button', { name: 'Edit step' });
-    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-terracotta-600');
+    expect(reportAction).toHaveClass('h-12', 'w-12', 'text-hearth-ink');
     expect(editAction).toHaveClass('h-12', 'w-12');
     expect(reportAction).toHaveTextContent('');
     expect(editAction).toHaveTextContent('');
@@ -2926,4 +2926,210 @@ it('requests the external original after the cooking reader loads', async () => 
 
     open.mockRestore();
   }
+});
+
+describe('Cook’s Mode pull-forward & Era 3 recovery surfaces', () => {
+  beforeEach(() => {
+    setCookingView('step-by-step');
+    getRecipeMock.mockReset();
+    getIngredientProjectionMock.mockReset();
+    updateRecipeMock.mockReset();
+    preparationMocks.prepareSupper.mockReset();
+    cookingMocks.markCooked.mockReset();
+    cookingMocks.confirmPreparation.mockReset();
+  });
+
+  it('auto-applies remote quantity changes on window focus before cooking progress starts', async () => {
+    const id = 'auto-focus-pasta';
+    const context = {
+      supperDate: '2026-05-06',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    const projected = (count: number) => ({
+      recipeId: id,
+      ...context,
+      baseServings: 2,
+      targetServings: count,
+      factor: count / 2,
+      status: 'scaled',
+      version: String(count),
+      contentRevision: 'rev-1',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: count * 100,
+          unitText: 'g',
+          status: 'scaled',
+        },
+      ],
+    });
+    getRecipeMock.mockResolvedValue({
+      id,
+      name: 'Pasta',
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Add 200 g pasta.'],
+    });
+    getIngredientProjectionMock.mockResolvedValue(projected(4));
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    expect(await screen.findByText('400 g pasta')).toBeVisible();
+    getIngredientProjectionMock.mockResolvedValue(projected(6));
+    fireEvent.focus(window);
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+    expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('6 portions');
+    expect(screen.queryByRole('button', { name: 'Refresh quantities' })).not.toBeInTheDocument();
+  });
+
+  it('unifies preparation conflict and changed quantities into one Era 3 Hearth bar with one action', async () => {
+    setCookingView('all-steps');
+    const id = 'unified-bar-pasta';
+    const context = {
+      supperDate: '2026-10-16',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    const displayed = {
+      recipeId: id,
+      ...context,
+      version: 'four',
+      targetServings: 4,
+      preparationPlanToken: 'plan',
+      preparationServingVersion: 'four',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 400,
+          unitText: 'g',
+          status: 'scaled',
+        },
+      ],
+    };
+    const changed = {
+      ...displayed,
+      version: 'six',
+      targetServings: 6,
+      preparationServingVersion: 'six',
+      lines: [{ ...displayed.lines[0], quantity: 600 }],
+    };
+    getRecipeMock.mockResolvedValue({
+      id,
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Serve.'],
+    });
+    getIngredientProjectionMock.mockResolvedValueOnce(displayed).mockResolvedValue(changed);
+    preparationMocks.prepareSupper.mockRejectedValue({ responseStatusCode: 409 });
+
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+    fireEvent.click(await screen.findByTestId('ingredient-toggle'));
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark recipe as cooked' }));
+
+    const bar = await screen.findByTestId('preparation-review');
+    expect(bar).toHaveClass('border-hearth-line', 'bg-terracotta-50');
+    const reviewBtn = within(bar).getByRole('button', { name: 'Review current supper' });
+    expect(within(bar).getAllByRole('button')).toHaveLength(1);
+    expect(reviewBtn).toHaveClass('min-h-12', 'focus-visible:outline-ink-body');
+
+    fireEvent.click(reviewBtn);
+    await waitFor(() =>
+      expect(within(bar).getByRole('button', { name: 'Refresh quantities' })).toBeInTheDocument()
+    );
+    expect(screen.getAllByTestId('preparation-review')).toHaveLength(1);
+    expect(screen.queryByTestId('cooking-update-bar')).not.toBeInTheDocument();
+    expect(within(bar).getAllByRole('button')).toHaveLength(1);
+    expect(within(bar).getByTestId('cooking-quantities-available')).toBeVisible();
+  });
+
+  it('styles projection, step-edit, completion, and view-save inline errors with Hearth tokens and >= 48px Button triggers', async () => {
+    const id = 'errors-pasta';
+    const context = {
+      supperDate: '2026-10-16',
+      context: 'assigned' as const,
+      occurrenceId: '11111111-1111-4111-8111-111111111121',
+    };
+    const updateMemberPreferences = vi.fn().mockResolvedValue(null);
+    useFamilyStore.setState({ updateMemberPreferences });
+    getRecipeMock.mockResolvedValue({
+      id,
+      name: 'Pasta',
+      ingredients: ['200 g pasta'],
+      recipeInstructions: ['Boil water.'],
+    });
+    getIngredientProjectionMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValue({
+      recipeId: id,
+      ...context,
+      targetServings: 4,
+      preparationPlanToken: 'plan',
+      preparationServingVersion: 'four',
+      lines: [
+        {
+          originalText: '200 g pasta',
+          name: 'pasta',
+          quantity: 400,
+          unitText: 'g',
+          status: 'scaled',
+        },
+      ],
+    });
+
+    render(
+      <CooksMode
+        recipe={{ id, name: 'Pasta', image: '' }}
+        ingredientContext={context}
+        onClose={vi.fn()}
+      />
+    );
+
+    const projAlert = await screen.findByText('Could not confirm ingredients for this supper.');
+    const projCard = projAlert.closest('[role="alert"]');
+    expect(projCard).toHaveClass('border-hearth-line', 'bg-terracotta-50');
+    const projRetry = within(projCard as HTMLElement).getByRole('button', { name: 'Retry' });
+    expect(projRetry).toHaveClass('min-h-12', 'focus-visible:outline-ink-body');
+    fireEvent.click(projRetry);
+    expect(await screen.findByText('400 g pasta')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('cooks-mode-step-next'));
+    fireEvent.click(screen.getByTestId('cooks-mode-edit-step'));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Edited' } });
+    updateRecipeMock.mockRejectedValueOnce(new Error('save failed'));
+    fireEvent.click(screen.getByTestId('cooks-mode-save-edit'));
+    const stepAlert = (await screen.findByText("Couldn't save this step.")).closest(
+      '[role="alert"]'
+    );
+    expect(stepAlert).toHaveClass('border-hearth-line', 'bg-terracotta-50');
+    expect(within(stepAlert as HTMLElement).getByRole('button', { name: 'Try again' })).toHaveClass(
+      'min-h-12',
+      'focus-visible:outline-ink-body'
+    );
+    fireEvent.click(screen.getByTestId('cooks-mode-cancel-edit'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'All steps' }));
+    const viewAlert = (await screen.findByText(/Couldn't save for Alex/)).closest('[role="alert"]');
+    expect(viewAlert).toHaveClass('border-hearth-line', 'bg-terracotta-50');
+    expect(within(viewAlert as HTMLElement).getByRole('button', { name: 'Retry' })).toHaveClass(
+      'min-h-12',
+      'focus-visible:outline-ink-body'
+    );
+
+    preparationMocks.prepareSupper.mockRejectedValueOnce({ responseStatusCode: 409 });
+    fireEvent.click(screen.getByRole('button', { name: 'Mark recipe as cooked' }));
+    const completionAlert = await screen.findByText(
+      'Could not save cooking completion. Please try again.'
+    );
+    expect(completionAlert).toHaveClass('border-hearth-line', 'bg-terracotta-50');
+  });
 });

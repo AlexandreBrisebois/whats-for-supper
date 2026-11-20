@@ -156,6 +156,17 @@ export function GroceryList({
       /* Storage is optional; the list and local dismissal remain usable. */
     }
   }
+  const dismissPortionsSummary = () => {
+    if (!summary || summary === dismissedSummary) return;
+    setDismissedSummaries((previous) => ({ ...previous, [weekStartDate ?? '']: summary }));
+    if (noticeKey) {
+      try {
+        sessionStorage.setItem(noticeKey, summary);
+      } catch {
+        /* Preserve the local acknowledgement when storage is unavailable. */
+      }
+    }
+  };
   const [refreshError, setRefreshError] = useState(false);
   const retryPortions = async () => {
     setRefreshError(false);
@@ -331,6 +342,7 @@ export function GroceryList({
   ) => {
     const id = extra.id;
     if (!id || pendingExtras.has(id)) return;
+    dismissPortionsSummary();
     const selectedWeekAtStart = useWeekStore.getState().weekStartDate;
     markExtraPending(id, true);
     setExtraErrors((current) => {
@@ -379,6 +391,7 @@ export function GroceryList({
   };
 
   const handleDeleteExtra = async (extra: GroceryExtraDto) => {
+    dismissPortionsSummary();
     if (!extra.id || pendingExtras.has(extra.id)) return;
     const id = extra.id;
     removeExtra(id);
@@ -400,6 +413,7 @@ export function GroceryList({
   };
 
   const handleAddExtra = async () => {
+    dismissPortionsSummary();
     const name = extraName.trim();
     if (!name || !weekStartDate || !composerIsEligible || addState === 'pending') return;
     const attempt =
@@ -563,6 +577,7 @@ export function GroceryList({
   }, [completedAisles]);
 
   const handleToggle = async (item: GroceryLineItemDto) => {
+    dismissPortionsSummary();
     const captured = useWeekStore.getState();
     const week = absoluteMonday(item.weekStartDate) ?? captured.weekStartDate;
     const reference = captured.calendar?.referenceWeekStartDate;
@@ -731,6 +746,7 @@ export function GroceryList({
   };
 
   const toggleAisle = (aisle: GrocerySection) => {
+    dismissPortionsSummary();
     setCollapsedAisles((current) => {
       const next = new Set(current);
       if (next.has(aisle)) next.delete(aisle);
@@ -850,7 +866,10 @@ export function GroceryList({
                   className={CATEGORY_BUTTON_CLASS}
                   aria-label={`${t('grocery.changeSection', 'Change section for')} ${extra.name ?? ''}`}
                   aria-expanded={reclassifyOpen === id}
-                  onClick={() => setReclassifyOpen(reclassifyOpen === id ? null : id)}
+                  onClick={() => {
+                    dismissPortionsSummary();
+                    setReclassifyOpen(reclassifyOpen === id ? null : id);
+                  }}
                 >
                   <Tag size={16} className="mx-auto" aria-hidden="true" />
                 </button>
@@ -863,6 +882,7 @@ export function GroceryList({
                   className="min-h-11 min-w-11 rounded-full text-icon-affordance hover:text-ink-body focus:ring-2 focus:ring-garden-ink"
                   aria-label={`${t('grocery.edit', 'Edit')} ${extra.name ?? ''}`}
                   onClick={() => {
+                    dismissPortionsSummary();
                     setEditingExtra(id);
                     setEditingName(extra.name ?? '');
                   }}
@@ -949,37 +969,42 @@ export function GroceryList({
       </div>
 
       {servingRefresh?.status === 'updating' && (
-        <p role="status" className="p-4" data-testid="grocery-portions-updating">
+        <p
+          role="status"
+          className="mx-4 mb-3 rounded-2xl border border-garden-line bg-sage-50 p-4 text-ink-body"
+          data-testid="grocery-portions-updating"
+        >
           {t('portions.updating', 'Updating your shopping list…')}
         </p>
       )}
       {(servingRefresh?.status === 'failed' || refreshError) && (
-        <div role="alert" className="p-4">
-          {t('portions.refreshFailed', 'Portions saved. Shopping list needs updating.')}{' '}
-          <button className="min-h-12 px-3 underline" onClick={() => void retryPortions()}>
+        <div
+          role="alert"
+          className="mx-4 mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 p-4 text-ink-body"
+          data-testid="grocery-portions-failed"
+        >
+          <p className="min-w-0 flex-1">
+            {t('portions.refreshFailed', 'Portions saved. Shopping list needs updating.')}
+          </p>
+          <Button variant="primary" size="md" onClick={() => void retryPortions()}>
             {t('portions.retry', 'Retry')}
-          </button>
+          </Button>
         </div>
       )}
       {summary && summary !== dismissedSummary && (
-        <div role="status" className="p-4" data-testid="grocery-portions-summary">
-          {t('portions.increased', 'Shopping list updated. Items needing more are unchecked.')}{' '}
+        <div
+          role="status"
+          className="mx-4 mb-3 flex items-center gap-3 rounded-2xl border border-garden-line bg-sage-50 p-4 text-ink-body"
+          data-testid="grocery-portions-summary"
+        >
+          <p className="min-w-0 flex-1">
+            {t('portions.increased', 'Shopping list updated. Items needing more are unchecked.')}
+          </p>
           <button
-            className="min-h-12 px-3"
+            type="button"
+            className="inline-flex h-12 w-12 min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full border border-garden-line bg-white text-lg text-garden-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
             aria-label={t('portions.dismiss', 'Dismiss')}
-            onClick={() => {
-              setDismissedSummaries((previous) => ({
-                ...previous,
-                [weekStartDate ?? '']: summary,
-              }));
-              if (noticeKey) {
-                try {
-                  sessionStorage.setItem(noticeKey, summary);
-                } catch {
-                  /* Preserve the local acknowledgement when storage is unavailable. */
-                }
-              }
-            }}
+            onClick={dismissPortionsSummary}
           >
             ×
           </button>
@@ -1272,11 +1297,12 @@ export function GroceryList({
                                   {/* Reclassify button — separate tap target */}
                                   <button
                                     type="button"
-                                    onClick={() =>
+                                    onClick={() => {
+                                      dismissPortionsSummary();
                                       setReclassifyOpen(
                                         isPickerOpen ? null : (item.rowId ?? categoryKey)
-                                      )
-                                    }
+                                      );
+                                    }}
                                     className={cn(CATEGORY_BUTTON_CLASS, 'relative')}
                                     aria-label={`${t('grocery.changeSection', 'Change section for')} ${key}`}
                                     aria-expanded={isPickerOpen}

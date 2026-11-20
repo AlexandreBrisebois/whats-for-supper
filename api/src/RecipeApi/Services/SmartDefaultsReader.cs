@@ -56,6 +56,7 @@ internal sealed class SmartDefaultsReader(RecipeDbContext db)
             })
             .OrderByDescending(x => x.VoteCount == familySize) // Unanimous first
             .ThenByDescending(x => x.Recipe.LastCookedDate)   // Then by freshness
+            .ThenBy(x => x.RecipeId)                          // Deterministic household-wide tie-break
             .ToList();
 
         // Get existing calendar events for the week

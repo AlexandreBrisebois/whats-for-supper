@@ -20,7 +20,6 @@ Cross-capability requirement references resolve to the following authoritative o
 - [Defer the exact dated recipe through a protected operation](../meal-rescheduling/spec.md#requirement-defer-the-exact-dated-recipe-through-a-protected-operation)
 - [Delete the recipe-free entry before clear follow-up work](../meal-rescheduling/spec.md#requirement-delete-the-recipe-free-entry-before-clear-follow-up-work)
 
-
 ## Incoming Tomorrow reconciliation (non-normative)
 
 The accepted Tomorrow change from upstream commit `8357a8bd` (PR #242, merged at `e4a48c85`) is incorporated under the current owners. Its normative blocks are copied exactly from upstream. This supersedes the original split snapshot only for the changed/added Tomorrow requirements; all other original blocks and evidence records remain intact. See the [upstream change design](../../changes/archive/2026-10-16-tomorrow-preserve-meals/design.md) and [recorded acceptance evidence](../../changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md). This reconciliation did not rerun application/runtime qualification.
@@ -588,9 +587,10 @@ The planner suggestion action SHALL display “Browse up to 5 recipe suggestions
 - **WHEN** the suggestion request returns zero, one or fewer than five recipes
 - **THEN** the existing deck handles the returned count without fabricating additional suggestions
 - **AND** the planner supporting text continues to describe up to five recipes
+
 ### Requirement: Offer an explicit change of planning day
 
-For an unplanned target, recipe selection SHALL show the proposed destination with a Change day action. The chooser SHALL retain the recipe and display dated current plans so empty, recipe-backed and non-cooking days are distinguishable. Opening, changing or cancelling the chooser SHALL NOT mutate the schedule. Cancellation SHALL restore the previous destination; choosing another day SHALL update it before saving.
+For an unplanned target, recipe selection SHALL show the proposed destination with a Change day action. The Family Cookbook chooser SHALL retain the recipe, switch weeks via a compact `<` / range / `>` header, dismiss via top-right close, backdrop, or Escape without a bottom Cancel button, display distinguishable dated plans, and update the destination cleanly on day selection without mutating the schedule.
 
 #### Scenario: Choose another date without searching again
 - **WHEN** a person changes a suggested Thursday to Saturday
@@ -601,9 +601,13 @@ For an unplanned target, recipe selection SHALL show the proposed destination wi
 - **THEN** the flow explains that plan and asks before removing it and saving the recipe
 - **AND** declining retains both the existing plan and selected recipe
 
+#### Scenario: Dismiss chooser or retry failed week read with compact Era 3 controls
+- **WHEN** the planning day chooser opens on a phone or encounters a failed week read
+- **THEN** it uses Era 3 `bg-cream` dialog chrome with `border-chrome-line` day rows, compact `<` / week range / `>` controls, a `>= 48 CSS px` top-right close control (plus backdrop/Escape dismissal without a redundant bottom Cancel button), and a Hearth `<Button>` `Retry` on week-read failure
+
 ### Requirement: Preserve completed replacement stages across callers
 
-Home, Planner and recipe-selection recovery SHALL retain the captured original, date/reference, replacement and acknowledged disposition while recovery remains mounted. Pending work SHALL suppress duplicate submissions. A replacement-save failure SHALL NOT repeat completed movement or removal. Unknown disposition or save outcomes SHALL require authoritative reconciliation before dependent writes.
+Home, Planner, and recipe-selection recovery SHALL retain captured context, suppress pending duplicates, avoid repeating completed movement/removal, and reconcile unknown outcomes before writes. Recovery and non-cooking confirmation dialogs SHALL use Era 3 `<Button>` actions presenting at most one primary pull-forward action plus Cancel without a nested abandon prompt before any irreversible step.
 
 #### Scenario: Original moved but replacement rejected
 - **WHEN** the original is confirmed moved and guarded replacement receives a known no-write rejection
@@ -621,9 +625,13 @@ Home, Planner and recipe-selection recovery SHALL retain the captured original, 
 - **WHEN** a person closes recovery after original disposition but before confirmed replacement
 - **THEN** it explains completed changes and the unsaved or unknown replacement before allowing departure
 
+#### Scenario: Pre-commit non-cooking confirmation stays single-step
+- **WHEN** non-cooking replacement confirmation renders initially or encounters a retryable failure before any mutation commits
+- **THEN** the Era 3 dialog presents at most one primary pull-forward `<Button>` (`Replace supper plan`, `Retry save`, or `Retry check`) plus `Cancel` without displaying a competing `Review plan` button during transient retry or a nested confirm-abandon step prior to any committed change
+
 ### Requirement: Confirm completed planning without inventing work
 
-Ordinary single-day planning completion SHALL rely on Planner navigation, scroll-into-view, and card highlighting without showing a separate toast notification. Replacement/spillover feedback SHALL state the original's confirmed removal or moved date and remain readable until dismissal or departure. Saved-but-unrefreshed feedback SHALL distinguish persistence from unavailable refresh.
+Ordinary single-day planning completion SHALL rely on Planner navigation, scroll-into-view, and card highlighting without a separate toast notification. Replacement/spillover receipts retain an accessible `>= 48 CSS px` close control, routine planning confirmations auto-dismiss gracefully in calm Garden styling without requiring a manual Close tap, and refresh-failed or changed-plan banners use Era 3 Hearth alert styling with `<Button>` recovery.
 
 #### Scenario: Ordinary single-day completion omits toast
 - **WHEN** Curry is saved to Wednesday without displacing another meal and Planner finishes refreshing Wednesday
@@ -631,7 +639,11 @@ Ordinary single-day planning completion SHALL rely on Planner navigation, scroll
 
 #### Scenario: Replacement and deferred original complete
 - **WHEN** Curry is saved to Wednesday and Lasagna was deferred past a full next week to the following Monday
-- **THEN** Planner confirms Curry's Wednesday date and Lasagna's actual Monday date and explains the full-week spillover
+- **THEN** Planner confirms Curry's Wednesday date and Lasagna's actual Monday date in calm Garden styling, explains the full-week spillover, and provides an accessible close control
+
+#### Scenario: Refresh failure uses Hearth alert styling rather than green confirmation styling
+- **WHEN** Planner return reconciliation encounters a `refresh-failed` or `changed` plan outcome
+- **THEN** the banner uses Era 3 Hearth alert tokens (`bg-terracotta-50 border-hearth-line`) with an Era 3 `<Button>` (`Refresh` or close) rather than calm sage confirmation styling
 
 ### Requirement: Avoid reassigning an identical dated meal
 
@@ -641,7 +653,6 @@ A confirmed identical recipe at the selected ordinary supper SHALL show Planned 
 - **WHEN** the target already has the chosen recipe, or is Cooked or AwaitingConsensus
 - **THEN** an ordinary confirmed match offers Planned navigation; completed or consensus state offers its existing applicable review without mutation
 - **AND** no change arrow is attached to a confirmed saved occurrence or repurposed as movement/navigation
-
 
 #### Scenario: Navigate to the captured planned date
 - **WHEN** Planned is activated for a confirmed saved occurrence

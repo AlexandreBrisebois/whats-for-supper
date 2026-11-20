@@ -115,7 +115,10 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     await expect(editor.getByTestId('recipe-edit-description-input')).toHaveValue(
       'A retained family draft'
     );
-    await expect(editor.getByTestId('recipe-save-edits')).toBeDisabled();
+    await expect(editor.getByTestId('recipe-save-edits')).toBeEnabled();
+    await expect(
+      editor.getByRole('button', { name: 'Check saved recipe', exact: true })
+    ).toHaveCount(0);
     expect((await readRecipe()).ingredientLines[0].amountText).toBe('200');
     // A second person changes household feedback and saves another original
     // edit while this tab retains its older all-field draft.
@@ -147,15 +150,26 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     expect(otherCurrent.contentRevision).not.toBe(initial.contentRevision);
     expect(otherCurrent.ingredientLines[0].amountText).toBe('220');
     expect(otherCurrent.rating).toBe(3);
-    await editor.getByRole('button', { name: 'Check saved recipe', exact: true }).click();
+    await editor.getByTestId('recipe-save-edits').click();
+    await expect(editor.getByTestId('recipe-reconcile-conflicts')).toBeVisible();
     await expect(
       editor.getByTestId('recipe-detail-sheet').getByText('Other editor name', { exact: true })
     ).toBeVisible();
-    await editor.getByRole('button', { name: 'Reconcile draft', exact: true }).click();
-    await expect(editor.getByTestId('recipe-save-edits')).toBeDisabled();
-    await editor.getByRole('button', { name: 'Keep my draft: Name', exact: true }).click();
-    await editor.getByRole('button', { name: 'Keep my draft: Ingredients', exact: true }).click();
-    await editor.getByRole('button', { name: 'Apply reviewed draft', exact: true }).click();
+    await expect(
+      editor.getByRole('button', { name: 'Check saved recipe', exact: true })
+    ).toHaveCount(0);
+    await expect(editor.getByRole('button', { name: 'Reconcile draft', exact: true })).toHaveCount(
+      0
+    );
+    await expect(
+      editor.getByRole('button', { name: 'Apply reviewed draft', exact: true })
+    ).toHaveCount(0);
+    await expect(
+      editor.getByRole('button', { name: 'Keep my draft: Name', exact: true })
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      editor.getByRole('button', { name: 'Keep my draft: Ingredients', exact: true })
+    ).toHaveAttribute('aria-pressed', 'true');
     await expect(editor.getByTestId('recipe-edit-name-input')).toHaveValue(draftName);
     await expect(editor.getByTestId('recipe-edit-amount-0')).toHaveValue('250');
     await expect(editor.getByTestId('recipe-save-edits')).toBeEnabled();
@@ -249,17 +263,19 @@ test('original correction, refresh recovery and concurrent grocery checks use th
     expect(committed.recipe.ingredientLines[0].amountText).toBe('2');
     await expect(editor.getByTestId('recipe-edit-amount-0')).toHaveValue('2');
     await expect(editor.getByTestId('recipe-edit-unit-0')).toHaveValue('cup');
-    await expect(editor.getByTestId('recipe-save-edits')).toBeDisabled();
+    await expect(editor.getByTestId('recipe-save-edits')).toBeEnabled();
     expect(editorWrites).toHaveLength(2);
     await editor.reload();
     await expect(editor.getByTestId('recipe-edit-amount-0')).toHaveValue('2');
     await expect(editor.getByTestId('recipe-edit-unit-0')).toHaveValue('cup');
     await expect(editor.getByTestId('recipe-edit-name-input')).toHaveValue(draftName);
-    await expect(editor.getByTestId('recipe-save-edits')).toBeDisabled();
-    await editor.getByRole('button', { name: 'Check saved recipe', exact: true }).click();
+    await expect(editor.getByTestId('recipe-save-edits')).toBeEnabled();
     await expect(
-      editor.getByRole('button', { name: 'Reconcile draft', exact: true })
-    ).toBeVisible();
+      editor.getByRole('button', { name: 'Check saved recipe', exact: true })
+    ).toHaveCount(0);
+    await expect(editor.getByRole('button', { name: 'Reconcile draft', exact: true })).toHaveCount(
+      0
+    );
     // Cancel the recovered draft after reviewing the real committed content.
     // Adopt the reread; do not submit the possibly committed operation again.
     await editor.getByTestId('recipe-cancel-edits').click();

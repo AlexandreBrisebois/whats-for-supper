@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { requestPortionsDeparture } from '@/lib/planner/portionsNavigation';
-import { Home, UserCircle, BookOpen, Calendar, Compass, LucideIcon } from 'lucide-react';
+import { Home, UserCircle, BookOpen, Calendar, Compass, Check, LucideIcon } from 'lucide-react';
 import type { Route } from 'next';
 
 import { ROUTES } from '@/lib/constants/routes';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { getCategories } from '@/lib/api/discovery';
+import { absoluteMonday } from '@/lib/deployment-calendar';
+import { usePlannerStore } from '@/store/plannerStore';
 import { t } from '@/locales';
 import { useLocale } from './LocaleProvider';
 
@@ -30,6 +32,25 @@ export function Navigation({ className = '' }: NavigationProps) {
   const { locale } = useLocale();
   const { hasPendingCards, session, setHasPendingCards, refreshSession } = useDiscoveryStore();
 
+  const converged = session?.phase === 'converged' && Boolean(session.roundId);
+  const convergedMonday = converged ? absoluteMonday(session?.weekStartDate) : null;
+  const collecting =
+    hasPendingCards && session?.phase === 'collecting' && pathname !== ROUTES.DISCOVERY;
+  const convergedHref = convergedMonday
+    ? (`/planner?${new URLSearchParams({ weekOffset: '0', referenceWeekStartDate: convergedMonday })}` as Route)
+    : (ROUTES.DISCOVERY as Route);
+
+  // One calm arrival cue only when a live transition into converged is observed; never on hydration.
+  const phase = session?.phase;
+  const [observedPhase, setObservedPhase] = useState(phase);
+  const [arrived, setArrived] = useState(false);
+  if (observedPhase !== phase) {
+    setObservedPhase(phase);
+    setArrived(
+      phase === 'converged' && (observedPhase === 'collecting' || observedPhase === 'unowned')
+    );
+  }
+
   const navItems: NavItem[] = [
     { href: ROUTES.HOME as Route, label: t('navigation.home', 'Home', locale), icon: Home },
     {
@@ -39,8 +60,10 @@ export function Navigation({ className = '' }: NavigationProps) {
     },
     {
       href: ROUTES.DISCOVERY as Route,
-      label: t('navigation.discover', 'Discovery', locale),
-      icon: Compass,
+      label: converged
+        ? t('navigation.menuReady', "Menu's in", locale)
+        : t('navigation.discover', 'Discovery', locale),
+      icon: converged ? Check : Compass,
       isPrimary: true,
     },
     {
@@ -86,28 +109,60 @@ export function Navigation({ className = '' }: NavigationProps) {
         const Icon = item.icon;
 
         if (item.isPrimary) {
+          const target = converged ? convergedHref : item.href;
+          const primaryActive = pathname === ROUTES.DISCOVERY;
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={target}
               onNavigate={(event) => {
-                if (requestPortionsDeparture(() => router.push(item.href))) event.preventDefault();
+                if (converged && convergedMonday) {
+                  event.preventDefault();
+                  const go = () => {
+                    usePlannerStore.getState().setActiveTab('planner');
+                    router.push(target);
+                  };
+                  if (!requestPortionsDeparture(go)) go();
+                  return;
+                }
+                if (requestPortionsDeparture(() => router.push(target))) event.preventDefault();
               }}
+              aria-label={
+                converged
+                  ? t('navigation.menuReadyAria', "Menu's in — open meal plan matches", locale)
+                  : collecting
+                    ? t('navigation.discoverVotingAria', 'Discovery — family is voting', locale)
+                    : undefined
+              }
               data-testid={`nav-item-${item.href.replace('/', '') || 'home'}`}
               className="relative -top-3 flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 transition-transform hover:scale-105 active:scale-95 z-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
-              aria-current={active ? 'page' : undefined}
+              aria-current={primaryActive ? 'page' : undefined}
             >
               <div
                 className={[
-                  'flex h-16 w-16 items-center justify-center rounded-full bg-ochre-100 text-sunlight-ink border border-sunlight-line ring-4 ring-cream-100 shadow-ochre-floating',
-                  hasPendingCards && session?.phase === 'collecting' && !active
-                    ? 'animate-pulse-ochre'
-                    : '',
+                  'relative flex h-16 w-16 items-center justify-center rounded-full ring-4 ring-cream-100 shadow-ochre-floating',
+                  converged
+                    ? 'bg-garden-fill text-white border border-garden-fill-deep'
+                    : 'bg-ochre-100 text-sunlight-ink border border-sunlight-line',
+                  collecting ? 'animate-pulse-ochre' : '',
+                  converged && arrived ? 'animate-arrive-garden' : '',
                 ].join(' ')}
               >
                 <Icon size={28} strokeWidth={2.5} aria-hidden="true" />
+                {collecting ? (
+                  <span
+                    data-testid="nav-discovery-pip"
+                    aria-hidden="true"
+                    className="absolute right-0 top-0 h-3 w-3 rounded-full bg-sunlight-ink ring-2 ring-cream-100"
+                  />
+                ) : null}
               </div>
-              <span className="text-xs font-semibold leading-tight text-sunlight-ink">
+              <span
+                className={[
+                  'text-xs font-semibold leading-tight',
+                  converged ? 'text-garden-ink' : 'text-sunlight-ink',
+                ].join(' ')}
+              >
                 {item.label}
               </span>
             </Link>

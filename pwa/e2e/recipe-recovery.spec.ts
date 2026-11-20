@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures';
 import { setupCommonRoutes, MOCK_IDS, builders } from './mock-api';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 
 const id = MOCK_IDS.RECIPE_LASAGNA;
 let lostStage: 'assign' | 'defer' | 'move' | 'remove' | null = null;
@@ -404,4 +405,137 @@ test('Home Drop protects the opening snapshot when the same original becomes Coo
     status: 2,
     recipe: { id: MOCK_IDS.RECIPE_CHICKEN },
   });
+});
+
+test('detail error and auto-reconcile conflict recovery pass Era 3 AA, AAA, and 320px/200% checks', async ({
+  page,
+}) => {
+  let detailFails = true;
+  let concurrentUpdated = false;
+  let conflictNextPatch = true;
+  let currentRecipe = builders.recipe({
+    id,
+    name: 'Recovery pasta',
+    cuisineType: 'Italian',
+    ingredients: ['200 g pasta'],
+  });
+
+  await page.route(`**/api/recipes/${id}`, async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      if (detailFails) {
+        await route.fulfill({ status: 500, json: { message: 'Unavailable' } });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        json: { recipe: currentRecipe, updatedAt: new Date().toISOString() },
+      });
+      return;
+    }
+    if (method === 'PATCH') {
+      if (conflictNextPatch) {
+        conflictNextPatch = false;
+        concurrentUpdated = true;
+        currentRecipe = {
+          ...currentRecipe,
+          name: 'Concurrent saved pasta',
+          cuisineType: 'French-Fusion',
+        };
+        await route.fulfill({ status: 409, json: { message: 'Conflict' } });
+        return;
+      }
+      const patch = route.request().postDataJSON() as Record<string, unknown>;
+      currentRecipe = { ...currentRecipe, ...patch };
+      await route.fulfill({
+        status: 200,
+        json: { recipe: currentRecipe, updatedAt: new Date().toISOString() },
+      });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto('/browse-all-stack');
+  await page.getByTestId('stack-card-front').click();
+  await expect(page.getByTestId('recipe-detail-load-error')).toBeVisible();
+  await expect(page.getByTestId('recipe-detail-retry')).toHaveCSS('opacity', '1');
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-detail-load-error"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-detail-load-error"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+    document.documentElement.style.fontSize = '32px';
+  });
+  expect(
+    await page
+      .getByTestId('recipe-detail-load-error')
+      .evaluate((el) => el.scrollWidth <= el.clientWidth)
+  ).toBe(true);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '16px';
+  });
+
+  detailFails = false;
+  await page.getByTestId('recipe-detail-retry').click();
+  await expect(page.getByTestId('recipe-detail-name')).toHaveText('Recovery pasta');
+
+  await page.getByTestId('action-gear-menu').click();
+  await page.getByTestId('action-edit-recipe').click();
+  await page.getByTestId('recipe-edit-name-input').fill('Local draft pasta');
+  await page.getByTestId('recipe-save-edits').click();
+
+  await expect.poll(() => concurrentUpdated).toBe(true);
+  const conflictsCard = page.getByTestId('recipe-reconcile-conflicts');
+  await expect(conflictsCard).toBeVisible();
+  await expect(conflictsCard).toContainText('Concurrent saved pasta');
+  await expect(page.getByRole('button', { name: 'Check saved recipe', exact: true })).toHaveCount(
+    0
+  );
+  await expect(page.getByRole('button', { name: 'Reconcile draft', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Apply reviewed draft', exact: true })).toHaveCount(
+    0
+  );
+  await expect(page.getByTestId('recipe-edit-cuisine-input')).toHaveValue('French-Fusion');
+  const keepDraftPill = page.getByRole('button', { name: 'Keep my draft: Name', exact: true });
+  await expect(keepDraftPill).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('recipe-save-edits')).toBeEnabled();
+  await expect(page.getByTestId('recipe-save-edits')).toHaveCSS('opacity', '1');
+
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-reconcile-conflicts"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-reconcile-conflicts"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+    document.documentElement.style.fontSize = '32px';
+  });
+  expect(await conflictsCard.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '16px';
+  });
+
+  await page.getByRole('button', { name: 'Use currently saved: Name', exact: true }).click();
+  await expect(page.getByTestId('recipe-edit-name-input')).toHaveValue('Concurrent saved pasta');
+  await keepDraftPill.click();
+  await expect(page.getByTestId('recipe-edit-name-input')).toHaveValue('Local draft pasta');
+  await page.getByTestId('recipe-save-edits').click();
+  await expect(page.getByTestId('recipe-detail-name')).toHaveText('Local draft pasta');
+  expect(currentRecipe.cuisineType).toBe('French-Fusion');
 });

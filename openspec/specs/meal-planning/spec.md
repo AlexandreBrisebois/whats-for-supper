@@ -51,7 +51,6 @@ Remaining-scope promotion MP-P01 (2026-10-16) adds the five reviewed MP-G01 delt
 
 MP-U01–MP-U12 remain non-normative limitations: separate requests and persistence before fallible follow-ups; caller-specific recovery and unsafe-retry boundaries; Sunday destination collisions and stale vote fields; first-by-date/global recipe fallback and relational/concurrency limits; move no-op success and incomplete cross-week follow-ups; distinct browser/server availability/date semantics; cooked-history and metadata differences; lock state regression/global vote-clearing qualifications; disputed status-one vocabulary; navigation/optimistic races; overdue scheduling/publication limits; and substituted/contract-only evidence. Preserve A34, U95–U122 and all earlier qualifications. Acceptance/promoting the supported documentation does not settle these disputed policies, establish runtime behavior or authorize repairs. Discovery/voting eligibility, groceries, cooking history, Tonight and live delivery remain owner capabilities. All five source changes remain active; no archival or application implementation occurs.
 
-
 ## Requirements
 
 ### Requirement: Initialize week reading from shell and planner entry
@@ -290,19 +289,33 @@ In recipe view the planner SHALL render displayed days in their supplied order. 
 
 ### Requirement: Display read week status without implying a transition
 
-The planner SHALL derive voting-open and locked display state from the loaded numeric week status. VotingOpen SHALL show the voting signal, Nudge family and Close Voting. Draft or Locked SHALL offer Ask the Family when the loaded week is not past. A loaded seven-day week SHALL be considered past when its Sunday date precedes the deployment-local current date.
+The planner SHALL derive voting-open and locked display from loaded week status. Collecting VotingOpen SHALL show the collecting signal, Nudge family, and Close Voting. Confirmed converged VotingOpen for the loaded round SHALL show a steady Garden-green signal, hide Nudge family, and promote closing to primary Garden green (Save menu & close voting with pending suggestions, else Close Voting). Non-past Draft or Locked weeks SHALL offer Ask the Family.
 
 #### Scenario: Voting status is loaded
-- **WHEN** the displayed week status is one
-- **THEN** the planner shows its voting signal and voting controls without a separate voting-status badge
+
+- **WHEN** the displayed week status is one and confirmed convergence is absent or does not match the loaded round and week
+- **THEN** the planner shows its collecting voting signal, `Nudge family`, and `Close Voting` without a separate voting-status badge
 
 #### Scenario: Draft or locked non-past week
+
 - **WHEN** the loaded status is zero or two and its week is not past
-- **THEN** the planner offers Ask the Family
+- **THEN** the planner offers `Ask the Family`
 
 #### Scenario: Past week
+
 - **WHEN** seven loaded dates have Sunday before the deployment-local current date and status is zero or two
-- **THEN** the planner omits Ask the Family
+- **THEN** the planner omits `Ask the Family`
+
+#### Scenario: Converged week with pending suggestions
+
+- **WHEN** the displayed week status is one and the session is confirmed `converged` for the loaded round and Monday with one or more pending suggestions
+- **THEN** the planner shows a steady Garden-green voting indicator, hides `Nudge family`, and promotes the close control to primary Garden green (`bg-garden-fill` with white `Check` icon and `Save menu & close voting` in English or `Enregistrer et fermer le vote` in French) without mutating until activated
+- **AND** the promoted control keeps a minimum `48 x 48 CSS px` target and wraps legibly without horizontal clipping at `320px` width and `200%` text scaling
+
+#### Scenario: Converged week with no pending suggestions
+
+- **WHEN** the displayed week status is one and the session is confirmed `converged` for the loaded round and Monday with zero pending suggestions
+- **THEN** the planner shows a steady Garden-green voting indicator, hides `Nudge family`, and promotes the close control to primary Garden green (`Check` icon) labeled `Close Voting` in English or `Fermer le vote` in French
 
 ### Requirement: Expose direct fill-the-gap reads without assigning recipes
 
@@ -492,6 +505,7 @@ Planner's existing recipe-row change action SHALL use the same opposing horizont
 #### Scenario: Other arrows retain their meaning
 - **WHEN** Planner displays week navigation or Save for Next Week options
 - **THEN** those actions retain their existing icons and behavior
+
 ### Requirement: Switch Planner rows into At the table inline
 
 Planner SHALL expose Portions as a quiet plate-and-label control aligned with Ask the Family, using Meals view's date column, Today divider and card surfaces. Editable rows SHALL right-align a joined minus/value/plus stepper without per-row reset buttons; past rows SHALL show photo-only with no portions or Cooked label, and upcoming prepared rows SHALL show quiet plain-text Already prepared and portions without an input, keeping Week, Grocery and voting available.
@@ -527,20 +541,28 @@ Planner SHALL expose Portions as a quiet plate-and-label control aligned with As
 
 ### Requirement: Preserve visible Swipe Match Cook voting controls
 
-Ask the Family, Nudge family and Close voting SHALL retain their existing state-dependent visible actions in their own row in ordinary Planner and Portions. Portions SHALL not consolidate them into overflow or alter votes. Starting a voting action SHALL preserve portions drafts under existing navigation/recovery boundaries.
+Ask the Family, Nudge family, and the close-voting action SHALL retain their state-dependent visible actions in their own row in ordinary Planner and Portions (with Nudge family omitted when the loaded week is confirmed converged). Portions SHALL not consolidate them into overflow or alter votes. Starting a voting action SHALL preserve portions drafts under existing navigation/recovery boundaries.
 
 #### Scenario: Voting is open while portions is edited
-- **WHEN** VotingOpen is displayed and Portions opens
-- **THEN** Nudge family and Close voting remain visible and operable under ordinary rules
+
+- **WHEN** collecting `VotingOpen` is displayed (including when session convergence is unconfirmed for that round) and Portions opens
+- **THEN** `Nudge family` and `Close Voting` remain visible and operable under ordinary rules
 - **AND** returning to normal recipe rows preserves voting state
 
 #### Scenario: Voting is available but not open
-- **WHEN** Ask the Family would ordinarily be available
+
+- **WHEN** `Ask the Family` would ordinarily be available
 - **THEN** it remains a visible action rather than being replaced by the count editor or a menu
+
+#### Scenario: Converged week while portions is edited
+
+- **WHEN** confirmed converged `VotingOpen` is displayed for the loaded round and Portions opens
+- **THEN** `Nudge family` remains hidden while the primary Garden-green save-and-close action stays visible and operable in its own row without overflow
+- **AND** activating it preserves portions drafts under existing departure and recovery boundaries
 
 ### Requirement: Finish or cancel a week portions draft explicitly
 
-Portions SHALL provide a Recipes button with the planner icon to return to recipe cards, draft-only minus/plus and direct integer entry. Usual configuration SHALL live in Settings, not in this editor. Recipes saves one changed batch before returning without waiting for groceries; with no changes it returns directly. Failed, invalid, concurrent or uncertain saves SHALL preserve correctable drafts and existing reconciliation.
+Portions SHALL provide a Recipes button with the planner icon, draft-only minus/plus, and direct integer entry while keeping usual configuration in Settings. Valid departures (week switch, Groceries, navigation) and Recipes SHALL save the changed batch before continuing without a multi-button confirmation menu; invalid, failed, concurrent, or uncertain saves SHALL auto-load the latest baseline into a compact Era 3 Hearth card while preserving drafts.
 
 #### Scenario: Include leftovers
 - **WHEN** Portions opens
@@ -552,9 +574,9 @@ Portions SHALL provide a Recipes button with the planner icon to return to recip
 - **AND** ordinary cards gain no permanent stepper or repeated default-setting field
 
 #### Scenario: Leave with a draft
-- **WHEN** a person changes week, opens Groceries or leaves Planner with unsaved counts
-- **THEN** Save and continue is primary, Keep editing secondary and Discard changes quiet text
-- **AND** save continues only after persistence; failure retains draft/destination, Keep editing stays and Discard restores saved state before leaving
+- **WHEN** a person changes week, opens Groceries or leaves Planner with unsaved valid counts
+- **THEN** the editor automatically saves that changed batch before continuing without displaying a three-button `Unsaved portions` confirmation card
+- **AND** only if a draft is invalid or saving fails/conflicts does navigation pause with a compact Era 3 Hearth card holding one primary recovery/save action and one quiet `Discard` / leave escape
 
 #### Scenario: Past or completed supper
 - **WHEN** a past date, future Cooked supper, non-cooking plan or explicitly prepared supper appears
@@ -566,8 +588,8 @@ Portions SHALL provide a Recipes button with the planner icon to return to recip
 - **AND** an unavailable family count retains original quantities honestly; explicit overrides and historical/prepared original-quantity snapshots remain unchanged
 
 #### Scenario: Invalid entry or concurrent saved change
-- **WHEN** a count is zero, negative, fractional, nonnumeric or out of range, or another member changes the baseline
-- **THEN** validation/conflict review retains the draft without a partial batch, hidden overwrite or premature navigation
+- **WHEN** a count is zero, negative, fractional, nonnumeric or out of range, or saving fails or another member changes the baseline
+- **THEN** invalid counts stay focused for correction without submitting, while failed/conflicting saves automatically read current saved portions and show the updated baseline inline alongside editable drafts in an Era 3 Hearth card without requiring a separate `Review saved portions` click gate
 
 #### Scenario: Automatic usual portions
 - **WHEN** no explicit usual exists and family size is four
@@ -577,7 +599,7 @@ Portions SHALL provide a Recipes button with the planner icon to return to recip
 #### Scenario: Correct today's Cooked count
 - **WHEN** today has a Cooked supper without an explicit preparation receipt
 - **THEN** the editor shows its actual saved count and enables deliberate dated correction under the supper-servings current-day rule
-- **AND** it remains marked Cooked; Recipes saves before returning; the three dirty-exit choices for other navigation and correction conflict/recovery keep their roles
+- **AND** it remains marked Cooked; Recipes saves before returning, and auto-saving on other navigation and Hearth conflict/recovery follow the week portions rules
 
 #### Scenario: Correct a frozen inherited number without an override
 - **WHEN** today's eligible Cooked supper has saved inherited portions five, no override and current usual four

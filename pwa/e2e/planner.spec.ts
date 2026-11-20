@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import type { ScheduleDays } from '../src/lib/api/generated/models';
 import {
   MOCK_IDS,
@@ -1192,6 +1193,7 @@ test.describe('Supper Planner', () => {
           });
           const feedback = page.getByTestId('planner-planning-confirmation');
           await expect(feedback).toHaveAttribute('role', 'status');
+          await expect(feedback).toHaveClass(/bg-sage-50/);
           await expect(feedback).toContainText('Original supper');
           await expect(feedback).toContainText(locale === 'en' ? 'May 18' : '18 mai');
           await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
@@ -1211,6 +1213,20 @@ test.describe('Supper Planner', () => {
           await page.screenshot({
             path: testInfo.outputPath(`replacement-${locale}-320-200.png`),
             fullPage: true,
+          });
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[data-testid="planner-planning-confirmation"]',
+            contrastLevel: 'aa',
+          });
+          await page.evaluate(() => {
+            document.documentElement.dataset.contrast = 'high';
+          });
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[data-testid="planner-planning-confirmation"]',
+            contrastLevel: 'aaa',
+          });
+          await page.evaluate(() => {
+            delete document.documentElement.dataset.contrast;
           });
           await dismiss.press('Enter');
           await expect(feedback).toHaveCount(0);
@@ -1267,6 +1283,22 @@ test.describe('Supper Planner', () => {
             expect(
               await page.evaluate(() => sessionStorage.getItem('wfs.planning-result'))
             ).not.toBeNull();
+            await expect(feedback).toHaveAttribute('role', 'alert');
+            await expect(feedback).toHaveClass(/bg-terracotta-50/);
+            await assertCookbookVisualA11y(page, {
+              rootSelector: '[data-testid="planner-planning-confirmation"]',
+              contrastLevel: 'aa',
+            });
+            await page.evaluate(() => {
+              document.documentElement.dataset.contrast = 'high';
+            });
+            await assertCookbookVisualA11y(page, {
+              rootSelector: '[data-testid="planner-planning-confirmation"]',
+              contrastLevel: 'aaa',
+            });
+            await page.evaluate(() => {
+              delete document.documentElement.dataset.contrast;
+            });
             const retry = page.getByTestId('planner-confirmation-refresh');
             await retry.focus();
             await expect(retry).toBeFocused();

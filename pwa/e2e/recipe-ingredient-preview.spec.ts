@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures';
 import { setupCommonRoutes, builders, MOCK_IDS } from './mock-api';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 
 test('legacy four-portion shells preview scales reliable lines despite omitted seasonings', async ({
   page,
@@ -189,4 +190,63 @@ test('early preview survives initial target resolution, schedule hints and resum
     page.getByText('Preview only. Your plan and shopping list stay unchanged.', { exact: true })
   ).toHaveCount(0);
   expect(writes).toEqual([]);
+});
+
+test('preview failure renders Era 3 Hearth retry card at AA, AAA, and 320px/200%', async ({
+  page,
+}) => {
+  const id = MOCK_IDS.RECIPE_SPAGHETTI;
+  await page.context().addCookies([
+    {
+      name: 'x-family-member-id',
+      value: MOCK_IDS.MEMBER_ALEX,
+      url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+    },
+  ]);
+  await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
+    supperServings: {
+      knownRecipe: { id, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },
+    },
+  });
+  let previewFails = true;
+  await page.route(`**/api/recipes/${id}/ingredient-preview*`, async (route) => {
+    if (previewFails) {
+      await route.fulfill({ status: 500, json: { message: 'Unavailable' } });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto(`/recipes?open=${id}&reviewAmounts=true`);
+  await page.getByRole('button', { name: 'Preview 4 portions', exact: true }).click();
+  const previewError = page.getByTestId('recipe-preview-error');
+  await expect(previewError).toBeVisible();
+  await expect(previewError.getByRole('button', { name: 'Retry', exact: true })).toHaveCSS(
+    'opacity',
+    '1'
+  );
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-preview-error"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-preview-error"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+    document.documentElement.style.fontSize = '32px';
+  });
+  expect(await previewError.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '16px';
+  });
+
+  previewFails = false;
+  await previewError.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.getByTestId('recipe-ingredient-preview')).toContainText('400 g pasta');
 });

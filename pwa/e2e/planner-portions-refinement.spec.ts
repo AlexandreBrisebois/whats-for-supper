@@ -13,7 +13,7 @@ import path from 'node:path';
 for (const locale of ['en', 'fr'] as const)
   test.describe(`compact Portions ${locale}`, () => {
     test.use({ appLocale: locale });
-    test('keeps odd counts, draft-exit choices and compact rows usable at enlarged text', async ({
+    test('keeps odd counts, invalid Hearth departure card and compact rows usable at enlarged text', async ({
       page,
     }) => {
       await page.context().addCookies([
@@ -34,6 +34,7 @@ for (const locale of ['en', 'fr'] as const)
       await page.getByTestId('portion-input-2026-05-08').fill('7');
       await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('5');
       await expect(page.getByTestId('portion-input-2026-05-08')).toHaveValue('7');
+      await page.getByTestId('portion-input-2026-05-06').fill('0');
       await page.evaluate(() => {
         document.documentElement.style.fontSize = '32px';
       });
@@ -43,14 +44,13 @@ for (const locale of ['en', 'fr'] as const)
       await page.getByTestId('grocery-tab').click();
       const choice = page.getByTestId('portions-departure');
       await expect(choice).toBeVisible();
+      await expect(choice).toHaveClass(/bg-terracotta-50/);
       expect(
         await choice
           .locator('button')
           .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('data-testid')))
-      ).toEqual(['portions-save-continue', 'portions-keep-editing', 'portions-discard']);
-      await page.getByTestId('portions-keep-editing').click();
-      await expect(page.getByTestId('portion-input-2026-05-06')).toHaveValue('5');
-      await page.getByTestId('grocery-tab').click();
+      ).toEqual(['portions-save-continue', 'portions-discard']);
+      await expect(page.getByTestId('portions-save-continue')).toBeDisabled();
       await page.getByTestId('portions-departure').scrollIntoViewIfNeeded();
       await page.screenshot({
         path: `../.task/refinement-apply/renders/portions-${locale}-320-200.png`,
@@ -384,13 +384,6 @@ for (const locale of ['en', 'fr'] as const)
           await expect(controls.nth(index)).toBeFocused();
           await assertVisibleFocus();
         }
-        await page.getByTestId('grocery-tab').click();
-        for (const id of ['portions-save-continue', 'portions-keep-editing', 'portions-discard']) {
-          await page.getByTestId(id).focus();
-          await assertVisibleFocus();
-        }
-        await page.getByTestId('portions-keep-editing').click();
-        expect(await page.getByTestId('portion-input-2026-05-10').inputValue()).toBe('5');
         const finishControls = page.getByTestId('portions-mode-strip').locator('button');
         await expect(finishControls).toHaveCount(1);
         await expect(page.getByTestId('save-portions')).toHaveAccessibleName(
@@ -400,6 +393,33 @@ for (const locale of ['en', 'fr'] as const)
           await button.focus();
           await assertVisibleFocus();
         }
+        await page.getByTestId('portion-input-2026-05-10').fill('0');
+        await page.getByTestId('grocery-tab').click();
+        await expect(page.getByTestId('portions-departure')).toBeVisible();
+        await page.getByTestId('portion-input-2026-05-10').fill('5');
+        for (const id of ['portions-save-continue', 'portions-discard']) {
+          await page.getByTestId(id).focus();
+          await assertVisibleFocus();
+        }
+        await expect(page.getByTestId('portions-save-continue')).toBeEnabled();
+        // Let the shared Button finish its opacity/color transition before measuring contrast.
+        await page.waitForTimeout(500);
+        await assertCookbookVisualA11y(page, {
+          rootSelector: '[data-testid="portions-departure"]',
+          contrastLevel: 'aa',
+        });
+        await page.evaluate(() => {
+          document.documentElement.dataset.contrast = 'high';
+        });
+        await assertCookbookVisualA11y(page, {
+          rootSelector: '[data-testid="portions-departure"]',
+          contrastLevel: 'aaa',
+        });
+        await page.evaluate(() => {
+          delete document.documentElement.dataset.contrast;
+        });
+        await page.getByTestId('portions-save-continue').click();
+        await expect(page.getByTestId('portions-editor')).toHaveCount(0);
         await info.attach('native-focus-geometry.json', {
           body: JSON.stringify(metrics, null, 2),
           contentType: 'application/json',

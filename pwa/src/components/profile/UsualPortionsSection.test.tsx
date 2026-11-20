@@ -133,12 +133,12 @@ describe('UsualPortionsSection', () => {
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
-    fireEvent.click(commit());
-    const review = await screen.findByRole('button', { name: 'Review current portions' });
-    expect(commit()).toBeDisabled();
     read.mockResolvedValue(portions({ defaultServings: 5, version: 'other-family' }));
-    fireEvent.click(review);
+    fireEvent.click(commit());
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    expect(
+      screen.queryByRole('button', { name: 'Review current portions' })
+    ).not.toBeInTheDocument();
     await waitFor(() => expect(commit()).toBeEnabled());
     expect(automatic()).not.toBeChecked();
     expect(input()).toHaveValue(5);
@@ -151,12 +151,10 @@ describe('UsualPortionsSection', () => {
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
-    fireEvent.click(commit());
-    const review = await screen.findByRole('button', { name: 'Review current portions' });
     read.mockResolvedValue(
       portions({ defaultServingsSource: 'explicit', defaultServings: 5, version: 'confirmed' })
     );
-    fireEvent.click(review);
+    fireEvent.click(commit());
     await screen.findByText('Saved');
     expect(commit()).toBeDisabled();
     expect(save).toHaveBeenCalledTimes(1);
@@ -169,10 +167,8 @@ describe('UsualPortionsSection', () => {
     render(<UsualPortionsSection />);
     await ready();
     fireEvent.click(automatic());
-    fireEvent.click(commit());
-    const review = await screen.findByRole('button', { name: 'Review current portions' });
     read.mockResolvedValue(portions({ version: 'automatic-maybe-saved' }));
-    fireEvent.click(review);
+    fireEvent.click(commit());
     await waitFor(() => expect(commit()).toBeEnabled());
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();
     expect(save).toHaveBeenCalledTimes(1);
@@ -183,6 +179,44 @@ describe('UsualPortionsSection', () => {
       defaultServings: null,
       days: [],
     });
+  });
+  it('shows an unconfirmed save as an Era 3 Hearth card with the current baseline and no Review gate', async () => {
+    save.mockRejectedValue(new Error('lost acknowledgement'));
+    render(<UsualPortionsSection />);
+    await ready();
+    fireEvent.click(automatic());
+    fireEvent.change(input(), { target: { value: '5' } });
+    read.mockResolvedValue(portions({ defaultServings: 6, version: 'someone-else' }));
+    fireEvent.click(commit());
+    const card = await screen.findByTestId('usual-portions-recovery');
+    expect(card).toHaveClass('bg-terracotta-50', 'border-hearth-line');
+    await waitFor(() =>
+      expect(screen.getByText('Current saved portions: 6 (Family size)')).toBeVisible()
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Review current portions' })
+    ).not.toBeInTheDocument();
+    expect(commit()).toHaveClass('min-h-12');
+    expect(screen.getByTestId('usual-portions-section')).toHaveClass(
+      'bg-white',
+      'border-chrome-line'
+    );
+  });
+  it('offers a single Retry portions button only when the automatic recovery read fails', async () => {
+    save.mockRejectedValue(new Error('lost acknowledgement'));
+    render(<UsualPortionsSection />);
+    await ready();
+    fireEvent.click(automatic());
+    fireEvent.change(input(), { target: { value: '5' } });
+    read.mockRejectedValueOnce(new Error('read down'));
+    fireEvent.click(commit());
+    const retry = await screen.findByRole('button', { name: 'Retry portions' });
+    expect(commit()).toBeDisabled();
+    expect(input()).toHaveValue(5);
+    read.mockResolvedValue(portions({ version: 'recovered' }));
+    fireEvent.click(retry);
+    await waitFor(() => expect(commit()).toBeEnabled());
+    expect(screen.queryByRole('button', { name: 'Retry portions' })).not.toBeInTheDocument();
   });
   it('rereads automatic portions after membership changes without deriving from cached members', async () => {
     render(<UsualPortionsSection />);
@@ -200,18 +234,18 @@ describe('UsualPortionsSection', () => {
     expect(read).toHaveBeenCalledTimes(2);
     expect(save).not.toHaveBeenCalled();
   });
-  it('preserves a dirty draft and stale baseline on membership conflict until deliberate review', async () => {
+  it('installs a changed baseline automatically on membership conflict and keeps the dirty draft saveable', async () => {
     render(<UsualPortionsSection />);
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '7' } });
     read.mockResolvedValue(portions({ defaultServings: 5, version: 'changed-baseline' }));
     act(() => useFamilyStore.setState({ familyMembers: [{ id: 'member-b', name: 'Sam' }] }));
-    const review = await screen.findByRole('button', { name: 'Review current portions' });
-    expect(input()).toHaveValue(7);
-    expect(commit()).toBeDisabled();
-    fireEvent.click(review);
     await waitFor(() => expect(commit()).toBeEnabled());
+    expect(
+      screen.queryByRole('button', { name: 'Review current portions' })
+    ).not.toBeInTheDocument();
+    expect(input()).toHaveValue(7);
     expect(screen.getByText('Current saved portions: 5 (Family size)')).toBeVisible();
     fireEvent.click(commit());
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
@@ -316,7 +350,10 @@ describe('UsualPortionsSection', () => {
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
     fireEvent.click(commit());
-    await screen.findByRole('button', { name: 'Review current portions' });
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    expect(
+      screen.queryByRole('button', { name: 'Review current portions' })
+    ).not.toBeInTheDocument();
     expect(input()).toHaveValue(5);
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();
     expect(save).toHaveBeenCalledTimes(1);
@@ -357,17 +394,20 @@ describe('UsualPortionsSection', () => {
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
+    const pendingRead = deferred<SupperServings>();
+    read.mockReturnValueOnce(pendingRead.promise);
     fireEvent.click(commit());
-    const review = await screen.findByRole('button', { name: 'Review current portions' });
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     fireEvent.change(input(), { target: { value: '6' } });
-    read.mockResolvedValue(
-      portions({
-        defaultServingsSource: 'explicit',
-        defaultServings: 5,
-        version: 'earlier-write-confirmed',
-      })
+    await act(async () =>
+      pendingRead.resolve(
+        portions({
+          defaultServingsSource: 'explicit',
+          defaultServings: 5,
+          version: 'earlier-write-confirmed',
+        })
+      )
     );
-    fireEvent.click(review);
     await waitFor(() => expect(commit()).toBeEnabled());
     expect(input()).toHaveValue(6);
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();

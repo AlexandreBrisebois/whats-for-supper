@@ -132,6 +132,35 @@ public class ScheduleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SmartDefaults_TiedNeverCookedConsensusPlacesByAscendingRecipeIdWithMoreCandidatesThanSlots()
+    {
+        var monday = new DateOnly(2026, 10, 19);
+        for (var i = 0; i < 4; i++)
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday.AddDays(i),
+                Status = CalendarEventStatus.Skipped, NonCookingKind = "eating_out" });
+        // Insert in descending RecipeId order so insertion/provider order disagrees with the tie-breaker.
+        var recipes = Enumerable.Range(1, 5).Reverse().Select(i => new Recipe
+            { Id = new Guid(i, 0, 0, new byte[8]), Name = $"Tied {i}", LastCookedDate = null }).ToArray();
+        foreach (var recipe in recipes)
+        {
+            _db.Recipes.Add(recipe);
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id,
+                FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+            await _db.SaveChangesAsync();
+        }
+
+        var first = await _service.GetSmartDefaultsAsync(1);
+        var second = await _service.GetSmartDefaultsAsync(1);
+
+        var expected = recipes.Select(r => r.Id).OrderBy(id => id).Take(3).ToArray();
+        Assert.Equal(5, first.ConsensusRecipesCount);
+        Assert.Equal(expected, first.PreSelectedRecipes.Select(x => x.RecipeId));
+        Assert.Equal(new[] { 4, 5, 6 }, first.PreSelectedRecipes.Select(x => x.DayIndex));
+        Assert.Equal(first.PreSelectedRecipes.Select(x => (x.RecipeId, x.DayIndex)),
+            second.PreSelectedRecipes.Select(x => (x.RecipeId, x.DayIndex)));
+    }
+
+    [Fact]
     public async Task SmartDefaults_FourMembersStillRequireThreeLikes()
     {
         var others = Enumerable.Range(0, 3).Select(i => new FamilyMember

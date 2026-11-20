@@ -246,6 +246,26 @@
     animation: pulse-ochre 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
+  @keyframes arrive-garden {
+    0% {
+      box-shadow: 0 0 0 0 rgba(78, 110, 82, 0.45);
+    }
+    100% {
+      box-shadow: 0 0 0 16px rgba(78, 110, 82, 0);
+    }
+  }
+
+  .animate-arrive-garden {
+    animation: arrive-garden 1.2s ease-out 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-pulse-ochre,
+    .animate-arrive-garden {
+      animation: none;
+    }
+  }
+
   .glow-ochre {
     box-shadow: 0 0 20px rgba(221, 173, 1, 0.2);
     border-color: rgba(221, 173, 1, 0.4);

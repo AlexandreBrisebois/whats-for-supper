@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, ChevronRight, Vote } from 'lucide-react';
+import { Camera, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants/routes';
 import { t } from '@/locales';
@@ -46,75 +46,5 @@ export function CookedSuccessCard({ onDismiss }: { onDismiss?: () => void }) {
       actionLabel={t('home.dismiss', 'Dismiss')}
       onAction={onDismiss}
     />
-  );
-}
-
-interface VotingNudgeCardProps {
-  phase: 'collecting' | 'converged' | null;
-  status: 'checking' | 'unavailable' | null;
-  onNavigate: () => void;
-  onRetry: () => void;
-}
-
-export function VotingNudgeCard({ phase, status, onNavigate, onRetry }: VotingNudgeCardProps) {
-  const converged = phase === 'converged';
-  return (
-    <section
-      data-testid="voting-nudge-card"
-      aria-label={t('home.votingRound', 'Family voting')}
-      className="w-full bg-ochre-50 border border-sunlight-line rounded-[2.5rem] p-6 flex flex-col gap-4"
-    >
-      {phase && (
-        <div className="flex items-center gap-3">
-          <div
-            aria-hidden="true"
-            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ochre-100 text-sunlight-ink flex-shrink-0"
-          >
-            <Vote size={20} />
-          </div>
-          <div>
-            <h2 className="font-heading text-lg font-bold text-ink-body">
-              {converged
-                ? t('home.menuIsIn', "Menu's In")
-                : t('home.familyVoting', 'The family is voting')}
-            </h2>
-            {converged && (
-              <p className="text-sm text-ink-body">
-                {t('home.matchesReady', 'Your matches are ready to review and save.')}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-      {status && (
-        <p role="status" data-testid="home-voting-status" className="text-sm text-ink-body">
-          {status === 'checking'
-            ? t('home.checkingVoting', 'Checking voting…')
-            : phase
-              ? t(
-                  'home.votingUnavailableRetained',
-                  'Voting status unavailable. Showing the last confirmed round.'
-                )
-              : t('home.votingUnavailable', 'Voting status unavailable.')}
-        </p>
-      )}
-      {phase && (
-        <button
-          data-testid={converged ? 'home-see-matches' : 'voting-nudge-vote-now'}
-          onClick={onNavigate}
-          className="w-full min-h-12 rounded-2xl bg-white text-sunlight-ink border border-sunlight-line shadow-sm font-semibold text-sm px-4 py-3 transition-colors hover:bg-ochre-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
-        >
-          {converged ? t('home.seeMatches', 'See your matches') : t('home.voteNow', 'Vote Now')}
-        </button>
-      )}
-      {status === 'unavailable' && (
-        <button
-          onClick={onRetry}
-          className="min-h-12 rounded-2xl border border-chrome-line bg-white px-4 py-3 font-semibold text-sm text-ink-body hover:bg-charcoal-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
-        >
-          {t('home.retryVoting', 'Retry')}
-        </button>
-      )}
-    </section>
   );
 }

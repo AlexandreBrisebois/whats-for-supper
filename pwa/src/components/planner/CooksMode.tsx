@@ -134,6 +134,10 @@ export function CooksMode({
   const quantityInvalidated = useRef(false);
   const quantityRefreshInFlight = useRef(false);
   const appliedProjection = useRef(projection);
+  const gatheredRef = useRef<Record<string, boolean>>({});
+  const currentStepRef = useRef(0);
+  const isEditingRef = useRef(false);
+  const instructionScrollRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     appliedProjection.current = projection;
   }, [projection]);
@@ -156,11 +160,20 @@ export function CooksMode({
         const current = await getIngredientProjection(id, context);
         if (!active || generation !== quantityRequest.current || probeGeneration !== probeRequest)
           return;
+        const hasCookingProgress =
+          Object.values(gatheredRef.current).some(Boolean) ||
+          currentStepRef.current > 0 ||
+          isEditingRef.current ||
+          (instructionScrollRef.current?.scrollTop ?? 0) > 0;
         const changed =
           current.version !== appliedProjection.current!.version ||
           current.contentRevision !== appliedProjection.current!.contentRevision;
-        if (!changed) setProjectionRead({ key: contextKey, data: current });
-        setQuantityNotice({ key: contextKey, error: false, available: changed });
+        if (!changed || !hasCookingProgress) {
+          setProjectionRead({ key: contextKey, data: current });
+          setQuantityNotice({ key: contextKey, error: false, available: false });
+        } else {
+          setQuantityNotice({ key: contextKey, error: false, available: true });
+        }
       } catch {
         if (active && generation === quantityRequest.current && probeGeneration === probeRequest)
           setQuantityNotice((previous) => ({
@@ -340,6 +353,12 @@ export function CooksMode({
   const currentStep = Math.min(cookProgress[progressKey] ?? 0, steps.length);
 
   useLayoutEffect(() => {
+    gatheredRef.current = gathered;
+    currentStepRef.current = currentStep;
+    isEditingRef.current = isEditing;
+  }, [gathered, currentStep, isEditing]);
+
+  useLayoutEffect(() => {
     if (viewSelectionRef.current.memberId !== selectedFamilyMemberId) {
       viewSelectionRef.current = {
         memberId: selectedFamilyMemberId,
@@ -404,7 +423,6 @@ export function CooksMode({
     editPending || reportPending || isCompleting || currentViewSaveState === 'saving';
   const isCompletionAction =
     !hasInstructions || (!isPrepStep && (singlePageEnabled || currentStep === steps.length));
-  const instructionScrollRef = useRef<HTMLDivElement>(null);
   const resumeScrollTopRef = useRef<number | null>(null);
 
   const saveCookingView = async (mode: CookingViewMode) => {
@@ -810,17 +828,21 @@ export function CooksMode({
   };
 
   const stepEditError = editError && (
-    <p role="alert" className="font-semibold text-terracotta">
-      Couldn&apos;t save this step.{' '}
-      <button
+    <div
+      role="alert"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body shadow-sm"
+    >
+      <p className="min-w-0 flex-1 font-semibold text-hearth-ink">Couldn&apos;t save this step.</p>
+      <Button
         type="button"
+        variant="primary"
+        size="md"
         disabled={editPending}
         onClick={() => void handleSaveEdit()}
-        className="min-h-11 underline"
       >
         Try again
-      </button>
-    </p>
+      </Button>
+    </div>
   );
 
   const currentStepData = steps[activeRecipeStepIndex];
@@ -947,10 +969,10 @@ export function CooksMode({
                       : label
                   }
                   onClick={() => chooseCookingView(mode)}
-                  className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`inline-flex h-[48px] w-[48px] items-center justify-center rounded-full transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:cursor-not-allowed disabled:opacity-60 ${
                     selected
-                      ? 'bg-sage/20 text-sage-900 shadow-sm'
-                      : 'text-charcoal/55 hover:bg-white'
+                      ? 'bg-sage-50 text-garden-ink shadow-sm'
+                      : 'text-ink-muted hover:bg-white hover:text-ink-body'
                   }`}
                 >
                   {mode === 'all-steps' ? (
@@ -982,7 +1004,7 @@ export function CooksMode({
                         window.open(originalUrl, '_blank', 'noopener,noreferrer');
                     } else setShowOriginals(true);
                   }}
-                  className="relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-3 py-2 text-sm font-semibold text-charcoal-600 hover:bg-cream active:bg-charcoal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-charcoal-500 disabled:cursor-wait disabled:opacity-60"
+                  className="relative z-20 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full border border-chrome-line bg-white px-3 py-2 text-sm font-semibold text-ink-body shadow-sm hover:bg-cream active:bg-charcoal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:cursor-wait disabled:opacity-60"
                 >
                   {originalUrl ? (
                     <ExternalLink size={18} aria-hidden="true" />
@@ -1008,7 +1030,7 @@ export function CooksMode({
                 event.stopPropagation();
                 setReportContext(isPrepStep ? 'ingredients' : 'steps');
               }}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-terracotta-600 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-chrome-line bg-white/95 text-hearth-ink shadow-md transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
               <Flag size={20} aria-hidden="true" />
             </button>
@@ -1022,7 +1044,7 @@ export function CooksMode({
                 event.stopPropagation();
                 onClose();
               }}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-charcoal/60 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-chrome-line bg-white/95 text-ink-body shadow-md transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
               <X size={20} aria-hidden="true" />
             </button>
@@ -1091,15 +1113,25 @@ export function CooksMode({
                 </p>
               )}
               {projectionError && (
-                <p role="alert">
-                  {t('recipes.projectionFailed', 'Could not confirm ingredients for this supper.')}{' '}
-                  <button
-                    className="min-h-12 min-w-12 underline"
+                <div
+                  role="alert"
+                  className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body shadow-sm"
+                >
+                  <p className="min-w-0 flex-1 font-medium text-hearth-ink">
+                    {t(
+                      'recipes.projectionFailed',
+                      'Could not confirm ingredients for this supper.'
+                    )}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
                     onClick={() => setProjectionAttempt((value) => value + 1)}
                   >
                     {t('common.retry', 'Retry')}
-                  </button>
-                </p>
+                  </Button>
+                </div>
               )}
               {(projection?.status === 'partial' || projection?.status === 'unresolved') && (
                 <p role="status">
@@ -1119,67 +1151,80 @@ export function CooksMode({
               )}
             </div>
           )}
-          {(quantitiesAvailable || quantityRefreshError) && (
-            <div className="shrink-0 border-t border-charcoal/10 bg-white px-4 py-2 text-sm text-charcoal md:px-6">
-              {quantitiesAvailable && (
-                <p data-testid="cooking-quantities-available" role="status">
-                  {t('cook.quantitiesAvailable', 'Updated quantities are available.')}
-                </p>
-              )}
-              {(quantitiesAvailable || quantityRefreshError) && (
-                <button
-                  className="min-h-12 min-w-12 underline"
-                  disabled={quantityRefreshing}
-                  onClick={() => void refreshQuantities()}
-                >
-                  {quantityRefreshing
-                    ? t('cook.refreshingQuantities', 'Refreshing quantities…')
-                    : t('cook.refreshQuantities', 'Refresh quantities')}
-                </button>
-              )}
-              {quantityRefreshError && (
-                <p role="alert">
-                  {t(
-                    'cook.quantityRefreshFailed',
-                    'Could not confirm updated quantities. Your current quantities and cooking work are kept.'
-                  )}
-                </p>
-              )}
-            </div>
-          )}
-          {preparationReview && (
+          {(quantitiesAvailable || quantityRefreshError || preparationReview) && (
             <div
-              data-testid="preparation-review"
-              className="shrink-0 border-t border-charcoal/10 px-4 py-2 text-sm text-charcoal md:px-6"
-              role="status"
+              data-testid={preparationReview ? 'preparation-review' : 'cooking-update-bar'}
+              className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-y border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body md:px-6"
             >
-              <p>
-                {preparationReview === 'quantities'
-                  ? t(
-                      'cook.reviewChangedQuantities',
-                      'Refresh the changed quantities before marking this supper prepared.'
-                    )
-                  : t(
+              <div className="min-w-0 flex-1 space-y-1">
+                {preparationReview === 'required' ? (
+                  <p role="status" className="font-medium text-ink-body">
+                    {t(
                       'cook.reviewCurrentSupperHelp',
                       'Review the current supper and quantities before another attempt. Your cooking work is kept.'
                     )}
-              </p>
-              {preparationReview === 'required' && (
-                <button
+                  </p>
+                ) : (
+                  <>
+                    {quantitiesAvailable && (
+                      <p
+                        data-testid="cooking-quantities-available"
+                        role="status"
+                        className="font-medium text-ink-body"
+                      >
+                        {preparationReview === 'quantities'
+                          ? t(
+                              'cook.reviewChangedQuantities',
+                              'Refresh the changed quantities before marking this supper prepared.'
+                            )
+                          : t('cook.quantitiesAvailable', 'Updated quantities are available.')}
+                      </p>
+                    )}
+                    {quantityRefreshError && (
+                      <p role="alert" className="font-semibold text-hearth-ink">
+                        {t(
+                          'cook.quantityRefreshFailed',
+                          'Could not confirm updated quantities. Your current quantities and cooking work are kept.'
+                        )}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+              {preparationReview === 'required' ? (
+                <Button
                   type="button"
-                  className="min-h-12 underline"
+                  variant="primary"
+                  size="md"
+                  className="max-w-full whitespace-normal text-center"
                   disabled={reviewingPreparation}
                   onClick={() => void reviewPreparation()}
                 >
                   {reviewingPreparation
                     ? t('cook.reviewingCurrentSupper', 'Reviewing supper…')
                     : t('cook.reviewCurrentSupper', 'Review current supper')}
-                </button>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  className="max-w-full whitespace-normal text-center"
+                  disabled={quantityRefreshing}
+                  onClick={() => void refreshQuantities()}
+                >
+                  {quantityRefreshing
+                    ? t('cook.refreshingQuantities', 'Refreshing quantities…')
+                    : t('cook.refreshQuantities', 'Refresh quantities')}
+                </Button>
               )}
             </div>
           )}
           {completionError && (
-            <p role="alert" className="px-6 py-2 text-sm text-terracotta">
+            <p
+              role="alert"
+              className="border-y border-hearth-line bg-terracotta-50 px-4 py-3 text-sm font-medium text-hearth-ink md:px-6"
+            >
               {completionError}
             </p>
           )}
@@ -1203,9 +1248,18 @@ export function CooksMode({
                 {!hasInstructions ? (
                   <div
                     data-testid="cooks-mode-no-steps"
-                    className="space-y-5 rounded-3xl border border-charcoal/10 bg-white p-6 text-charcoal"
+                    className={`space-y-5 rounded-3xl border p-6 text-ink-body ${
+                      contentError
+                        ? 'border-hearth-line bg-terracotta-50'
+                        : 'border-chrome-line bg-white'
+                    }`}
                   >
-                    <p role={contentError ? 'alert' : 'status'} className="text-lg font-bold">
+                    <p
+                      role={contentError ? 'alert' : 'status'}
+                      className={`text-lg font-bold ${
+                        contentError ? 'text-hearth-ink' : 'text-ink-body'
+                      }`}
+                    >
                       {contentError
                         ? t('cook.instructionsLoadError', 'Could not load cooking instructions.')
                         : t(
@@ -1213,7 +1267,7 @@ export function CooksMode({
                             'Cooking instructions are not available for this recipe.'
                           )}
                     </p>
-                    <p className="text-sm text-charcoal/70">
+                    <p className="text-sm text-ink-muted">
                       {t(
                         'cook.instructionsRecovery',
                         'You can open recipe details to view the original, or mark this recipe as cooked.'
@@ -1240,10 +1294,10 @@ export function CooksMode({
                   <div className="space-y-10">
                     <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
                       <div className="flex flex-col gap-2">
-                        <h3 className="text-3xl md:text-4xl lg:text-5xl font-heading font-black text-charcoal leading-tight">
+                        <h3 className="text-3xl md:text-4xl lg:text-5xl font-heading font-black text-ink-body leading-tight">
                           {t('cook.checkAndPrep', 'Check & Prep')}
                         </h3>
-                        <p className="text-xl md:text-2xl font-medium text-charcoal/50 leading-relaxed max-w-lg">
+                        <p className="text-xl md:text-2xl font-medium text-ink-muted leading-relaxed max-w-lg">
                           {t(
                             'cook.ingredientsReady',
                             'Check off your ingredients before you start cooking.'
@@ -1340,7 +1394,7 @@ export function CooksMode({
                             onClick={() => {
                               startEdit(index);
                             }}
-                            className={`h-11 w-11 shrink-0 items-center justify-center rounded-xl text-charcoal/70 hover:bg-charcoal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:opacity-40 ${
+                            className={`h-12 w-12 shrink-0 items-center justify-center rounded-xl text-ink-muted hover:bg-charcoal/5 hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-40 ${
                               showTitle
                                 ? 'col-start-2 row-start-1 flex'
                                 : 'float-right -mt-1.5 ml-3 inline-flex'
@@ -1357,14 +1411,14 @@ export function CooksMode({
                             className="border-b border-charcoal/10 py-5 first:pt-0 last:border-0"
                           >
                             {showSection && (
-                              <p className="mb-3 text-sm font-bold text-terracotta-700">
+                              <p className="mb-3 text-sm font-bold text-hearth-ink">
                                 {step.sectionTitle}
                               </p>
                             )}
-                            <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-start gap-x-3 gap-y-2">
+                            <div className="grid grid-cols-[minmax(0,1fr)_3rem] items-start gap-x-3 gap-y-2">
                               <div className="contents">
                                 {showTitle && (
-                                  <h4 className="col-start-1 row-start-1 min-w-0 break-words pt-1.5 font-heading text-xl font-semibold leading-[1.5] text-charcoal">
+                                  <h4 className="col-start-1 row-start-1 min-w-0 break-words pt-1.5 font-heading text-xl font-semibold leading-[1.5] text-ink-body">
                                     {step.title}
                                   </h4>
                                 )}
@@ -1376,25 +1430,29 @@ export function CooksMode({
                                       aria-label={`Edit step ${step.index} instructions`}
                                       value={editingValue}
                                       onChange={(event) => setEditingValue(event.target.value)}
-                                      className="min-h-40 w-full rounded-2xl border-2 border-charcoal/10 bg-white p-4 text-lg text-charcoal outline-none focus:border-terracotta"
+                                      className="min-h-40 w-full rounded-2xl border-2 border-chrome-line bg-white p-4 text-lg text-ink-body outline-none focus:border-hearth-line"
                                     />
                                     <div className="flex flex-wrap gap-3">
-                                      <button
+                                      <Button
                                         type="button"
+                                        variant="primary"
+                                        size="md"
                                         disabled={editPending}
                                         onClick={() => void handleSaveEdit()}
-                                        className="min-h-11 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-6 font-bold text-white disabled:opacity-50"
+                                        className="rounded-full px-6"
                                       >
                                         {editPending ? 'Saving…' : 'Save'}
-                                      </button>
-                                      <button
+                                      </Button>
+                                      <Button
                                         type="button"
+                                        variant="secondary"
+                                        size="md"
                                         disabled={editPending}
                                         onClick={handleCancelEdit}
-                                        className="min-h-11 rounded-full border border-charcoal/15 bg-white px-6 font-bold text-charcoal"
+                                        className="rounded-full px-6"
                                       >
                                         Cancel
-                                      </button>
+                                      </Button>
                                     </div>
                                     {stepEditError}
                                   </div>
@@ -1435,27 +1493,31 @@ export function CooksMode({
                       value={editingValue}
                       onChange={(e) => setEditingValue(e.target.value)}
                     />
-                    <div className="flex items-center gap-4">
-                      <button
+                    <div className="flex flex-wrap items-center gap-4">
+                      <Button
                         type="button"
+                        variant="primary"
+                        size="lg"
                         data-testid="cooks-mode-save-edit"
                         disabled={editPending}
                         onClick={handleSaveEdit}
-                        className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-terracotta active:bg-terracotta-700 px-10 text-base font-black text-white shadow-xl shadow-terracotta/20 transition hover:bg-terracotta-600 active:scale-95"
+                        className="gap-3 rounded-full px-8 shadow-xl shadow-terracotta/20"
                       >
                         <Check size={20} strokeWidth={3} />
                         <span>{editPending ? 'Saving…' : t('common.save', 'Save')}</span>
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="secondary"
+                        size="lg"
                         data-testid="cooks-mode-cancel-edit"
                         disabled={editPending}
                         onClick={handleCancelEdit}
-                        className="inline-flex h-14 items-center justify-center gap-3 rounded-full border-2 border-charcoal/10 bg-white px-8 text-base font-black text-charcoal shadow-sm transition hover:bg-charcoal/5 active:scale-95"
+                        className="gap-3 rounded-full px-8"
                       >
                         <X size={20} />
                         <span>{t('common.cancel', 'Cancel')}</span>
-                      </button>
+                      </Button>
                     </div>
                     {stepEditError}
                   </div>
@@ -1474,33 +1536,43 @@ export function CooksMode({
 
         {/* Controls */}
         {currentViewSaveState === 'failed' && selectedFamilyMember && (
-          <p role="alert" className="px-6 py-2 text-sm font-semibold text-terracotta">
-            {tWithVars('cook.viewSaveFailed', "View changed for now. Couldn't save for {{name}}.", {
-              name: selectedFamilyMember.name,
-            })}{' '}
-            <button
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 border-t border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body md:px-6"
+          >
+            <p className="min-w-0 flex-1 font-semibold text-hearth-ink">
+              {tWithVars(
+                'cook.viewSaveFailed',
+                "View changed for now. Couldn't save for {{name}}.",
+                {
+                  name: selectedFamilyMember.name,
+                }
+              )}
+            </p>
+            <Button
               type="button"
-              className="min-h-11 underline"
+              variant="primary"
+              size="md"
               onClick={() => {
                 const failedMode = failedViewModeRef.current;
                 if (failedMode) void saveCookingView(failedMode);
               }}
             >
               {t('cook.viewRetry', 'Retry')}
-            </button>
-          </p>
+            </Button>
+          </div>
         )}
         {reimportAcknowledgement && (
           <p
             role="status"
-            className="shrink-0 px-4 py-2 text-sm font-semibold text-charcoal md:px-6"
+            className="shrink-0 px-4 py-2 text-sm font-semibold text-ink-body md:px-6"
           >
             Reimporting in background
           </p>
         )}
         <div
           data-testid="cooks-mode-controls"
-          className={`px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6 flex flex-wrap gap-3 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0`}
+          className="px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6 flex flex-wrap gap-3 bg-white border-t border-chrome-line shrink-0"
         >
           {hasInstructions && (!singlePageEnabled || singlePageCooking) && (
             <Button
@@ -1508,7 +1580,7 @@ export function CooksMode({
               disabled={singlePageCooking ? isEditing : currentStep === 0}
               onClick={singlePageCooking ? openIngredients : prevStep}
               data-testid="cooks-mode-step-prev"
-              className={`h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-base font-semibold text-charcoal/80 border-charcoal/10 flex items-center justify-center space-x-2 active:scale-95 transition-all bg-white`}
+              className="h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-base font-semibold text-ink-body border-chrome-line flex items-center justify-center space-x-2 transition-all bg-white"
             >
               {!singlePageCooking && <ChevronLeft size={24} />}
               <span>
@@ -1518,6 +1590,7 @@ export function CooksMode({
           )}
           {!(projection?.preparation && isCompletionAction) && (
             <Button
+              variant="primary"
               disabled={
                 isCompleting ||
                 !!preparationReview ||
@@ -1534,7 +1607,7 @@ export function CooksMode({
                     : t('cook.markCooked', 'Mark recipe as cooked')
                   : undefined
               }
-              className={`h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-lg font-bold shadow-sm bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white flex items-center justify-center space-x-2 active:scale-95 transition-all`}
+              className="h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-lg font-bold shadow-sm flex items-center justify-center space-x-2 transition-all"
             >
               <span>
                 {isCompletionAction

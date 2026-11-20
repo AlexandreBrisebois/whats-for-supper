@@ -169,20 +169,20 @@ describe('Settings usual portions', () => {
     }
   );
 
-  it('requires a read after an uncertain save and does not mistake family five for explicit five', async () => {
+  it('reads automatically after an uncertain save and does not mistake family five for explicit five', async () => {
     save.mockRejectedValue(new Error('Acknowledgement lost'));
     render(<SettingsPageContent />);
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
+    read.mockResolvedValue(portions({ defaultServings: 5, version: 'other-family-version' }));
     fireEvent.click(saveButton());
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-    const review = await screen.findByRole('button', { name: 'Review current portions' });
-    expect(input()).toHaveValue(5);
-    expect(saveButton()).toBeDisabled();
-    read.mockResolvedValue(portions({ defaultServings: 5, version: 'other-family-version' }));
-    fireEvent.click(review);
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    expect(
+      screen.queryByRole('button', { name: 'Review current portions' })
+    ).not.toBeInTheDocument();
+    expect(input()).toHaveValue(5);
     expect(automatic()).not.toBeChecked();
     expect(input()).toHaveValue(5);
     expect(save).toHaveBeenCalledTimes(1);

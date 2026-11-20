@@ -123,7 +123,14 @@ export function useReplacementRecovery(options: {
   };
   const close = (review = false) => {
     if (submitting.current) return;
-    if (sessionRef.current && !sessionRef.current.saved) {
+    const session = sessionRef.current;
+    // Only completed or uncertain changes need an explicit abandon choice. Before
+    // anything committed (for example a plan conflict), leaving is simply leaving.
+    if (
+      session &&
+      !session.saved &&
+      (session.disposed || session.dispositionUnknown || session.saveUnknown)
+    ) {
       reviewOnDeparture.current = review;
       setConfirmAbandon(true);
       return;

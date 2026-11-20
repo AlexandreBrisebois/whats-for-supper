@@ -204,18 +204,34 @@ it.each(['focus', 'schedule', 'same-version', 'older-probe', 'changed-context'] 
   }
 );
 
-it('notices Today quantities through the actual event owner while Planner retains a different week', async () => {
+it('auto-applies Today quantities before cooking work starts while Planner retains a different week', async () => {
   api.projection.mockResolvedValue(projected(4));
   render(<HomeCooking />);
   expect(await screen.findByText('400 g pasta')).toBeVisible();
   api.projection.mockResolvedValue(projected(6));
   act(() => Source.current.emit());
-  expect(await screen.findByTestId('cooking-quantities-available')).toBeVisible();
-  expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('4 portions');
+  expect(await screen.findByText('600 g pasta')).toBeVisible();
+  expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('6 portions');
+  expect(screen.queryByTestId('cooking-quantities-available')).not.toBeInTheDocument();
   expect(useWeekStore.getState().weekStartDate).toBe('2026-05-11');
   expect(usePlannerStore.getState().currentWeekOffset).toBe(1);
 });
-it('rechecks an invalidation received while the initial dated projection read is pending', async () => {
+
+it('retains displayed quantities behind an Era 3 Hearth bar once cooking work is underway', async () => {
+  api.projection.mockResolvedValue(projected(4));
+  render(<HomeCooking />);
+  fireEvent.click(await screen.findByTestId('ingredient-toggle'));
+  api.projection.mockResolvedValue(projected(6));
+  act(() => Source.current.emit());
+  const notice = await screen.findByTestId('cooking-quantities-available');
+  expect(notice).toBeVisible();
+  const bar = notice.closest('[data-testid="cooking-update-bar"]');
+  expect(bar).toHaveClass('border-hearth-line', 'bg-terracotta-50');
+  expect(screen.getByRole('button', { name: 'Refresh quantities' })).toBeEnabled();
+  expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('4 portions');
+});
+
+it('rechecks an invalidation received while the initial dated projection read is pending and auto-applies pre-progress', async () => {
   let resolve!: (value: unknown) => void;
   api.projection
     .mockImplementationOnce(
@@ -229,11 +245,12 @@ it('rechecks an invalidation received while the initial dated projection read is
   await waitFor(() => expect(api.projection).toHaveBeenCalledTimes(1));
   act(() => Source.current.emit());
   await act(async () => resolve(projected(4)));
-  expect(await screen.findByTestId('cooking-quantities-available')).toBeVisible();
-  expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('4 portions');
+  expect(await screen.findByText('600 g pasta')).toBeVisible();
+  expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('6 portions');
+  expect(screen.queryByTestId('cooking-quantities-available')).not.toBeInTheDocument();
 });
 
-it('notices a future proposed supper update without replacing the displayed Planner week or relying on Today', async () => {
+it('auto-applies a future proposed supper update pre-progress without replacing Planner or relying on Today', async () => {
   const future = { context: 'proposed' as const, supperDate: '2026-05-20' };
   api.projection.mockResolvedValue({ ...projected(4), ...future, occurrenceId: null });
   render(<HomeCooking ingredientContext={future} />);
@@ -242,13 +259,14 @@ it('notices a future proposed supper update without replacing the displayed Plan
   const incoming = builders.scheduleDays(2);
   incoming.weekStartDate = '2026-05-18' as any;
   act(() => Source.current.emit(incoming));
-  expect(await screen.findByTestId('cooking-quantities-available')).toBeVisible();
-  expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('4 portions');
+  expect(await screen.findByText('600 g pasta')).toBeVisible();
+  expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('6 portions');
+  expect(screen.queryByTestId('cooking-quantities-available')).not.toBeInTheDocument();
   expect(useWeekStore.getState().weekStartDate).toBe('2026-05-11');
   expect(useTodayStore.getState().calendar?.today).toBe('2026-05-04');
 });
 
-it('probes a future proposed date after a global default hint from another empty week, without false unrelated notices', async () => {
+it('probes a future proposed date and auto-applies pre-progress changes without false unrelated notices', async () => {
   const future = { context: 'proposed' as const, supperDate: '2026-05-20' };
   api.projection.mockResolvedValue({ ...projected(4), ...future, occurrenceId: null });
   render(<HomeCooking ingredientContext={future} />);
@@ -259,7 +277,8 @@ it('probes a future proposed date after a global default hint from another empty
   expect(screen.queryByTestId('cooking-quantities-available')).not.toBeInTheDocument();
   api.projection.mockResolvedValue({ ...projected(5), ...future, occurrenceId: null });
   act(() => Source.current.emit(builders.scheduleDays()));
-  expect(await screen.findByTestId('cooking-quantities-available')).toBeVisible();
-  expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('4 portions');
+  expect(await screen.findByText('500 g pasta')).toBeVisible();
+  expect(screen.getByTestId('cooking-portion-context')).toHaveTextContent('5 portions');
+  expect(screen.queryByTestId('cooking-quantities-available')).not.toBeInTheDocument();
   expect(useWeekStore.getState().weekStartDate).toBe('2026-05-11');
 });

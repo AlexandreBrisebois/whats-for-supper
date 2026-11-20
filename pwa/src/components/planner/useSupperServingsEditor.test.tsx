@@ -74,6 +74,7 @@ it('restores the same absolute week after rollover and saves its original refere
   first.unmount();
   render(<Editor offset={0} anchor={monday} />);
   await screen.findByTestId('portions-restored');
+  expect(screen.getByTestId('portions-restored')).toHaveClass('bg-sage-50', 'border-garden-line');
   expect(screen.getByTestId('portion-input-2026-10-14')).toHaveValue(6);
   fireEvent.click(screen.getByTestId('save-portions'));
   await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
@@ -103,6 +104,7 @@ it('retains a draft when hydration briefly selects another week before restorati
   });
   view.rerender(<Editor offset={0} anchor={monday} />);
   await screen.findByTestId('portions-restored');
+  expect(screen.getByTestId('portions-restored')).toHaveClass('bg-sage-50', 'border-garden-line');
   expect(screen.getByTestId('portion-input-2026-10-14')).toHaveValue(6);
 });
 it.each(['week', 'offset', 'days', 'draft'] as const)(
@@ -141,23 +143,81 @@ it('offers Portions without a neighboring Recipes heading and keeps joined date 
   expect(screen.getByTestId('portion-input-2026-10-14')).toHaveValue(5);
   expect(screen.getByTestId('portion-input-2026-10-16')).toHaveValue(7);
 });
-it('orders all three draft-exit choices and retains the draft when editing continues', async () => {
-  render(<Editor />);
+it('auto-saves a valid draft on departure without an intermediate confirmation gate and guards rapid duplicates', async () => {
+  let resolveSave!: (value: unknown) => void;
+  save.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        resolveSave = resolve;
+      })
+  );
+  const departed = vi.fn();
+  function DepartEditor() {
+    const editor = useSupperServingsEditor(offsetRef.offset, reference, [{ date: monday }] as any);
+    return (
+      <>
+        <button onClick={editor.open}>Open</button>
+        <button onClick={() => editor.requestDeparture(departed)}>Leave</button>
+        {editor.strip}
+        {editor.editing && editor.rows}
+      </>
+    );
+  }
+  const offsetRef = { offset: 1 };
+  render(<DepartEditor />);
   fireEvent.click(screen.getByText('Open'));
   fireEvent.change(await screen.findByTestId('portion-input-2026-10-14'), {
     target: { value: '5' },
   });
   fireEvent.click(screen.getByText('Leave'));
-  const keep = screen.getByRole('button', { name: 'Keep editing' });
-  const discard = screen.getByRole('button', { name: 'Discard changes' });
-  expect(
-    screen.getByRole('button', { name: 'Save and continue' }).compareDocumentPosition(keep) &
-      Node.DOCUMENT_POSITION_FOLLOWING
-  ).toBeTruthy();
-  expect(keep.compareDocumentPosition(discard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  fireEvent.click(keep);
-  expect(screen.getByTestId('portion-input-2026-10-14')).toHaveValue(5);
+  fireEvent.click(screen.getByText('Leave'));
+  expect(screen.queryByTestId('portions-departure')).not.toBeInTheDocument();
+  expect(save).toHaveBeenCalledTimes(1);
+  expect(save.mock.calls[0][0].days[0].servings).toBe(5);
+  expect(departed).not.toHaveBeenCalled();
+
+  await act(async () => {
+    resolveSave({ ...baseline, version: 'saved' });
+  });
+  await waitFor(() => expect(departed).toHaveBeenCalledTimes(1));
+  expect(screen.queryByTestId('portions-editor')).not.toBeInTheDocument();
+});
+
+it('pauses invalid departure in a Hearth recovery card, focuses the invalid input, and allows fixing or discarding', async () => {
+  const departed = vi.fn();
+  function DepartEditor() {
+    const editor = useSupperServingsEditor(1, reference, [{ date: monday }] as any);
+    return (
+      <>
+        <button onClick={editor.open}>Open</button>
+        <button onClick={() => editor.requestDeparture(departed)}>Leave</button>
+        {editor.strip}
+        {editor.editing && editor.rows}
+      </>
+    );
+  }
+  render(<DepartEditor />);
+  fireEvent.click(screen.getByText('Open'));
+  const input = await screen.findByTestId('portion-input-2026-10-14');
+  fireEvent.change(input, { target: { value: '0' } });
+  fireEvent.click(screen.getByText('Leave'));
+
   expect(save).not.toHaveBeenCalled();
+  expect(departed).not.toHaveBeenCalled();
+  expect(input).toHaveFocus();
+
+  const card = screen.getByTestId('portions-departure');
+  expect(card).toHaveClass('bg-terracotta-50', 'border-hearth-line');
+  expect(within(card).queryByTestId('portions-keep-editing')).not.toBeInTheDocument();
+  expect(within(card).getByTestId('portions-save-continue')).toBeDisabled();
+  expect(within(card).getByTestId('portions-discard')).toHaveAccessibleName('Discard changes');
+
+  fireEvent.change(input, { target: { value: '5' } });
+  expect(within(card).getByTestId('portions-save-continue')).toBeEnabled();
+  fireEvent.click(within(card).getByTestId('portions-save-continue'));
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+  expect(save.mock.calls[0][0].days[0].servings).toBe(5);
+  await waitFor(() => expect(departed).toHaveBeenCalledTimes(1));
 });
 
 it('associates an invalid count with its date field without exposing usual configuration', async () => {

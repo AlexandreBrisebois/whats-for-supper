@@ -767,7 +767,7 @@ describe('RecipesPage', () => {
     expect(mocks.searchRecipes).toHaveBeenCalledTimes(2);
   });
 
-  it('offers restart for an expired Search cursor while retaining loaded cards', async () => {
+  it('seamlessly restarts an expired 409 Search cursor once while retaining loaded cards', async () => {
     mocks.setSearchParams('');
     mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ nextCursor: 'cursor-2' }));
     mocks.searchRecipes.mockRejectedValueOnce({ responseStatusCode: 409 });
@@ -789,17 +789,56 @@ describe('RecipesPage', () => {
     );
     fireEvent.click(screen.getByTestId('unit-stack-next'));
     fireEvent.click(screen.getByTestId('unit-stack-next'));
-    await waitFor(() => expect(screen.getByTestId('search-restart-expired')).toBeInTheDocument());
-    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
-    expect(screen.queryByTestId('search-load-more-retry')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('search-restart-expired'));
     await waitFor(() =>
       expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Restarted match')
     );
+    expect(screen.queryByTestId('search-restart-expired')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('search-load-more-retry')).not.toBeInTheDocument();
     expect(mocks.searchRecipes).toHaveBeenCalledTimes(3);
     expect(mocks.searchRecipes).toHaveBeenLastCalledWith(
       expect.objectContaining({ query: 'chicken' })
     );
+    expect(mocks.searchRecipes.mock.lastCall?.[0]).not.toHaveProperty('continuationToken');
+  });
+
+  it('bounds 409 auto-restart to a single attempt and falls back to an Era 3 Retry Button', async () => {
+    mocks.setSearchParams('');
+    mocks.searchRecipes.mockResolvedValueOnce(makeSearchResponse({ nextCursor: 'cursor-2' }));
+    mocks.searchRecipes.mockRejectedValueOnce({ responseStatusCode: 409 });
+    mocks.searchRecipes.mockRejectedValueOnce({ responseStatusCode: 409 });
+    mocks.searchRecipes.mockResolvedValueOnce(
+      makeSearchResponse({
+        topPick: null,
+        results: [{ ...makeSearchResult(4), name: 'Manual retry match' }],
+        nextCursor: null,
+      })
+    );
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
+    fireEvent.change(screen.getByTestId('recipe-search-input'), { target: { value: 'chicken' } });
+    fireEvent.keyDown(screen.getByTestId('recipe-search-input'), { key: 'Enter' });
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup')
+    );
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    fireEvent.click(screen.getByTestId('unit-stack-next'));
+    const retryBtn = await screen.findByTestId('search-load-more-retry');
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(3);
+    expect(screen.queryByTestId('search-restart-expired')).not.toBeInTheDocument();
+    expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
+    expect(retryBtn).toHaveTextContent('Retry');
+    expect(retryBtn).toHaveClass('min-h-12', 'focus-visible:outline-ink-body');
+    expect(retryBtn.closest('[role="alert"]')).toHaveClass(
+      'border-hearth-line',
+      'bg-terracotta-50'
+    );
+    fireEvent.click(retryBtn);
+    await waitFor(() =>
+      expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Manual retry match')
+    );
+    expect(mocks.searchRecipes).toHaveBeenCalledTimes(4);
     expect(mocks.searchRecipes.mock.lastCall?.[0]).not.toHaveProperty('continuationToken');
   });
 
@@ -825,9 +864,14 @@ describe('RecipesPage', () => {
     );
     fireEvent.click(screen.getByTestId('unit-stack-next'));
     fireEvent.click(screen.getByTestId('unit-stack-next'));
-    await waitFor(() => expect(screen.getByTestId('search-load-more-retry')).toBeInTheDocument());
+    const retryBtn = await screen.findByTestId('search-load-more-retry');
+    expect(retryBtn).toHaveClass('min-h-12', 'focus-visible:outline-ink-body');
+    expect(retryBtn.closest('[role="alert"]')).toHaveClass(
+      'border-hearth-line',
+      'bg-terracotta-50'
+    );
     expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Pasta');
-    fireEvent.click(screen.getByTestId('search-load-more-retry'));
+    fireEvent.click(retryBtn);
     await waitFor(() =>
       expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Third match')
     );
@@ -941,6 +985,14 @@ describe('RecipesPage', () => {
       render(<UnifiedRecipesPage />);
     });
     expect(screen.getByTestId('planning-mode-banner')).toHaveTextContent('Choosing for');
+    expect(screen.getByTestId('planning-mode-banner')).toHaveClass(
+      'border-hearth-line',
+      'bg-terracotta-50'
+    );
+    expect(screen.getByTestId('planning-mode-cancel')).toHaveClass(
+      'min-h-12',
+      'focus-visible:outline-ink-body'
+    );
     expect(
       screen
         .getByTestId('planning-mode-banner')
@@ -1153,9 +1205,33 @@ describe('RecipesPage', () => {
     expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId('action-change-day'));
     expect(await screen.findByTestId('planning-day-chooser')).toHaveTextContent('May 4');
-    fireEvent.click(screen.getByTestId('planning-day-cancel'));
+    fireEvent.click(screen.getByTestId('planning-day-close'));
     expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 4');
     expect(screen.getByTestId('recipe-detail-name')).toHaveTextContent('Chicken Soup');
+    expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
+  });
+  it('offers a compact Era 3 chooser with a top-right close, week range navigation and no bottom Cancel', async () => {
+    mocks.setSearchParams('open=11111111-1111-1111-1111-111111111111');
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    fireEvent.click(await screen.findByTestId('action-change-day'));
+    const chooser = await screen.findByTestId('planning-day-chooser');
+    expect(chooser).toHaveClass('bg-cream', 'border-chrome-line');
+    expect(screen.queryByTestId('planning-day-cancel')).not.toBeInTheDocument();
+    expect(within(chooser).queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    const close = screen.getByTestId('planning-day-close');
+    expect(close).toHaveAccessibleName('Close');
+    expect(close).toHaveClass('h-[48px]', 'w-[48px]');
+    expect(screen.getByTestId('planning-week-previous')).toHaveAccessibleName('Previous week');
+    expect(screen.getByTestId('planning-week-next')).toHaveAccessibleName('Next week');
+    expect(screen.getByTestId('planning-week-range')).toHaveTextContent(/May\s*4\D+10/);
+    fireEvent.click(screen.getByTestId('planning-week-next'));
+    await waitFor(() =>
+      expect(screen.getByTestId('planning-week-range')).toHaveTextContent(/May\s*11\D+17/)
+    );
+    fireEvent.click(close);
+    expect(screen.queryByTestId('planning-day-chooser')).not.toBeInTheDocument();
     expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
   });
   it('returns Cancel focus to the same Change day trigger while target invalidation is still refreshing', async () => {
@@ -1169,7 +1245,7 @@ describe('RecipesPage', () => {
     change.focus();
     fireEvent.click(change);
     expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
-    screen.getByTestId('planning-day-cancel').focus();
+    screen.getByTestId('planning-day-close').focus();
     let finish!: (value: typeof base) => void;
     const refreshed = new Promise<typeof base>((resolve) => {
       finish = resolve;
@@ -1180,7 +1256,7 @@ describe('RecipesPage', () => {
         useWeekStore.setState((state) => ({ schedule: [...state.schedule] }));
       });
       expect(screen.getByTestId('action-add-to-day')).toBeDisabled();
-      fireEvent.click(screen.getByTestId('planning-day-cancel'));
+      fireEvent.click(screen.getByTestId('planning-day-close'));
       expect(screen.queryByTestId('planning-day-chooser')).not.toBeInTheDocument();
       expect(change).toHaveFocus();
       expect(screen.getByTestId('action-change-day')).toBe(change);
@@ -1197,7 +1273,7 @@ describe('RecipesPage', () => {
       expect(change).not.toHaveAttribute('aria-disabled', 'true');
       fireEvent.click(change);
       expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
-      fireEvent.click(screen.getByTestId('planning-day-cancel'));
+      fireEvent.click(screen.getByTestId('planning-day-close'));
       expect(change).toHaveFocus();
       expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
     } finally {
@@ -1887,6 +1963,14 @@ describe('RecipesPage', () => {
     fireEvent.click(screen.getByTestId('recipes-search-disclosure'));
     await act(async () => failInitial?.(new Error('offline')));
     await waitFor(() => expect(screen.getByTestId('search-request-error')).toBeInTheDocument());
+    expect(screen.getByTestId('search-request-error')).toHaveClass(
+      'border-hearth-line',
+      'bg-terracotta-50'
+    );
+    expect(screen.getByTestId('search-request-retry')).toHaveClass(
+      'min-h-12',
+      'focus-visible:outline-ink-body'
+    );
     expect(screen.queryByTestId('search-empty-state')).not.toBeInTheDocument();
     expect(screen.getByTestId('recipes-search-disclosure')).toHaveAttribute(
       'aria-expanded',
@@ -1984,6 +2068,14 @@ describe('RecipesPage', () => {
     mocks.recipesGet.mockRejectedValueOnce(new Error('offline'));
     await act(async () => useSearchPromotionStore.getState().invalidate());
     await waitFor(() => expect(screen.getByTestId('browse-request-error')).toBeInTheDocument());
+    expect(screen.getByTestId('browse-request-error')).toHaveClass(
+      'border-hearth-line',
+      'bg-terracotta-50'
+    );
+    expect(screen.getByTestId('browse-request-retry')).toHaveClass(
+      'min-h-12',
+      'focus-visible:outline-ink-body'
+    );
     expect(screen.getByTestId('stack-card-front')).toHaveTextContent('Chicken Soup');
     fireEvent.click(screen.getByTestId('browse-request-retry'));
     await waitFor(() => expect(mocks.recipesGet).toHaveBeenCalledTimes(3));

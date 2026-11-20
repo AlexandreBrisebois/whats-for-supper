@@ -143,8 +143,12 @@ vi.mock('@/store/weekStore', () => ({
   ),
 }));
 
+const discoveryMock = vi.hoisted(() => ({ session: null as any }));
 vi.mock('@/store/discoveryStore', () => ({
-  useDiscoveryStore: () => ({ setHasPendingCards: mocks.setHasPendingCards }),
+  useDiscoveryStore: () => ({
+    setHasPendingCards: mocks.setHasPendingCards,
+    session: discoveryMock.session,
+  }),
 }));
 
 vi.mock('@/store/uiStore', () => ({
@@ -594,6 +598,58 @@ describe('Planner result trust', () => {
     expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
     noWrites();
   });
+  it('renders a routine replacement confirmation as a calm Garden status that dismisses itself after five seconds', async () => {
+    remember({ original: { action: 'drop', recipeName: 'Lasagna', sourceDate: receipt.date } });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderPlanner(0);
+    const card = await screen.findByTestId('planner-planning-confirmation');
+    expect(card).toHaveAttribute('role', 'status');
+    expect(card).toHaveClass('bg-sage-50', 'border-garden-line');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4900);
+    });
+    expect(screen.getByTestId('planner-planning-confirmation')).toBeInTheDocument();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('wfs.planning-result')).toBeNull();
+    noWrites();
+  });
+  it('keeps spillover receipts persistent with a 48px Close control and Garden styling', async () => {
+    remember({
+      original: {
+        action: 'next_week',
+        recipeName: 'Lasagna',
+        sourceDate: receipt.date,
+        destinationDate: '2026-05-25',
+        spillover: true,
+      },
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderPlanner(0);
+    const card = await screen.findByTestId('planner-planning-confirmation');
+    expect(card).toHaveClass('bg-sage-50', 'border-garden-line');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    expect(screen.getByTestId('planner-planning-confirmation')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-confirmation-dismiss')).toHaveAccessibleName('Close');
+  });
+  it('shows a failed refresh as a persistent Hearth alert with a primary Refresh button', async () => {
+    remember();
+    mocks.getSchedule.mockRejectedValueOnce(new Error('offline'));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderPlanner(0);
+    const card = await screen.findByTestId('planner-planning-confirmation');
+    expect(card).toHaveAttribute('role', 'alert');
+    expect(card).toHaveClass('bg-terracotta-50', 'border-hearth-line');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8000);
+    });
+    expect(screen.getByTestId('planner-planning-confirmation')).toBeInTheDocument();
+    expect(screen.getByTestId('planner-confirmation-refresh')).toHaveAccessibleName('Refresh');
+  });
   it('retires replacement feedback on context departure without replay on Back', async () => {
     remember({ original: { action: 'drop', recipeName: 'Lasagna', sourceDate: receipt.date } });
     const view = renderPlanner(0);
@@ -690,7 +746,9 @@ describe('Planner result trust', () => {
 });
 
 describe('PlannerPage voting action row', () => {
-  it('keeps an uncommitted uncertain draft through failed checking until explicit review and one deliberate save', async () => {
+  it('keeps an uncommitted uncertain draft through failed checking until explicit retry and one deliberate save', async () => {
+    mocks.servingsGet.mockReset();
+    mocks.servingsPut.mockReset();
     const baseline = {
       referenceWeekStartDate: '2026-05-11',
       weekStartDate: '2026-05-11',
@@ -704,7 +762,9 @@ describe('PlannerPage voting action row', () => {
         editable: true,
       })),
     };
-    mocks.servingsGet.mockResolvedValue({ data: baseline });
+    mocks.servingsGet
+      .mockResolvedValueOnce({ data: baseline })
+      .mockRejectedValueOnce(new Error('read unavailable'));
     mocks.servingsPut.mockRejectedValueOnce(new Error('reply lost'));
     renderPlanner(0);
     fireEvent.click(screen.getByTestId('at-the-table-mode'));
@@ -712,19 +772,16 @@ describe('PlannerPage voting action row', () => {
       target: { value: '6' },
     });
     fireEvent.click(screen.getByTestId('save-portions'));
-    await screen.findByTestId('portions-review');
-    mocks.servingsGet.mockRejectedValueOnce(new Error('read unavailable'));
-    fireEvent.click(screen.getByTestId('portions-review'));
-    await waitFor(() => expect(screen.getByTestId('portions-review')).toBeEnabled());
+    expect(screen.queryByTestId('portions-review')).not.toBeInTheDocument();
+    const retryBtn = await screen.findByTestId('portions-retry-review');
     expect(screen.getByTestId('save-portions')).toBeDisabled();
     mocks.servingsGet.mockResolvedValue({ data: { ...baseline, version: 'fresh' } });
-    fireEvent.click(screen.getByTestId('portions-review'));
-    await screen.findByTestId('portions-saved-review');
+    fireEvent.click(retryBtn);
+    const review = await screen.findByTestId('portions-saved-review');
     expect(screen.getByTestId('portion-input-2026-05-13')).toHaveValue(6);
     expect(mocks.servingsPut).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTestId('portions-keep-draft'));
     mocks.servingsPut.mockResolvedValueOnce({ data: { ...baseline, version: 'saved' } });
-    fireEvent.click(screen.getByTestId('save-portions'));
+    fireEvent.click(within(review).getByTestId('portions-save-recovered'));
     await waitFor(() => expect(screen.getByTestId('at-the-table-mode')).toBeVisible());
     expect(mocks.servingsPut).toHaveBeenCalledTimes(2);
     expect(mocks.servingsPut.mock.calls[1][0]).toMatchObject({
@@ -734,8 +791,10 @@ describe('PlannerPage voting action row', () => {
   });
 
   it.each(['count', 'departure'])(
-    'accepts an authoritative matching %s intent without replay',
+    'accepts an authoritative matching %s intent automatically without replay',
     async (kind) => {
+      mocks.servingsGet.mockReset();
+      mocks.servingsPut.mockReset();
       const baseline = {
         referenceWeekStartDate: '2026-05-11',
         weekStartDate: '2026-05-11',
@@ -749,19 +808,6 @@ describe('PlannerPage voting action row', () => {
           editable: true,
         })),
       };
-      mocks.servingsGet.mockResolvedValue({ data: baseline });
-      mocks.servingsPut.mockRejectedValue(new Error('reply lost'));
-      renderPlanner(0);
-      fireEvent.click(screen.getByTestId('at-the-table-mode'));
-      await screen.findByTestId('portion-input-2026-05-13');
-      fireEvent.change(screen.getByTestId('portion-input-2026-05-13'), {
-        target: { value: '6' },
-      });
-      if (kind === 'departure') {
-        fireEvent.click(screen.getByTestId('grocery-tab'));
-        fireEvent.click(screen.getByTestId('portions-save-continue'));
-      } else fireEvent.click(screen.getByTestId('save-portions'));
-      await screen.findByTestId('portions-review');
       const saved = {
         ...baseline,
         version: 'committed',
@@ -776,8 +822,19 @@ describe('PlannerPage voting action row', () => {
             : d
         ),
       };
-      mocks.servingsGet.mockResolvedValue({ data: saved });
-      fireEvent.click(screen.getByTestId('portions-review'));
+      mocks.servingsGet
+        .mockResolvedValueOnce({ data: baseline })
+        .mockResolvedValue({ data: saved });
+      mocks.servingsPut.mockRejectedValue(new Error('reply lost'));
+      renderPlanner(0);
+      fireEvent.click(screen.getByTestId('at-the-table-mode'));
+      await screen.findByTestId('portion-input-2026-05-13');
+      fireEvent.change(screen.getByTestId('portion-input-2026-05-13'), {
+        target: { value: '6' },
+      });
+      if (kind === 'departure') fireEvent.click(screen.getByTestId('grocery-tab'));
+      else fireEvent.click(screen.getByTestId('save-portions'));
+
       await waitFor(() => expect(screen.getByTestId('at-the-table-mode')).toBeVisible());
       expect(mocks.servingsPut).toHaveBeenCalledTimes(1);
       if (kind === 'departure')
@@ -786,8 +843,10 @@ describe('PlannerPage voting action row', () => {
   );
 
   it.each(['lost reply', 'in-flight reload'])(
-    'reconciles an uncertain portions save after %s without replay',
+    'reconciles an uncertain portions save after %s automatically without replay',
     async (failure) => {
+      mocks.servingsGet.mockReset();
+      mocks.servingsPut.mockReset();
       const baseline = {
         referenceWeekStartDate: '2026-05-11',
         weekStartDate: '2026-05-11',
@@ -809,7 +868,9 @@ describe('PlannerPage voting action row', () => {
         ),
         groceryRefresh: { status: 'failed', version: 'committed' },
       };
-      mocks.servingsGet.mockResolvedValue({ data: baseline });
+      mocks.servingsGet
+        .mockResolvedValueOnce({ data: baseline })
+        .mockRejectedValueOnce(new Error('read temporarily down'));
       mocks.servingsPut.mockImplementation(() =>
         failure === 'lost reply' ? Promise.reject(new Error('reply lost')) : new Promise(() => {})
       );
@@ -820,24 +881,28 @@ describe('PlannerPage voting action row', () => {
       });
       fireEvent.click(screen.getByTestId('save-portions'));
       await waitFor(() => expect(mocks.servingsPut).toHaveBeenCalledTimes(1));
-      if (failure === 'lost reply') await screen.findByTestId('portions-review');
+      if (failure === 'lost reply') await screen.findByTestId('portions-retry-review');
       first.unmount();
+      mocks.servingsGet.mockReset();
       mocks.servingsGet.mockResolvedValue({ data: saved });
       renderPlanner(0);
-      await screen.findByTestId('portions-restored');
-      expect(screen.getByTestId('save-portions')).toBeDisabled();
-      fireEvent.click(screen.getByTestId('portions-review'));
-      await waitFor(() => expect(screen.getByTestId('at-the-table-mode')).toBeVisible());
+      await waitFor(() =>
+        expect(mocks.getWeekState().groceryRefresh).toMatchObject({
+          status: 'failed',
+          version: 'committed',
+        })
+      );
+      await waitFor(() =>
+        expect(sessionStorage.getItem('wfs-portions-draft:2026-05-11')).toBeNull()
+      );
+      expect(screen.getByTestId('at-the-table-mode')).toBeVisible();
       expect(mocks.servingsPut).toHaveBeenCalledTimes(1);
-      expect(mocks.getWeekState().groceryRefresh).toMatchObject({
-        status: 'failed',
-        version: 'committed',
-      });
-      expect(sessionStorage.getItem('wfs-portions-draft:2026-05-11')).toBeNull();
     }
   );
 
   it('requires exact override intent when reconciling a count edit', async () => {
+    mocks.servingsGet.mockReset();
+    mocks.servingsPut.mockReset();
     const baseline = {
       referenceWeekStartDate: '2026-05-11',
       weekStartDate: '2026-05-11',
@@ -851,18 +916,7 @@ describe('PlannerPage voting action row', () => {
         editable: true,
       })),
     };
-    mocks.servingsGet.mockResolvedValue({ data: baseline });
-    mocks.servingsPut.mockRejectedValue(new Error('reply lost'));
-    renderPlanner(0);
-    fireEvent.click(screen.getByTestId('at-the-table-mode'));
-    await screen.findByTestId('portion-input-2026-05-13');
-    fireEvent.change(screen.getByTestId('portion-input-2026-05-13'), {
-      target: { value: '6' },
-    });
-    fireEvent.click(screen.getByTestId('save-portions'));
-    await screen.findByTestId('portions-review');
-    // Equal effective quantities do not prove an explicit override committed.
-    mocks.servingsGet.mockResolvedValue({
+    mocks.servingsGet.mockResolvedValueOnce({ data: baseline }).mockResolvedValue({
       data: {
         ...baseline,
         version: 'other',
@@ -874,7 +928,14 @@ describe('PlannerPage voting action row', () => {
         })),
       },
     });
-    fireEvent.click(screen.getByTestId('portions-review'));
+    mocks.servingsPut.mockRejectedValue(new Error('reply lost'));
+    renderPlanner(0);
+    fireEvent.click(screen.getByTestId('at-the-table-mode'));
+    await screen.findByTestId('portion-input-2026-05-13');
+    fireEvent.change(screen.getByTestId('portion-input-2026-05-13'), {
+      target: { value: '6' },
+    });
+    fireEvent.click(screen.getByTestId('save-portions'));
     await screen.findByTestId('portions-saved-review');
     expect(screen.getByTestId('save-portions')).toBeDisabled();
     expect(mocks.servingsPut).toHaveBeenCalledTimes(1);
@@ -960,33 +1021,42 @@ describe('PlannerPage voting action row', () => {
     );
     expect(mocks.servingsPut.mock.calls[0][0]).not.toHaveProperty('defaultServings');
   });
-  it('offers inline departure choices and keeps the draft when editing continues', async () => {
-    mocks.servingsGet.mockResolvedValue({
-      data: {
-        referenceWeekStartDate: '2026-05-11',
-        version: 'baseline',
-        defaultServings: 4,
-        days: makeSchedule('2026-05-17').map((d) => ({
-          date: d.date,
-          servings: 4,
-          overrideServings: null,
-          editable: true,
-        })),
-      },
-    });
+  it('auto-saves valid edits on tab departure and pauses invalid departure with Hearth discard escape', async () => {
+    mocks.servingsGet.mockReset();
+    mocks.servingsPut.mockReset();
+    const baseline = {
+      referenceWeekStartDate: '2026-05-11',
+      version: 'baseline',
+      defaultServings: 4,
+      days: makeSchedule('2026-05-17').map((d) => ({
+        date: d.date,
+        servings: 4,
+        overrideServings: null,
+        editable: true,
+      })),
+    };
+    mocks.servingsGet.mockResolvedValue({ data: baseline });
+    mocks.servingsPut.mockResolvedValue({ data: { ...baseline, version: 'saved' } });
     renderPlanner(0);
     fireEvent.click(screen.getByTestId('at-the-table-mode'));
-    fireEvent.change(await screen.findByTestId('portion-input-2026-05-13'), {
-      target: { value: '6' },
-    });
+    const input = await screen.findByTestId('portion-input-2026-05-13');
+    fireEvent.change(input, { target: { value: '0' } });
     fireEvent.click(screen.getByTestId('grocery-tab'));
     expect(mocks.setActiveTab).not.toHaveBeenCalledWith('grocery');
-    fireEvent.click(screen.getByTestId('portions-keep-editing'));
-    expect(screen.getByTestId('portion-input-2026-05-13')).toHaveValue(6);
-    fireEvent.click(screen.getByTestId('grocery-tab'));
+    expect(screen.getByTestId('portions-departure')).toBeInTheDocument();
+    expect(screen.getByTestId('portions-save-continue')).toBeDisabled();
     fireEvent.click(screen.getByTestId('portions-discard'));
     await waitFor(() => expect(mocks.setActiveTab).toHaveBeenCalledWith('grocery'));
     expect(mocks.servingsPut).not.toHaveBeenCalled();
+
+    mocks.setActiveTab.mockClear();
+    fireEvent.click(screen.getByTestId('at-the-table-mode'));
+    const secondInput = await screen.findByTestId('portion-input-2026-05-13');
+    fireEvent.change(secondInput, { target: { value: '6' } });
+    fireEvent.click(screen.getByTestId('grocery-tab'));
+    await waitFor(() => expect(mocks.servingsPut).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.setActiveTab).toHaveBeenCalledWith('grocery'));
+    expect(screen.queryByTestId('portions-departure')).not.toBeInTheDocument();
   });
 
   it('keeps confirmed saves usable when draft storage is unavailable', async () => {
@@ -1525,6 +1595,84 @@ describe('PlannerPage voting action row', () => {
     expect(within(actionRow).getAllByRole('button')[0]).toBe(
       screen.getByTestId('nudge-family-cta')
     );
+  });
+
+  describe('converged voting presentation', () => {
+    const convergedSession = (overrides: Record<string, unknown> = {}) => ({
+      phase: 'converged',
+      roundId: 'round-1',
+      weekStartDate: '2026-05-11',
+      ...overrides,
+    });
+    const renderVoting = (
+      session: any,
+      opts: { pending?: boolean; extra?: Record<string, unknown> } = {}
+    ) => {
+      discoveryMock.session = session;
+      const view = renderPlanner(1);
+      const schedule = makeSchedule('2026-05-17').map((day, index) =>
+        index === 0 && opts.pending !== false ? { ...day, _isPending: true } : day
+      );
+      mocks.setWeekState({
+        ...mocks.getWeekState(),
+        weekStartDate: '2026-05-11',
+        votingRoundId: 'round-1',
+        schedule,
+        closeVoting: vi.fn().mockResolvedValue(undefined),
+        ...opts.extra,
+      });
+      view.rerender(<PlannerPage />);
+      return view;
+    };
+    afterEach(() => {
+      discoveryMock.session = null;
+    });
+
+    it.each([
+      ['absent', null],
+      ['collecting', { ...convergedSession(), phase: 'collecting' }],
+      ['mismatched round', convergedSession({ roundId: 'other' })],
+      ['mismatched week', convergedSession({ weekStartDate: '2026-05-18' })],
+    ])('keeps the collecting controls for a %s session', (_n, session) => {
+      renderVoting(session);
+      expect(screen.getByTestId('nudge-family-cta')).toBeInTheDocument();
+      const close = screen.getByTestId('close-voting-btn');
+      expect(close).toHaveTextContent('Close Voting');
+      expect(close).not.toHaveClass('bg-garden-fill');
+      expect(close).toHaveClass('text-terracotta-700');
+      expect(document.querySelector('.animate-ping')).toHaveClass('motion-reduce:animate-none');
+    });
+
+    it.each([
+      ['en', 'Save menu & close voting'],
+      ['fr', 'Enregistrer et fermer le vote'],
+    ] as const)('promotes Save and close for confirmed convergence (%s)', (loc, label) => {
+      mocks.setLocale(loc);
+      renderVoting(convergedSession());
+      expect(screen.queryByTestId('nudge-family-cta')).not.toBeInTheDocument();
+      const close = screen.getByTestId('close-voting-btn');
+      expect(close).toHaveClass('bg-garden-fill', 'text-white', 'py-2');
+      expect(close).toHaveTextContent(label);
+      expect(close.querySelector('.lucide-check')).toBeInTheDocument();
+      expect(close.querySelector('.lucide-ban')).not.toBeInTheDocument();
+      expect(document.querySelector('.animate-ping')).not.toBeInTheDocument();
+      expect(document.querySelector('.bg-garden-fill.rounded-full.h-2')).toBeInTheDocument();
+    });
+
+    it('labels the converged button Close Voting when nothing is pending', () => {
+      renderVoting(convergedSession(), { pending: false });
+      expect(screen.queryByTestId('nudge-family-cta')).not.toBeInTheDocument();
+      const close = screen.getByTestId('close-voting-btn');
+      expect(close).toHaveClass('bg-garden-fill');
+      expect(close).toHaveTextContent('Close Voting');
+      expect(close.querySelector('.lucide-check')).toBeInTheDocument();
+    });
+
+    it('confirms persisted closure with Menu saved!', async () => {
+      renderVoting(convergedSession());
+      fireEvent.click(screen.getByTestId('close-voting-btn'));
+      expect(await screen.findByTestId('planner-week-finalized')).toHaveTextContent('Menu saved!');
+    });
   });
 
   it('hides Ask the Family for past draft and locked weeks', () => {

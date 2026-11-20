@@ -1,5 +1,6 @@
 import { test, expect, type Page } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -295,8 +296,8 @@ for (const locale of ['en', 'fr'] as const)
         await expect(change).toBeInViewport();
         await change.press('Enter');
         await expect(page.getByTestId('planning-day-chooser')).toBeVisible();
-        await page.getByTestId('planning-day-cancel').focus();
-        await page.getByTestId('planning-day-cancel').press('Enter');
+        await page.getByTestId('planning-day-close').focus();
+        await page.getByTestId('planning-day-close').press('Enter');
         await expect(change).toBeFocused();
         await page.screenshot({
           path: test.info().outputPath(`${locale}-icon-only-${width}-${height}-${scale}.png`),
@@ -401,7 +402,8 @@ for (const locale of ['en', 'fr'] as const)
           });
         const focused = await style();
         expect(focused.focusVisible).toBe(true);
-        expect(focused.outline).toContain('solid 2px');
+        expect(focused.outline).toMatch(/\bsolid\b/);
+        expect(focused.outline).toMatch(/\b2px\b/);
         const prefix = test.info().outputPath(`${locale}-${photo}-capsule`);
         await page.screenshot({ path: prefix + '-keyboard.png' });
         await original.press('Enter');
@@ -664,15 +666,37 @@ for (const locale of ['en', 'fr'] as const)
       const chooser = page.getByTestId('planning-day-chooser');
       await expect(chooser).toBeVisible();
       expect(await chooser.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(false);
-      for (const id of ['planning-week-previous', 'planning-week-next', 'planning-day-cancel']) {
+      for (const id of ['planning-day-close', 'planning-week-previous', 'planning-week-next']) {
         const button = page.getByTestId(id);
         await button.scrollIntoViewIfNeeded();
         await button.focus();
         await expect(button).toBeInViewport();
+        const box = (await button.boundingBox())!;
+        expect(box.width).toBeGreaterThanOrEqual(48);
+        expect(box.height).toBeGreaterThanOrEqual(48);
       }
+      await expect(page.getByTestId('planning-day-cancel')).toHaveCount(0);
+      await expect(page.getByTestId('planning-week-range')).toBeVisible();
+      await expect(chooser).toHaveClass(/bg-cream/);
+      await assertCookbookVisualA11y(page, {
+        rootSelector: '[data-testid="planning-day-chooser"]',
+        contrastLevel: 'aa',
+      });
+      await page.evaluate(() => {
+        document.documentElement.dataset.contrast = 'high';
+      });
+      await assertCookbookVisualA11y(page, {
+        rootSelector: '[data-testid="planning-day-chooser"]',
+        contrastLevel: 'aaa',
+      });
+      await page.evaluate(() => {
+        delete document.documentElement.dataset.contrast;
+      });
+      // Focus wraps from the last control back to the top-right close control.
+      await page.getByTestId('planning-day-6').focus();
       await page.keyboard.press('Tab');
-      await expect(page.getByTestId('planning-week-previous')).toBeFocused();
-      await page.getByTestId('planning-day-cancel').click();
+      await expect(page.getByTestId('planning-day-close')).toBeFocused();
+      await page.getByTestId('planning-day-close').click();
       await page.getByTestId('action-gear-menu').click();
       await page.getByTestId('action-edit-recipe').click();
       const edit = page.getByTestId('recipe-edit-name-input');
@@ -715,6 +739,21 @@ for (const locale of ['en', 'fr'] as const)
         await button.scrollIntoViewIfNeeded();
         await expect(button).toBeInViewport();
       }
+      await expect(consent).toHaveClass(/bg-cream/);
+      await assertCookbookVisualA11y(page, {
+        rootSelector: '[data-testid="non-cooking-confirmation"]',
+        contrastLevel: 'aa',
+      });
+      await page.evaluate(() => {
+        document.documentElement.dataset.contrast = 'high';
+      });
+      await assertCookbookVisualA11y(page, {
+        rootSelector: '[data-testid="non-cooking-confirmation"]',
+        contrastLevel: 'aaa',
+      });
+      await page.evaluate(() => {
+        delete document.documentElement.dataset.contrast;
+      });
       await consent.screenshot({
         path: test.info().outputPath(`${locale}-consent-200.png`),
       });

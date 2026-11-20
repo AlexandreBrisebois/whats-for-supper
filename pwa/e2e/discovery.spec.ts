@@ -328,20 +328,17 @@ test.describe('Discovery Flow', () => {
           contentType: 'image/png',
         });
       }
-      // A previous grocery-tab visit must not intercept the matches handoff.
+      // A previous grocery-tab visit must not intercept the converged medallion handoff.
       await otherPage.setViewportSize({ width: 390, height: 844 });
       await otherPage.goto('/planner');
       await otherPage.getByTestId('grocery-tab').click();
-      await otherPage.getByTestId('nav-item-discovery').click();
-      await expect(otherPage.getByTestId('discovery-see-matches')).toBeVisible();
       const mutations: string[] = [];
       otherPage.on('request', (request) => {
         if (new URL(request.url()).pathname.startsWith('/api/') && request.method() !== 'GET')
           mutations.push(`${request.method()} ${new URL(request.url()).pathname}`);
       });
-      const action = otherPage.getByTestId('discovery-see-matches');
-      await action.focus();
-      await expect(action).toBeFocused();
+      const converged = otherPage.locator('[data-testid="nav-item-discovery"]:visible').first();
+      await expect(converged).toContainText("Menu's in");
       const anchoredRead = otherPage.waitForRequest((request) => {
         const url = new URL(request.url());
         return (
@@ -351,14 +348,18 @@ test.describe('Discovery Flow', () => {
           url.searchParams.get('referenceWeekStartDate') === weekStartDate
         );
       });
+      await converged.focus();
+      await expect(converged).toBeFocused();
       await otherPage.keyboard.press('Enter');
       await anchoredRead;
       await expect(otherPage).toHaveURL(
         `/planner?weekOffset=0&referenceWeekStartDate=${encodeURIComponent(weekStartDate)}`
       );
       await expect(otherPage.getByTestId('day-card-0')).toBeVisible();
+      await expect(otherPage.getByTestId('planner-tab')).toHaveClass(/bg-white/);
       expect(mutations).toEqual([]);
-      await otherPage.getByTestId('nav-item-discovery').click();
+      // Direct /discovery keeps the celebration card and its matches handoff.
+      await otherPage.goto('/discovery');
       await expect(otherPage.getByTestId('discovery-see-matches')).toBeVisible();
       await otherPage.getByTestId('discovery-see-matches').focus();
       await otherPage.keyboard.press('Space');
@@ -455,9 +456,20 @@ test.describe('Discovery Flow', () => {
       }
     }
     await expect(page.getByTestId('discovery-converged')).toBeVisible();
+    await expect(page.locator('[data-testid="nav-item-discovery"]:visible').first()).toContainText(
+      "Menu's in"
+    );
     await page.locator('[data-testid="nav-item-planner"]:visible').first().click();
     await expect(page.getByTestId('close-voting-btn')).toBeVisible();
+    // Confirmed household convergence promotes Save-and-close and hides Nudge family.
+    await expect(page.getByTestId('nudge-family-cta')).toHaveCount(0);
+    await expect(page.getByTestId('close-voting-btn')).toHaveClass(/bg-garden-fill/);
+    await expect(page.getByTestId('close-voting-btn')).toContainText('Save menu & close voting');
     await page.getByTestId('close-voting-btn').click();
+    await expect(page.getByTestId('planner-week-finalized')).toHaveText('Menu saved!');
+    await expect(page.locator('[data-testid="nav-item-discovery"]:visible').first()).toContainText(
+      'Discovery'
+    );
     await expect(page.getByTestId('ask-family-cta')).toBeVisible();
     await mutate('/api/schedule/day/2026-05-08/remove', 'DELETE');
     await page.getByTestId('ask-family-cta').click();

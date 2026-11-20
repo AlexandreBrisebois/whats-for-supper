@@ -6,6 +6,7 @@ import type { SupperServings } from '@/lib/api/generated/models';
 import { useFamilyStore } from '@/store/familyStore';
 import { useWeekStore } from '@/store/weekStore';
 import { t, tWithVars } from '@/locales';
+import { Button } from '@/components/ui/button';
 
 type Draft = { source: 'explicit' | 'family'; text: string };
 type Attempt = { source: Draft['source']; count: number | null | undefined };
@@ -92,7 +93,15 @@ export function UsualPortionsSection() {
         if (token !== request.current) return;
         if (!validSnapshot(result)) throw new Error('Portions unavailable');
         const latest = current.current;
-        if (review) {
+        const dirtyNow = Boolean(
+          latest.draft &&
+          latest.saved &&
+          (!sameChoice(latest.saved, latest.draft) || latest.attempt || latest.reviewedAttempt)
+        );
+        // A changed baseline under a dirty draft is installed directly: the draft is
+        // kept and the next deliberate save is guarded by the fresh version.
+        const baselineChanged = dirtyNow && result.version !== latest.saved?.version;
+        if (review || baselineChanged) {
           if (
             latest.attempt &&
             latest.draft &&
@@ -114,15 +123,8 @@ export function UsualPortionsSection() {
             setReviewRequired(false);
             setMessage('changed');
           }
-        } else if (
-          latest.draft &&
-          latest.saved &&
-          (!sameChoice(latest.saved, latest.draft) || latest.attempt || latest.reviewedAttempt)
-        ) {
-          if (result.version !== latest.saved.version) {
-            setReviewRequired(true);
-            setMessage(latest.attempt ? 'uncertain' : 'changed');
-          }
+        } else if (dirtyNow) {
+          // Same baseline: keep the dirty draft exactly as it is.
         } else {
           setSaved(result);
           if (!latest.attempt) setDraft(null);
@@ -197,6 +199,7 @@ export function UsualPortionsSection() {
     setSaving(true);
     setAttempt(intent);
     setMessage(null);
+    let needsAutoReview = false;
     try {
       const result = await saveSupperServings({
         referenceWeekStartDate: saved.referenceWeekStartDate,
@@ -223,13 +226,18 @@ export function UsualPortionsSection() {
         useWeekStore.setState({ groceryRefresh: result.groceryRefresh });
     } catch {
       if (token === request.current) {
+        needsAutoReview = true;
         setReviewRequired(true);
         setMessage('uncertain');
       }
     } finally {
       savingNow.current = false;
       if (token === request.current) setSaving(false);
-      if (queuedRead.current && token === request.current) {
+      if (needsAutoReview && token === request.current) {
+        // Read current saved portions immediately; no manual Review gate.
+        queuedRead.current = false;
+        void read(true);
+      } else if (queuedRead.current && token === request.current) {
         queuedRead.current = false;
         setRefresh((value) => value + 1);
       }
@@ -240,7 +248,7 @@ export function UsualPortionsSection() {
     <section
       data-testid="usual-portions-section"
       aria-labelledby={`${id}-heading`}
-      className="min-w-0 rounded-[2rem] border border-chrome-line bg-white/40 p-6 shadow-glass backdrop-blur-xl"
+      className="min-w-0 rounded-3xl border border-chrome-line bg-white p-6 shadow-sm"
     >
       <h2 id={`${id}-heading`} className="font-heading text-lg font-bold text-ink-body">
         {t('usualPortions.title', 'Usual portions')}
@@ -312,10 +320,11 @@ export function UsualPortionsSection() {
               {t('usualPortions.invalid', 'Enter a whole number from 1 to 2147483647.')}
             </p>
           )}
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="md"
             data-testid="save-usual-portions"
-            className={control}
             disabled={
               !dirty ||
               reading ||
@@ -328,7 +337,7 @@ export function UsualPortionsSection() {
             {saving
               ? t('usualPortions.saving', 'Saving…')
               : t('usualPortions.save', 'Save usual portions')}
-          </button>
+          </Button>
         </div>
       )}
       {rosterError && (
@@ -337,77 +346,80 @@ export function UsualPortionsSection() {
             'usualPortions.rosterError',
             'The family list could not be loaded. Retry to view its members.'
           )}{' '}
-          <button
-            type="button"
-            className="min-h-12 underline text-hearth-ink"
-            onClick={() => void loadFamily()}
-          >
+          <Button type="button" variant="secondary" size="md" onClick={() => void loadFamily()}>
             {t('usualPortions.retryFamily', 'Retry family list')}
-          </button>
+          </Button>
         </p>
       )}
       <div aria-live="polite" className="mt-4 text-sm text-ink-body">
-        {message === 'saved' && <p>{t('usualPortions.saved', 'Saved')}</p>}
-        {message === 'uncertain' && (
-          <p role="alert">
-            {t(
-              'usualPortions.uncertain',
-              'The save could not be confirmed. Review current portions before saving again.'
-            )}
+        {message === 'saved' && (
+          <p className="rounded-2xl border border-garden-line bg-sage-50 p-3 font-medium text-garden-ink">
+            {t('usualPortions.saved', 'Saved')}
           </p>
         )}
-        {message === 'changed' && (
-          <>
-            <p>
-              {t(
-                'usualPortions.changed',
-                'Current portions have changed. Your draft is kept; review it before saving.'
-              )}
-            </p>
-            {saved && !reviewRequired && (
-              <p>
-                {tWithVars(
-                  'usualPortions.currentSaved',
-                  'Current saved portions: {{count}} ({{source}})',
-                  {
-                    count:
-                      saved.defaultServings ?? t('usualPortions.unavailableCount', 'Unavailable'),
-                    source:
-                      saved.defaultServingsSource === 'family'
-                        ? t('usualPortions.familySource', 'Family size')
-                        : t('usualPortions.explicitSource', 'Your chosen total'),
-                  }
+        {(message === 'uncertain' || message === 'changed' || message === 'load-error') && (
+          <div
+            data-testid="usual-portions-recovery"
+            className="flex flex-col gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 p-4 text-ink-body"
+          >
+            {message === 'uncertain' && (
+              <p role="alert">
+                {t(
+                  'usualPortions.uncertain',
+                  'The save could not be confirmed. Your draft is kept; current portions are checked below.'
                 )}
               </p>
             )}
-          </>
-        )}
-        {message === 'load-error' && (
-          <p role="alert">
-            {t('usualPortions.loadError', 'Unable to load current portions. Your draft is kept.')}
-          </p>
+            {message === 'changed' && (
+              <>
+                <p>
+                  {t(
+                    'usualPortions.changed',
+                    'Current portions have changed. Your draft is kept; save it to replace them.'
+                  )}
+                </p>
+                {saved && !reviewRequired && (
+                  <p className="font-medium text-hearth-ink">
+                    {tWithVars(
+                      'usualPortions.currentSaved',
+                      'Current saved portions: {{count}} ({{source}})',
+                      {
+                        count:
+                          saved.defaultServings ??
+                          t('usualPortions.unavailableCount', 'Unavailable'),
+                        source:
+                          saved.defaultServingsSource === 'family'
+                            ? t('usualPortions.familySource', 'Family size')
+                            : t('usualPortions.explicitSource', 'Your chosen total'),
+                      }
+                    )}
+                  </p>
+                )}
+              </>
+            )}
+            {message === 'load-error' && (
+              <p role="alert">
+                {t(
+                  'usualPortions.loadError',
+                  'Unable to load current portions. Your draft is kept.'
+                )}
+              </p>
+            )}
+            {message === 'load-error' && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                className="self-start"
+                disabled={reading || saving}
+                onClick={() => void read(reviewRequired)}
+              >
+                {t('usualPortions.retry', 'Retry portions')}
+              </Button>
+            )}
+          </div>
         )}
       </div>
-      {reviewRequired && (
-        <button
-          type="button"
-          className={control}
-          disabled={reading || saving}
-          onClick={() => void read(true)}
-        >
-          {t('usualPortions.review', 'Review current portions')}
-        </button>
-      )}
-      {message === 'load-error' && !reviewRequired && (
-        <button
-          type="button"
-          className={control}
-          disabled={reading || saving}
-          onClick={() => void read()}
-        >
-          {t('usualPortions.retry', 'Retry portions')}
-        </button>
-      )}
     </section>
   );
 }

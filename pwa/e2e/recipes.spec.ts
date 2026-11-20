@@ -3,6 +3,7 @@ import { swipeCurrentStackCard } from './helpers/stack-swipe';
 import { test, expect } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
 import { expectDiscoveryGeometry } from './helpers/discovery-geometry';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import {
   MOCK_IDS,
   builders,
@@ -308,13 +309,12 @@ test.describe('Recipes Search Page', () => {
         ).toBeVisible();
         await expect(input).toHaveValue(String(next));
         await expect(page.getByTestId('recipe-servings')).toHaveCount(initial == null ? 0 : 1);
-        await expect(page.getByTestId('recipe-save-edits')).toBeDisabled();
-        await page
-          .getByRole('button', {
+        await expect(
+          page.getByRole('button', {
             name: locale === 'en' ? 'Check saved recipe' : 'Vérifier la recette enregistrée',
             exact: true,
           })
-          .click();
+        ).toHaveCount(0);
         await expect(page.getByTestId('recipe-save-edits')).toBeEnabled();
         await page.getByTestId('recipe-save-edits').click();
         await expect(input).toHaveCount(0);
@@ -1190,6 +1190,167 @@ test.describe('Recipes Search Page', () => {
       await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     });
   }
+
+  test('seamlessly auto-restarts expired 409 search continuation once and styles fallback retry and planning banner with Era 3', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    const searchCalls: Array<string | undefined> = [];
+
+    await page.route('**/api/recipes/search', async (route) => {
+      const body = route.request().postDataJSON() as { continuationToken?: string };
+      searchCalls.push(body?.continuationToken);
+      const callNumber = searchCalls.length;
+
+      if (callNumber === 1) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              topPick: MOCK_SEARCH_RESULTS.topPick,
+              results: MOCK_SEARCH_RESULTS.secondary,
+              nextCursor: 'cursor-expired-1',
+              appliedFilters: {},
+              searchMode: 'explicit',
+              resultPath: 'lexical-only',
+            },
+          }),
+        });
+        return;
+      }
+
+      if (callNumber === 2 || callNumber === 4) {
+        await route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'expired' }),
+        });
+        return;
+      }
+
+      if (callNumber === 3) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              topPick: MOCK_SEARCH_RESULTS.topPick,
+              results: [
+                ...MOCK_SEARCH_RESULTS.secondary,
+                {
+                  id: MOCK_IDS.RECIPE_SPAGHETTI,
+                  name: 'Spaghetti Bolognese',
+                  imageUrl: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3',
+                  totalTime: 'PT30M',
+                  rating: 3,
+                  isDiscoverable: true,
+                  notes: null,
+                  reasons: [{ source: 'name-match', label: 'Name matches your search' }],
+                  isPromotionEligible: true,
+                },
+              ],
+              nextCursor: 'cursor-expired-2',
+              appliedFilters: {},
+              searchMode: 'explicit',
+              resultPath: 'lexical-only',
+            },
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: MOCK_SEARCH_RESULTS.topPick,
+            results: MOCK_SEARCH_RESULTS.secondary,
+            nextCursor: null,
+            appliedFilters: {},
+            searchMode: 'explicit',
+            resultPath: 'lexical-only',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/recipes?addToDay=2&weekOffset=0');
+    const planningBanner = page.getByTestId('planning-mode-banner');
+    await expect(planningBanner).toBeVisible();
+    await assertCookbookVisualA11y(page, {
+      rootSelector: '[data-testid="planning-mode-banner"]',
+      contrastLevel: 'aa',
+    });
+    await page.evaluate(() => {
+      document.documentElement.dataset.contrast = 'high';
+    });
+    await assertCookbookVisualA11y(page, {
+      rootSelector: '[data-testid="planning-mode-banner"]',
+      contrastLevel: 'aaa',
+    });
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.contrast;
+      document.documentElement.style.fontSize = '32px';
+    });
+    expect(await planningBanner.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '16px';
+    });
+
+    await page.getByTestId('recipe-search-input').fill('chicken');
+    await page.getByTestId('recipe-search-input').press('Enter');
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('browse-list-load-more'));
+    });
+
+    await expect.poll(() => searchCalls.length).toBe(3);
+    expect(searchCalls[1]).toBe('cursor-expired-1');
+    expect(searchCalls[2]).toBeUndefined();
+    await expect(page.getByTestId('stack-card-front')).toBeVisible();
+    await expect(page.getByTestId('search-restart-expired')).toHaveCount(0);
+    await expect(page.getByTestId('search-load-more-error')).toHaveCount(0);
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('browse-list-load-more'));
+    });
+
+    await expect.poll(() => searchCalls.length).toBe(4);
+    await expect(page.getByTestId('search-restart-expired')).toHaveCount(0);
+    const loadMoreError = page.getByTestId('search-load-more-error');
+    await expect(loadMoreError).toBeVisible();
+    const retryBtn = page.getByTestId('search-load-more-retry');
+    await expect(retryBtn).toBeVisible();
+
+    await loadMoreError.scrollIntoViewIfNeeded();
+    await assertCookbookVisualA11y(page, {
+      rootSelector: '[data-testid="search-load-more-error"]',
+      contrastLevel: 'aa',
+    });
+    await page.evaluate(() => {
+      document.documentElement.dataset.contrast = 'high';
+    });
+    await assertCookbookVisualA11y(page, {
+      rootSelector: '[data-testid="search-load-more-error"]',
+      contrastLevel: 'aaa',
+    });
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.contrast;
+      document.documentElement.style.fontSize = '32px';
+    });
+    expect(await loadMoreError.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '16px';
+    });
+
+    await retryBtn.click();
+    await expect.poll(() => searchCalls.length).toBe(5);
+    expect(searchCalls[4]).toBeUndefined();
+    await expect(page.getByTestId('search-load-more-error')).toHaveCount(0);
+  });
 });
 
 interface StackFrame {

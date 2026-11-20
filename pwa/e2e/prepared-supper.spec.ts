@@ -2,6 +2,7 @@ import { qualifyPreparedCorrection } from './prepared-correction';
 import { cookingStepRecipe } from './cooking-step-fixture';
 import { test, expect } from './fixtures';
 import { setupCommonRoutes, builders, MOCK_IDS } from './mock-api';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -798,3 +799,72 @@ for (const configured of [true, false]) {
     await qualifyPreparedCorrection(page, content.id, '2026-05-04', '2026-05-08', configured, info);
   });
 }
+
+test('auto-applies pre-progress quantity changes and renders unified Era 3 recovery bar once cooking starts', async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.getByTestId('day-card-4').getByTestId('edit-recipe-button').click();
+  await page.getByTestId('action-cooks-mode').click();
+  await expect(page.getByTestId('cooking-portion-context')).toContainText('6 portions');
+
+  const updateServings = async (servings: number) => {
+    await page.evaluate(async (nextServings) => {
+      const state = (
+        await (await fetch('/api/schedule/servings?referenceWeekStartDate=2026-05-04')).json()
+      ).data;
+      await fetch('/api/schedule/servings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referenceWeekStartDate: '2026-05-04',
+          weekOffset: 0,
+          expectedVersion: state.version,
+          days: [{ date: '2026-05-08', servings: nextServings }],
+        }),
+      });
+    }, servings);
+  };
+
+  await updateServings(8);
+  await expect(page.getByTestId('cooking-portion-context')).toContainText('8 portions');
+  await expect(page.getByTestId('cooking-quantities-available')).toHaveCount(0);
+  await expect(page.getByTestId('cooking-update-bar')).toHaveCount(0);
+
+  await page.getByTestId('cooks-mode-step-next').click();
+  await updateServings(10);
+
+  const bar = page.getByTestId('cooking-update-bar');
+  await expect(bar).toBeVisible();
+  await expect(bar.getByTestId('cooking-quantities-available')).toBeVisible();
+  await expect(page.getByTestId('cooking-portion-context')).toContainText('8 portions');
+  await expect(
+    page.locator('[data-testid="cooking-update-bar"], [data-testid="preparation-review"]')
+  ).toHaveCount(1);
+
+  await bar.scrollIntoViewIfNeeded();
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="cooking-update-bar"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="cooking-update-bar"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+    document.documentElement.style.fontSize = '32px';
+  });
+  expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '16px';
+  });
+
+  await bar.getByRole('button', { name: 'Refresh quantities', exact: true }).click();
+  await expect(page.getByTestId('cooking-portion-context')).toContainText('10 portions');
+  await expect(page.getByTestId('cooking-update-bar')).toHaveCount(0);
+});

@@ -67,6 +67,7 @@ import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
 import { usePlannerDrag } from '@/components/planner/usePlannerDrag';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
+  absoluteMonday,
   calendarAnchorIsFresh,
   calendarTime,
   civilDate,
@@ -80,6 +81,8 @@ export default function PlannerPage() {
   const schedule = useWeekStore((s) => s.schedule);
   const isLoading = useWeekStore((s) => s.isLoading);
   const status = useWeekStore((s) => s.status);
+  const weekStartDate = useWeekStore((s) => s.weekStartDate);
+  const votingRoundId = useWeekStore((s) => s.votingRoundId);
   const groceryItems = useWeekStore((s) => s.groceryItems);
   const groceryExtras = useWeekStore((s) => s.groceryExtras);
   const calendar = useTodayStore((s) => s.calendar);
@@ -112,7 +115,18 @@ export default function PlannerPage() {
     );
     return () => window.clearTimeout(timer);
   }, [calendar, calendarAnchor, calendarVersion, ensureCalendar]);
+  const { setHasPendingCards, session: votingSession } = useDiscoveryStore();
   const isVotingOpen = status === 1;
+  // Only confirmed household convergence for the loaded round and week; never inferred
+  // from this member having no cards left.
+  const isConvergedWeek =
+    isVotingOpen &&
+    votingSession?.phase === 'converged' &&
+    Boolean(votingRoundId && votingSession.roundId === votingRoundId) &&
+    absoluteMonday(votingSession.weekStartDate) === weekStartDate;
+  const hasPendingSuggestions = schedule.some(
+    (day) => day.status !== 3 && day._isPending && Boolean(day.recipe?.id)
+  );
   const isLocked = status === 2;
   const [nonCookingTarget, setNonCookingTarget] = useState<{
     date: string;
@@ -135,6 +149,7 @@ export default function PlannerPage() {
     identity: string;
     message: string;
     kind: 'replacement' | 'changed' | 'refresh-failed' | 'refreshing';
+    persistent?: boolean;
   } | null>(null);
   const [confirmationRetry, setConfirmationRetry] = useState(0);
   const [detailSource, setDetailSource] = useState<{
@@ -271,7 +286,7 @@ export default function PlannerPage() {
     };
     recipe: AssignmentRecipe;
   } | null>(null);
-  const { setHasPendingCards } = useDiscoveryStore();
+
   const searchParams = useSearchParams();
   const planDate = searchParams.get('planDate');
   const referenceWeekStartDate = searchParams.get('referenceWeekStartDate') ?? undefined;
@@ -413,6 +428,24 @@ export default function PlannerPage() {
     params.delete('success');
     router.replace(`/planner${params.size ? `?${params}` : ''}`, { scroll: false });
   };
+  // Routine replacement receipts are calm and clear themselves; spillover and
+  // failure/changed states stay until a person acts.
+  const routineConfirmationIdentity =
+    planningConfirmation?.kind === 'replacement' && !planningConfirmation.persistent
+      ? planningConfirmation.identity
+      : null;
+  useEffect(() => {
+    if (!routineConfirmationIdentity) return;
+    const timer = window.setTimeout(() => {
+      setPlanningConfirmation((current) =>
+        current?.identity === routineConfirmationIdentity ? null : current
+      );
+      clearSuccessUrl();
+    }, 5000);
+    return () => window.clearTimeout(timer);
+    // clearSuccessUrl reads the latest search params when the timer fires.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routineConfirmationIdentity, confirmationContext]);
 
   useEffect(() => {
     const result = readPlanningResult();
@@ -427,12 +460,17 @@ export default function PlannerPage() {
     let active = true;
     const isCurrent = () =>
       active && JSON.stringify(readPlanningResult()) === JSON.stringify(result);
-    const confirm = (kind: NonNullable<typeof planningConfirmation>['kind'], message: string) =>
+    const confirm = (
+      kind: NonNullable<typeof planningConfirmation>['kind'],
+      message: string,
+      persistent = true
+    ) =>
       setPlanningConfirmation({
         context: confirmationContext,
         identity: JSON.stringify(result),
         kind,
         message,
+        persistent,
       });
     void getSchedule(result.weekOffset, result.referenceWeekStartDate, true)
       .then((fresh) => {
@@ -462,7 +500,8 @@ export default function PlannerPage() {
         if (result.original) {
           confirm(
             'replacement',
-            [message, describeOriginalDisposition(result.original)].filter(Boolean).join(' ')
+            [message, describeOriginalDisposition(result.original)].filter(Boolean).join(' '),
+            result.original.spillover === true
           );
         } else {
           setPlanningConfirmation(null);
@@ -703,15 +742,28 @@ export default function PlannerPage() {
     <div className="flex flex-col cookbook-bg pb-6">
       {visibleConfirmation && (
         <div
-          role="status"
+          role={
+            visibleConfirmation.kind === 'replacement'
+              ? 'status'
+              : visibleConfirmation.kind === 'refreshing'
+                ? 'status'
+                : 'alert'
+          }
           data-testid="planner-planning-confirmation"
-          className="relative z-10 mx-4 rounded-2xl bg-sage/10 p-4 text-charcoal"
+          className={cn(
+            'relative z-10 mx-4 flex flex-wrap items-center gap-3 rounded-2xl border p-4 text-ink-body shadow-sm',
+            visibleConfirmation.kind === 'replacement'
+              ? 'border-garden-line bg-sage-50'
+              : 'border-hearth-line bg-terracotta-50'
+          )}
         >
-          <p>{visibleConfirmation.message}</p>
+          <p className="min-w-0 flex-1">{visibleConfirmation.message}</p>
           {visibleConfirmation.kind === 'refresh-failed' ||
           visibleConfirmation.kind === 'refreshing' ? (
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="md"
               data-testid="planner-confirmation-refresh"
               onFocus={(event) => {
                 if (event.currentTarget.matches(':focus-visible'))
@@ -719,7 +771,7 @@ export default function PlannerPage() {
               }}
               aria-disabled={visibleConfirmation.kind === 'refreshing'}
               aria-busy={visibleConfirmation.kind === 'refreshing'}
-              className="min-h-12 min-w-12 rounded-lg px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-700"
+              className="min-w-12"
               onClick={() => {
                 if (visibleConfirmation.kind === 'refreshing') return;
                 setPlanningConfirmation({ ...visibleConfirmation, kind: 'refreshing' });
@@ -727,16 +779,18 @@ export default function PlannerPage() {
               }}
             >
               {t('common.refresh', 'Refresh')}
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="md"
               data-testid="planner-confirmation-dismiss"
               onFocus={(event) => {
                 if (event.currentTarget.matches(':focus-visible'))
                   event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
               }}
-              className="min-h-12 min-w-12 rounded-lg px-3 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-700"
+              className="min-w-12"
               onClick={() => {
                 setPlanningConfirmation(null);
                 clearSuccessUrl();
@@ -744,7 +798,7 @@ export default function PlannerPage() {
               }}
             >
               {t('common.close', 'Close')}
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -815,8 +869,15 @@ export default function PlannerPage() {
               <h2 className="text-lg font-heading font-bold text-charcoal flex items-center justify-center">
                 {isVotingOpen && (
                   <span className="relative flex h-2 w-2 mr-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ochre-600 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-ochre-600"></span>
+                    {!isConvergedWeek && (
+                      <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-ochre-600 opacity-75"></span>
+                    )}
+                    <span
+                      className={cn(
+                        'relative inline-flex rounded-full h-2 w-2',
+                        isConvergedWeek ? 'bg-garden-fill' : 'bg-ochre-600'
+                      )}
+                    ></span>
                   </span>
                 )}
                 {schedule.length >= 7
@@ -932,7 +993,7 @@ export default function PlannerPage() {
                   >
                     {/* Left Slot: Secondary Actions */}
                     <div className="flex max-w-full justify-start">
-                      {isVotingOpen && (
+                      {isVotingOpen && !isConvergedWeek && (
                         <button
                           onClick={handleNudgeFamily}
                           data-testid="nudge-family-cta"
@@ -960,10 +1021,17 @@ export default function PlannerPage() {
                         <button
                           onClick={handleCloseVoting}
                           data-testid="close-voting-btn"
-                          className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full border border-terracotta-200 bg-white px-4 text-xs font-semibold text-terracotta-700 transition-all hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white active:scale-95"
+                          className={cn(
+                            'flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full px-4 text-xs font-semibold transition-all active:scale-95',
+                            isConvergedWeek
+                              ? 'bg-garden-fill hover:bg-garden-fill-deep text-white py-2 text-center leading-tight'
+                              : 'border border-terracotta-200 bg-white text-terracotta-700 hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white'
+                          )}
                         >
-                          <Ban size={14} />
-                          {t('planner.closeVoting', 'Close Voting')}
+                          {isConvergedWeek ? <Check size={14} /> : <Ban size={14} />}
+                          {isConvergedWeek && hasPendingSuggestions
+                            ? t('planner.saveMenuAndCloseVoting', 'Save menu & close voting')
+                            : t('planner.closeVoting', 'Close Voting')}
                         </button>
                       )}
                     </div>
@@ -1074,7 +1142,7 @@ export default function PlannerPage() {
               data-testid="planner-week-finalized"
               className="font-heading text-lg font-black tracking-tight leading-none"
             >
-              {t('planner.weekFinalized', "Menu's in!")}
+              {t('planner.weekFinalized', 'Menu saved!')}
             </h4>
             <p className="text-xs font-medium text-cream-100 mt-1">
               {t(

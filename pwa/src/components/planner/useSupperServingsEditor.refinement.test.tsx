@@ -128,14 +128,45 @@ it('saves a draft before returning to recipes', async () => {
   await screen.findByTestId('at-the-table-mode');
 });
 
-it('keeps edits available for review when saving from Recipes fails', async () => {
+it('automatically reads current saved portions into an Era 3 Hearth card when saving from Recipes fails', async () => {
   save.mockRejectedValueOnce(new Error('failed'));
+  read
+    .mockResolvedValueOnce(snapshot())
+    .mockResolvedValueOnce({ ...snapshot(5, 4), version: 'fresh' });
   await openEditor();
   fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '7' } });
   fireEvent.click(screen.getByRole('button', { name: 'Recipes' }));
-  await screen.findByTestId('portions-review');
+
+  expect(screen.queryByTestId('portions-review')).not.toBeInTheDocument();
+  const review = await screen.findByTestId('portions-saved-review');
+  expect(review).toHaveClass('bg-terracotta-50', 'border-hearth-line');
+  expect(within(review).getByTestId('portions-save-recovered')).toBeEnabled();
+  expect(within(review).getByTestId('portions-discard')).toHaveAccessibleName('Discard changes');
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(7);
   expect(screen.getByRole('button', { name: 'Recipes' })).toBeDisabled();
+  expect(read).toHaveBeenCalledTimes(2);
+});
+
+it('shows a single Hearth Retry control without looping when automatic recovery read fails', async () => {
+  save.mockRejectedValueOnce(new Error('failed'));
+  read
+    .mockResolvedValueOnce(snapshot())
+    .mockRejectedValueOnce(new Error('read down'))
+    .mockResolvedValueOnce({ ...snapshot(5, 4), version: 'fresh' });
+  await openEditor();
+  fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '7' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Recipes' }));
+
+  const retryBtn = await screen.findByTestId('portions-retry-review');
+  expect(retryBtn).toHaveAccessibleName('Retry');
+  expect(screen.getByTestId('portions-discard')).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Recipes' })).toBeDisabled();
+  expect(read).toHaveBeenCalledTimes(2);
+
+  fireEvent.click(retryBtn);
+  await screen.findByTestId('portions-saved-review');
+  expect(read).toHaveBeenCalledTimes(3);
+  expect(screen.getByTestId('portions-save-recovered')).toBeEnabled();
 });
 
 it('keeps an unknown usual honest without offering a reset button', async () => {
@@ -258,38 +289,37 @@ it('retains direct odd counts and sends one date-only batch', async () => {
   ]);
 });
 
-it('requires fresh review before a retained legacy combined draft can save', async () => {
+it('automatically loads fresh review for a retained legacy combined draft and keeps Recipes disabled', async () => {
   retainLegacyDraft();
   render(<Editor />);
-  await screen.findByTestId('portions-restored');
+  const review = await screen.findByTestId('portions-saved-review');
+  expect(review).toHaveClass('bg-terracotta-50', 'border-hearth-line');
+  expect(screen.queryByTestId('portions-review')).not.toBeInTheDocument();
   expect(screen.getByTestId('save-portions')).toBeDisabled();
-  expect(screen.getByTestId('portions-review')).toBeEnabled();
+  expect(read).toHaveBeenCalledTimes(1);
   expect(save).not.toHaveBeenCalled();
 });
 
 it('never sends a legacy usual choice from Planner when Recipes is activated', async () => {
   retainLegacyDraft();
   render(<Editor />);
-  await screen.findByTestId('portions-restored');
+  await screen.findByTestId('portions-saved-review');
   await act(async () => {
     fireEvent.click(screen.getByTestId('save-portions'));
   });
   expect(save).not.toHaveBeenCalled();
 });
 
-it('retains legacy usual intent as review context and explicitly keeps date edits only', async () => {
+it('retains legacy usual intent as review context and saves date edits only with the primary recovery button', async () => {
   retainLegacyDraft(true);
   render(<Editor />);
-  await screen.findByTestId('portions-restored');
-  fireEvent.click(screen.getByTestId('portions-review'));
   const review = await screen.findByTestId('portions-saved-review');
   expect(review).toHaveTextContent(/usual portions/i);
   expect(review).toHaveTextContent('5');
-  const keepDates = within(review).getByRole('button', { name: /keep (?:my )?date edits/i });
   expect(screen.getByTestId('save-portions')).toBeDisabled();
-  fireEvent.click(keepDates);
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(6);
-  fireEvent.click(screen.getByTestId('save-portions'));
+  const keepDates = within(review).getByTestId('portions-save-recovered');
+  fireEvent.click(keepDates);
   await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
   expect(save.mock.calls[0][0]).not.toHaveProperty('defaultServings');
   expect(save.mock.calls[0][0].days).toHaveLength(1);
@@ -301,8 +331,6 @@ it('does not silently dismiss a legacy combined uncertain intent when fresh valu
   const fresh = snapshot(6, 5);
   read.mockResolvedValue({ ...fresh, defaultServingsSource: 'explicit', version: 'fresh' });
   render(<Editor />);
-  await screen.findByTestId('portions-restored');
-  fireEvent.click(screen.getByTestId('portions-review'));
   await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
   expect(await screen.findByTestId('portions-saved-review')).toHaveTextContent(/usual portions/i);
   expect(save).not.toHaveBeenCalled();
@@ -337,8 +365,6 @@ it.each(['', '4', 'not a count'])(
     retained.usualDraft = choice;
     sessionStorage.setItem(storageKey, JSON.stringify(retained));
     const first = render(<Editor />);
-    await screen.findByTestId('portions-restored');
-    fireEvent.click(screen.getByTestId('portions-review'));
     const review = await screen.findByTestId('portions-saved-review');
     expect(within(review).getByTestId('portions-legacy-usual-review')).toHaveTextContent(
       choice || 'No usual portions set'
@@ -350,38 +376,29 @@ it.each(['', '4', 'not a count'])(
     );
     first.unmount();
     render(<Editor />);
-    await screen.findByTestId('portions-restored');
-    expect(screen.getByTestId('save-portions')).toBeDisabled();
-    expect(screen.queryByTestId('portions-saved-review')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('portions-review'));
     const rereview = await screen.findByTestId('portions-saved-review');
-    fireEvent.click(within(rereview).getByRole('button', { name: 'Keep date edits only' }));
-    await waitFor(() =>
-      expect(JSON.parse(sessionStorage.getItem(storageKey)!)).not.toHaveProperty(
-        'legacyUsualReview'
-      )
-    );
+    expect(screen.getByTestId('save-portions')).toBeDisabled();
     expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(6);
-    fireEvent.click(screen.getByTestId('save-portions'));
+    fireEvent.click(within(rereview).getByTestId('portions-save-recovered'));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0][0]).not.toHaveProperty('defaultServings');
   }
 );
 
-it('reviews a changed baseline and preserves date edit with the fresh version', async () => {
+it('auto-reviews a changed baseline and saves date edit directly with the fresh version', async () => {
   save.mockRejectedValueOnce(new Error('conflict')).mockResolvedValueOnce(snapshot(6, 5));
+  read
+    .mockResolvedValueOnce(snapshot())
+    .mockResolvedValueOnce({ ...snapshot(5, 5), version: 'fresh' });
   await openEditor();
   fireEvent.change(screen.getByTestId(`portion-input-${sunday}`), { target: { value: '6' } });
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(6);
   fireEvent.click(screen.getByTestId('save-portions'));
-  await screen.findByRole('alert');
-  read.mockResolvedValue({ ...snapshot(5, 5), version: 'fresh' });
-  fireEvent.click(screen.getByTestId('portions-review'));
   const review = await screen.findByTestId('portions-saved-review');
   expect(review).toHaveTextContent('Your edits: 6');
   expect(screen.getByTestId(`portion-input-${sunday}`)).toHaveValue(6);
-  fireEvent.click(screen.getByTestId('portions-keep-draft'));
-  fireEvent.click(screen.getByTestId('save-portions'));
+  expect(screen.getByTestId('save-portions')).toBeDisabled();
+  fireEvent.click(within(review).getByTestId('portions-save-recovered'));
   await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
   expect(save.mock.calls[1][0]).toMatchObject({
     expectedVersion: 'fresh',
@@ -400,12 +417,11 @@ it.each([null, 4])(
     sessionStorage.setItem(storageKey, JSON.stringify(retained));
     read.mockResolvedValue(snapshot(persistedOverride));
     render(<Editor />);
-    await screen.findByTestId('portions-restored');
-    fireEvent.click(screen.getByTestId('portions-review'));
     if (persistedOverride === null) {
+      await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(sessionStorage.getItem(storageKey)).toBeNull());
       await waitFor(() => expect(screen.getByTestId('at-the-table-mode')).toBeVisible());
       expect(screen.queryByTestId('portions-restored')).not.toBeInTheDocument();
-      expect(sessionStorage.getItem(storageKey)).toBeNull();
     } else {
       await screen.findByTestId('portions-saved-review');
       expect(screen.getByTestId('save-portions')).toBeDisabled();
@@ -420,12 +436,9 @@ it('keeps legacy default-only context for explicit review, then closes without a
   retained.draft = {};
   sessionStorage.setItem(storageKey, JSON.stringify(retained));
   render(<Editor />);
-  await screen.findByTestId('portions-restored');
-  expect(screen.getByTestId('save-portions')).toBeDisabled();
-  fireEvent.click(screen.getByTestId('portions-review'));
   const review = await screen.findByTestId('portions-saved-review');
+  expect(screen.getByTestId('save-portions')).toBeDisabled();
   fireEvent.click(within(review).getByRole('button', { name: 'Keep date edits only' }));
-  fireEvent.click(screen.getByTestId('save-portions'));
   await waitFor(() => expect(screen.getByTestId('at-the-table-mode')).toBeVisible());
   expect(sessionStorage.getItem(storageKey)).toBeNull();
   expect(save).not.toHaveBeenCalled();

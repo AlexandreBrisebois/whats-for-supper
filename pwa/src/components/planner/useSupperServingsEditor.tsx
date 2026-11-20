@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import Image from 'next/image';
 import { Calendar, Minus, Plus, Utensils } from 'lucide-react';
@@ -12,9 +12,10 @@ import { formatSupperPlanDate, nonCookingLabel } from '@/lib/planner/nonCooking'
 import { registerPortionsDeparture } from '@/lib/planner/portionsNavigation';
 import { getImageUrl } from '@/lib/imageUtils';
 import { absoluteMonday, civilDate, weekOffsetFor } from '@/lib/deployment-calendar';
+import { Button } from '@/components/ui/button';
 
-const control =
-  'min-h-[48px] min-w-[48px] rounded-xl border border-charcoal/15 bg-white px-4 text-charcoal focus-visible:outline-2 focus-visible:outline-terracotta';
+// Card actions wrap and shrink so recovery stays inside 320px at 200% text.
+const cardButton = 'max-w-full px-4 text-sm text-center leading-snug';
 // Let native focus scrolling clear the sticky week header and fixed navigation.
 const focusClearance =
   '[&_button]:scroll-my-[calc(12rem+env(safe-area-inset-bottom))] [&_input]:scroll-my-[calc(12rem+env(safe-area-inset-bottom))]';
@@ -68,10 +69,20 @@ export function useSupperServingsEditor(
   const [restored, setRestored] = useState(false);
   const [reviewRequired, setReviewRequired] = useState(false);
   const [reviewLoaded, setReviewLoaded] = useState(false);
+  const [reviewReadError, setReviewReadError] = useState(false);
   const [uncertainSave, setUncertainSave] = useState(false);
   const [departure, setDeparture] = useState<(() => void) | null>(null);
   const historyOwner = useRef(false);
   const restoreOwner = useRef(0);
+  const pendingRef = useRef(false);
+  const reviewingRef = useRef(false);
+  const stateRef = useRef<SupperServings | null>(null);
+  const draftRef = useRef<Record<string, string | null>>({});
+  const legacyUsualReviewRef = useRef<string | undefined>(undefined);
+  const uncertainSaveRef = useRef(false);
+  const departureRef = useRef<(() => void) | null>(null);
+  const reviewRef = useRef<(pendingNext?: () => void) => Promise<void>>(async () => {});
+  const attemptLeaveRef = useRef<(next: () => void) => void>(() => {});
   const storageKey = `wfs-portions-draft:${key}`;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
@@ -81,19 +92,35 @@ export function useSupperServingsEditor(
     const token = lifetime.current;
     setEditingKey(key);
     setState(null);
+    stateRef.current = null;
     setError(false);
+    setRestored(false);
+    setReviewRequired(false);
+    setReviewLoaded(false);
+    setReviewReadError(false);
+    setUncertainSave(false);
+    uncertainSaveRef.current = false;
+    setDeparture(null);
+    departureRef.current = null;
+    pendingRef.current = true;
     setPending(true);
     try {
       const saved = await readSupperServings(weekOffset, anchor ?? undefined);
       if (lifetime.current === token) {
         setState(saved);
+        stateRef.current = saved;
         setDraft({});
+        draftRef.current = {};
         setLegacyUsualReview(undefined);
+        legacyUsualReviewRef.current = undefined;
       }
     } catch {
       if (lifetime.current === token) setError(true);
     } finally {
-      if (lifetime.current === token) setPending(false);
+      if (lifetime.current === token) {
+        pendingRef.current = false;
+        setPending(false);
+      }
     }
   };
   const usual = state?.defaultServings ?? null;
@@ -104,13 +131,19 @@ export function useSupperServingsEditor(
   const close = () => {
     restoreOwner.current++;
     setDraft({});
+    draftRef.current = {};
     setLegacyUsualReview(undefined);
+    legacyUsualReviewRef.current = undefined;
     setEditingKey(null);
     setError(false);
     setRestored(false);
     setReviewRequired(false);
     setReviewLoaded(false);
+    setReviewReadError(false);
     setUncertainSave(false);
+    uncertainSaveRef.current = false;
+    setDeparture(null);
+    departureRef.current = null;
     try {
       sessionStorage.removeItem(storageKey);
     } catch {
@@ -127,8 +160,7 @@ export function useSupperServingsEditor(
     window.history.back();
   };
   const requestDeparture = (next: () => void) => {
-    if (dirty || pending) setDeparture(() => next);
-    else next();
+    attemptLeaveRef.current(next);
   };
   useEffect(() => {
     let active = true;
@@ -175,15 +207,22 @@ export function useSupperServingsEditor(
       // Apply the captured stored session after hydration; retired weeks cannot install it.
       void Promise.resolve().then(() => {
         if (!active || restoreOwner.current !== owner) return;
+        stateRef.current = restoredState;
+        draftRef.current = saved.draft;
+        legacyUsualReviewRef.current = legacyUsual;
+        uncertainSaveRef.current = saved.uncertainSave === true;
+        const needsReview = saved.uncertainSave === true || legacyUsual !== undefined;
         setState(restoredState);
         setDraft(saved.draft);
         setLegacyUsualReview(legacyUsual);
         setEditingKey(key);
         setRestored(true);
         setUncertainSave(saved.uncertainSave === true);
-        setReviewRequired(saved.uncertainSave === true || legacyUsual !== undefined);
+        setReviewRequired(needsReview);
         setReviewLoaded(false);
+        setReviewReadError(false);
         setError(saved.uncertainSave === true);
+        if (needsReview) void reviewRef.current();
       });
     } catch {
       /* Storage can be unavailable; the mounted editor still works. */
@@ -236,10 +275,9 @@ export function useSupperServingsEditor(
   useEffect(() => {
     if (!editing) return;
     return registerPortionsDeparture((next) => {
-      if (dirty || pending) setDeparture(() => next);
-      else next();
+      attemptLeaveRef.current(next);
     });
-  }, [editing, dirty, pending]);
+  }, [editing]);
   useEffect(() => {
     if (!editing) return;
     const onBack = () => {
@@ -249,7 +287,7 @@ export function useSupperServingsEditor(
         '',
         window.location.href
       );
-      setDeparture(() => () => window.history.back());
+      attemptLeaveRef.current(() => window.history.back());
     };
     const onUnload = (event: BeforeUnloadEvent) => {
       if (historyOwner.current) {
@@ -277,82 +315,190 @@ export function useSupperServingsEditor(
       historyOwner.current = true;
     }
   }, [dirty, key]);
-  const review = async () => {
+  const review = async (pendingNext?: () => void) => {
+    if (reviewingRef.current) return;
     const token = lifetime.current;
+    reviewingRef.current = true;
+    pendingRef.current = true;
     setPending(true);
+    setReviewReadError(false);
+    const currentState = stateRef.current;
+    const currentDraft = draftRef.current;
+    const currentLegacy = legacyUsualReviewRef.current;
+    const isUncertain = uncertainSaveRef.current;
     try {
       const saved = await readSupperServings(
-        state?.weekOffset ?? weekOffset,
-        state ? String(state.referenceWeekStartDate) : reference
+        currentState?.weekOffset ?? weekOffset,
+        currentState ? String(currentState.referenceWeekStartDate) : reference
       );
       if (lifetime.current !== token) return;
       const matchesIntent =
-        state &&
-        String(saved.weekStartDate) === String(state.weekStartDate) &&
-        Object.entries(draft).every(([day, count]) => {
+        currentState &&
+        String(saved.weekStartDate) === String(currentState.weekStartDate) &&
+        Object.entries(currentDraft).every(([day, count]) => {
           const current = saved.days?.find((item) => date(item.date) === day);
           return (
             current &&
             (current.overrideServings ?? null) === (count === null ? null : Number(count))
           );
         });
-      if (uncertainSave && legacyUsualReview === undefined && matchesIntent) {
+      if (isUncertain && currentLegacy === undefined && matchesIntent) {
+        const exitCallback = pendingNext ?? departureRef.current ?? onFinish;
         close();
-        setDeparture(null);
         if (useWeekStore.getState().schedule[0]?.date === String(saved.weekStartDate))
           useWeekStore.setState({ groceryRefresh: saved.groceryRefresh });
-        leave(departure ?? onFinish);
+        leave(exitCallback);
         return;
       }
       setState(saved);
+      stateRef.current = saved;
       setReviewLoaded(true);
+      setReviewReadError(false);
+      setUncertainSave(false);
+      uncertainSaveRef.current = false;
       setRestored(false);
     } catch {
-      if (lifetime.current === token) setError(true);
+      if (lifetime.current === token) {
+        setError(true);
+        setReviewReadError(true);
+        setReviewLoaded(false);
+      }
     } finally {
-      if (lifetime.current === token) setPending(false);
+      if (lifetime.current === token) {
+        reviewingRef.current = false;
+        pendingRef.current = false;
+        setPending(false);
+      }
     }
   };
-  const save = async (next?: () => void) => {
-    if (!state || pending || !valid || reviewRequired) return;
-    if (!dirty) {
+  const save = async (next?: () => void, options?: { bypassReviewLock?: boolean }) => {
+    const currentState = stateRef.current;
+    if (!currentState || pendingRef.current || !valid) return;
+    if (reviewRequired && !options?.bypassReviewLock) return;
+    if (legacyUsualReviewRef.current !== undefined) return;
+    if (Object.keys(draftRef.current).length === 0) {
       close();
-      leave(next ?? onFinish);
+      leave(next ?? departureRef.current ?? onFinish);
       return;
     }
     const token = lifetime.current;
+    let shouldAutoReview = false;
+    pendingRef.current = true;
     setPending(true);
     setError(false);
+    setReviewReadError(false);
     setUncertainSave(true);
+    uncertainSaveRef.current = true;
     // Persist before issuing PUT: reload can retire this request before its reply settles.
     persistDraft(true);
-    const days = Object.entries(draft).map(([day, count]) => ({
+    const days = Object.entries(draftRef.current).map(([day, count]) => ({
       date: DateOnly.parse(day)!,
       servings: count === null ? null : Number(count),
     }));
     try {
       const saved = await saveSupperServings({
-        referenceWeekStartDate: state.referenceWeekStartDate,
+        referenceWeekStartDate: currentState.referenceWeekStartDate,
         weekOffset:
-          state.weekOffset ?? weekOffsetFor(key, state.referenceWeekStartDate) ?? weekOffset,
-        expectedVersion: state.version,
+          currentState.weekOffset ??
+          weekOffsetFor(key, currentState.referenceWeekStartDate) ??
+          weekOffset,
+        expectedVersion: currentState.version,
         days,
       });
       if (lifetime.current !== token) return;
+      const exitCallback = next ?? departureRef.current ?? onFinish;
       setState(saved);
+      stateRef.current = saved;
       close();
-      setDeparture(null);
       useWeekStore.setState({ groceryRefresh: saved.groceryRefresh });
-      leave(next ?? onFinish);
+      leave(exitCallback);
     } catch {
       if (lifetime.current === token) {
+        if (next) {
+          setDeparture(() => next);
+          departureRef.current = next;
+        }
         setError(true);
         setReviewRequired(true);
         setReviewLoaded(false);
+        setReviewReadError(false);
+        shouldAutoReview = true;
       }
     } finally {
-      if (lifetime.current === token) setPending(false);
+      if (lifetime.current === token && !shouldAutoReview) {
+        pendingRef.current = false;
+        setPending(false);
+      }
     }
+    if (shouldAutoReview && lifetime.current === token) {
+      reviewingRef.current = false;
+      await review(next ?? departureRef.current ?? undefined);
+    }
+  };
+  const attemptLeave = (next: () => void) => {
+    if (pendingRef.current) return;
+    if (!dirty && !reviewRequired && !uncertainSave && legacyUsualReview === undefined) {
+      close();
+      leave(next);
+      return;
+    }
+    if (
+      dirty &&
+      valid &&
+      !reviewRequired &&
+      !error &&
+      !uncertainSave &&
+      legacyUsualReview === undefined
+    ) {
+      departureRef.current = next;
+      void save(next);
+      return;
+    }
+    setDeparture(() => next);
+    departureRef.current = next;
+    if (!valid) {
+      const invalidInput = document.querySelector<HTMLInputElement>(
+        '[data-testid="portions-editor"] [aria-invalid="true"]'
+      );
+      invalidInput?.focus();
+    }
+    if (
+      (reviewRequired || uncertainSave || legacyUsualReview !== undefined) &&
+      !reviewLoaded &&
+      !reviewReadError &&
+      !reviewingRef.current
+    ) {
+      void review(next);
+    }
+  };
+  useLayoutEffect(() => {
+    stateRef.current = state;
+    draftRef.current = draft;
+    legacyUsualReviewRef.current = legacyUsualReview;
+    uncertainSaveRef.current = uncertainSave;
+    departureRef.current = departure;
+    reviewRef.current = review;
+    attemptLeaveRef.current = attemptLeave;
+  });
+  const saveRecoveredDraft = () => {
+    const hadLegacyOnly =
+      legacyUsualReviewRef.current !== undefined && Object.keys(draftRef.current).length === 0;
+    const exitNext = departureRef.current;
+    setLegacyUsualReview(undefined);
+    legacyUsualReviewRef.current = undefined;
+    if (hadLegacyOnly) {
+      close();
+      leave(exitNext ?? onFinish);
+      return;
+    }
+    if (!valid) return;
+    setReviewRequired(false);
+    setReviewLoaded(false);
+    setReviewReadError(false);
+    setUncertainSave(false);
+    uncertainSaveRef.current = false;
+    setError(false);
+    void save(exitNext ?? undefined, { bypassReviewLock: true });
   };
   const freshness = useWeekStore((s) => s.groceryRefresh);
   useEffect(() => {
@@ -368,87 +514,135 @@ export function useSupperServingsEditor(
       data-testid="portions-mode-strip"
     >
       {editing ? (
-        <>
-          <button
-            className="inline-flex min-h-[48px] min-w-[48px] items-center gap-2 rounded-full bg-white/70 px-4 text-xs font-semibold text-charcoal shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50"
-            data-testid="save-portions"
-            disabled={pending || !state || !valid || reviewRequired}
-            onClick={() => void save()}
-          >
-            <Calendar size={14} aria-hidden="true" />
-            {t('navigation.recipes', 'Recipes')}
-          </button>
-          {error && (
-            <span role="alert">
-              {t(
-                'portions.saveError',
-                'Could not confirm portions. Your edits are kept. Check saved portions before trying again.'
-              )}
-            </span>
-          )}
-        </>
+        <Button
+          type="button"
+          variant="secondary"
+          size="md"
+          className="min-w-12 gap-2 rounded-full px-4 text-sm"
+          data-testid="save-portions"
+          disabled={
+            pending || !state || !valid || reviewRequired || legacyUsualReview !== undefined
+          }
+          onClick={() => void save()}
+        >
+          <Calendar size={14} aria-hidden="true" />
+          {t('navigation.recipes', 'Recipes')}
+        </Button>
       ) : (
-        <>
-          <button
-            className="inline-flex min-h-[48px] min-w-[48px] items-center gap-2 rounded-full bg-white/70 px-4 text-xs font-semibold text-charcoal shadow-sm transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-terracotta"
-            data-testid="at-the-table-mode"
-            onClick={() => void open()}
-          >
-            <Utensils size={14} aria-hidden="true" />
-            {t('portions.atTable', 'Portions')}
-          </button>
-        </>
+        <Button
+          type="button"
+          variant="secondary"
+          size="md"
+          className="min-w-12 gap-2 rounded-full px-4 text-sm"
+          data-testid="at-the-table-mode"
+          onClick={() => void open()}
+        >
+          <Utensils size={14} aria-hidden="true" />
+          {t('portions.atTable', 'Portions')}
+        </Button>
       )}
     </div>
   );
+  const legacyOnlyEmpty = legacyUsualReview !== undefined && Object.keys(draft).length === 0;
   const rows = (
     <div className={'space-y-3.5 ' + focusClearance} data-testid="portions-editor">
       <div>
-        <h2 className="font-semibold">{t('portions.question', 'How many portions?')}</h2>
-        <p>{t('portions.leftovers', 'Include extra for leftovers')}</p>
+        <h2 className="font-heading text-xl font-bold text-ink-body">
+          {t('portions.question', 'How many portions?')}
+        </h2>
+        <p className="text-sm text-ink-muted">
+          {t('portions.leftovers', 'Include extra for leftovers')}
+        </p>
       </div>
-      {restored && (
-        <p role="status" data-testid="portions-restored">
-          {uncertainSave
-            ? t(
-                'portions.restoredUncertain',
-                'Your portions edits are restored. Check saved portions before trying again.'
-              )
-            : t(
-                'portions.restored',
-                'Your unsaved portions are restored. Review them, then choose Recipes to save.'
-              )}
+      {restored && !reviewRequired && (
+        <p
+          role="status"
+          data-testid="portions-restored"
+          className="rounded-2xl border border-garden-line bg-sage-50 px-4 py-3 text-sm font-medium text-garden-ink"
+        >
+          {t(
+            'portions.restored',
+            'Your unsaved portions are restored. Review them, then choose Recipes to save.'
+          )}
         </p>
       )}
-      {reviewRequired && !reviewLoaded && (
-        <button
-          className={control}
-          disabled={pending}
-          data-testid="portions-review"
-          onClick={() => void review()}
+      {reviewRequired && reviewReadError && (
+        <div
+          role="alert"
+          data-testid="portions-saved-review"
+          className="space-y-3 rounded-2xl border border-hearth-line bg-terracotta-50 p-4 text-ink-body shadow-sm"
         >
-          {t('portions.review', 'Review saved portions')}
-        </button>
+          <p className="font-heading text-base font-bold text-hearth-ink">
+            {t('portions.conflictHeading', 'Could not confirm your save')}
+          </p>
+          <p className="text-sm text-ink-body">
+            {t('portions.readError', 'Could not check saved portions. Your edits are kept below.')}
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className={cardButton}
+              disabled={pending}
+              data-testid="portions-retry-review"
+              onClick={() => void review()}
+            >
+              {t('portions.retry', 'Retry')}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              className={cardButton}
+              disabled={pending}
+              data-testid="portions-discard"
+              onClick={() => {
+                const exitNext = departureRef.current;
+                close();
+                leave(exitNext ?? onFinish);
+              }}
+            >
+              {t('portions.discard', 'Discard changes')}
+            </Button>
+          </div>
+        </div>
       )}
-      {reviewLoaded && (
+      {reviewRequired && reviewLoaded && !reviewReadError && (
         <div
           role="group"
-          aria-label={t('portions.review', 'Review saved portions')}
+          aria-label={t('portions.recoveryTitle', 'Review saved portions')}
           data-testid="portions-saved-review"
-          className="space-y-3 rounded-2xl border border-terracotta/30 p-3"
+          className="space-y-3 rounded-2xl border border-hearth-line bg-terracotta-50 p-4 text-ink-body shadow-sm"
         >
-          <p>{t('portions.review', 'Review saved portions')}</p>
+          <p
+            role={error ? 'alert' : undefined}
+            className="font-heading text-base font-bold text-hearth-ink"
+          >
+            {error
+              ? t('portions.conflictHeading', 'Could not confirm your save')
+              : t('portions.recoveryTitle', 'Review saved portions')}
+          </p>
+          <p className="text-sm text-ink-body">
+            {t(
+              'portions.conflictBody',
+              'Current saved portions are shown below. Adjust any date or save your edits directly.'
+            )}
+          </p>
           {legacyUsualReview !== undefined && (
-            <div className="space-y-2" data-testid="portions-legacy-usual-review">
-              <p className="font-semibold">{t('portions.usual', 'Usual portions')}</p>
-              <p>
+            <div
+              className="space-y-1.5 rounded-xl border border-chrome-line bg-white px-3 py-2 text-sm"
+              data-testid="portions-legacy-usual-review"
+            >
+              <p className="font-semibold text-ink-body">{t('portions.usual', 'Usual portions')}</p>
+              <p className="text-ink-muted">
                 {t('portions.saved', 'Saved')}:{' '}
                 {usual ?? t('portions.usualUnavailable', 'Usual portions unavailable')}
                 {' · '}
                 {t('portions.yourEdits', 'Your edits')}:{' '}
                 {legacyUsualReview || t('portions.legacyUsualBlank', 'No usual portions set')}
               </p>
-              <p>
+              <p className="text-ink-body">
                 {t(
                   'portions.legacyUsualContext',
                   'This restored draft also included a usual portions change. Change usual portions in Settings, and keep only the date edits below.'
@@ -463,9 +657,12 @@ export function useSupperServingsEditor(
               local: count === null ? usual : count,
             }))
             .map((item) => (
-              <div key={item.label}>
-                <p className="font-semibold">{item.label}</p>
-                <p>
+              <div
+                key={item.label}
+                className="rounded-xl border border-chrome-line bg-white px-3 py-2 text-sm"
+              >
+                <p className="font-semibold text-ink-body">{item.label}</p>
+                <p className="text-ink-muted">
                   {t('portions.saved', 'Saved')}:{' '}
                   {item.saved ?? t('portions.original', 'Original recipe quantities')} ·{' '}
                   {t('portions.yourEdits', 'Your edits')}:{' '}
@@ -473,66 +670,101 @@ export function useSupperServingsEditor(
                 </p>
               </div>
             ))}
-          <button
-            className={control}
-            data-testid="portions-keep-draft"
-            onClick={() => {
-              setLegacyUsualReview(undefined);
-              setReviewRequired(false);
-              setUncertainSave(false);
-              setReviewLoaded(false);
-              setError(false);
-            }}
-          >
-            {legacyUsualReview === undefined
-              ? t('portions.keepDraft', 'Keep my edits')
-              : t('portions.keepDateDraft', 'Keep date edits only')}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className={cardButton}
+              disabled={pending || (legacyOnlyEmpty ? false : !valid)}
+              data-testid={departure ? 'portions-save-continue' : 'portions-save-recovered'}
+              onClick={saveRecoveredDraft}
+            >
+              {legacyOnlyEmpty
+                ? t('portions.keepDateDraft', 'Keep date edits only')
+                : departure
+                  ? t('portions.saveContinue', 'Save and continue')
+                  : t('portions.savePortions', 'Save portions')}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              className={cardButton}
+              disabled={pending}
+              data-testid="portions-discard"
+              onClick={() => {
+                const exitNext = departureRef.current;
+                close();
+                leave(exitNext ?? onFinish);
+              }}
+            >
+              {t('portions.discard', 'Discard changes')}
+            </Button>
+          </div>
         </div>
       )}
-      {departure && (
+      {departure && !reviewRequired && (
         <div
-          role="group"
-          aria-label={t('portions.unsaved', 'Unsaved portions')}
+          role="alert"
+          aria-label={t('portions.invalidExitTitle', 'Fix invalid portions before leaving')}
           data-testid="portions-departure"
-          className="flex flex-wrap gap-2 rounded-2xl border border-terracotta/30 p-3"
+          className="space-y-3 rounded-2xl border border-hearth-line bg-terracotta-50 p-4 text-ink-body shadow-sm"
         >
-          <p className="w-full">{t('portions.unsaved', 'Unsaved portions')}</p>
-          <button
-            className="min-h-[48px] rounded-xl bg-terracotta px-4 py-3 font-semibold text-white focus-visible:outline-2 focus-visible:outline-charcoal disabled:opacity-50"
-            disabled={pending || !valid || reviewRequired}
-            data-testid="portions-save-continue"
-            onClick={() => void save(departure)}
-          >
-            {t('portions.saveContinue', 'Save and continue')}
-          </button>
-          <button
-            className={control}
-            disabled={pending}
-            data-testid="portions-keep-editing"
-            onClick={() => setDeparture(null)}
-          >
-            {t('portions.keepEditing', 'Keep editing')}
-          </button>
-          <button
-            className="min-h-[48px] px-4 text-sm text-charcoal/70 underline underline-offset-4"
-            disabled={pending}
-            data-testid="portions-discard"
-            onClick={() => {
-              const next = departure;
-              setDeparture(null);
-              close();
-              leave(next ?? onFinish);
-            }}
-          >
-            {t('portions.discard', 'Discard changes')}
-          </button>
+          <p className="font-heading text-base font-bold text-hearth-ink">
+            {t('portions.invalidExitTitle', 'Fix invalid portions before leaving')}
+          </p>
+          <p className="text-sm text-ink-body">
+            {t('portions.invalidCount', 'Choose a whole number from 1 to 2147483647.')}
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className={cardButton}
+              disabled={pending || !valid || reviewRequired}
+              data-testid="portions-save-continue"
+              onClick={() => void save(departure)}
+            >
+              {t('portions.saveContinue', 'Save and continue')}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              className={cardButton}
+              disabled={pending}
+              data-testid="portions-discard"
+              onClick={() => {
+                const next = departure;
+                close();
+                leave(next ?? onFinish);
+              }}
+            >
+              {t('portions.discard', 'Discard changes')}
+            </Button>
+          </div>
         </div>
       )}
       {error && !state && (
-        <button className={control} onClick={() => void open()}>
-          {t('portions.retry', 'Retry')}
-        </button>
+        <div
+          role="alert"
+          className="space-y-3 rounded-2xl border border-hearth-line bg-terracotta-50 p-4 text-ink-body shadow-sm"
+        >
+          <p className="text-sm font-medium text-hearth-ink">
+            {t('portions.loadError', 'Could not load portions. Try again.')}
+          </p>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            className={cardButton}
+            onClick={() => void open()}
+          >
+            {t('portions.retry', 'Retry')}
+          </Button>
+        </div>
       )}
       {state?.days?.map((day) => {
         const key = date(day.date);
@@ -592,7 +824,7 @@ export function useSupperServingsEditor(
               <div
                 data-testid="planner-date"
                 aria-current={isToday ? 'date' : undefined}
-                className="relative flex w-10 shrink-0 flex-col items-center justify-center rounded-xl"
+                className="relative flex w-10 max-w-[40px] shrink-0 flex-col items-center justify-center rounded-xl"
               >
                 <time
                   dateTime={key}
@@ -600,13 +832,13 @@ export function useSupperServingsEditor(
                   data-testid="planner-date-marker"
                   className="flex w-full flex-col items-center justify-center rounded-xl py-2"
                 >
-                  <span className="mb-1 max-w-full break-all text-center text-xs font-bold leading-none tracking-normal text-charcoal-600">
+                  <span className="mb-1 max-w-full break-all text-center text-xs font-bold leading-none tracking-normal text-ink-muted">
                     {weekdayLabel}
                   </span>
-                  <span className="max-w-full break-all text-center font-heading text-lg font-extrabold leading-none text-charcoal">
+                  <span className="max-w-full break-all text-center font-heading text-lg font-extrabold leading-none text-ink-body">
                     {dayNumberLabel}
                   </span>
-                  <span className="mt-1 max-w-full break-all text-center text-xs font-bold leading-none tracking-normal text-charcoal-600">
+                  <span className="mt-1 max-w-full break-all text-center text-xs font-bold leading-none tracking-normal text-ink-muted">
                     {monthLabel}
                   </span>
                 </time>
@@ -615,7 +847,7 @@ export function useSupperServingsEditor(
                 data-testid="planner-meal"
                 className={`relative min-w-0 flex-1 rounded-2xl border border-white/20 ${isPast ? 'bg-cream shadow-none' : 'glass shadow-sm'}`}
               >
-                <div className="flex min-h-[72px] flex-wrap items-center gap-2 px-3 py-2.5">
+                <div className="flex min-h-[72px] flex-wrap items-center gap-2 px-[12px] py-2.5">
                   <div
                     className="flex h-[48px] w-[48px] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-charcoal/5"
                     aria-label={
@@ -643,18 +875,18 @@ export function useSupperServingsEditor(
                     )}
                   </div>
                   {meal?.status === 3 ? (
-                    <span className="text-sm font-semibold text-charcoal-600">
+                    <span className="text-sm font-semibold text-ink-muted">
                       {nonCookingLabel(meal.nonCooking)}
                     </span>
                   ) : day.editable ? (
                     <div
                       data-testid={`portion-controls-${key}`}
-                      className="ml-auto flex items-center justify-end"
+                      className="ml-auto flex min-w-0 max-w-full items-center justify-end"
                     >
                       <div
                         role="group"
                         aria-label={`${key} ${t('portions.portions', 'portions')}`}
-                        className="inline-flex items-center rounded-xl border border-chrome-line bg-white shadow-sm focus-within:ring-2 focus-within:ring-terracotta"
+                        className="inline-flex max-w-full items-center rounded-xl border border-chrome-line bg-white shadow-sm focus-within:ring-2 focus-within:ring-terracotta"
                       >
                         <button
                           type="button"
@@ -730,13 +962,13 @@ export function useSupperServingsEditor(
                       <p
                         id={`portion-error-${key}`}
                         role="alert"
-                        className="w-full text-sm text-terracotta-700"
+                        className="w-full text-sm font-medium text-hearth-ink"
                       >
                         {t('portions.invalidCount', 'Choose a whole number from 1 to 2147483647.')}
                       </p>
                     )}
                   {meal?.status !== 3 && day.editable && usual === null && (
-                    <p className="w-full text-sm text-charcoal/70">
+                    <p className="w-full text-sm text-ink-muted">
                       {t('portions.usualUnavailable', 'Usual portions unavailable')}
                     </p>
                   )}

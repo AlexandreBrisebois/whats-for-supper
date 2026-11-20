@@ -333,9 +333,17 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     expect(changedMeaning.state.groceryState[pasta.rowId]).toBe(true);
     expect(changedMeaning.state.groceryState[sauce.rowId]).toBe(true);
 
+    const checkSavedLabel =
+      locale === 'fr' ? 'Vérifier la recette enregistrée' : 'Check saved recipe';
+    const reconcileDraftLabel = locale === 'fr' ? 'Concilier le brouillon' : 'Reconcile draft';
+    const applyDraftLabel =
+      locale === 'fr' ? 'Appliquer le brouillon vérifié' : 'Apply reviewed draft';
     const reconcile = async (page: Page) => {
-      await page.getByRole('button', { name: copy.recipes.checkSavedRecipe, exact: true }).click();
-      await page.getByRole('button', { name: copy.recipes.reconcileDraft, exact: true }).click();
+      await expect(page.getByTestId('recipe-reconcile-conflicts')).toBeVisible();
+      await expect(page.getByRole('button', { name: checkSavedLabel, exact: true })).toHaveCount(0);
+      await expect(
+        page.getByRole('button', { name: reconcileDraftLabel, exact: true })
+      ).toHaveCount(0);
       return page.getByRole('group', { name: copy.recipes.ingredients, exact: true });
     };
     const adoptCurrent = async (page: Page) => {
@@ -345,9 +353,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
           exact: true,
         })
         .click();
-      await page
-        .getByRole('button', { name: copy.recipes.applyReviewedDraft, exact: true })
-        .click();
+      await expect(page.getByRole('button', { name: applyDraftLabel, exact: true })).toHaveCount(0);
       await page.getByTestId('recipe-cancel-edits').click();
     };
     // Restore400/net ordinarily, then make a package-only conflict: local400/tins/net versus remote800/can/drained.
@@ -436,7 +442,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     await expect(editor.getByTestId('recipe-edit-package-count-unit-2')).toHaveValue('tins');
     await expect(editor.getByTestId('recipe-edit-package-unit-2')).toHaveValue('kg');
     await expect(editor.getByTestId('recipe-edit-package-basis-2')).toHaveValue('drained');
-    await expect(editor.getByTestId('recipe-save-edits')).toBeDisabled();
+    await expect(editor.getByTestId('recipe-save-edits')).toBeEnabled();
     expect((await read()).contentRevision).toBe(independent.contentRevision);
     await editor.getByTestId('recipe-cancel-edits').click();
     expect((await read()).contentRevision).toBe(independent.contentRevision);
@@ -468,7 +474,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
       max: { n: '1', d: '2' },
     });
     await expect(editor.getByTestId('recipe-edit-package-capacity-2')).toHaveValue('⅓–½');
-    await expect(editor.getByTestId('recipe-save-edits')).toBeDisabled();
+    await expect(editor.getByTestId('recipe-save-edits')).toBeEnabled();
     await editor.reload();
     await options(editor);
     await expect(editor.getByTestId('recipe-edit-package-enabled-2')).toBeChecked();
@@ -476,10 +482,7 @@ test(`declared package ${locale} uses ordinary Save and fixed capacity across po
     await expect(editor.getByTestId('recipe-edit-package-capacity-2')).toHaveValue('⅓–½');
     await expect(editor.getByTestId('recipe-edit-package-unit-2')).toHaveValue('kg');
     await expect(editor.getByTestId('recipe-edit-package-basis-2')).toHaveValue('drained');
-    await editor.getByRole('button', { name: copy.recipes.checkSavedRecipe, exact: true }).click();
-    await expect(
-      editor.getByRole('button', { name: copy.recipes.reconcileDraft, exact: true })
-    ).toBeVisible();
+    await expect(editor.getByRole('button', { name: checkSavedLabel, exact: true })).toHaveCount(0);
     await editor.getByTestId('recipe-cancel-edits').click();
     expect(writes).toHaveLength(beforeLost + 1);
     expect((await read()).contentRevision).toBe(committed.recipe.contentRevision);

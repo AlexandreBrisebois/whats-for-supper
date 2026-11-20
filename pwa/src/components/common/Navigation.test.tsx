@@ -3,17 +3,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   pathname: '/recipes',
+  push: vi.fn(),
   getCategories: vi.fn(),
   getVotingSession: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
   usePathname: () => mocks.pathname,
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: (...args: unknown[]) => mocks.push(...args) }),
 }));
 vi.mock('next/link', () => ({
-  default: ({ children, href, ...props }: React.PropsWithChildren<{ href: string }>) => (
-    <a href={href} {...props}>
+  default: ({
+    children,
+    href,
+    onNavigate,
+    ...props
+  }: React.PropsWithChildren<{
+    href: string;
+    onNavigate?: (e: { preventDefault: () => void }) => void;
+  }>) => (
+    <a
+      href={href}
+      onClick={(e) => {
+        e.preventDefault();
+        onNavigate?.({ preventDefault: () => {} });
+      }}
+      {...props}
+    >
       {children}
     </a>
   ),
@@ -24,6 +40,8 @@ vi.mock('@/lib/api/discovery', () => ({
 }));
 
 import { LocaleProvider, useLocale } from '@/components/common/LocaleProvider';
+import { setLocale } from '@/locales';
+import { usePlannerStore } from '@/store/plannerStore';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { Navigation } from './Navigation';
 
@@ -48,6 +66,8 @@ describe('Navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    setLocale('en');
+    mocks.push = vi.fn();
     mocks.pathname = '/recipes';
     mocks.getCategories.mockResolvedValue([]);
     mocks.getVotingSession.mockResolvedValue(sessionFor('unowned'));
@@ -126,6 +146,126 @@ describe('Navigation', () => {
     expect(screen.getByTestId('nav-item-discovery').querySelector('div')).not.toHaveClass(
       'animate-pulse-ochre'
     );
+  });
+
+  describe('three-state Discovery medallion', () => {
+    const orbOf = () =>
+      screen.getByTestId('nav-item-discovery').querySelector('div') as HTMLElement;
+
+    it.each(['unowned', 'absent', 'unavailable'] as const)(
+      'renders static ochre Compass Discovery for %s',
+      async (state) => {
+        mocks.pathname = '/home';
+        mocks.getCategories.mockResolvedValue(['Poultry']);
+        if (state === 'unavailable') mocks.getVotingSession.mockRejectedValue(new Error('offline'));
+        else if (state === 'unowned')
+          mocks.getVotingSession.mockResolvedValue(sessionFor('unowned'));
+        render(
+          <LocaleProvider>
+            <Navigation />
+          </LocaleProvider>
+        );
+        await waitFor(() => expect(mocks.getCategories).toHaveBeenCalled());
+        const link = screen.getByTestId('nav-item-discovery');
+        expect(orbOf()).toHaveClass('bg-ochre-100', 'text-sunlight-ink', 'border-sunlight-line');
+        expect(orbOf()).not.toHaveClass('animate-pulse-ochre');
+        expect(link.querySelector('.lucide-compass')).toBeInTheDocument();
+        expect(link.querySelector('.lucide-check')).not.toBeInTheDocument();
+        expect(link.querySelector('[data-testid="nav-discovery-pip"]')).not.toBeInTheDocument();
+        expect(link).toHaveTextContent('Discovery');
+      }
+    );
+
+    it('shows pulse, static pip and descriptive label while collecting off /discovery, and clears on /discovery or no cards', async () => {
+      mocks.pathname = '/home';
+      mocks.getCategories.mockResolvedValue(['Poultry']);
+      mocks.getVotingSession.mockResolvedValue(sessionFor('collecting'));
+      const view = render(
+        <LocaleProvider>
+          <Navigation />
+        </LocaleProvider>
+      );
+      await waitFor(() => expect(orbOf()).toHaveClass('animate-pulse-ochre'));
+      const link = screen.getByTestId('nav-item-discovery');
+      const pip = link.querySelector('[data-testid="nav-discovery-pip"]');
+      expect(pip).toHaveClass('bg-sunlight-ink');
+      expect(pip).toHaveAttribute('aria-hidden', 'true');
+      expect(link).toHaveAttribute('aria-label', 'Discovery — family is voting');
+
+      await act(async () => {
+        useDiscoveryStore.getState().setHasPendingCards(false);
+      });
+      expect(orbOf()).not.toHaveClass('animate-pulse-ochre');
+      expect(link.querySelector('[data-testid="nav-discovery-pip"]')).not.toBeInTheDocument();
+
+      view.unmount();
+      mocks.pathname = '/discovery';
+      render(<Navigation />);
+      await waitFor(() => expect(mocks.getCategories).toHaveBeenCalledTimes(2));
+      expect(orbOf()).not.toHaveClass('animate-pulse-ochre');
+      expect(
+        screen.getByTestId('nav-item-discovery').querySelector('[data-testid="nav-discovery-pip"]')
+      ).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['en', "Menu's in", "Menu's in — open meal plan matches"],
+      ['fr', 'Menu prêt', 'Menu prêt — voir les choix du menu'],
+    ] as const)(
+      'renders persistent Garden green Check for converged (%s) on any route',
+      async (loc, label, aria) => {
+        setLocale(loc);
+        mocks.pathname = '/planner';
+        mocks.getVotingSession.mockResolvedValue(sessionFor('converged'));
+        render(
+          <LocaleProvider>
+            <Navigation />
+          </LocaleProvider>
+        );
+        const link = await screen.findByTestId('nav-item-discovery');
+        await waitFor(() => expect(link.querySelector('.lucide-check')).toBeInTheDocument());
+        expect(orbOf()).toHaveClass('bg-garden-fill', 'text-white', 'border-garden-fill-deep');
+        expect(orbOf()).not.toHaveClass('bg-ochre-100', 'animate-pulse-ochre');
+        expect(link.querySelector('.lucide-compass')).not.toBeInTheDocument();
+        expect(link.querySelector('span')).toHaveClass('text-garden-ink');
+        expect(link).toHaveTextContent(label);
+        expect(link).toHaveAttribute('aria-label', aria);
+      }
+    );
+
+    it('routes converged activation to the Planner Meals tab and falls back to /discovery without a valid week', async () => {
+      const push = vi.fn();
+      mocks.push = push;
+      mocks.pathname = '/planner';
+      mocks.getVotingSession.mockResolvedValue(sessionFor('converged'));
+      usePlannerStore.getState().setActiveTab('grocery' as any);
+      render(<Navigation />);
+      const link = await screen.findByTestId('nav-item-discovery');
+      await waitFor(() => expect(link.querySelector('.lucide-check')).toBeInTheDocument());
+      expect(link).toHaveAttribute(
+        'href',
+        '/planner?weekOffset=0&referenceWeekStartDate=2026-10-12'
+      );
+      fireEvent.click(link);
+      expect(usePlannerStore.getState().activeTab).toBe('planner');
+      expect(push).toHaveBeenCalledWith('/planner?weekOffset=0&referenceWeekStartDate=2026-10-12');
+
+      await act(async () => {
+        // The store rejects such snapshots, so seed the state directly to exercise the guard.
+        useDiscoveryStore.setState({
+          session: { ...sessionFor('converged', 3), weekStartDate: undefined },
+        } as any);
+      });
+      expect(screen.getByTestId('nav-item-discovery')).toHaveAttribute('href', '/discovery');
+
+      await act(async () => {
+        useDiscoveryStore.getState().applySession(sessionFor('unowned', 4), true);
+      });
+      const back = screen.getByTestId('nav-item-discovery');
+      expect(back).toHaveTextContent('Discovery');
+      expect(back).toHaveAttribute('href', '/discovery');
+      expect(back.querySelector('.lucide-compass')).toBeInTheDocument();
+    });
   });
 
   it('uses Family Cookbook tonal sunlit Discover medallion, >= 12px sentence-case labels, and min-h-12 targets', async () => {

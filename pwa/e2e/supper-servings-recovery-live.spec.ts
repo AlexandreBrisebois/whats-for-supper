@@ -116,7 +116,7 @@ test('real lost portions, failed worker, guarded checks, baselines and movement 
       days: [{ date: '2026-10-14', servings: count }],
     });
     if (lost) {
-      await page.getByTestId('portions-review').click();
+      await expect(page.getByTestId('portions-review')).toHaveCount(0);
     }
     await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
     await groceries(page);

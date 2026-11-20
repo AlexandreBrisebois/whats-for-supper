@@ -172,6 +172,32 @@ public class VotingSessionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TiedNeverCookedConsensusProjectsIdenticalPlacementAcrossReads()
+    {
+        for (var i = 0; i < 4; i++)
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = _monday.AddDays(i),
+                Status = CalendarEventStatus.Skipped, NonCookingKind = "eating_out" });
+        var recipes = Enumerable.Range(1, 5).Reverse().Select(i => new Recipe
+            { Id = new Guid(i, 0, 0, new byte[8]), Name = $"Tied {i}", LastCookedDate = null }).ToArray();
+        foreach (var recipe in recipes)
+        {
+            _db.Recipes.Add(recipe);
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id,
+                FamilyMemberId = _app.DefaultFamilyMemberId, Vote = VoteType.Like });
+            await _db.SaveChangesAsync();
+        }
+        await _schedule.OpenVotingAsync(1);
+
+        var first = await _session.ReadAsync();
+        var second = await _session.ReadAsync();
+
+        var expected = recipes.Select(r => r.Id).OrderBy(id => id).Take(3).ToArray();
+        Assert.Equal(expected, first.SmartDefaults!.PreSelectedRecipes.Select(x => x.RecipeId));
+        Assert.Equal(first.SmartDefaults.PreSelectedRecipes.Select(x => (x.RecipeId, x.DayIndex)),
+            second.SmartDefaults!.PreSelectedRecipes.Select(x => (x.RecipeId, x.DayIndex)));
+    }
+
+    [Fact]
     public async Task LateVoteCreatesAdditionalCandidateWithoutSavingOrClosing()
     {
         var recipes = await SeedAsync(6, 2);

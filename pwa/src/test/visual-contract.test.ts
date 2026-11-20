@@ -305,4 +305,43 @@ describe('Family Cookbook visual contract scanner', () => {
     const failures = evaluateRatchet(sources, LEGACY_ERA_ALLOWLIST);
     expect(failures, failures.join('\n\n')).toEqual([]);
   });
+
+  it('keeps all 9 Tier 1 pull-forward decision & recovery surfaces Era 3 clean with zero removed controls', () => {
+    const pwaRoot = path.resolve(__dirname, '../..');
+    const sources = collectPwaUiSources(pwaRoot);
+    const tier1Files = [
+      'src/components/planner/useSupperServingsEditor.tsx',
+      'src/app/(app)/planner/page.tsx',
+      'src/components/planner/GroceryList.tsx',
+      'src/components/profile/UsualPortionsSection.tsx',
+      'src/components/recipes/PlanningDayChooser.tsx',
+      'src/components/recipes/NonCookingReplacementConfirmation.tsx',
+      'src/components/recipes/RecipeDetailSheet.tsx',
+      'src/components/planner/CooksMode.tsx',
+      'src/app/(app)/recipes/RecipesExperience.tsx',
+    ];
+    const bannedRemovedIdentifiers = [
+      'portions-review',
+      'planning-day-cancel',
+      'search-restart-expired',
+      'recipe-reconcile-open',
+      'recipe-reconcile-apply',
+      'recipes.restartSearch',
+      'recipes.checkSavedRecipe',
+      'recipes.reconcileDraft',
+      'recipes.applyReviewedDraft',
+      'profile.reviewCurrentPortions',
+    ];
+
+    for (const file of tier1Files) {
+      expect(sources[file], `Expected Tier 1 file ${file} in UI source scan`).toBeDefined();
+      expect(scanSource(file, sources[file]), `Era 3 scan failures in ${file}`).toEqual([]);
+      for (const removed of bannedRemovedIdentifiers) {
+        expect(
+          sources[file],
+          `Removed pull-forward control ${removed} must not reappear in ${file}`
+        ).not.toContain(removed);
+      }
+    }
+  });
 });
