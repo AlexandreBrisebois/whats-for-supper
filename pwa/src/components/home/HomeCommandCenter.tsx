@@ -737,10 +737,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               </h2>
               <div
                 data-testid="saved-plan-illustration"
-                className="flex h-28 items-center justify-center rounded-[1.5rem] bg-cream text-garden-ink sm:h-40"
+                className="mx-1 flex aspect-square size-28 shrink-0 items-center justify-center rounded-[1.75rem] bg-cream text-garden-ink sm:size-32"
                 aria-hidden="true"
               >
-                <NonCookingIcon kind={nonCooking?.kind} size={104} strokeWidth={1.25} />
+                <NonCookingIcon kind={nonCooking?.kind} size={64} strokeWidth={1.5} />
               </div>
               <div className="space-y-2 px-1">
                 <h3
