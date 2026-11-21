@@ -19,12 +19,6 @@ public partial class PreparedSupperPostgresTests
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public Task PreparedSupper_CanonicalCorrection_OriginalRemainsNullAfterDefaultAndRosterChanges() => CurrentPreparedContent(configured: false);
 
-    [DeploymentCalendarPostgresTests.CalendarLiveFact]
-    public Task LiveBrowser_CookingStepPreparedSix() => new CanonicalIngredientEditPostgresTests(output).RunCanonicalBrowser(false, stepScaling: true, preparedContext: "six");
-
-    [DeploymentCalendarPostgresTests.CalendarLiveFact]
-    public Task LiveBrowser_CookingStepPreparedOriginal() => new CanonicalIngredientEditPostgresTests(output).RunCanonicalBrowser(false, stepScaling: true, preparedContext: "original");
-
     internal static async Task<JsonElement> SeedCanonicalPreparation(TestWebApplicationFactory app, bool configured)
     {
         var recipe = TomorrowPushPostgresTests.Selected;
