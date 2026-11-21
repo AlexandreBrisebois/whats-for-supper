@@ -23,7 +23,9 @@ persistence operations live with [database](database/SKILL.md).
 
 For explicitly requested skill authoring, use the host's skill-authoring guidance
 when available. Repository skills live under `.agents/skills/`; update this registry
-when their discovery names or triggers change. Preserve established discovery names
+when their discovery names or triggers change, then run `task agent:skills:claude`
+to regenerate the Claude Code shims in `.claude/skills/` (`task test:agent` fails
+while they are stale). Preserve established discovery names
 when they differ from folder names. Keep shared policy with its existing owner and
 check frontmatter, reference links and applicable harness validation.
 

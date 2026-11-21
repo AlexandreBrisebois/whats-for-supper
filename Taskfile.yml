@@ -1208,6 +1208,16 @@ tasks:
     cmds:
       - '"{{.PYTHON}}" -B scripts/agent/slice.py {{.CLI_ARGS}}'
 
+  agent:skills:claude:
+    desc: "🤖 Regenerate .claude/skills shims from .agents/skills (use --check via agent:skills:claude:check)"
+    cmds:
+      - '"{{.PYTHON}}" -B scripts/agent/claude_skills.py'
+
+  agent:skills:claude:check:
+    desc: "🤖 Fail when .claude/skills shims drift from .agents/skills"
+    cmds:
+      - '"{{.PYTHON}}" -B scripts/agent/claude_skills.py --check'
+
   agent:drift:
     desc: "🤖 Schema Drift — static route drift + Tier 0 endpoint diff + Tier 1 DTO schema comparison + Tier 2 Mock compliance"
     cmds:
