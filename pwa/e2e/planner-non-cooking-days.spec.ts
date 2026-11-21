@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import {
   MOCK_IDS,
   builders,
@@ -45,7 +46,25 @@ for (const appLocale of ['en', 'fr'] as const) {
           await page.goto('/home');
           const card = page.getByTestId('today-non-cooking-plan');
           await expect(card).toBeVisible();
-          await expect(card.locator('svg')).toHaveAttribute('width', '104');
+          const illustration = card.getByTestId('saved-plan-illustration');
+          await expect(illustration).toBeVisible();
+          await expect(illustration).toHaveAttribute('data-vignette-kind', kind);
+          const iconSelector =
+            kind === 'custom'
+              ? '.lucide-calendar-days'
+              : kind === 'eating_out'
+                ? '.lucide-utensils-crossed'
+                : '.lucide-shopping-bag';
+          await expect(illustration.locator(iconSelector)).toBeVisible();
+          await expect(card.getByTestId('non-cooking-status-pill')).toHaveText(
+            kind === 'custom'
+              ? appLocale === 'fr'
+                ? 'On a des plans'
+                : 'We made plans'
+              : appLocale === 'fr'
+                ? 'Plan prévu'
+                : 'Plan set'
+          );
           await expect(
             page.getByTestId(
               kind === 'custom' ? 'today-non-cooking-label' : 'today-non-cooking-note'
@@ -61,6 +80,22 @@ for (const appLocale of ['en', 'fr'] as const) {
           expect(box!.height).toBeGreaterThanOrEqual(48);
           expect(box!.width).toBeGreaterThanOrEqual(48);
           expect((await card.boundingBox())!.width).toBeLessThanOrEqual(432);
+          if (width === 390) {
+            await assertCookbookVisualA11y(page, {
+              rootSelector: '[data-testid="today-non-cooking-plan"]',
+              contrastLevel: 'aa',
+            });
+            await page.evaluate(() => {
+              document.documentElement.dataset.contrast = 'high';
+            });
+            await assertCookbookVisualA11y(page, {
+              rootSelector: '[data-testid="today-non-cooking-plan"]',
+              contrastLevel: 'aaa',
+            });
+            await page.evaluate(() => {
+              delete document.documentElement.dataset.contrast;
+            });
+          }
           if (width === 320) {
             await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
             await edit.scrollIntoViewIfNeeded();

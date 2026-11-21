@@ -8,6 +8,7 @@ Normative visual reference for What's For Supper (WFS). Organized in three coher
 - [Board 02 · Layer 2 Functional Patterns: surfaces, controls, settings & recovery](visual-language/02-surfaces-controls-and-recovery.svg)
 - [Board 03 · Layer 3A Domain: Supper Plan (Tonight, Weekly Planner, Portions & Groceries)](visual-language/03-domain-supper-plan-and-week.svg)
 - [Board 04 · Layer 3B Domain: Recipe Cards, Browse Toolbar & Detail Sheet](visual-language/04-domain-recipe-cards-and-detail.svg)
+- [Design · Home No-Cook Card Suite (Cookbook Bookmark)](visual-language/designs/cookbook-bookmark-no-cook-suite.svg)
 
 ![Board 01: Era 3 dual-mode Standard AA / High Contrast AAA neutral and brand semantic roles (Hearth, Sunlight, cooled herb Garden), Outfit and Inter type scale, context-paired Ready in pills, 48px targets, outline-ink-body focus ring, bottom navigation with three-state Discovery medallion, and shipped Lucide icons.](visual-language/01-foundations-roles-and-type.svg)
 

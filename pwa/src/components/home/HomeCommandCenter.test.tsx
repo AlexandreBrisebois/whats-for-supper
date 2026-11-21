@@ -474,7 +474,12 @@ describe('HomeCommandCenter', () => {
     expect(await screen.findByTestId('today-non-cooking-label')).toHaveTextContent(
       kind === 'order_in' ? 'Take Out' : 'Eating out'
     );
+    expect(screen.getByTestId('non-cooking-status-pill')).toHaveTextContent('Plan set');
     expect(screen.getByTestId('today-non-cooking-note')).toHaveTextContent('Try Luigi’s');
+    expect(screen.getByTestId('saved-plan-illustration')).toHaveAttribute(
+      'data-vignette-kind',
+      kind
+    );
     expect(screen.getByRole('button', { name: /Edit supper plan/ })).toHaveAccessibleName(
       `Tonight ${kind === 'order_in' ? 'Take Out' : 'Eating out'} Try Luigi’s Edit supper plan`
     );
@@ -513,15 +518,18 @@ describe('HomeCommandCenter', () => {
     }
   );
 
-  it('gives a long custom plan the cookbook shell, generous icon and full content', async () => {
+  it('gives a long custom plan the cookbook shell, Cookbook Bookmark vignette, status pill and full content', async () => {
     mocks.todayStatus = 3;
     const title = 'Family supper\n' + 'A'.repeat(66);
     mocks.nonCooking = { kind: 'custom', customLabel: title };
     render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
     const card = await screen.findByTestId('today-non-cooking-plan');
     expect(card).toHaveClass('rounded-[3rem]', 'bg-white');
-    expect(screen.getByTestId('saved-plan-illustration')).toHaveClass('aspect-[5/4]', 'w-full');
-    expect(card.querySelector('.lucide-calendar-days')).toHaveAttribute('width', '104');
+    expect(screen.getByTestId('non-cooking-status-pill')).toHaveTextContent('We made plans');
+    const illustration = screen.getByTestId('saved-plan-illustration');
+    expect(illustration).toHaveClass('aspect-[25/11]', 'w-full');
+    expect(illustration).toHaveAttribute('data-vignette-kind', 'custom');
+    expect(illustration.querySelector('.lucide-calendar-days')).not.toBeNull();
     expect(screen.getByTestId('today-non-cooking-label')).not.toHaveClass('line-clamp-2');
     expect(screen.getByTestId('today-non-cooking-label').textContent).toBe(title);
     expect(screen.getByRole('button', { name: /Edit supper plan/ })).toHaveTextContent(

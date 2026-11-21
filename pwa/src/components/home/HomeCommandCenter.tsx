@@ -3,7 +3,7 @@ import { PreparationStatus } from '@/components/planner/PreparationStatus';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Check } from 'lucide-react';
-import { NonCookingIcon } from '../planner/NonCookingIcon';
+import { NonCookingVignette } from './NonCookingVignette';
 import { QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
 import { TonightMenuCard, TonightCardBase } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
@@ -732,31 +732,53 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
               data-testid="today-non-cooking-plan"
               className="flex min-w-0 flex-col gap-5 p-6 [overflow-wrap:anywhere]"
             >
-              <h2 className="px-1 font-heading text-base font-medium text-ink-muted">
-                {t('home.tonight', 'Tonight')}
-              </h2>
-              <div
-                data-testid="saved-plan-illustration"
-                className="flex aspect-[5/4] w-full shrink-0 items-center justify-center rounded-[2rem] bg-cream text-garden-ink"
-                aria-hidden="true"
-              >
-                <NonCookingIcon kind={nonCooking?.kind} size={104} strokeWidth={1.25} />
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                <h2 className="font-heading text-base font-medium text-ink-muted">
+                  {t('home.tonight', 'Tonight')}
+                </h2>
+                <span
+                  data-testid="non-cooking-status-pill"
+                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-garden-line bg-sage-50 px-3 py-1 text-xs font-semibold text-garden-ink"
+                >
+                  <Check size={14} strokeWidth={2.5} aria-hidden="true" className="shrink-0" />
+                  {nonCooking?.kind === 'custom'
+                    ? t('planner.otherPlans', 'We made plans')
+                    : t('home.planSet', 'Plan set')}
+                </span>
               </div>
-              <div className="space-y-2 px-1">
+              <NonCookingVignette kind={nonCooking?.kind} testId="saved-plan-illustration" />
+              <div className="space-y-3 px-1">
                 <h3
                   data-testid="today-non-cooking-label"
                   className="whitespace-pre-wrap break-words font-heading text-3xl font-black leading-snug text-ink-body"
                 >
                   {nonCookingLabel(nonCooking)}
                 </h3>
-                {nonCookingNote(nonCooking) && (
-                  <p
-                    data-testid="today-non-cooking-note"
-                    className="whitespace-pre-wrap break-words text-base leading-relaxed text-ink-muted"
-                  >
-                    {nonCookingNote(nonCooking)}
-                  </p>
-                )}
+                <div className="space-y-0.5 border-l-4 border-garden-line pl-3.5">
+                  {nonCookingNote(nonCooking) ? (
+                    <>
+                      <p
+                        data-testid="today-non-cooking-note"
+                        className="whitespace-pre-wrap break-words text-sm font-medium leading-relaxed text-ink-body"
+                      >
+                        {nonCookingNote(nonCooking)}
+                      </p>
+                      <p className="text-xs leading-normal text-ink-muted">
+                        {nonCooking?.kind === 'eating_out'
+                          ? t('home.noCookingTonight', 'No cooking tonight')
+                          : t('home.takeoutNoCooking', 'Takeout or delivery · no cooking')}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm leading-relaxed text-ink-muted">
+                      {nonCooking?.kind === 'custom'
+                        ? t('home.noCookingPlanSaved', 'No cooking tonight · plan saved')
+                        : nonCooking?.kind === 'eating_out'
+                          ? t('home.noCookingTonight', 'No cooking tonight')
+                          : t('home.takeoutNoCooking', 'Takeout or delivery · no cooking')}
+                    </p>
+                  )}
+                </div>
               </div>
               <button
                 aria-label={`${t('home.tonight', 'Tonight')} ${[nonCookingLabel(nonCooking), nonCookingNote(nonCooking)].filter(Boolean).join(' ')} ${t('planner.editSupperPlan', 'Edit supper plan')}`}

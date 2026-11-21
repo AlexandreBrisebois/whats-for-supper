@@ -85,9 +85,13 @@ test.describe('Home Command Center — GOTO & Pivot Flow', () => {
             { timeout: 30_000 }
           );
           const card = page.getByTestId('tonight-pivot-card');
-          await expect(
-            card.getByTestId('mystery-plan-illustration').locator('svg')
-          ).toHaveAttribute('width', '104');
+          const mysteryIllustration = card.getByTestId('mystery-plan-illustration');
+          await expect(mysteryIllustration).toBeVisible();
+          await expect(mysteryIllustration).toHaveAttribute('data-vignette-kind', 'mystery');
+          await expect(mysteryIllustration.locator('.lucide-sparkles')).toBeVisible();
+          await expect(card.getByTestId('mystery-status-pill')).toHaveText(
+            appLocale === 'fr' ? 'À décider ce soir' : 'Deciding tonight'
+          );
           await expect(card.getByTestId('confirm-goto-btn')).toBeHidden();
           for (const [width, height] of [
             [320, 568],

@@ -1,7 +1,8 @@
 'use client';
 
-import { ShoppingBag, Utensils, UtensilsCrossed, Search, Star } from 'lucide-react';
+import { ShoppingBag, Sparkles, Utensils, UtensilsCrossed, Search, Star } from 'lucide-react';
 import { NonCookingIcon } from '../planner/NonCookingIcon';
+import { NonCookingVignette } from './NonCookingVignette';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { TonightCardBase } from './TonightMenuCard';
 import { TonightRecipeImage } from './TonightRecipeImage';
@@ -61,7 +62,7 @@ export function TonightPivotCard({
     >
       <TonightCardBase className="flex flex-col p-6">
         {/* Header */}
-        <div className="flex justify-between items-center mb-5 px-1">
+        <div className="flex flex-wrap justify-between items-center gap-2 mb-5 px-1">
           <h2
             data-testid="pivot-card-header"
             className="font-heading text-base font-medium text-ink-muted"
@@ -72,6 +73,15 @@ export function TonightPivotCard({
                 ? t('home.tonight', 'Tonight')
                 : t('home.nothingPlannedTonight', 'Nothing planned for tonight')}
           </h2>
+          {mysteryWithoutProposal && (
+            <span
+              data-testid="mystery-status-pill"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-sunlight-line bg-ochre-50 px-3 py-1 text-xs font-bold text-sunlight-ink"
+            >
+              <Sparkles size={14} strokeWidth={2.2} aria-hidden="true" className="shrink-0" />
+              {t('home.decidingTonight', 'Deciding tonight')}
+            </span>
+          )}
         </div>
 
         <div data-testid="pivot-card-image-area">
@@ -84,13 +94,11 @@ export function TonightPivotCard({
               <Utensils size={104} strokeWidth={1.25} />
             </div>
           ) : mysteryWithoutProposal ? (
-            <div
-              data-testid="mystery-plan-illustration"
-              className="mb-6 flex aspect-[5/4] w-full shrink-0 items-center justify-center rounded-[2rem] bg-cream text-garden-ink"
-              aria-hidden="true"
-            >
-              <NonCookingIcon kind="mystery" size={104} strokeWidth={1.25} />
-            </div>
+            <NonCookingVignette
+              kind="mystery"
+              testId="mystery-plan-illustration"
+              className="mb-6"
+            />
           ) : (
             <TonightRecipeImage
               key={`${gotoRecipeId}:${imageUrl}`}

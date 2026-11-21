@@ -376,3 +376,7 @@
   backdrop-filter: none;
   box-shadow: none;
 }
+
+:root[data-contrast='high'] .cookbook-vignette-decor {
+  display: none;
+}

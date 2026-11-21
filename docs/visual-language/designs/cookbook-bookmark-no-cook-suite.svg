@@ -1,0 +1,542 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1600" viewBox="0 0 1440 1600" role="img" aria-labelledby="suite-title suite-desc">
+  <title id="suite-title">Proposition 2 · Cookbook Bookmark — Full No-Cook Plan Suite (Era 3)</title>
+  <desc id="suite-desc">Complete Era 3 Family Cookbook Bookmark suite across all four non-cooking plan kinds: Eating out (preserved), Take Out, We made plans (custom), and Mystery night (TonightPivotCard companion), plus blank-note, French expansion, and High Contrast AAA proofs.</desc>
+
+  <defs>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="128%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#28231F" flood-opacity="0.11"/>
+    </filter>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#28231F" flood-opacity="0.06"/>
+    </filter>
+    <linearGradient id="vignetteBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F1F3EB"/>
+      <stop offset="100%" stop-color="#FDFCF0"/>
+    </linearGradient>
+    <linearGradient id="mysteryBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFBE6"/>
+      <stop offset="55%" stop-color="#FDFCF0"/>
+      <stop offset="100%" stop-color="#F1F3EB"/>
+    </linearGradient>
+    <radialGradient id="sunlightHalo" cx="50%" cy="46%" r="44%">
+      <stop offset="0%" stop-color="#FFE666" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FDFCF0" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="vignetteClip">
+      <rect x="0" y="0" width="300" height="132" rx="22"/>
+    </clipPath>
+    <clipPath id="miniVignetteClip">
+      <rect x="0" y="0" width="260" height="72" rx="14"/>
+    </clipPath>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="1600" fill="#FDFCF0"/>
+
+  <!-- ====================================================================== -->
+  <!-- HEADER                                                                 -->
+  <!-- ====================================================================== -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · Proposition 2 Developed</text>
+  <rect x="1142" y="24" width="258" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1271" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Cookbook Bookmark · All 4 No-Cook Kinds</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Cookbook Bookmark — Complete No-Cook Card Suite</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">One cohesive illustrated vignette language across Eating out (preserved), Take Out, We made plans, and Mystery night.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 1 · SETTLED NO-COOK CARDS (HomeCommandCenter.tsx)              -->
+  <!-- ====================================================================== -->
+  <text x="40" y="170" font-size="18" font-weight="700" fill="#28231F" class="heading">Settled No-Cook Plans on Home (HomeCommandCenter · today-non-cooking-plan)</text>
+
+  <!-- ==================== COL 1 · EATING OUT (PRESERVED) ==================== -->
+  <g transform="translate(40, 188)">
+    <rect x="0" y="0" width="436" height="598" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <!-- Column header -->
+    <rect x="20" y="16" width="166" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="103" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Eating out · Preserved</text>
+    <text x="416" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">kind: "eating_out"</text>
+
+    <!-- Mobile viewport well -->
+    <rect x="20" y="54" width="396" height="382" rx="24" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- Card (PRESERVED VERBATIM FROM PROPOSITION 2) -->
+    <g transform="translate(44, 70)">
+      <rect x="0" y="0" width="348" height="350" rx="34" fill="#FFFFFF" filter="url(#cardShadow)"/>
+
+      <!-- Header row -->
+      <text x="26" y="34" font-size="15" font-weight="500" fill="#6E645B" class="heading">Tonight</text>
+      <rect x="228" y="14" width="96" height="28" rx="14" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <g transform="translate(240, 21) scale(0.58)" fill="none" stroke="#4E6E52" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5"/>
+      </g>
+      <text x="259" y="32.5" font-size="12.5" font-weight="600" fill="#4E6E52">Plan set</text>
+
+      <!-- Editorial Vignette: Eating out (Preserved verbatim) -->
+      <g transform="translate(24, 48)">
+        <g clip-path="url(#vignetteClip)">
+          <rect x="0" y="0" width="300" height="132" fill="url(#vignetteBg)"/>
+          <path d="M 0 100 Q 150 84 300 100 L 300 132 L 0 132 Z" fill="#E3E7D7" opacity="0.55"/>
+          <path d="M 28 98 C 22 72, 42 56, 58 60 C 56 76, 44 92, 28 98 Z" fill="#C7CFB0" opacity="0.6"/>
+          <path d="M 48 102 C 56 80, 74 74, 86 80 C 78 92, 62 100, 48 102 Z" fill="#C7CFB0" opacity="0.45"/>
+          <path d="M 272 98 C 278 72, 258 56, 242 60 C 244 76, 256 92, 272 98 Z" fill="#C7CFB0" opacity="0.6"/>
+          <ellipse cx="150" cy="96" rx="58" ry="12" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+          <circle cx="150" cy="60" r="32" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.5" filter="url(#softShadow)"/>
+          <g transform="translate(134, 44) scale(1.333)" fill="none" stroke="#4E6E52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/>
+            <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/>
+            <path d="m2.1 21.8 6.4-6.3"/>
+            <path d="m19 5-7 7"/>
+          </g>
+          <circle cx="96" cy="40" r="4" fill="#E1AD01" opacity="0.7"/>
+          <circle cx="206" cy="46" r="3.5" fill="#E6B3A9"/>
+        </g>
+        <rect x="0" y="0" width="300" height="132" rx="22" fill="none" stroke="#E3E7D7" stroke-width="1"/>
+      </g>
+
+      <!-- Title + cookbook margin note -->
+      <text x="26" y="216" font-size="25" font-weight="800" fill="#28231F" class="heading">Eating out</text>
+      <rect x="26" y="229" width="3.5" height="32" rx="2" fill="#C7CFB0"/>
+      <text x="38" y="244" font-size="14" font-weight="500" fill="#28231F">Bistro du Coin · table at 6:00</text>
+      <text x="38" y="261" font-size="12" font-weight="400" fill="#6E645B">No cooking tonight</text>
+
+      <!-- Edit supper plan button -->
+      <rect x="24" y="278" width="300" height="50" rx="20" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.25"/>
+      <text x="174" y="308" font-size="15.5" font-weight="600" fill="#A44A37" text-anchor="middle">Edit supper plan</text>
+    </g>
+
+    <!-- Design notes strip -->
+    <g transform="translate(24, 456)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">VIGNETTE &amp; STORY (PRESERVED)</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Bistro table horizon, botanical leaves &amp; plate</text>
+      <text x="10" y="53" font-size="12.5" fill="#6E645B">grounding the UtensilsCrossed medallion.</text>
+      <text x="0" y="75" font-size="12.5" fill="#28231F">• Optional note leads the margin block; falls back</text>
+      <text x="10" y="92" font-size="12.5" fill="#6E645B">to "No cooking tonight" when blank.</text>
+      <text x="0" y="114" font-size="12.5" fill="#6E645B">FR: Manger à l’extérieur · Plan prévu</text>
+    </g>
+  </g>
+
+  <!-- ==================== COL 2 · TAKE OUT (order_in) ==================== -->
+  <g transform="translate(502, 188)">
+    <rect x="0" y="0" width="436" height="598" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <!-- Column header -->
+    <rect x="20" y="16" width="166" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="103" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Take Out · Developed</text>
+    <text x="416" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">kind: "order_in"</text>
+
+    <!-- Mobile viewport well -->
+    <rect x="20" y="54" width="396" height="382" rx="24" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- Card 2: Take Out -->
+    <g transform="translate(44, 70)">
+      <rect x="0" y="0" width="348" height="350" rx="34" fill="#FFFFFF" filter="url(#cardShadow)"/>
+
+      <!-- Header row -->
+      <text x="26" y="34" font-size="15" font-weight="500" fill="#6E645B" class="heading">Tonight</text>
+      <rect x="228" y="14" width="96" height="28" rx="14" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <g transform="translate(240, 21) scale(0.58)" fill="none" stroke="#4E6E52" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5"/>
+      </g>
+      <text x="259" y="32.5" font-size="12.5" font-weight="600" fill="#4E6E52">Plan set</text>
+
+      <!-- Editorial Vignette: Take Out (Warm Countertop, Cozy Steam, Box & Bowl) -->
+      <g transform="translate(24, 48)">
+        <g clip-path="url(#vignetteClip)">
+          <rect x="0" y="0" width="300" height="132" fill="url(#vignetteBg)"/>
+          <!-- Kitchen counter curved horizon -->
+          <path d="M 0 98 Q 150 90 300 98 L 300 132 L 0 132 Z" fill="#E3E7D7" opacity="0.58"/>
+
+          <!-- Left motif: folded takeout box silhouette + warm steam curls -->
+          <g opacity="0.85">
+            <!-- Soft folded box body -->
+            <path d="M 38 74 L 78 74 L 73 100 L 43 100 Z" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.3" stroke-linejoin="round"/>
+            <!-- Box folded flaps -->
+            <path d="M 34 74 L 44 66 L 72 66 L 82 74 Z" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1.2" stroke-linejoin="round"/>
+            <!-- Gentle rising warm steam wisps -->
+            <path d="M 52 58 C 49 52, 55 48, 52 42" fill="none" stroke="#C7CFB0" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M 63 56 C 60 50, 66 45, 63 39" fill="none" stroke="#E6B3A9" stroke-width="1.6" stroke-linecap="round"/>
+          </g>
+
+          <!-- Right motif: cozy noodle/rice bowl + resting chopsticks + leaf -->
+          <g opacity="0.85">
+            <!-- Small herb leaf behind bowl -->
+            <path d="M 258 84 C 266 64, 250 52, 236 56 C 238 70, 246 80, 258 84 Z" fill="#C7CFB0" opacity="0.55"/>
+            <!-- Bowl silhouette -->
+            <path d="M 218 82 L 266 82 C 264 96, 254 102, 242 102 C 230 102, 220 96, 218 82 Z" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.3" stroke-linejoin="round"/>
+            <!-- Resting chopsticks -->
+            <line x1="214" y1="78" x2="270" y2="73" stroke="#C7CFB0" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="216" y1="81" x2="270" y2="79" stroke="#C7CFB0" stroke-width="1.5" stroke-linecap="round"/>
+          </g>
+
+          <!-- Grounding placemat / coaster beneath medallion -->
+          <rect x="96" y="88" width="108" height="16" rx="8" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+          <line x1="112" y1="96" x2="188" y2="96" stroke="#E3E7D7" stroke-width="1.2" stroke-linecap="round"/>
+
+          <!-- Center emblem medallion (Take Out: ShoppingBag) -->
+          <circle cx="150" cy="60" r="32" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.5" filter="url(#softShadow)"/>
+          <g transform="translate(134, 44) scale(1.333)" fill="none" stroke="#4E6E52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+            <path d="M3.103 6.034h17.794"/>
+            <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>
+          </g>
+
+          <!-- Warm culinary accents -->
+          <circle cx="98" cy="36" r="3.5" fill="#E6B3A9"/>
+          <circle cx="204" cy="38" r="4" fill="#E1AD01" opacity="0.72"/>
+        </g>
+        <rect x="0" y="0" width="300" height="132" rx="22" fill="none" stroke="#E3E7D7" stroke-width="1"/>
+      </g>
+
+      <!-- Title + cookbook margin note -->
+      <text x="26" y="216" font-size="25" font-weight="800" fill="#28231F" class="heading">Take Out</text>
+      <rect x="26" y="229" width="3.5" height="32" rx="2" fill="#C7CFB0"/>
+      <text x="38" y="244" font-size="13.5" font-weight="500" fill="#28231F">Thai from Siam Bistro — pick up at 5:45</text>
+      <text x="38" y="261" font-size="12" font-weight="400" fill="#6E645B">Takeout or delivery · no cooking</text>
+
+      <!-- Edit supper plan button -->
+      <rect x="24" y="278" width="300" height="50" rx="20" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.25"/>
+      <text x="174" y="308" font-size="15.5" font-weight="600" fill="#A44A37" text-anchor="middle">Edit supper plan</text>
+    </g>
+
+    <!-- Design notes strip -->
+    <g transform="translate(24, 456)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">VIGNETTE &amp; STORY (TAKE OUT)</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Warm counter horizon with steaming takeout box,</text>
+      <text x="10" y="53" font-size="12.5" fill="#6E645B">cozy bowl, placemat &amp; ShoppingBag medallion.</text>
+      <text x="0" y="75" font-size="12.5" fill="#28231F">• Honest helper ("Takeout or delivery") reinforces</text>
+      <text x="10" y="92" font-size="12.5" fill="#6E645B">it's a saved plan — also handles legacy skips.</text>
+      <text x="0" y="114" font-size="12.5" fill="#6E645B">FR: À emporter · À emporter ou en livraison</text>
+    </g>
+  </g>
+
+  <!-- ==================== COL 3 · WE MADE PLANS (custom) ==================== -->
+  <g transform="translate(964, 188)">
+    <rect x="0" y="0" width="436" height="598" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <!-- Column header -->
+    <rect x="20" y="16" width="186" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="113" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">We made plans · Developed</text>
+    <text x="416" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">kind: "custom"</text>
+
+    <!-- Mobile viewport well -->
+    <rect x="20" y="54" width="396" height="382" rx="24" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- Card 3: Custom ("We made plans") -->
+    <g transform="translate(44, 70)">
+      <rect x="0" y="0" width="348" height="350" rx="34" fill="#FFFFFF" filter="url(#cardShadow)"/>
+
+      <!-- Header row: Restores "We made plans" category context in the Garden pill! -->
+      <text x="26" y="34" font-size="15" font-weight="500" fill="#6E645B" class="heading">Tonight</text>
+      <rect x="184" y="14" width="140" height="28" rx="14" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <g transform="translate(195, 21) scale(0.58)" fill="none" stroke="#4E6E52" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5"/>
+      </g>
+      <text x="214" y="32.5" font-size="12.5" font-weight="600" fill="#4E6E52">We made plans</text>
+
+      <!-- Editorial Vignette: We made plans (Family Keepsake Card, Ribbon Bookmark, Shared Table) -->
+      <g transform="translate(24, 48)">
+        <g clip-path="url(#vignetteClip)">
+          <rect x="0" y="0" width="300" height="132" fill="url(#vignetteBg)"/>
+          <!-- Soft warm table horizon -->
+          <path d="M 0 102 Q 150 86 300 102 L 300 132 L 0 132 Z" fill="#E3E7D7" opacity="0.55"/>
+
+          <!-- Symmetrical botanical sprigs framing the invitation keepsake -->
+          <path d="M 30 94 C 24 68, 42 54, 58 60 C 56 74, 44 88, 30 94 Z" fill="#C7CFB0" opacity="0.55"/>
+          <path d="M 270 94 C 276 68, 258 54, 242 60 C 244 74, 256 88, 270 94 Z" fill="#C7CFB0" opacity="0.55"/>
+
+          <!-- Layered keepsake / recipe-card invite behind medallion -->
+          <g transform="rotate(-4, 150, 68)">
+            <rect x="76" y="34" width="148" height="68" rx="14" fill="#FAF8F5" stroke="#C7CFB0" stroke-width="1.2"/>
+          </g>
+          <rect x="78" y="36" width="144" height="66" rx="14" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.3"/>
+          <!-- Delicate notebook/invitation lines on left & right wings of the keepsake card -->
+          <line x1="92" y1="54" x2="112" y2="54" stroke="#E5DFD7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="92" y1="64" x2="108" y2="64" stroke="#E5DFD7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="92" y1="74" x2="110" y2="74" stroke="#E5DFD7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="188" y1="54" x2="208" y2="54" stroke="#E5DFD7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="192" y1="64" x2="208" y2="64" stroke="#E5DFD7" stroke-width="2" stroke-linecap="round"/>
+          <line x1="190" y1="74" x2="208" y2="74" stroke="#E5DFD7" stroke-width="2" stroke-linecap="round"/>
+
+          <!-- Subtle cookbook ribbon tail peeking under card -->
+          <path d="M 142 98 L 158 98 L 158 118 L 150 112 L 142 118 Z" fill="#E6B3A9" opacity="0.85"/>
+
+          <!-- Center emblem medallion (Custom: CalendarDays) -->
+          <circle cx="150" cy="62" r="32" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.5" filter="url(#softShadow)"/>
+          <g transform="translate(134, 46) scale(1.333)" fill="none" stroke="#4E6E52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2v4"/><path d="M16 2v4"/>
+            <rect width="18" height="18" x="3" y="4" rx="2"/>
+            <path d="M3 10h18"/>
+            <path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/>
+            <path d="M8 18h.01"/><path d="M12 18h.01"/>
+          </g>
+
+          <!-- Warm celebration sparkle + hearth dot -->
+          <path d="M 228 28 L 230 33 L 235 35 L 230 37 L 228 42 L 226 37 L 221 35 L 226 33 Z" fill="#E1AD01" opacity="0.8"/>
+          <circle cx="64" cy="40" r="3.5" fill="#E6B3A9"/>
+        </g>
+        <rect x="0" y="0" width="300" height="132" rx="22" fill="none" stroke="#E3E7D7" stroke-width="1"/>
+      </g>
+
+      <!-- Custom Title (user's own 1-80 char text) + calm margin reassurance -->
+      <text x="26" y="216" font-size="24" font-weight="800" fill="#28231F" class="heading">Supper at Grandma’s</text>
+      <rect x="26" y="231" width="3.5" height="22" rx="2" fill="#C7CFB0"/>
+      <text x="38" y="246" font-size="13" font-weight="400" fill="#6E645B">No cooking tonight · plan saved</text>
+
+      <!-- Edit supper plan button -->
+      <rect x="24" y="278" width="300" height="50" rx="20" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.25"/>
+      <text x="174" y="308" font-size="15.5" font-weight="600" fill="#A44A37" text-anchor="middle">Edit supper plan</text>
+    </g>
+
+    <!-- Design notes strip -->
+    <g transform="translate(24, 456)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">VIGNETTE &amp; STORY (WE MADE PLANS)</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Keepsake invitation card &amp; terracotta ribbon tail</text>
+      <text x="10" y="53" font-size="12.5" fill="#6E645B">grounding the CalendarDays medallion.</text>
+      <text x="0" y="75" font-size="12.5" fill="#28231F">• Top-right pill restores "We made plans" context</text>
+      <text x="10" y="92" font-size="12.5" fill="#6E645B">while user text leads in full (no extra schema field).</text>
+      <text x="0" y="114" font-size="12.5" fill="#6E645B">FR: On a des plans · Souper chez grand-maman</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 2 · MYSTERY NIGHT COMPANION + EDGE CASES & HIGH CONTRAST AAA   -->
+  <!-- ====================================================================== -->
+  <text x="40" y="824" font-size="18" font-weight="700" fill="#28231F" class="heading">4th No-Cook Kind (Mystery Night on TonightPivotCard) · Edge Cases &amp; High Contrast AAA</text>
+
+  <!-- ==================== LEFT HALF · MYSTERY NIGHT (TonightPivotCard) ==================== -->
+  <g transform="translate(40, 842)">
+    <rect x="0" y="0" width="664" height="516" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <!-- Panel header -->
+    <rect x="20" y="16" width="186" height="26" rx="13" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+    <text x="113" y="33.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">Mystery night · Companion</text>
+    <text x="644" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">TonightPivotCard · kind: "mystery" (no GOTO)</text>
+
+    <!-- Mobile viewport well -->
+    <rect x="20" y="54" width="376" height="442" rx="24" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- Mystery Card (TonightPivotCard when no ready GOTO) -->
+    <g transform="translate(34, 66)">
+      <rect x="0" y="0" width="348" height="418" rx="34" fill="#FFFFFF" filter="url(#cardShadow)"/>
+
+      <!-- Header row: Sunlight tonal pill (honestly unsettled — NOT Garden "Plan set"!) -->
+      <text x="26" y="34" font-size="15" font-weight="500" fill="#6E645B" class="heading">Tonight</text>
+      <rect x="190" y="14" width="134" height="28" rx="14" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+      <g transform="translate(201, 20.5) scale(0.58)" fill="none" stroke="#856400" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+      </g>
+      <text x="220" y="32.5" font-size="12" font-weight="700" fill="#856400">Deciding tonight</text>
+
+      <!-- Editorial Vignette: Mystery night (Warm sunlit cloche / serving dome + culinary stars) -->
+      <g transform="translate(24, 48)">
+        <g clip-path="url(#vignetteClip)">
+          <rect x="0" y="0" width="300" height="132" fill="url(#mysteryBg)"/>
+          <rect x="0" y="0" width="300" height="132" fill="url(#sunlightHalo)"/>
+          <!-- Soft curved evening tabletop -->
+          <path d="M 0 100 Q 150 86 300 100 L 300 132 L 0 132 Z" fill="#E3E7D7" opacity="0.48"/>
+
+          <!-- Subtle serving cloche dome silhouette behind medallion -->
+          <path d="M 96 96 C 96 56, 204 56, 204 96 Z" fill="#FFFFFF" fill-opacity="0.65" stroke="#C7CFB0" stroke-width="1.2"/>
+          <!-- Serving platter rim -->
+          <rect x="86" y="94" width="128" height="8" rx="4" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+
+          <!-- Soft botanical sprigs on edges -->
+          <path d="M 28 96 C 22 74, 40 60, 54 64 C 52 78, 42 90, 28 96 Z" fill="#C7CFB0" opacity="0.5"/>
+          <path d="M 272 96 C 278 74, 260 60, 246 64 C 248 78, 258 90, 272 96 Z" fill="#C7CFB0" opacity="0.5"/>
+
+          <!-- Playful Sunlight 4-point culinary sparkles (non-text accent!) -->
+          <path d="M 74 34 L 76 40 L 82 42 L 76 44 L 74 50 L 72 44 L 66 42 L 72 40 Z" fill="#E1AD01" opacity="0.85"/>
+          <path d="M 226 30 L 227.5 34.5 L 232 36 L 227.5 37.5 L 226 42 L 224.5 37.5 L 220 36 L 224.5 34.5 Z" fill="#E1AD01" opacity="0.75"/>
+          <circle cx="212" cy="54" r="3.5" fill="#E6B3A9"/>
+          <circle cx="88" cy="64" r="3" fill="#E6B3A9"/>
+
+          <!-- Center emblem medallion (Mystery: Sparkles) -->
+          <circle cx="150" cy="60" r="32" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.5" filter="url(#softShadow)"/>
+          <g transform="translate(134, 44) scale(1.333)" fill="none" stroke="#4E6E52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+            <path d="M20 3v4"/><path d="M22 5h-4"/>
+          </g>
+        </g>
+        <rect x="0" y="0" width="300" height="132" rx="22" fill="none" stroke="#E3E7D7" stroke-width="1"/>
+      </g>
+
+      <!-- Title + existing honest availability line -->
+      <text x="26" y="214" font-size="25" font-weight="800" fill="#28231F" class="heading">Mystery night</text>
+      <text x="26" y="238" font-size="13.5" font-weight="400" fill="#6E645B">No GOTO suggestion available right now.</text>
+
+      <!-- Primary Hearth CTA: Suggestions (Quick Find — does not clear Mystery!) -->
+      <rect x="24" y="258" width="300" height="52" rx="20" fill="#B85542"/>
+      <g transform="translate(115, 276) scale(0.6667)" fill="none" stroke="#FDFCF0" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m21 21-4.34-4.34"/>
+        <circle cx="11" cy="11" r="8"/>
+      </g>
+      <text x="139" y="289" font-size="15.5" font-weight="600" fill="#FDFCF0">Suggestions</text>
+
+      <!-- Secondary Outlined CTA: Take Out -->
+      <rect x="24" y="320" width="300" height="52" rx="20" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.25"/>
+      <g transform="translate(124, 338) scale(0.6667)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 10a4 4 0 0 1-8 0"/>
+        <path d="M3.103 6.034h17.794"/>
+        <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>
+      </g>
+      <text x="148" y="351" font-size="15.5" font-weight="600" fill="#A44A37">Take Out</text>
+
+      <!-- Quiet note about GOTO precedence -->
+      <text x="26" y="397" font-size="12" fill="#6E645B">If a ready GOTO exists, its real meal photo leads.</text>
+    </g>
+
+    <!-- Right rationale column -->
+    <g transform="translate(414, 62)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#856400">WHY MYSTERY IS DIFFERENT</text>
+      <text x="0" y="36" font-size="14" font-weight="700" fill="#28231F">Playful &amp; still open</text>
+      <text x="0" y="56" font-size="12.5" fill="#6E645B">Mystery night means "we'll pick</text>
+      <text x="0" y="73" font-size="12.5" fill="#6E645B">supper today" — so it stays on</text>
+      <text x="0" y="90" font-size="12.5" fill="#6E645B">TonightPivotCard, not settled.</text>
+
+      <line x1="0" y1="110" x2="230" y2="110" stroke="#E5DFD7" stroke-width="1"/>
+
+      <text x="0" y="132" font-size="12" font-weight="700" fill="#28231F">VISUAL COHERENCE</text>
+      <text x="0" y="154" font-size="12.5" fill="#28231F">• Same 2.2:1 Cookbook Bookmark</text>
+      <text x="10" y="171" font-size="12.5" fill="#6E645B">vignette grammar: serving cloche</text>
+      <text x="10" y="188" font-size="12.5" fill="#6E645B">+ Sparkles medallion.</text>
+      <text x="0" y="210" font-size="12.5" fill="#28231F">• Sunlight tonal pill ("Deciding</text>
+      <text x="10" y="227" font-size="12.5" fill="#6E645B">tonight") avoids falsely claiming</text>
+      <text x="10" y="244" font-size="12.5" fill="#6E645B">Garden "Plan set".</text>
+      <text x="0" y="266" font-size="12.5" fill="#28231F">• Hearth primary "Suggestions"</text>
+      <text x="10" y="283" font-size="12.5" fill="#6E645B">invites action without clearing</text>
+      <text x="10" y="300" font-size="12.5" fill="#6E645B">the Mystery plan early.</text>
+
+      <line x1="0" y1="320" x2="230" y2="320" stroke="#E5DFD7" stroke-width="1"/>
+
+      <text x="0" y="342" font-size="12" font-weight="700" fill="#4E6E52">FRENCH PARITY</text>
+      <text x="0" y="362" font-size="12.5" fill="#28231F">• Souper mystère</text>
+      <text x="0" y="381" font-size="12.5" fill="#6E645B">• Pill: À décider ce soir</text>
+      <text x="0" y="400" font-size="12.5" fill="#6E645B">• CTAs: Suggestions / À emporter</text>
+    </g>
+  </g>
+
+  <!-- ==================== RIGHT HALF · EDGE CASES & HIGH CONTRAST AAA ==================== -->
+  <g transform="translate(736, 842)">
+    <!-- Top box: Blank note + Long French custom wrapping -->
+    <rect x="0" y="0" width="664" height="252" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="24" y="32" font-size="14" font-weight="700" fill="#28231F" class="heading">Real-Household Stress Tests · Blank Note &amp; 80-Char French Title</text>
+
+    <!-- Mini Card 1: Take Out with NO note (clean compact rhythm, no blank gap) -->
+    <g transform="translate(24, 48)">
+      <rect x="0" y="0" width="296" height="184" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#softShadow)"/>
+      <text x="18" y="26" font-size="13" font-weight="500" fill="#6E645B" class="heading">Tonight</text>
+      <rect x="196" y="10" width="82" height="24" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="237" y="26" font-size="12" font-weight="600" fill="#4E6E52" text-anchor="middle">Plan set</text>
+      <!-- Mini vignette strip -->
+      <rect x="18" y="40" width="260" height="44" rx="12" fill="url(#vignetteBg)" stroke="#E3E7D7" stroke-width="1"/>
+      <circle cx="148" cy="62" r="16" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+      <g transform="translate(140, 54) scale(0.6667)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/>
+        <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>
+      </g>
+      <text x="18" y="108" font-size="19" font-weight="800" fill="#28231F" class="heading">Take Out</text>
+      <rect x="18" y="117" width="3" height="16" rx="1.5" fill="#C7CFB0"/>
+      <text x="28" y="130" font-size="12" fill="#6E645B">Takeout or delivery · no cooking</text>
+      <rect x="18" y="142" width="260" height="32" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="148" y="162.5" font-size="13" font-weight="600" fill="#A44A37" text-anchor="middle">Edit supper plan</text>
+    </g>
+
+    <!-- Mini Card 2: Long 76-char French Custom Title (zero truncation!) -->
+    <g transform="translate(342, 48)">
+      <rect x="0" y="0" width="298" height="184" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#softShadow)"/>
+      <text x="18" y="26" font-size="13" font-weight="500" fill="#6E645B" class="heading">Ce soir</text>
+      <rect x="176" y="10" width="104" height="24" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="228" y="26" font-size="12" font-weight="600" fill="#4E6E52" text-anchor="middle">On a des plans</text>
+      <rect x="18" y="40" width="262" height="34" rx="11" fill="url(#vignetteBg)" stroke="#E3E7D7" stroke-width="1"/>
+      <circle cx="149" cy="57" r="13" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+      <g transform="translate(142.5, 50.5) scale(0.54)" fill="none" stroke="#4E6E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>
+      </g>
+      <text x="18" y="96" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Souper d’anniversaire d’Emma</text>
+      <text x="18" y="114" font-size="15.5" font-weight="800" fill="#28231F" class="heading">chez grand-maman — apporter</text>
+      <text x="18" y="132" font-size="15.5" font-weight="800" fill="#28231F" class="heading">le gâteau au chocolat</text>
+      <rect x="18" y="142" width="262" height="32" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="149" y="162.5" font-size="13" font-weight="600" fill="#A44A37" text-anchor="middle">Modifier le souper</text>
+    </g>
+
+    <!-- Bottom box: High Contrast AAA Vignette Adaptation -->
+    <rect x="0" y="272" width="664" height="244" rx="28" fill="#FAF8F5" stroke="#6E645B" stroke-width="1.5"/>
+    <text x="24" y="304" font-size="14" font-weight="700" fill="#191512" class="heading">High Contrast AAA (:root[data-contrast="high"]) · Vignette Simplification</text>
+
+    <!-- AAA Cookbook Bookmark Card Preview -->
+    <g transform="translate(24, 320)">
+      <rect x="0" y="0" width="320" height="178" rx="24" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.5"/>
+      <text x="18" y="26" font-size="13" font-weight="600" fill="#524A43" class="heading">Tonight</text>
+      <rect x="218" y="10" width="84" height="24" rx="12" fill="#F1F3EB" stroke="#324D36" stroke-width="1.5"/>
+      <text x="260" y="26" font-size="12" font-weight="700" fill="#324D36" text-anchor="middle">Plan set</text>
+
+      <!-- Clean High-Contrast Vignette (crisp border, calm flat fill, sharp AAA emblem) -->
+      <rect x="18" y="40" width="284" height="54" rx="14" fill="#F1F3EB" stroke="#324D36" stroke-width="1.5"/>
+      <ellipse cx="160" cy="80" rx="44" ry="7" fill="#FFFFFF" stroke="#324D36" stroke-width="1.2"/>
+      <circle cx="160" cy="64" r="20" fill="#FFFFFF" stroke="#324D36" stroke-width="1.8"/>
+      <g transform="translate(150, 54) scale(0.8333)" fill="none" stroke="#324D36" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.103 6.034h17.794"/>
+        <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>
+      </g>
+
+      <text x="18" y="118" font-size="18" font-weight="800" fill="#191512" class="heading">Take Out</text>
+      <rect x="18" y="124" width="3.5" height="14" rx="1.5" fill="#324D36"/>
+      <text x="28" y="136" font-size="12" font-weight="500" fill="#191512">Thai from Siam Bistro — 5:45</text>
+
+      <rect x="18" y="144" width="284" height="28" rx="12" fill="#FFFFFF" stroke="#A44A37" stroke-width="1.5"/>
+      <text x="160" y="162.5" font-size="12.5" font-weight="700" fill="#7B3829" text-anchor="middle">Edit supper plan</text>
+    </g>
+
+    <!-- AAA Token Behavior Notes -->
+    <g transform="translate(366, 326)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#191512">ZERO-JS DUAL-MODE RULES</text>
+      <text x="0" y="38" font-size="12.5" fill="#191512">• Vignette SVG uses CSS vars:</text>
+      <text x="10" y="55" font-size="12.5" fill="#524A43">stroke="var(--role-garden-ink)"</text>
+      <text x="10" y="72" font-size="12.5" fill="#524A43">border="var(--role-garden-line)"</text>
+      <text x="0" y="96" font-size="12.5" fill="#191512">• Decorative leaves/dots hide or</text>
+      <text x="10" y="113" font-size="12.5" fill="#524A43">stay aria-hidden="true" cleanly.</text>
+      <text x="0" y="137" font-size="12.5" fill="#324D36">• Garden AAA: #324D36 (8.34:1)</text>
+      <text x="0" y="156" font-size="12.5" fill="#7B3829">• Hearth AAA: #7B3829 (8.61:1)</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- BOTTOM IMPLEMENTATION & CONTRACT ARCHITECTURE STRIP                    -->
+  <!-- ====================================================================== -->
+  <rect x="40" y="1384" width="1360" height="162" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="64" y="1416" font-size="16" font-weight="700" fill="#28231F" class="heading">Component &amp; Spec Architecture Summary (No Backend or API Changes Required)</text>
+
+  <g transform="translate(64, 1436)">
+    <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">1 · ONE SHARED VIGNETTE COMPONENT</text>
+    <text x="0" y="36" font-size="12.5" fill="#28231F">NonCookingVignette({ kind }) renders the 4</text>
+    <text x="0" y="54" font-size="12.5" fill="#6E645B">inline Era 3 SVGs (~2.2:1 aspect, aria-hidden)</text>
+    <text x="0" y="72" font-size="12.5" fill="#6E645B">around existing NonCookingIcon Lucide glyphs.</text>
+    <text x="0" y="90" font-size="12.5" fill="#6E645B">No raster images or external assets to load.</text>
+  </g>
+
+  <line x1="484" y1="1434" x2="484" y2="1526" stroke="#E5DFD7" stroke-width="1"/>
+
+  <g transform="translate(508, 1436)">
+    <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">2 · PROTECTED FLOWS &amp; TEST IDS</text>
+    <text x="0" y="36" font-size="12.5" fill="#28231F">Preserves today-non-cooking-plan, saved-plan-</text>
+    <text x="0" y="54" font-size="12.5" fill="#6E645B">illustration, today-non-cooking-label/note,</text>
+    <text x="0" y="72" font-size="12.5" fill="#6E645B">mystery-plan-illustration, and the dated</text>
+    <text x="0" y="90" font-size="12.5" fill="#6E645B">Home → Planner handoff without mutation.</text>
+  </g>
+
+  <line x1="932" y1="1434" x2="932" y2="1526" stroke="#E5DFD7" stroke-width="1"/>
+
+  <g transform="translate(956, 1436)">
+    <text x="0" y="14" font-size="12" font-weight="700" fill="#A44A37">3 · OPENSPEC DELTA NEEDED TO SHIP</text>
+    <text x="0" y="36" font-size="12.5" fill="#28231F">Update non-cooking-plans/spec.md:</text>
+    <text x="0" y="54" font-size="12.5" fill="#6E645B">• Relax "5:4 proportions" → calm vignette tile</text>
+    <text x="0" y="72" font-size="12.5" fill="#6E645B">• Add top-right settled/deciding status pill</text>
+    <text x="0" y="90" font-size="12.5" fill="#6E645B">• Verify AA &amp; AAA via visual-a11y-contract.</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="40" y="1576" font-size="12.5" fill="#6E645B">Cookbook Bookmark Suite · Exploration artifact only — does not authorize code changes until approved via OpenSpec.</text>
+</svg>

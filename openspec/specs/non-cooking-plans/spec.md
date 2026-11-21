@@ -289,18 +289,18 @@ Home SHALL offer Edit supper plan from its recipe-free skipped non-mystery card 
 
 ### Requirement: Present saved recipe-free Tonight plans as full cards
 
-For a recipe-free Skipped non-Mystery night, Home SHALL use the normal Tonight card shell with Tonight context, a large plan-specific icon centred in a full-width cream tile matching the recipe hero image's 5:4 proportions, saved title and an explicit Edit supper plan action. Take Out and Eating out SHALL keep optional notes separate from their localized headings. Custom plans SHALL retain the user title. Display SHALL NOT submit a mutation.
+For a recipe-free Skipped non-Mystery night, Home SHALL use the Tonight card shell with a Tonight header, a calm Garden status pill, a full-width Cookbook Bookmark vignette tile with the plan icon medallion, the saved title, a margin note or calm no-cooking helper, and Edit supper plan. Take Out and Eating out SHALL keep optional notes separate from their localized headings; custom plans SHALL retain the user title. Display SHALL NOT submit a mutation.
 
 #### Scenario: Preset with or without a note
 
 - **WHEN** Tonight is recipe-free Skipped with order_in or eating_out kind
-- **THEN** Home shows Take Out or Eating out in the selected locale with the corresponding large icon centred in its hero-sized tile and any saved note
+- **THEN** Home shows Take Out or Eating out in the selected locale with a Plan set Garden pill, its plan-specific Cookbook Bookmark vignette tile, and any saved note alongside honest no-cooking context
 - **AND** Edit supper plan navigates through the existing dated Planner handoff without saving or clearing
 
 #### Scenario: Custom title or legacy skip
 
 - **WHEN** Tonight holds a custom plan with long user-entered content, or a recipe-free legacy Skipped entry lacking explicit kind
-- **THEN** the custom title is preserved in full, or the legacy entry uses the established Take Out fallback
+- **THEN** the custom title is preserved in full alongside a We made plans Garden pill and custom vignette, or the legacy entry uses the established Take Out fallback and vignette
 - **AND** neither display truncates essential plan content or changes stored data
 
 #### Scenario: Small viewport and enlarged text

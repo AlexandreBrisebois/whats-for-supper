@@ -352,9 +352,11 @@ describe('Mystery without a proposal', () => {
         nonCookingLabel: locale === 'fr' ? 'Souper mystère' : 'Mystery night',
       };
       const { rerender } = render(<TonightPivotCard {...props} hasCheckedActive={false} />);
-      expect(screen.getByTestId('mystery-plan-illustration').querySelector('svg')).toHaveAttribute(
-        'width',
-        '104'
+      const illustration = screen.getByTestId('mystery-plan-illustration');
+      expect(illustration).toHaveAttribute('data-vignette-kind', 'mystery');
+      expect(illustration.querySelector('.lucide-sparkles')).not.toBeNull();
+      expect(screen.getByTestId('mystery-status-pill')).toHaveTextContent(
+        locale === 'fr' ? 'À décider ce soir' : 'Deciding tonight'
       );
       expect(screen.getByTestId('mystery-availability')).toHaveTextContent(
         locale === 'fr' ? 'Vérification de votre GOTO' : 'Checking your GOTO'
