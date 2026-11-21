@@ -520,8 +520,8 @@ describe('HomeCommandCenter', () => {
     render(<HomeCommandCenter todaysRecipe={null} todayStatus={3} />);
     const card = await screen.findByTestId('today-non-cooking-plan');
     expect(card).toHaveClass('rounded-[3rem]', 'bg-white');
-    expect(screen.getByTestId('saved-plan-illustration')).toHaveClass('aspect-square', 'size-28');
-    expect(card.querySelector('.lucide-calendar-days')).toHaveAttribute('width', '64');
+    expect(screen.getByTestId('saved-plan-illustration')).toHaveClass('aspect-[5/4]', 'w-full');
+    expect(card.querySelector('.lucide-calendar-days')).toHaveAttribute('width', '104');
     expect(screen.getByTestId('today-non-cooking-label')).not.toHaveClass('line-clamp-2');
     expect(screen.getByTestId('today-non-cooking-label').textContent).toBe(title);
     expect(screen.getByRole('button', { name: /Edit supper plan/ })).toHaveTextContent(

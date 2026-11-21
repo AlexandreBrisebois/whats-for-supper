@@ -901,7 +901,7 @@ Search on Home’s unplanned pivot SHALL open the existing planner day-specific 
 
 ### Requirement: Enlarge only the ordinary empty pivot illustration
 
-The ordinary empty Home pivot SHALL use a larger fork-and-knife illustration with recipe-hero presence within its warm cookbook shell. Search SHALL be primary and Take Out secondary. Image space SHALL adapt before controls become unusable on short viewports. Ready recipe imagery, planned/non-cooking states and shared recipe-image fallbacks SHALL NOT be globally enlarged by this treatment.
+The ordinary empty Home pivot SHALL use a large centred fork-and-knife icon in a full-width cream tile matching the recipe hero image's 5:4 proportions, within its warm cookbook shell. Search SHALL be primary and Take Out secondary. Image space SHALL adapt before controls become unusable on short viewports. Ready recipe imagery, planned/non-cooking states and shared recipe-image fallbacks SHALL NOT be globally enlarged by this treatment.
 
 #### Scenario: Ordinary empty invitation
 
@@ -990,7 +990,7 @@ Choosing Take Out on a saved recipe-free Mystery night SHALL save a recipe-free 
 
 ### Requirement: Explain Mystery without a ready recipe proposal
 
-A saved recipe-free Mystery night without a ready proposal SHALL show its localized saved-plan title, a generous Mystery icon and truthful availability text. It SHALL retain Quick Find and Take Out without Make this tonight. Display, request settlement and cancelling Quick Find SHALL NOT change the saved plan.
+A saved recipe-free Mystery night without a ready proposal SHALL show its localized saved-plan title, a large centred Mystery icon in the same hero-sized 5:4 cream tile as other recipe-free Tonight cards, and truthful availability text. It SHALL retain Quick Find and Take Out without Make this tonight. Display, request settlement and cancelling Quick Find SHALL NOT change the saved plan.
 
 #### Scenario: Active suggestion read has not settled
 

@@ -289,12 +289,12 @@ Home SHALL offer Edit supper plan from its recipe-free skipped non-mystery card 
 
 ### Requirement: Present saved recipe-free Tonight plans as full cards
 
-For a recipe-free Skipped non-Mystery night, Home SHALL use the normal Tonight card shell with Tonight context, a generous plan-specific icon, saved title and an explicit Edit supper plan action. Take Out and Eating out SHALL keep optional notes separate from their localized headings. Custom plans SHALL retain the user title. Display SHALL NOT submit a mutation.
+For a recipe-free Skipped non-Mystery night, Home SHALL use the normal Tonight card shell with Tonight context, a large plan-specific icon centred in a full-width cream tile matching the recipe hero image's 5:4 proportions, saved title and an explicit Edit supper plan action. Take Out and Eating out SHALL keep optional notes separate from their localized headings. Custom plans SHALL retain the user title. Display SHALL NOT submit a mutation.
 
 #### Scenario: Preset with or without a note
 
 - **WHEN** Tonight is recipe-free Skipped with order_in or eating_out kind
-- **THEN** Home shows Take Out or Eating out in the selected locale with the corresponding large icon and any saved note
+- **THEN** Home shows Take Out or Eating out in the selected locale with the corresponding large icon centred in its hero-sized tile and any saved note
 - **AND** Edit supper plan navigates through the existing dated Planner handoff without saving or clearing
 
 #### Scenario: Custom title or legacy skip

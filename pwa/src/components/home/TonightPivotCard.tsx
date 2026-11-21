@@ -78,7 +78,7 @@ export function TonightPivotCard({
           {showGotoHelper ? (
             <div
               data-testid="empty-pivot-illustration"
-              className="flex h-28 sm:h-40 items-center justify-center rounded-[1.5rem] bg-cream text-garden-ink"
+              className="flex aspect-[5/4] w-full shrink-0 items-center justify-center rounded-[2rem] bg-cream text-garden-ink"
               aria-hidden="true"
             >
               <Utensils size={104} strokeWidth={1.25} />
@@ -86,7 +86,7 @@ export function TonightPivotCard({
           ) : mysteryWithoutProposal ? (
             <div
               data-testid="mystery-plan-illustration"
-              className="mb-6 flex h-28 items-center justify-center rounded-[1.5rem] bg-cream text-garden-ink sm:h-40"
+              className="mb-6 flex aspect-[5/4] w-full shrink-0 items-center justify-center rounded-[2rem] bg-cream text-garden-ink"
               aria-hidden="true"
             >
               <NonCookingIcon kind="mystery" size={104} strokeWidth={1.25} />
