@@ -340,7 +340,7 @@ Planned Tonight recovery SHALL first offer Take Out, Suggestions and Search. Tak
 
 ### Requirement: Cancel Home recovery before mutation
 
-Before disposition starts, Close, backdrop dismissal and Back SHALL cancel without submitting a mutation; closing Quick Find before selection SHALL cancel its choice. While a mutation is pending, dismissal and Back SHALL be disabled. After partial completion, dismissal SHALL explain that completed work remains and offer explicit abandonment of the unsaved choice. Back SHALL NOT restart a completed disposition.
+Before disposition starts, Close, backdrop dismissal and Back SHALL cancel without submitting a mutation, and closing Quick Find before selection SHALL cancel its choice. While a mutation is pending, dismissal and Back SHALL be disabled. After partial completion, dismissal SHALL explain that completed work remains and offer explicit abandonment of the unsaved choice. Back SHALL NOT restart a completed disposition and SHALL be a secondary button below the options with a leading back arrow.
 
 #### Scenario: Abort order-in recovery
 
@@ -351,6 +351,18 @@ Before disposition starts, Close, backdrop dismissal and Back SHALL cancel witho
 
 - **WHEN** a person activates Back before disposition starts
 - **THEN** the initial Take Out / Pick Something Else choice returns without a mutation
+
+#### Scenario: Back is presented as a secondary control
+
+- **WHEN** the disposition step ("What about <recipe> on <date>?") is displayed in Home or Planner Plan B
+- **THEN** a localized `Go back` / French equivalent button with a back arrow appears below the three options and is visually secondary to them
+- **AND** its text is at least 14 CSS px, it is at least 48 CSS px tall, shows a visible focus indicator when focused by keyboard, and meets AA contrast in Standard and High Contrast modes
+- **AND** the top-right Close (X) remains available
+
+#### Scenario: Back is unavailable while saving
+
+- **WHEN** a disposition mutation is pending
+- **THEN** Back and Close are disabled
 
 #### Scenario: Leave after partial completion
 

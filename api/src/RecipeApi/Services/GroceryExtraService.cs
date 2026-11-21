@@ -72,7 +72,11 @@ public sealed class GroceryExtraService(RecipeDbContext db, IClock clock, Deploy
         try
         {
             var current = calendar.Capture(clock.UtcNow).CurrentWeekStartDate;
-            var rows = await db.GroceryExtraOccurrences.AsNoTracking().ToListAsync(ct);
+            // NormalizedKey is the grouping key, so filtering on it before grouping never splits a lineage group:
+            // latest-row, removal and outstanding-this-week checks below see every row for each matching key.
+            var rows = await db.GroceryExtraOccurrences.AsNoTracking()
+                .Where(x => x.NormalizedKey.Contains(normalizedQuery))
+                .ToListAsync(ct);
             var latest = rows.GroupBy(x => x.NormalizedKey).Select(g => g.OrderByDescending(x => x.WeekStartDate).ThenByDescending(x => x.UpdatedAt).First());
             var outstanding = rows.Where(x => x.WeekStartDate == current && !x.Checked && x.RemovedAt == null).Select(x => x.NormalizedKey).ToHashSet();
             var result = latest.Where(x => x.RemovedAt == null && !outstanding.Contains(x.NormalizedKey) && x.NormalizedKey.Contains(normalizedQuery, StringComparison.Ordinal))

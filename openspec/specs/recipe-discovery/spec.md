@@ -630,18 +630,20 @@ The Discovery time badge SHALL use readable text on an opaque contrasting surfac
 
 ### Requirement: Pulse navigation Discover control only during an open collecting session
 
-The primary bottom-navigation control SHALL show quiet Sunlight ochre (`Compass`, localized Discovery) when `unowned` or unavailable; add a reduced-motion-safe pulse and static non-motion cue when `collecting` with unvoted cards off `/discovery`; and show steady Garden green (`Check`, localized Menu's in / Menu prêt) persistently when `converged` until closed or superseded, opening that round's Planner meal-plan tab without mutation.
+The primary bottom-navigation control SHALL show quiet Sunlight ochre (`Compass`, localized Discovery) when `unowned` or unavailable; add a reduced-motion-safe pulse when `collecting` with unvoted cards off `/discovery`; and show steady Garden green (`Check`, localized Menu's in / Menu prêt) persistently when `converged` until closed or superseded, opening that round's Planner meal-plan tab without mutation. The control SHALL NOT render any badge, dot or pip overlay in any state.
 
 #### Scenario: No voting session open on Home or Planner
 
 - **WHEN** the household has unvoted discoverable recipes in the catalog and the voting session phase is `unowned`, absent, or unavailable
-- **THEN** the primary bottom-navigation control renders statically in Sunlight ochre (`Compass`, localized `Discovery` / `Découverte`) without the pulsing animation or active status pip, linking to `/discovery` for optional preemptive voting
+- **THEN** the primary bottom-navigation control renders statically in Sunlight ochre (`Compass`, localized `Discovery` / `Découverte`) without the pulsing animation, linking to `/discovery` for optional preemptive voting
+- **AND** no badge, dot or pip is rendered on the control
 
 #### Scenario: Open collecting voting session with unvoted cards
 
 - **WHEN** the authoritative voting session phase is `collecting` and unvoted discovery categories or cards remain
-- **THEN** while on Home, Planner, Recipes, or Profile, the bottom-navigation control displays Sunlight ochre with `Compass`, the pulsing animation (suppressed under `prefers-reduced-motion: reduce`), a static high-contrast non-motion status pip, and a localized accessible label indicating active voting
-- **AND** it stops pulsing and hides the status pip when active on `/discovery` or when the member has no remaining cards
+- **THEN** while on Home, Planner, Recipes, or Profile, the bottom-navigation control displays Sunlight ochre with `Compass`, the pulsing animation (suppressed under `prefers-reduced-motion: reduce`), and a localized accessible label indicating active voting
+- **AND** no badge, dot or pip is rendered on the control, including when `prefers-reduced-motion: reduce` suppresses the pulse
+- **AND** it stops pulsing when active on `/discovery` or when the member has no remaining cards
 
 #### Scenario: Converged voting session displays persistent green Menu's in signal across routes
 

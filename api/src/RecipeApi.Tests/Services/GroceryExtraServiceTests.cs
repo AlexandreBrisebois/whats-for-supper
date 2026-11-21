@@ -48,6 +48,25 @@ public sealed class GroceryExtraServiceTests
     }
 
     [Fact]
+    public async Task Suggestions_IgnoreNonMatchingRowsAndTreatQueryAsLiteralText()
+    {
+        await using var db = TestDbContextFactory.Create();
+        var week = new DateOnly(2026, 10, 12);
+        var at = DateTimeOffset.Parse("2026-10-12T12:00:00Z");
+        db.GroceryExtraOccurrences.AddRange(
+            GroceryExtraOccurrence.Create(Guid.NewGuid(), Guid.NewGuid(), week, "Milk", "milk", "Dairy & Eggs", at),
+            GroceryExtraOccurrence.Create(Guid.NewGuid(), Guid.NewGuid(), week, "Bread", "bread", "Bakery", at),
+            GroceryExtraOccurrence.Create(Guid.NewGuid(), Guid.NewGuid(), week, "Rice", "rice", "Pantry", at));
+        await db.SaveChangesAsync();
+        var service = Create(db, new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal(["Bread"], await service.SuggestAsync("brea"));
+        Assert.Empty(await service.SuggestAsync("m%"));
+        Assert.Empty(await service.SuggestAsync("m_lk"));
+        Assert.Empty(await service.SuggestAsync("zz"));
+    }
+
+    [Fact]
     public async Task Suggestions_UseLatestSpellingSuppressLatestRemovalCapResultsAndKeepDiagnosticsNameFree()
     {
         await using var db = TestDbContextFactory.Create();
