@@ -1733,14 +1733,14 @@ function RecipesContent() {
               if (!searchControlsExpanded) searchInputRef.current?.focus({ preventScroll: true });
             });
           }}
-          className="relative mr-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-charcoal/8 bg-white/80 text-charcoal/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+          className="relative mr-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-charcoal/8 bg-white text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
         >
           <Search size={20} aria-hidden="true" />
           {searchActive && !searchControlsExpanded && (
             <span
               data-testid="recipes-search-active-marker"
               aria-hidden="true"
-              className="absolute ml-7 -mt-7 h-2.5 w-2.5 rounded-full bg-terracotta"
+              className="absolute ml-7 -mt-7 h-2.5 w-2.5 rounded-full bg-hearth-fill"
             />
           )}
         </button>
@@ -1750,9 +1750,9 @@ function RecipesContent() {
           aria-pressed={isDiscoverableOnly}
           className={`flex h-12 min-w-12 shrink-0 items-center gap-1 rounded-full px-2 transition-all duration-300 border ${
             isDiscoverableOnly
-              ? 'bg-ochre/15 text-ochre-800 border-ochre/25 shadow-sm shadow-ochre/10'
-              : 'bg-white/80 text-charcoal/70 border-charcoal/8 hover:bg-white active:scale-95'
-          } backdrop-blur-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal`}
+              ? 'bg-ochre/15 text-sunlight-ink border-ochre/25 shadow-sm shadow-ochre/10'
+              : 'bg-white text-ink-muted border-charcoal/8 hover:bg-white active:scale-95'
+          } backdrop-blur-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body`}
           aria-label={
             isDiscoverableOnly
               ? t('recipes.showingDiscovery', 'Showing recipes marked Discovery')
@@ -1760,7 +1760,7 @@ function RecipesContent() {
           }
         >
           <Compass
-            className={`h-4 w-4 ${isDiscoverableOnly ? 'text-ochre-800 fill-ochre/20' : ''}`}
+            className={`h-4 w-4 ${isDiscoverableOnly ? 'text-sunlight-ink fill-ochre/20' : ''}`}
           />
           <span className="hidden min-[390px]:inline text-xs font-semibold tracking-wide">
             {isDiscoverableOnly
@@ -1784,12 +1784,12 @@ function RecipesContent() {
                 gotoOnly: next,
               });
           }}
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal active:scale-95 motion-reduce:transform-none ${gotoOnly ? 'bg-ochre/15 text-ochre-800 border-ochre/25' : 'bg-white/80 text-charcoal-700 border-charcoal/8'}`}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body active:scale-95 motion-reduce:transform-none ${gotoOnly ? 'bg-ochre/15 text-sunlight-ink border-ochre/25' : 'bg-white text-ink-muted border-charcoal/8'}`}
         >
           <Star size={20} fill={gotoOnly ? 'currentColor' : 'none'} aria-hidden="true" />
         </button>
 
-        <div className="flex h-[50px] shrink-0 rounded-full bg-white/80 border border-charcoal/8 p-0 shadow-sm backdrop-blur-sm">
+        <div className="flex h-[50px] shrink-0 rounded-full bg-white border border-charcoal/8 p-0 shadow-sm backdrop-blur-sm">
           <button
             type="button"
             data-testid="browse-view-stack"
@@ -1797,7 +1797,7 @@ function RecipesContent() {
             aria-pressed={browseViewMode === 'stack'}
             onClick={() => handleViewModeChange('stack')}
             className={`flex h-12 items-center justify-center min-w-12 gap-1 rounded-full px-1 text-xs font-black uppercase transition-all ${
-              browseViewMode === 'stack' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
+              browseViewMode === 'stack' ? 'bg-sage/20 text-garden-ink' : 'text-ink-muted'
             }`}
           >
             <Layers3 className="h-4 w-4" />
@@ -1809,7 +1809,7 @@ function RecipesContent() {
             aria-pressed={browseViewMode === 'list'}
             onClick={() => handleViewModeChange('list')}
             className={`flex h-12 items-center justify-center min-w-12 gap-1 rounded-full px-1 text-xs font-black uppercase transition-all ${
-              browseViewMode === 'list' ? 'bg-sage/20 text-sage-900' : 'text-charcoal/55'
+              browseViewMode === 'list' ? 'bg-sage/20 text-garden-ink' : 'text-ink-muted'
             }`}
           >
             <Grid3X3 className="h-4 w-4" />
@@ -1822,7 +1822,7 @@ function RecipesContent() {
           data-testid="recycle-bin-entry"
           aria-label={t('recipes.recycleBin', 'Recycle Bin')}
           onClick={() => setIsTrashOpen(true)}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/80 text-charcoal/70 shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-ink-muted shadow-sm border border-charcoal/8 backdrop-blur-sm hover:bg-white active:scale-95 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
         >
           <Recycle size={20} />
         </button>
@@ -1834,7 +1834,7 @@ function RecipesContent() {
             <Search
               aria-hidden="true"
               size={20}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-charcoal/55"
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted"
             />
             <input
               ref={searchInputRef}
@@ -1899,7 +1899,7 @@ function RecipesContent() {
                   );
                 event.currentTarget.blur();
               }}
-              className="min-h-12 w-full rounded-full border border-charcoal/15 bg-white/85 pl-12 pr-4 text-charcoal shadow-sm placeholder:text-charcoal/55 focus:border-terracotta focus:outline-none focus:ring-2 focus:ring-terracotta/40"
+              className="min-h-12 w-full rounded-full border border-charcoal/15 bg-white/85 pl-12 pr-4 text-ink-body shadow-sm placeholder:text-ink-muted focus:border-hearth-fill focus:outline-none focus:ring-2 focus:ring-terracotta/40"
             />
           </div>
           <div data-testid="recipes-search-toolbar" className="mt-2 flex items-center gap-2">
@@ -1922,13 +1922,13 @@ function RecipesContent() {
                     })
                   : t('recipes.filters', 'Filters')
               }
-              className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full border border-charcoal/15 bg-white/85 px-4 font-bold text-charcoal shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
+              className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full border border-charcoal/15 bg-white/85 px-4 font-bold text-ink-body shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
               {t('recipes.filters', 'Filters')}
               {appliedCount > 0 && (
                 <span
                   aria-hidden="true"
-                  className="rounded-full bg-terracotta/15 px-2 py-0.5 text-xs font-black text-terracotta-700"
+                  className="rounded-full bg-terracotta/15 px-2 py-0.5 text-xs font-black text-hearth-ink"
                 >
                   {appliedCount}
                 </span>
@@ -1957,7 +1957,7 @@ function RecipesContent() {
                     setSearchActive(false);
                   }
                 }}
-                className="inline-flex min-h-12 shrink-0 items-center rounded-full border border-charcoal/20 bg-white px-4 font-bold text-charcoal"
+                className="inline-flex min-h-12 shrink-0 items-center rounded-full border border-charcoal/20 bg-white px-4 font-bold text-ink-body"
               >
                 {t('recipes.similar', 'Similar')} ×
               </button>
@@ -1969,7 +1969,7 @@ function RecipesContent() {
                 aria-label={t('recipes.clearSearchAndBrowse', 'Clear search and browse')}
                 title={t('recipes.clearSearchAndBrowse', 'Clear search and browse')}
                 onClick={clearSearch}
-                className="ml-auto inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-charcoal/20 bg-white text-charcoal shadow-sm transition hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta"
+                className="ml-auto inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-charcoal/20 bg-white text-ink-body shadow-sm transition hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
               >
                 <RotateCcw size={18} aria-hidden="true" />
               </button>
@@ -2004,10 +2004,10 @@ function RecipesContent() {
           <div className="flex flex-col items-center gap-4">
             <Loader2
               data-testid="browse-all-loader"
-              className="animate-spin motion-reduce:animate-none text-terracotta"
+              className="animate-spin motion-reduce:animate-none text-hearth-ink"
               size={48}
             />
-            <p className="text-sm font-medium text-charcoal-600">
+            <p className="text-sm font-medium text-ink-muted">
               {searchActive
                 ? t('recipes.searchLoading', 'Searching…')
                 : t('recipes.libraryLoading', 'Loading your library…')}
@@ -2150,7 +2150,7 @@ function RecipesContent() {
               className="w-full max-w-6xl flex-1 min-h-0 overflow-y-auto px-1 pb-8"
             >
               {searchActive && searchData && (
-                <h2 className="mb-3 font-heading text-lg font-bold text-charcoal/80">
+                <h2 className="mb-3 font-heading text-lg font-bold text-ink-muted">
                   {t('recipes.results', 'Results')}
                 </h2>
               )}
@@ -2165,7 +2165,7 @@ function RecipesContent() {
                     data-testid="browse-list-recipe-card"
                     data-recipe-id={recipe.id}
                     onClick={() => handleCardTap(recipe.id!)}
-                    className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal focus:ring-2 focus:ring-ochre focus:ring-offset-2"
+                    className="group flex flex-col justify-start items-stretch overflow-hidden rounded-lg bg-white/85 text-left shadow-sm border border-charcoal/8 backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body focus:ring-2 focus:ring-ochre focus:ring-offset-2"
                   >
                     <div className="relative aspect-[4/3] bg-sage/10 overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2183,7 +2183,7 @@ function RecipesContent() {
                       )}
                     </div>
                     <div className="p-3">
-                      <p className="line-clamp-2 text-sm font-black leading-tight text-charcoal">
+                      <p className="line-clamp-2 text-sm font-black leading-tight text-ink-body">
                         {recipe.name}
                       </p>
                       <p className="mt-1 text-xs font-semibold text-ink-muted">
@@ -2199,7 +2199,7 @@ function RecipesContent() {
               {isPrefetching && (
                 <div className="flex justify-center py-4">
                   <Loader2
-                    className="animate-spin motion-reduce:animate-none text-terracotta"
+                    className="animate-spin motion-reduce:animate-none text-hearth-ink"
                     size={28}
                   />
                 </div>
@@ -2280,7 +2280,7 @@ function RecipesContent() {
               </div>
 
               {!searchActive && isWrappingToEnd && (
-                <p role="status" className="text-center text-sm text-charcoal/60">
+                <p role="status" className="text-center text-sm text-ink-muted">
                   {t('recipes.libraryLoading', 'Loading your library…')}
                 </p>
               )}

@@ -122,8 +122,8 @@ export function PlannerDragHandle({
       >
         <GripVertical
           className={cn(
-            'text-charcoal-600 group-hover/handle:text-sage-700 transition-colors',
-            grabbed && 'text-sage-700'
+            'text-ink-muted group-hover/handle:text-garden-ink transition-colors',
+            grabbed && 'text-garden-ink'
           )}
           size={20}
         />

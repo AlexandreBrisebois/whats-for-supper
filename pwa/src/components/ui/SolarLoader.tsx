@@ -88,7 +88,7 @@ export function CookbookLoader({ className, size = 'md', label }: CookbookLoader
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-8 text-sm font-bold tracking-[0.2em] uppercase text-charcoal-600"
+          className="mt-8 text-sm font-bold tracking-[0.2em] uppercase text-ink-muted"
         >
           {label}
         </motion.p>

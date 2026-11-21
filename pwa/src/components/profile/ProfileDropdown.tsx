@@ -33,7 +33,7 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
     return (
       <div
         role="status"
-        className="flex min-h-24 w-full items-center rounded-3xl bg-white/70 border border-chrome-line p-5 shadow-[0_8px_28px_-8px_rgba(31,41,55,0.16)]"
+        className="flex min-h-24 w-full items-center rounded-3xl bg-white border border-chrome-line p-5 shadow-[0_8px_28px_-8px_rgba(31,41,55,0.16)]"
       >
         <span className="text-sm text-ink-muted">
           {t('profile.loading', 'Loading family members…')}
@@ -66,7 +66,7 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         data-testid="profile-dropdown-toggle"
-        className="flex w-full items-center justify-between gap-4 min-h-24 rounded-3xl bg-white/80 border border-chrome-line p-[20px] shadow-[0_8px_28px_-8px_rgba(31,41,55,0.16)] hover:bg-terracotta-50 active:bg-terracotta-100 scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-hearth-ink"
+        className="flex w-full items-center justify-between gap-4 min-h-24 rounded-3xl bg-white border border-chrome-line p-[20px] shadow-[0_8px_28px_-8px_rgba(31,41,55,0.16)] hover:bg-terracotta-50 active:bg-terracotta-100 scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-hearth-ink"
         aria-label={
           isOpen
             ? t('profile.closeMemberMenu', 'Close member menu')

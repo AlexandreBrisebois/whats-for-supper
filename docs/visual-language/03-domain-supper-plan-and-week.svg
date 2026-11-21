@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="920" height="2024" viewBox="0 0 920 2024" role="img" aria-labelledby="title desc">
-<title id="title">Supper plan domain: Tonight states, Weekly Planner, Portions and Groceries (Era 3)</title><desc id="desc">Layer 3A Supper Plan domain board for WFS Family Cookbook Era 3.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="1786" viewBox="0 0 920 1786" role="img" aria-labelledby="title desc">
+<title id="title">Supper plan domain: Tonight states, Weekly Planner, Portions and Groceries (Era 3)</title><desc id="desc">Layer 3A shipped Supper Plan domain board for WFS Family Cookbook Era 3.</desc>
 <!-- Icon outlines reused from Lucide 1.60.0. ISC License
 
 Copyright (c) 2026 Lucide Icons and Contributors
@@ -55,18 +55,19 @@ SOFTWARE.
   </linearGradient>
 </defs>
 <style>text { font-family: Inter, "DejaVu Sans", sans-serif; } .heading { font-family: Outfit, Inter, "DejaVu Sans", sans-serif; }</style>
-<rect x="0" y="0" width="920" height="2024" rx="0" fill="#FDFCF0"/>
+<rect x="0" y="0" width="920" height="1786" rx="0" fill="#FDFCF0"/>
 <rect x="0" y="0" width="920" height="140" rx="0" fill="#FDFCF0"/>
 <text x="32" y="42" font-size="14" fill="#A44A37" font-weight="700">WFS / Shared Table · Family Cookbook Era 3</text>
 <rect x="673" y="26" width="215" height="24" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="683" y="42.2" font-size="12" fill="#6E645B" font-weight="600">Layer 3A · Domain: Supper Plan</text>
+<text x="780.5" y="42.2" font-size="12" fill="#6E645B" font-weight="600" text-anchor="middle">Layer 3A · Domain: Supper Plan</text>
 <text x="32" y="82" font-size="30" fill="#28231F" font-weight="700" class="heading">03  Supper plan: Tonight, Week &amp; Groceries</text>
-<text x="32" y="112" font-size="15" fill="#6E645B" font-weight="400">Shared meal-plan continuity from Home (Tonight) through Weekly Planner, Portions &amp; Groceries.</text>
+<text x="32" y="112" font-size="15" fill="#6E645B" font-weight="400">Shipped meal-plan continuity from Home (Tonight) through Weekly Planner, inline Portions &amp; Groceries.</text>
 <line x1="32" y1="132" x2="888" y2="132" stroke="#E5DFD7" stroke-width="1"/>
+
+<!-- Part 1: Tonight on Home (4 shipped states) -->
 <text x="32" y="166" font-size="18" fill="#28231F" font-weight="700" class="heading">Part 1 · Tonight on Home (state first, action second, consequence alongside)</text>
-<text x="32" y="198" font-size="15" fill="#28231F" font-weight="700">1 · Unplanned (TonightPivotCard)</text>
-<rect x="292" y="180" width="104" height="24" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
-<text x="302" y="196.2" font-size="12" fill="#4E6E52" font-weight="600">Shipped Era 3</text>
+
+<text x="32" y="198" font-size="15" fill="#28231F" font-weight="700">1 · Unplanned / Mystery (TonightPivotCard)</text>
 <rect x="32" y="212" width="412" height="232" rx="28" fill="#FFFFFF" filter="url(#cardShadow)"/>
 <rect x="52" y="230" width="372" height="54" rx="16" fill="#FDFCF0"/>
 <g transform="translate(224 243) scale(1.0833)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -89,161 +90,152 @@ SOFTWARE.
   <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>
 </g>
 <text x="313.1" y="383.25" font-size="15" fill="#A44A37" font-weight="600">Take Out</text>
-<text x="472" y="240" font-size="13.5" fill="#6E645B" font-weight="400">• Search opens recipe selection (Suggestions on Mystery).</text>
-<text x="472" y="268" font-size="13.5" fill="#6E645B" font-weight="400">• Take Out records a plan (incl. delivery), not an order.</text>
-<text x="472" y="296" font-size="13.5" fill="#6E645B" font-weight="400">• Ready GOTO leads with Make this tonight above</text>
-<text x="472" y="318" font-size="13.5" fill="#6E645B" font-weight="400">  side-by-side Search + Take Out; QuickCapture below.</text>
-<text x="472" y="348" font-size="13" fill="#A44A37" font-weight="400">• Note: QuickCapture adopts &gt;= 12px copy in Wave C.</text>
-<text x="32" y="476" font-size="15" fill="#28231F" font-weight="700">2 · Suggested</text>
-<rect x="268" y="458" width="176" height="24" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
-<text x="278" y="474.2" font-size="12" fill="#A44A37" font-weight="600">Conceptual · Not Shipped</text>
-<rect x="32" y="490" width="412" height="138" rx="24" fill="#FFFFFF" stroke="#A44A37" stroke-width="1.5" stroke-dasharray="6 4"/>
-<text x="52" y="522" font-size="17" fill="#28231F" font-weight="700" class="heading">Suggestion · not saved</text>
-<text x="52" y="544" font-size="13.5" fill="#6E645B" font-weight="400">Candidate ≠ assigned meal</text>
-<rect x="52" y="560" width="224" height="48" rx="16" fill="#B85542"/>
-<text x="164" y="589.25" font-size="15" fill="#FDFCF0" font-weight="600" text-anchor="middle">Choose for tonight</text>
-<text x="472" y="524" font-size="13.5" fill="#6E645B" font-weight="400">• Not shipped as a separate Home card.</text>
-<text x="472" y="552" font-size="13.5" fill="#6E645B" font-weight="400">• Explicit save feedback required before presenting as planned.</text>
-<text x="32" y="660" font-size="15" fill="#28231F" font-weight="700">3 · Saved / planned (anchor)</text>
-<rect x="286" y="642" width="150" height="24" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
-<text x="296" y="658.2" font-size="12" fill="#4E6E52" font-weight="600">Shipped Era 3 Anchor</text>
-<rect x="32" y="674" width="412" height="304" rx="28" fill="#FFFFFF" filter="url(#cardShadow)"/>
-<text x="52" y="706" font-size="15" fill="#6E645B" font-weight="600">Tonight’s menu</text>
-<rect x="286" y="686" width="122" height="28" rx="14" fill="#F9ECE9"/>
-<g transform="translate(297 693) scale(0.5833)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+<text x="472" y="238" font-size="13.5" fill="#6E645B" font-weight="400">• QuickCaptureTrigger sits above Tonight (Capture a Recipe).</text>
+<text x="472" y="266" font-size="13.5" fill="#6E645B" font-weight="400">• Search opens recipe selection (Suggestions on Mystery).</text>
+<text x="472" y="294" font-size="13.5" fill="#6E645B" font-weight="400">• Take Out records a plan (incl. delivery), not an order.</text>
+<text x="472" y="322" font-size="13.5" fill="#6E645B" font-weight="400">• Ready GOTO adds Make this tonight above Search + Take Out.</text>
+<text x="472" y="350" font-size="13.5" fill="#6E645B" font-weight="400">• Family voting status lives in the bottom-nav Discovery</text>
+<text x="472" y="370" font-size="13.5" fill="#6E645B" font-weight="400">  medallion (idle → voting pulse → Menu’s in), not on Home.</text>
+
+<text x="32" y="476" font-size="15" fill="#28231F" font-weight="700">2 · Planned / saved (TonightMenuCard)</text>
+<rect x="32" y="490" width="412" height="304" rx="28" fill="#FFFFFF" filter="url(#cardShadow)"/>
+<text x="52" y="522" font-size="15" fill="#6E645B" font-weight="600">Tonight’s menu</text>
+<rect x="286" y="502" width="126" height="28" rx="14" fill="#F9ECE9"/>
+<g transform="translate(297 509) scale(0.5833)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="10"/>
   <path d="M12 6v6l4 2"/>
 </g>
-<text x="316" y="704.375" font-size="12.5" fill="#A44A37" font-weight="600">Ready in 45m</text>
-<rect x="52" y="726" width="372" height="108" rx="18" fill="#FDFCF0"/>
-<g transform="translate(224 766) scale(1.1667)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="316" y="520.375" font-size="12.5" fill="#A44A37" font-weight="600">Ready in 45m</text>
+<rect x="52" y="542" width="372" height="108" rx="18" fill="#FDFCF0"/>
+<g transform="translate(224 582) scale(1.1667)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
   <path d="M7 2v20"/>
   <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
 </g>
-<text x="52" y="864" font-size="21" fill="#28231F" font-weight="700" class="heading">Roasted Garlic Chicken</text>
-<rect x="52" y="882" width="162" height="48" rx="16" fill="#B85542"/>
-<g transform="translate(105.3 898) scale(0.6667)" fill="none" stroke="#FDFCF0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="52" y="680" font-size="21" fill="#28231F" font-weight="700" class="heading">Roasted Garlic Chicken</text>
+<rect x="52" y="698" width="162" height="48" rx="16" fill="#B85542"/>
+<g transform="translate(105.3 714) scale(0.6667)" fill="none" stroke="#FDFCF0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/>
   <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/>
   <path d="m2.1 21.8 6.4-6.3"/>
   <path d="m19 5-7 7"/>
 </g>
-<text x="128.3" y="911.25" font-size="15" fill="#FDFCF0" font-weight="600">Cook</text>
-<rect x="224" y="882" width="200" height="48" rx="16" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
-<g transform="translate(267.95 898) scale(0.6667)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="128.3" y="727.25" font-size="15" fill="#FDFCF0" font-weight="600">Cook</text>
+<rect x="224" y="698" width="200" height="48" rx="16" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
+<g transform="translate(267.95 714) scale(0.6667)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m16 3 4 4-4 4"/>
   <path d="M20 7H4"/>
   <path d="m8 21-4-4 4-4"/>
   <path d="M4 17h16"/>
 </g>
-<text x="290.95" y="911.25" font-size="15" fill="#A44A37" font-weight="600">Change plan</text>
-<text x="56" y="956" font-size="14.5" fill="#A44A37" font-weight="600">View ingredients</text>
-<g transform="translate(180 942) scale(0.7500)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="290.95" y="727.25" font-size="15" fill="#A44A37" font-weight="600">Change plan</text>
+<text x="56" y="772" font-size="14.5" fill="#A44A37" font-weight="600">View ingredients</text>
+<g transform="translate(180 758) scale(0.7500)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m6 9 6 6 6-6"/>
 </g>
-<text x="472" y="706" font-size="14" fill="#6E645B" font-weight="400">• Top row: context label + blush Ready in pill (sentence case).</text>
-<text x="472" y="734" font-size="14" fill="#6E645B" font-weight="400">• Food-led 5:4 photo + confident Outfit recipe title.</text>
-<text x="472" y="762" font-size="14" fill="#6E645B" font-weight="400">• Side-by-side Cook + Change plan row (wraps only at 200%).</text>
-<text x="472" y="790" font-size="14" fill="#6E645B" font-weight="400">• Cook opens Cook’s Mode; does not mark the meal cooked.</text>
-<text x="472" y="818" font-size="14" fill="#6E645B" font-weight="400">• Change plan: backup → original disposition → replacement save.</text>
-<text x="472" y="846" font-size="14" fill="#6E645B" font-weight="400">• Quiet View ingredients disclosure loads dated projection.</text>
-<text x="32" y="1012" font-size="15" fill="#28231F" font-weight="700">4 · Non-cooking (TonightCardBase)</text>
-<rect x="292" y="994" width="104" height="24" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
-<text x="302" y="1010.2" font-size="12" fill="#4E6E52" font-weight="600">Shipped Era 3</text>
-<rect x="32" y="1026" width="412" height="198" rx="28" fill="#FFFFFF" filter="url(#cardShadow)"/>
-<rect x="52" y="1044" width="372" height="48" rx="16" fill="#FDFCF0"/>
-<g transform="translate(226 1056) scale(1.0000)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+<text x="472" y="522" font-size="13.5" fill="#6E645B" font-weight="400">• Top row: context label + blush Ready in pill (white card).</text>
+<text x="472" y="550" font-size="13.5" fill="#6E645B" font-weight="400">• Food-led 5:4 photo + confident Outfit recipe title.</text>
+<text x="472" y="578" font-size="13.5" fill="#6E645B" font-weight="400">• Side-by-side Cook + Change plan row (wraps at 200% zoom).</text>
+<text x="472" y="606" font-size="13.5" fill="#6E645B" font-weight="400">• Cook opens Cook’s Mode; does not mark the meal cooked.</text>
+<text x="472" y="634" font-size="13.5" fill="#6E645B" font-weight="400">• Change plan: backup → original disposition → replacement.</text>
+<text x="472" y="662" font-size="13.5" fill="#6E645B" font-weight="400">• Quiet View ingredients disclosure loads dated projection.</text>
+
+<text x="32" y="826" font-size="15" fill="#28231F" font-weight="700">3 · Non-cooking plan (TonightCardBase)</text>
+<rect x="32" y="840" width="412" height="198" rx="28" fill="#FFFFFF" filter="url(#cardShadow)"/>
+<rect x="52" y="858" width="372" height="48" rx="16" fill="#FDFCF0"/>
+<g transform="translate(226 870) scale(1.0000)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M16 10a4 4 0 0 1-8 0"/>
   <path d="M3.103 6.034h17.794"/>
   <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>
 </g>
-<text x="52" y="1120" font-size="18" fill="#28231F" font-weight="700" class="heading">Tonight · Take Out</text>
-<text x="52" y="1143" font-size="13" fill="#6E645B" font-weight="400">An intentional supper plan (not an external order)</text>
-<rect x="52" y="1160" width="372" height="48" rx="16" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
-<text x="238" y="1189.25" font-size="15" fill="#A44A37" font-weight="600" text-anchor="middle">Edit supper plan</text>
-<text x="472" y="1012" font-size="15" fill="#28231F" font-weight="700">5 · Cooked celebration (Option A)</text>
-<rect x="736" y="994" width="156" height="24" rx="12" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
-<text x="746" y="1010.2" font-size="12" fill="#856400" font-weight="600">Target Era 3 · Wave C</text>
-<rect x="472" y="1026" width="416" height="198" rx="28" fill="url(#herbGrad)"/>
-<rect x="654" y="1040" width="52" height="52" rx="26" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.45"/>
-<g transform="translate(667 1053) scale(1.0833)" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+<text x="52" y="934" font-size="18" fill="#28231F" font-weight="700" class="heading">Tonight · Take Out</text>
+<text x="52" y="957" font-size="13" fill="#6E645B" font-weight="400">An intentional supper plan (not an external order)</text>
+<rect x="52" y="974" width="372" height="48" rx="16" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
+<text x="238" y="1003.25" font-size="15" fill="#A44A37" font-weight="600" text-anchor="middle">Edit supper plan</text>
+
+<text x="472" y="826" font-size="15" fill="#28231F" font-weight="700">4 · Cooked (CookedSuccessCard / SuccessCard)</text>
+<rect x="472" y="840" width="416" height="198" rx="28" fill="url(#herbGrad)"/>
+<rect x="654" y="854" width="52" height="52" rx="26" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.45"/>
+<g transform="translate(667 867) scale(1.0833)" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
   <path d="M20 6 9 17l-5-5"/>
 </g>
-<text x="680" y="1120" font-size="21" fill="#FFFFFF" font-weight="700" class="heading" text-anchor="middle">Enjoy your meal!</text>
-<text x="680" y="1143" font-size="12.5" fill="#FDFCF0" font-weight="400" text-anchor="middle">Recipe marked as cooked (Dismiss compacts to badge)</text>
-<rect x="560" y="1160" width="240" height="48" rx="16" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1"/>
-<text x="680" y="1189.25" font-size="15" fill="#4E6E52" font-weight="600" text-anchor="middle">Dismiss</text>
-<rect x="32" y="1244" width="856" height="86" rx="20" fill="#FFFBE6" stroke="#FFEE99" stroke-width="1"/>
-<rect x="52" y="1265" width="44" height="44" rx="14" fill="#FFF7CC"/>
-<g transform="translate(62 1275) scale(0.9167)" fill="none" stroke="#856400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="m9 12 2 2 4-4"/>
-  <path d="M5 7c0-1.1.9-2 2-2h10a2 2 0 0 1 2 2v12H5V7Z"/>
-  <path d="M22 19H2"/>
-</g>
-<text x="110" y="1280" font-size="14" fill="#856400" font-weight="700">Alongside tonight · Family voting (VotingNudgeCard — Target Era 3, Wave C)</text>
-<text x="110" y="1304" font-size="12.5" fill="#856400" font-weight="400">Menu’s In: matches ready to review (not saved). Vote Now → Discover · See your matches → Planner.</text>
-<rect x="698" y="1263" width="170" height="48" rx="14" fill="#FFFFFF" stroke="#FFE666" stroke-width="1"/>
-<text x="783" y="1291.9" font-size="14" fill="#856400" font-weight="600" text-anchor="middle">See matches</text>
-<text x="32" y="1372" font-size="18" fill="#28231F" font-weight="700" class="heading">Part 2 · Weekly Planner, inline Portions &amp; Groceries (protected work)</text>
-<rect x="32" y="1390" width="472" height="570" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="52" y="1420" font-size="16" fill="#28231F" font-weight="700" class="heading">Weekly Planner Timeline</text>
-<rect x="332" y="1400" width="176" height="24" rx="12" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
-<text x="342" y="1416.2" font-size="12" fill="#856400" font-weight="600">Target opaque white rows</text>
-<rect x="52" y="1436" width="132" height="44" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(77.34 1450) scale(0.6667)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="680" y="934" font-size="21" fill="#FFFFFF" font-weight="700" class="heading" text-anchor="middle">Enjoy your meal!</text>
+<text x="680" y="957" font-size="12.5" fill="#FDFCF0" font-weight="400" text-anchor="middle">Recipe marked as cooked (Dismiss compacts to badge)</text>
+<rect x="560" y="974" width="240" height="48" rx="16" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1"/>
+<text x="680" y="1003.25" font-size="15" fill="#4E6E52" font-weight="600" text-anchor="middle">Dismiss</text>
+
+<!-- Part 2: Weekly Planner, inline Portions & Groceries -->
+<text x="32" y="1082" font-size="18" fill="#28231F" font-weight="700" class="heading">Part 2 · Weekly Planner, inline Portions &amp; Groceries</text>
+
+<!-- Weekly Planner Timeline -->
+<rect x="32" y="1100" width="472" height="620" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="52" y="1130" font-size="16" fill="#28231F" font-weight="700" class="heading">Weekly Planner Timeline</text>
+
+<rect x="52" y="1146" width="124" height="44" rx="22" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
+<g transform="translate(72 1160) scale(0.6667)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
   <path d="M7 2v20"/>
   <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
 </g>
-<text x="100.34" y="1462.72" font-size="13.5" fill="#28231F" font-weight="600">Portions</text>
-<rect x="224" y="1436" width="146" height="44" rx="22" fill="#4E6E52"/>
-<g transform="translate(249.05 1450) scale(0.6667)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="95" y="1172.72" font-size="13.5" fill="#A44A37" font-weight="600">Portions</text>
+
+<rect x="196" y="1146" width="154" height="44" rx="22" fill="#4E6E52"/>
+<g transform="translate(216 1160) scale(0.6667)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
   <path d="M16 3.128a4 4 0 0 1 0 7.744"/>
   <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
   <circle cx="9" cy="7" r="4"/>
 </g>
-<text x="272.05" y="1462.72" font-size="13.5" fill="#FFFFFF" font-weight="600">Ask Family</text>
-<rect x="378" y="1436" width="108" height="44" rx="22" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
-<text x="432" y="1462.72" font-size="13.5" fill="#A44A37" font-weight="600" text-anchor="middle">Close</text>
-<rect x="52" y="1496" width="432" height="86" rx="16" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
-<text x="68" y="1528" font-size="12" fill="#6E645B" font-weight="600">Mon</text>
-<text x="68" y="1549" font-size="16" fill="#28231F" font-weight="700" class="heading">16</text>
-<text x="68" y="1566" font-size="12" fill="#6E645B" font-weight="400">Nov</text>
-<rect x="112" y="1515" width="48" height="48" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(126 1529) scale(0.8333)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="239" y="1172.72" font-size="13" fill="#FFFFFF" font-weight="600">Ask the Family</text>
+
+<rect x="360" y="1146" width="124" height="44" rx="22" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
+<text x="422" y="1172.72" font-size="13" fill="#A44A37" font-weight="600" text-anchor="middle">Close Voting</text>
+
+<!-- Past day row -->
+<rect x="52" y="1206" width="432" height="86" rx="16" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<text x="68" y="1238" font-size="12" fill="#6E645B" font-weight="600">Mon</text>
+<text x="68" y="1259" font-size="16" fill="#28231F" font-weight="700" class="heading">16</text>
+<text x="68" y="1276" font-size="12" fill="#6E645B" font-weight="400">Nov</text>
+<rect x="112" y="1225" width="48" height="48" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(126 1239) scale(0.8333)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
   <path d="M7 2v20"/>
   <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
 </g>
-<text x="172" y="1532" font-size="14" fill="#28231F" font-weight="700">Pasta Pomodoro (Past day = flat cream)</text>
-<text x="172" y="1554" font-size="12.5" fill="#4E6E52" font-weight="600">Already prepared · Mon Nov 16</text>
-<text x="52" y="1606" font-size="13" fill="#A44A37" font-weight="700">Today</text>
-<line x1="98" y1="1601" x2="484" y2="1601" stroke="#E6B3A9" stroke-width="1"/>
-<rect x="52" y="1618" width="432" height="102" rx="16" fill="#FFFFFF" stroke="#CFC6BC" stroke-width="1" filter="url(#smShadow)"/>
-<text x="68" y="1650" font-size="12" fill="#6E645B" font-weight="600">Tue</text>
-<text x="68" y="1672" font-size="16" fill="#28231F" font-weight="700" class="heading">17</text>
-<text x="68" y="1690" font-size="12" fill="#6E645B" font-weight="400">Nov</text>
-<rect x="112" y="1644" width="48" height="48" rx="12" fill="#FDFCF0"/>
-<g transform="translate(126 1658) scale(0.8333)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="172" y="1242" font-size="14" fill="#28231F" font-weight="700">Pasta Pomodoro (Past day = flat cream)</text>
+<text x="172" y="1264" font-size="12.5" fill="#4E6E52" font-weight="600">Already prepared · Mon Nov 16</text>
+
+<!-- Today divider -->
+<text x="52" y="1316" font-size="13" fill="#A44A37" font-weight="700">Today</text>
+<line x1="98" y1="1311" x2="484" y2="1311" stroke="#E6B3A9" stroke-width="1"/>
+
+<!-- Active upcoming row -->
+<rect x="52" y="1328" width="432" height="102" rx="16" fill="#FFFFFF" stroke="#CFC6BC" stroke-width="1" filter="url(#smShadow)"/>
+<text x="68" y="1360" font-size="12" fill="#6E645B" font-weight="600">Tue</text>
+<text x="68" y="1382" font-size="16" fill="#28231F" font-weight="700" class="heading">17</text>
+<text x="68" y="1400" font-size="12" fill="#6E645B" font-weight="400">Nov</text>
+<rect x="112" y="1354" width="48" height="48" rx="12" fill="#FDFCF0"/>
+<g transform="translate(126 1368) scale(0.8333)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
   <path d="M7 2v20"/>
   <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
 </g>
-<text x="172" y="1656" font-size="14.5" fill="#28231F" font-weight="700">Roasted Garlic Chicken</text>
-<rect x="172" y="1668" width="62" height="22" rx="11" fill="#FFF7CC"/>
-<text x="180" y="1683.2" font-size="12" fill="#856400" font-weight="600">3 voted</text>
-<rect x="242" y="1668" width="74" height="22" rx="11" fill="#F1F3EB"/>
-<text x="250" y="1683.2" font-size="12" fill="#4E6E52" font-weight="600">Unanimous</text>
-<line x1="402" y1="1632" x2="402" y2="1706" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(416 1658) scale(0.7500)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="172" y="1366" font-size="14.5" fill="#28231F" font-weight="700">Roasted Garlic Chicken</text>
+<rect x="172" y="1378" width="66" height="22" rx="11" fill="#FFFBE6"/>
+<text x="205" y="1393.2" font-size="12" fill="#856400" font-weight="600" text-anchor="middle">3 voted</text>
+<rect x="246" y="1378" width="76" height="22" rx="11" fill="#F1F3EB"/>
+<text x="284" y="1393.2" font-size="12" fill="#4E6E52" font-weight="600" text-anchor="middle">Unanimous</text>
+<line x1="402" y1="1342" x2="402" y2="1416" stroke="#E5DFD7" stroke-width="1"/>
+<rect x="410" y="1360" width="32" height="32" rx="10" fill="#FFFBE6"/>
+<g transform="translate(417 1367) scale(0.7500)" fill="none" stroke="#856400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m16 3 4 4-4 4"/>
   <path d="M20 7H4"/>
   <path d="m8 21-4-4 4-4"/>
   <path d="M4 17h16"/>
 </g>
-<g transform="translate(450 1658) scale(0.7500)" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(452 1367) scale(0.7500)" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="9" cy="12" r="1"/>
   <circle cx="9" cy="5" r="1"/>
   <circle cx="9" cy="19" r="1"/>
@@ -251,69 +243,112 @@ SOFTWARE.
   <circle cx="15" cy="5" r="1"/>
   <circle cx="15" cy="19" r="1"/>
 </g>
-<rect x="52" y="1734" width="432" height="92" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="68" y="1768" font-size="12" fill="#6E645B" font-weight="600">Wed · 18</text>
-<rect x="128" y="1756" width="44" height="44" rx="12" fill="#F1F3EB"/>
-<g transform="translate(140 1768) scale(0.8333)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+<!-- Non-cooking row -->
+<rect x="52" y="1444" width="432" height="92" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="68" y="1478" font-size="12" fill="#6E645B" font-weight="600">Wed · 18</text>
+<rect x="128" y="1466" width="44" height="44" rx="12" fill="#F1F3EB"/>
+<g transform="translate(140 1478) scale(0.8333)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M16 10a4 4 0 0 1-8 0"/>
   <path d="M3.103 6.034h17.794"/>
   <path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>
 </g>
-<text x="184" y="1774" font-size="14.5" fill="#28231F" font-weight="700">Take Out</text>
-<text x="184" y="1796" font-size="12" fill="#6E645B" font-weight="400">Family note shown · tap to edit NonCooking sheet</text>
-<rect x="52" y="1840" width="432" height="96" rx="16" fill="#FFFFFF" stroke="#4E6E52" stroke-width="1.5"/>
-<text x="68" y="1872" font-size="12" fill="#6E645B" font-weight="600">Thu · 19</text>
-<rect x="128" y="1860" width="44" height="44" rx="12" fill="#F9ECE9" stroke="#D98D7E" stroke-width="1" stroke-dasharray="4 3"/>
-<g transform="translate(140 1872) scale(0.8333)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="184" y="1484" font-size="14.5" fill="#28231F" font-weight="700">Take Out</text>
+<text x="184" y="1506" font-size="12" fill="#6E645B" font-weight="400">Family note shown · tap to edit NonCookingDaySheet</text>
+
+<!-- Empty / drop target row -->
+<rect x="52" y="1550" width="432" height="96" rx="16" fill="#FFFFFF" stroke="#4E6E52" stroke-width="1.5"/>
+<text x="68" y="1582" font-size="12" fill="#6E645B" font-weight="600">Thu · 19</text>
+<rect x="128" y="1570" width="44" height="44" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1" stroke-dasharray="4 3"/>
+<g transform="translate(140 1582) scale(0.8333)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 12h14"/>
   <path d="M12 5v14"/>
 </g>
-<text x="184" y="1882" font-size="14.5" fill="#A44A37" font-weight="700">Plan supper</text>
-<text x="184" y="1904" font-size="12" fill="#4E6E52" font-weight="600">Drag/keyboard drop target: garden-ink · Move/Swap</text>
-<rect x="522" y="1390" width="366" height="250" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="540" y="1420" font-size="15" fill="#28231F" font-weight="700" class="heading">Inline Portions Editor (no Usual chrome)</text>
-<text x="540" y="1442" font-size="12" fill="#6E645B" font-weight="400">Unconfirmed saves keep Review; dirty leaves warn first:</text>
-<rect x="540" y="1456" width="330" height="74" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
-<text x="554" y="1484" font-size="12.5" fill="#28231F" font-weight="600">Tue 17</text>
-<rect x="620" y="1468" width="134" height="48" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(634 1483) scale(0.7500)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="184" y="1592" font-size="14.5" fill="#A44A37" font-weight="700">Plan supper</text>
+<text x="184" y="1614" font-size="12" fill="#4E6E52" font-weight="600">Drop target: garden-ink · Move / Swap</text>
+
+<text x="52" y="1676" font-size="12" fill="#6E645B" font-weight="400">Routine replacement confirmations auto-dismiss (~5s); spillover</text>
+<text x="52" y="1696" font-size="12" fill="#6E645B" font-weight="400">and refresh failures persist with explicit primary/secondary actions.</text>
+
+<!-- Inline Portions Editor (shipped pull-forward behavior) -->
+<rect x="522" y="1100" width="366" height="298" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="540" y="1130" font-size="15" fill="#28231F" font-weight="700" class="heading">Inline Portions Editor (auto-save on exit)</text>
+<text x="540" y="1150" font-size="12" fill="#6E645B" font-weight="400">Strip toggles to Recipes · no Review gate, no [4] reset:</text>
+
+<!-- Editable upcoming row -->
+<rect x="540" y="1162" width="330" height="68" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<text x="554" y="1192" font-size="12" fill="#28231F" font-weight="700">Tue</text>
+<text x="554" y="1208" font-size="12" fill="#6E645B" font-weight="400">17</text>
+<rect x="590" y="1174" width="44" height="44" rx="10" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(603 1187) scale(0.7500)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+  <path d="M7 2v20"/>
+  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+</g>
+<rect x="702" y="1172" width="156" height="48" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<line x1="750" y1="1172" x2="750" y2="1220" stroke="#E5DFD7" stroke-width="1"/>
+<line x1="810" y1="1172" x2="810" y2="1220" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(717 1187) scale(0.7500)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 12h14"/>
 </g>
-<text x="687" y="1497" font-size="15" fill="#28231F" font-weight="700" text-anchor="middle">6</text>
-<g transform="translate(724 1483) scale(0.7500)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="780" y="1201" font-size="15" fill="#28231F" font-weight="700" text-anchor="middle">6</text>
+<g transform="translate(825 1187) scale(0.7500)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M5 12h14"/>
   <path d="M12 5v14"/>
 </g>
-<rect x="780" y="1468" width="48" height="48" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="804" y="1497" font-size="15" fill="#28231F" font-weight="700" text-anchor="middle">4</text>
-<text x="554" y="1554" font-size="12" fill="#6E645B" font-weight="400">Compact [4] button resets override to usual count.</text>
-<text x="540" y="1582" font-size="12" fill="#A44A37" font-weight="600">Guard: Save &amp; continue · Keep editing · Discard</text>
-<text x="540" y="1604" font-size="12" fill="#6E645B" font-weight="400">Already cooked past days stay visibly read-only.</text>
-<rect x="522" y="1656" width="366" height="304" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="540" y="1686" font-size="15" fill="#28231F" font-weight="700" class="heading">Grocery · Split-Pane</text>
-<rect x="782" y="1666" width="82" height="24" rx="12" fill="#F1F3EB"/>
-<text x="794" y="1682.2" font-size="12" fill="#4E6E52" font-weight="600">3/5 · 60%</text>
-<rect x="540" y="1704" width="330" height="134" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(554 1720) scale(0.7500)" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+<!-- Read-only upcoming prepared row -->
+<rect x="540" y="1238" width="330" height="58" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="554" y="1264" font-size="12" fill="#28231F" font-weight="700">Wed</text>
+<text x="554" y="1280" font-size="12" fill="#6E645B" font-weight="400">18</text>
+<rect x="590" y="1247" width="40" height="40" rx="10" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(602 1259) scale(0.6667)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+  <path d="M7 2v20"/>
+  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+</g>
+<text x="642" y="1263" font-size="13" fill="#4E6E52" font-weight="700">Already prepared</text>
+<text x="642" y="1281" font-size="12" fill="#6E645B" font-weight="400">4 portions (read-only)</text>
+
+<!-- Read-only past row -->
+<rect x="540" y="1304" width="330" height="44" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<text x="554" y="1330" font-size="12" fill="#6E645B" font-weight="600">Mon 16</text>
+<rect x="608" y="1311" width="30" height="30" rx="8" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="648" y="1330" font-size="12" fill="#6E645B" font-weight="400">Past day: photo-only (read-only)</text>
+
+<text x="540" y="1370" font-size="11.5" fill="#A44A37" font-weight="600">Invalid exit or uncertain save → inline Hearth card</text>
+<text x="540" y="1386" font-size="11.5" fill="#6E645B" font-weight="400">(auto-reads saved portions; Save / Retry / Discard).</text>
+
+<!-- Grocery Checklist & Split-Pane -->
+<rect x="522" y="1414" width="366" height="306" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="540" y="1444" font-size="15" fill="#28231F" font-weight="700" class="heading">Grocery · Checklist &amp; Split-Pane</text>
+<rect x="782" y="1424" width="84" height="24" rx="12" fill="#F1F3EB"/>
+<text x="824" y="1440.2" font-size="12" fill="#4E6E52" font-weight="600" text-anchor="middle">3/5 · 60%</text>
+
+<rect x="540" y="1462" width="330" height="134" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(554 1478) scale(0.7500)" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="10"/>
 </g>
-<text x="582" y="1732" font-size="13.5" fill="#28231F" font-weight="600">Olive oil · (2 tbsp known)</text>
-<g transform="translate(836 1718) scale(0.7500)" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="582" y="1490" font-size="13.5" fill="#28231F" font-weight="600">Olive oil · 2 tbsp known</text>
+<g transform="translate(836 1476) scale(0.7500)" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M12 5v16"/>
   <path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/>
 </g>
-<text x="582" y="1756" font-size="11.5" fill="#6E645B" font-weight="400">Incomplete subtotal stays outside disclosure</text>
-<rect x="554" y="1770" width="302" height="54" rx="10" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="568" y="1791" font-size="12" fill="#28231F" font-weight="700">Used in:</text>
-<text x="568" y="1812" font-size="12" fill="#4E6E52" font-weight="600" text-decoration="underline">Roasted Garlic Chicken  (opens originals)</text>
-<rect x="540" y="1850" width="330" height="56" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(554 1868) scale(0.7500)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<text x="582" y="1514" font-size="11.5" fill="#6E645B" font-weight="400">Incomplete subtotal stays outside disclosure</text>
+<rect x="554" y="1528" width="302" height="54" rx="10" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="568" y="1549" font-size="12" fill="#28231F" font-weight="700">Used in:</text>
+<text x="568" y="1570" font-size="12" fill="#4E6E52" font-weight="600" text-decoration="underline">Roasted Garlic Chicken  (opens originals)</text>
+
+<rect x="540" y="1608" width="330" height="56" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(554 1626) scale(0.7500)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="10"/>
   <path d="m16 9-5.5 5.5L8 12"/>
 </g>
-<text x="582" y="1875" font-size="13.5" fill="#6E645B" font-weight="400">Paper towels</text>
-<text x="582" y="1894" font-size="12" fill="#856400" font-weight="700">Extra · Pantry</text>
-<text x="540" y="1928" font-size="11.5" fill="#6E645B" font-weight="400">Source title loading/failed states stay explicit;</text>
-<text x="540" y="1945" font-size="11.5" fill="#6E645B" font-weight="400">aisle progress uses tonal sage-50 / garden-ink.</text>
-<text x="32" y="1994" font-size="13" fill="#6E645B" font-weight="400">Home, Weekly Planner &amp; Groceries stay bound to one authoritative deployment calendar.</text>
+<text x="582" y="1633" font-size="13.5" fill="#6E645B" font-weight="400">Paper towels</text>
+<text x="582" y="1652" font-size="12" fill="#856400" font-weight="700">Extra · Pantry</text>
+
+<text x="540" y="1686" font-size="11.5" fill="#6E645B" font-weight="400">Portions refresh uses Garden status / Hearth Retry;</text>
+<text x="540" y="1703" font-size="11.5" fill="#6E645B" font-weight="400">current week shows Add an extra composer at bottom.</text>
+
+<text x="32" y="1756" font-size="13" fill="#6E645B" font-weight="400">Home, Weekly Planner &amp; Groceries stay bound to one authoritative deployment calendar.</text>
 </svg>

@@ -8,12 +8,12 @@ Define the six locked semantic Cookbook UI primitives, native modal dialog contr
 
 ### Requirement: Define perceptual OKLCH lightness and warm-ink token contracts
 
-The stylesheet SHALL define semantic CSS tokens using native `oklch(L C H)` values (with sRGB fallbacks) across warm paper surfaces, warm umber ink hierarchy (`>= 14:1` primary body, `>= 7:1` secondary, `>= 4.5:1` quiet metadata), Hearth terracotta actions, Sunlight ochre voting highlights, and Garden sage status pairs. Reading cards SHALL use warm surface layering and ambient umber elevation without `backdrop-blur`.
+The stylesheet SHALL define dual-mode semantic CSS tokens for `:root` (Standard AA) and `:root[data-contrast="high"]` (High Contrast AAA) using native `oklch(L C H)` values (with sRGB fallbacks) across warm paper surfaces, warm umber ink, Hearth, Sunlight ochre, and cooled herb Garden status pairs. Reading cards SHALL use warm surface layering and ambient umber elevation without `backdrop-blur`.
 
-#### Scenario: Tokens maintain perceptual legibility across surfaces
+#### Scenario: Tokens maintain perceptual legibility across surfaces and contrast modes
 
-- **WHEN** `Typography`, `Action`, and `StatusBadge` tokens resolve against `--paper-canvas` or `--paper-card`
-- **THEN** every body, caption, badge, and action pairing satisfies WCAG 2.2 AA contrast without relying on semi-transparent black opacity washes or reading-card blur
+- **WHEN** `Typography`, `Action`, and `StatusBadge` tokens resolve against `--paper-canvas` or `--paper-card` in both Standard (`:root`) and High Contrast (`:root[data-contrast="high"]`) modes
+- **THEN** warm umber ink (`>= 14:1` primary, `>= 4.5:1` muted in AA; `>= 17:1` primary, `>= 7.0:1` muted in AAA), Hearth (`#B85542` / `#7B3829`), Sunlight ink (`#856400` / `#664E01`), and cooled herb Garden (`#4E6E52` / `#324D36`) satisfy WCAG 2.2 AA/AAA without opacity washes or card blur
 
 ### Requirement: Compose screens through the six semantic Cookbook Primitives
 
@@ -40,12 +40,12 @@ Prototype routes SHALL render UI exclusively through six semantic primitives (`E
 
 ### Requirement: Expose a development-only four-energy bilingual specimen lab
 
-The route `/dev/cookbook-lab` SHALL render all four Household Energies (`Playful Convergence`, `Reflective Curation`, `In-Motion Utility`, `Depleted Execution`) in English and French across `320px` (200% text), `390px`, and `834px` viewports with interactive state toggles during development/exploration runs, and SHALL return HTTP `404` when built for standard production.
+The route `/dev/cookbook-lab` SHALL render all four Household Energies (`Playful Convergence`, `Reflective Curation`, `In-Motion Utility`, `Depleted Execution`) in English and French and in both Standard AA and High Contrast AAA (`data-contrast="high"`) modes across `320px` (200% text), `390px`, and `834px` viewports with interactive state toggles during development/exploration runs, and SHALL return HTTP `404` when built for standard production.
 
-#### Scenario: Developer inspects all four energies in English and French
+#### Scenario: Developer inspects all four energies in English, French, and both contrast modes
 
-- **WHEN** `/dev/cookbook-lab` is opened in development/exploration mode and switched between EN and FR or household states
-- **THEN** canonical card, sheet, navigation, discovery, grocery, and 5:00 PM views render cleanly with zero horizontal overflow, `>= 48 CSS px` targets, and passing computed WCAG contrast
+- **WHEN** `/dev/cookbook-lab` is opened in development/exploration mode and switched between EN and FR, Standard AA and High Contrast AAA, or household states
+- **THEN** canonical card, sheet, navigation, discovery, grocery, and 5:00 PM views render cleanly with zero horizontal overflow, `>= 48 CSS px` targets, and passing computed WCAG contrast (`'aa'` in Standard, `'aaa'` in High Contrast)
 
 #### Scenario: Production runtime blocks specimen route
 

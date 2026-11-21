@@ -839,7 +839,7 @@ export default function PlannerPage() {
                 data-testid="planner-tab"
                 className={cn(
                   'flex-1 min-h-12 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-semibold transition-all z-10',
-                  activeTab === 'planner' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal-600'
+                  activeTab === 'planner' ? 'bg-white text-ink-body shadow-sm' : 'text-ink-muted'
                 )}
               >
                 <Calendar size={14} /> {t('planner.planner', 'Planner')}
@@ -849,7 +849,7 @@ export default function PlannerPage() {
                 data-testid="grocery-tab"
                 className={cn(
                   'flex-1 min-h-12 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-semibold transition-all z-10',
-                  activeTab === 'grocery' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal-600'
+                  activeTab === 'grocery' ? 'bg-white text-ink-body shadow-sm' : 'text-ink-muted'
                 )}
               >
                 <ShoppingCart size={14} /> {t('planner.groceryList', 'Grocery list')}
@@ -866,12 +866,12 @@ export default function PlannerPage() {
               aria-label="Previous week"
               title="Previous week"
             >
-              <ChevronLeft className="text-charcoal/60" />
+              <ChevronLeft className="text-ink-muted" />
             </button>
 
             <div className="min-w-0 flex-1 text-center">
               <span
-                className="font-heading text-sm leading-5 font-semibold tracking-normal text-charcoal-600 text-center flex-1"
+                className="font-heading text-sm leading-5 font-semibold tracking-normal text-ink-muted text-center flex-1"
                 data-testid="week-range"
               >
                 {currentWeekOffset === 0
@@ -882,7 +882,7 @@ export default function PlannerPage() {
                         count: currentWeekOffset,
                       })}
               </span>
-              <h2 className="text-lg font-heading font-bold text-charcoal flex items-center justify-center">
+              <h2 className="text-lg font-heading font-bold text-ink-body flex items-center justify-center">
                 {isVotingOpen && (
                   <span className="relative flex h-2 w-2 mr-2">
                     {!isConvergedWeek && (
@@ -927,7 +927,7 @@ export default function PlannerPage() {
                   type="button"
                   data-testid="planner-this-week-pill"
                   onClick={() => navigateToWeekOffset(0)}
-                  className="mx-auto mt-2 inline-flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-full border border-terracotta-200 bg-white px-4 text-xs font-semibold text-terracotta-700 shadow-sm transition-all hover:bg-terracotta-50 active:scale-95"
+                  className="mx-auto mt-2 inline-flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-full border border-hearth-line bg-white px-4 text-xs font-semibold text-hearth-ink shadow-sm transition-all hover:bg-terracotta-50 active:scale-95"
                   aria-label={t('planner.backToThisWeek', 'Back to this week')}
                   title={t('planner.backToThisWeek', 'Back to this week')}
                 >
@@ -949,7 +949,7 @@ export default function PlannerPage() {
               aria-label="Next week"
               title="Next week"
             >
-              <ChevronRight className="text-charcoal/60" />
+              <ChevronRight className="text-ink-muted" />
             </button>
           </div>
         </div>
@@ -1013,7 +1013,7 @@ export default function PlannerPage() {
                         <button
                           onClick={handleAskFamily}
                           data-testid="ask-family-cta"
-                          className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full bg-sage-700 hover:bg-sage-800 px-4 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
+                          className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full bg-garden-fill hover:bg-garden-fill-deep px-4 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
                         >
                           <Users size={14} />
                           {t('planner.askFamily', 'Ask the Family')}
@@ -1023,7 +1023,7 @@ export default function PlannerPage() {
                         <button
                           onClick={handleNudgeFamily}
                           data-testid="nudge-family-cta"
-                          className="flex min-h-12 min-w-12 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-sage-700 hover:bg-sage-800 px-3 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
+                          className="flex min-h-12 min-w-12 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-garden-fill hover:bg-garden-fill-deep px-3 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
                         >
                           <Share2 size={14} />
                           {t('planner.nudge', 'Nudge')}
@@ -1038,7 +1038,7 @@ export default function PlannerPage() {
                             !isConvergedWeek && 'whitespace-nowrap',
                             isConvergedWeek
                               ? 'bg-garden-fill hover:bg-garden-fill-deep text-white py-2 text-center leading-tight'
-                              : 'border border-terracotta-200 bg-white text-terracotta-700 hover:bg-terracotta-600 active:bg-terracotta-700 hover:text-white active:text-white'
+                              : 'border border-hearth-line bg-white text-hearth-ink hover:bg-hearth-fill-hover active:bg-hearth-fill-active hover:text-white active:text-white'
                           )}
                         >
                           {isConvergedWeek ? <Check size={14} /> : <Ban size={14} />}
@@ -1104,14 +1104,14 @@ export default function PlannerPage() {
                   <div
                     data-testid="planner-drag-preview"
                     aria-hidden="true"
-                    className="fixed z-[999] pointer-events-none rounded-2xl border-2 border-sage-700 bg-white p-4 shadow-xl text-charcoal font-bold"
+                    className="fixed z-[999] pointer-events-none rounded-2xl border-2 border-sage-700 bg-white p-4 shadow-xl text-ink-body font-bold"
                     style={{ left: dragPreview.x, top: dragPreview.y, width: dragPreview.width }}
                   >
                     {dragPreview.snapshot[dragPreview.from].recipe?.name}
                     {dragPreview.target !== null && dragPreview.target !== dragPreview.from && (
                       <span
                         data-testid="planner-drop-feedback"
-                        className="block mt-2 text-xs font-bold text-sage-700"
+                        className="block mt-2 text-xs font-bold text-garden-ink"
                       >
                         {dragPreview.snapshot[dragPreview.target].recipe?.id ||
                         dragPreview.snapshot[dragPreview.target].status === 3
@@ -1146,7 +1146,7 @@ export default function PlannerPage() {
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-24 left-6 right-6 z-50 bg-sage-700 text-white p-6 rounded-3xl shadow-2xl flex items-center gap-4"
+          className="fixed bottom-24 left-6 right-6 z-50 bg-garden-fill text-white p-6 rounded-3xl shadow-2xl flex items-center gap-4"
         >
           <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
             <Check size={24} />
@@ -1473,7 +1473,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
         <div className="mb-1 flex flex-wrap items-center gap-2">
           <p
             data-testid="planner-today-label"
-            className="min-w-0 max-w-full text-sm leading-5 font-semibold text-terracotta-600 break-words"
+            className="min-w-0 max-w-full text-sm leading-5 font-semibold text-hearth-ink break-words"
           >
             {t('planner.today', 'Today')}
           </p>
@@ -1500,14 +1500,14 @@ const PlannerDayCard = memo(function PlannerDayCard({
               aria-hidden="true"
               size={8}
               strokeWidth={3}
-              className="absolute -right-2 top-1/2 -translate-y-1/2 text-sage-700"
+              className="absolute -right-2 top-1/2 -translate-y-1/2 text-garden-ink"
             />
           )}
           <div
             data-testid="planner-date-marker"
             className="w-full flex flex-col items-center justify-center rounded-xl py-2"
           >
-            <span className="max-w-full break-all text-center text-xs font-semibold tracking-normal text-charcoal-600 leading-none mb-1">
+            <span className="max-w-full break-all text-center text-xs font-semibold tracking-normal text-ink-muted leading-none mb-1">
               {day.date
                 ? new Intl.DateTimeFormat(getLocale() === 'fr' ? 'fr-CA' : 'en-CA', {
                     weekday: 'short',
@@ -1515,14 +1515,14 @@ const PlannerDayCard = memo(function PlannerDayCard({
                   }).format(new Date(day.date))
                 : day.day}
             </span>
-            <span className="max-w-full break-all text-center text-lg font-heading font-extrabold text-charcoal leading-none">
+            <span className="max-w-full break-all text-center text-lg font-heading font-extrabold text-ink-body leading-none">
               {(() => {
                 if (!day.date) return '';
                 const d = new Date(day.date);
                 return d.getUTCDate();
               })()}
             </span>
-            <span className="max-w-full break-all text-center text-xs font-semibold tracking-normal text-charcoal-600 leading-none mt-1">
+            <span className="max-w-full break-all text-center text-xs font-semibold tracking-normal text-ink-muted leading-none mt-1">
               {(() => {
                 if (!day.date) return '';
                 const d = new Date(day.date);
@@ -1539,7 +1539,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
             'flex-1 min-w-0 rounded-2xl relative group border',
             isPast ? 'bg-cream shadow-none' : 'glass shadow-sm',
             isDragSource
-              ? 'outline outline-1 outline-dashed outline-charcoal/70'
+              ? 'outline outline-1 outline-dashed outline-ink-body/70'
               : 'border-white/20',
             isDropTarget && 'outline outline-2 outline-sage-700',
             successDay === index &&
@@ -1551,7 +1551,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
           data-testid="planner-meal"
         >
           {isDragSource && (
-            <span className="absolute -top-2.5 left-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-charcoal">
+            <span className="absolute -top-2.5 left-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-ink-body">
               {t('planner.moveSource', 'Moving from this day')}
             </span>
           )}
@@ -1574,7 +1574,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                       : 'hover:opacity-80 transition-opacity'
                   )}
                 >
-                  <div className="h-10 w-10 rounded-xl bg-sage/10 text-sage-700 flex items-center justify-center flex-shrink-0">
+                  <div className="h-10 w-10 rounded-xl bg-sage/10 text-garden-ink flex items-center justify-center flex-shrink-0">
                     <NonCookingIcon kind={day.nonCooking?.kind} />
                   </div>
                   <div className="min-w-0 flex flex-col gap-0.5">
@@ -1583,20 +1583,20 @@ const PlannerDayCard = memo(function PlannerDayCard({
                       title={nonCookingLabel(day.nonCooking)}
                       className={cn(
                         'line-clamp-2 text-sm font-bold',
-                        isPast ? 'text-charcoal-600' : 'text-charcoal/60'
+                        isPast ? 'text-ink-muted' : 'text-ink-muted'
                       )}
                     >
                       {nonCookingLabel(day.nonCooking)}
                     </span>
                     {day.nonCooking?.kind === 'mystery' ? (
-                      <span className="text-xs font-medium text-charcoal-600">
+                      <span className="text-xs font-medium text-ink-muted">
                         {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
                       </span>
                     ) : nonCookingNote(day.nonCooking) ? (
                       <span
                         data-testid="non-cooking-note"
                         title={nonCookingNote(day.nonCooking) ?? undefined}
-                        className="line-clamp-2 break-words text-xs text-charcoal/70 font-medium"
+                        className="line-clamp-2 break-words text-xs text-ink-muted font-medium"
                       >
                         {nonCookingNote(day.nonCooking)}
                       </span>
@@ -1636,7 +1636,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                     <div className="flex w-full flex-col justify-center gap-0.5">
                       <h4
                         className={cn(
-                          'font-bold text-charcoal line-clamp-2',
+                          'font-bold text-ink-body line-clamp-2',
                           isWide ? 'text-sm leading-tight' : 'text-base leading-tight'
                         )}
                         data-testid="recipe-name"
@@ -1655,9 +1655,9 @@ const PlannerDayCard = memo(function PlannerDayCard({
                               'text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
                               hasVotes
                                 ? isUnanimous
-                                  ? 'bg-sage-50 text-sage-800'
-                                  : 'bg-ochre-50 text-ochre-800'
-                                : 'bg-charcoal-100 text-charcoal-600'
+                                  ? 'bg-sage-50 text-garden-ink'
+                                  : 'bg-ochre-50 text-sunlight-ink'
+                                : 'bg-charcoal-100 text-ink-muted'
                             )}
                           >
                             {hasVotes
@@ -1680,16 +1680,16 @@ const PlannerDayCard = memo(function PlannerDayCard({
                     data-testid="plan-meal-button"
                     className="flex items-center flex-1 min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
                   >
-                    <div className="h-10 w-10 rounded-xl border border-dashed border-terracotta/30 flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-terracotta/50 transition-colors">
+                    <div className="h-10 w-10 rounded-xl border border-dashed border-hearth-line flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-hearth-line transition-colors">
                       <Plus
-                        className="text-terracotta-600 group-hover:text-terracotta-700 transition-colors"
+                        className="text-hearth-ink group-hover:text-hearth-ink transition-colors"
                         size={18}
                       />
                     </div>
                     <div className="flex flex-col justify-center">
                       <span
                         className={cn(
-                          'font-bold text-terracotta-600 group-hover:text-terracotta-700 transition-colors',
+                          'font-bold text-hearth-ink group-hover:text-hearth-ink transition-colors',
                           isWide ? 'text-xs' : 'text-sm'
                         )}
                       >
@@ -1711,7 +1711,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
                       e.stopPropagation();
                       onPivot();
                     }}
-                    className="h-9 w-9 rounded-xl bg-ochre-50 text-ochre-800 flex items-center justify-center active:scale-90 transition-transform"
+                    className="h-9 w-9 rounded-xl bg-ochre-50 text-sunlight-ink flex items-center justify-center active:scale-90 transition-transform"
                     data-testid="change-recipe-button"
                     title={t('planner.choosePathTitle', 'Change this recipe')}
                     aria-label={t('planner.choosePathTitle', 'Change this recipe')}

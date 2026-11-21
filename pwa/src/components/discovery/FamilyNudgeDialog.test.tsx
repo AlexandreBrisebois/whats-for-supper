@@ -48,10 +48,10 @@ describe('FamilyNudgeDialog', () => {
     render(<FamilyNudgeDialog open onClose={vi.fn()} />);
     await screen.findByText(`${window.location.origin}/discovery`);
     const shareBtn = screen.getByTestId('planner-nudge-share');
-    expect(shareBtn).toHaveClass('bg-terracotta', 'text-cream-100', 'min-h-12');
+    expect(shareBtn).toHaveClass('bg-hearth-fill', 'text-cream-100', 'min-h-12');
     expect(shareBtn).not.toHaveClass('bg-ochre');
     const closeBtn = screen.getByTestId('planner-nudge-close');
-    expect(closeBtn).toHaveClass('h-12', 'w-12', 'text-charcoal-600');
+    expect(closeBtn).toHaveClass('h-12', 'w-12', 'text-ink-muted');
   });
 });
 

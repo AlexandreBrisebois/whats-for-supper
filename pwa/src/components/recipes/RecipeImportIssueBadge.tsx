@@ -28,7 +28,7 @@ export function RecipeImportIssueBadge({
         compact
           ? 'shrink-0 gap-1 whitespace-nowrap px-2 py-0.5 text-xs font-semibold leading-4'
           : 'gap-1.5 px-3 py-1 text-xs font-bold'
-      } ${ready ? 'bg-sage-100 text-sage-800' : 'bg-ochre-50 text-ochre-800'}`}
+      } ${ready ? 'bg-sage-100 text-garden-ink' : 'bg-ochre-50 text-sunlight-ink'}`}
     >
       {ready ? (
         <Check size={compact ? 12 : 14} aria-hidden="true" />

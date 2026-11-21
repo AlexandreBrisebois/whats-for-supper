@@ -42,7 +42,7 @@ export default function ProfilePage() {
         </div>
         <button
           onClick={() => router.push(ROUTES.PROFILE_SETTINGS as any)}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/70 border border-chrome-line text-hearth-ink shadow-glass hover:bg-terracotta-50 active:bg-terracotta-100 scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-hearth-ink"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white border border-chrome-line text-hearth-ink shadow-glass hover:bg-terracotta-50 active:bg-terracotta-100 scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-hearth-ink"
           data-testid="settings-btn"
           aria-label={t('profile.settings', 'Settings')}
         >

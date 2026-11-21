@@ -22,7 +22,7 @@ export function PreviewFeaturesSection() {
     return (
       <section
         data-testid="preview-features-section"
-        className="w-full min-w-0 max-w-full rounded-[2rem] border border-hearth-line bg-white/40 p-4 sm:p-6 shadow-glass backdrop-blur-xl"
+        className="w-full min-w-0 max-w-full rounded-[2rem] border border-hearth-line bg-white p-4 sm:p-6 shadow-glass"
       >
         <p className="text-sm font-semibold text-ink-body" role="alert">
           {t('previewFeatures.loadError', 'Unable to load preview features.')}
@@ -51,7 +51,7 @@ export function PreviewFeaturesSection() {
   return (
     <section
       data-testid="preview-features-section"
-      className="w-full min-w-0 max-w-full rounded-[2rem] border border-sunlight-line bg-white/40 shadow-glass backdrop-blur-xl"
+      className="w-full min-w-0 max-w-full rounded-[2rem] border border-sunlight-line bg-white shadow-glass"
     >
       <button
         type="button"

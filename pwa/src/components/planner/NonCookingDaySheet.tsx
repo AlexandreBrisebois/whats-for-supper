@@ -189,7 +189,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
               disabled={busy}
               onChange={(event) => setMessage(event.target.value)}
               data-testid="non-cooking-custom-label"
-              className="mt-2 w-full rounded-2xl border-2 border-chrome-line bg-white/70 p-4 text-base text-ink-body focus:border-hearth-line focus:outline-none focus:ring-2 focus:ring-hearth-ink"
+              className="mt-2 w-full rounded-2xl border-2 border-chrome-line bg-white p-4 text-base text-ink-body focus:border-hearth-line focus:outline-none focus:ring-2 focus:ring-hearth-ink"
               aria-invalid={!!error}
               aria-describedby={error ? `${hintId} ${errorId}` : hintId}
             />
@@ -217,7 +217,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
               disabled={busy}
               onClick={() => submit(true)}
               data-testid="non-cooking-clear"
-              className="min-h-12 w-full rounded-2xl border-2 border-chrome-line bg-white/50 px-4 py-3 font-bold text-ink-body hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-hearth-ink disabled:opacity-50"
+              className="min-h-12 w-full rounded-2xl border-2 border-chrome-line bg-white px-4 py-3 font-bold text-ink-body hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-hearth-ink disabled:opacity-50"
             >
               {t('planner.clearDay', 'Remove supper plan')}
             </button>

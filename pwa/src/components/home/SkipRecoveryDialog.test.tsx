@@ -63,18 +63,18 @@ describe('SkipRecoveryDialog', () => {
     expect(title).not.toHaveClass('text-[10px]', 'uppercase');
     expect(screen.getByTestId('recovery-close')).toHaveClass('h-12', 'w-12');
     expect(screen.getByText('Plans changed. We get it. What are we eating instead?')).toHaveClass(
-      'text-charcoal-600'
+      'text-ink-muted'
     );
 
     rerender(
       <SkipRecoveryDialog isOpen step={2} onClose={vi.fn()} onBack={vi.fn()} onAction={vi.fn()} />
     );
     const consequence = screen.getByText('Keeps the recipe in your library');
-    expect(consequence).toHaveClass('text-xs', 'text-charcoal-600');
+    expect(consequence).toHaveClass('text-xs', 'text-ink-muted');
     expect(consequence).not.toHaveClass('text-[10px]', 'uppercase', 'text-charcoal/30');
     const goBack = screen.getByRole('button', { name: 'Go back' });
     expect(goBack).toHaveClass('min-h-12', 'text-sm', 'text-hearth-ink', 'w-full');
-    expect(goBack).not.toHaveClass('text-xs', 'text-charcoal-600', 'uppercase', 'text-charcoal/30');
+    expect(goBack).not.toHaveClass('text-xs', 'text-ink-muted', 'uppercase', 'text-charcoal/30');
   });
 
   it('presents Go back as a secondary ghost button with a back arrow after the options', () => {

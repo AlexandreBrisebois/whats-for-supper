@@ -275,7 +275,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
           {formattedTime && (
             <span
               data-testid="stack-time-badge"
-              className="absolute bottom-4 left-4 z-30 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full border border-charcoal-200/60 bg-cream px-3 py-2 text-xs font-semibold tracking-wide text-charcoal shadow-md"
+              className="absolute bottom-4 left-4 z-30 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full border border-chrome-line/60 bg-cream px-3 py-2 text-xs font-semibold tracking-wide text-ink-body shadow-md"
             >
               <Clock size={14} aria-hidden="true" className="shrink-0" />
               {tWithVars('common.readyIn', 'READY IN {{time}}', { time: formattedTime })}
@@ -306,7 +306,7 @@ export const RecipeStackCard: React.FC<RecipeStackCardProps> = ({
                   scale: backScale,
                 }}
                 data-testid="stack-swipe-back-indicator"
-                className="flex flex-col items-center rounded-full bg-sage-700/90 p-8 text-white shadow-2xl"
+                className="flex flex-col items-center rounded-full bg-garden-fill/90 p-8 text-white shadow-2xl"
               >
                 <span className="text-xl font-black tracking-widest">
                   {t('buttons.next', 'NEXT')}

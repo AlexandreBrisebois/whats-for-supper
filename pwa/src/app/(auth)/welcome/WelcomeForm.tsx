@@ -56,7 +56,7 @@ export function WelcomeForm({ initialPassphrase }: { initialPassphrase: string |
       <main className="relative flex flex-1 flex-col items-center justify-center gap-8 px-6 py-12 bg-cream">
         <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
           <h1
-            className="font-heading text-4xl font-bold text-charcoal tracking-tight"
+            className="font-heading text-4xl font-bold text-ink-body tracking-tight"
             data-testid="welcome-title"
           >
             {t('auth.welcomeTitle', "What's for Supper?")}
@@ -64,7 +64,7 @@ export function WelcomeForm({ initialPassphrase }: { initialPassphrase: string |
           <p
             id="welcome-helper"
             data-testid="welcome-helper"
-            className="mt-2 text-sm font-medium text-charcoal-600"
+            className="mt-2 text-sm font-medium text-ink-muted"
           >
             {helper}
           </p>
@@ -83,13 +83,13 @@ export function WelcomeForm({ initialPassphrase }: { initialPassphrase: string |
             aria-describedby="welcome-helper"
             autoComplete="off"
             data-testid="passphrase-input"
-            className="w-full min-h-12 px-4 py-3 rounded-2xl border border-charcoal-200 bg-white text-charcoal placeholder:text-charcoal-500 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+            className="w-full min-h-12 px-4 py-3 rounded-2xl border border-chrome-line bg-white text-ink-body placeholder:text-ink-muted focus:border-hearth-fill focus:ring-2 focus:ring-terracotta/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
           />
 
           {error && (
             <p
               role="alert"
-              className="rounded-2xl border border-terracotta-200 bg-terracotta-50 px-4 py-3 text-sm font-medium text-terracotta-700 text-center"
+              className="rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm font-medium text-hearth-ink text-center"
               data-testid="auth-error"
             >
               {error}

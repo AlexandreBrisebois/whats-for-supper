@@ -35,17 +35,17 @@ function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) =
   }, [toast.id, toast.persistent, onDismiss]);
 
   const icons = {
-    success: <CheckCircle2 size={18} className="text-sage-700" aria-hidden="true" />,
-    error: <AlertCircle size={18} className="text-terracotta-700" aria-hidden="true" />,
-    info: <Info size={18} className="text-ochre-800" aria-hidden="true" />,
-    loading: <Loader2 size={18} className="text-ochre-800 animate-spin" aria-hidden="true" />,
+    success: <CheckCircle2 size={18} className="text-garden-ink" aria-hidden="true" />,
+    error: <AlertCircle size={18} className="text-hearth-ink" aria-hidden="true" />,
+    info: <Info size={18} className="text-sunlight-ink" aria-hidden="true" />,
+    loading: <Loader2 size={18} className="text-sunlight-ink animate-spin" aria-hidden="true" />,
   };
 
   const borderColors = {
-    success: 'border-sage-200 border-l-sage-700',
-    error: 'border-terracotta-200 border-l-terracotta',
-    info: 'border-ochre-200 border-l-ochre-700',
-    loading: 'border-ochre-200 border-l-ochre-700',
+    success: 'border-garden-line border-l-sage-700',
+    error: 'border-hearth-line border-l-terracotta',
+    info: 'border-sunlight-line border-l-ochre-700',
+    loading: 'border-sunlight-line border-l-ochre-700',
   };
 
   return (
@@ -62,15 +62,15 @@ function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) =
       )}
     >
       <div className="flex-shrink-0">{icons[toast.type as keyof typeof icons] || icons.info}</div>
-      <p className="text-sm font-bold text-charcoal leading-tight flex-1">{toast.message}</p>
+      <p className="text-sm font-bold text-ink-body leading-tight flex-1">{toast.message}</p>
       <button
         type="button"
         aria-label="Dismiss notification"
         title="Dismiss notification"
         onClick={() => onDismiss(toast.id)}
-        className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full hover:bg-charcoal-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+        className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full hover:bg-charcoal-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
       >
-        <X size={16} className="text-charcoal-600" aria-hidden="true" />
+        <X size={16} className="text-ink-muted" aria-hidden="true" />
       </button>
     </motion.div>
   );

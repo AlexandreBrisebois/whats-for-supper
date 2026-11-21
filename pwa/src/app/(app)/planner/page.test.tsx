@@ -1437,11 +1437,11 @@ describe('PlannerPage voting action row', () => {
 
     const askBtn = screen.getByTestId('ask-family-cta');
     expect(askBtn).toBeInTheDocument();
-    expect(askBtn).toHaveClass('bg-sage-700', 'text-white', 'text-xs', 'min-h-12');
+    expect(askBtn).toHaveClass('bg-garden-fill', 'text-white', 'text-xs', 'min-h-12');
     expect(askBtn).not.toHaveClass('bg-sage', 'text-[9px]', 'uppercase');
     expect(screen.getByTestId('planner-tab')).toHaveClass('text-xs');
     expect(screen.getByTestId('planner-tab')).not.toHaveClass('text-[10px]', 'uppercase');
-    expect(screen.getByTestId('grocery-tab')).toHaveClass('text-xs', 'text-charcoal-600');
+    expect(screen.getByTestId('grocery-tab')).toHaveClass('text-xs', 'text-ink-muted');
     expect(screen.queryByTestId('planned-count-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nudge-family-cta')).not.toBeInTheDocument();
   });
@@ -1700,7 +1700,7 @@ describe('PlannerPage voting action row', () => {
       const close = screen.getByTestId('close-voting-btn');
       expect(close).toHaveTextContent('Close Voting');
       expect(close).not.toHaveClass('bg-garden-fill');
-      expect(close).toHaveClass('text-terracotta-700');
+      expect(close).toHaveClass('text-hearth-ink');
       expect(document.querySelector('.animate-ping')).toHaveClass('motion-reduce:animate-none');
     });
 

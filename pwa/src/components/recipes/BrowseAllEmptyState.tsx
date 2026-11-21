@@ -21,15 +21,15 @@ export const BrowseAllEmptyState: React.FC = () => {
     >
       {/* Icon */}
       <div className="flex h-24 w-24 items-center justify-center rounded-full bg-ochre-50">
-        <BookOpen size={44} className="text-ochre-600" strokeWidth={1.5} />
+        <BookOpen size={44} className="text-sunlight-ink" strokeWidth={1.5} />
       </div>
 
       {/* Copy */}
       <div className="flex flex-col gap-3">
-        <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">
+        <h2 className="font-heading text-3xl font-bold tracking-tight text-ink-body">
           Your library is empty
         </h2>
-        <p className="text-base font-medium leading-relaxed text-charcoal-600">
+        <p className="text-base font-medium leading-relaxed text-ink-muted">
           Add your first recipe and start building your library
         </p>
       </div>
@@ -38,7 +38,7 @@ export const BrowseAllEmptyState: React.FC = () => {
       <Link
         href="/capture"
         data-testid="browse-all-empty-capture-cta"
-        className="inline-flex min-h-12 items-center gap-2 rounded-full bg-terracotta px-8 py-4 text-sm font-semibold text-cream-100 shadow-sm transition-colors hover:bg-terracotta-600 active:bg-terracotta-700"
+        className="inline-flex min-h-12 items-center gap-2 rounded-full bg-hearth-fill px-8 py-4 text-sm font-semibold text-cream-100 shadow-sm transition-colors hover:bg-hearth-fill-hover active:bg-hearth-fill-active"
       >
         Capture a Recipe
       </Link>

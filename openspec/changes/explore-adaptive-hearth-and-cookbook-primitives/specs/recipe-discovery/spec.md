@@ -18,9 +18,9 @@ During an active `collecting` round, Discovery SHALL display a collective househ
 
 ### Requirement: Bridge converged family matches into weekly menu review
 
-When family voting converges, the celebration card SHALL link directly to the converged week in Planner with matched recipes clearly labeled as household suggestions awaiting assignment rather than confirmed meals or stocked groceries.
+When family voting converges, the Discovery celebration card SHALL link directly to the converged week in Planner (complementing `Navigation.tsx`'s existing converged `"Menu's in"` Planner link) with matched recipes clearly labeled as household suggestions awaiting assignment rather than confirmed meals or stocked groceries.
 
 #### Scenario: Member follows See your matches into Planner
 
-- **WHEN** voting converges and a member activates `See your matches`
+- **WHEN** voting converges and a member activates `See your matches` from the Discovery celebration card (or follows the converged navigation cue)
 - **THEN** Planner opens that exact anchored week highlighting the matched candidates as proposed suggestions ready to confirm or adjust, leaving committed meal status false until saved

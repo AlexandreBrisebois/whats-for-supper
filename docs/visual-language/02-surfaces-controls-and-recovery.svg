@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="920" height="1730" viewBox="0 0 920 1730" role="img" aria-labelledby="title desc">
-<title id="title">Functional patterns: surfaces, controls, settings and recovery (Era 3)</title><desc id="desc">Layer 2 cross-cutting functional patterns for WFS Family Cookbook Era 3.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="1764" viewBox="0 0 920 1764" role="img" aria-labelledby="title desc">
+<title id="title">Functional patterns: surfaces, controls, settings and recovery (Era 3)</title><desc id="desc">Layer 2 shipped cross-cutting functional patterns for WFS Family Cookbook Era 3.</desc>
 <!-- Icon outlines reused from Lucide 1.60.0. ISC License
 
 Copyright (c) 2026 Lucide Icons and Contributors
@@ -55,14 +55,16 @@ SOFTWARE.
   </linearGradient>
 </defs>
 <style>text { font-family: Inter, "DejaVu Sans", sans-serif; } .heading { font-family: Outfit, Inter, "DejaVu Sans", sans-serif; }</style>
-<rect x="0" y="0" width="920" height="1730" rx="0" fill="#FDFCF0"/>
+<rect x="0" y="0" width="920" height="1764" rx="0" fill="#FDFCF0"/>
 <rect x="0" y="0" width="920" height="140" rx="0" fill="#FDFCF0"/>
 <text x="32" y="42" font-size="14" fill="#A44A37" font-weight="700">WFS / Shared Table · Family Cookbook Era 3</text>
 <rect x="660" y="26" width="228" height="24" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="670" y="42.2" font-size="12" fill="#6E645B" font-weight="600">Layer 2 · Cross-Cutting Patterns</text>
+<text x="774" y="42.2" font-size="12" fill="#6E645B" font-weight="600" text-anchor="middle">Layer 2 · Cross-Cutting Patterns</text>
 <text x="32" y="82" font-size="30" fill="#28231F" font-weight="700" class="heading">02  Surfaces, controls, settings &amp; recovery</text>
-<text x="32" y="112" font-size="15" fill="#6E645B" font-weight="400">Shared functional grammar reused across Home, Planner, Recipes, Capture &amp; Settings with dual-mode AA/AAA roles.</text>
+<text x="32" y="112" font-size="15" fill="#6E645B" font-weight="400">Shipped functional grammar reused across Home, Planner, Recipes, Profile &amp; Settings with dual-mode AA/AAA roles.</text>
 <line x1="32" y1="132" x2="888" y2="132" stroke="#E5DFD7" stroke-width="1"/>
+
+<!-- Section 1: Surface hierarchy -->
 <text x="32" y="166" font-size="18" fill="#28231F" font-weight="700" class="heading">1 · Surface hierarchy (crisp opaque white + flat cream · High Contrast opaque nav)</text>
 <rect x="32" y="182" width="202" height="200" rx="22" fill="#FFFFFF" filter="url(#cardShadow)"/>
 <text x="48" y="212" font-size="13.5" fill="#28231F" font-weight="700">Tier 1 · Hero Card</text>
@@ -70,28 +72,33 @@ SOFTWARE.
 <text x="48" y="266" font-size="12" fill="#A44A37" font-weight="600">#FFFFFF on #FDFCF0</text>
 <text x="48" y="286" font-size="12" fill="#6E645B" font-weight="400">rounded-[3rem] · soft shadow</text>
 <text x="48" y="360" font-size="12" fill="#4E6E52" font-weight="600">Home meal &amp; pivot</text>
+
 <rect x="250" y="182" width="202" height="200" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="266" y="212" font-size="13.5" fill="#28231F" font-weight="700">Tier 2 · Panel / Active Row</text>
-<text x="266" y="232" font-size="12" fill="#6E645B" font-weight="400">Settings, Profile, Planner</text>
+<text x="266" y="212" font-size="13.5" fill="#28231F" font-weight="700">Tier 2 · Section Panel</text>
+<text x="266" y="232" font-size="12" fill="#6E645B" font-weight="400">Profile, Settings, Groceries</text>
 <text x="266" y="266" font-size="12" fill="#A44A37" font-weight="600">#FFFFFF + border-chrome-line</text>
 <text x="266" y="286" font-size="11.5" fill="#6E645B" font-weight="400">Std #E5DFD7 · High #6E645B</text>
 <text x="266" y="360" font-size="12" fill="#6E645B" font-weight="600">Crisp High Contrast borders</text>
+
 <rect x="468" y="182" width="202" height="200" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
 <text x="484" y="212" font-size="13.5" fill="#28231F" font-weight="700">Tier 3 · Muted / Past</text>
 <text x="484" y="232" font-size="12" fill="#6E645B" font-weight="400">Past Planner days</text>
 <text x="484" y="266" font-size="12" fill="#A44A37" font-weight="600">#FDFCF0 flat · no shadow</text>
 <text x="484" y="286" font-size="12" fill="#6E645B" font-weight="400">subdued, still legible</text>
-<text x="484" y="360" font-size="12" fill="#6E645B" font-weight="600">Past days &amp; wells</text>
+<text x="484" y="360" font-size="12" fill="#6E645B" font-weight="600">Past days &amp; recessed wells</text>
+
 <rect x="686" y="182" width="202" height="200" rx="18" fill="#28231F" stroke="#28231F" stroke-width="1" fill-opacity="0.16"/>
 <rect x="698" y="204" width="178" height="166" rx="16" fill="#FDFCF0" stroke="#CFC6BC" stroke-width="1"/>
 <text x="708" y="228" font-size="13" fill="#28231F" font-weight="700">Tier 4 · Sheet &amp; Chrome</text>
 <text x="708" y="248" font-size="12" fill="#6E645B" font-weight="400">Detail / Recovery sheet</text>
 <text x="708" y="272" font-size="11.5" fill="#A44A37" font-weight="600">bg-cream over charcoal/45</text>
 <text x="708" y="290" font-size="11" fill="#6E645B" font-weight="400">High nav: opaque #FDFCF0</text>
-<rect x="708" y="310" width="103" height="24" rx="12" fill="#FDFCF0" stroke="#CFC6BC" stroke-width="1"/>
-<text x="716" y="325.85" font-size="11" fill="#28231F" font-weight="600">View Original</text>
+<rect x="708" y="308" width="108" height="24" rx="12" fill="#FDFCF0" stroke="#CFC6BC" stroke-width="1"/>
+<text x="762" y="323.85" font-size="11" fill="#28231F" font-weight="600" text-anchor="middle">View Original</text>
 <text x="708" y="354" font-size="11.5" fill="#6E645B" font-weight="400">no blur in High Contrast</text>
-<text x="32" y="420" font-size="18" fill="#28231F" font-weight="700" class="heading">2 · Action row, role-locked selection &amp; inline disclosure</text>
+
+<!-- Section 2: Action row, shared Button & role-locked selection -->
+<text x="32" y="420" font-size="18" fill="#28231F" font-weight="700" class="heading">2 · Action row, shared Button, role-locked selection &amp; inline disclosure</text>
 <rect x="32" y="436" width="416" height="134" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="50" y="462" font-size="13.5" fill="#28231F" font-weight="700">Card Action Row (min-h-14, 1px outline, inline disclosure)</text>
 <rect x="50" y="476" width="152" height="48" rx="16" fill="#B85542"/>
@@ -114,10 +121,11 @@ SOFTWARE.
 <g transform="translate(172 536) scale(0.6667)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m6 9 6 6 6-6"/>
 </g>
-<text x="206" y="550" font-size="12.5" fill="#6E645B" font-weight="400">(replaces 3D flip modals)</text>
+<text x="200" y="550" font-size="12" fill="#6E645B" font-weight="400">dated projection disclosure, min-h-12</text>
+
 <rect x="472" y="436" width="416" height="134" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="490" y="462" font-size="13.5" fill="#28231F" font-weight="700">Destructive Button Danger + Quiet Controls</text>
-<rect x="490" y="476" width="180" height="48" rx="14" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+<text x="490" y="462" font-size="13.5" fill="#28231F" font-weight="700">Shared &lt;Button&gt; (danger / secondary) &amp; Focus Ring</text>
+<rect x="490" y="476" width="184" height="48" rx="14" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
 <g transform="translate(502 492) scale(0.6667)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M10 11v6"/>
   <path d="M14 11v6"/>
@@ -126,18 +134,21 @@ SOFTWARE.
   <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
 </g>
 <text x="525" y="504.9" font-size="14" fill="#A44A37" font-weight="600">Delete permanently</text>
-<rect x="682" y="476" width="188" height="48" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="776" y="504.9" font-size="14" fill="#28231F" font-weight="600" text-anchor="middle">Keep editing</text>
-<text x="490" y="550" font-size="12" fill="#6E645B" font-weight="400">All focusable controls keep 2px outline-ink-body (#28231F / #191512) at 4px offset.</text>
+<rect x="686" y="476" width="184" height="48" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
+<text x="778" y="504.9" font-size="14" fill="#A44A37" font-weight="600" text-anchor="middle">Cancel</text>
+<text x="490" y="550" font-size="12" fill="#6E645B" font-weight="400">Focus: 2px outline-ink-body (#28231F / #191512) at 4px offset.</text>
+
+<!-- Role-locked aria-pressed choices -->
 <rect x="32" y="586" width="276" height="146" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="46" y="612" font-size="13.5" fill="#28231F" font-weight="700">Neutral · Raised White</text>
 <text x="46" y="631" font-size="11.5" fill="#6E645B" font-weight="400">Rating (semantic ink) · Stack / List</text>
 <rect x="46" y="646" width="248" height="48" rx="14" fill="#FDFCF0" stroke="#F3EFEA" stroke-width="1"/>
-<text x="86" y="675" font-size="13" fill="#6E645B" font-weight="400" text-anchor="middle">Dislike</text>
-<text x="164" y="675" font-size="13" fill="#6E645B" font-weight="400" text-anchor="middle">Like</text>
+<text x="86" y="675" font-size="13" fill="#A44A37" font-weight="600" text-anchor="middle">Dislike</text>
+<text x="164" y="675" font-size="13" fill="#4E6E52" font-weight="600" text-anchor="middle">Like</text>
 <rect x="206" y="651" width="82" height="38" rx="12" fill="#FFFFFF" filter="url(#smShadow)"/>
-<text x="247" y="675" font-size="13" fill="#A44A37" font-weight="700" text-anchor="middle">♥ Love</text>
-<text x="46" y="716" font-size="11.5" fill="#6E645B" font-weight="400">bg-white shadow-sm + semantic ink</text>
+<text x="247" y="675" font-size="13" fill="#28231F" font-weight="700" text-anchor="middle">♥ Love</text>
+<text x="46" y="716" font-size="11.5" fill="#6E645B" font-weight="400">bg-white shadow-md + semantic ink</text>
+
 <rect x="322" y="586" width="276" height="146" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="336" y="612" font-size="13.5" fill="#28231F" font-weight="700">Personal · Blush Terracotta</text>
 <text x="336" y="631" font-size="11.5" fill="#6E645B" font-weight="400">2 / 4 / 6 portions · Language · Contrast</text>
@@ -148,9 +159,10 @@ SOFTWARE.
 <rect x="504" y="646" width="78" height="48" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="543" y="675" font-size="15" fill="#28231F" font-weight="700" text-anchor="middle">6</text>
 <text x="336" y="716" font-size="11.5" fill="#6E645B" font-weight="400">bg-terracotta-50 border-hearth-line</text>
+
 <rect x="612" y="586" width="276" height="146" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="626" y="612" font-size="13.5" fill="#28231F" font-weight="700">Household · Tonal Garden</text>
-<text x="626" y="631" font-size="11.5" fill="#6E645B" font-weight="400">Mystery · Take Out · Eating out · Other plans</text>
+<text x="626" y="631" font-size="11.5" fill="#6E645B" font-weight="400">Mystery · Take Out · Eating out · Plans</text>
 <rect x="626" y="646" width="248" height="48" rx="14" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
 <g transform="translate(638 660) scale(0.7500)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M16 10a4 4 0 0 1-8 0"/>
@@ -161,12 +173,16 @@ SOFTWARE.
 <g transform="translate(842 661) scale(0.7500)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M20 6 9 17l-5-5"/>
 </g>
-<text x="626" y="716" font-size="11.5" fill="#6E645B" font-weight="400">bg-sage-50 border-garden-line text-garden-ink + ✓</text>
+<text x="626" y="716" font-size="11.5" fill="#6E645B" font-weight="400">bg-sage/10 border-garden-line + Check</text>
+
+<!-- Section 3: Profile, Settings & binary controls -->
 <text x="32" y="772" font-size="18" fill="#28231F" font-weight="700" class="heading">3 · Profile (Contrast below Language), Settings &amp; switches vs. checkboxes</text>
+
+<!-- Profile card -->
 <rect x="32" y="788" width="408" height="360" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="50" y="818" font-size="19" fill="#28231F" font-weight="700" class="heading">Table’s Set! · Profile</text>
-<rect x="384" y="796" width="40" height="40" rx="20" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
-<g transform="translate(394 806) scale(0.8333)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="382" y="796" width="40" height="40" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<g transform="translate(392 806) scale(0.8333)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/>
   <circle cx="12" cy="12" r="3"/>
 </g>
@@ -182,7 +198,7 @@ SOFTWARE.
 <g transform="translate(390 866) scale(0.7500)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m6 9 6 6 6-6"/>
 </g>
-<text x="50" y="936" font-size="13" fill="#28231F" font-weight="600">Language (persists to member)</text>
+<text x="50" y="936" font-size="13" fill="#28231F" font-weight="600">Language (persists to active member)</text>
 <rect x="50" y="948" width="180" height="48" rx="14" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
 <g transform="translate(74 963) scale(0.6667)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M20 6 9 17l-5-5"/>
@@ -190,7 +206,7 @@ SOFTWARE.
 <text x="148" y="977" font-size="14" fill="#A44A37" font-weight="700" text-anchor="middle">English</text>
 <rect x="242" y="948" width="180" height="48" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="332" y="977" font-size="14" fill="#28231F" font-weight="600" text-anchor="middle">French</text>
-<text x="50" y="1024" font-size="13" fill="#28231F" font-weight="600">Contrast (directly below Language · unset tracks OS)</text>
+<text x="50" y="1024" font-size="13" fill="#28231F" font-weight="600">Contrast (below Language · unset tracks OS)</text>
 <rect x="50" y="1036" width="180" height="48" rx="14" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
 <g transform="translate(74 1051) scale(0.6667)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M20 6 9 17l-5-5"/>
@@ -200,24 +216,37 @@ SOFTWARE.
 <text x="332" y="1065" font-size="14" fill="#28231F" font-weight="600" text-anchor="middle">High contrast</text>
 <text x="50" y="1108" font-size="12" fill="#6E645B" font-weight="400">FR: Standard / Contraste élevé · flash-free data-contrast boot</text>
 <text x="50" y="1128" font-size="12" fill="#6E645B" font-weight="400">and immediate member-switch updates without cross-member leak.</text>
-<rect x="32" y="1164" width="408" height="224" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="50" y="1194" font-size="15" fill="#28231F" font-weight="700">Binary Controls · When to use which</text>
-<rect x="50" y="1208" width="372" height="72" rx="14" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
-<text x="64" y="1236" font-size="13.5" fill="#28231F" font-weight="700">Immediate Switch (role=&quot;switch&quot;)</text>
-<text x="64" y="1257" font-size="12" fill="#6E645B" font-weight="400">56x32 pill track · Ask the Family, Previews</text>
-<rect x="352" y="1228" width="56" height="32" rx="16" fill="#4E6E52"/>
-<circle cx="392" cy="1244" r="12" fill="#FFFFFF"/>
-<rect x="50" y="1294" width="372" height="72" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
-<rect x="66" y="1318" width="22" height="22" rx="6" fill="#B85542"/>
-<g transform="translate(69 1321) scale(0.6667)" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+
+<!-- Binary Controls card -->
+<rect x="32" y="1164" width="408" height="248" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="50" y="1192" font-size="15" fill="#28231F" font-weight="700">Binary Controls · Switches vs. Checkboxes</text>
+
+<rect x="50" y="1206" width="372" height="58" rx="14" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+<text x="64" y="1230" font-size="13" fill="#28231F" font-weight="700">Ask the Family (pill toggle · immediate)</text>
+<text x="64" y="1250" font-size="11.5" fill="#6E645B" font-weight="400">aria-pressed · 56x32 bg-garden-fill track</text>
+<rect x="352" y="1219" width="56" height="32" rx="16" fill="#4E6E52"/>
+<circle cx="392" cy="1235" r="12" fill="#FFFFFF"/>
+
+<rect x="50" y="1274" width="372" height="58" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<text x="64" y="1298" font-size="13" fill="#28231F" font-weight="700">Preview features (role=&quot;switch&quot; · immediate)</text>
+<text x="64" y="1318" font-size="11.5" fill="#6E645B" font-weight="400">44px native switch (accent-hearth-fill) + inline save</text>
+<rect x="378" y="1287" width="30" height="30" rx="8" fill="#B85542"/>
+<g transform="translate(385 1294) scale(0.6667)" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
   <path d="M20 6 9 17l-5-5"/>
 </g>
-<text x="100" y="1322" font-size="13.5" fill="#28231F" font-weight="700">Form Checkbox (Use family size)</text>
-<text x="100" y="1343" font-size="12" fill="#6E645B" font-weight="400">22-24px box inside &gt;= 48px label row (before Save)</text>
-<rect x="460" y="788" width="428" height="600" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+
+<rect x="50" y="1342" width="372" height="58" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<rect x="66" y="1359" width="24" height="24" rx="6" fill="#B85542"/>
+<g transform="translate(70 1363) scale(0.6667)" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 6 9 17l-5-5"/>
+</g>
+<text x="102" y="1367" font-size="13" fill="#28231F" font-weight="700">Form Checkbox (Use family size / Fixed)</text>
+<text x="102" y="1387" font-size="11.5" fill="#6E645B" font-weight="400">24px box inside &gt;= 48px row · commits on Save</text>
+
+<!-- Settings Section Stack card (opaque bg-white shipped, no migration badge) -->
+<rect x="460" y="788" width="428" height="624" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
 <text x="478" y="818" font-size="18" fill="#28231F" font-weight="700" class="heading">Settings · Section Stack</text>
-<rect x="707" y="798" width="163" height="24" rx="12" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
-<text x="717" y="814.2" font-size="12" fill="#856400" font-weight="600">Opaque bg-white</text>
+
 <rect x="478" y="836" width="392" height="68" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
 <g transform="translate(494 859) scale(0.7500)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="M14 17H5"/>
@@ -225,51 +254,67 @@ SOFTWARE.
   <circle cx="17" cy="17" r="3"/>
   <circle cx="7" cy="7" r="3"/>
 </g>
-<text x="522" y="864" font-size="14" fill="#28231F" font-weight="700">1 · Manage family</text>
-<text x="522" y="886" font-size="12" fill="#6E645B" font-weight="400">Member roster, add person, invite link trigger</text>
-<rect x="478" y="920" width="392" height="168" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<text x="522" y="864" font-size="14" fill="#28231F" font-weight="700">1 · Manage Family</text>
+<text x="522" y="886" font-size="12" fill="#6E645B" font-weight="400">Member roster, edit/add person, invite link trigger</text>
+
+<rect x="478" y="920" width="392" height="176" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
 <text x="494" y="948" font-size="14" fill="#28231F" font-weight="700">2 · Usual portions (total incl. leftovers)</text>
 <rect x="494" y="964" width="22" height="22" rx="6" fill="#FFFFFF" stroke="#CFC6BC" stroke-width="1.5"/>
 <text x="524" y="980" font-size="13" fill="#28231F" font-weight="400">Use family size  (checkbox)</text>
-<rect x="494" y="1002" width="150" height="44" rx="10" fill="#FFFFFF" stroke="#CFC6BC" stroke-width="1"/>
-<text x="510" y="1029" font-size="13.5" fill="#28231F" font-weight="600">4 portions</text>
-<rect x="656" y="1002" width="198" height="44" rx="12" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
-<text x="755" y="1028.55" font-size="13" fill="#A44A37" font-weight="600" text-anchor="middle">Save usual portions</text>
-<text x="494" y="1069" font-size="11.5" fill="#6E645B" font-weight="400">Keeps draft + Review button if save ACK is uncertain.</text>
-<rect x="478" y="1104" width="392" height="80" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
-<text x="494" y="1134" font-size="14" fill="#28231F" font-weight="700">3 · Failed captures (only shown when non-empty)</text>
-<text x="494" y="1158" font-size="12" fill="#6E645B" font-weight="400">&gt;= 12px sentence copy + 48px Retry &amp; Clear</text>
-<rect x="478" y="1200" width="392" height="168" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
-<text x="494" y="1228" font-size="14" fill="#28231F" font-weight="700">4 · Preview features</text>
-<rect x="774" y="1210" width="48" height="24" rx="12" fill="#FFF7CC"/>
-<text x="790" y="1226.2" font-size="12" fill="#856400" font-weight="600">2</text>
-<g transform="translate(836 1213) scale(0.7500)" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="494" y="1002" width="136" height="44" rx="10" fill="#FFFFFF" stroke="#CFC6BC" stroke-width="1"/>
+<text x="510" y="1029" font-size="13.5" fill="#28231F" font-weight="600">4</text>
+<rect x="642" y="1002" width="212" height="44" rx="12" fill="#B85542"/>
+<text x="748" y="1028.55" font-size="13" fill="#FDFCF0" font-weight="600" text-anchor="middle">Save usual portions</text>
+<text x="494" y="1068" font-size="11.5" fill="#6E645B" font-weight="400">Auto-reads fresh baseline on conflict or resume; keeps</text>
+<text x="494" y="1084" font-size="11.5" fill="#6E645B" font-weight="400">draft inside an inline Hearth recovery card (no Review gate).</text>
+
+<rect x="478" y="1112" width="392" height="84" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+<text x="494" y="1142" font-size="14" fill="#28231F" font-weight="700">3 · Failed Captures (shown only when non-empty)</text>
+<text x="494" y="1166" font-size="12" fill="#6E645B" font-weight="400">&gt;= 12px reason + preview · 48px Hearth Retry &amp; Clear</text>
+
+<rect x="478" y="1212" width="392" height="182" rx="14" fill="#FDFCF0" stroke="#FFE666" stroke-width="1"/>
+<text x="494" y="1240" font-size="14" fill="#28231F" font-weight="700">4 · Preview features (opt-in)</text>
+<rect x="786" y="1222" width="36" height="24" rx="12" fill="#FFF7CC" stroke="#FFE666" stroke-width="1"/>
+<text x="804" y="1238.2" font-size="12" fill="#856400" font-weight="700" text-anchor="middle">2</text>
+<g transform="translate(836 1225) scale(0.7500)" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path d="m6 9 6 6 6-6"/>
 </g>
-<rect x="494" y="1256" width="360" height="72" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
-<text x="510" y="1286" font-size="13" fill="#28231F" font-weight="600">Opt-in feature name</text>
-<text x="510" y="1308" font-size="11.5" fill="#6E645B" font-weight="400">Saving / error stays inline</text>
-<rect x="786" y="1276" width="56" height="32" rx="16" fill="#B85542"/>
-<circle cx="826" cy="1292" r="12" fill="#FFFFFF"/>
-<text x="32" y="1428" font-size="18" fill="#28231F" font-weight="700" class="heading">4 · Honest celebration (Cooled Herb) &amp; cross-app recovery</text>
-<rect x="32" y="1444" width="416" height="224" rx="28" fill="url(#herbGrad)"/>
-<rect x="210" y="1464" width="60" height="60" rx="30" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.45"/>
-<g transform="translate(224 1478) scale(1.3333)" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+<rect x="494" y="1264" width="360" height="80" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="510" y="1292" font-size="13" fill="#28231F" font-weight="700">Opt-in feature name</text>
+<text x="510" y="1312" font-size="11.5" fill="#6E645B" font-weight="400">role=&quot;switch&quot; · inline Saving… / Couldn&apos;t save</text>
+<text x="510" y="1330" font-size="11.5" fill="#A44A37" font-weight="600">Try again inline if request fails</text>
+<rect x="808" y="1286" width="32" height="32" rx="8" fill="#B85542"/>
+<g transform="translate(816 1294) scale(0.6667)" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
   <path d="M20 6 9 17l-5-5"/>
 </g>
-<text x="240" y="1556" font-size="24" fill="#FFFFFF" font-weight="700" class="heading" text-anchor="middle">Enjoy your meal!</text>
-<text x="240" y="1582" font-size="14" fill="#FDFCF0" font-weight="500" text-anchor="middle">Recipe marked as cooked</text>
-<rect x="130" y="1602" width="220" height="48" rx="16" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1"/>
-<text x="240" y="1631.25" font-size="15" fill="#4E6E52" font-weight="600" text-anchor="middle">Dismiss</text>
-<rect x="472" y="1444" width="416" height="224" rx="20" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
-<text x="492" y="1476" font-size="16" fill="#28231F" font-weight="700" class="heading">Uncertain Save &amp; Departure Recovery</text>
-<text x="492" y="1502" font-size="12.5" fill="#6E645B" font-weight="400">Used consistently in SkipRecovery, Portions, Usual portions &amp; Detail:</text>
-<text x="492" y="1528" font-size="13" fill="#28231F" font-weight="400">• Never discard user edits or claim saved before ACK.</text>
-<text x="492" y="1550" font-size="13" fill="#28231F" font-weight="400">• Name completed vs. unconfirmed stage before retry.</text>
-<rect x="492" y="1570" width="184" height="48" rx="14" fill="#B85542"/>
-<text x="584" y="1598.9" font-size="14" fill="#FDFCF0" font-weight="600" text-anchor="middle">Save &amp; continue</text>
-<rect x="688" y="1570" width="180" height="48" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
-<text x="778" y="1598.9" font-size="14" fill="#A44A37" font-weight="600" text-anchor="middle">Keep editing</text>
-<text x="492" y="1646" font-size="12.5" fill="#6E645B" font-weight="400">Discard changes (explicit secondary text target, min-h-12)</text>
-<text x="32" y="1702" font-size="13" fill="#6E645B" font-weight="400">Companion domain boards apply these exact patterns: 03 Supper Plan &amp; Week · 04 Recipe Cards &amp; Detail.</text>
+<text x="494" y="1378" font-size="11.5" fill="#6E645B" font-weight="400">Build version renders below Settings stack when configured.</text>
+
+<!-- Section 4: Cooled Herb celebration & pull-forward inline recovery -->
+<text x="32" y="1452" font-size="18" fill="#28231F" font-weight="700" class="heading">4 · Honest celebration (Cooled Herb) &amp; pull-forward inline recovery</text>
+<rect x="32" y="1468" width="416" height="236" rx="28" fill="url(#herbGrad)"/>
+<rect x="210" y="1488" width="60" height="60" rx="30" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-opacity="0.45"/>
+<g transform="translate(224 1502) scale(1.3333)" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 6 9 17l-5-5"/>
+</g>
+<text x="240" y="1580" font-size="24" fill="#FFFFFF" font-weight="700" class="heading" text-anchor="middle">Enjoy your meal!</text>
+<text x="240" y="1606" font-size="14" fill="#FDFCF0" font-weight="500" text-anchor="middle">Recipe marked as cooked</text>
+<rect x="130" y="1628" width="220" height="48" rx="16" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1"/>
+<text x="240" y="1657.25" font-size="15" fill="#4E6E52" font-weight="600" text-anchor="middle">Dismiss</text>
+
+<rect x="472" y="1468" width="416" height="236" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+<text x="492" y="1496" font-size="15.5" fill="#28231F" font-weight="700" class="heading">Inline Hearth &amp; Garden Recovery (Pull-Forward)</text>
+
+<rect x="492" y="1508" width="376" height="104" rx="14" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+<text x="506" y="1530" font-size="13" fill="#A44A37" font-weight="700">Could not confirm your save · Hearth recovery card</text>
+<text x="506" y="1548" font-size="11.5" fill="#28231F" font-weight="400">Auto-reads fresh baseline; your edits stay intact below.</text>
+<rect x="506" y="1558" width="144" height="42" rx="12" fill="#B85542"/>
+<text x="578" y="1583.5" font-size="13" fill="#FDFCF0" font-weight="600" text-anchor="middle">Save portions</text>
+<text x="666" y="1583.5" font-size="13" fill="#A44A37" font-weight="600">Discard changes (ghost)</text>
+
+<rect x="492" y="1622" width="376" height="44" rx="14" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+<text x="506" y="1649" font-size="12" fill="#4E6E52" font-weight="600">Garden status · Saved / restored (auto-dismisses ~5s)</text>
+
+<text x="492" y="1688" font-size="11.5" fill="#6E645B" font-weight="400">Valid Portions auto-save on exit; Cook&apos;s Mode auto-applies at 0 progress.</text>
+
+<text x="32" y="1736" font-size="13" fill="#6E645B" font-weight="400">Companion domain boards apply these exact patterns: 03 Supper Plan &amp; Week · 04 Recipe Cards &amp; Detail.</text>
 </svg>

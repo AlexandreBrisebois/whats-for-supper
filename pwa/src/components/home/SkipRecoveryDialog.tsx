@@ -109,13 +109,13 @@ export function SkipRecoveryDialog({
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         className={cn(
-          'relative w-full max-w-sm max-h-[calc(100dvh-3rem-env(safe-area-inset-bottom))] overflow-y-auto shadow-2xl border border-charcoal-200 bg-cream',
+          'relative w-full max-w-sm max-h-[calc(100dvh-3rem-env(safe-area-inset-bottom))] overflow-y-auto shadow-2xl border border-chrome-line bg-cream',
           replacement ? 'rounded-[2rem] p-6' : 'rounded-[2.5rem] p-8'
         )}
       >
         <div className={cn('flex justify-between items-center', replacement ? 'mb-5' : 'mb-8')}>
           <h2
-            className="font-heading text-xs font-semibold text-terracotta-700"
+            className="font-heading text-xs font-semibold text-hearth-ink"
             data-testid="recovery-dialog-title"
           >
             {t('home.recoveryFlow', 'Plan B')}
@@ -126,7 +126,7 @@ export function SkipRecoveryDialog({
             data-testid="recovery-close"
             aria-label={t('common.close', 'Close')}
             title={t('common.close', 'Close')}
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-white border border-charcoal-200 text-charcoal-600 hover:bg-charcoal-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta disabled:opacity-40 transition-colors"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-white border border-chrome-line text-ink-muted hover:bg-charcoal-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-40 transition-colors"
           >
             <X size={20} />
           </button>
@@ -134,7 +134,7 @@ export function SkipRecoveryDialog({
 
         <div className="relative overflow-hidden" aria-busy={pending}>
           {pending && !replacement && (
-            <p role="status" className="text-sm text-charcoal">
+            <p role="status" className="text-sm text-ink-body">
               {t('planning.replacement.movingTitle', 'Updating your plan')}
             </p>
           )}
@@ -145,8 +145,8 @@ export function SkipRecoveryDialog({
                   className={cn(
                     'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
                     replacement.phase === 'refresh' && !confirmAbandon
-                      ? 'bg-sage/15 text-charcoal'
-                      : 'bg-terracotta/10 text-terracotta-600'
+                      ? 'bg-sage/15 text-ink-body'
+                      : 'bg-terracotta/10 text-hearth-ink'
                   )}
                 >
                   <FeedbackIcon
@@ -155,7 +155,7 @@ export function SkipRecoveryDialog({
                     className={pending ? 'animate-spin motion-reduce:animate-none' : undefined}
                   />
                 </span>
-                <h3 className="font-heading text-2xl font-bold leading-tight tracking-tight text-charcoal">
+                <h3 className="font-heading text-2xl font-bold leading-tight tracking-tight text-ink-body">
                   {replacementTitle}
                 </h3>
               </div>
@@ -163,7 +163,7 @@ export function SkipRecoveryDialog({
                 ref={feedbackRef}
                 tabIndex={-1}
                 role={pending ? 'status' : 'alert'}
-                className="text-sm leading-relaxed text-charcoal/80 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-terracotta"
+                className="text-sm leading-relaxed text-ink-muted rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
                 data-testid="replacement-feedback"
               >
                 {confirmAbandon
@@ -179,18 +179,18 @@ export function SkipRecoveryDialog({
                   : replacement.message}
               </p>
               {replacement.original && (
-                <p className="text-sm text-charcoal/80">
+                <p className="text-sm text-ink-muted">
                   {describeOriginalDisposition(replacement.original)}
                 </p>
               )}
               {replacement.recipeName && (
-                <div className="flex items-center gap-3 rounded-2xl border border-charcoal/10 bg-white/60 px-4 py-3">
-                  <Utensils size={18} className="shrink-0 text-terracotta" aria-hidden="true" />
+                <div className="flex items-center gap-3 rounded-2xl border border-charcoal/10 bg-white px-4 py-3">
+                  <Utensils size={18} className="shrink-0 text-hearth-ink" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-xs font-medium text-charcoal/70">
+                    <p className="text-xs font-medium text-ink-muted">
                       {t('planning.replacement.newMeal', 'Your new meal')}
                     </p>
-                    <p className="mt-0.5 break-words font-heading text-base font-semibold text-charcoal">
+                    <p className="mt-0.5 break-words font-heading text-base font-semibold text-ink-body">
                       {replacement.recipeName}
                     </p>
                   </div>
@@ -251,10 +251,10 @@ export function SkipRecoveryDialog({
                   className="flex flex-col gap-6"
                 >
                   <div className="flex flex-col gap-2">
-                    <h3 className="text-3xl font-heading font-black text-charcoal leading-none tracking-tighter">
+                    <h3 className="text-3xl font-heading font-black text-ink-body leading-none tracking-tighter">
                       {t('home.backupPlanTitle', "What's the backup plan?")}
                     </h3>
-                    <p className="text-sm text-charcoal-600 font-medium">
+                    <p className="text-sm text-ink-muted font-medium">
                       {t(
                         'home.backupPlanSubtitle',
                         'Plans changed. We get it. What are we eating instead?'
@@ -269,16 +269,16 @@ export function SkipRecoveryDialog({
                         onAction('order_in');
                       }}
                       data-testid="recovery-action-order-in"
-                      className="flex w-full items-center gap-4 p-5 rounded-[2rem] border border-charcoal-200 bg-white hover:border-terracotta-300 hover:bg-terracotta-50 transition-all text-left group"
+                      className="flex w-full items-center gap-4 p-5 rounded-[2rem] border border-chrome-line bg-white hover:border-hearth-line hover:bg-terracotta-50 transition-all text-left group"
                     >
-                      <div className="h-14 w-14 rounded-2xl bg-terracotta-50 text-terracotta-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <div className="h-14 w-14 rounded-2xl bg-terracotta-50 text-hearth-ink flex items-center justify-center group-hover:scale-105 transition-transform">
                         <NonCookingIcon kind="order_in" size={28} />
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col items-start text-left">
-                        <span className="font-heading text-xl font-black text-charcoal tracking-tight">
+                        <span className="font-heading text-xl font-black text-ink-body tracking-tight">
                           {t('home.orderingIn', 'Take Out')}
                         </span>
-                        <span className="text-xs font-medium leading-snug text-charcoal-600">
+                        <span className="text-xs font-medium leading-snug text-ink-muted">
                           {t('home.takeoutOrDelivery', 'Takeout or delivery')}
                         </span>
                       </div>
@@ -290,16 +290,16 @@ export function SkipRecoveryDialog({
                         onAction('pick_else');
                       }}
                       data-testid="recovery-action-pick-else"
-                      className="flex w-full items-center gap-4 p-5 rounded-[2rem] border border-charcoal-200 bg-white hover:border-sage-300 hover:bg-sage-50 transition-all text-left group"
+                      className="flex w-full items-center gap-4 p-5 rounded-[2rem] border border-chrome-line bg-white hover:border-garden-line hover:bg-sage-50 transition-all text-left group"
                     >
-                      <div className="h-14 w-14 rounded-2xl bg-sage-50 text-sage-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <div className="h-14 w-14 rounded-2xl bg-sage-50 text-garden-ink flex items-center justify-center group-hover:scale-105 transition-transform">
                         <Utensils size={28} />
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col items-start text-left">
-                        <span className="font-heading text-xl font-black text-charcoal tracking-tight">
+                        <span className="font-heading text-xl font-black text-ink-body tracking-tight">
                           {t('home.pickSomethingElse', 'Suggestions')}
                         </span>
-                        <span className="text-xs font-medium leading-snug text-charcoal-600">
+                        <span className="text-xs font-medium leading-snug text-ink-muted">
                           {t('home.searchRecipes', 'Browse up to 5 recipe suggestions')}
                         </span>
                       </div>
@@ -308,16 +308,16 @@ export function SkipRecoveryDialog({
                       disabled={pending}
                       onClick={() => onAction('search')}
                       data-testid="recovery-action-search"
-                      className="flex w-full items-center gap-4 rounded-[2rem] border border-charcoal-200 bg-white p-5 text-left transition-all hover:border-terracotta-300 hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+                      className="flex w-full items-center gap-4 rounded-[2rem] border border-chrome-line bg-white p-5 text-left transition-all hover:border-hearth-line hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                     >
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-terracotta-50 text-terracotta-700">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-terracotta-50 text-hearth-ink">
                         <Search size={28} aria-hidden="true" />
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col items-start text-left">
-                        <span className="font-heading text-xl font-black tracking-tight text-charcoal">
+                        <span className="font-heading text-xl font-black tracking-tight text-ink-body">
                           {t('home.searchChoice', 'Search')}
                         </span>
-                        <span className="text-xs font-medium leading-snug text-charcoal-600">
+                        <span className="text-xs font-medium leading-snug text-ink-muted">
                           {t('home.searchChoiceDescription', 'Find a recipe in your library')}
                         </span>
                       </div>
@@ -325,13 +325,13 @@ export function SkipRecoveryDialog({
                     {searchError && (
                       <div
                         role="alert"
-                        className="rounded-2xl bg-terracotta-50 border border-terracotta-200 p-4 text-sm text-charcoal"
+                        className="rounded-2xl bg-terracotta-50 border border-hearth-line p-4 text-sm text-ink-body"
                       >
                         <p>{searchError}</p>
                         <button
                           type="button"
                           onClick={onRetrySearch}
-                          className="mt-2 min-h-12 font-semibold text-terracotta-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+                          className="mt-2 min-h-12 font-semibold text-hearth-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                         >
                           {t('errors.tryAgain', 'Try again')}
                         </button>
@@ -348,7 +348,7 @@ export function SkipRecoveryDialog({
                   className="flex flex-col gap-6"
                 >
                   <div className="flex flex-col gap-2">
-                    <h3 className="text-3xl font-heading font-black text-charcoal leading-none tracking-tighter">
+                    <h3 className="text-3xl font-heading font-black text-ink-body leading-none tracking-tighter">
                       {source
                         ? tWithVars(
                             'planning.replacement.originalTitle',
@@ -357,7 +357,7 @@ export function SkipRecoveryDialog({
                           )
                         : t('home.tonightRecipeTitle', "What about tonight's recipe?")}
                     </h3>
-                    <p className="text-sm text-charcoal-600 font-medium">
+                    <p className="text-sm text-ink-muted font-medium">
                       {t(
                         'planning.replacement.chooseDisposition',
                         'Choose where to keep the original meal before saving your new recipe.'
@@ -370,21 +370,21 @@ export function SkipRecoveryDialog({
                       disabled={pending}
                       onClick={() => onAction('tomorrow')}
                       data-testid="recovery-action-tomorrow"
-                      className="flex w-full items-center justify-between p-5 rounded-[2rem] border border-charcoal-200 bg-white hover:border-terracotta-300 hover:bg-terracotta-50 transition-all text-left group"
+                      className="flex w-full items-center justify-between p-5 rounded-[2rem] border border-chrome-line bg-white hover:border-hearth-line hover:bg-terracotta-50 transition-all text-left group"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-terracotta-50 text-terracotta-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <div className="h-12 w-12 rounded-2xl bg-terracotta-50 text-hearth-ink flex items-center justify-center group-hover:scale-105 transition-transform">
                           <ArrowRight size={24} />
                         </div>
                         <div className="flex flex-col items-start text-left">
-                          <span className="font-heading text-lg font-black text-charcoal tracking-tight">
+                          <span className="font-heading text-lg font-black text-ink-body tracking-tight">
                             {source
                               ? tWithVars('planning.replacement.moveDate', 'Move to {{date}}', {
                                   date: followingDate,
                                 })
                               : t('home.moveTomorrow', 'Move to Tomorrow')}
                           </span>
-                          <span className="text-xs font-medium text-charcoal-600">
+                          <span className="text-xs font-medium text-ink-muted">
                             {t(
                               'planning.replacement.tomorrowConsequence',
                               'Moves following meals forward as needed'
@@ -392,7 +392,7 @@ export function SkipRecoveryDialog({
                           </span>
                         </div>
                       </div>
-                      <div className="h-8 w-8 rounded-full bg-charcoal-100 flex items-center justify-center text-charcoal-500 group-hover:bg-terracotta-50 group-hover:text-terracotta-700 transition-colors">
+                      <div className="h-8 w-8 rounded-full bg-charcoal-100 flex items-center justify-center text-ink-muted group-hover:bg-terracotta-50 group-hover:text-hearth-ink transition-colors">
                         <Calendar size={16} />
                       </div>
                     </button>
@@ -401,17 +401,17 @@ export function SkipRecoveryDialog({
                       disabled={pending}
                       onClick={() => onAction('next_week')}
                       data-testid="recovery-action-next-week"
-                      className="flex w-full items-center justify-between p-5 rounded-[2rem] border border-charcoal-200 bg-white hover:border-sage-300 hover:bg-sage-50 transition-all text-left group"
+                      className="flex w-full items-center justify-between p-5 rounded-[2rem] border border-chrome-line bg-white hover:border-garden-line hover:bg-sage-50 transition-all text-left group"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-sage-50 text-sage-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <div className="h-12 w-12 rounded-2xl bg-sage-50 text-garden-ink flex items-center justify-center group-hover:scale-105 transition-transform">
                           <RefreshCw size={24} />
                         </div>
                         <div className="flex flex-col items-start text-left">
-                          <span className="font-heading text-lg font-black text-charcoal tracking-tight">
+                          <span className="font-heading text-lg font-black text-ink-body tracking-tight">
                             {t('home.saveForNextWeek', 'Save for Next Week')}
                           </span>
-                          <span className="text-xs font-medium text-charcoal-600">
+                          <span className="text-xs font-medium text-ink-muted">
                             {t(
                               'planning.replacement.nextWeekConsequence',
                               'First open day from the following week; later if full'
@@ -419,7 +419,7 @@ export function SkipRecoveryDialog({
                           </span>
                         </div>
                       </div>
-                      <div className="h-8 w-8 rounded-full bg-charcoal-100 flex items-center justify-center text-charcoal-500 group-hover:bg-sage-50 group-hover:text-sage-700 transition-colors">
+                      <div className="h-8 w-8 rounded-full bg-charcoal-100 flex items-center justify-center text-ink-muted group-hover:bg-sage-50 group-hover:text-garden-ink transition-colors">
                         <RefreshCw size={16} />
                       </div>
                     </button>
@@ -428,20 +428,20 @@ export function SkipRecoveryDialog({
                       disabled={pending}
                       onClick={() => onAction('drop')}
                       data-testid="recovery-action-drop"
-                      className="flex w-full items-center gap-4 p-5 rounded-[2rem] border border-charcoal-200 bg-white hover:bg-charcoal-100 transition-all text-left group"
+                      className="flex w-full items-center gap-4 p-5 rounded-[2rem] border border-chrome-line bg-white hover:bg-charcoal-100 transition-all text-left group"
                     >
-                      <div className="h-12 w-12 rounded-2xl bg-charcoal-100 text-charcoal-600 flex items-center justify-center group-hover:text-charcoal transition-colors">
+                      <div className="h-12 w-12 rounded-2xl bg-charcoal-100 text-ink-muted flex items-center justify-center group-hover:text-ink-body transition-colors">
                         <Trash2 size={24} />
                       </div>
                       <div className="flex flex-col items-start text-left">
-                        <span className="font-heading text-lg font-black text-charcoal tracking-tight">
+                        <span className="font-heading text-lg font-black text-ink-body tracking-tight">
                           {source
                             ? tWithVars('planning.replacement.removeDate', 'Remove from {{date}}', {
                                 date: sourceDate,
                               })
                             : t('home.dropTonight', 'Just Drop Tonight')}
                         </span>
-                        <span className="text-xs font-medium text-charcoal-600">
+                        <span className="text-xs font-medium text-ink-muted">
                           {t(
                             'planning.replacement.dropConsequence',
                             'Keeps the recipe in your library'

@@ -8,7 +8,8 @@ export type VisualViolationRule =
   | 'white-on-base-sage'
   | 'bare-ochre-or-sage-text'
   | 'micro-typography-below-12px'
-  | 'faint-charcoal-copy';
+  | 'faint-charcoal-copy'
+  | 'raw-non-semantic-role';
 
 export interface VisualViolation {
   file: string;
@@ -63,6 +64,12 @@ function scanLine(file: string, lineNumber: number, line: string): VisualViolati
 
   for (const match of line.matchAll(/(?<![\w-])text-charcoal\/(?:20|25|30|35|40)(?![\w-])/g)) {
     hits.push({ file, line: lineNumber, rule: 'faint-charcoal-copy', token: match[0] });
+  }
+
+  for (const match of line.matchAll(
+    /(?<![\w-])(?:text-charcoal(?:-[4-9]00|\/(?:55|60|70|75|80))?|outline-charcoal|bg-terracotta|text-terracotta(?:-[6-8]00)?|text-sage-(?:600|700|800|900)|text-ochre-(?:600|700|800|900)|border-charcoal-(?:200|300))(?![\w-/])|(?<![\w-])bg-sage-(?:600|700)(?![\w-])/g
+  )) {
+    hits.push({ file, line: lineNumber, rule: 'raw-non-semantic-role', token: match[0] });
   }
 
   return hits;
@@ -194,9 +201,21 @@ describe('Family Cookbook visual contract scanner', () => {
       },
       {
         file: 'src/components/Sample.tsx',
+        line: 3,
+        rule: 'raw-non-semantic-role',
+        token: 'text-charcoal',
+      },
+      {
+        file: 'src/components/Sample.tsx',
         line: 4,
         rule: 'opaque-ochre-control-fill',
         token: 'bg-ochre-400',
+      },
+      {
+        file: 'src/components/Sample.tsx',
+        line: 4,
+        rule: 'raw-non-semantic-role',
+        token: 'text-ochre-900',
       },
       {
         file: 'src/components/Sample.tsx',
@@ -243,14 +262,31 @@ describe('Family Cookbook visual contract scanner', () => {
     ]);
   });
 
+  it('flags raw non-semantic palette classes that bypass dual-mode role tokens', () => {
+    const raw =
+      'className="text-charcoal text-charcoal-600 outline-charcoal bg-terracotta text-terracotta-700 bg-sage-700 text-sage-800 text-ochre-800 border-charcoal-200"';
+    const violations = scanSource('src/components/Legacy.tsx', raw);
+    expect(violations.map((v) => [v.rule, v.token])).toEqual([
+      ['raw-non-semantic-role', 'text-charcoal'],
+      ['raw-non-semantic-role', 'text-charcoal-600'],
+      ['raw-non-semantic-role', 'outline-charcoal'],
+      ['raw-non-semantic-role', 'bg-terracotta'],
+      ['raw-non-semantic-role', 'text-terracotta-700'],
+      ['raw-non-semantic-role', 'bg-sage-700'],
+      ['raw-non-semantic-role', 'text-sage-800'],
+      ['raw-non-semantic-role', 'text-ochre-800'],
+      ['raw-non-semantic-role', 'border-charcoal-200'],
+    ]);
+  });
+
   it('permits compliant Era 3 role-locked pairings and >= 12px typography without false positives', () => {
     const cleanEra3 = [
-      'const primary = "bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700";',
-      'const sunlight = "bg-ochre-50 bg-ochre-100 hover:bg-ochre-200 text-ochre-800 border-ochre-300";',
-      'const sunlightAmbient = "bg-ochre/10 border-ochre/20 bg-white text-ochre-800";',
-      'const garden = "bg-sage-50 text-sage-800 bg-sage-700 text-white bg-sage/15 text-sage-900";',
-      'const destructive = "bg-terracotta-50 text-terracotta-700 border-terracotta-200";',
-      'const type = "text-xs text-[12px] text-charcoal text-charcoal-600";',
+      'const primary = "bg-hearth-fill text-cream-100 hover:bg-hearth-fill-hover active:bg-hearth-fill-active";',
+      'const sunlight = "bg-ochre-50 bg-ochre-100 hover:bg-ochre-200 text-sunlight-ink border-sunlight-line";',
+      'const sunlightAmbient = "bg-ochre/10 border-ochre/20 bg-white text-sunlight-ink";',
+      'const garden = "bg-sage-50 text-garden-ink bg-garden-fill text-white bg-sage/15 border-garden-line";',
+      'const destructive = "bg-terracotta-50 text-hearth-ink border-hearth-line";',
+      'const type = "text-xs text-[12px] text-ink-body text-ink-muted border-chrome-line outline-ink-body bg-charcoal-200 text-charcoal/10";',
     ].join('\n');
 
     expect(scanSource('src/components/CleanEra3.tsx', cleanEra3)).toEqual([]);
@@ -266,7 +302,7 @@ describe('Family Cookbook visual contract scanner', () => {
 
     expect(
       evaluateRatchet(
-        { 'src/components/OldCard.tsx': '<button className="bg-terracotta text-cream-100" />' },
+        { 'src/components/OldCard.tsx': '<button className="bg-hearth-fill text-cream-100" />' },
         { 'src/components/OldCard.tsx': 2 }
       )[0]
     ).toContain('Remove it from LEGACY_ERA_ALLOWLIST');

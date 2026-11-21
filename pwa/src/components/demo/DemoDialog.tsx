@@ -74,7 +74,7 @@ export function DemoDialog({
         event.preventDefault();
         dismiss();
       }}
-      className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[calc(100dvh-2rem)] w-full max-w-none overflow-y-auto rounded-t-[2rem] border border-charcoal/15 bg-cream p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-charcoal shadow-2xl backdrop:bg-charcoal/45 sm:inset-0 sm:m-auto sm:max-w-md sm:rounded-[2rem]"
+      className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[calc(100dvh-2rem)] w-full max-w-none overflow-y-auto rounded-t-[2rem] border border-charcoal/15 bg-cream p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink-body shadow-2xl backdrop:bg-charcoal/45 sm:inset-0 sm:m-auto sm:max-w-md sm:rounded-[2rem]"
     >
       <div className="mb-4 flex items-start justify-between gap-4">
         <h2
@@ -107,7 +107,7 @@ export function DemoDialog({
           <button
             type="button"
             onClick={dismiss}
-            className="min-h-11 w-full rounded-xl bg-sage-700 px-4 py-3 font-semibold text-white hover:bg-sage-800 active:bg-sage-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+            className="min-h-11 w-full rounded-xl bg-garden-fill px-4 py-3 font-semibold text-white hover:bg-garden-fill-deep active:bg-garden-fill-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
           >
             {dismissLabel}
           </button>

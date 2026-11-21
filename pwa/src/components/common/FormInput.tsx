@@ -25,7 +25,7 @@ export function FormInput({
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={inputId} className="text-sm font-medium text-charcoal">
+      <label htmlFor={inputId} className="text-sm font-medium text-ink-body">
         {label}
       </label>
       <input
@@ -38,16 +38,16 @@ export function FormInput({
         aria-invalid={!!error}
         aria-describedby={error ? `${inputId}-error` : undefined}
         className={[
-          'w-full min-h-12 rounded-xl border bg-white px-4 py-2.5 text-charcoal',
-          'placeholder:text-charcoal-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal focus:ring-2',
+          'w-full min-h-12 rounded-xl border bg-white px-4 py-2.5 text-ink-body',
+          'placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body focus:ring-2',
           'disabled:cursor-not-allowed disabled:opacity-50',
           error
-            ? 'border-terracotta focus:ring-terracotta/20'
-            : 'border-charcoal-200 focus:border-terracotta focus:ring-terracotta/20',
+            ? 'border-hearth-fill focus:ring-terracotta/20'
+            : 'border-chrome-line focus:border-hearth-fill focus:ring-terracotta/20',
         ].join(' ')}
       />
       {error && (
-        <p id={`${inputId}-error`} role="alert" className="text-xs font-medium text-terracotta-700">
+        <p id={`${inputId}-error`} role="alert" className="text-xs font-medium text-hearth-ink">
           {error}
         </p>
       )}

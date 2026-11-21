@@ -24,7 +24,7 @@ export function TonightRecipeImage({
   if (!imageUrl || failed) {
     return (
       <div
-        className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-terracotta-50 text-terracotta-700"
+        className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-terracotta-50 text-hearth-ink"
         aria-hidden="true"
       >
         {fallback}

@@ -55,7 +55,7 @@ export function FamilySelector({
       )}
 
       {showAddForm && (
-        <div className="rounded-2xl bg-white/60 border border-chrome-line p-5 shadow-card">
+        <div className="rounded-2xl bg-white border border-chrome-line p-5 shadow-card">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm font-medium text-ink-body">
               {t('family.addMember', 'Add a family member')}

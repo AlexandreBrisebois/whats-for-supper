@@ -54,15 +54,15 @@ export default function InvitePage() {
   if (status === 'error') {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 bg-cream">
-        <h1 className="font-heading text-2xl font-bold text-charcoal">
+        <h1 className="font-heading text-2xl font-bold text-ink-body">
           {t('invite.invalidTitle', 'Invalid invite link')}
         </h1>
-        <p className="text-sm text-charcoal-600">
+        <p className="text-sm text-ink-muted">
           {t('invite.invalidDescription', 'This link may have expired or been tampered with.')}
         </p>
         <a
           href="/welcome"
-          className="inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold text-terracotta-700 underline transition-colors hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+          className="inline-flex min-h-12 items-center justify-center rounded-xl px-4 text-sm font-semibold text-hearth-ink underline transition-colors hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
         >
           {t('invite.goToWelcome', 'Go to welcome')}
         </a>
@@ -72,9 +72,7 @@ export default function InvitePage() {
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-cream">
-      <p className="text-sm text-charcoal-600">
-        {t('invite.joiningFamily', 'Joining your family…')}
-      </p>
+      <p className="text-sm text-ink-muted">{t('invite.joiningFamily', 'Joining your family…')}</p>
     </main>
   );
 }

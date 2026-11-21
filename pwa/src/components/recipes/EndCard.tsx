@@ -83,25 +83,25 @@ export const EndCard: React.FC<EndCardProps> = ({
       data-testid={isEmpty ? 'browse-all-empty-state' : 'browse-all-end-card'}
       whileTap={{ scale: 0.98 }}
     >
-      <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-cream shadow-card border border-charcoal-200 flex flex-col items-center justify-center px-8 py-12 gap-6">
+      <div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-cream shadow-card border border-chrome-line flex flex-col items-center justify-center px-8 py-12 gap-6">
         {/* Icon container */}
         <div
-          className={`flex items-center justify-center w-20 h-20 rounded-full border-2 ${isEmpty ? 'bg-ochre-100 border-ochre-200' : 'bg-sage-50 border-sage-200'}`}
+          className={`flex items-center justify-center w-20 h-20 rounded-full border-2 ${isEmpty ? 'bg-ochre-100 border-sunlight-line' : 'bg-sage-50 border-garden-line'}`}
         >
           {isEmpty ? (
-            <Search size={40} className="text-ochre-800" />
+            <Search size={40} className="text-sunlight-ink" />
           ) : (
-            <Compass size={40} className="text-ochre-800" />
+            <Compass size={40} className="text-sunlight-ink" />
           )}
         </div>
 
         {/* Heading */}
-        <h2 className="text-3xl font-bold tracking-tight font-heading text-center text-charcoal leading-none">
+        <h2 className="text-3xl font-bold tracking-tight font-heading text-center text-ink-body leading-none">
           {isEmpty ? 'Your Library is Empty' : "What's for Supper?"}
         </h2>
 
         {/* Supporting message */}
-        <p className="text-base text-charcoal-600 text-center leading-snug max-w-xs font-medium">
+        <p className="text-base text-ink-muted text-center leading-snug max-w-xs font-medium">
           {isEmpty
             ? 'Start your collection by adding a favorite family recipe or capturing one from the web.'
             : "You've flipped through your whole library. Did you find what you were looking for tonight?"}
@@ -117,7 +117,7 @@ export const EndCard: React.FC<EndCardProps> = ({
               onAddRecipe();
             }
           }}
-          className="group mt-2 flex min-h-12 items-center gap-3 rounded-full bg-terracotta px-8 py-4 text-cream-100 shadow-sm transition-colors hover:bg-terracotta-600 active:bg-terracotta-700 no-underline"
+          className="group mt-2 flex min-h-12 items-center gap-3 rounded-full bg-hearth-fill px-8 py-4 text-cream-100 shadow-sm transition-colors hover:bg-hearth-fill-hover active:bg-hearth-fill-active no-underline"
         >
           <Plus size={20} strokeWidth={3} />
           <span className="font-semibold text-sm">
@@ -128,7 +128,7 @@ export const EndCard: React.FC<EndCardProps> = ({
         {!isEmpty && (
           <Link
             href={ROUTES.HOME}
-            className="inline-flex min-h-12 items-center text-xs font-semibold text-terracotta-700 hover:text-terracotta-800 transition-colors"
+            className="inline-flex min-h-12 items-center text-xs font-semibold text-hearth-ink hover:text-hearth-ink transition-colors"
           >
             Back to Planner
           </Link>

@@ -31,7 +31,7 @@ export function DemoExplanation({
   const betaDescription = useId();
   return (
     <div
-      className="relative z-40 bg-cream pt-[env(safe-area-inset-top)] text-charcoal"
+      className="relative z-40 bg-cream pt-[env(safe-area-inset-top)] text-ink-body"
       data-testid={`${mode}-context`}
     >
       <button
@@ -42,7 +42,7 @@ export function DemoExplanation({
         aria-expanded={open}
         aria-describedby={beta ? betaDescription : undefined}
         onClick={onOpen}
-        className="group flex min-h-8 w-full items-center bg-sage-100 p-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-charcoal"
+        className="group flex min-h-8 w-full items-center bg-sage-100 p-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink-body"
       >
         <span
           data-testid={`${mode}-context-strip`}

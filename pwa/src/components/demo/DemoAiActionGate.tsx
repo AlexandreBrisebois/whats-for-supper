@@ -16,7 +16,7 @@ export function DemoAiActionGate({
   if (mode === false) return <>{children}</>;
   return (
     <section
-      className={`rounded-2xl border border-charcoal/15 bg-cream p-4 text-charcoal ${className}`}
+      className={`rounded-2xl border border-charcoal/15 bg-cream p-4 text-ink-body ${className}`}
       data-testid="demo-ai-unavailable"
       aria-busy={loading}
     >

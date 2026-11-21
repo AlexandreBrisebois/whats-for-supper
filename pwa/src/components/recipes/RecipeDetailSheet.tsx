@@ -1773,7 +1773,7 @@ export function RecipeDetailSheet({
                           return (
                             <div
                               key={row.key}
-                              className="space-y-3 rounded-2xl border border-chrome-line bg-white/75 p-3"
+                              className="space-y-3 rounded-2xl border border-chrome-line bg-white p-3"
                             >
                               <div
                                 data-testid={`recipe-ingredient-top-row-${index}`}

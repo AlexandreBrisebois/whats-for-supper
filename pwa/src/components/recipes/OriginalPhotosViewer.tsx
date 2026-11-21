@@ -279,7 +279,7 @@ export function OriginalPhotosViewer({
               ? t('recipes.fitToScreen', 'Fit to Screen')
               : `${t('recipes.viewOriginal', 'View Original')} ×2.5`
           }
-          className={`absolute bottom-10 right-6 flex h-14 items-center justify-center rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white shadow-2xl transition-all hover:scale-105 active:scale-95 ${
+          className={`absolute bottom-10 right-6 flex h-14 items-center justify-center rounded-full bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-white shadow-2xl transition-all hover:scale-105 active:scale-95 ${
             scale > 1 ? 'px-6 gap-2' : 'w-14'
           }`}
         >
@@ -341,7 +341,7 @@ export function OriginalPhotosViewer({
                   ? 'flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-white'
                   : `h-1.5 rounded-full transition-all duration-300 ${
                       idx === currentIndex
-                        ? 'w-8 bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700'
+                        ? 'w-8 bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active'
                         : 'w-2 bg-white/20'
                     }`
               }
@@ -349,7 +349,7 @@ export function OriginalPhotosViewer({
               {modal && (
                 <span
                   aria-hidden="true"
-                  className={`h-1.5 rounded-full ${idx === currentIndex ? 'w-8 bg-terracotta' : 'w-2 bg-white/40'}`}
+                  className={`h-1.5 rounded-full ${idx === currentIndex ? 'w-8 bg-hearth-fill' : 'w-2 bg-white/40'}`}
                 />
               )}
             </button>

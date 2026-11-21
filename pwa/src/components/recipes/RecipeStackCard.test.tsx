@@ -132,7 +132,7 @@ describe('RecipeStackCard — rendering', () => {
     expect(card).not.toHaveTextContent('This description belongs only in recipe detail');
     const badge = screen.getByTestId('stack-time-badge');
     expect(badge).toHaveTextContent(locale === 'fr' ? 'PRÊT EN 1H 30 MINS' : 'READY IN 1H 30 MINS');
-    expect(badge).toHaveClass('bg-cream', 'text-charcoal');
+    expect(badge).toHaveClass('bg-cream', 'text-ink-body');
     expect(badge).not.toHaveClass('bg-terracotta-50', 'text-terracotta-700', 'uppercase');
     expect(badge.querySelector('svg')).not.toBeNull();
     expect(screen.getByTestId('stack-card-image').contains(badge)).toBe(true);

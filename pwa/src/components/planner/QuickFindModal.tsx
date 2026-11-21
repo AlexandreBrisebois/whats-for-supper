@@ -132,12 +132,12 @@ export function QuickFindModal({
         aria-modal="true"
         aria-label={t('planner.quickFindAction', 'Suggestions')}
         data-testid="quick-find-modal"
-        className="relative w-full max-w-sm max-h-[90dvh] overflow-y-auto rounded-[2.5rem] border border-charcoal-200 bg-cream shadow-2xl"
+        className="relative w-full max-w-sm max-h-[90dvh] overflow-y-auto rounded-[2.5rem] border border-chrome-line bg-cream shadow-2xl"
       >
         <div className="p-6 sm:p-8">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-2 text-ochre-800">
-              <Sparkles size={18} aria-hidden="true" className="text-ochre-600" />
+            <div className="flex items-center space-x-2 text-sunlight-ink">
+              <Sparkles size={18} aria-hidden="true" className="text-sunlight-ink" />
               <span className="text-xs font-semibold">
                 {t('planner.quickFindAction', 'Suggestions')}
               </span>
@@ -148,7 +148,7 @@ export function QuickFindModal({
               onClick={onClose}
               aria-label="Close"
               title="Close"
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-white border border-charcoal-200 hover:bg-charcoal-100 text-charcoal-600 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white border border-chrome-line hover:bg-charcoal-100 text-ink-muted transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
               <X size={20} />
             </button>
@@ -171,28 +171,28 @@ export function QuickFindModal({
                 >
                   {isNudgeCard ? (
                     /* Search Nudge Card */
-                    <div className="min-h-[20rem] rounded-[2rem] bg-white p-8 flex flex-col items-center justify-center text-center shadow-card border border-charcoal-200">
-                      <div className="h-16 w-16 rounded-2xl bg-ochre-100 text-ochre-800 flex items-center justify-center mb-6">
+                    <div className="min-h-[20rem] rounded-[2rem] bg-white p-8 flex flex-col items-center justify-center text-center shadow-card border border-chrome-line">
+                      <div className="h-16 w-16 rounded-2xl bg-ochre-100 text-sunlight-ink flex items-center justify-center mb-6">
                         <Utensils size={32} aria-hidden="true" />
                       </div>
-                      <h4 className="text-2xl font-heading font-bold text-charcoal mb-3 leading-tight">
+                      <h4 className="text-2xl font-heading font-bold text-ink-body mb-3 leading-tight">
                         Didn&apos;t find a match?
                       </h4>
-                      <p className="text-sm text-charcoal-600 font-medium leading-relaxed mb-8">
+                      <p className="text-sm text-ink-muted font-medium leading-relaxed mb-8">
                         Our library has thousands of recipes. Try searching for exactly what
                         you&apos;re craving.
                       </p>
                       <Link
                         href={searchUrl}
                         data-testid="quick-find-search-library"
-                        className="inline-flex items-center justify-center w-full min-h-14 rounded-2xl bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-cream-100 font-semibold text-sm shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+                        className="inline-flex items-center justify-center w-full min-h-14 rounded-2xl bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-cream-100 font-semibold text-sm shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                       >
                         Search Library
                       </Link>
                     </div>
                   ) : (
                     /* Regular Recipe Card */
-                    <div className="rounded-[2rem] bg-white border border-charcoal-200 overflow-hidden shadow-card">
+                    <div className="rounded-[2rem] bg-white border border-chrome-line overflow-hidden shadow-card">
                       {currentRecipe.image && (
                         <div className="relative aspect-[16/10] w-full overflow-hidden">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -202,7 +202,7 @@ export function QuickFindModal({
                             className="h-full w-full object-cover"
                           />
                           {formattedTime && (
-                            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-charcoal-200/60 bg-cream px-3 py-1.5 text-xs font-semibold text-charcoal shadow-sm">
+                            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-chrome-line/60 bg-cream px-3 py-1.5 text-xs font-semibold text-ink-body shadow-sm">
                               <Clock size={14} aria-hidden="true" className="shrink-0" />
                               {tWithVars('common.readyIn', 'READY IN {{time}}', {
                                 time: formattedTime,
@@ -214,7 +214,7 @@ export function QuickFindModal({
 
                       <div className="p-6 flex flex-col gap-3">
                         {!currentRecipe.image && formattedTime && (
-                          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-terracotta-50 px-3 py-1.5 text-xs font-semibold text-terracotta-700">
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-terracotta-50 px-3 py-1.5 text-xs font-semibold text-hearth-ink">
                             <Clock size={14} aria-hidden="true" className="shrink-0" />
                             {tWithVars('common.readyIn', 'READY IN {{time}}', {
                               time: formattedTime,
@@ -222,7 +222,7 @@ export function QuickFindModal({
                           </span>
                         )}
 
-                        <h4 className="text-2xl font-heading font-bold text-charcoal leading-tight">
+                        <h4 className="text-2xl font-heading font-bold text-ink-body leading-tight">
                           {currentRecipe.name}
                         </h4>
 
@@ -232,7 +232,7 @@ export function QuickFindModal({
                           aria-expanded={detailsExpanded}
                           aria-controls={detailsId}
                           onClick={() => setDetailsExpanded((prev) => !prev)}
-                          className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-terracotta-700 hover:bg-terracotta-50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+                          className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-hearth-ink hover:bg-terracotta-50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                         >
                           {detailsExpanded
                             ? t('planner.hideDetails', 'Hide details')
@@ -251,9 +251,9 @@ export function QuickFindModal({
                         <div
                           id={detailsId}
                           hidden={!detailsExpanded}
-                          className="border-t border-charcoal-200 pt-3 flex flex-col gap-3"
+                          className="border-t border-chrome-line pt-3 flex flex-col gap-3"
                         >
-                          <p className="text-sm text-charcoal-600 leading-relaxed">
+                          <p className="text-sm text-ink-muted leading-relaxed">
                             {currentRecipe.description ||
                               'A delicious home-cooked meal waiting for you.'}
                           </p>
@@ -262,7 +262,7 @@ export function QuickFindModal({
                               {(currentRecipe.ingredients || []).map((ing: string) => (
                                 <span
                                   key={ing}
-                                  className="text-xs font-medium bg-charcoal-100 px-3 py-1.5 rounded-xl text-charcoal"
+                                  className="text-xs font-medium bg-charcoal-100 px-3 py-1.5 rounded-xl text-ink-body"
                                 >
                                   {ing}
                                 </span>
@@ -278,11 +278,11 @@ export function QuickFindModal({
             </div>
           ) : (
             <div className="py-10 text-center">
-              <p className="mb-5 text-sm text-charcoal-600 font-medium">No recipes found.</p>
+              <p className="mb-5 text-sm text-ink-muted font-medium">No recipes found.</p>
               <Link
                 href={searchUrl}
                 data-testid="quick-find-search-library"
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-terracotta hover:bg-terracotta-600 px-6 font-semibold text-sm text-cream-100 shadow-sm transition-colors"
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-hearth-fill hover:bg-hearth-fill-hover px-6 font-semibold text-sm text-cream-100 shadow-sm transition-colors"
               >
                 Search Library
               </Link>
@@ -292,7 +292,7 @@ export function QuickFindModal({
           <div className="grid grid-cols-2 gap-4">
             <Button
               variant="secondary"
-              className="min-h-14 rounded-2xl bg-white border border-charcoal-200 text-charcoal font-semibold hover:bg-charcoal-100 active:scale-95 transition-all text-sm"
+              className="min-h-14 rounded-2xl bg-white border border-chrome-line text-ink-body font-semibold hover:bg-charcoal-100 active:scale-95 transition-all text-sm"
               onClick={handleNext}
               disabled={isLoading || !hasNextCard}
               data-testid="quick-find-next"
@@ -303,8 +303,8 @@ export function QuickFindModal({
               className={cn(
                 'min-h-14 rounded-2xl font-semibold active:scale-95 transition-all text-sm',
                 isNudgeCard
-                  ? 'bg-charcoal-100 text-charcoal-500 cursor-not-allowed shadow-none'
-                  : 'bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-cream-100 shadow-sm'
+                  ? 'bg-charcoal-100 text-ink-muted cursor-not-allowed shadow-none'
+                  : 'bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-cream-100 shadow-sm'
               )}
               onClick={() => !isNudgeCard && currentRecipe && onSelect(currentRecipe)}
               disabled={isLoading || isNudgeCard || !currentRecipe}

@@ -72,9 +72,9 @@ describe('Recycle Bin recovery', () => {
     expect(restore).toHaveClass('min-h-12');
     expect(purge).toHaveClass(
       'min-h-12',
-      'border-terracotta-200',
+      'border-hearth-line',
       'bg-terracotta-50',
-      'text-terracotta-700'
+      'text-hearth-ink'
     );
 
     fireEvent.click(purge);

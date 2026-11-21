@@ -139,8 +139,8 @@ function Chip({
       className={cn(
         'min-h-11 rounded-full border px-4 py-2 text-sm font-bold transition-colors',
         selected
-          ? 'border-terracotta bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white'
-          : 'border-charcoal/10 bg-white text-charcoal'
+          ? 'border-hearth-fill bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-white'
+          : 'border-charcoal/10 bg-white text-ink-body'
       )}
     >
       {label}
@@ -168,7 +168,7 @@ function Disclosure({
       aria-expanded={expanded}
       aria-controls={controls}
       onClick={onClick}
-      className="inline-flex min-h-12 items-center gap-1 rounded-full px-2 text-sm font-bold text-terracotta-700 hover:bg-terracotta-50"
+      className="inline-flex min-h-12 items-center gap-1 rounded-full px-2 text-sm font-bold text-hearth-ink hover:bg-terracotta-50"
     >
       {label}
       <ChevronDown
@@ -276,24 +276,24 @@ export function RecipeFiltersSheet({
         aria-modal="true"
         aria-labelledby="recipe-filters-title"
         onKeyDown={onKeyDown}
-        className="[&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-charcoal flex max-h-[90dvh] w-full flex-col rounded-t-[2rem] bg-cream px-5 pt-5 shadow-2xl md:max-w-2xl md:rounded-[2rem]"
+        className="[&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-ink-body flex max-h-[90dvh] w-full flex-col rounded-t-[2rem] bg-cream px-5 pt-5 shadow-2xl md:max-w-2xl md:rounded-[2rem]"
       >
         <div className="mb-3 flex shrink-0 items-center justify-between">
-          <h2 id="recipe-filters-title" className="font-heading text-xl font-black text-charcoal">
+          <h2 id="recipe-filters-title" className="font-heading text-xl font-black text-ink-body">
             {t('recipes.filterRecipes', 'Filter recipes')}
           </h2>
           <button
             type="button"
             aria-label={t('common.close', 'Close')}
             onClick={onClose}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-charcoal/70 hover:bg-charcoal/5"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-muted hover:bg-charcoal/5"
           >
             <X size={20} aria-hidden="true" />
           </button>
         </div>
         <div className="min-h-0 space-y-5 overflow-y-auto pb-4">
           <section>
-            <h3 className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-charcoal/55">
+            <h3 className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-ink-muted">
               {t('recipes.filterShortcuts', 'Shortcuts')}
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -320,7 +320,7 @@ export function RecipeFiltersSheet({
             <div id="more-existing-filters" hidden={!existingExpanded} />
           </section>
           <section>
-            <h3 className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-charcoal/55">
+            <h3 className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-ink-muted">
               {t('recipes.filterMeal', 'Meal')}
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -336,7 +336,7 @@ export function RecipeFiltersSheet({
             </div>
           </section>
           <section>
-            <h3 className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-charcoal/55">
+            <h3 className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-ink-muted">
               {t('recipes.filterFocus', 'Focus')}
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -365,7 +365,7 @@ export function RecipeFiltersSheet({
           </section>
           {cuisines.length > 0 && (
             <section>
-              <h3 className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-charcoal/55">
+              <h3 className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-ink-muted">
                 Cuisine
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -400,7 +400,7 @@ export function RecipeFiltersSheet({
                 setDraftFilters({});
                 setDraftPreferences({});
               }}
-              className="min-h-11 rounded-full px-4 py-2 border border-charcoal/15 bg-white text-sm font-bold text-charcoal"
+              className="min-h-11 rounded-full px-4 py-2 border border-charcoal/15 bg-white text-sm font-bold text-ink-body"
             >
               {t('recipes.clearFilters', 'Clear filters')}
             </button>
@@ -408,7 +408,7 @@ export function RecipeFiltersSheet({
               type="button"
               data-testid="mobile-filter-apply"
               onClick={() => onApply({ filters: draftFilters, preferences: draftPreferences })}
-              className="min-h-11 rounded-full px-4 py-2 bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-sm font-bold text-white"
+              className="min-h-11 rounded-full px-4 py-2 bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-sm font-bold text-white"
             >
               {t('recipes.applyFilters', 'Apply filters')}
             </button>

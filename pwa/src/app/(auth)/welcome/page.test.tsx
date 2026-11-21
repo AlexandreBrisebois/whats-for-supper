@@ -75,18 +75,18 @@ describe('entry branding', () => {
     const landing = render(<LandingPage />);
     const landingHeading = screen.getByRole('heading', { level: 1, name: "What's for Supper?" });
     expect(landingHeading).toBeVisible();
-    expect(landingHeading).toHaveClass('text-charcoal');
+    expect(landingHeading).toHaveClass('text-ink-body');
     expect(landingHeading).not.toHaveClass('text-indigo');
     const getStartedLink = screen.getByRole('link', {
       name: locale === 'en' ? 'Get Started' : 'Commencer',
     });
-    expect(getStartedLink).toHaveClass('bg-terracotta', 'text-cream-100');
+    expect(getStartedLink).toHaveClass('bg-hearth-fill', 'text-cream-100');
     expect(getStartedLink).not.toHaveClass('bg-indigo', 'text-lavender');
     landing.unmount();
     await welcome();
     const welcomeHeading = screen.getByRole('heading', { level: 1, name: "What's for Supper?" });
     expect(welcomeHeading).toBeVisible();
-    expect(welcomeHeading).toHaveClass('text-charcoal');
+    expect(welcomeHeading).toHaveClass('text-ink-body');
     expect(welcomeHeading).not.toHaveClass('text-indigo');
     const enterBtn = screen.getByTestId('welcome-enter-btn');
     expect(enterBtn).toHaveClass('bg-hearth-fill', 'text-cream-100', 'min-h-14');
@@ -155,7 +155,7 @@ describe('Welcome public prefill', () => {
     const authError = await screen.findByTestId('auth-error');
     expect(authError).toHaveTextContent(/Incorrect passphrase/);
     expect(authError).toHaveAttribute('role', 'alert');
-    expect(authError).toHaveClass('text-terracotta-700');
+    expect(authError).toHaveClass('text-hearth-ink');
     expect(input).toHaveValue('incorrect');
     expect(mocks.cookie).not.toHaveBeenCalled();
     let finishCookie!: () => void;

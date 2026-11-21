@@ -66,11 +66,11 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       {/* Panel */}
       <div
         ref={dialogRef}
-        className="relative z-10 w-full max-w-sm rounded-t-3xl border border-charcoal-200 bg-cream p-6 shadow-card sm:rounded-3xl"
+        className="relative z-10 w-full max-w-sm rounded-t-3xl border border-chrome-line bg-cream p-6 shadow-card sm:rounded-3xl"
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           {title && (
-            <h2 id="modal-title" className="font-heading text-lg font-bold text-charcoal">
+            <h2 id="modal-title" className="font-heading text-lg font-bold text-ink-body">
               {title}
             </h2>
           )}
@@ -78,7 +78,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             ref={closeBtnRef}
             onClick={onClose}
             aria-label="Close modal"
-            className="ml-auto flex h-12 w-12 items-center justify-center rounded-full text-charcoal-600 transition-colors hover:bg-charcoal-100 hover:text-charcoal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+            className="ml-auto flex h-12 w-12 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-charcoal-100 hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
           >
             <X size={20} aria-hidden="true" />
           </button>

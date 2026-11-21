@@ -68,20 +68,20 @@ export function InviteLinkDialog({ memberId, memberName, onClose }: InviteLinkDi
           aria-modal="true"
           aria-label={`Invite ${memberName}`}
           data-testid="invite-dialog"
-          className="w-full max-w-sm rounded-[2rem] border border-charcoal-200 bg-cream p-6 shadow-2xl flex flex-col gap-5"
+          className="w-full max-w-sm rounded-[2rem] border border-chrome-line bg-cream p-6 shadow-2xl flex flex-col gap-5"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="font-heading text-lg font-bold text-charcoal">Invite {memberName}</h2>
-              <p className="text-xs text-charcoal-600 mt-0.5">Share this link with your family</p>
+              <h2 className="font-heading text-lg font-bold text-ink-body">Invite {memberName}</h2>
+              <p className="text-xs text-ink-muted mt-0.5">Share this link with your family</p>
             </div>
             <button
               type="button"
               onClick={onClose}
               data-testid="invite-dialog-close"
               aria-label="Close invite dialog"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full hover:bg-charcoal-100 text-charcoal-600 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full hover:bg-charcoal-100 text-ink-muted transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
               <X size={18} aria-hidden="true" />
             </button>
@@ -89,13 +89,13 @@ export function InviteLinkDialog({ memberId, memberName, onClose }: InviteLinkDi
 
           <div
             data-testid="invite-dialog-link"
-            className="rounded-xl bg-white border border-charcoal-200 px-4 py-3 text-xs font-mono text-charcoal-700 break-all select-all"
+            className="rounded-xl bg-white border border-chrome-line px-4 py-3 text-xs font-mono text-ink-muted break-all select-all"
           >
             {link || 'Generating link…'}
           </div>
 
           {copied && (
-            <p className="text-xs text-sage-700 font-medium text-center -mt-2">Link copied!</p>
+            <p className="text-xs text-garden-ink font-medium text-center -mt-2">Link copied!</p>
           )}
 
           <div className="flex gap-3">
@@ -104,7 +104,7 @@ export function InviteLinkDialog({ memberId, memberName, onClose }: InviteLinkDi
               onClick={handleCopy}
               disabled={!link}
               data-testid="invite-dialog-copy"
-              className="flex-1 flex items-center justify-center gap-2 min-h-12 rounded-2xl border border-charcoal-200 bg-white text-charcoal text-sm font-semibold transition-all active:scale-95 hover:bg-charcoal-50 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+              className="flex-1 flex items-center justify-center gap-2 min-h-12 rounded-2xl border border-chrome-line bg-white text-ink-body text-sm font-semibold transition-all active:scale-95 hover:bg-charcoal-50 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
             >
               <Copy size={16} aria-hidden="true" />
               Copy
@@ -115,7 +115,7 @@ export function InviteLinkDialog({ memberId, memberName, onClose }: InviteLinkDi
                 onClick={handleShare}
                 disabled={!link}
                 data-testid="invite-dialog-share"
-                className="flex-1 flex items-center justify-center gap-2 min-h-12 rounded-2xl bg-terracotta text-cream-100 text-sm font-semibold shadow-sm transition-all active:scale-95 hover:bg-terracotta-600 active:bg-terracotta-700 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+                className="flex-1 flex items-center justify-center gap-2 min-h-12 rounded-2xl bg-hearth-fill text-cream-100 text-sm font-semibold shadow-sm transition-all active:scale-95 hover:bg-hearth-fill-hover active:bg-hearth-fill-active disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
               >
                 <Share2 size={16} aria-hidden="true" />
                 Share

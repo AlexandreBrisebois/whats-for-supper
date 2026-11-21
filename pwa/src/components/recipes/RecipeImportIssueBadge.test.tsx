@@ -10,7 +10,7 @@ describe('RecipeImportIssueBadge', () => {
     render(<RecipeImportIssueBadge status="reported" />);
     const badge = screen.getByLabelText('Recipe reported');
     expect(badge).toHaveTextContent('Reported');
-    expect(badge).toHaveClass('bg-ochre-50', 'text-ochre-800');
+    expect(badge).toHaveClass('bg-ochre-50', 'text-sunlight-ink');
   });
 
   it('renders the durable reimport outcome with a non-color cue', () => {
@@ -18,7 +18,7 @@ describe('RecipeImportIssueBadge', () => {
     const badge = screen.getByLabelText('Recipe ready for review');
     expect(badge).toHaveTextContent('Review');
     expect(badge.querySelector('svg')).not.toBeNull();
-    expect(badge).toHaveClass('bg-sage-100', 'text-sage-800');
+    expect(badge).toHaveClass('bg-sage-100', 'text-garden-ink');
   });
 
   it('uses a compact, non-wrapping presentation when requested', () => {

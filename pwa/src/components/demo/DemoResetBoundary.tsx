@@ -30,7 +30,7 @@ export function DemoResetBoundary({
   }, [reset]);
   if (!reset) return children;
   return (
-    <main className="min-h-dvh bg-cream text-charcoal flex items-center justify-center p-6">
+    <main className="min-h-dvh bg-cream text-ink-body flex items-center justify-center p-6">
       <section
         role="alert"
         aria-labelledby="demo-reset-title"
@@ -44,7 +44,7 @@ export function DemoResetBoundary({
         <button
           ref={button}
           data-testid="demo-reset-continue"
-          className="min-h-12 w-full rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white px-5 py-3 font-semibold"
+          className="min-h-12 w-full rounded-full bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-white px-5 py-3 font-semibold"
           onClick={() => window.location.replace(window.location.pathname + window.location.search)}
         >
           {t('demoReset.continue', 'Continue with the reset demo', locale)}

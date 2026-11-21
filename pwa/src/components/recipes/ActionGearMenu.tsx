@@ -99,7 +99,7 @@ export function ActionGearMenu({
         aria-controls={menuId}
         data-testid="action-gear-menu"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 transition hover:bg-charcoal/10"
+        className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-ink-muted transition hover:bg-charcoal/10"
         aria-label={t('recipes.actions', 'Recipe actions')}
         title={t('recipes.actions', 'Recipe actions')}
       >
@@ -123,7 +123,7 @@ export function ActionGearMenu({
                     closeMenu();
                     onOriginalQuantities();
                   }}
-                  className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
+                  className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-ink-body transition hover:bg-charcoal/5"
                 >
                   {t('recipes.viewOriginalIngredients', 'View original ingredients')}
                 </button>
@@ -137,7 +137,7 @@ export function ActionGearMenu({
                     closeMenu();
                     onResetView();
                   }}
-                  className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
+                  className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-ink-body transition hover:bg-charcoal/5"
                 >
                   {t('recipes.resetView', 'Reset view')}
                 </button>
@@ -148,9 +148,9 @@ export function ActionGearMenu({
                   data-action-item
                   data-testid="action-edit-recipe"
                   onClick={handleEdit}
-                  className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
+                  className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-ink-body transition hover:bg-charcoal/5"
                 >
-                  <Pencil size={16} className="text-terracotta-600" />
+                  <Pencil size={16} className="text-hearth-ink" />
                   {t('common.edit', 'Edit')}
                 </button>
               )}
@@ -163,9 +163,9 @@ export function ActionGearMenu({
                   closeMenu();
                   onReportImportIssue();
                 }}
-                className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
+                className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-ink-body transition hover:bg-charcoal/5"
               >
-                <Flag size={16} className="text-terracotta-600" />
+                <Flag size={16} className="text-hearth-ink" />
                 {hasImportIssue
                   ? t('recipes.reviewIssue', 'Review issue')
                   : t('recipes.reportIssue', 'Report issue')}
@@ -175,9 +175,9 @@ export function ActionGearMenu({
                 data-action-item
                 data-testid="action-move-to-bin"
                 onClick={handleMoveToBin}
-                className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-charcoal transition hover:bg-charcoal/5"
+                className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-ink-body transition hover:bg-charcoal/5"
               >
-                <Trash2 size={16} className="text-terracotta-600" />
+                <Trash2 size={16} className="text-hearth-ink" />
                 {t('recipes.moveToBin', 'Move to Bin')}
               </button>
             </div>

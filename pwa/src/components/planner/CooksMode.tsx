@@ -854,7 +854,7 @@ export function CooksMode({
       onClick={() => {
         startEdit(activeRecipeStepIndex);
       }}
-      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-terracotta-700 focus-visible:ring-2 focus-visible:ring-terracotta"
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-hearth-ink focus-visible:ring-2 focus-visible:ring-terracotta"
     >
       <Pencil size={20} aria-hidden="true" />
     </button>
@@ -891,9 +891,9 @@ export function CooksMode({
             transition={{ duration: 0.3 }}
             className="absolute inset-0 flex flex-col items-center justify-center bg-cream z-10"
           >
-            <Sparkles size={48} className="text-ochre-800 mb-4" />
-            <p className="font-heading text-3xl font-black text-charcoal">Supper&apos;s done!</p>
-            <p className="text-charcoal/60 mt-2 font-medium">Nice work.</p>
+            <Sparkles size={48} className="text-sunlight-ink mb-4" />
+            <p className="font-heading text-3xl font-black text-ink-body">Supper&apos;s done!</p>
+            <p className="text-ink-muted mt-2 font-medium">Nice work.</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -947,7 +947,7 @@ export function CooksMode({
             aria-label={t('cook.view', 'View')}
             data-testid="cooking-view-toggle"
             onClick={(event) => event.stopPropagation()}
-            className="relative z-20 inline-flex min-h-12 shrink-0 rounded-full border border-white/40 bg-white/90 p-0.5 text-charcoal shadow-md backdrop-blur-md"
+            className="relative z-20 inline-flex min-h-12 shrink-0 rounded-full border border-white/40 bg-white/90 p-0.5 text-ink-body shadow-md backdrop-blur-md"
           >
             {(['step-by-step', 'all-steps'] as const).map((mode) => {
               const selected = cookingViewMode === mode;
@@ -1055,7 +1055,7 @@ export function CooksMode({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
           data-testid="cooking-reading-context"
-          className="hidden min-h-11 shrink-0 items-center justify-between gap-3 px-4 py-1 text-sm font-medium text-charcoal/80 md:flex md:px-8"
+          className="hidden min-h-11 shrink-0 items-center justify-between gap-3 px-4 py-1 text-sm font-medium text-ink-muted md:flex md:px-8"
         >
           <span data-testid="cooks-mode-step-indicator">
             {!hasInstructions
@@ -1065,7 +1065,7 @@ export function CooksMode({
                 : `${currentStep} / ${steps.length}`}
           </span>
           {!isPrepStep && initialRecipe.isVegetarian && (
-            <span className="text-xs font-semibold text-sage-800">VEGGIE</span>
+            <span className="text-xs font-semibold text-garden-ink">VEGGIE</span>
           )}
           {!stackedLayout && focusedEdit}
         </div>
@@ -1094,10 +1094,10 @@ export function CooksMode({
           ref={instructionScrollRef}
           onScroll={trackReadingPosition}
           data-testid="cooks-mode-instructions"
-          className="min-h-0 flex-1 overflow-y-auto bg-white/60"
+          className="min-h-0 flex-1 overflow-y-auto bg-white"
         >
           {ingredientContext && (
-            <div className="border-b border-charcoal/10 px-4 py-2 text-sm text-charcoal md:px-6">
+            <div className="border-b border-charcoal/10 px-4 py-2 text-sm text-ink-body md:px-6">
               <p data-testid="cooking-portion-context">
                 {formatSupperPlanDate(ingredientContext.supperDate)}
                 {projection?.targetServings != null
@@ -1239,7 +1239,7 @@ export function CooksMode({
               >
                 {hasInstructions && !isPrepStep && !singlePageEnabled && (
                   <div className="mb-8 border-b border-charcoal/5 pb-6">
-                    <h3 className="text-2xl md:text-4xl lg:text-5xl font-heading font-black text-charcoal leading-tight">
+                    <h3 className="text-2xl md:text-4xl lg:text-5xl font-heading font-black text-ink-body leading-tight">
                       {currentStepData.title}
                     </h3>
                   </div>
@@ -1310,7 +1310,7 @@ export function CooksMode({
                     {ingredients.length > 0 ? (
                       <div className="space-y-6">
                         {/* Progress counter */}
-                        <div className="flex items-center gap-2 text-sage-700">
+                        <div className="flex items-center gap-2 text-garden-ink">
                           <CheckCircle2 size={16} />
                           <span className="text-sm font-semibold">
                             {ingredients.filter(({ key }) => gathered[key]).length} of{' '}
@@ -1334,22 +1334,22 @@ export function CooksMode({
                                 }
                                 className={`group flex items-center p-4 md:p-5 rounded-[1.5rem] w-full text-left border transition-all ${
                                   isChecked
-                                    ? 'bg-sage-50 border-sage-200'
-                                    : 'bg-white border-charcoal-200 shadow-sm hover:border-charcoal-300'
+                                    ? 'bg-sage-50 border-garden-line'
+                                    : 'bg-white border-chrome-line shadow-sm hover:border-chrome-line'
                                 }`}
                               >
                                 <div
                                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 mr-4 transition-all ${
                                     isChecked
-                                      ? 'bg-sage-700 border-sage-700 text-white'
-                                      : 'border-charcoal-200 group-hover:border-charcoal-400'
+                                      ? 'bg-garden-fill border-sage-700 text-white'
+                                      : 'border-chrome-line group-hover:border-icon-affordance'
                                   }`}
                                 >
                                   {isChecked && <Check size={14} strokeWidth={4} />}
                                 </div>
                                 <span
                                   className={`text-lg font-bold transition-all ${
-                                    isChecked ? 'text-charcoal-600 line-through' : 'text-charcoal'
+                                    isChecked ? 'text-ink-muted line-through' : 'text-ink-body'
                                   }`}
                                 >
                                   {text}
@@ -1360,9 +1360,9 @@ export function CooksMode({
                         </div>
                       </div>
                     ) : (
-                      <div className="py-16 px-8 rounded-[2.5rem] bg-charcoal-100 border border-dashed border-charcoal-200 flex flex-col items-center text-center">
-                        <UtensilsCrossed size={32} className="text-charcoal-400 mb-4" />
-                        <p className="text-charcoal-600 font-semibold max-w-xs">
+                      <div className="py-16 px-8 rounded-[2.5rem] bg-charcoal-100 border border-dashed border-chrome-line flex flex-col items-center text-center">
+                        <UtensilsCrossed size={32} className="text-icon-affordance mb-4" />
+                        <p className="text-ink-muted font-semibold max-w-xs">
                           {t(
                             'cook.extractionInProgress',
                             "Extraction in progress... we're still identifying the exact quantities."
@@ -1459,7 +1459,7 @@ export function CooksMode({
                                 ) : (
                                   <div
                                     data-testid={`single-page-step-body-${step.index}`}
-                                    className={`min-w-0 space-y-3 break-words text-xl font-normal leading-[1.5] text-charcoal ${
+                                    className={`min-w-0 space-y-3 break-words text-xl font-normal leading-[1.5] text-ink-body ${
                                       showTitle
                                         ? 'col-span-2'
                                         : 'col-span-2 col-start-1 row-start-1 pt-1.5'
@@ -1488,7 +1488,7 @@ export function CooksMode({
                       autoFocus
                       aria-label="Edit step instructions"
                       title="Edit step instructions"
-                      className="w-full rounded-[2rem] border-2 border-charcoal/5 bg-white/90 px-8 py-8 text-2xl md:text-3xl font-bold text-charcoal/80 leading-relaxed shadow-inner outline-none transition focus:border-terracotta/20"
+                      className="w-full rounded-[2rem] border-2 border-charcoal/5 bg-white/90 px-8 py-8 text-2xl md:text-3xl font-bold text-ink-muted leading-relaxed shadow-inner outline-none transition focus:border-hearth-line"
                       rows={8}
                       value={editingValue}
                       onChange={(e) => setEditingValue(e.target.value)}
@@ -1524,7 +1524,7 @@ export function CooksMode({
                 ) : (
                   <p
                     data-testid="cooks-mode-step-text"
-                    className="text-2xl md:text-3xl lg:text-4xl font-bold text-charcoal/80 leading-[1.4] md:leading-[1.5]"
+                    className="text-2xl md:text-3xl lg:text-4xl font-bold text-ink-muted leading-[1.4] md:leading-[1.5]"
                   >
                     {currentStepData.instruction}
                   </p>

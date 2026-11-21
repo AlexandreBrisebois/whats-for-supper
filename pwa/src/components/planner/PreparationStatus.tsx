@@ -14,7 +14,7 @@ export function PreparationStatus({ preparation }: { preparation: SupperPreparat
   return (
     <span
       data-testid="preparation-status"
-      className="flex min-w-0 flex-col gap-1 text-sm leading-relaxed text-sage-700"
+      className="flex min-w-0 flex-col gap-1 text-sm leading-relaxed text-garden-ink"
     >
       <span className="font-semibold">{t('cook.alreadyPrepared', 'Already prepared')}</span>
       {formatted && (

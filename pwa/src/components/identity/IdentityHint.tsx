@@ -47,7 +47,7 @@ export function IdentityHint({
       aria-label={label}
       aria-describedby={overlap ? descriptionId : undefined}
       data-testid="identity-hint"
-      className={`absolute pointer-events-none select-none whitespace-nowrap text-xs leading-tight font-medium text-charcoal-600 ${className}`}
+      className={`absolute pointer-events-none select-none whitespace-nowrap text-xs leading-tight font-medium text-ink-muted ${className}`}
     >
       {label}
       {overlap && (

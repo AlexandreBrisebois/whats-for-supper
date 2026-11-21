@@ -92,19 +92,19 @@ function FamilyNudgeContent({ onClose }: { onClose: () => void }) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 16 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="flex w-full max-w-sm flex-col gap-5 rounded-[2rem] border border-charcoal-200 bg-cream p-6 shadow-2xl"
+        className="flex w-full max-w-sm flex-col gap-5 rounded-[2rem] border border-chrome-line bg-cream p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="font-heading text-lg font-bold text-charcoal">Nudge the family</h2>
-            <p className="mt-0.5 text-xs text-charcoal-600">Share this week&apos;s voting link</p>
+            <h2 className="font-heading text-lg font-bold text-ink-body">Nudge the family</h2>
+            <p className="mt-0.5 text-xs text-ink-muted">Share this week&apos;s voting link</p>
           </div>
           <button
             type="button"
             onClick={() => onClose()}
             data-testid="planner-nudge-close"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-charcoal-600 transition-colors hover:bg-charcoal-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-charcoal-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             aria-label={t('common.close', 'Close')}
             title={t('common.close', 'Close')}
           >
@@ -114,7 +114,7 @@ function FamilyNudgeContent({ onClose }: { onClose: () => void }) {
 
         <div
           data-testid="planner-nudge-link"
-          className="select-all break-all rounded-xl border border-charcoal-200 bg-white px-4 py-3 font-mono text-xs text-charcoal-700"
+          className="select-all break-all rounded-xl border border-chrome-line bg-white px-4 py-3 font-mono text-xs text-ink-muted"
         >
           {shareUrl || 'Generating link...'}
         </div>
@@ -122,7 +122,7 @@ function FamilyNudgeContent({ onClose }: { onClose: () => void }) {
         {copied && (
           <p
             data-testid="planner-nudge-copied-feedback"
-            className="-mt-2 text-center text-xs font-medium text-sage-700"
+            className="-mt-2 text-center text-xs font-medium text-garden-ink"
           >
             Link copied!
           </p>
@@ -134,7 +134,7 @@ function FamilyNudgeContent({ onClose }: { onClose: () => void }) {
             onClick={handleCopyVotingLink}
             disabled={!shareUrl}
             data-testid="planner-nudge-copy"
-            className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-charcoal-200 bg-white text-sm font-semibold text-charcoal transition-all hover:bg-charcoal-50 active:scale-95 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+            className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-chrome-line bg-white text-sm font-semibold text-ink-body transition-all hover:bg-charcoal-50 active:scale-95 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
           >
             <Copy size={16} aria-hidden="true" />
             Copy
@@ -145,7 +145,7 @@ function FamilyNudgeContent({ onClose }: { onClose: () => void }) {
               onClick={handleShareVotingLink}
               disabled={!shareUrl}
               data-testid="planner-nudge-share"
-              className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-terracotta text-sm font-semibold text-cream-100 shadow-sm transition-all hover:bg-terracotta-600 active:bg-terracotta-700 active:scale-95 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+              className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-hearth-fill text-sm font-semibold text-cream-100 shadow-sm transition-all hover:bg-hearth-fill-hover active:bg-hearth-fill-active active:scale-95 disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
             >
               <Share2 size={16} aria-hidden="true" />
               Share

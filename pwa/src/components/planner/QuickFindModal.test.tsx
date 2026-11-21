@@ -244,7 +244,7 @@ describe('QuickFindModal — initial fetch', () => {
     fireEvent.click(nextButton);
     expect(await screen.findByText("Didn't find a match?")).toBeInTheDocument();
     expect(screen.getByTestId('quick-find-search-library')).toHaveClass(
-      'bg-terracotta',
+      'bg-hearth-fill',
       'text-cream-100'
     );
     expect(screen.getByTestId('quick-find-search-library')).not.toHaveClass('bg-ochre');
@@ -280,7 +280,7 @@ describe('QuickFindModal — initial fetch', () => {
 
     expect(screen.getByTestId('quick-find-close')).toHaveClass('h-12', 'w-12');
     const selectBtn = screen.getByTestId('quick-find-select');
-    expect(selectBtn).toHaveClass('bg-terracotta');
+    expect(selectBtn).toHaveClass('bg-hearth-fill');
     expect(selectBtn).not.toHaveClass('bg-ochre');
 
     const toggle = screen.getByTestId('quick-find-details-toggle');

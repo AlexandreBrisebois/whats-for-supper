@@ -17,10 +17,10 @@ export default function Error({ error, reset }: ErrorProps) {
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-cream px-6 py-12 text-center">
-      <h2 className="font-heading text-2xl font-bold text-charcoal">
+      <h2 className="font-heading text-2xl font-bold text-ink-body">
         {t('errors.genericTitle', 'Something went wrong')}
       </h2>
-      <p className="text-charcoal-600">
+      <p className="text-ink-muted">
         {t('errors.genericDescription', 'An unexpected error occurred. Please try again.')}
       </p>
       <Button

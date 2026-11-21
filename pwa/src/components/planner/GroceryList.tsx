@@ -935,7 +935,7 @@ export function GroceryList({
       {/* Header */}
       <div
         className={cn(
-          'flex items-center justify-between border-b border-chrome-line bg-white/50 backdrop-blur-md',
+          'flex items-center justify-between border-b border-chrome-line bg-white backdrop-blur-md',
           isEmbedded ? 'px-6 py-2.5' : 'p-8'
         )}
       >
