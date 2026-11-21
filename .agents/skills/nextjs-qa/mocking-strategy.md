@@ -26,6 +26,10 @@ SSR-seeded state can appear before client synchronization; browser mocks alone d
 not establish the initial server data. Use the suite's isolated server fixture or
 an observed UI transition as appropriate; never require a production backend.
 
+Seed `localStorage` with `page.addInitScript()` before the first navigation. Do not
+`goto('/')` in `beforeEach` just to reach a browser context: that SSR render runs
+without a backend and can crash before any route mock applies.
+
 For Home SSR/Playwright work only, load the [Home E2E reference](../../../.kiro/steering/home-e2e.md).
 Verify its historical backend/URL assumptions against current config: managed-server
 settings differ for CI, local and external `BASE_URL` runs. Reusing a server does
