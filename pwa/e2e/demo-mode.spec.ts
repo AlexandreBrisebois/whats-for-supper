@@ -146,14 +146,14 @@ test.describe('Demo context explanation', () => {
           await page.keyboard.press('Shift+Tab');
           expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
           const cta = dialog.getByRole('button', { name: start, exact: true });
-          await expect(cta).toHaveCSS('background-color', 'rgb(82, 91, 55)');
+          await expect(cta).toHaveCSS('background-color', 'rgb(78, 110, 82)');
           expect(await textContrast(cta)).toBeGreaterThanOrEqual(4.5);
           await cta.hover();
           await expect(cta).toHaveCSS(
             'background-color',
             (await page.evaluate(() => matchMedia('(hover: hover)').matches))
-              ? 'rgb(55, 61, 37)'
-              : 'rgb(82, 91, 55)'
+              ? 'rgb(61, 89, 64)'
+              : 'rgb(78, 110, 82)'
           );
           expect(await textContrast(cta)).toBeGreaterThanOrEqual(4.5);
           await cta.focus();
@@ -162,7 +162,7 @@ test.describe('Demo context explanation', () => {
             await cta.evaluate((node) => parseFloat(getComputedStyle(node).outlineWidth))
           ).toBeGreaterThanOrEqual(2);
           await page.keyboard.down('Space');
-          await expect(cta).toHaveCSS('background-color', 'rgb(27, 30, 18)');
+          await expect(cta).toHaveCSS('background-color', 'rgb(61, 89, 64)');
           expect(await textContrast(cta)).toBeGreaterThanOrEqual(4.5);
           await page.keyboard.press('Escape');
           await page.keyboard.up('Space');
@@ -231,7 +231,7 @@ test.describe('Demo context explanation', () => {
     await expect(cta).toBeVisible();
     expect(await page.evaluate(() => matchMedia('(hover: hover)').matches)).toBe(true);
     await cta.hover();
-    await expect(cta).toHaveCSS('background-color', 'rgb(55, 61, 37)');
+    await expect(cta).toHaveCSS('background-color', 'rgb(61, 89, 64)');
     expect(await textContrast(cta)).toBeGreaterThanOrEqual(4.5);
     await cta.click();
     const band = page.getByTestId('demo-context-band');
