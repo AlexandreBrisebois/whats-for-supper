@@ -9,6 +9,7 @@
 **Migration**: Remove dedicated listeners/adapters/forwarding; retain ordinary framework and application error handling and logging, fallback navigation and reset. Historical receiver records remain unchanged.
 
 #### Scenario: Error after retirement
+
 - **WHEN** a browser or Next server failure occurs in the upgraded application
 - **THEN** no dedicated Sentrame error record is emitted and existing ordinary error handling remains available
 
@@ -19,6 +20,7 @@
 **Migration**: Remove dedicated listeners/adapters/forwarding; retain ordinary framework and application error handling and logging, fallback navigation and reset. Historical receiver records remain unchanged.
 
 #### Scenario: Error after retirement
+
 - **WHEN** a browser or Next server failure occurs in the upgraded application
 - **THEN** no dedicated Sentrame error record is emitted and existing ordinary error handling remains available
 
@@ -29,6 +31,7 @@
 **Migration**: Remove dedicated listeners/adapters/forwarding; retain ordinary framework and application error handling and logging, fallback navigation and reset. Historical receiver records remain unchanged.
 
 #### Scenario: Error after retirement
+
 - **WHEN** a browser or Next server failure occurs in the upgraded application
 - **THEN** no dedicated Sentrame error record is emitted and existing ordinary error handling remains available
 
@@ -39,6 +42,7 @@
 **Migration**: Remove dedicated listeners/adapters/forwarding; retain ordinary framework and application error handling and logging, fallback navigation and reset. Historical receiver records remain unchanged.
 
 #### Scenario: Error after retirement
+
 - **WHEN** a browser or Next server failure occurs in the upgraded application
 - **THEN** no dedicated Sentrame error record is emitted and existing ordinary error handling remains available
 
@@ -49,6 +53,7 @@
 **Migration**: Remove dedicated listeners/adapters/forwarding; retain ordinary framework and application error handling and logging, fallback navigation and reset. Historical receiver records remain unchanged.
 
 #### Scenario: Error after retirement
+
 - **WHEN** a browser or Next server failure occurs in the upgraded application
 - **THEN** no dedicated Sentrame error record is emitted and existing ordinary error handling remains available
 
@@ -59,6 +64,7 @@
 **Migration**: Remove dedicated listeners/adapters/forwarding; retain ordinary framework and application error handling and logging, fallback navigation and reset. Historical receiver records remain unchanged.
 
 #### Scenario: Error after retirement
+
 - **WHEN** a browser or Next server failure occurs in the upgraded application
 - **THEN** no dedicated Sentrame error record is emitted and existing ordinary error handling remains available
 
@@ -69,6 +75,7 @@
 **Migration**: Remove dedicated listeners/adapters/forwarding; retain ordinary framework and application error handling and logging, fallback navigation and reset. Historical receiver records remain unchanged.
 
 #### Scenario: Error after retirement
+
 - **WHEN** a browser or Next server failure occurs in the upgraded application
 - **THEN** no dedicated Sentrame error record is emitted and existing ordinary error handling remains available
 
@@ -79,6 +86,7 @@
 **Migration**: Remove dedicated listeners/adapters/forwarding; retain ordinary framework and application error handling and logging, fallback navigation and reset. Historical receiver records remain unchanged.
 
 #### Scenario: Error after retirement
+
 - **WHEN** a browser or Next server failure occurs in the upgraded application
 - **THEN** no dedicated Sentrame error record is emitted and existing ordinary error handling remains available
 
@@ -89,5 +97,6 @@
 **Migration**: Remove dedicated listeners/adapters/forwarding; retain ordinary framework and application error handling and logging, fallback navigation and reset. Historical receiver records remain unchanged.
 
 #### Scenario: Error after retirement
+
 - **WHEN** a browser or Next server failure occurs in the upgraded application
 - **THEN** no dedicated Sentrame error record is emitted and existing ordinary error handling remains available

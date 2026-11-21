@@ -120,13 +120,13 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             <time
               id={dateId}
               dateTime={date}
-              className="block mb-3 text-xs font-bold text-terracotta-700"
+              className="block mb-3 text-xs font-bold text-hearth-ink"
             >
               {formatSupperPlanDate(date)}
             </time>
             <h2
               id={titleId}
-              className="font-heading text-3xl font-black tracking-tight leading-tight text-charcoal"
+              className="font-heading text-3xl font-black tracking-tight leading-tight text-ink-body"
             >
               {t('planner.supperPlanTitle', 'What’s the plan?')}
             </h2>
@@ -137,7 +137,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             onClick={onClose}
             data-testid="non-cooking-close"
             aria-label={t('common.close', 'Close')}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-charcoal/70 hover:bg-charcoal/10 focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-ink-muted hover:bg-charcoal/10 focus-visible:outline-2 focus-visible:outline-hearth-ink disabled:opacity-50"
           >
             <X size={20} />
           </button>
@@ -164,21 +164,21 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
                 setKind(value);
                 setError(null);
               }}
-              className={`flex w-full items-center gap-3 rounded-[1.5rem] border-2 p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50 ${kind === value ? 'border-sage/40 bg-sage/10 text-charcoal' : 'border-charcoal/5 text-charcoal hover:border-sage/30 hover:bg-sage/5'}`}
+              className={`flex w-full items-center gap-3 rounded-[1.5rem] border-2 p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-hearth-ink disabled:opacity-50 ${kind === value ? 'border-garden-line bg-sage/10 text-ink-body' : 'border-chrome-line text-ink-body hover:border-garden-line hover:bg-sage/5'}`}
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sage/10 text-sage-700">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sage/10 text-garden-ink">
                 <NonCookingIcon kind={value} />
               </span>
               <span className="flex-1 font-heading text-lg font-bold">{label}</span>
               {kind === value && (
-                <Check size={20} aria-hidden="true" className="shrink-0 text-sage-700" />
+                <Check size={20} aria-hidden="true" className="shrink-0 text-garden-ink" />
               )}
             </button>
           ))}
         </div>
         {kind !== 'mystery' && (
           <div className="mb-4">
-            <label htmlFor={inputId} className="block text-sm font-bold text-charcoal">
+            <label htmlFor={inputId} className="block text-sm font-bold text-ink-body">
               {t('planner.nonCookingMessage', 'Tell the family the plan')}
             </label>
             <textarea
@@ -189,17 +189,17 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
               disabled={busy}
               onChange={(event) => setMessage(event.target.value)}
               data-testid="non-cooking-custom-label"
-              className="mt-2 w-full rounded-2xl border-2 border-charcoal/10 bg-white/70 p-4 text-base text-charcoal focus:border-terracotta/50 focus:outline-none focus:ring-2 focus:ring-terracotta/15"
+              className="mt-2 w-full rounded-2xl border-2 border-chrome-line bg-white/70 p-4 text-base text-ink-body focus:border-hearth-line focus:outline-none focus:ring-2 focus:ring-hearth-ink"
               aria-invalid={!!error}
               aria-describedby={error ? `${hintId} ${errorId}` : hintId}
             />
-            <p id={hintId} className="mt-2 text-xs text-charcoal/70">
+            <p id={hintId} className="mt-2 text-xs text-ink-muted">
               {t('planner.nonCookingExamples', 'Supper at Grandma’s · Emma’s birthday supper')}
             </p>
           </div>
         )}
         {error && (
-          <p id={errorId} role="alert" className="mb-4 text-sm text-terracotta">
+          <p id={errorId} role="alert" className="mb-4 text-sm text-hearth-ink">
             {error}
           </p>
         )}
@@ -208,7 +208,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
             disabled={busy}
             onClick={() => submit()}
             data-testid="non-cooking-save"
-            className="w-full min-h-12 rounded-2xl bg-terracotta active:bg-terracotta-700 px-4 py-3 font-bold text-white hover:bg-terracotta-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta disabled:opacity-50"
+            className="w-full min-h-12 rounded-2xl bg-hearth-fill active:bg-hearth-fill-active px-4 py-3 font-bold text-white hover:bg-hearth-fill-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hearth-ink disabled:opacity-50"
           >
             {busy ? t('planner.savingPlan', 'Saving…') : t('common.save', 'Save')}
           </button>
@@ -217,7 +217,7 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
               disabled={busy}
               onClick={() => submit(true)}
               data-testid="non-cooking-clear"
-              className="min-h-12 w-full rounded-2xl border-2 border-charcoal/20 bg-white/50 px-4 py-3 font-bold text-charcoal hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-terracotta disabled:opacity-50"
+              className="min-h-12 w-full rounded-2xl border-2 border-chrome-line bg-white/50 px-4 py-3 font-bold text-ink-body hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-hearth-ink disabled:opacity-50"
             >
               {t('planner.clearDay', 'Remove supper plan')}
             </button>

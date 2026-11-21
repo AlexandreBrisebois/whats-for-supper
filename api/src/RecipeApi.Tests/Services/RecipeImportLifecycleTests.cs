@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -21,23 +22,14 @@ public class RecipeImportLifecycleTests
         SeedReport(db, recipe.Id);
         await db.SaveChangesAsync();
 
-        var instance = Workflow("url-import", recipe.Id, DateTimeOffset.UtcNow);
-        var orchestrator = new Mock<IWorkflowOrchestrator>();
-        orchestrator
-            .Setup(service => service.TriggerAsync(
-                "url-import",
-                It.IsAny<Dictionary<string, string>>(),
-                null))
-            .ReturnsAsync(instance);
-        var reportService = new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db);
-        var service = new RecipeImportService(db, orchestrator.Object, reportService);
+        var service = new RecipeImportService(db, await ImportOrchestratorAsync(db, recipe));
 
         var result = await service.TriggerImport(recipe.Id);
 
-        Assert.Equal(instance.Id, result);
+        Assert.Equal((await db.WorkflowInstances.SingleAsync()).Id, result);
         var report = await db.RecipeImportReports.SingleAsync();
         Assert.Equal(RecipeImportReportStatus.Reimporting, report.Status);
-        Assert.Equal(instance.Id, report.LastWorkflowInstanceId);
+        Assert.Equal(result, report.LastWorkflowInstanceId);
         Assert.NotNull(report.LastAttemptAt);
         Assert.Null(report.ReimportedAt);
         Assert.Null(report.LastError);
@@ -50,18 +42,7 @@ public class RecipeImportLifecycleTests
         var recipe = SeedRecipe(db, imageCount: 1);
         await db.SaveChangesAsync();
 
-        var instance = Workflow("recipe-import", recipe.Id, DateTimeOffset.UtcNow);
-        var orchestrator = new Mock<IWorkflowOrchestrator>();
-        orchestrator
-            .Setup(service => service.TriggerAsync(
-                "recipe-import",
-                It.IsAny<Dictionary<string, string>>(),
-                null))
-            .ReturnsAsync(instance);
-        var service = new RecipeImportService(
-            db,
-            orchestrator.Object,
-            new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db));
+        var service = new RecipeImportService(db, await ImportOrchestratorAsync(db, recipe));
 
         await service.TriggerImport(recipe.Id);
 
@@ -80,8 +61,7 @@ public class RecipeImportLifecycleTests
         await db.SaveChangesAsync();
         var service = new RecipeImportService(
             db,
-            Mock.Of<IWorkflowOrchestrator>(),
-            new RecipeImportReportService(new RecipeApi.Services.SystemClock(), db));
+            Mock.Of<IWorkflowOrchestrator>());
 
         var result = await service.GetImportStatus(recipe.Id);
 
@@ -290,6 +270,28 @@ public class RecipeImportLifecycleTests
         Assert.DoesNotContain(
             definition.Tasks,
             task => task.Processor == "CompleteRecipeImportReport");
+    }
+
+    private static async Task<WorkflowOrchestrator> ImportOrchestratorAsync(RecipeDbContext db, Recipe recipe)
+    {
+        var storage = new InMemoryStorageProvider();
+        await new RecipeRepository(storage).SaveInfoAsync(new RecipeInfo
+        {
+            Id = recipe.Id, SourceUrl = recipe.SourceUrl, ImageCount = recipe.ImageCount
+        }, default);
+        var workflowId = recipe.SourceUrl is null ? "recipe-import" : "url-import";
+        await storage.SaveAsync("workflows", workflowId + ".yaml", """
+            name: synthetic-import
+            parameters: [recipeId, url?]
+            tasks:
+              - name: extract
+                processor: ExtractRecipe
+                payload:
+                  recipeId: "{{recipeId}}"
+            """);
+        var clock = new SystemClock();
+        return new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
+            TestPublicationStore.Create(db, storage, clock));
     }
 
     private static WorkflowDefinition ReadWorkflow(string workflowId)

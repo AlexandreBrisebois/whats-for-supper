@@ -12,6 +12,8 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
+  getLocale: () => 'en',
+  setLocale: vi.fn(),
 }));
 
 vi.mock('@/hooks/useScheduleStream', () => ({

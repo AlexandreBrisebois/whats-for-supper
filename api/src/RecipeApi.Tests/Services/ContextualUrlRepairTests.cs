@@ -27,10 +27,11 @@ public class ContextualUrlRepairTests : IDisposable
         var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Pasta", AddedBy = _memberId, SourceUrl = url, ImageCount = images };
         _db.Recipes.Add(recipe);
         await _db.SaveChangesAsync();
+        await new RecipeRepository(_storage).SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = recipe.Name, SourceUrl = url, ImageCount = images }, default);
         return recipe;
     }
 
-    private RecipeImportReportService Service() => new(new RecipeApi.Services.SystemClock(), _db, new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db));
+    private RecipeImportReportService Service() => new(new RecipeApi.Services.SystemClock(), _db, new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(_db, _storage, new RecipeApi.Services.SystemClock())));
     private static RecipeImportIssueRequest Feedback(string note = "  Check the quantities  ") =>
         new() { Reasons = ["steps", "ingredients"], Note = note };
 
@@ -69,7 +70,7 @@ public class ContextualUrlRepairTests : IDisposable
     }
 
     [Fact]
-    public async Task FailedLaunch_SavesReport_ThenUnchangedRetryCanLaunch()
+    public async Task FailedOriginalCapture_SavesReportAndRequiresChangedFeedbackForNewCommand()
     {
         var recipe = await SeedAsync();
         var service = Service();
@@ -78,10 +79,16 @@ public class ContextualUrlRepairTests : IDisposable
         Assert.Null(failed.ImportId);
         Assert.Empty(await _db.WorkflowInstances.ToListAsync());
         Assert.Null((await _db.RecipeImportReports.SingleAsync()).LastWorkflowInstanceId);
+        var original = await _db.RecipeRepairIntents.AsNoTracking().SingleAsync();
         await LoadDefinitionAsync("url-import");
         var retried = await service.SubmitAsync(recipe.Id, _memberId, Feedback());
-        Assert.True(retried.ReimportStarted);
+        Assert.False(retried.ReimportStarted);
+        Assert.True(retried.ReimportLaunchFailed);
+        Assert.Empty(await _db.WorkflowInstances.ToListAsync());
+        Assert.Equal(original.Payload, (await _db.RecipeRepairIntents.AsNoTracking().SingleAsync()).Payload);
+        Assert.True((await service.SubmitAsync(recipe.Id, _memberId, Feedback("Changed detail"))).ReimportStarted);
         Assert.Single(await _db.WorkflowInstances.ToListAsync());
+        Assert.Equal(2, await _db.RecipeRepairIntents.CountAsync());
     }
 
     [Fact]

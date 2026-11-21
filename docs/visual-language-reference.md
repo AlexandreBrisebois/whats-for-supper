@@ -1,383 +1,142 @@
-# Solar Earth visual language · v2
+# Family Cookbook Visual Language · Era 3 Reference
 
-**Review reference, not an implementation specification.** This guide makes design
-intent visible without changing the app, its palette, components or behavior.
-Read it on demand for visual decisions; it is not a new startup requirement.
+Normative visual reference for What's For Supper (WFS). Organized in three coherent industry layers—**Foundations → Functional Patterns → Domain Exemplars**—so routes reuse shared parts rather than inventing page-local habits. Read alongside the [North Star](creative-direction-north-star.md) and [designer judgment](agent-designer-identity.md). Runtime tokens live in [globals.css](../pwa/src/app/globals.css) and [tailwind.config.ts](../pwa/tailwind.config.ts); chronological Oct–Nov 2026 design diaries and the historical 25 October SVG checkpoint boards live in the [archived session history](archive/visual-language-session-history.md).
 
-**Creative revision: 27 October 2026.** Alex reports that the implemented Home cards lost their refinement and cookbook feel; dark text on yellow is explicitly rejected for that Home direction. The planned-card and pivot cookbook treatments are implemented locally in Sessions 5–6 and reconciled in Session 7. The pre-refinement Home source snapshot was `e4d5be7e`; the original composition reference is its parent `a4d360558d35c2f79e9cca08a9d31638d8d25569`. Other journey examples retain their individually pinned source snapshots, not a new whole-app runtime audit.
+## Start with the 4 layered schematic boards
 
-**Current** means source-verified unless explicitly reported/observed. **Proposed** means review guidance, not shipped UI or permission to implement. The boards show selected roles/states; they are not cookbook compositions or screenshots. A mathematically readable pair establishes readability only, not aesthetic fit.
+- [Board 01 · Layer 1 Foundations: color roles, type & icons](visual-language/01-foundations-roles-and-type.svg)
+- [Board 02 · Layer 2 Functional Patterns: surfaces, controls, settings & recovery](visual-language/02-surfaces-controls-and-recovery.svg)
+- [Board 03 · Layer 3A Domain: Supper Plan (Tonight, Weekly Planner, Portions & Groceries)](visual-language/03-domain-supper-plan-and-week.svg)
+- [Board 04 · Layer 3B Domain: Recipe Cards, Browse Toolbar & Detail Sheet](visual-language/04-domain-recipe-cards-and-detail.svg)
 
-**No move away from green is agreed or proposed here.** The first boards
-underrepresented both sage and icons by concentrating on Home contrast examples.
-This correction makes their existing roles visible; it is not a new palette,
-icon system or redesign. The source audit below is broader than the earlier
-reported Demo inspection, but is not a new runtime observation or a usage census.
+![Board 01: Era 3 warm espresso-ink charcoal ramp, dual-mode Standard AA / High Contrast AAA semantic roles (Hearth, Tonal Sunlight, cooled herb Garden), Outfit and Inter type scale, context-paired Ready in pills, 48px targets, outline-ink-body focus ring, and Lucide icon vocabulary.](visual-language/01-foundations-roles-and-type.svg)
 
-## Start with the pictures
+![Board 02: Functional pattern grammar—four-tier opaque surface ladder with restricted Standard glass vs opaque High Contrast chrome, side-by-side card action row, role-locked aria-pressed choices, inline disclosures, 48px switches vs 24px checkboxes, Profile (with Contrast below Language) and Settings sections, cooled herb celebration, and uncertain-save recovery.](visual-language/02-surfaces-controls-and-recovery.svg)
 
-[Open board 1 at full size](visual-language/01-roles-type-states.svg).
+![Board 03: Supper Plan domain continuity—Home Tonight states (TonightMenuCard side-by-side actions with View ingredients disclosure, TonightPivotCard, white TonightCardBase non-cooking, Option A deep herb Cooked celebration; voting status lives in the three-state bottom-navigation medallion, not on Home) paired with Weekly Planner temporal rows, inline Portions editor, and Groceries with source disclosure.](visual-language/03-domain-supper-plan-and-week.svg)
 
-![Solar Earth green and icon vocabulary: sage supports preference, participation, plans, shopping and cooking progress, selection and celebration. Existing icons and labels are separated from proposed contrast, type, control-state and touch-target examples.](visual-language/01-roles-type-states.svg)
+![Board 04: Recipe domain continuity—four-context Recipe Card family, progressive Recipes Browse toolbar and planning banner, and annotated Nov 5–6 RecipeDetailSheet protecting Cook/GOTO/Gear toolbar, hero pills, 2/4/6 preview, Rating -> Notes -> Ask the Family, and bottom planning dock.](visual-language/04-domain-recipe-cards-and-detail.svg)
 
-*Board 1: keep the warm cream, terracotta, ochre and sage identity; change the role
-or existing shade when a foreground/background pairing cannot carry its meaning.
-The font specimens use Outfit/Inter when available and system fallbacks otherwise;
-they are not font-fidelity proofs. Current-role cards summarize source rather than
-reproduce screens; their placement and explanatory copy are not implemented UI.*
+> [!NOTE]
+> The boards distinguish **Shipped Era 3** controls from **Target Era 3** updates scheduled in follow-up migration waves (for example the three-state `Navigation.tsx` Discovery medallion that replaced Home's `VotingNudgeCard`, `DiscoveryCard` descriptions, `PreviewFeaturesSection` pill switches, and opaque `bg-white` migration on Settings and Planner rows). Never copy Era 1–2 tokens still tracked in `LEGACY_ERA_ALLOWLIST` inside [visual-contract.test.ts](../pwa/src/test/visual-contract.test.ts).
 
-[Open board 2 at full size](visual-language/02-home-state-map.svg).
+## Refined Family Cookbook aesthetic
 
-> The original schematic boards retain their design-checkpoint wording. Current application copy uses **Take Out** / **À emporter**; this label records a plan and includes delivery.
+Food and the household's recipes carry anticipation and belonging. At ordinary mobile text size, let generous photography and a confident **Outfit** recipe title lead on warm cream (`#FDFCF0`, `.cookbook-bg`) and crisp opaque white (`#FFFFFF`) elevated cards (`TonightCardBase`), framed with considered whitespace, coherent rounding, and soft layered depth. Keep supporting **Inter** context calm and readable; do not flatten every surface or make every control compete at equal weight.
 
-![Home state map: unplanned offers recipe selection or Take Out; a suggestion is explicitly conceptual and unsaved; a planned meal offers Cook and Change Plan; non-cooking intent opens Planner; cooked offers Dismiss without undoing completion. Each sketch explains action consequences.](visual-language/02-home-state-map.svg)
+The user-supplied composition anchors ([planned meal anchor](visual-language/references/Screenshot_20261026-212933.png) and [pivot anchor](visual-language/references/Screenshot_20261026-212918.png)) establish portrait/5:4 photography hierarchy, deep corner rounding, soft outer elevation, and one dominant action per card. Keep Outfit headings and Inter body/data text; do not introduce extra display fonts, paper textures, or decorative badges.
 
-*Board 2: a schematic of state/action consequences, with conceptual suggestions clearly separate. It omits food imagery and cannot establish cookbook refinement. Cook, ready-GOTO confirmation and primary Quick Find now use terracotta/light text locally. Planned actions currently precede inline ingredients. Sage non-cooking/cooked roles and other Home sections remain unchanged; their board treatments are separate proposals.*
-
-## Refined family cookbook: the Home direction
-
-Food and the household's recipes should carry anticipation and belonging. At ordinary mobile text size, let generous near-square/portrait photography and a confident Outfit recipe title lead. Use cream/warm white surfaces, considered whitespace, coherent rounding and soft layered depth. Give supporting context a quiet readable rhythm. Do not flatten every surface or make each control equally prominent in pursuit of consistency.
-
-The user-supplied [Screenshot_20261026-212933.png](visual-language/references/Screenshot_20261026-212933.png) is the composition anchor: a portrait-shaped white card on cream, dominant nearly square photograph, deeply rounded image/card corners, substantial soft elevation, bold recipe title and a subtle blush duration pill. Preserve these qualities without reproducing faint tiny labels or hiding the new actions. The photograph need not be forced into a portrait crop simply because the overall card is portrait. The pivot reference [Screenshot_20261026-212918.png](visual-language/references/Screenshot_20261026-212918.png) shares the rounded frame, shadow and bold title but uses a wider image, then one primary and a compact row of two secondary actions. Let meal and pivot keep those distinct proportions within the same visual family. The pivot’s yellow primary and faint Order In are historical evidence, not treatments reinstated by using the screenshot. Navigation/Capture/voting shown in the references are outside this Home-card correction.
-
-This is a contemporary family cookbook within Solar Earth: keep Outfit/Inter and existing tokens/icons. It does not call for a new serif font, fake paper texture, rustic ornament, decorative badges or a new theme.
-
-| Home element | Local treatment (Sessions 5–6) | Preserve |
-|---|---|---|
-| Food image | Generous near-square meal photo and wider pivot crop, following their respective references; text/actions grow independently | Subject visibility, responsive reflow and navigation reachability |
-| Recipe title | Main typographic anchor, confident weight and comfortable wrapping | Full EN/FR title and stable readable background |
-| Context/duration | Quiet context; restrained blush terracotta duration pill as in the supplied reference, or small Clock cue when reflow needs it; no yellow badge | Existing localized Ready In wrapper, supplied units and missing-time behavior |
-| Cook / Make this tonight / primary Quick Find | Rich terracotta with light text; deeper terracotta for pressed state | One dominant action per card, clear label, contrast and focus |
-| Change plan / Take Out | Quieter tonal or restrained-edge secondary treatment | Visibly enabled actions and generous hit areas |
-| Ingredients disclosure | Text-style label and chevron with transparent touch padding | Explicit expanded state, keyboard focus, 48 px target and local identity reset |
-| Empty/failed image | Modest icon and warm intentional spacing rather than a dominant gray image slab | Honest state, recipe identity, choices and no invented image/readiness |
-
-Ochre provides restrained accent warmth on these cards; dark text on a yellow action field is not this direction. This does not retire ochre from Discovery, voting or navigation. Sage retains its broad existing roles. A palette can preserve identity without using every hue as a filled action on every surface.
-
-A large touch target need not have a large visible border. Readable contrast does not require making all text the same weight or framing every action. On the planned card keep one primary, a quieter secondary and a text-style disclosure. On the ready pivot keep one primary above a compact row of secondary choices when they fit, as in its reference. Stack when wrapping needs it, rather than making a rigid equal-weight button column the default composition.
-
-**Sessions 5–7 observations:** matched light/dark photo renders restore the planned card’s near-square image, soft elevation, prominent title, blush duration and quiet outlined Change plan. Ingredient disclosure is text-style. The pivot retains a wider 5:4 photograph, one primary and compact icon-bearing secondary choices; French Home uses “Recherche”. Empty/failed images use a modest warm icon. EN/FR matrix and keyboard findings are recorded separately from automated results in the change tasks. This is an agent assessment, not blanket user approval. Local photo-filled comparison artifact: `.task/home-card-session7/final-photo-review.png`. The change tasks retain exact checks, failed earlier identities and qualification limits.
-
-**Visual acceptance:** use the two supplied screenshots as the respective original composition anchors and compare current/corrected cards with the same real food photograph, recipe content, locale and viewport. Add an original-source reconstruction where available, clearly distinguishing it from the supplied capture. Assess photography, type hierarchy, material/depth, action emphasis and adaptive layout separately. Include light/dark food photos and ordinary text before missing-image/long-title stress cases. A missing-image fixture, contrast report or passing browser suite cannot establish cookbook refinement. Record qualitative findings honestly; do not infer user approval from those checks. The [change design](../openspec/changes/archive/2026-10-27-home-meal-card-visual-hierarchy/design.md) provides the rubric and [tasks](../openspec/changes/archive/2026-10-27-home-meal-card-visual-hierarchy/tasks.md) preserve historical evidence and cookbook-session findings.
+| Home element                                                  | Era 3 Family Cookbook standard                                                                                                                                                     | Preserve                                                        |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Food image                                                    | Generous near-square meal photo (`TonightMenuCard`) and 5:4 pivot crop (`TonightPivotCard`); text/actions grow independently                                                       | Subject visibility, responsive reflow, navigation reachability  |
+| Recipe title                                                  | Main typographic anchor in Outfit (`text-ink-body`), bold weight, comfortable wrapping                                                                                             | Full EN/FR title on stable readable background                  |
+| Context / duration                                            | Quiet `ink-muted` context (`#6E645B` AA -> `#524A43` AAA); sentence-case `Ready in 30m` pill (`bg-terracotta-50 text-hearth-ink` on white card; `bg-cream text-ink-body` on photo) | Existing localized Ready In wrapper and missing-time behavior   |
+| Primary CTA (`Cook`, `Make this tonight`, `Search`)           | `bg-hearth-fill text-cream-100` (`#B85542` `4.61:1` AA -> `#7B3829` `8.34:1` AAA); hover `bg-hearth-fill-hover`, pressed `bg-hearth-fill-active`                                   | One dominant action per card, clear label, contrast, focus ring |
+| Secondary CTA (`Change plan`, `Take Out`, `Edit supper plan`) | White surface with `1px` `border-hearth-line` and `text-hearth-ink` (`#A44A37` `5.81:1` AA -> `#7B3829` `8.61:1` AAA), `min-h-12` / `min-h-14`                                     | Visibly enabled actions and generous hit areas                  |
+| Ingredients disclosure                                        | Left-aligned label and `ChevronDown` with transparent `>= 48 px` touch padding                                                                                                     | Explicit expanded state, keyboard focus, local identity reset   |
+| Empty / failed image                                          | Modest icon on warm `cream` slot (`bg-cream text-garden-ink`) rather than a heavy gray slab                                                                                        | Honest state, recipe identity, no invented image                |
 
 ## Seven principles for consistent decisions
 
-1. **Lead with the truth about the task.** Make tonight's state, the next action and
-   its consequence visible before decoration. A candidate, a saved meal and a
-   cooked meal are different facts. Success should let the household leave.
-2. **Assign colour a job without narrowing the identity.** Cream is the warm
-   canvas; charcoal carries reading. Terracotta, ochre and sage all appear in
-   actionable UI. Sage also carries preference, participation, plans, selection,
-   progress and celebration. The identity reference's shorthand is not an
-   exhaustive inventory. Pair state with words/icons, not colour alone; preserve
-   contextual roles instead of forcing every action to terracotta or green to success.
-3. **Choose pairs that fit and remain readable.** Use the creative direction to choose a fitting treatment, then measure actual text and
-   control states on their composite backgrounds. Reuse darker existing variants
-   before inventing colours. Pale surfaces can stay; faint essential text cannot.
-4. **Use type to explain hierarchy.** Preserve Outfit headings and Inter body/data.
-   Prefer sentence case and clear context over tiny, tracked all-caps labels.
-   Visual size is not semantic heading level; the document outline still matters.
-5. **Make controls look as available as they are.** Enabled secondary actions are
-   not disabled actions. Distinguish pressed, selected, busy, unavailable and error
-   with the relevant label, shape/edge and feedback; keep controls stable while busy.
-6. **Design for hands and changing space.** Prioritize iPhone, Pixel and iPad touch
-   use, text growth and safe areas before incidental desktop polish. Content should
-   wrap and remain reachable rather than shrink to fit a fixed card.
-7. **Say what happens, in both languages.** Use familiar action verbs, preserve
-   meaningful choices, explain partial completion, and avoid promises the product
-   cannot substantiate. English and French need equivalent meaning, not equal length.
+1. **Lead with the truth about the task.** Make tonight's state, the next action, and its consequence visible before decoration. A candidate, a saved meal, an intentional `Take Out` plan, and a cooked meal are different facts.
+2. **Assign colour a role without flattening identity.** Warm cream (`#FDFCF0`) is the canvas; warm espresso-ink charcoal (`ink-body` `#28231F`/`#191512`, `ink-muted` `#6E645B`/`#524A43`) carries reading. Hearth terracotta owns primary actions, personal config, and destructive recovery; Sunlight ochre owns voting/GOTO highlights; cooled herb Garden (`#4E6E52`/`#3D5940` AA -> `#324D36`/`#243A27` AAA) carries preference, household participation, plans, progress, and celebration. Pair state with words and icons—never hue alone.
+3. **Compensate for perceptual lightness asymmetry.** Base terracotta (`#B85542`, $L \approx 0.56$), base sage (`#8A9A5B`, $L \approx 0.66$), and base ochre (`#E1AD01`, $L \approx 0.77$) sit in distinct luminance bands. Never force `"bg-<hue> text-white"` across all hues and never put dark/black ink onto mid-tone `#8A9A5B` or `#E1AD01`.
+4. **Use type to explain hierarchy.** Preserve **Outfit** headings and **Inter** body/data. Keep all readable copy at `>= 12 CSS px` (`text-xs` minimum), prefer sentence case (`Ready in 30m`, `Change plan`, `Take Out`) over `< 12 px` tracked all-caps, and preserve semantic heading order.
+5. **Make controls look as available as they are.** Enabled secondary actions use clear outlined or tonal surfaces—never disabled-looking gray. Keep pressed, selected, busy, unavailable, and error states distinct and dimensionally stable while busy.
+6. **Design for hands and changing space.** Prioritize touch ergonomics (`>= 48 × 48 CSS px` interactive targets), `320 CSS px` reflow, `200%` text scaling, and safe areas above mobile keyboards and bottom navigation.
+7. **Say what happens, in both languages.** Use honest action verbs (`Take Out` / `À emporter` records a supper plan rather than placing a food-delivery order), explain partial completion, and allow natural French text expansion without truncation.
 
-These are WFS recommendations informed by the official references below, not an
-import of another brand's visual style or a claim of accessibility certification.
-They support the [North Star](creative-direction-north-star.md) and
-[designer judgment](agent-designer-identity.md), which retain their existing roles.
+## Cross-section functional standards (Layer 2)
 
-## Colour and type: how to use board 1
+1. **Opaque white surface ladder & dual-mode chrome:** Crisp opaque `bg-white` (`#FFFFFF`) frames hero cards (`TonightCardBase` `rounded-[3rem]`), Settings/Profile section panels (`rounded-3xl`, `1px` `border-chrome-line`), and active Planner day rows (`rounded-2xl`); flat `bg-cream` (`#FDFCF0`, `shadow-none`) marks past/muted rows and recessed wells. In Standard mode, frosted translucency is restricted strictly to `.glass-nav` (`rgba(253,252,240,0.85)` + `blur(20px)`) and photo-overlaid capsules (`bg-cream/80 backdrop-blur-md` `View Original`); in High Contrast (`data-contrast="high"`), `.glass-nav` becomes opaque `bg-cream` (`#FDFCF0`, `backdrop-filter: none`, `1px` `#6E645B` top border) and chrome boundaries sharpen from `#E5DFD7` to `#6E645B`.
+2. **Context-paired `Ready in` badge:** Always sentence case (`Ready in 30m`, `12–14 CSS px` semibold/bold)—blush `bg-terracotta-50 text-hearth-ink` inside white card headers (`TonightMenuCard`), and solid warm `bg-cream text-ink-body` when overlaid directly on food photography (`RecipeStackCard`, `DiscoveryCard`, `RecipeDetailSheet`).
+3. **Role-locked `aria-pressed` selection:** Raised `bg-white shadow-sm` on cream for neutral view/rating (`Rating` borderless choices with semantic ink `text-hearth-ink` / `text-garden-ink`, no red fill/checkmark; `Stack / List`); blush `bg-terracotta-50 border-hearth-line text-hearth-ink` + `Check` for personal/recipe configuration (`Preview portions 2/4/6`, `Language`, `Contrast` directly below `Language` on Profile, active member); tonal `bg-sage-50 border-garden-line text-garden-ink` + `Check` for household supper-plan choices (`NonCookingDaySheet`).
+4. **Pill-track switches vs. checkboxes:** Immediate binary toggles (`role="switch"`, such as `Ask the Family` and `Preview features`) use a `>= 48 px` row with a `56 × 32 px` rounded pill track (`bg-garden-fill` or `bg-hearth-fill` active + white thumb); form options inside explicit-save forms (`Usual portions: Use family size`, `Keep amount fixed`) use a `22–24 px` rounded checkbox (`accent-terracotta`) inside a `>= 48 px` label row.
+5. **Focus indicator & sheet shell:** Standardize keyboard focus on `focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body` (`#28231F` AA -> `#191512` AAA) across all interactive controls (including `<Button>`). Sheets and dialogs render an opaque `bg-cream` container (full-screen `< 768 px`, bounded dialog on tablet) over a warm dark scrim (`bg-charcoal/45 backdrop-blur-sm`) with sticky header, scrollable body, and safe-area bottom dock.
+6. **Pull-forward decision & recovery surfaces:** Routine state transitions auto-save or auto-reconcile on arrival/departure without intermediate manual `Review` or `Restart` gates (valid Portions edits auto-save on exit; Usual portions and Portions auto-read fresh baselines; `RecipeDetailSheet` conflict recovery opens directly with smart defaults and `aria-pressed` comparison pills; Cook's Mode auto-applies remote portion/quantity updates while `0` progress exists). Routine confirmations auto-dismiss (`~5 s`) or clear on interaction; only in-progress or conflicting states render a single Era 3 Hearth (`bg-terracotta-50 border-hearth-line text-hearth-ink`) or Garden (`bg-sage-50 border-garden-line text-garden-ink`) inline card with explicit primary `<Button>` triggers, while pre-commit decision modals expose a single primary action plus `Cancel`/`Close`.
 
-### The current green language, from source
+## Warm neutral & dual-mode semantic roles
 
-The audited journeys use the **sage** family (`#8A9A5B` and its variants), not a
-new emerald/green palette. Soft fills, solid fields, outlines and icons play
-different jobs. These are source-verified examples, not claims that every current
-foreground or composite passes contrast.
+### Neutral ramp (warm espresso-ink)
 
-| Journey | Evidenced green role | Source owner |
-|---|---|---|
-| Discovery | Sage Like/LOVE communicates positive preference; sage meal-type badges classify. A vote is not an assigned meal. | [Discovery page](https://github.com/AlexandreBrisebois/whats-for-supper/blob/fd4cd9bc5f5a91057dac0b4a6624354fea765072/pwa/src/app/%28app%29/discovery/page.tsx), [DiscoveryCard](../pwa/src/components/discovery/DiscoveryCard.tsx) |
-| Matches / celebration | The shared `SuccessCard` has a substantial `bg-sage` field and Check medallion. Discovery's “Menu's in!” / “See your matches” uses dark small-text tone. A match does not prove the week is saved. | [SuccessCard](../pwa/src/components/ui/SuccessCard.tsx), [Discovery page](https://github.com/AlexandreBrisebois/whats-for-supper/blob/fd4cd9bc5f5a91057dac0b4a6624354fea765072/pwa/src/app/%28app%29/discovery/page.tsx) |
-| Planning | Sage-filled **Ask the Family** and **Nudge family** are participation actions; planned count, unanimous-vote badges and non-cooking tiles also use sage. | [Planner page](https://github.com/AlexandreBrisebois/whats-for-supper/blob/fd4cd9bc5f5a91057dac0b4a6624354fea765072/pwa/src/app/%28app%29/planner/page.tsx) |
-| Home | Non-cooking intent uses `bg-sage/10` and sage-700 icons; the cooked state uses full sage, then a soft-sage compact badge. An intentional takeout plan is not cooking success. | [HomeCommandCenter](../pwa/src/components/home/HomeCommandCenter.tsx), [HomeSections](../pwa/src/components/home/HomeSections.tsx) |
-| Groceries | Sage marks checked items, aisle progress, selected sections, input focus and Save. Check marks, counts and checked state carry meaning beyond hue. | [GroceryList](../pwa/src/components/planner/GroceryList.tsx) |
-| Cooking | Sage marks selected view, the visible VEGGIE badge and gathered-ingredient progress. Gathering ingredients is not completing the recipe. | [CooksMode](../pwa/src/components/planner/CooksMode.tsx) |
+[globals.css](../pwa/src/app/globals.css) and [tailwind.config.ts](../pwa/tailwind.config.ts) define an immutable, strictly monotonic warm espresso-ink `charcoal` ramp (`50` → `900`) tuned to harmonize with `#FDFCF0` cream without cool blue-slate simultaneous contrast:
 
-**Keep the breadth, repair specific pairs.** On flat base sage, white is **3.06:1**:
-enough for qualifying large text, not small text. Sage-900 on the same green is
-**5.52:1**, and charcoal is **4.79:1**. Discovery already demonstrates the useful
-distinction: retain the broad green celebration while choosing dark small copy.
-Home's default SuccessCard still uses white/70 small copy and sage text on its
-white button; this is a different pairing, not evidence that Discovery's treatment
-is universal. Glows, transparency and imagery need composite measurement.
+- `charcoal-50`: `#FAF8F5` · `100`: `#F3EFEA` · `200`: `#E5DFD7` (`chrome-line` Standard) · `300`: `#CFC6BC` · `400`: `#9B9085` (`icon-affordance` Standard `3.03:1` cream / `3.12:1` white)
+- `charcoal-500`: `#6E645B` (`ink-muted` Standard `5.60:1` cream / `chrome-line` High Contrast) · `600`: `#524A43` (`ink-muted` / `icon-affordance` High Contrast `8.42:1` cream / `8.68:1` white) · `700`: `#3D3630` (`11.43:1`) · `800` (`DEFAULT`): `#28231F` (`ink-body` Standard `15.08:1` cream / `15.55:1` white) · `900`: `#191512` (`ink-body` High Contrast `17.59:1` cream / `18.15:1` white)
 
-Sage on cream is **2.97:1**, below 3:1 even before considering small text. Where
-the icon or boundary is needed to identify a control/state, a darker existing
-sage variant can repair that role without removing green surfaces. Likewise,
-ochre can keep its action/emphasis role with readable text and a sufficient edge.
-Neither “all green is success” nor “all pale colour must go” follows from contrast.
+### Garden cooled herb roles in source
 
-### Pair options, not palette replacement
+**Garden** shifts off olive-toned `sage-600/700` onto cooled herb green tokens (`--role-garden-fill`, `--role-garden-fill-deep`, `--role-garden-ink`, `--role-garden-line`) for crisp green-vs-red hue separation against Hearth, while keeping raw `sage-50/100` (`#F1F3EB`, `#E3E7D7`) soft botanical fields and avoiding dark ink or white text on mid-tone `#8A9A5B`:
 
-All values below exist in [globals.css](../pwa/src/app/globals.css). The shared terracotta accent and primary default are now `#B85542`; hover uses `#A44A37`, and pressed uses `#7B3829`. Pale blush surfaces retain their existing tokens. Use the stronger terracotta-600 or terracotta-700 foreground on tinted surfaces; translucent text needs a separate actual-background contrast check.
-These are **measured options**, not a menu of equally suitable aesthetic choices or blanket replacements. For Home primary actions use the terracotta/light-text direction above. The ochre/charcoal pair is retained as contrast reference only; it is not a recommended Home action treatment.
+| Journey                             | Garden semantic role (`Standard AA -> High Contrast AAA`)                                                                                                                                    | Source owner                                                                                                                                                                                                                  |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Matches / celebration (`#5 Cooked`) | `bg-garden-fill` / `from-garden-fill to-garden-fill-deep` (`#4E6E52`->`#3D5940` AA; `#324D36`->`#243A27` AAA) + white/cream text and `bg-white border-garden-line text-garden-ink` `Dismiss` | [SuccessCard](../pwa/src/components/ui/SuccessCard.tsx)                                                                                                                                                                       |
+| Discovery                           | `LOVE` preference overlay (`bg-garden-fill/90 text-white`), `Just planned ✓` badge (`bg-sage-50 border-garden-line text-garden-ink`), `Like` button (`text-garden-ink border-garden-line`)   | [DiscoveryCard](../pwa/src/components/discovery/DiscoveryCard.tsx), `pwa/src/app/(app)/discovery/page.tsx`                                                                                                                    |
+| Planning & non-cooking              | `Ask the Family` switch (`bg-garden-fill`), `NonCooking` options (`bg-sage-50 border-garden-line text-garden-ink`), `TonightPivotCard` icon (`bg-cream text-garden-ink`)                     | [DiscoveryToggleCard](../pwa/src/components/recipes/DiscoveryToggleCard.tsx), [NonCookingDaySheet](../pwa/src/components/planner/NonCookingDaySheet.tsx), [TonightPivotCard](../pwa/src/components/home/TonightPivotCard.tsx) |
+| Groceries & Detail                  | Checked icons (`text-garden-ink`), aisle progress (`bg-sage-50 text-garden-ink`), recipe-book source links (`text-garden-ink`), `Like` rating ink (`text-garden-ink`)                        | [GroceryList](../pwa/src/components/planner/GroceryList.tsx), [RecipeDetailSheet](../pwa/src/components/recipes/RecipeDetailSheet.tsx)                                                                                        |
 
-| Proposed role | Foreground / background | Ratio |
-|---|---|---:|
-| Body on warm canvas | charcoal `#1F2937` / cream `#FDFCF0` | 14.23:1 |
-| Supporting context | charcoal-600 `#4B5563` / cream | 7.33:1 |
-| Shared terracotta primary | cream / terracotta `#B85542` | 4.61:1 |
-| Shared terracotta primary | white / terracotta `#B85542` | 4.75:1 |
-| Hover terracotta | white / terracotta-600 `#A44A37` | 5.81:1 |
-| Pressed terracotta | white / terracotta-700 `#7B3829` | 8.61:1 |
-| Contrast reference only; not Home action guidance | charcoal / ochre `#E1AD01` | 7.12:1 |
-| Small text on substantial sage field | sage-900 `#1B1E12` / sage `#8A9A5B` | 5.52:1 |
-| Body on substantial sage field | charcoal / sage | 4.79:1 |
-| Dark sage action option | white / sage-700 `#525B37` | 7.22:1 |
-| Soft sage state or icon | sage-700 / sage-50 `#F1F3EB` | 6.45:1 |
-| Error with explicit message | terracotta-700 / terracotta-50 `#F9ECE9` | 7.46:1 |
+## Dual-Mode Semantic Role Color Matrix
 
-Ratios use WCAG sRGB relative luminance, `(Llighter + .05)/(Ldarker + .05)`,
-rounded to two decimals **after** comparison. The opaque pairs above clear 4.5:1.
-Normal text needs **4.5:1**; large text needs **3:1** (at least 18 pt regular or
-14 pt bold, approximately 24 / 18.67 CSS px). A 10 or 11 px bold label is not large.
-Meaningful control boundaries, state indicators and graphical objects need **3:1**
-against adjacent colours where WCAG 1.4.11 applies; not every decorative card border
-does. Text contrast does not prove non-text contrast or overall conformance.
+All pairs below are verified via WCAG 2.2 sRGB relative luminance in [tokens.test.ts](../pwa/src/test/tokens.test.ts). Thresholds: Standard (`:root`, `contrastLevel: 'aa'`) enforces `>= 4.5:1` ordinary text, `>= 3.0:1` large text and icon-only non-text affordances; High Contrast (`:root[data-contrast="high"]`, `contrastLevel: 'aaa'`) enforces `>= 7.0:1` ordinary text/icons (`>= 6.76:1` ochre-200) and `>= 4.5:1` large text.
 
-For example, terracotta-600 against cream is 5.63:1, but ochre against cream is only
-2.00:1. If an ochre control needs its boundary to identify it, give it an appropriate
-contrasting edge; charcoal text alone does not fix that edge. The board's generic
-secondary-control specimen demonstrates contrast, not a requirement to outline every Home action. A text-style control can be identified by its label and indicator without a dark enclosing border. The separated terracotta-700
-focus outline is a visual recommendation, not evidence of implemented keyboard support.
+| Semantic role token                                       | Foreground / background                                 |                        Standard (`:root`, AA) |   High Contrast (`data-contrast="high"`, AAA) |
+| --------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------: | --------------------------------------------: |
+| Body on warm canvas (`ink-body`)                          | `text-ink-body` / `bg-cream` (`bg-white`)               | `#28231F` / `#FDFCF0` (`15.08:1` · `15.55:1`) | `#191512` / `#FDFCF0` (`17.59:1` · `18.15:1`) |
+| Supporting context (`ink-muted`)                          | `text-ink-muted` / `bg-cream` (`bg-white`)              |   `#6E645B` / `#FDFCF0` (`5.60:1` · `5.77:1`) |   `#524A43` / `#FDFCF0` (`8.42:1` · `8.68:1`) |
+| Hearth primary CTA (`hearth-fill`)                        | `text-cream-100` (`text-white`) / `bg-hearth-fill`      |   `#FDFCF0` / `#B85542` (`4.61:1` · `4.76:1`) |   `#FDFCF0` / `#7B3829` (`8.34:1` · `8.61:1`) |
+| Hearth hover / pressed (`hearth-fill-hover` / `-active`)  | `text-white` / hover · active                           |   `#A44A37` (`5.81:1`) · `#7B3829` (`8.61:1`) | `#52251B` (`12.66:1`) · `#29130E` (`17.64:1`) |
+| Secondary / Ghost / Error (`hearth-ink` / `hearth-line`)  | `text-hearth-ink` / `bg-white` (`bg-terracotta-50`)     |   `#A44A37` (`5.81:1` white · `5.04:1` blush) |   `#7B3829` (`8.61:1` white · `7.46:1` blush) |
+| Sunlight voting / GOTO (`sunlight-ink` / `sunlight-line`) | `text-sunlight-ink` / `bg-white` · `ochre-100` · `-200` |    `#856400` (`5.50:1` · `5.09:1` · `4.70:1`) |    `#664E01` (`7.91:1` · `7.32:1` · `6.76:1`) |
+| Garden solid / celebration (`garden-fill` / `-deep`)      | `text-white` / `bg-garden-fill` · `-deep`               |   `#4E6E52` (`5.71:1`) · `#3D5940` (`7.77:1`) |  `#324D36` (`9.33:1`) · `#243A27` (`12.28:1`) |
+| Garden soft state / link (`garden-ink` / `garden-line`)   | `text-garden-ink` / `bg-white` · `sage-50` · `sage-100` |    `#4E6E52` (`5.71:1` · `5.10:1` · `4.54:1`) |    `#324D36` (`9.33:1` · `8.34:1` · `7.41:1`) |
+| Icon-only non-text affordance (`icon-affordance`)         | `text-icon-affordance` / `bg-cream` (`bg-white`)        |               `#9B9085` (`3.03:1` · `3.12:1`) |               `#524A43` (`8.42:1` · `8.68:1`) |
+| Disabled reference                                        | `text-charcoal-600` / `bg-charcoal-200`                 |              `#524A43` / `#E5DFD7` (`6.56:1`) |              `#524A43` / `#E5DFD7` (`6.56:1`) |
 
-**Historical inspection, not a ban on brand colours:** the supplied Demo 0.1.25 inspection
-reported Tonight context at 10 px/900, charcoal 40% on white (2.35:1); active Home at
-11 px, terracotta on cream (3.88:1); and enabled Cook at 10 px, white on ochre
-(2.06:1). Those Tonight context/Cook roles predate Session 1 below; Home navigation
-is outside that change. The independent opaque calculations
-reproduce the latter two ratios; compositing charcoal at 40% over white also yields
-approximately 2.35:1. These are below the normal-text threshold. The reported 30 px
-charcoal recipe title on white is 14.68:1: preserve that strength. A different
-viewport, overlay or glass background requires a new measurement.
+**Disallowed & automatically ratcheted tokens** (enforced by [visual-contract.test.ts](../pwa/src/test/visual-contract.test.ts)):
 
-**Current implementation, not the revised aesthetic target (Sessions 1–4):** the planned and pivot cards now
-use content-driven height, a bounded 4:3 image region (maximum 16 rem high), one
-restrained outer shadow, wrapping titles and vertically stacked actions. Context is
-16/24 semibold, supporting text is 14 px, and actions are 16 px semibold with
-at least 56 px unpressed height. The localized Ready In wrapper and duration units
-retain their uppercase formatting. Titles remain Outfit; body/actions remain Inter. These functional/contrast choices were implemented, but the shallow image, yellow primary and repeated framed controls are now being refined under the cookbook direction; earlier acceptance does not establish that new aesthetic outcome.
-Session 2 exposes Cook then Change plan on the initial planned card. A semantic
-View ingredients / Hide ingredients button reveals description and ingredients
-inline on white; empty ingredients have localized feedback. Non-control content
-does not toggle details. A new recipe identity collapses details; same-recipe
-hydration retains disclosure. Actions remain ahead of details in normal flow,
-without a flip or motion dependency.
+- Off-palette colors (`indigo`, `lavender`, `pink`, `red-*`, `ochre-dark`).
+- Solid `bg-ochre`, `bg-ochre-400`, or `bg-ochre-500` behind text or icon controls—under either light (`2.06:1`) or dark/charcoal ink; reserve `#E1AD01` strictly for non-text accents (filled star glyph, glow, ambient pulse).
+- Dark or white text on mid-tone `#8A9A5B` `bg-sage`/`bg-sage-500` (always use Deep Herb `sage-600`/`700` with white, or Tonal Botanical `sage-50`/`100` with `sage-700`/`800`).
+- Bare `text-ochre` (`1.91:1`) or `text-sage` (`2.97:1`) on light surfaces, `text-charcoal/20`–`40`, and `< 12 px` micro-type (`text-[8px]`..`text-[11px]`).
 
-Session 3 implements the pivot hierarchy: a ready family GOTO leads with Make this
-tonight; otherwise the filled indigo Quick Find leads. Outlined Take Out pairs its
-label with a decorative ShoppingBag, and outlined Profile setup follows the immediate
-choices when no active GOTO exists. Ordinary nights say Nothing planned for tonight;
-a ready recipe is Your family's GOTO, without implying an assignment. Saved Mystery
-uses its existing localized context instead of calling the night unplanned. Checking
-and preparing feedback is localized and offers no confirmation. These prop states
-do not change the active endpoint's ready-only eligibility or assignment optimism.
+## Protected domain flows & bilingual copy
 
-Rendered EN/FR acceptance covers 320×844, 390×844, 412×915, 820×1180 and 1180×820,
-with fixture text enlarged to 200%, long/empty details and absent imagery. Retained
-screenshots and measurements are local artifacts under `.task/home-card-session1/`,
-`.task/home-card-session2/` and `.task/home-card-session3/`;
-[Session evidence and final reconciliation](../openspec/changes/archive/2026-10-27-home-meal-card-visual-hierarchy/tasks.md)
-records actual contrast, target and navigation measurements plus command results. Checking/preparing prop fixtures qualify their
-component presentation separately from the active-GOTO endpoint. Browser emulation
-and these local measurements do not establish physical-device or screen-reader
-qualification, or conformance of other Home surfaces. The boards remain schematic.
+- **Home & Tonight (`03-domain-supper-plan-and-week.svg`):** **Cook** opens Cook's Mode without marking cooked; **Change plan** runs backup → original disposition → replacement save before inline `View ingredients` disclosure; **Take Out** records a supper plan (including takeout and delivery) rather than placing an external order; **Cooked (`SuccessCard`)** uses Deep Herb **Option A** white-on-green and compacts without undoing completion.
+- **Planner, Portions & Groceries (`03`):** Temporal rows (`bg-cream` past vs opaque `bg-white` upcoming, `Today` terracotta divider), auto-dismissing (`~5 s`) routine Planner confirmations and Hearth failure banners, inline `Portions` mode with dimensionally stable rows (photo-only past rows, quiet plain-text Already prepared and portions on upcoming prepared rows, and active minus/value/plus steppers without per-row reset buttons), baseline auto-sync and valid-edit auto-save on exit without a `Review` gate, and embedded/standalone `GroceryList` with Era 3 interaction-cleared summaries, Hearth error banners, and recipe-book source disclosure keeping incomplete-subtotal hints outside.
+- **Recipes, Detail & Settings (`04` & `02`):** Progressive Browse search/Discovery/GOTO/Stack-List/RecycleBin toolbar with Hearth planning banner, seamless single-retry `409` cursor auto-restart, and Era 3 load-more/empty-state `<Button>` actions; compact header-driven `PlanningDayChooser`, pre-commit `NonCookingReplacementConfirmation`, and Cook's Mode progress-gated auto-refresh + single unified Hearth recovery bar; `RecipeDetailSheet` protecting toolbar order (`Cook` + `GOTO` + `Share` + `•••` + `Close`), direct `aria-pressed` conflict comparison pills, `2 / 4 / 6` portion preview, locked **Rating → Notes → Ask the Family** order, and bottom `Plan for {{day}}` + icon-only `Change day`; `Profile` & `Settings` preserving active member, `Language`, `Contrast` (`Standard` / `High contrast`) directly below `Language`, `Manage family`, auto-baseline `Usual portions`, `Failed captures`, and `Preview features`.
 
-**Type starting points, subordinate to composition:** heading 28/34, context 16/24 semibold, body 16/24,
-supporting text 14/21 (size/line height in CSS px). These are review examples, not
-minimum WCAG font sizes or a replacement scale. Current `globals.css` owns body
-line height 1.5 and heading line height 1.2; components also override these. Verify
-long recipe names, larger text and French wrapping before adopting a role.
+| Concept              | English                             | French                                 | Notes                                                                  |
+| -------------------- | ----------------------------------- | -------------------------------------- | ---------------------------------------------------------------------- |
+| Cook action          | Cook                                | Cuisiner                               | Opens Cook's Mode                                                      |
+| Change intention     | Change plan                         | Changer le plan                        | Opens recovery                                                         |
+| Search / Suggestions | Search / Suggestions                | Recherche / Suggestions                | Recipe selection (not a duration filter)                               |
+| Non-cooking plan     | Take Out                            | À emporter                             | Records a plan (includes takeout and delivery), not an order           |
+| Blank day            | Leave this day unplanned            | Laisser cette journée sans plan        | Separate Planner action                                                |
+| Profile contrast     | Contrast · Standard / High contrast | Contraste · Standard / Contraste élevé | Per-member preference; unset falls back to OS `prefers-contrast: more` |
 
-**States to review where applicable:** default, hover on pointer devices, pressed,
-focus, selected, busy, disabled, success and error. Inactive controls have contrast
-exceptions in WCAG, but should still be understandable with a reason. Do not use
-the disabled exception for an enabled Take Out control. For busy/error states,
-retain the action's place and describe the actual stage; do not manufacture success.
+## Mobile review & automated verification
 
-## Icons are part of the language, not decoration added later
+Before shipping UI work, verify both EN and FR across `320 px` narrow phone (`200%` text scaling), `390×844` phone, and tablet viewports using [visual-a11y-contract.ts](../pwa/e2e/visual-a11y-contract.ts) (`assertCookbookVisualA11y` with `contrastLevel: 'aa'` for Standard and `contrastLevel: 'aaa'` for High Contrast), [tokens.test.ts](../pwa/src/test/tokens.test.ts), and [visual-contract.test.ts](../pwa/src/test/visual-contract.test.ts):
 
-The app primarily uses **Lucide**, alongside actual text glyphs and grocery aisle
-emoji. Preserve that vocabulary. Board outlines reuse Lucide 1.60.0 geometry
-([upstream icons](https://github.com/lucide-icons/lucide/tree/1.60.0/icons),
-[licence](https://github.com/lucide-icons/lucide/blob/1.60.0/LICENSE), retained in
-each SVG); no package or app icon is changed. The board is a selective legend,
-not a replacement asset catalogue or pixel-exact screenshot.
+- **Touch targets:** `>= 48 × 48 CSS px` (`min-h-12` / `min-h-14` on `<Button>` and action links), `whitespace` separation, and non-clipped wrapped EN/FR labels.
+- **Keyboard & focus:** Visible `:focus-visible` CSS `outline` + `outline-offset` (`outline-ink-body` `#28231F`/`#191512`, `>= 3:1` in light and Forced Colors modes), logical tab order, and focus return from modals/sheets.
+- **Composite contrast & motion:** Measure actual composited backgrounds on `.glass-nav` (Standard translucent vs. High Contrast opaque `bg-cream`) and hero `View Original` capsules over light and dark photography; respect `prefers-reduced-motion` and keep busy controls dimensionally stable.
 
-| Existing vocabulary | Meaning depends on the label and context | Source owner |
-|---|---|---|
-| Home, BookOpen, Compass, Calendar, UserCircle | Home, Recipes, Discover, Planner, Profile. Navigation pairs icons with labels and `aria-current`; Discover's prominent treatment is ochre. The Search magnifier belongs to the Recipes toolbar. | [Navigation](../pwa/src/components/common/Navigation.tsx) |
-| Camera, BookOpen | **Capture a Recipe**, **Browse your library**: recognized routes worth preserving. | [HomeSections](../pwa/src/components/home/HomeSections.tsx) |
-| UtensilsCrossed, ArrowRightLeft | **Cook** opens Cook's Mode; **Change Plan** opens recovery. Both appear on the initial planned card, ahead of ingredient disclosure. | [TonightMenuCard](../pwa/src/components/home/TonightMenuCard.tsx) |
-| ShoppingBag, UtensilsCrossed, Sparkles, CalendarDays | Takeout, eating out, mystery, custom non-cooking intent. The same UtensilsCrossed shape has a different job beside **Cook**. | [NonCookingIcon](../pwa/src/components/planner/NonCookingIcon.tsx) |
-| ♥ / ✕ glyphs; Heart / X icons; ✓ glyph | Like/dislike buttons, LOVE/PASS overlays, and “Just planned” feedback are distinct contexts, not one interchangeable success mark. | [Discovery page](https://github.com/AlexandreBrisebois/whats-for-supper/blob/fd4cd9bc5f5a91057dac0b4a6624354fea765072/pwa/src/app/%28app%29/discovery/page.tsx), [DiscoveryCard](../pwa/src/components/discovery/DiscoveryCard.tsx) |
-| Users, Share2 | Ask the Family and Nudge family: participation, not confirmation. | [Planner page](https://github.com/AlexandreBrisebois/whats-for-supper/blob/fd4cd9bc5f5a91057dac0b4a6624354fea765072/pwa/src/app/%28app%29/planner/page.tsx) |
-| CheckCircle2 / Circle, Check; aisle emoji + names | Item checked, progress or Save; aisle recognition. Keep the count/name/checked state, not just a green symbol. | [GroceryList](../pwa/src/components/planner/GroceryList.tsx) |
-| File, Layers3; CheckCircle2 / Check | All steps / Step by step selection; gathered ingredients. The selected-view controls already expose `aria-pressed`. | [CooksMode](../pwa/src/components/planner/CooksMode.tsx) |
+## Canonical code & contract owners
 
-**Review expectations, not a claim that all controls already comply:**
-
-- Keep a visible label for ambiguous or consequential actions. An icon is a
-  recognition cue, not a substitute for the action's consequence. Clock does not
-  promise a duration filter; ShoppingBag does not mean a delivery order was placed.
-- Give icon-only controls an accessible action name; keep a visible label in its
-  accessible name. Hide purely redundant icons from assistive technology rather
-  than announcing “icon” beside an already named action. Expose checked, pressed
-  and current states semantically, not through colour alone.
-- Separate glyph size from hit area: a 20–24 px icon can sit inside a generous
-  48 × 48 CSS px target. Keep spacing and room for EN/FR labels; do not shrink
-  the target to the drawing. These are proposed review targets, not audited sizes.
-- Check meaningful icon/state contrast independently from text contrast, including
-  overlays. Decorative symbols need not be treated as essential controls. Shape,
-  label and state must still explain the UI without hue or motion.
-
-These expectations follow W3C guidance on
-[non-text alternatives](https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html),
-[label in name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html) and
-[non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html).
-
-## Home: preserve meanings while discussing visual hierarchy
-
-Source-verified behavior is owned by the Home components and Today store below;
-[tonight-meal-decisions](../openspec/specs/tonight-meal-decisions/spec.md) owns its
-approved requirements. Board 2 is a discussion aid, not a new state machine.
-The five large sketches cover **tonight**, not every Home surface. The separate
-family-voting invitation updated by #339 remains alongside tonight: **Vote Now**
-opens Discover while collecting; **Menu's In** / **See your matches** opens the
-active round's Planner week when converged. Its ochre presentation and Vote icon
-are distinct from the full-sage Discovery celebration. Checking, unavailable and
-Retry states remain explicit; matches are ready to review and save, not already
-saved. This refreshed evidence is pinned to [HomeSections at 4682643](https://github.com/AlexandreBrisebois/whats-for-supper/blob/4682643cd6086b66008fc77ede4570329e29b5ae/pwa/src/components/home/HomeSections.tsx)
-and [HomeCommandCenter at 4682643](https://github.com/AlexandreBrisebois/whats-for-supper/blob/4682643cd6086b66008fc77ede4570329e29b5ae/pwa/src/components/home/HomeCommandCenter.tsx).
-
-- **Unplanned:** no assigned recipe. A ready family GOTO leads with **Make this tonight**;
-  otherwise **Quick Find** leads, followed by outlined **Take Out** and then Profile
-  setup when no GOTO exists. Preparing/checking variants have localized feedback
-  without confirmation; saved Mystery retains its context. **Quick Find** opens recipe
-  selection, not a cooking-duration filter ([issue #338](https://github.com/AlexandreBrisebois/whats-for-supper/issues/338)).
-  Existing labels such as **Find Something Quick** do not establish a quick-cook guarantee.
-- **Suggested:** the dedicated suggested Home card is **conceptual only**. Current
-  GOTO availability and pending replacement choices must not be confused with a
-  confirmed assigned meal. The proposed **Choose for tonight** label is not current copy.
-- **Saved / planned:** **Cook** opens Cook's Mode; it does not mark cooked on entry.
-  **Change Plan** opens recovery. The current localized backup choice is **Find
-  Something Quick** (the source fallback says **Pick Something Else**); then the
-  original meal's disposition is resolved before a retained replacement is saved.
-  Partial failure distinguishes completed disposition from an unsaved or unknown
-  replacement. **Retry save** and **Retry check** are not interchangeable.
-- **Non-cooking:** **Take Out** records a non-cooking intention, not a blank night
-  and not a food-delivery order. With no recipe the current handler updates locally
-  while status validation runs in the background; local appearance is not proof of
-  persistence. With a planned recipe, recovery asks what happens to the original.
-  The non-cooking Home card opens Planner; **Leave this day unplanned** is Planner's
-  separate blank-day action. Mystery night still offers supper choices on Home.
-- **Cooked:** the success card offers **Dismiss**; dismissing compacts it without
-  undoing cooking. The compact badge can reopen Cook's Mode. Do not imply all
-  planning or household work is complete.
-
-Anonymous designer feedback reported that Capture and Browse were clear, but Home
-context was confusing, Order In looked disabled and yellow/light-grey treatments
-were hard to read. This guides the examples; it is not a representative user study.
-Preserve **Capture a Recipe** and **Browse your library** as recognizable routes,
-not new required steps. Do not claim ingredient inventory from a saved plan: existing
-recovery copy saying “We have the ingredients” is not evidence of stock knowledge.
-
-## Mobile application and bilingual review
-
-These are **proposed review targets**, not completed app checks:
-
-- Use a generous **48 × 48 CSS px** touch-target starting point for primary and
-  secondary actions, with separation and room for wrapped labels. WCAG 2.5.8's
-  24 × 24 CSS px floor has exceptions; Apple recommends 44 × 44 **pt**, Android
-  48 × 48 **dp**. The units and guidance are not interchangeable.
-- At narrow widths, prefer one clear reading column. Check 320 CSS px reflow,
-  200% text enlargement, long content and iPad portrait/landscape rather than
-  scaling a desktop composition down. Current root viewport settings restrict
-  user zoom; this reference does not claim the app already supports those checks.
-- Reuse current safe-area utilities and navigation inset handling. Keep essential
-  sheet actions above the keyboard/home indicator, and let content scroll without
-  clipping the title, error or recovery action. Keep close/cancel intent explicit;
-  recovery dismissal must respect pending and partially completed work.
-- Glass, rounded cards and food imagery remain Solar Earth strengths. Place essential
-  text on a stable readable surface; test the worst composite, not only a flat swatch.
-  Reuse established motion; avoid motion as the only status signal.
-- Keyboard implementation work is deferred in this touch-first review, not removed
-  from the chosen WCAG target. Contrast is not deferred. Static boards verify neither
-  focus order nor keyboard/screen-reader interaction.
-
-| Content example | English | French | Status |
-|---|---|---|---|
-| Cook action | Cook | Cuisiner | Current locale values |
-| Change intention | Change Plan | Changer le plan | Current locale values |
-| Non-cooking action | Take Out | À emporter | Current; clarify it records a plan, not an order |
-| Blank day | Leave this day unplanned | Laisser cette journée sans plan | Current Planner copy |
-| Unsaved suggestion | Suggestion — not saved | Suggestion — non enregistrée | Proposed; language review required |
-| Clearer recipe search | Choose another recipe | Choisir une autre recette | Proposed alternative, not a duration claim |
-
-Allow French expansion and preserve the complete action instead of truncating it.
-Locale files own implemented strings; several Home strings remain hard-coded.
-This guide does not assert bilingual completeness or change any copy.
-
-## Ownership and keeping the reference useful
-
-| Canonical owner | What it owns |
-|---|---|
-| [globals.css](../pwa/src/app/globals.css), cross-check [tailwind.config.ts](../pwa/tailwind.config.ts) | Implemented colours, utility surfaces, safe areas and theme configuration |
-| [Root layout](../pwa/src/app/layout.tsx) | Outfit/Inter loading and viewport setup |
-| [Button primitive](../pwa/src/components/ui/button.tsx), [common re-export](../pwa/src/components/common/Button.tsx) | Existing shared button variants; not all Home controls use them |
-| [Navigation](../pwa/src/components/common/Navigation.tsx) | Navigation appearance, active state and bottom inset |
-| [HomeCommandCenter](../pwa/src/components/home/HomeCommandCenter.tsx), [todayStore](../pwa/src/store/todayStore.ts) | Current Home branches and action orchestration / Today state |
-| [TonightMenuCard](../pwa/src/components/home/TonightMenuCard.tsx), [TonightPivotCard](../pwa/src/components/home/TonightPivotCard.tsx), [HomeSections](../pwa/src/components/home/HomeSections.tsx) | Recipe/inline details card, unplanned/GOTO choices, Capture/Browse/success |
-| [SkipRecoveryDialog](../pwa/src/components/home/SkipRecoveryDialog.tsx) | Recovery presentation and stage-specific feedback |
-| [English](../pwa/src/locales/en/common.json), [French](../pwa/src/locales/fr/common.json) | Localized strings, not proof every component uses them |
-
-Maintain this guide with the affected designer/component owner when an accepted
-visual decision changes its examples. Record the date, source and **Current** or
-**Proposed** status; document intentional exceptions with their reason rather than
-silently copying an old board. Runtime owners and approved specifications win if
-this snapshot drifts. No new governance, framework, Storybook dependency, global
-palette change or mandatory reading cascade is introduced.
-
-Before an implementation decision, review the relevant board, state meaning,
-actual pair/state measurements, small-screen/text-growth behavior and EN/FR copy.
-Then seek the applicable implementation approval. This PR changes documentation
-and static reference assets only; it is not acceptance evidence for a live redesign.
+| Owner                                                                                                            | Responsibility                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [globals.css](../pwa/src/app/globals.css) & [tailwind.config.ts](../pwa/tailwind.config.ts)                      | Authoritative Era 3 colors, warm charcoal ramp, dual-mode `--role-*` semantic variables, `.cookbook-bg`, `.glass*`, High Contrast opaque `.glass-nav`, safe areas |
+| [Root layout](../pwa/src/app/layout.tsx) & [ContrastProvider](../pwa/src/components/common/ContrastProvider.tsx) | Outfit / Inter font loading, `beforeInteractive` `data-contrast` init, member/OS contrast resolution                                                              |
+| [button.tsx](../pwa/src/components/ui/button.tsx) & [common/Button.tsx](../pwa/src/components/common/Button.tsx) | Shared Era 3 `<Button>` (`primary`, `secondary`, `ghost`, `danger`, `min-h-12`/`14`, `focus-visible:outline-ink-body`)                                            |
+| [SolarLoader.tsx](../pwa/src/components/ui/SolarLoader.tsx) & [ui/index.ts](../pwa/src/components/ui/index.ts)   | `CookbookLoader` primitive and `SolarLoader` compatibility alias                                                                                                  |
+| [tokens.test.ts](../pwa/src/test/tokens.test.ts) & [button.test.tsx](../pwa/src/components/ui/button.test.tsx)   | Monotonic warm neutral luminance, brand parity, Standard AA & High Contrast AAA floors, semantic key parity, and `<Button>` contract                              |
+| [visual-contract.test.ts](../pwa/src/test/visual-contract.test.ts)                                               | Static palette, tonal ochre, sage, micro-type, and shrinking `LEGACY_ERA_ALLOWLIST` ratchet                                                                       |
+| [visual-a11y-contract.ts](../pwa/e2e/visual-a11y-contract.ts)                                                    | Computed composite contrast (`contrastLevel: 'aa'                                                                                                                 | 'aaa'`), `>= 48 px`target geometry, and`320 px`/200% reflow helper |
+| [English](../pwa/src/locales/en/common.json) & [French](../pwa/src/locales/fr/common.json)                       | Localized strings                                                                                                                                                 |
 
 ## Official grounding
 
-Reviewed 25 October 2026. Use the practices, not another system's brand assets.
-
-- GC Design System: [colour roles and accessible use](https://design-system.canada.ca/en/styles/colour/),
-  [typographic hierarchy](https://design-system.canada.ca/en/styles/typography/),
-  [buttons](https://design-system.canada.ca/en/components/button/) and
-  [button content/design guidance](https://design-system.canada.ca/en/components/button/design/).
-- Canada: [build accessibility in from the start](https://www.canada.ca/en/government/system/digital-government/government-canada-digital-standards/build-accessibility-start.html).
-- W3C WCAG 2.2: [text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
-  [non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html),
-  [not colour alone](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html),
-  [target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html),
-  [reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html) and
-  [resize text](https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html).
-- Apple: [touch and legibility tips](https://developer.apple.com/design/tips/) and
-  [layout and safe areas](https://developer.apple.com/design/human-interface-guidelines/layout).
-  Android: [accessible touch targets](https://developer.android.com/develop/ui/compose/accessibility/api-defaults).
-
-WCAG 2.2 AA is the project's chosen web target. These partial contrast calculations
-and static illustrations establish neither whole-app conformance nor legal compliance.
+- GC Design System: [colour roles and accessible use](https://design-system.canada.ca/en/styles/colour/), [typographic hierarchy](https://design-system.canada.ca/en/styles/typography/), [buttons](https://design-system.canada.ca/en/components/button/), [button design](https://design-system.canada.ca/en/components/button/design/).
+- W3C WCAG 2.2: [text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html), [non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html), [not colour alone](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html), [target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html), [reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html), [resize text](https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html).
+- Apple: [touch and legibility tips](https://developer.apple.com/design/tips/), [layout and safe areas](https://developer.apple.com/design/human-interface-guidelines/layout); Android: [accessible touch targets](https://developer.android.com/develop/ui/compose/accessibility/api-defaults).

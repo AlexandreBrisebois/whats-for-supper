@@ -8,10 +8,10 @@ through approved environment configuration and record
 continuation token, or their derivative in configuration, dashboards, alerts,
 probe output, or incident notes.
 
-| Flag | Default | Purpose |
-| --- | --- | --- |
-| `WFS_ENABLE_SEMANTIC_RETRIEVAL` | `true` | Independently serve semantic fusion; set `false` to retain lexical serving. |
-| `WFS_SEARCH_CONFIGURATION_VERSION` | `hybrid-search-v1` | Low-cardinality configuration version attached to telemetry. |
+| Flag                               | Default            | Purpose                                                                     |
+| ---------------------------------- | ------------------ | --------------------------------------------------------------------------- |
+| `WFS_ENABLE_SEMANTIC_RETRIEVAL`    | `true`             | Independently serve semantic fusion; set `false` to retain lexical serving. |
+| `WFS_SEARCH_CONFIGURATION_VERSION` | `hybrid-search-v1` | Low-cardinality configuration version attached to telemetry.                |
 
 The independent `RecipeApi.Search` .NET meter instruments and structured search logs remain.
 WFS no longer registers an OpenTelemetry subscriber or exports these metrics.

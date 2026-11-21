@@ -4,13 +4,15 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-interface SolarLoaderProps {
+export interface CookbookLoaderProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   label?: string;
 }
 
-export function SolarLoader({ className, size = 'md', label }: SolarLoaderProps) {
+export type SolarLoaderProps = CookbookLoaderProps;
+
+export function CookbookLoader({ className, size = 'md', label }: CookbookLoaderProps) {
   const sizeClasses = {
     sm: 'h-12 w-12',
     md: 'h-24 w-24',
@@ -86,7 +88,7 @@ export function SolarLoader({ className, size = 'md', label }: SolarLoaderProps)
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-8 text-sm font-bold tracking-[0.2em] uppercase text-charcoal/40"
+          className="mt-8 text-sm font-bold tracking-[0.2em] uppercase text-charcoal-600"
         >
           {label}
         </motion.p>
@@ -94,3 +96,5 @@ export function SolarLoader({ className, size = 'md', label }: SolarLoaderProps)
     </div>
   );
 }
+
+export const SolarLoader = CookbookLoader;

@@ -65,7 +65,7 @@ export const RECIPE_FILTER_OPTIONS = [
   {
     key: 'readyToReviewOnly',
     labelKey: 'recipes.filterReadyToReview',
-    fallback: 'Ready to review',
+    fallback: 'Ready for review',
     testId: 'filter-ready-to-review',
   },
 ] as const satisfies ReadonlyArray<{
@@ -168,7 +168,7 @@ function Disclosure({
       aria-expanded={expanded}
       aria-controls={controls}
       onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-bold text-ochre hover:bg-ochre/10"
+      className="inline-flex min-h-12 items-center gap-1 rounded-full px-2 text-sm font-bold text-terracotta-700 hover:bg-terracotta-50"
     >
       {label}
       <ChevronDown

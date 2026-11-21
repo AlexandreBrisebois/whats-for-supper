@@ -34,10 +34,17 @@ test('public install metadata agrees in initial HTML and retains access policy',
     true
   );
   expect(manifest.shortcuts.map((shortcut: { url: string }) => shortcut.url)).toEqual([
+    '/discovery',
     '/recipes?focus=search',
     '/capture',
   ]);
   expect(manifest.shortcuts[0]).toMatchObject({
+    name: 'Vote Together',
+    short_name: 'Vote',
+    description: 'Vote on supper ideas with your family',
+    url: '/discovery',
+  });
+  expect(manifest.shortcuts[1]).toMatchObject({
     name: 'Search',
     short_name: 'Search',
     description: 'Search your recipe library',
@@ -114,7 +121,7 @@ test('advertised Find and Capture destinations retain household and member gates
 }) => {
   const manifest = await (await request.get('/manifest.json')).json();
   const destinations = manifest.shortcuts.map((shortcut: { url: string }) => shortcut.url);
-  expect(destinations).toEqual(['/recipes?focus=search', '/capture']);
+  expect(destinations).toEqual(['/discovery', '/recipes?focus=search', '/capture']);
   for (const destination of destinations) {
     const locked = await request.get(destination, { maxRedirects: 0 });
     expect(locked.status()).toBe(307);
@@ -144,7 +151,7 @@ test('welcome identity renders with every backend request unavailable in light a
     await page.emulateMedia({ colorScheme });
     await page.goto('/welcome');
     await expect(page).toHaveTitle(name);
-    await expect(page.getByTestId('welcome-title')).toHaveText('Whats for Supper?');
+    await expect(page.getByTestId('welcome-title')).toHaveText("What's for Supper?");
     await expect(page.getByTestId('passphrase-input')).toBeVisible();
     const hint = page.getByTestId(demo ? 'demo-context-band' : 'identity-hint');
     if (variant === 'production') {
@@ -200,7 +207,7 @@ for (const locale of ['en', 'fr'] as const) {
         await page.goto(route);
         await expect(page).toHaveURL(new RegExp(`${route}$`));
         if (route === '/welcome') {
-          await expect(page.getByTestId('welcome-title')).toHaveText('Whats for Supper?');
+          await expect(page.getByTestId('welcome-title')).toHaveText("What's for Supper?");
           await expect(page.getByTestId('passphrase-input')).toHaveValue('');
           await expect(page.getByTestId('welcome-enter-btn')).toBeDisabled();
         } else if (route === '/planner') {

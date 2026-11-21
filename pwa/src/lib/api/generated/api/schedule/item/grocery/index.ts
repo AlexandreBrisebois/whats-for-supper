@@ -4,8 +4,15 @@
 // @ts-ignore
 import {
   createDemoResetRequiredErrorFromDiscriminatorValue,
+  createGroceryMutationConflictFromDiscriminatorValue,
+  createGroceryMutationResultFromDiscriminatorValue,
   createRecoveryBusyErrorFromDiscriminatorValue,
+  serializeGroceryBulkMutation,
+  serializeGroceryMutationResult,
   type DemoResetRequiredError,
+  type GroceryBulkMutation,
+  type GroceryMutationConflict,
+  type GroceryMutationResult,
   type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
@@ -17,6 +24,7 @@ import {
 import {
   type AdditionalDataHolder,
   type BaseRequestBuilder,
+  type DateOnly,
   type KeysToExcludeForNavigationMetadata,
   type NavigationMetadata,
   type Parsable,
@@ -31,28 +39,6 @@ import {
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {GroceryPatchRequestBody}
- */
-// @ts-ignore
-export function createGroceryPatchRequestBodyFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoGroceryPatchRequestBody;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {GroceryPatchResponse_data}
- */
-// @ts-ignore
-export function createGroceryPatchResponse_dataFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoGroceryPatchResponse_data;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {GroceryPatchResponse}
  */
 // @ts-ignore
@@ -60,17 +46,6 @@ export function createGroceryPatchResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoGroceryPatchResponse;
-}
-/**
- * The deserialization information for the current model
- * @param GroceryPatchRequestBody The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoGroceryPatchRequestBody(
-  groceryPatchRequestBody: Partial<GroceryPatchRequestBody> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
 }
 /**
  * The deserialization information for the current model
@@ -83,31 +58,18 @@ export function deserializeIntoGroceryPatchResponse(
 ): Record<string, (node: ParseNode) => void> {
   return {
     data: (n) => {
-      groceryPatchResponse.data = n.getObjectValue<GroceryPatchResponse_data>(
-        createGroceryPatchResponse_dataFromDiscriminatorValue
+      groceryPatchResponse.data = n.getObjectValue<GroceryMutationResult>(
+        createGroceryMutationResultFromDiscriminatorValue
       );
     },
   };
 }
-/**
- * The deserialization information for the current model
- * @param GroceryPatchResponse_data The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoGroceryPatchResponse_data(
-  groceryPatchResponse_data: Partial<GroceryPatchResponse_data> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {};
-}
-export interface GroceryPatchRequestBody extends AdditionalDataHolder, Parsable {}
 export interface GroceryPatchResponse extends AdditionalDataHolder, Parsable {
   /**
    * The data property
    */
-  data?: GroceryPatchResponse_data | null;
+  data?: GroceryMutationResult | null;
 }
-export interface GroceryPatchResponse_data extends AdditionalDataHolder, Parsable {}
 /**
  * Builds and executes requests for operations under /api/schedule/{weekOffset}/grocery
  */
@@ -117,44 +79,39 @@ export interface GroceryRequestBuilder extends BaseRequestBuilder<GroceryRequest
    */
   get item(): Item_EscapedRequestBuilder;
   /**
-   * Replaces the entire recipe-derived check map with the supplied dictionary, including explicit false values; an empty dictionary clears it. On one application instance this replacement shares server processing order with item updates and recomputation. Missing keys in a stale replacement body are not merged from persisted state. Returns 200 after persistence and the ordered grocery publication attempt. Notification failure does not roll back a committed map; a fresh read recovers committed state.
+   * Requires the captured absolute Monday and authoritative list version. Names cannot identify checks; missing identity/version returns 409 upgrade_required. Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated commit retains unrelated rows and stores the mutation ID, request and outcome atomically. Identical retries replay the saved outcome; changed input under the same ID conflicts. Versions are unsigned-64 decimal strings. Publish after commit; lost replies require reread before replay. Extras retain their independent occurrence endpoint.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<GroceryPatchResponse>}
+   * @throws {GroceryMutationConflict} error when the service returns a 409 status code
    * @throws {DemoResetRequiredError} error when the service returns a 412 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   patch(
-    body: GroceryPatchRequestBody,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    body: GroceryBulkMutation,
+    requestConfiguration?:
+      RequestConfiguration<GroceryRequestBuilderPatchQueryParameters> | undefined
   ): Promise<GroceryPatchResponse | undefined>;
   /**
-   * Replaces the entire recipe-derived check map with the supplied dictionary, including explicit false values; an empty dictionary clears it. On one application instance this replacement shares server processing order with item updates and recomputation. Missing keys in a stale replacement body are not merged from persisted state. Returns 200 after persistence and the ordered grocery publication attempt. Notification failure does not roll back a committed map; a fresh read recovers committed state.
+   * Requires the captured absolute Monday and authoritative list version. Names cannot identify checks; missing identity/version returns 409 upgrade_required. Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated commit retains unrelated rows and stores the mutation ID, request and outcome atomically. Identical retries replay the saved outcome; changed input under the same ID conflicts. Versions are unsigned-64 decimal strings. Publish after commit; lost replies require reread before replay. Extras retain their independent occurrence endpoint.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toPatchRequestInformation(
-    body: GroceryPatchRequestBody,
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    body: GroceryBulkMutation,
+    requestConfiguration?:
+      RequestConfiguration<GroceryRequestBuilderPatchQueryParameters> | undefined
   ): RequestInformation;
 }
 /**
- * Serializes information the current object
- * @param GroceryPatchRequestBody The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
+ * Requires the captured absolute Monday and authoritative list version. Names cannot identify checks; missing identity/version returns 409 upgrade_required. Offset and captured reference must resolve the supplied week. A PostgreSQL-coordinated commit retains unrelated rows and stores the mutation ID, request and outcome atomically. Identical retries replay the saved outcome; changed input under the same ID conflicts. Versions are unsigned-64 decimal strings. Publish after commit; lost replies require reread before replay. Extras retain their independent occurrence endpoint.
  */
-// @ts-ignore
-export function serializeGroceryPatchRequestBody(
-  writer: SerializationWriter,
-  groceryPatchRequestBody: Partial<GroceryPatchRequestBody> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!groceryPatchRequestBody || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(groceryPatchRequestBody.additionalData);
+export interface GroceryRequestBuilderPatchQueryParameters {
+  /**
+   * Captured reference Monday; invalid or non-Monday values return 400 before mutation.
+   */
+  referenceWeekStartDate?: DateOnly;
 }
 /**
  * Serializes information the current object
@@ -171,34 +128,18 @@ export function serializeGroceryPatchResponse(
   if (!groceryPatchResponse || isSerializingDerivedType) {
     return;
   }
-  writer.writeObjectValue<GroceryPatchResponse_data>(
+  writer.writeObjectValue<GroceryMutationResult>(
     'data',
     groceryPatchResponse.data,
-    serializeGroceryPatchResponse_data
+    serializeGroceryMutationResult
   );
   writer.writeAdditionalData(groceryPatchResponse.additionalData);
 }
 /**
- * Serializes information the current object
- * @param GroceryPatchResponse_data The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeGroceryPatchResponse_data(
-  writer: SerializationWriter,
-  groceryPatchResponse_data: Partial<GroceryPatchResponse_data> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!groceryPatchResponse_data || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeAdditionalData(groceryPatchResponse_data.additionalData);
-}
-/**
  * Uri template for the request builder.
  */
-export const GroceryRequestBuilderUriTemplate = '{+baseurl}/api/schedule/{weekOffset}/grocery';
+export const GroceryRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/{weekOffset}/grocery{?referenceWeekStartDate*}';
 /**
  * Metadata for all the navigation properties in the request builder.
  */
@@ -218,13 +159,14 @@ export const GroceryRequestBuilderRequestsMetadata: RequestsMetadata = {
     uriTemplate: GroceryRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     errorMappings: {
+      409: createGroceryMutationConflictFromDiscriminatorValue as ParsableFactory<Parsable>,
       412: createDemoResetRequiredErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },
     adapterMethodName: 'send',
     responseBodyFactory: createGroceryPatchResponseFromDiscriminatorValue,
     requestBodyContentType: 'application/json',
-    requestBodySerializer: serializeGroceryPatchRequestBody,
+    requestBodySerializer: serializeGroceryBulkMutation,
     requestInformationContentSetMethod: 'setContentFromParsable',
   },
 };

@@ -23,7 +23,8 @@ public partial class RecipeSearchService(
     RecipeSearchContinuationStore? continuationStore = null,
     RecipeSearchFilterOptions? filterOptions = null,
     DemoModeOptions? demoMode = null,
-    GoToService? goToService = null)
+    GoToService? goToService = null,
+    DeploymentCalendar? deploymentCalendar = null)
 {
     private const int DefaultLimit = 12;
     private const int MaxLimit = 50;
@@ -71,7 +72,8 @@ public partial class RecipeSearchService(
             .AsNoTracking()
             .Where(recipe =>
                 recipe.DeletedAt == null &&
-                recipe.IsReady);
+                (recipe.IsReady || (appliedFilters.ReportedOnly == true || appliedFilters.ReadyToReviewOnly == true)
+                    && db.RecipeImportReports.Any(report => report.RecipeId == recipe.Id)));
 
         recipesQuery = RecipeSearchPredicate.Apply(recipesQuery, appliedFilters, db, _clock.UtcNow, gotoRecipeIds);
 
@@ -437,7 +439,7 @@ public partial class RecipeSearchService(
         CancellationToken ct)
     {
         var now = _clock.UtcNow;
-        var today = DateOnly.FromDateTime(now.UtcDateTime);
+        var today = deploymentCalendar?.Capture(now).Today ?? DateOnly.FromDateTime(now.UtcDateTime);
         var weekOffset = selectedWeekOffset ?? 0;
         var (monday, sunday) = GetWeekBounds(weekOffset, today);
         var intervalStart = today.AddDays(-(_filterOptions?.RediscoveryIntervalDays ?? RecipeSearchFilterOptions.DefaultRediscoveryIntervalDays));

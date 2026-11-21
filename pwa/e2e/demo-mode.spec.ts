@@ -157,7 +157,7 @@ test.describe('Demo context explanation', () => {
           );
           expect(await textContrast(cta)).toBeGreaterThanOrEqual(4.5);
           await cta.focus();
-          await expect(cta).toHaveCSS('outline-color', 'rgb(31, 41, 55)');
+          await expect(cta).toHaveCSS('outline-color', 'rgb(40, 35, 31)');
           expect(
             await cta.evaluate((node) => parseFloat(getComputedStyle(node).outlineWidth))
           ).toBeGreaterThanOrEqual(2);
@@ -170,7 +170,7 @@ test.describe('Demo context explanation', () => {
           await page.screenshot({ path: info.outputPath('context.png') });
           await dialog.getByRole('button', { name: start, exact: true }).click();
           await expect(band).toBeFocused();
-          await expect(band).toHaveCSS('outline-color', 'rgb(31, 41, 55)');
+          await expect(band).toHaveCSS('outline-color', 'rgb(40, 35, 31)');
           expect(
             await band.evaluate((node) => parseFloat(getComputedStyle(node).outlineWidth))
           ).toBeGreaterThanOrEqual(2);
@@ -211,7 +211,7 @@ test.describe('Demo context explanation', () => {
           await expect(dialog).not.toBeVisible();
           await expect(band).toBeFocused();
           await page.screenshot({ path: info.outputPath('band.png') });
-          await page.touchscreen.tap(8, 80);
+          await page.getByTestId('pivot-card-header').tap();
           await expect(band).not.toBeFocused();
           await expect(band).toHaveCSS('outline-style', 'none');
           await page.screenshot({ path: info.outputPath('touch-band.png') });

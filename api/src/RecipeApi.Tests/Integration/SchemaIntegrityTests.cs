@@ -240,6 +240,35 @@ public class SchemaIntegrityTests
         Assert.DoesNotContain("unknown", sql, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task FamilyMembers_SchemaAndModel_DefineContrastModeAndConstraint()
+    {
+        var tableDefinition = GetTableDefinition("family_members");
+        Assert.Contains("contrast_mode text", tableDefinition, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CK_family_members_contrast_mode", tableDefinition);
+
+        Assert.Contains("contrast_mode", _compatibilityContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CK_family_members_contrast_mode", _compatibilityContent);
+
+        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var designTimeModel = db.GetService<IDesignTimeModel>().Model;
+        var entity = designTimeModel.FindEntityType(typeof(FamilyMember));
+
+        Assert.NotNull(entity);
+        var contrastProperty = entity!.FindProperty("ContrastMode");
+        Assert.NotNull(contrastProperty);
+        Assert.Equal("contrast_mode", contrastProperty!.GetColumnName());
+        Assert.True(contrastProperty.IsNullable);
+
+        var check = entity.GetCheckConstraints()
+            .FirstOrDefault(c => c.Name == "CK_family_members_contrast_mode");
+        Assert.NotNull(check);
+        Assert.Contains("standard", check!.Sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("high", check.Sql, StringComparison.OrdinalIgnoreCase);
+    }
+
     private string GetTableDefinition(string tableName)
     {
         // Schema tables may be declared with or without the idempotent IF NOT EXISTS clause.

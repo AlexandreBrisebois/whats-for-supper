@@ -18,7 +18,7 @@ public class WorkflowProcessorTests : IDisposable
 
     public WorkflowProcessorTests()
     {
-        _orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db);
+        _orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(_db, _storage, new RecipeApi.Services.SystemClock()));
     }
 
     public void Dispose()
@@ -41,6 +41,7 @@ public class WorkflowProcessorTests : IDisposable
                 """
         };
 
+        await SaveParentAsync(task);
         // Act
         var result = await processor.ExecuteAsync(task, CancellationToken.None);
 
@@ -49,7 +50,7 @@ public class WorkflowProcessorTests : IDisposable
         Assert.Equal("child", child.WorkflowId);
         Assert.Null(child.ScheduledAt);
 
-        var childTask = Assert.Single(_db.WorkflowTasks);
+        var childTask = Assert.Single(_db.WorkflowTasks.Where(x => x.InstanceId == child.InstanceId));
         Assert.Equal(RecipeApi.Models.TaskStatus.Pending, childTask.Status);
         Assert.Null(childTask.ScheduledAt);
     }
@@ -75,6 +76,7 @@ public class WorkflowProcessorTests : IDisposable
                 """
         };
 
+        await SaveParentAsync(task);
         // Act
         var result = await processor.ExecuteAsync(task, CancellationToken.None);
 
@@ -83,7 +85,7 @@ public class WorkflowProcessorTests : IDisposable
         Assert.Equal("dreaming", child.WorkflowId);
         Assert.Equal(new DateTimeOffset(2026, 5, 9, 4, 30, 0, TimeSpan.Zero), child.ScheduledAt);
 
-        var childTask = Assert.Single(_db.WorkflowTasks);
+        var childTask = Assert.Single(_db.WorkflowTasks.Where(x => x.InstanceId == child.InstanceId));
         Assert.Equal(RecipeApi.Models.TaskStatus.Pending, childTask.Status);
         Assert.Equal(child.ScheduledAt, childTask.ScheduledAt);
     }
@@ -112,6 +114,19 @@ public class WorkflowProcessorTests : IDisposable
         await processor.ExecuteAsync(task, CancellationToken.None);
         await processor.ExecuteAsync(task, CancellationToken.None);
         Assert.Single(_db.WorkflowInstances);
+    }
+
+    private async Task SaveParentAsync(WorkflowTask task)
+    {
+        task.TaskId = Guid.NewGuid();
+        task.InstanceId = Guid.NewGuid();
+        task.TaskName = "launch";
+        task.ProcessorName = "StartWorkflow";
+        task.Status = RecipeApi.Models.TaskStatus.Processing;
+        var parent = new WorkflowInstance { Id = task.InstanceId, WorkflowId = "parent", Parameters = "{}", Tasks = [task] };
+        await TestPublicationStore.Create(_db, _storage, new SystemClock()).CaptureLaunchAsync(parent);
+        _db.WorkflowInstances.Add(parent);
+        await _db.SaveChangesAsync();
     }
 
     private WorkflowProcessor CreateProcessor(

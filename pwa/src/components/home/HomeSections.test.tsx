@@ -9,16 +9,23 @@ describe('CookedSuccessCard', () => {
     const dismiss = vi.fn();
     render(<CookedSuccessCard onDismiss={dismiss} />);
     const card = screen.getByTestId('cooked-success-card');
-    expect(card).toHaveClass('bg-sage');
+    expect(card).toHaveClass('bg-garden-fill', 'from-garden-fill', 'to-garden-fill-deep');
+    expect(card).not.toHaveClass('bg-sage');
     expect(screen.getByTestId('cooked-success-title')).toBe(
       screen.getByRole('heading', { level: 3, name: 'Enjoy your meal!' })
     );
     expect(screen.getByText('Recipe marked as cooked')).toBeVisible();
-    expect(screen.getByText('Recipe marked as cooked')).toHaveClass('text-white/70');
+    expect(screen.getByText('Recipe marked as cooked')).toHaveClass('text-cream-100', 'text-xs');
     const button = screen.getByTestId('cooked-success-dismiss');
     expect(button).toHaveAccessibleName('Dismiss');
-    expect(button).toHaveClass('text-sage');
-    expect(button).not.toHaveClass('text-sage-900');
+    expect(button).toHaveClass(
+      'bg-white',
+      'border-garden-line',
+      'text-garden-ink',
+      'text-xs',
+      'min-h-12'
+    );
+    expect(button).not.toHaveClass('text-sage', 'text-[10px]', 'text-sage-900');
     fireEvent.click(button);
     expect(dismiss).toHaveBeenCalledOnce();
   });

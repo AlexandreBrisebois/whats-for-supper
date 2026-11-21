@@ -51,6 +51,8 @@ export default async function HomePage() {
       <DemoGenerationInitializer generations={generations} />
       {familyMembers && <StoreInitializer familyMembers={familyMembers} />}
       <TodayStoreInitializer
+        preparation={todaysEntry?.preparation}
+        occurrenceId={todaysEntry?.occurrenceId as string | null}
         todaysRecipe={todaysRecipe}
         todayStatus={todayStatus}
         todayDate={todayStr}

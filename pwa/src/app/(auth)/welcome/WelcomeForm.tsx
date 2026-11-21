@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authenticateWithPassphrase, setHearthCookie } from '@/lib/auth';
 import { WelcomeDemoContext } from '@/components/identity/WelcomeDemoContext';
+import { Button } from '@/components/ui/button';
 import { t } from '@/locales';
 import { useLocale } from '@/components/common/LocaleProvider';
 
@@ -54,13 +55,16 @@ export function WelcomeForm({ initialPassphrase }: { initialPassphrase: string |
       <WelcomeDemoContext />
       <main className="relative flex flex-1 flex-col items-center justify-center gap-8 px-6 py-12 bg-cream">
         <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <h1 className="text-4xl font-bold text-indigo tracking-tight" data-testid="welcome-title">
-            {t('auth.welcomeTitle', 'Whats for Supper?')}
+          <h1
+            className="font-heading text-4xl font-bold text-charcoal tracking-tight"
+            data-testid="welcome-title"
+          >
+            {t('auth.welcomeTitle', "What's for Supper?")}
           </h1>
           <p
             id="welcome-helper"
             data-testid="welcome-helper"
-            className="mt-2 text-sm font-medium text-charcoal/60"
+            className="mt-2 text-sm font-medium text-charcoal-600"
           >
             {helper}
           </p>
@@ -79,23 +83,29 @@ export function WelcomeForm({ initialPassphrase }: { initialPassphrase: string |
             aria-describedby="welcome-helper"
             autoComplete="off"
             data-testid="passphrase-input"
-            className="w-full px-4 py-3 rounded-2xl border border-charcoal/20 bg-white text-charcoal placeholder:text-charcoal/40 focus:outline-none focus:ring-2 focus:ring-ochre/50"
+            className="w-full min-h-12 px-4 py-3 rounded-2xl border border-charcoal-200 bg-white text-charcoal placeholder:text-charcoal-500 focus:border-terracotta focus:ring-2 focus:ring-terracotta/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
           />
 
           {error && (
-            <p className="text-sm text-terracotta text-center" data-testid="auth-error">
+            <p
+              role="alert"
+              className="rounded-2xl border border-terracotta-200 bg-terracotta-50 px-4 py-3 text-sm font-medium text-terracotta-700 text-center"
+              data-testid="auth-error"
+            >
               {error}
             </p>
           )}
 
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
             disabled={isPending || !passphrase.trim()}
             data-testid="welcome-enter-btn"
-            className="w-full h-14 rounded-2xl bg-ochre text-white font-bold text-sm uppercase tracking-widest shadow-lg shadow-ochre/30 transition-all active:scale-95 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPending ? t('auth.checking', 'Checking…') : t('auth.enter', 'Enter')}
-          </button>
+          </Button>
         </form>
       </main>
     </div>

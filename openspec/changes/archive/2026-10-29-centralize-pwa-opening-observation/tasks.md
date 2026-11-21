@@ -110,7 +110,6 @@ Node transport remain byte-identical to the entry snapshot.
 
 - Final optimized-fixture acceptance GREEN: the exact four-suite Chromium command above passed 15/15 in 44.1s (telemetry matrix 43.1s), including all real action bodies and clone-read error checks. Current 13-record capture attachment SHA-256 `ae49b7bb1b9c052b3990377083ae42c4fabf4b6271e2631a96cc1f79e7a956ff`; fixed envelope/attribute shape and the same screen sequence were reviewed again. Earlier hashes identify their own dev-fixture captures. Type-checking caught an overly narrow test-window cast while adding explicit clone errors; corrected with typed assignment and an optional read, then `task typecheck` passed before this green run. No application production logic changed during fixture diagnosis. Final preparation and a new scoped verification follow this corrected identity; the earlier interrupted record is not reused as a pass.
 
-
 ## F1-3 evidence (2026-10-29)
 
 Authorized: tasks 3.1–3.2 only, OpenSpec apply (`wfs`). WFS HEAD remains
@@ -136,7 +135,6 @@ F1-2 final record `.task/agent-finish/runs/34337969949548f8ad4da88d0a3ba9e9.json
 - Failure isolation: `BASE_URL=<owned-current-origin> task test:e2e -- grocery.spec.ts --project=chromium --grep 'keyboard checks keep duplicate extras' --output=/tmp/f1-3-grocery-retry-results` also failed at line 560. Rebuilt a separate owned fixture with **only** `actions.ts` and `server.ts` restored to F1-2 before-images, telemetry false and the same synthetic configuration; the identical command against `<owned-baseline-origin>` with output `/tmp/f1-3-grocery-baseline-results` failed at the same assertion. Thus the failure reproduces without F1-3 production changes. No grocery test or implementation was edited. Raw failure logs and screenshot/context artifacts are temporary; the generated application record above retains the final gate result.
 - Progress/handoff: 3.1 complete; 3.2 implemented with focused GREEN but left unchecked until the applicable final gate passes. Tracker state is partial. Documentation-only evidence reconciliation follows the failed application record and has its own scoped verification record in the handoff; it cannot supersede that failed application gate. Next session is F1-3 completion verification after the grocery baseline failure is resolved under separate authorization. Then separately select F1-4 (4.1–4.2) for actual durable Sentrame reads/reopen/mapping; F1-D and F1-V remain unchecked.
 
-
 ## F1-3 completion evidence (2026-10-29)
 
 Authorized: task 3.2 completion plus the smallest prerequisite repair for the
@@ -160,7 +158,6 @@ tracked/untracked files were copied outside the repository for preservation revi
 - Final scoped application verification **failed**: `.task/agent-finish/runs/d86e29d211fa409cbe4074b31f538a61.json`, content identity `e56ad093c9d0b57bf936f3949055eff41b59fdc6227b7880c776f0261595fd6e`. Preparation passed with no formatter writes; complete ten-path diff review passed. Passed: documentation, all 39 OpenSpec items, lint, formatting, types, 1,384 unit tests, API suite (1,259 passed / 156 skipped), static contracts and content stability. Impact Chromium: **599 passed / 47 skipped / 3 failed** (4.6m); grocery keyboard regression and real-action telemetry matrix both passed again. Failures: `planner-reconciliation.spec.ts:412` expected one refresh read, got two; `planner.spec.ts:1238` expected one hold-to-move request, got zero; `tomorrow-push.spec.ts:87` teardown route abort was already handled. These files and their production owners were unmodified in this session. Their causes are not established; they were not retried or repaired beyond the authorized grocery prerequisite. No skipped cell becomes qualified. No automated check was blocked or left not-run; harness-only, live endpoint and database checks are not-applicable. Task 3.2 remains unchecked because this required application gate failed. Final repository evidence belongs to the generated invocation record, not the earlier failed gate. Tasks 4.1–4.3 and 5.1 remain unchecked. Actual durable Sentrame protected reads/reopen/mapping, deployed routing, native sharing and physical installed-phone qualification are not-run. Business API/OpenAPI/client/database changes and harness-only checks are not-applicable. No successor implementation, receiver edit, commit, deploy or collection enablement.
 
 - Evidence reconciliation after the application run changes only these three documents. A subsequent selected-documentation verification records those later bytes separately; it cannot promote the failed application gate. Next: separately authorize diagnosis of the three newly observed planner/Home failures, then F1-3 completion verification. F1-4 is only eligible after the required F1-3 gate passes.
-
 
 ## F1-3 verification-blocker repair evidence (2026-10-29)
 
@@ -191,7 +188,6 @@ records `d86e29d211fa409cbe4074b31f538a61` (failed application) and
 - Task 3.2 is now complete after its focused acceptance and all applicable application gates passed; overall 8/12 tasks complete. Only later task/evidence/tracker documentation bytes changed after that application identity, with a separate selected-documentation verification record reported in the handoff. Historical failed records retain their original results; this passing record does not identify their cause or erase the two unreproduced failures. Final record paths are authoritative for their tested identities.
 - Stop/next session: F1-4 (4.1–4.2), separately selected, for actual disposable Sentrame durable protected reads/reopen and prospective mappings. F1-D (4.3) and F1-V (5.1) remain unchecked. Durable receiver receipt/mapping, deployed routing, native sharing and physical installed-phone qualification remain explicitly not-run. No successor implementation, receiver edit, commit, deployment or collection enablement.
 
-
 ## App-version follow-up (2026-10-29)
 
 Authorized directly by the user: make the setup send the app version as described
@@ -217,7 +213,6 @@ and checkbox is reopened until this changed identity passes.
 - Chromium: **601 passed / 47 skipped / 1 failed** (4.7m). The versioned real-action telemetry matrix passed again (1.2m), as did grocery and all three previously named planner/Home cases. New failure: unchanged `pwa/e2e/planner.spec.ts:1900`, Quick Replace relative next week, "saves the old meal in week two before replacing week one and survives reload". A post-response mock `emitSchedule` at `mock-api.ts:475`, called at line 1642, raised `page.evaluate: Execution context was destroyed, most likely because of a navigation` during `page.reload` at planner line 1963; reload then reported the test ended. This identifies the observed failing fixture/navigation boundary, not telemetry causation. Neither file nor its production owner was changed, retried, skipped or repaired in this version follow-up, following the existing scope limit on new unrelated failures.
 - Task 3.2 remains **unchecked** (7/12 overall) despite the version-specific 97 focused and 147 combined acceptance passes, because the required updated final gate failed. Earlier passing pre-version records remain historical and do not verify this changed identity. Later evidence/doc/tracker reconciliation receives its own selected-documentation verification record, reported in the handoff; it cannot supersede the failed application record.
 - Next bounded session: separately authorize diagnosis/repair of this Quick Replace fixture/reload failure, then complete F1-3 verification. F1-4 remains later and separately selected. No tasks 4.1–4.3 or 5.1, receiver change, commit, deployment, collection enablement, sync or archive. Durable Sentrame version projection/protected reads/reopen/mapping, deployed routing, native sharing and physical installed-phone qualification remain explicitly not-run and unclaimed.
-
 
 ## Archive disposition (2026-10-29)
 

@@ -46,10 +46,10 @@ This makes `init(null)` a no-op for `currentRecipe` when the store already has d
 
 ## Ordering matrix
 
-| SSE fires first | init fires first | Result |
-|---|---|---|
-| `applyServerUpdate(recipe)` → `init(null)` | `init(null)` → `applyServerUpdate(recipe)` | Both correct after fix |
-| Before fix: `init(null)` silently cleared recipe | Before fix: SSE won, card showed | Flaky |
+| SSE fires first                                  | init fires first                           | Result                 |
+| ------------------------------------------------ | ------------------------------------------ | ---------------------- |
+| `applyServerUpdate(recipe)` → `init(null)`       | `init(null)` → `applyServerUpdate(recipe)` | Both correct after fix |
+| Before fix: `init(null)` silently cleared recipe | Before fix: SSE won, card showed           | Flaky                  |
 
 ---
 
@@ -81,7 +81,7 @@ await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
   await route.fulfill({
     status: 200,
     contentType: 'text/event-stream',
-    body: connected,  // connected event alone is sufficient — seeds both weekStore and todayStore
+    body: connected, // connected event alone is sufficient — seeds both weekStore and todayStore
   });
 });
 
@@ -96,10 +96,10 @@ The `slot_updated` event in the SSE body is now redundant (but harmless). The `c
 
 ## Stores involved
 
-| Store | Seeded by | Source |
-|---|---|---|
-| `weekStore` | `applySnapshot(schedule)` | SSE `connected` event |
-| `todayStore` | `applyServerUpdate(todaySlot)` | SSE `connected` event (via `useScheduleStream`) |
-| `todayStore` | `init(ssrRecipe, status)` | `TodayStoreInitializer` (SSR props, may be null) |
+| Store        | Seeded by                      | Source                                           |
+| ------------ | ------------------------------ | ------------------------------------------------ |
+| `weekStore`  | `applySnapshot(schedule)`      | SSE `connected` event                            |
+| `todayStore` | `applyServerUpdate(todaySlot)` | SSE `connected` event (via `useScheduleStream`)  |
+| `todayStore` | `init(ssrRecipe, status)`      | `TodayStoreInitializer` (SSR props, may be null) |
 
 `todayStore.init(null)` yields to `applyServerUpdate` — it will not overwrite a non-null recipe already in the store.

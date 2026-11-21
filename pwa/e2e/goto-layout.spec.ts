@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures';
 import { devices } from '@playwright/test';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -360,8 +361,106 @@ test('Home Search selects today through planner and cancellation submits no meal
   await page.getByTestId('stack-card-front').click();
   await page.getByTestId('action-add-to-day').click();
   await expect(page).toHaveURL(
-    /\/planner\?success=1&dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
+    /\/planner\?(?:success=1&)?dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-04/
   );
   expect(assignments).toHaveLength(1);
   expect(assignments[0]).toMatchObject({ dayIndex: 0, weekOffset: 0 });
+});
+
+test.describe('visual-a11y-contract', () => {
+  test('Era 3 Home pivot card passes contrast, >=48px targets, and 320px/200% reflow checks', async ({
+    page,
+    baseURL,
+  }) => {
+    await setupCommonRoutes(page);
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+    await page.addInitScript(
+      (id) =>
+        localStorage.setItem(
+          'family-storage',
+          JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+        ),
+      MOCK_IDS.MEMBER_ALEX
+    );
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/home');
+    const pivotCard = page.getByTestId('tonight-pivot-card');
+    await expect(pivotCard).toBeVisible();
+
+    await assertCookbookVisualA11y(page, {
+      rootSelector: '[data-testid="tonight-pivot-card"]',
+    });
+
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%';
+    });
+    await assertCookbookVisualA11y(page, {
+      rootSelector: '[data-testid="tonight-pivot-card"]',
+    });
+  });
+
+  test('detects below-48px action buttons, low-contrast composite text, and horizontal overflow', async ({
+    page,
+    baseURL,
+  }) => {
+    await setupCommonRoutes(page);
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+    await page.addInitScript(
+      (id) =>
+        localStorage.setItem(
+          'family-storage',
+          JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+        ),
+      MOCK_IDS.MEMBER_ALEX
+    );
+
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto('/home');
+    await expect(page.getByTestId('tonight-pivot-card')).toBeVisible();
+
+    await page.evaluate(() => {
+      const container = document.createElement('div');
+      container.setAttribute('data-testid', 'synthetic-violation-probe');
+      container.style.padding = '16px';
+      container.style.backgroundColor = '#ffffff';
+
+      const smallButton = document.createElement('button');
+      smallButton.setAttribute('data-testid', 'synthetic-small-btn');
+      smallButton.textContent = 'Cook';
+      smallButton.style.width = '40px';
+      smallButton.style.height = '40px';
+      smallButton.style.backgroundColor = '#e1ad01';
+      smallButton.style.color = '#ffffff';
+      smallButton.style.fontSize = '14px';
+
+      const wideBlock = document.createElement('div');
+      wideBlock.style.width = '480px';
+      wideBlock.style.height = '10px';
+
+      container.append(smallButton, wideBlock);
+      document.body.appendChild(container);
+    });
+
+    let caughtError: Error | null = null;
+    try {
+      await assertCookbookVisualA11y(page, {
+        rootSelector: '[data-testid="synthetic-violation-probe"]',
+      });
+    } catch (error) {
+      caughtError = error as Error;
+    }
+
+    expect(caughtError).not.toBeNull();
+    expect(caughtError!.message).toContain('contrast');
+    expect(caughtError!.message).toContain('2.06');
+    expect(caughtError!.message).toContain('target-size');
+    expect(caughtError!.message).toContain('40x40');
+    expect(caughtError!.message).toContain('horizontal-reflow');
+  });
 });

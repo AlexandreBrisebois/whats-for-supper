@@ -101,6 +101,11 @@ export function deserializeIntoMeGetResponse_data(
         MeGetResponse_data_browseViewModeObject
       );
     },
+    contrastMode: (n) => {
+      meGetResponse_data.contrastMode = n.getEnumValue<MeGetResponse_data_contrastMode>(
+        MeGetResponse_data_contrastModeObject
+      );
+    },
     cookingViewMode: (n) => {
       meGetResponse_data.cookingViewMode = n.getEnumValue<MeGetResponse_data_cookingViewMode>(
         MeGetResponse_data_cookingViewModeObject
@@ -143,6 +148,10 @@ export interface MeGetResponse_data extends AdditionalDataHolder, Parsable {
    */
   browseViewMode?: MeGetResponse_data_browseViewMode | null;
   /**
+   * The contrastMode property
+   */
+  contrastMode?: MeGetResponse_data_contrastMode | null;
+  /**
    * The cookingViewMode property
    */
   cookingViewMode?: MeGetResponse_data_cookingViewMode | null;
@@ -169,6 +178,8 @@ export interface MeGetResponse_data extends AdditionalDataHolder, Parsable {
 }
 export type MeGetResponse_data_browseViewMode =
   (typeof MeGetResponse_data_browseViewModeObject)[keyof typeof MeGetResponse_data_browseViewModeObject];
+export type MeGetResponse_data_contrastMode =
+  (typeof MeGetResponse_data_contrastModeObject)[keyof typeof MeGetResponse_data_contrastModeObject];
 export type MeGetResponse_data_cookingViewMode =
   (typeof MeGetResponse_data_cookingViewModeObject)[keyof typeof MeGetResponse_data_cookingViewModeObject];
 export type MeGetResponse_data_preferredLanguage =
@@ -255,6 +266,10 @@ export function serializeMeGetResponse_data(
     'browseViewMode',
     meGetResponse_data.browseViewMode
   );
+  writer.writeEnumValue<MeGetResponse_data_contrastMode>(
+    'contrastMode',
+    meGetResponse_data.contrastMode
+  );
   writer.writeEnumValue<MeGetResponse_data_cookingViewMode>(
     'cookingViewMode',
     meGetResponse_data.cookingViewMode
@@ -276,6 +291,10 @@ export const MeRequestBuilderUriTemplate = '{+baseurl}/api/family/me';
 export const MeGetResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const MeGetResponse_data_contrastModeObject = {
+  Standard: 'standard',
+  High: 'high',
 } as const;
 export const MeGetResponse_data_cookingViewModeObject = {
   StepByStep: 'step-by-step',

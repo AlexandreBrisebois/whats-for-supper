@@ -51,9 +51,9 @@ test('failed cooking read is honest and Retry loads actual instructions', async 
   });
   await page.goto('/browse-all-stack');
   await page.getByTestId('stack-card-front').click();
-  await expect(page.getByTestId('time-cook-btn')).toBeVisible();
+  await expect(page.getByTestId('action-cooks-mode')).toBeVisible();
   readFails = true;
-  await page.getByTestId('time-cook-btn').click();
+  await page.getByTestId('action-cooks-mode').click();
   await expect(page.getByTestId('cooks-mode-no-steps')).toContainText(
     'Could not load cooking instructions.'
   );
@@ -121,7 +121,7 @@ test('missing steps reuse the report form to launch reimport and Retry reads rec
   });
   await page.goto('/browse-all-stack');
   await page.getByTestId('stack-card-front').click();
-  await page.getByTestId('time-cook-btn').click();
+  await page.getByTestId('action-cooks-mode').click();
   await expect(page.getByTestId('cooks-mode-no-steps')).toContainText(
     'Cooking instructions are not available'
   );

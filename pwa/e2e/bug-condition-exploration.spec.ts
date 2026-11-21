@@ -151,7 +151,7 @@ test.describe('Bug Condition A — Glob/Predicate LIFO Bypass', () => {
         membershipWrites.push(req.url());
     });
 
-    await page.getByRole('button', { name: /synthesize recipe/i }).click();
+    await page.getByRole('button', { name: /save & build recipe/i }).click();
 
     // Wait for the GOTO PUT to complete
     await expect(page.getByTestId('capture-success-screen')).toBeVisible();
@@ -345,7 +345,7 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
         membershipWrites.push(req.url());
     });
 
-    await page.getByRole('button', { name: /synthesize recipe/i }).click();
+    await page.getByRole('button', { name: /save & build recipe/i }).click();
 
     await describeRequest;
 

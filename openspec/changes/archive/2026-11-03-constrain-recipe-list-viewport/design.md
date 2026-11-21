@@ -8,14 +8,14 @@ The proposal bounds this correction to list sizing. `recipe-library` already own
 
 Observed at 393x852 CSS pixels with 32px root text:
 
-| Measurement after reflow | CSS pixels |
-| --- | ---: |
-| Canvas height and dock top | 637.5 |
-| Toolbar / result-region start | 224 |
-| Shared result minimum (16rem) | 512 |
-| Result-region bottom | 736 |
-| List viewport bottom | 720 |
-| List viewport beyond dock | 82.5 |
+| Measurement after reflow      | CSS pixels |
+| ----------------------------- | ---------: |
+| Canvas height and dock top    |      637.5 |
+| Toolbar / result-region start |        224 |
+| Shared result minimum (16rem) |        512 |
+| Result-region bottom          |        736 |
+| List viewport bottom          |        720 |
+| List viewport beyond dock     |       82.5 |
 
 Five local samples still had that 82.5px excess after 716–810ms, with zero mounted stack cards. The canvas clips the oversized child, so this establishes a scrollport extending outside its visible parent, not proof of content painting over the dock. CI run 41706741645, recipes job 126165503093 failed the immediate check on both attempts; its retry trace returned a 42.234375px excess. Local unchanged test repeats were one failure and two passes. Early frames sometimes met the check before dock transitions completed: those passes are not evidence of a correct settled layout.
 

@@ -405,7 +405,11 @@ export default function DiscoveryPage() {
   if (isLoading && recipes.length === 0) {
     return (
       <div className="flex h-[calc(100dvh-6rem)] w-full items-center justify-center">
-        <Loader2 className="animate-spin text-ochre" size={48} data-testid="discovery-loader" />
+        <Loader2
+          className="animate-spin text-hearth-ink"
+          size={48}
+          data-testid="discovery-loader"
+        />
       </div>
     );
   }
@@ -426,7 +430,7 @@ export default function DiscoveryPage() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
                 data-testid="just-planned-badge"
-                className="absolute -top-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full bg-sage/15 border border-sage/30 px-3 py-1 text-xs font-semibold text-sage whitespace-nowrap"
+                className="absolute -top-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 rounded-full bg-sage-50 border border-garden-line px-3 py-1 text-xs font-semibold text-garden-ink whitespace-nowrap"
               >
                 Just planned ✓
               </motion.div>
@@ -452,15 +456,15 @@ export default function DiscoveryPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 data-testid="discovery-empty-state"
-                className="flex h-full w-full flex-col items-center justify-center rounded-[2.5rem] bg-white/50 border-2 border-dashed border-charcoal/10 glass-solar px-6 text-center"
+                className="flex h-full w-full flex-col items-center justify-center rounded-[2.5rem] bg-white border-2 border-dashed border-chrome-line px-6 text-center shadow-card"
               >
-                <div className="mb-4 rounded-full bg-ochre/10 p-4 text-ochre">
-                  <RefreshCcw size={32} />
+                <div className="mb-4 rounded-full bg-ochre-100 p-4 text-sunlight-ink">
+                  <RefreshCcw size={32} aria-hidden="true" />
                 </div>
-                <h3 className="text-xl font-bold font-heading text-charcoal mb-2">
+                <h3 className="text-xl font-bold font-heading text-ink-body mb-2">
                   {t('discovery.wrapUpTitle', "That's a wrap!")}
                 </h3>
-                <p className="px-6 text-sm font-medium text-charcoal/60 leading-relaxed mb-8">
+                <p className="px-6 text-sm font-medium text-ink-muted leading-relaxed mb-8">
                   {matchCount > 0
                     ? tWithVars(
                         'discovery.matchesFound',
@@ -475,8 +479,9 @@ export default function DiscoveryPage() {
 
                 <div className="flex flex-col w-full gap-3">
                   <button
+                    type="button"
                     onClick={() => router.push(matchCount > 0 ? '/planner' : '/capture')}
-                    className="w-full rounded-full bg-ochre px-8 py-3.5 font-bold text-white shadow-lg shadow-ochre/20 active:scale-95 transition-all hover:bg-ochre-dark"
+                    className="min-h-12 w-full rounded-full bg-hearth-fill px-8 py-3.5 font-semibold text-cream-100 shadow-sm active:scale-95 transition-all hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
                   >
                     {matchCount > 0
                       ? t('discovery.goToPlanner', 'Go to Planner')
@@ -485,25 +490,28 @@ export default function DiscoveryPage() {
 
                   {matchCount > 0 && (
                     <button
+                      type="button"
                       onClick={() => router.push('/capture')}
-                      className="w-full rounded-full bg-white/50 px-8 py-3.5 font-bold text-charcoal/60 border border-charcoal/10"
+                      className="min-h-12 w-full rounded-full bg-white px-8 py-3.5 font-semibold text-hearth-ink border border-hearth-line hover:bg-terracotta-50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
                     >
                       {t('discovery.captureNew', 'Capture a New Recipe')}
                     </button>
                   )}
                   {ownsRound && (
                     <button
+                      type="button"
                       data-testid="discovery-nudge-family"
                       onClick={() => setShowNudgeDialog(true)}
-                      className="w-full rounded-full bg-white/50 px-8 py-3.5 font-bold text-charcoal/60 border border-charcoal/10"
+                      className="min-h-12 w-full rounded-full bg-white px-8 py-3.5 font-semibold text-hearth-ink border border-hearth-line hover:bg-terracotta-50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
                     >
                       {t('planner.nudgeFamily', 'Nudge family')}
                     </button>
                   )}
 
                   <button
+                    type="button"
                     onClick={fetchCategories}
-                    className="w-full rounded-full bg-white/50 px-8 py-3.5 font-bold text-charcoal/60 border border-charcoal/10 active:scale-95 transition-all hover:bg-white"
+                    className="min-h-12 w-full rounded-full bg-white px-8 py-3.5 font-semibold text-ink-body border border-chrome-line active:scale-95 transition-all hover:bg-charcoal-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
                   >
                     {t('discovery.refreshFeed', 'Refresh Feed')}
                   </button>
@@ -524,9 +532,11 @@ export default function DiscoveryPage() {
           onClick={() => recipes.length > 0 && handleSwipeLeft(recipes[0].id)}
           data-testid="dislike-button"
           aria-label="Dislike recipe"
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-terracotta shadow-[0_10px_25px_color-mix(in_srgb,var(--color-terracotta)_15%,transparent)] border border-terracotta/5 active:scale-90 transition-transform disabled:opacity-20"
+          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-hearth-ink shadow-card border border-hearth-line active:scale-90 transition-transform disabled:opacity-20 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
         >
-          <div className="text-2xl">✕</div>
+          <span className="text-2xl" aria-hidden="true">
+            ✕
+          </span>
         </button>
 
         {recipes.length === 0 ? (
@@ -535,9 +545,9 @@ export default function DiscoveryPage() {
             onClick={fetchCategories}
             data-testid="refresh-button"
             aria-label="Refresh recipe suggestions"
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-white/50 text-charcoal/30 shadow-sm border border-charcoal/5 active:rotate-180 transition-transform duration-500"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-ink-muted shadow-sm border border-chrome-line hover:bg-charcoal-50 active:rotate-180 transition-transform duration-500 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
           >
-            <RefreshCcw size={18} />
+            <RefreshCcw size={18} aria-hidden="true" />
           </button>
         ) : (
           <div className="h-12 w-12" />
@@ -549,9 +559,11 @@ export default function DiscoveryPage() {
           onClick={() => recipes.length > 0 && handleSwipeRight(recipes[0].id)}
           data-testid="like-button"
           aria-label="Like recipe"
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-sage shadow-[0_10px_25px_rgba(138,154,91,0.15)] border border-sage/5 active:scale-90 transition-transform disabled:opacity-20"
+          className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-garden-ink shadow-card border border-garden-line active:scale-90 transition-transform disabled:opacity-20 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
         >
-          <div className="text-3xl">♥</div>
+          <span className="text-3xl" aria-hidden="true">
+            ♥
+          </span>
         </button>
       </div>
     </div>

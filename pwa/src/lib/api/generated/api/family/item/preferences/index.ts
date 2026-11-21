@@ -98,6 +98,12 @@ export function deserializeIntoPreferencesPutRequestBody(
           PreferencesPutRequestBody_browseViewModeObject
         );
     },
+    contrastMode: (n) => {
+      preferencesPutRequestBody.contrastMode =
+        n.getEnumValue<PreferencesPutRequestBody_contrastMode>(
+          PreferencesPutRequestBody_contrastModeObject
+        );
+    },
     cookingViewMode: (n) => {
       preferencesPutRequestBody.cookingViewMode =
         n.getEnumValue<PreferencesPutRequestBody_cookingViewMode>(
@@ -145,6 +151,12 @@ export function deserializeIntoPreferencesPutResponse_data(
           PreferencesPutResponse_data_browseViewModeObject
         );
     },
+    contrastMode: (n) => {
+      preferencesPutResponse_data.contrastMode =
+        n.getEnumValue<PreferencesPutResponse_data_contrastMode>(
+          PreferencesPutResponse_data_contrastModeObject
+        );
+    },
     cookingViewMode: (n) => {
       preferencesPutResponse_data.cookingViewMode =
         n.getEnumValue<PreferencesPutResponse_data_cookingViewMode>(
@@ -186,6 +198,10 @@ export interface PreferencesPutRequestBody extends AdditionalDataHolder, Parsabl
    */
   browseViewMode?: PreferencesPutRequestBody_browseViewMode | null;
   /**
+   * The contrastMode property
+   */
+  contrastMode?: PreferencesPutRequestBody_contrastMode | null;
+  /**
    * The cookingViewMode property
    */
   cookingViewMode?: PreferencesPutRequestBody_cookingViewMode | null;
@@ -196,6 +212,8 @@ export interface PreferencesPutRequestBody extends AdditionalDataHolder, Parsabl
 }
 export type PreferencesPutRequestBody_browseViewMode =
   (typeof PreferencesPutRequestBody_browseViewModeObject)[keyof typeof PreferencesPutRequestBody_browseViewModeObject];
+export type PreferencesPutRequestBody_contrastMode =
+  (typeof PreferencesPutRequestBody_contrastModeObject)[keyof typeof PreferencesPutRequestBody_contrastModeObject];
 export type PreferencesPutRequestBody_cookingViewMode =
   (typeof PreferencesPutRequestBody_cookingViewModeObject)[keyof typeof PreferencesPutRequestBody_cookingViewModeObject];
 export type PreferencesPutRequestBody_preferredLanguage =
@@ -211,6 +229,10 @@ export interface PreferencesPutResponse_data extends AdditionalDataHolder, Parsa
    * The browseViewMode property
    */
   browseViewMode?: PreferencesPutResponse_data_browseViewMode | null;
+  /**
+   * The contrastMode property
+   */
+  contrastMode?: PreferencesPutResponse_data_contrastMode | null;
   /**
    * The cookingViewMode property
    */
@@ -238,6 +260,8 @@ export interface PreferencesPutResponse_data extends AdditionalDataHolder, Parsa
 }
 export type PreferencesPutResponse_data_browseViewMode =
   (typeof PreferencesPutResponse_data_browseViewModeObject)[keyof typeof PreferencesPutResponse_data_browseViewModeObject];
+export type PreferencesPutResponse_data_contrastMode =
+  (typeof PreferencesPutResponse_data_contrastModeObject)[keyof typeof PreferencesPutResponse_data_contrastModeObject];
 export type PreferencesPutResponse_data_cookingViewMode =
   (typeof PreferencesPutResponse_data_cookingViewModeObject)[keyof typeof PreferencesPutResponse_data_cookingViewModeObject];
 export type PreferencesPutResponse_data_preferredLanguage =
@@ -307,6 +331,10 @@ export function serializePreferencesPutRequestBody(
     'browseViewMode',
     preferencesPutRequestBody.browseViewMode
   );
+  writer.writeEnumValue<PreferencesPutRequestBody_contrastMode>(
+    'contrastMode',
+    preferencesPutRequestBody.contrastMode
+  );
   writer.writeEnumValue<PreferencesPutRequestBody_cookingViewMode>(
     'cookingViewMode',
     preferencesPutRequestBody.cookingViewMode
@@ -358,6 +386,10 @@ export function serializePreferencesPutResponse_data(
     'browseViewMode',
     preferencesPutResponse_data.browseViewMode
   );
+  writer.writeEnumValue<PreferencesPutResponse_data_contrastMode>(
+    'contrastMode',
+    preferencesPutResponse_data.contrastMode
+  );
   writer.writeEnumValue<PreferencesPutResponse_data_cookingViewMode>(
     'cookingViewMode',
     preferencesPutResponse_data.cookingViewMode
@@ -380,6 +412,10 @@ export const PreferencesPutRequestBody_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
 } as const;
+export const PreferencesPutRequestBody_contrastModeObject = {
+  Standard: 'standard',
+  High: 'high',
+} as const;
 export const PreferencesPutRequestBody_cookingViewModeObject = {
   StepByStep: 'step-by-step',
   AllSteps: 'all-steps',
@@ -391,6 +427,10 @@ export const PreferencesPutRequestBody_preferredLanguageObject = {
 export const PreferencesPutResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const PreferencesPutResponse_data_contrastModeObject = {
+  Standard: 'standard',
+  High: 'high',
 } as const;
 export const PreferencesPutResponse_data_cookingViewModeObject = {
   StepByStep: 'step-by-step',

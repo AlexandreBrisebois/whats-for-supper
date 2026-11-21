@@ -9,6 +9,7 @@
 **Migration**: Remove providers/instrumentation/export plumbing; preserve ordinary framework diagnostics and application operations. No replacement trace exporter or propagation scheme is introduced.
 
 #### Scenario: Native operation after retirement
+
 - **WHEN** the upgraded application handles requests, rendering or outbound HTTP
 - **THEN** WFS registers no OTel native trace pipeline and sends no integration spans while ordinary operations continue
 
@@ -19,6 +20,7 @@
 **Migration**: Remove providers/instrumentation/export plumbing; preserve ordinary framework diagnostics and application operations. No replacement trace exporter or propagation scheme is introduced.
 
 #### Scenario: Native operation after retirement
+
 - **WHEN** the upgraded application handles requests, rendering or outbound HTTP
 - **THEN** WFS registers no OTel native trace pipeline and sends no integration spans while ordinary operations continue
 
@@ -29,6 +31,7 @@
 **Migration**: Remove providers/instrumentation/export plumbing; preserve ordinary framework diagnostics and application operations. No replacement trace exporter or propagation scheme is introduced.
 
 #### Scenario: Native operation after retirement
+
 - **WHEN** the upgraded application handles requests, rendering or outbound HTTP
 - **THEN** WFS registers no OTel native trace pipeline and sends no integration spans while ordinary operations continue
 
@@ -39,6 +42,7 @@
 **Migration**: Remove providers/instrumentation/export plumbing; preserve ordinary framework diagnostics and application operations. No replacement trace exporter or propagation scheme is introduced.
 
 #### Scenario: Native operation after retirement
+
 - **WHEN** the upgraded application handles requests, rendering or outbound HTTP
 - **THEN** WFS registers no OTel native trace pipeline and sends no integration spans while ordinary operations continue
 
@@ -49,5 +53,6 @@
 **Migration**: Remove providers/instrumentation/export plumbing; preserve ordinary framework diagnostics and application operations. No replacement trace exporter or propagation scheme is introduced.
 
 #### Scenario: Native operation after retirement
+
 - **WHEN** the upgraded application handles requests, rendering or outbound HTTP
 - **THEN** WFS registers no OTel native trace pipeline and sends no integration spans while ordinary operations continue

@@ -6,7 +6,7 @@ services:
     image: ${WFS_REGISTRY:-brisebois}/whats-for-supper-api:${TAG:?TAG must be set to a published release version}
     build: null # Disable local build in production
     environment:
-      Calendar__TimeZone: ${Calendar__TimeZone:-UTC}
+      Calendar__TimeZone: ${Calendar__TimeZone:-America/Toronto}
       HISTORICAL_INTEREST_WEEKS: ${HISTORICAL_INTEREST_WEEKS:-4}
       HISTORICAL_INTEREST_ENABLED: ${HISTORICAL_INTEREST_ENABLED:-true}
       COOKED_COOLDOWN_WEEKS: ${COOKED_COOLDOWN_WEEKS:-4}

@@ -20,11 +20,11 @@ own definitions and effective enablement. Every definition records a stable key,
 environment-variable name, owner, display name, description, introduction date
 and graduation criterion.
 
-| Deployment mode | Effective enabled | Member choice |
-| --- | --- | --- |
-| `off` | Always false | Retained but ignored; not editable |
-| `opt-in` | Saved boolean, or false if absent | Editable in Settings |
-| `on` | Always true | Retained but ignored; not editable |
+| Deployment mode | Effective enabled                 | Member choice                      |
+| --------------- | --------------------------------- | ---------------------------------- |
+| `off`           | Always false                      | Retained but ignored; not editable |
+| `opt-in`        | Saved boolean, or false if absent | Editable in Settings               |
+| `on`            | Always true                       | Retained but ignored; not editable |
 
 Mode strings are trimmed and case-insensitive. Missing, blank or invalid values
 resolve to `off`; invalid values produce a warning. The registry is registered as

@@ -3,8 +3,8 @@ using RecipeApi.Services;
 
 namespace RecipeApi.Infrastructure;
 
-/// <summary>Compatibility boundary shared by readers of current recipe export envelopes.</summary>
-internal sealed record RecipeExportContent(string? RawMetadata, string? Ingredients, int? Servings)
+/// <summary>Separate decoding boundaries for internal version-1 journals and declared current recipe content.</summary>
+public sealed partial record RecipeExportContent(string? RawMetadata, string? Ingredients, int? Servings)
 {
     public static RecipeExportContent? Read(JsonElement root)
     {

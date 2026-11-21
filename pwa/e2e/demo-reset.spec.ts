@@ -169,13 +169,35 @@ test('shared demo matches require explicit saving, then groceries and cooking cl
   )
     await next.click();
   await expect(next).toHaveAccessibleName('Mark recipe as cooked');
+  const captured = await page.evaluate(
+    async () => (await (await fetch('/api/schedule?weekOffset=0')).json()).data.days[0]
+  );
   await next.click();
-  await expect(page.getByTestId('cooked-success-card')).toBeVisible();
+  await expect(page.getByTestId('preparation-status')).toContainText('Already prepared');
+  await expect(page.getByTestId('preparation-status')).toContainText('Prepared Monday, May 4');
+  const prepared = await page.evaluate(async () =>
+    (await (await fetch('/api/schedule?weekOffset=0')).json()).data.days.find(
+      (day: { date: string }) => day.date === '2026-05-04'
+    )
+  );
+  expect(prepared.status).toBe(2);
+  expect(prepared.occurrenceId).toBeTruthy();
+  expect(prepared.preparation.preparedOn).toBe('2026-05-04');
+  expect(prepared.occurrenceId).toBe(captured.occurrenceId);
+  expect(prepared.recipe.id).toBe(captured.recipe.id);
   generation = MOCK_IDS.MEMBER_ALEX;
   await setupCommonRoutes(page, undefined, { demoMode: true, demoGeneration: () => generation });
   await expect(page.getByTestId('demo-reset-notice')).toBeVisible({ timeout: 15000 });
   await page.getByTestId('demo-reset-continue').click();
-  await expect(page.getByTestId('cooked-success-card')).toHaveCount(0);
+  await expect(page.getByTestId('preparation-status')).toHaveCount(0);
+  const reset = await page.evaluate(
+    async () => (await (await fetch('/api/schedule?weekOffset=0')).json()).data
+  );
+  expect(
+    reset.days.every(
+      (day: { preparation?: unknown; status?: number }) => !day.preparation && day.status !== 2
+    )
+  ).toBe(true);
   await page.locator('[data-testid="nav-item-planner"]:visible').first().click();
   await page.getByTestId('grocery-tab').click();
   await expect(page.getByTestId('grocery-extra-row')).toHaveCount(0);

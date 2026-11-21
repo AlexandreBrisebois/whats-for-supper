@@ -38,16 +38,16 @@ export function FormInput({
         aria-invalid={!!error}
         aria-describedby={error ? `${inputId}-error` : undefined}
         className={[
-          'w-full rounded-xl border bg-white px-4 py-2.5 text-charcoal',
-          'placeholder:text-charcoal-300 focus:outline-none focus:ring-2',
+          'w-full min-h-12 rounded-xl border bg-white px-4 py-2.5 text-charcoal',
+          'placeholder:text-charcoal-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal focus:ring-2',
           'disabled:cursor-not-allowed disabled:opacity-50',
           error
-            ? 'border-ochre/40 focus:ring-ochre/20'
-            : 'border-terracotta/20 focus:ring-terracotta/20',
+            ? 'border-terracotta focus:ring-terracotta/20'
+            : 'border-charcoal-200 focus:border-terracotta focus:ring-terracotta/20',
         ].join(' ')}
       />
       {error && (
-        <p id={`${inputId}-error`} role="alert" className="text-xs text-pink">
+        <p id={`${inputId}-error`} role="alert" className="text-xs font-medium text-terracotta-700">
           {error}
         </p>
       )}

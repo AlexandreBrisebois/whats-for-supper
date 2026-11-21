@@ -56,6 +56,19 @@ public class RecipeDto
     [JsonPropertyName("servings")]
     public int? Servings { get; set; }
 
+    // Null identifies the legacy owner. Reads never allocate canonical identities.
+    [JsonPropertyName("contentSchemaVersion")]
+    public int? ContentSchemaVersion { get; set; }
+
+    [JsonPropertyName("contentRevision")]
+    public string? ContentRevision { get; set; }
+
+    [JsonPropertyName("ingredientLines")]
+    public List<RecipeIngredientLineDto>? IngredientLines { get; set; }
+
+    [JsonPropertyName("instructionSections")]
+    public List<RecipeInstructionSectionDto>? InstructionSections { get; set; }
+
     [JsonPropertyName("ingredients")]
     public List<string>? Ingredients { get; set; }
 

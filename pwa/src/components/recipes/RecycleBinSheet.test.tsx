@@ -59,6 +59,31 @@ describe('Recycle Bin recovery', () => {
     fireEvent.keyDown(close, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it('uses Family Cookbook terracotta destructive tokens, >= 48px targets, and readable copy without red-* classes', async () => {
+    api.getTrashItems.mockResolvedValue([item]);
+    const { container } = render(<RecycleBinSheet onClose={vi.fn()} />);
+
+    const close = screen.getByRole('button', { name: 'Close' });
+    const restore = await screen.findByTestId(`action-restore-${item.id}`);
+    const purge = screen.getByTestId(`action-purge-${item.id}`);
+
+    expect(close).toHaveClass('h-12', 'w-12');
+    expect(restore).toHaveClass('min-h-12');
+    expect(purge).toHaveClass(
+      'min-h-12',
+      'border-terracotta-200',
+      'bg-terracotta-50',
+      'text-terracotta-700'
+    );
+
+    fireEvent.click(purge);
+    expect(screen.getByTestId('elevated-pin-cancel')).toHaveClass('min-h-12');
+    expect(screen.getByRole('button', { name: 'Delete Forever' })).toHaveClass('min-h-12');
+    expect(container.innerHTML).not.toMatch(/(?:text|bg|border|hover:bg)-red-\d+/);
+    expect(container.innerHTML).not.toContain('text-charcoal/40');
+    expect(container.innerHTML).not.toContain('placeholder:text-charcoal/30');
+  });
 });
 
 it('retains Recycle Bin retry and nested PIN failure, cancellation and reopening', async () => {

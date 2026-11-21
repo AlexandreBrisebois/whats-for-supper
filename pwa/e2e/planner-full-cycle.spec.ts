@@ -60,7 +60,7 @@ async function collapseDevelopmentBadge(page: Page) {
   if (await devBadge.isVisible()) await devBadge.click();
 }
 
-async function setupPlanner(page: Page, locked = false) {
+async function setupPlanner(page: Page, locked = false, capturedCooking = false) {
   const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
   const origins = [
@@ -84,6 +84,33 @@ async function setupPlanner(page: Page, locked = false) {
   }, MOCK_IDS.MEMBER_ALEX);
 
   await setupCommonRoutes(page);
+
+  if (capturedCooking) {
+    await page.goto('/onboarding');
+    await page.evaluate(async (recipeId) => {
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        const assigned = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ weekOffset: 0, dayIndex, recipeId }),
+        });
+        if (!assigned.ok) throw new Error('Could not seed dated cooking fixture');
+      }
+      const locked = await fetch(
+        '/api/schedule/lock?referenceWeekStartDate=2026-05-04&weekOffset=0',
+        { method: 'POST' }
+      );
+      if (!locked.ok) throw new Error('Could not lock cooking fixture');
+      const schedule = (await (await fetch('/api/schedule?weekOffset=0')).json()).data;
+      if (
+        !schedule.locked ||
+        schedule.days.some((day: { occurrenceId?: string }) => !day.occurrenceId)
+      )
+        throw new Error('Locked fixture must retain captured occurrences');
+    }, MOCK_IDS.RECIPE_SPAGHETTI);
+    await page.goto('/planner');
+    return;
+  }
 
   const draftDays = buildDraftDays();
   // Use explicit MOCK_IDS to ensure uniqueness and validity
@@ -219,7 +246,7 @@ test.describe('Planner — Finalize & Lock', () => {
 
 test.describe("Planner — Cook's Mode", () => {
   test('opens Cook Mode and navigates steps for a locked week', async ({ page }) => {
-    await setupPlanner(page, true);
+    await setupPlanner(page, true, true);
 
     // Current planner contract: open detail sheet from card, then launch Cook Mode from sheet.
     const todayStr = toDateStr(currentMonday());
@@ -229,7 +256,7 @@ test.describe("Planner — Cook's Mode", () => {
 
     const detailSheet = page.getByTestId('recipe-detail-sheet');
     await expect(detailSheet).toBeVisible();
-    await detailSheet.getByTestId('time-cook-btn').click();
+    await detailSheet.getByTestId('action-cooks-mode').click();
 
     const overlay = page.getByTestId('cooks-mode-overlay');
     await expect(overlay).toBeVisible();

@@ -3,9 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants/routes';
-import { useFamilyStore } from '@/store/familyStore';
 import { IdentityHint } from '@/components/identity/IdentityHint';
-import { Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   /** Page title displayed in the center */
@@ -27,46 +25,29 @@ export function Header({
   nav,
   showLogo = true, // Enabled for Option 2 alignment
 }: HeaderProps) {
-  const { familyMembers, selectedFamilyMemberId } = useFamilyStore();
-
-  const selectedMember = familyMembers.find((m) => m.id === selectedFamilyMemberId);
-  const firstName = selectedMember?.name.split(' ')[0] || '';
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
-  const dynamicTitle =
-    title === 'Home' || !title ? `${getGreeting()}${firstName ? `, ${firstName}` : ''}!` : title;
-
   return (
-    <header className="sticky top-0 z-30 w-full bg-cream/90 backdrop-blur-xl safe-top border-b border-terracotta/5">
+    <header className="sticky top-0 z-30 w-full glass-header safe-top">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-1.5 md:py-2">
         {/* Left Side: Back Button or Spacer */}
         <div className="flex min-w-[2.5rem] items-center">{leftAction}</div>
 
-        {/* Center: Dynamic Greeting or Page Title */}
+        {/* Center: Brand Link or Page Title */}
         <div className="relative flex-1 text-center">
           <IdentityHint appShell className="right-0 -top-1.5" />
-          {showLogo && (title === 'Discovery' || !title) ? (
-            <Link href={ROUTES.HOME} className="inline-flex items-center gap-2 group">
-              <span className="font-heading text-lg font-bold tracking-tight text-charcoal md:text-xl">
+          {!title || (showLogo && title === 'Discovery') ? (
+            <Link
+              href={ROUTES.HOME}
+              className="inline-flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-xl px-3 group focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
+            >
+              <span className="font-heading text-lg font-bold tracking-tight text-ink-body md:text-xl">
                 Supper
               </span>
             </Link>
           ) : (
-            <h1 className="font-heading text-xl font-bold tracking-tight text-charcoal md:text-2xl">
-              {dynamicTitle}
+            <h1 className="font-heading text-xl font-bold tracking-tight text-ink-body md:text-2xl">
+              {title}
             </h1>
           )}
-          {title === 'Discovery' || !title ? (
-            <p className="hidden text-[8px] font-bold uppercase tracking-[0.2em] text-terracotta-600 sm:block">
-              {title === 'Discovery' ? 'Matchmaking' : 'Command Center'}
-            </p>
-          ) : null}
         </div>
 
         {/* Right Side: Desktop Nav + Optional Action */}

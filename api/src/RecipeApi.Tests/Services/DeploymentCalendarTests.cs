@@ -51,4 +51,44 @@ public class DeploymentCalendarTests
         Assert.Equal(DateOnly.Parse(today).AddDays(1), DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(context.NextDayAtUtc, TimeZoneInfo.FindSystemTimeZoneById("America/Toronto")).DateTime));
     }
 
+    [Theory]
+    [InlineData("docker/compose/apps.yml")]
+    [InlineData("docker/compose/production.yml")]
+    [InlineData("docker/compose/production-overrides.yml")]
+    [InlineData("release-template/synology/compose.yaml")]
+    public void ShippedComposeTemplates_DefaultCalendarTimeZoneToTorontoWithOverrideSyntax(string relativePath)
+    {
+        var content = File.ReadAllText(Path.Combine(FindRepoRoot(), relativePath));
+        Assert.Contains("Calendar__TimeZone: ${Calendar__TimeZone:-America/Toronto}", content);
+    }
+
+    [Fact]
+    public void ShippedEnvironmentAndTaskfile_DefaultCalendarTimeZoneToTorontoWhileSmokeAndCodeStayUtc()
+    {
+        var root = FindRepoRoot();
+
+        Assert.Contains("Calendar__TimeZone=America/Toronto", File.ReadAllText(Path.Combine(root, "docker/.env.example")));
+        Assert.Contains("Calendar__TimeZone=UTC", File.ReadAllText(Path.Combine(root, "docker/compose/smoke.env")));
+
+        var taskfile = File.ReadAllText(Path.Combine(root, "Taskfile.yml"));
+        Assert.Contains("CALENDAR_TIMEZONE", taskfile);
+        Assert.Contains("America/Toronto", taskfile);
+        Assert.Contains("Calendar__TimeZone:", taskfile);
+
+        var unconfigured = new RecipeApi.Services.DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager());
+        Assert.Equal("UTC", unconfigured.Capture(DateTimeOffset.UtcNow).TimeZone);
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Taskfile.yml")))
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+        throw new DirectoryNotFoundException("Could not locate repository root containing Taskfile.yml.");
+    }
+
 }

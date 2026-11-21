@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Models;
+using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
@@ -35,38 +37,56 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests(ITestOutputHelp
                         secondEntered.TrySetResult();
                     await next(context);
                 }), configureServices: services => services.AddDbContext<RecipeDbContext>(options => options.AddInterceptors(barrier)));
-            using (var seed = factory.Services.CreateScope())
-            {
-                var db = seed.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                db.WeeklyPlans.Add(new WeeklyPlan
-                {
-                    Id = Guid.NewGuid(), WeekStartDate = new(2026, 10, 5),
-                    GroceryState = "{\"Tomato\":false,\"Lettuce\":false}",
-                });
-                await db.SaveChangesAsync();
-            }
+            await SeedRowPlan(factory);
 
             using var first = factory.CreateAuthenticatedClient();
             using var second = factory.CreateAuthenticatedClient();
             barrier.Enabled = true;
             const string url = "/api/schedule/0/grocery/item";
-            var firstRequest = first.PatchAsJsonAsync(url, new { ingredientName = "Tomato", @checked = true });
+            var firstRequest = first.PatchAsJsonAsync(url, new { rowId = TomatoRow, weekStartDate = "2026-10-05", expectedRowVersion = "1", @checked = true, clientMutationId = Guid.NewGuid() });
             await barrier.FirstRead.Task.WaitAsync(TimeSpan.FromSeconds(15));
-            var secondRequest = second.PatchAsJsonAsync(url, new { ingredientName = "Lettuce", @checked = true });
+            var secondRequest = second.PatchAsJsonAsync(url, new { rowId = LettuceRow, weekStartDate = "2026-10-05", expectedRowVersion = "1", @checked = true, clientMutationId = Guid.NewGuid() });
             await secondEntered.Task.WaitAsync(TimeSpan.FromSeconds(15));
             barrier.Release.TrySetResult();
             var responses = await Task.WhenAll(firstRequest, secondRequest);
-            Assert.All(responses, response => Assert.Equal(HttpStatusCode.NoContent, response.StatusCode));
+            Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
             Assert.Equal(2, barrier.Arrivals);
             barrier.Enabled = false;
 
             using var fresh = factory.Services.CreateScope();
-            var persisted = await fresh.ServiceProvider.GetRequiredService<RecipeDbContext>().WeeklyPlans.AsNoTracking().SingleAsync();
+            var persisted = await fresh.ServiceProvider.GetRequiredService<RecipeDbContext>().WeeklyPlans.AsNoTracking().SingleAsync(plan => plan.WeekStartDate == Monday);
             output.WriteLine($"Fresh third scope persisted map: {persisted.GroceryState}");
             var checks = JsonSerializer.Deserialize<Dictionary<string, bool>>(persisted.GroceryState!)!;
-            Assert.True(checks["Tomato"], "Tomato must survive the other request's save.");
-            Assert.True(checks["Lettuce"], "Lettuce must survive the other request's save.");
+            Assert.True(checks[TomatoRow], "Tomato must survive the other request's save.");
+            Assert.True(checks[LettuceRow], "Lettuce must survive the other request's save.");
         });
+    }
+
+    private static readonly JsonSerializerOptions CanonicalJson = new(JsonSerializerDefaults.Web);
+
+    private static string BuildCanonicalContent(
+        IEnumerable<(string name, string? amountText, string? unitText)> lines,
+        int? basis = null,
+        string? existingCanonicalContent = null)
+    {
+        var existing = string.IsNullOrWhiteSpace(existingCanonicalContent)
+            ? null
+            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, CanonicalJson);
+        var existingLines = existing?.IngredientLines ?? [];
+        var mapped = lines.Select((line, index) => new RecipeIngredientLineDto
+        {
+            Id = index < existingLines.Count ? existingLines[index].Id : Guid.NewGuid(),
+            Description = line.name,
+            Amount = line.amountText is null ? null : QuantityMath.Parse(line.amountText),
+            AmountText = line.amountText,
+            Unit = string.IsNullOrWhiteSpace(line.unitText) ? null : new(line.unitText, null),
+            Scaling = "proportional",
+            Package = null,
+            Shopping = new(line.name, null, null),
+            Provenance = new("human", "source", [])
+        }).ToList();
+        return JsonSerializer.Serialize(new CanonicalRecipeContent(
+            2, Guid.NewGuid().ToString("N"), "source", basis, mapped, []), CanonicalJson);
     }
 
     private sealed class WeeklyPlanReadBarrier : DbCommandInterceptor
@@ -80,7 +100,9 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests(ITestOutputHelp
         public override async ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command,
             CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
         {
-            if (Enabled && command.CommandText.Contains("FROM weekly_plans") && Interlocked.Increment(ref arrivals) == 1)
+            // Count the serialized mutation snapshots; response presentation performs additional read-only queries.
+            if (Enabled && eventData.Context?.Database.CurrentTransaction is not null
+                && command.CommandText.Contains("FROM weekly_plans") && Interlocked.Increment(ref arrivals) == 1)
             {
                 FirstRead.TrySetResult();
                 await Release.Task.WaitAsync(TimeSpan.FromSeconds(15), cancellationToken);

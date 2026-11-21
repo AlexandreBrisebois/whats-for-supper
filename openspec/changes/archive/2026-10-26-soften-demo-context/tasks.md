@@ -31,7 +31,6 @@ User explicitly approved the 44px-to-32px band tradeoff and separately requested
 
 ## Prior revision evidence
 
-
 - Source base: verified main d34af7b154911659cb68f68ce2ccd0a709c70b7d (tree a48b2315e9cecc1e7c6a5222e84831f692c7b060). The local source tree matched that exact tree before edits; no unrelated work was present. Reference screenshots were materialized consumer-locally and inspected.
 - Red: `task test:unit -- src/components/identity/DemoContext.test.tsx` failed on the two new EN/FR exact-copy expectations; 13 existing cases passed. Green: the selected DemoContext and DemoResetBoundary command passed 16 tests.
 - Final focused acceptance: `task test:e2e -- demo-mode.spec.ts demo-reset.spec.ts --workers=2 --reporter=list --output=/workspace/demo-evidence/acceptance` passed all 29 tests. EN/FR phone and iPad portrait/landscape, 320px enlarged/wrapped text, 44px targets, first visit, dismissal/reopen/focus and reset preservation were exercised. Actual inner-strip contrast was 11.66/9.07/6.90:1; CTA contrast was 7.22/11.31/16.92:1. Focus remained visibly contrasting, including the existing stronger 3px band outline.

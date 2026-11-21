@@ -24,7 +24,7 @@ public class RecipeDescribeIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = await TestWebApplicationFactory.CreateAsync();
+        _factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["Tests:LocalRecipeStore"] = "true" });
         _client = _factory.CreateClient();
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();

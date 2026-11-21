@@ -4,7 +4,7 @@ namespace RecipeApi.Infrastructure;
 
 public interface IScheduleEventPublisher
 {
-    Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, NonCookingPlanDto? nonCooking = null);
+    Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, NonCookingPlanDto? nonCooking = null, Guid? occurrenceId = null);
     Task PublishWeekUpdatedAsync(ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null);
     Task PublishVotingSessionUpdatedAsync(VotingSessionSnapshot session) => Task.CompletedTask;
     Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null);
@@ -21,6 +21,8 @@ public interface IScheduleEventPublisher
     Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null);
 
     Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, DateOnly weekStartDate, string? excludeConnectionId = null);
+    Task PublishGroceryRowsUpdatedAsync(int weekOffset, GroceryMutationResult snapshot, string? excludeConnectionId = null)
+        => PublishGroceryUpdatedAsync(weekOffset, snapshot.Checks, snapshot.WeekStartDate, excludeConnectionId);
     Task PublishGroceryExtrasUpdatedAsync(DateOnly weekStartDate, IReadOnlyList<GroceryExtraDto> groceryExtras, string? excludeConnectionId = null)
         => Task.CompletedTask;
 }

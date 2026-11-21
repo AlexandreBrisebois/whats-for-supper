@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "kind": "first-single-recipe-authority-transition-planning",
+  "executionAuthorized": false,
+  "entryCommit": "f38d92677e2fd1dcaca16779de6958aa8d258eab",
+  "predecessorBindings": [
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-MIGRATION-PREWRITE-CONTRACT.json",
+      "sha256": "17e9493bd45d532a555ed642e064770d10774a44e45461ac2040ab42dc8a83a6"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-FULL-SNAPSHOT-CONTINUATION.json",
+      "sha256": "8e4692096d14c4554622e6c6b3c9b659c985dbc2506651e6d3273124abbee299"
+    },
+    {
+      "path": "docs/handoffs/dependable-portions-next-slice/V1-SOURCE-COVERAGE-CONTINUATION.json",
+      "sha256": "7c24eecd198bfb4d03bd04426b304e857f433a20dbe63b6ca4f07c57d9b984a1"
+    },
+    {
+      "path": ".task/v1-migration-prewrite-20261115/delivery.json",
+      "sha256": "010d5a513613708236aed2e4797ddafe2b2b2494fb24f3336ea122754ea6414f"
+    },
+    {
+      "path": ".task/v1-migration-prewrite-20261115/git-delivery.json",
+      "sha256": "d459815ea533958f6a62abce6249ce266fb1215820f1a012f2e79ca830b7ca23"
+    },
+    {
+      "path": ".task/v1-migration-prewrite-20261115/review/final-evidence.json",
+      "sha256": "fb2c579f0d8879e441577570aa1f9b5c77178a9fdd81e2dc987ecb0f08e50b8f"
+    },
+    {
+      "path": ".task/v1-migration-prewrite-20261115/review/terminal-delivery.json",
+      "sha256": "7da00ccf77f897422f840dfc0805fc3f5d1005e1fc5a3a4fd04f4d69b6d39d1c"
+    },
+    {
+      "path": ".task/v1-migration-prewrite-20261115/schema-domains.json",
+      "sha256": "09a088bcc04cd13a9609d594ebfafaa2c633ec7e714f7d52c5d9962630889ed0"
+    }
+  ],
+  "sourceRequestPolicy": "unchanged v4; full source-bound service graph; never execution DB",
+  "originalReceiptMembership": 46,
+  "corpusAccounting": {
+    "recipes": 221,
+    "requiresForwardAssessment": 198,
+    "retiredDeferred": 23,
+    "weeks": 36,
+    "persistedPlanIds": 36,
+    "recipeAssignmentEventIds": 55,
+    "allCalendarEventRows": 69
+  },
+  "prospectiveSelection": {
+    "recipeId": "7d4c50f3-a3b9-412d-8e8b-940809b9553e",
+    "eligibility": "unproven; existing converter preparation required before first plan write",
+    "contentRevision": "legacy.78025D9EC9350CC458A1CA15285F5AB644B759403DA211E1CBCBB802467D195B",
+    "sourceRevision": "source.29018B27510D2F686F3F44B443B14C2ABCBBC2E47D61687A6EAE3F4A84B371A6",
+    "originalFieldsSha256": "d8c8fbd6706f94c44ee7e5714a318b877bef8d6e300d3d76fa50ac5f6983256a",
+    "sourceFile": {
+      "path": ".task/v1-full-snapshot-implementation/copy-data/recipes/7d4c50f3-a3b9-412d-8e8b-940809b9553e/recipe.json",
+      "sha256": "120019248141e14c8c0f9161e922cb2642c741c458991edfc7d5320f34b669e0"
+    },
+    "sourceRow": {
+      "path": ".task/v1-full-snapshot-implementation/staged-snapshot/recipes/7d4c50f3-a3b9-412d-8e8b-940809b9553e/recovery-row.json",
+      "sha256": "89a06c528f693513481e2d9ca551a923406b6c17ba5763ee1d8ce1ce26b1d56d"
+    }
+  },
+  "freshRuntimeBindingsRequired": [
+    "planningContractSha256",
+    "candidateCommit",
+    "apiAssemblySha256",
+    "buildProvenance",
+    "runtimeImageId",
+    "databaseContainerId",
+    "postgresVersionAndLinuxRuntime",
+    "sourceDatabaseEndpointAndNames",
+    "executionDatabaseEndpointAndName",
+    "sourceDataRoots",
+    "executionDataRoot",
+    "sourceAndExecutionGenerations",
+    "originalV4RequestSha256",
+    "predecessorPackageAndCoverageIdentities",
+    "schemaDomainsAndRelationMembership",
+    "modelRevision",
+    "deploymentTimeZone",
+    "capturedAt",
+    "evaluationDate",
+    "attemptId",
+    "planOperationId",
+    "conversionOperationId",
+    "corpusObservationOperationId",
+    "corpusAndSelectionRequests",
+    "completedInventoryBytesAndObservationHashesInLaterWriteAdmission",
+    "exactHoldBeforeAndAfterBytes"
+  ],
+  "states": [
+    "A-original-re-admitted-and-execution-baseline-bound",
+    "B-one-plan-durable-no-conversion",
+    "C-one-conversion-durable-no-rebuild",
+    "D-fresh-process-reconciled-stop"
+  ],
+  "maximumNewPlanReceipts": 1,
+  "maximumNewCanonicalV2Receipts": 1,
+  "maximumNewWeekReceipts": 0,
+  "executionDatabaseProposedName": "wfs_v1_single_recipe_transition",
+  "rebuildAuthorized": false,
+  "specification": "V1-AUTHORITY-TRANSITION-CONTRACT.md",
+  "acceptancePlan": "V1-AUTHORITY-TRANSITION-IMPLEMENTATION.md",
+  "sourceMap": "V1-AUTHORITY-TRANSITION-SOURCE-MAP.md",
+  "inputChronology": [
+    "independent input-only capture request and attempt before observation",
+    "completed corpus and single-selection inventories",
+    "existing-owner eligibility and independently retained producer/PG witnesses",
+    "independent create-once write-admission input binding capture and producer bytes before B",
+    "actual B/C commits and fresh-process D evidence"
+  ],
+  "afterConversionAccounting": {
+    "converted": 1,
+    "requiresForwardAssessment": 197,
+    "retiredDeferred": 23,
+    "baselineCorpusBytesUnchanged": true
+  }
+}

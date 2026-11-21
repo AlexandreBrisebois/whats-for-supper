@@ -104,29 +104,60 @@ public class WorkflowController(
     [ProducesResponseType(typeof(DemoManagementUnavailableError), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ResetTask(Guid taskId)
     {
+        // Drain a live attempt before selecting its terminal occurrence. Otherwise
+        // its delayed result can overwrite the new Pending command or dispatch a
+        // child against a reset occurrence. Recovery middleware precedes this lease.
+        var ct = HttpContext?.RequestAborted ?? CancellationToken.None;
+        var observed = await db.WorkflowTasks.AsNoTracking().Include(t => t.Instance)
+            .SingleOrDefaultAsync(t => t.TaskId == taskId, ct);
+        if (observed is null) return NotFound(new { message = "Task not found." });
+        if (demoMode.Enabled && (IsDemoManagementWorkflow(observed.Instance?.WorkflowId)
+            || IsDemoManagementProcessor(observed.ProcessorName)
+            || await DispatchesDemoManagementAsync(observed.ProcessorName, observed.Payload, [], [])))
+            return StatusCode(StatusCodes.Status403Forbidden, new DemoManagementUnavailableError());
+        // These processors acquire Snapshot/Publish themselves. Waiting for them
+        // while this HTTP request holds Write would invert the recovery lock order.
+        var recoveryProcessor = observed.ProcessorName is "CaptureDemoState" or "RestoreDemoState";
+        await using var executionLease = await WorkflowExecutionLease.EnterAsync(db, taskId, wait: !recoveryProcessor, ct);
+        if (executionLease is null)
+        {
+            if (HttpContext is not null) Response.Headers.RetryAfter = "5";
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { errorCode = "RECOVERY_BUSY", message = "Recovery task is executing; retry after recovery coordination." });
+        }
+        await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync() : null;
+        await WorkflowLifecycle.LockIdentityAsync(db, observed.InstanceId, ct);
+        if (db.Database.IsNpgsql())
+            await db.Database.ExecuteSqlAsync($"SELECT task_id FROM workflow_tasks WHERE task_id = {taskId} FOR UPDATE");
         var task = await db.WorkflowTasks.FirstOrDefaultAsync(t => t.TaskId == taskId);
         if (task == null)
         {
             return NotFound(new { message = "Task not found." });
         }
 
+        await db.Entry(task).ReloadAsync(ct);
+
         var instance = task.Instance ?? await db.WorkflowInstances.FirstOrDefaultAsync(i => i.Id == task.InstanceId);
+        if (instance is not null) await db.Entry(instance).ReloadAsync(ct);
         if (demoMode.Enabled && (IsDemoManagementWorkflow(instance?.WorkflowId) || IsDemoManagementProcessor(task.ProcessorName)
             || await DispatchesDemoManagementAsync(task.ProcessorName, task.Payload, [], [])))
             return StatusCode(StatusCodes.Status403Forbidden, new DemoManagementUnavailableError());
 
-        task.Status = Models.TaskStatus.Pending;
-        task.RetryCount = 0;
-        task.ScheduledAt = clock.UtcNow;
-        task.ErrorMessage = null;
-        task.StackTrace = null;
-
-        if (instance != null && instance.Status == WorkflowStatus.Paused)
+        Guid resetId;
+        try
         {
-            instance.Status = WorkflowStatus.Processing;
+            resetId = await WorkflowReset.RecordAsync(db, task, instance!, clock.UtcNow, ct);
+            await db.SaveChangesAsync(ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
         }
-
-        await db.SaveChangesAsync();
+        catch
+        {
+            if (transaction is not null) await transaction.DisposeAsync();
+            await WorkflowReset.ReloadAsync(db, taskId, task.InstanceId, CancellationToken.None);
+            throw;
+        }
+        if (transaction is not null) await transaction.DisposeAsync();
+        await WorkflowReset.ApplyAsync(db, resetId, clock, ct);
 
         return Ok(new { message = "Task reset successfully." });
     }

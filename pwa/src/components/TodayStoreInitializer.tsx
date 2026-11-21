@@ -8,6 +8,7 @@ import type {
   DeploymentCalendarContext,
   NonCookingPlanDto,
   ScheduleRecipeDto,
+  SupperPreparation,
 } from '@/lib/api/generated/models';
 
 /**
@@ -28,7 +29,11 @@ export function TodayStoreInitializer({
   todayDate,
   nonCooking,
   calendar,
+  occurrenceId,
+  preparation,
 }: {
+  occurrenceId?: string | null;
+  preparation?: SupperPreparation | null;
   todaysRecipe: any;
   todayStatus: 0 | 2 | 3;
   todayDate?: string;
@@ -42,7 +47,9 @@ export function TodayStoreInitializer({
     // Resolve the SSR recipe to a plain ScheduleRecipeDto (or null)
     const ssrRecipe: ScheduleRecipeDto | null = normalizeScheduleRecipe(todaysRecipe);
 
-    useTodayStore.getState().init(ssrRecipe, todayStatus, nonCooking, context);
+    useTodayStore
+      .getState()
+      .init(ssrRecipe, todayStatus, nonCooking, context, occurrenceId, preparation);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only init; SSE keeps the store current after that
   }, []);
 

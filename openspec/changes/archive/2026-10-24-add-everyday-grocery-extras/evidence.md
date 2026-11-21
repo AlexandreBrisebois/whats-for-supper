@@ -50,28 +50,28 @@ Tasks with an original test-first obligation remain unchecked where the original
 behavioral red records are unavailable. New regression cycles below are actual
 observations; they do not reconstruct an earlier development order.
 
-| Task | Concrete source/test evidence | Qualification |
-|---|---|---|
-| 1.1 | OpenAPI create/suggestions/read schemas; generated groceryExtras operations and models | Existing checked task; regenerate/check for current contract |
-| 1.2 | GroceryExtraServiceTests, GroceryExtraControllerTests, GroceryExtraPostgresTests; GroceryList tests | Existing tests plus current regressions; original complete preimplementation red evidence unavailable |
-| 1.3 | Separate table/EF/entity; GroceryExtraService/Controller; ScheduleService; wrapper/store; shared mocks; composer/locales | Implemented; focused API/database/unit required |
-| 1.4 | grocery.spec.ts add/reload, duplicate, failed/free-text add, explicit selection, stale lookup, narrow tray and panned toast; isolated psqldef preview | Browser and migration acceptance required; Android hardware separate |
-| 2.1 | OpenAPI PATCH/DELETE, 409, exclusion header; generated item operations | Existing checked task; current client check required |
-| 2.2 | API version/ownership and concurrency tests; component rollback/rename/category/delete/absence tests; grocery browser mutations | Original full preimplementation red evidence unavailable |
-| 2.3 | Version token/tombstones; controller; identity wrapper/store; compact Extra label; icon Save/Delete; shared mocks | Implemented, preserving owner decision to omit Cancel |
-| 2.4 | Component rollback, pending/error, identity/navigation tests; browser mutation test; PostgreSQL winner/concurrency tests | Current browser/unit/PostgreSQL acceptance required |
-| 3.1 | DeterministicLifecycleSequencesPreserveHistoricalSnapshotsAndTerminalLineages, concurrent/missed-week PostgreSQL tests; DreamingGroceryExtraWorkflowTests and ManagementService report tests | Original complete preimplementation red evidence unavailable; deterministic sequence qualification added |
-| 3.2 | Shared rollover transaction/advisory lock; Dreaming processor/report dependency; current read repair | Existing checked task; PostgreSQL cardinality/read-repair requalified |
-| 3.3 | Future projection API/store/component/browser tests; immutable snapshot sequence; user guide | Updated to owner's all-future projection rule |
-| 4.1 | Dedicated OpenAPI SSE event/union, generated types and builders | Existing checked task; regenerate/check required |
-| 4.2 | Controller lifecycle observes five publications and excludes initiating connection; post-commit failure unit; hook/store guards and pending-row tests | Original full preimplementation red evidence unavailable |
-| 4.3 | Dedicated publisher; absolute occurrence identity/version/pending consumer guards; connected snapshot sync | Implemented; unit/browser plus live acceptance required |
-| 4.4 | GroceryExtraPostgresTests.Live.cs and grocery-extras-live.spec.ts, two independently authenticated browser contexts | Separate actual API/PWA/PostgreSQL acceptance; never inferred from mocks |
-| 5.1 | GroceryExtraRecoveryPostgresTests ordinary/exact membership, lineage, tombstones, versions, invalid preflight, empty/legacy artifacts, merge-union rejection | New merge behavioral red/green retained; original full preimplementation red unavailable |
-| 5.2 | ManagementService export/validation/transactional merge; exact recovery Tables/preflight/order; schema/EF | Implemented; Linux PostgreSQL required, not in-memory qualification |
-| 5.3 | recovery-exports.md, exact-recovery.md and selected strict OpenSpec validation | Documentation/static proof separate from database proof |
-| 6.1 | Full requirement/scenario inventory below plus focused/broad records | Not complete while required evidence is missing or final checks fail |
-| 6.2 | Explicit reviewed paths, preparation and final invocation records | Final result must be read from its exact record; no completion from code existence |
+| Task | Concrete source/test evidence                                                                                                                                                                | Qualification                                                                                            |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 1.1  | OpenAPI create/suggestions/read schemas; generated groceryExtras operations and models                                                                                                       | Existing checked task; regenerate/check for current contract                                             |
+| 1.2  | GroceryExtraServiceTests, GroceryExtraControllerTests, GroceryExtraPostgresTests; GroceryList tests                                                                                          | Existing tests plus current regressions; original complete preimplementation red evidence unavailable    |
+| 1.3  | Separate table/EF/entity; GroceryExtraService/Controller; ScheduleService; wrapper/store; shared mocks; composer/locales                                                                     | Implemented; focused API/database/unit required                                                          |
+| 1.4  | grocery.spec.ts add/reload, duplicate, failed/free-text add, explicit selection, stale lookup, narrow tray and panned toast; isolated psqldef preview                                        | Browser and migration acceptance required; Android hardware separate                                     |
+| 2.1  | OpenAPI PATCH/DELETE, 409, exclusion header; generated item operations                                                                                                                       | Existing checked task; current client check required                                                     |
+| 2.2  | API version/ownership and concurrency tests; component rollback/rename/category/delete/absence tests; grocery browser mutations                                                              | Original full preimplementation red evidence unavailable                                                 |
+| 2.3  | Version token/tombstones; controller; identity wrapper/store; compact Extra label; icon Save/Delete; shared mocks                                                                            | Implemented, preserving owner decision to omit Cancel                                                    |
+| 2.4  | Component rollback, pending/error, identity/navigation tests; browser mutation test; PostgreSQL winner/concurrency tests                                                                     | Current browser/unit/PostgreSQL acceptance required                                                      |
+| 3.1  | DeterministicLifecycleSequencesPreserveHistoricalSnapshotsAndTerminalLineages, concurrent/missed-week PostgreSQL tests; DreamingGroceryExtraWorkflowTests and ManagementService report tests | Original complete preimplementation red evidence unavailable; deterministic sequence qualification added |
+| 3.2  | Shared rollover transaction/advisory lock; Dreaming processor/report dependency; current read repair                                                                                         | Existing checked task; PostgreSQL cardinality/read-repair requalified                                    |
+| 3.3  | Future projection API/store/component/browser tests; immutable snapshot sequence; user guide                                                                                                 | Updated to owner's all-future projection rule                                                            |
+| 4.1  | Dedicated OpenAPI SSE event/union, generated types and builders                                                                                                                              | Existing checked task; regenerate/check required                                                         |
+| 4.2  | Controller lifecycle observes five publications and excludes initiating connection; post-commit failure unit; hook/store guards and pending-row tests                                        | Original full preimplementation red evidence unavailable                                                 |
+| 4.3  | Dedicated publisher; absolute occurrence identity/version/pending consumer guards; connected snapshot sync                                                                                   | Implemented; unit/browser plus live acceptance required                                                  |
+| 4.4  | GroceryExtraPostgresTests.Live.cs and grocery-extras-live.spec.ts, two independently authenticated browser contexts                                                                          | Separate actual API/PWA/PostgreSQL acceptance; never inferred from mocks                                 |
+| 5.1  | GroceryExtraRecoveryPostgresTests ordinary/exact membership, lineage, tombstones, versions, invalid preflight, empty/legacy artifacts, merge-union rejection                                 | New merge behavioral red/green retained; original full preimplementation red unavailable                 |
+| 5.2  | ManagementService export/validation/transactional merge; exact recovery Tables/preflight/order; schema/EF                                                                                    | Implemented; Linux PostgreSQL required, not in-memory qualification                                      |
+| 5.3  | recovery-exports.md, exact-recovery.md and selected strict OpenSpec validation                                                                                                               | Documentation/static proof separate from database proof                                                  |
+| 6.1  | Full requirement/scenario inventory below plus focused/broad records                                                                                                                         | Not complete while required evidence is missing or final checks fail                                     |
+| 6.2  | Explicit reviewed paths, preparation and final invocation records                                                                                                                            | Final result must be read from its exact record; no completion from code existence                       |
 
 ## Requirement and scenario inventory
 
@@ -81,7 +81,6 @@ an audit index, not a claim that a single named test establishes every scenario.
 ### data-backup-and-recovery
 
 Owners: ManagementService and RecoverySnapshotService inventory/preflight/publication; ManagementServiceTests and GroceryExtraRecoveryPostgresTests on disposable Linux PostgreSQL.
-
 
 **Export complete grocery-extra history**
 
@@ -105,10 +104,10 @@ Owners: ManagementService and RecoverySnapshotService inventory/preflight/public
 - Exact snapshot contains extras
 - Exact restore replaces extras
 - Exact snapshot omits required extra membership
+
 ### grocery-shopping
 
 Owners: GroceryExtraService/Controller, ScheduleService, GroceryList, weekStore, grocery-extras wrapper; GroceryExtraServiceTests, GroceryExtraControllerTests, GroceryExtraPostgresTests, GroceryList.test.tsx, weekStore.test.ts and grocery.spec.ts.
-
 
 **Add a name-only extra to the current grocery week**
 
@@ -252,10 +251,10 @@ Owners: GroceryExtraService/Controller, ScheduleService, GroceryList, weekStore,
 - Empty list
 - Start planning
 - Add without planning
+
 ### household-live-updates
 
 Owners: SseEventPublisher, GroceryExtraService, GroceryExtraRolloverService, useScheduleStream and weekStore; SseEventPublisherTests, controller lifecycle test, hook/store tests and separate grocery-extras-live.spec.ts.
-
 
 **Attempt authoritative extra publication after committed changes**
 
@@ -281,10 +280,10 @@ Owners: SseEventPublisher, GroceryExtraService, GroceryExtraRolloverService, use
 - Event was missed
 - Reconnect current week
 - Snapshot is older than pending work
+
 ### scheduled-maintenance
 
 Owners: GroceryExtraRolloverService, RolloverGroceryExtrasProcessor, dreaming.yaml, ManagementProcessor/Service; DreamingGroceryExtraWorkflowTests, ManagementService report tests, PostgreSQL concurrent/sequence/read-repair tests.
-
 
 **Reconcile extra rollover during Dreaming**
 
@@ -364,7 +363,6 @@ All 41 original archived files matched their before-image hashes. The pre-existi
 TestWebApplicationFactory and ScheduleService edits were also unchanged by this work.
 Preparation passed for the complete selected paths; generated client output preserves
 the six-UX contract changes and includes the all-future extras description.
-
 
 ## Post-merge verification and authorized archival (2026-10-24)
 

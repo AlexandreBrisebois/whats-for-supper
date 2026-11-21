@@ -17,13 +17,16 @@ public class FamilyMember
 
     [Required]
     [Column("browse_view_mode")]
-    public string BrowseViewMode { get; set; } = "stack";
+    public string BrowseViewMode { get; set; } = "list";
 
     [Column("preferred_language")]
     public string? PreferredLanguage { get; set; }
 
     [Column("cooking_view_mode")]
     public string? CookingViewMode { get; set; }
+
+    [Column("contrast_mode")]
+    public string? ContrastMode { get; set; }
 
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }

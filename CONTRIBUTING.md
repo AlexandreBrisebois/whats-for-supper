@@ -52,13 +52,13 @@ Use existing targets for supported workflows, from the repository root. Follow
 the local development loop for prerequisites and pinned tooling; inspect target
 and script effects before execution, especially process stops or data resets.
 
-| Purpose | Command |
-|---|---|
-| Discover available automation | `task -l` |
-| Research specs and active changes | `task spec:search -- <pattern>` |
-| Validate OpenSpec artifacts | `task spec:check` |
-| Preview selected checks and reasons (no execution/evidence) | `task verify:plan -- <paths>` |
-| Prepare applicable formatting/generation with reviewed paths | `task prepare -- <paths>` |
+| Purpose                                                          | Command                                |
+| ---------------------------------------------------------------- | -------------------------------------- |
+| Discover available automation                                    | `task -l`                              |
+| Research specs and active changes                                | `task spec:search -- <pattern>`        |
+| Validate OpenSpec artifacts                                      | `task spec:check`                      |
+| Preview selected checks and reasons (no execution/evidence)      | `task verify:plan -- <paths>`          |
+| Prepare applicable formatting/generation with reviewed paths     | `task prepare -- <paths>`              |
 | Final repository checks with the complete reviewed task path set | `task verify -- <complete-task-paths>` |
 
 The angle-bracket values are placeholders for your pattern or repository-relative

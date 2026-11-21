@@ -24,7 +24,7 @@ import {
  */
 export interface WithPhotoIndexItemRequestBuilder extends BaseRequestBuilder<WithPhotoIndexItemRequestBuilder> {
   /**
-   * Get original recipe image by index
+   * For PDF captures this returns the selected rendered page by its orderedimage index. The retained source PDF remains separate and is not returnedby this image operation.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ArrayBuffer>}
    * @throws {DemoResetRequiredError} error when the service returns a 412 status code
@@ -35,7 +35,7 @@ export interface WithPhotoIndexItemRequestBuilder extends BaseRequestBuilder<Wit
       RequestConfiguration<WithPhotoIndexItemRequestBuilderGetQueryParameters> | undefined
   ): Promise<ArrayBuffer | undefined>;
   /**
-   * Get original recipe image by index
+   * For PDF captures this returns the selected rendered page by its orderedimage index. The retained source PDF remains separate and is not returnedby this image operation.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
@@ -45,7 +45,7 @@ export interface WithPhotoIndexItemRequestBuilder extends BaseRequestBuilder<Wit
   ): RequestInformation;
 }
 /**
- * Get original recipe image by index
+ * For PDF captures this returns the selected rendered page by its orderedimage index. The retained source PDF remains separate and is not returnedby this image operation.
  */
 export interface WithPhotoIndexItemRequestBuilderGetQueryParameters {
   /**

@@ -26,14 +26,14 @@ Keep `IClock.UtcNow` as the instant source. A small deployment-calendar service 
 
 Extend `ScheduleDays` with required `calendar` context and `weekStartDate` (date):
 
-| Calendar field | Meaning |
-| --- | --- |
-| `timeZone` | Resolved deployment zone identifier |
-| `capturedAtUtc` | UTC instant at initial operation capture |
-| `today` | Deployment civil date at capture |
-| `currentWeekStartDate` | Monday containing that date |
-| `referenceWeekStartDate` | Monday used to interpret request offsets |
-| `nextDayAtUtc` | Next deployment date boundary, expressed as a UTC instant |
+| Calendar field           | Meaning                                                   |
+| ------------------------ | --------------------------------------------------------- |
+| `timeZone`               | Resolved deployment zone identifier                       |
+| `capturedAtUtc`          | UTC instant at initial operation capture                  |
+| `today`                  | Deployment civil date at capture                          |
+| `currentWeekStartDate`   | Monday containing that date                               |
+| `referenceWeekStartDate` | Monday used to interpret request offsets                  |
+| `nextDayAtUtc`           | Next deployment date boundary, expressed as a UTC instant |
 
 `weekStartDate = referenceWeekStartDate + 7 * weekOffset`. Optional `referenceWeekStartDate` query input on GET schedule, fill-the-gap, smart-defaults, assignment, movement, defer, voting/open and lock pins the reference. For POST operations the query belongs to request configuration, not an invented generated-body field. Reject malformed/non-Monday input with 400 before work. Omission uses a freshly captured current Monday, retaining legacy caller support. Defer starts on the Monday after this reference; its source remains the explicit date. Date-only validation/removal still address their literal path dates.
 

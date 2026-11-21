@@ -90,7 +90,6 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), _db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -104,6 +103,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
             UpdatedAt = DateTimeOffset.UtcNow
         };
 
+        var processor = await RecipeApi.Tests.Services.RecipeServingsTests.ReadyProcessor(_db, task, new Mock<IScheduleEventPublisher>().Object);
         await processor.ExecuteAsync(task, CancellationToken.None);
 
         // Assert: ImageCount is unchanged — processor never mutates it
@@ -128,7 +128,6 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), _db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -142,6 +141,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
             UpdatedAt = DateTimeOffset.UtcNow
         };
 
+        var processor = await RecipeApi.Tests.Services.RecipeServingsTests.ReadyProcessor(_db, task, new Mock<IScheduleEventPublisher>().Object);
         await processor.ExecuteAsync(task, CancellationToken.None);
 
         // Assert: ImageCount stays 0 and IsSynthesized stays true
@@ -182,7 +182,6 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), _db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -196,6 +195,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
             UpdatedAt = DateTimeOffset.UtcNow
         };
 
+        var processor = await RecipeApi.Tests.Services.RecipeServingsTests.ReadyProcessor(_db, task, new Mock<IScheduleEventPublisher>().Object);
         await processor.ExecuteAsync(task, CancellationToken.None);
 
         // Assert: family_goto setting remains UNCHANGED (it still has the "status" field we are migrating away from)
@@ -220,7 +220,6 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var processor = new RecipeReadyProcessor(new RecipeApi.Services.SystemClock(), _db, NullLogger<RecipeReadyProcessor>.Instance, new Mock<IScheduleEventPublisher>().Object);
         var task = new WorkflowTask
         {
             TaskId = Guid.NewGuid(),
@@ -234,6 +233,7 @@ public class GotoSynthesisIntegrationTests : IAsyncLifetime
             UpdatedAt = DateTimeOffset.UtcNow
         };
 
+        var processor = await RecipeApi.Tests.Services.RecipeServingsTests.ReadyProcessor(_db, task, new Mock<IScheduleEventPublisher>().Object);
         await processor.ExecuteAsync(task, CancellationToken.None);
 
         // Recipe image_count must remain 5 and UpdatedAt must remain unchanged

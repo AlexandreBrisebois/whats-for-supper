@@ -35,8 +35,16 @@ public class DeploymentCalendarIntegrationTests
         await using var factory = await CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var first = new Recipe { Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440101"), Name = "October 11", Ingredients = "[\"Carrot\"]" };
-        var second = new Recipe { Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440102"), Name = "October 18", Ingredients = "[\"Potato\"]" };
+        var first = new Recipe
+        {
+            Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440101"), Name = "October 11", Ingredients = "[\"Carrot\"]",
+            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+        };
+        var second = new Recipe
+        {
+            Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440102"), Name = "October 18", Ingredients = "[\"Potato\"]",
+            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)])
+        };
         db.Recipes.AddRange(first, second);
         db.CalendarEvents.AddRange(
             new CalendarEvent { Date = new DateOnly(2026, 10, 11), RecipeId = first.Id },
@@ -66,8 +74,16 @@ public class DeploymentCalendarIntegrationTests
         await using var factory = await CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var selected = new Recipe { Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440101"), Name = "Selected", Ingredients = "[\"Carrot\"]" };
-        var sentinel = new Recipe { Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440102"), Name = "Sentinel", Ingredients = "[\"Potato\"]" };
+        var selected = new Recipe
+        {
+            Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440101"), Name = "Selected", Ingredients = "[\"Carrot\"]",
+            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+        };
+        var sentinel = new Recipe
+        {
+            Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440102"), Name = "Sentinel", Ingredients = "[\"Potato\"]",
+            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)])
+        };
         db.Recipes.AddRange(selected, sentinel);
         db.CalendarEvents.Add(new CalendarEvent { Date = new DateOnly(2026, 10, 18), RecipeId = sentinel.Id });
         await db.SaveChangesAsync();
@@ -143,7 +159,11 @@ public class DeploymentCalendarIntegrationTests
         await using var factory = await CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var recipe = new Recipe { Name = "Sunday", Ingredients = "[\"Carrot\"]" };
+        var recipe = new Recipe
+        {
+            Name = "Sunday", Ingredients = "[\"Carrot\"]",
+            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+        };
         db.Recipes.Add(recipe);
         db.CalendarEvents.Add(new CalendarEvent { Date = new DateOnly(2026, 10, 11), RecipeId = recipe.Id });
         await db.SaveChangesAsync();

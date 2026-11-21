@@ -2,6 +2,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWeekStore } from './weekStore';
+import { scalarQuantity, fixtureGroceryId } from '@/testing/grocery-fixtures';
 import type { UILocalScheduleDay } from './weekStore';
 
 // ─── Mock moveRecipeApi ───────────────────────────────────────────────────────
@@ -232,15 +233,22 @@ describe('weekStore non-drag preservation', () => {
     getScheduleMock.mockResolvedValueOnce({
       weekOffset: 0,
       weekStartDate: '2026-05-04',
+      groceryListVersion: '1',
+      groceryState: {},
       calendar: calendar as any,
       status: 0,
       days: makeSevenDaySchedule(),
       groceryItems: [
         {
+          rowId: fixtureGroceryId('pasta'),
+          rowVersion: '1',
+          weekStartDate: '2026-05-04',
+          demandIdentity: 'fixture:pasta',
+          source: 'recipe',
           displayName: 'Pasta',
           normalizedKey: 'pasta',
           section: 'Pantry',
-          quantity: 200,
+          quantity: scalarQuantity(200),
           unitText: 'g',
           recipeIds: ['new-recipe-id'],
           additionalData: {},
@@ -254,6 +262,8 @@ describe('weekStore non-drag preservation', () => {
       weekStartDate: '2026-05-04',
       calendar: calendar as any,
       schedule,
+      groceryVersionWeek: null,
+      groceryListVersion: null,
       groceryItems: [],
       status: 0,
       isLoading: false,
@@ -265,15 +275,22 @@ describe('weekStore non-drag preservation', () => {
     getScheduleMock.mockResolvedValueOnce({
       weekOffset: 0,
       weekStartDate: '2026-05-04',
+      groceryListVersion: '1',
+      groceryState: {},
       calendar: calendar as any,
       status: 0,
       days: makeSevenDaySchedule(),
       groceryItems: [
         {
+          rowId: fixtureGroceryId('pasta'),
+          rowVersion: '1',
+          weekStartDate: '2026-05-04',
+          demandIdentity: 'fixture:pasta',
+          source: 'recipe',
           displayName: 'Pasta',
           normalizedKey: 'pasta',
           section: 'Pantry',
-          quantity: 200,
+          quantity: scalarQuantity(200),
           unitText: 'g',
           recipeIds: ['new-recipe-id'],
           additionalData: {},

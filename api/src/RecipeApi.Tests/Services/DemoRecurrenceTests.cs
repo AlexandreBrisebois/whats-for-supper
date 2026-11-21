@@ -33,6 +33,8 @@ public class DemoRecurrenceTests
         services.AddDbContext<RecipeDbContext>(options => options.UseInMemoryDatabase(name)
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning)));
         services.AddScoped<WorkflowRepository>();
+        services.AddScoped<RecipeFilePublicationStore>(sp => TestPublicationStore.Create(
+            sp.GetRequiredService<RecipeDbContext>(), storage, sp.GetRequiredService<IClock>()));
         services.AddScoped<IWorkflowOrchestrator, WorkflowOrchestrator>();
         services.AddScoped<DemoWorkflowSeeder>();
         using var provider = services.BuildServiceProvider();

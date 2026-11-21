@@ -125,3 +125,25 @@ export function parseRecipeSteps(recipeInstructions?: unknown): CookingStep[] {
 
   return [];
 }
+
+export function projectedCookingSteps(
+  projection:
+    | Pick<import('@/lib/api/generated/models').IngredientProjection, 'instructionProjection'>
+    | null
+    | undefined
+): CookingStep[] | null {
+  const sections = projection?.instructionProjection?.sections;
+  if (!Array.isArray(sections)) return null;
+  return sections
+    .flatMap((section, sectionIndex) =>
+      (section.steps ?? []).map((step, stepIndex) => ({
+        sectionTitle: section.name ?? undefined,
+        index: 0,
+        title: '',
+        instruction: step.text ?? step.originalText ?? '',
+        editableInstruction: step.originalText ?? '',
+        sourcePath: [sectionIndex, stepIndex] as [number, number],
+      }))
+    )
+    .map((step, index) => ({ ...step, index: index + 1, title: `Step ${index + 1}` }));
+}

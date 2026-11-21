@@ -35,6 +35,33 @@ describe('RecipeImportIssueSheet', () => {
     };
   });
 
+  it('shows the explanatory review comment and lets the person change it without claiming re-import completed', async () => {
+    const explanation =
+      'The import did not provide usable cooking steps. Please review and correct them.';
+    render(
+      <RecipeImportIssueSheet
+        issue={{ ...existingIssue, note: explanation }}
+        onClose={onClose}
+        onSave={onSave}
+        onResolve={onResolve}
+      />
+    );
+    expect(screen.getByText(/Ready for review/)).toBeVisible();
+    expect(screen.queryByText(/Reimport complete/)).not.toBeInTheDocument();
+    expect(screen.getByTestId('import-issue-note')).toHaveValue(explanation);
+    expect(onSave).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByTestId('import-issue-note'), {
+      target: { value: 'Please check the original steps.' },
+    });
+    fireEvent.click(screen.getByTestId('import-issue-save'));
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith({
+        reasons: ['ingredients'],
+        note: 'Please check the original steps.',
+      })
+    );
+  });
+
   it.each([true, null])(
     'preserves local resolution while AI submission is unavailable (%s)',
     async (mode) => {
@@ -49,7 +76,9 @@ describe('RecipeImportIssueSheet', () => {
         />
       );
       expect(screen.getByTestId('import-issue-note')).toBeDisabled();
-      expect(screen.queryByText('Add a note to re-import this recipe.')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Add or change the note to request automatic correction.')
+      ).not.toBeInTheDocument();
       expect(screen.queryByTestId('import-issue-save')).not.toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Mark as resolved' }));
       await waitFor(() => expect(onResolve).toHaveBeenCalledOnce());
@@ -202,7 +231,9 @@ describe('RecipeImportIssueSheet', () => {
       'aria-expanded',
       'true'
     );
-    expect(screen.getByText('Add a note to re-import this recipe.')).toBeVisible();
+    expect(
+      screen.getByText('Add or change the note to request automatic correction.')
+    ).toBeVisible();
     fireEvent.change(screen.getByLabelText('What should we check?'), {
       target: { value: '  Missing detail  ' },
     });

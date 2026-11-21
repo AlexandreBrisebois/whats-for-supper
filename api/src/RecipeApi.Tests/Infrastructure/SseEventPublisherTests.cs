@@ -90,7 +90,8 @@ public class SseEventPublisherTests
         var recipe = new ScheduleRecipeDto(Guid.NewGuid(), "Lasagna", "/img/lasagna.jpg");
         const int status = 0;
 
-        await publisher.PublishSlotUpdatedAsync(date, recipe, status);
+        var occurrence = Guid.NewGuid();
+        await publisher.PublishSlotUpdatedAsync(date, recipe, status, occurrenceId: occurrence);
 
         var (eventType, data) = ParseSseFrame(ReadBody(body));
 
@@ -98,6 +99,7 @@ public class SseEventPublisherTests
         Assert.Equal("2025-06-15", data.GetProperty("date").GetString());
         Assert.Equal(recipe.Id.ToString(), data.GetProperty("recipe").GetProperty("id").GetString());
         Assert.Equal(status, data.GetProperty("status").GetInt32());
+        Assert.Equal(occurrence, data.GetProperty("occurrenceId").GetGuid());
     }
 
     [Fact]
@@ -118,6 +120,46 @@ public class SseEventPublisherTests
     // -------------------------------------------------------------------------
     // PublishWeekUpdatedAsync
     // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task PublishWeekUpdatedAsync_PreparationUsesExplicitLowerCamelReceiptAndOccurrenceAssociation()
+    {
+        var (manager, body) = MakeManager();
+        var occurrence = Guid.NewGuid(); var recipe = Guid.NewGuid();
+        var preparation = new SupperPreparationDto { PreparedOn = new(2026, 10, 13), PreparedAtUtc = DateTimeOffset.Parse("2026-10-13T12:00:00Z"), Servings = 6, OriginalServings = 2, PortionContext = "dated", PlanToken = "v1." + new string('A', 43), ServingVersion = new string('A', 64) };
+        var schedule = new ScheduleDays(0, false, 0, [new("Friday", "2026-10-16", new(recipe, "Pasta", ""), 2, OccurrenceId: occurrence, Preparation: preparation)],
+            new RecipeApi.Services.DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()).Capture(DateTimeOffset.Parse("2026-10-13T12:00:00Z")), new(2026, 10, 12));
+        await new SseEventPublisher(manager).PublishWeekUpdatedAsync(schedule);
+        var (_, data) = ParseSseFrame(ReadBody(body)); var day = data.GetProperty("schedule").GetProperty("days")[0];
+        Assert.Equal(occurrence, day.GetProperty("occurrenceId").GetGuid()); Assert.Equal(recipe, day.GetProperty("recipe").GetProperty("id").GetGuid());
+        var receipt = day.GetProperty("preparation");
+        Assert.Equal(new[] { "originalServings", "planToken", "portionContext", "preparedAtUtc", "preparedOn", "servingVersion", "servings" }, receipt.EnumerateObject().Select(p => p.Name).OrderBy(x => x, StringComparer.Ordinal));
+        Assert.Equal("2026-10-13", receipt.GetProperty("preparedOn").GetString()); Assert.Equal(6, receipt.GetProperty("servings").GetInt32());
+    }
+
+    [Theory]
+    [InlineData("updating")]
+    [InlineData("failed")]
+    public async Task PublishWeekUpdatedAsync_ServingFreshnessUsesCaseSensitiveContractNames(string status)
+    {
+        var (manager, body) = MakeManager();
+        var workflow = Guid.NewGuid();
+        var schedule = new ScheduleDays(0, false, 0, [],
+            new RecipeApi.Services.DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())
+                .Capture(DateTimeOffset.Parse("2026-10-12T12:00:00Z")), new DateOnly(2026, 10, 12)) {
+            GroceryRefresh = new ServingGroceryRefreshDto(status, "pending-input", "old-applied", "old-reset", workflow),
+        };
+        await new SseEventPublisher(manager).PublishWeekUpdatedAsync(schedule);
+        var (_, data) = ParseSseFrame(ReadBody(body));
+        var freshness = data.GetProperty("schedule").GetProperty("groceryRefresh");
+        Assert.Equal(status, freshness.GetProperty("status").GetString());
+        Assert.Equal("pending-input", freshness.GetProperty("version").GetString());
+        Assert.Equal("old-applied", freshness.GetProperty("appliedVersion").GetString());
+        Assert.Equal("old-reset", freshness.GetProperty("resetSummaryVersion").GetString());
+        Assert.Equal(workflow, freshness.GetProperty("workflowId").GetGuid());
+        Assert.Equal(new[] { "appliedVersion", "resetSummaryVersion", "status", "version", "workflowId" },
+            freshness.EnumerateObject().Select(x => x.Name).OrderBy(x => x, StringComparer.Ordinal));
+    }
 
     [Fact]
     public async Task PublishWeekUpdatedAsync_BroadcastsCorrectEventTypeAndPayload()

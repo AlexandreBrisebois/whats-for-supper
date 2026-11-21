@@ -51,15 +51,29 @@ const BASE_PROPS = {
 describe('DiscoveryCard — neutral visual parity', () => {
   it('places one passive time badge inside the hero without classification pills or footer', () => {
     render(<DiscoveryCard {...BASE_PROPS} />);
+    const imageBox = screen.getByTestId('discovery-card-image');
     const badge = screen.getByTestId('discovery-time-badge');
-    expect(screen.getByTestId('discovery-card-image')).toContainElement(badge);
+    expect(imageBox).toContainElement(badge);
+    expect(imageBox).toHaveClass('h-[58%]');
+    expect(badge).toHaveClass('bg-cream', 'text-ink-body');
+    expect(badge).not.toHaveClass('bg-terracotta-50', 'text-terracotta-700', 'uppercase');
     expect(badge).toHaveTextContent('READY IN 30 MINS');
     expect(badge.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     expect(badge).not.toHaveAttribute('tabindex');
     expect(screen.getByRole('img', { name: BASE_PROPS.name })).toBeInTheDocument();
+    const desc = screen.getByTestId('discovery-card-description');
+    expect(desc).toHaveTextContent('A test recipe');
+    expect(desc).toHaveClass('line-clamp-2', 'text-ink-muted');
     expect(screen.queryByTestId('discovery-card-cuisine-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('discovery-card-meal-type-supper')).not.toBeInTheDocument();
     expect(screen.getAllByText(/READY IN/)).toHaveLength(1);
+  });
+
+  it.each(['', '   '])('omits description block when description is %j', (description) => {
+    render(<DiscoveryCard {...BASE_PROPS} description={description} />);
+    expect(screen.queryByTestId('discovery-card-description')).not.toBeInTheDocument();
+    expect(screen.getByTestId('discovery-card-image')).toHaveClass('h-[62%]');
+    expect(screen.getByRole('heading', { name: BASE_PROPS.name })).toBeInTheDocument();
   });
 
   it.each(['', 'PT0M', 'unknown'])('omits unusable time %s', (totalTime) => {

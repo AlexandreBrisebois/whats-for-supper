@@ -787,3 +787,55 @@ it('does not present a recovery choice before persistence and propagates rejecti
   await rejection;
   expect(useTodayStore.getState().currentRecipe).toEqual(before);
 });
+
+describe('today occurrence identity', () => {
+  it('replaces and clears the captured occurrence even for the same recipe', () => {
+    useTodayStore.getState().applyServerUpdate({
+      date: calendar.today,
+      recipe: mockRecipe,
+      status: 0,
+      occurrenceId: 'first',
+    });
+    expect(useTodayStore.getState().occurrenceId).toBe('first');
+    useTodayStore.getState().applyServerUpdate({
+      date: calendar.today,
+      recipe: mockRecipe,
+      status: 0,
+      occurrenceId: 'recreated',
+    });
+    expect(useTodayStore.getState().occurrenceId).toBe('recreated');
+    useTodayStore.getState().applyServerUpdate({ date: calendar.today, recipe: null, status: 0 });
+    expect(useTodayStore.getState().occurrenceId).toBeNull();
+  });
+});
+
+it('confirms preparation only for the matching current dated occurrence, even for the same recipe twice', () => {
+  const recipe = { id: 'same-recipe', name: 'Pasta', image: '' } as any;
+  useTodayStore.setState({
+    calendar,
+    currentRecipe: recipe,
+    occurrenceId: 'today-occurrence',
+    status: 0,
+    preparation: null,
+  } as any);
+  const outcome = {
+    recipeId: recipe.id,
+    supperDate: calendar.today,
+    occurrenceId: 'future-occurrence',
+    preparation: { preparedOn: calendar.today },
+  } as any;
+  (useTodayStore.getState() as any).confirmPreparation(outcome);
+  expect(useTodayStore.getState().status).toBe(0);
+  (useTodayStore.getState() as any).confirmPreparation({
+    ...outcome,
+    occurrenceId: 'today-occurrence',
+    supperDate: '2026-05-08',
+  });
+  expect(useTodayStore.getState().status).toBe(0);
+  (useTodayStore.getState() as any).confirmPreparation({
+    ...outcome,
+    occurrenceId: 'today-occurrence',
+  });
+  expect(useTodayStore.getState().status).toBe(2);
+  expect((useTodayStore.getState() as any).preparation).toEqual(outcome.preparation);
+});

@@ -6,16 +6,16 @@
 
 GitHub connector evidence, retrieved 2026-10-31:
 
-| Identity | Verified ref |
-| --- | --- |
-| Latest published beta | [`dockerhub/v0.1.37-beta.17`](https://github.com/AlexandreBrisebois/whats-for-supper/releases/tag/dockerhub/v0.1.37-beta.17), published 2026-10-31 04:08:46 UTC |
-| Beta annotated tag object | `0589e4cb1cb43e4559cb2fde54095f510853c47b` |
-| Beta source commit | `74ed426925896fa01b28f093e399e4f93e48d9a0` |
-| Intended branch, verified remote head | `review/profile-settings-home-visuals` → the same `74ed4269…` |
-| Publication | [run 41165857765](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/41165857765), successful tag push at that source SHA; tested amd64/arm64 image pushes, manifests and installation ZIP publication all successful |
-| Branch CI | [run 41165844684](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/41165844684), successful branch push at the same SHA |
-| Latest stable | [`dockerhub/v0.1.36`](https://github.com/AlexandreBrisebois/whats-for-supper/releases/tag/dockerhub/v0.1.36), published 2026-10-28 00:21:03 UTC |
-| Stable tag object / source | `925650df2765e729ac0d6cbf3326a8695aa5f968` → `ee6e5ffe4057c1023be00112345a14e76b09ecdc` |
+| Identity                              | Verified ref                                                                                                                                                                                                                           |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Latest published beta                 | [`dockerhub/v0.1.37-beta.17`](https://github.com/AlexandreBrisebois/whats-for-supper/releases/tag/dockerhub/v0.1.37-beta.17), published 2026-10-31 04:08:46 UTC                                                                        |
+| Beta annotated tag object             | `0589e4cb1cb43e4559cb2fde54095f510853c47b`                                                                                                                                                                                             |
+| Beta source commit                    | `74ed426925896fa01b28f093e399e4f93e48d9a0`                                                                                                                                                                                             |
+| Intended branch, verified remote head | `review/profile-settings-home-visuals` → the same `74ed4269…`                                                                                                                                                                          |
+| Publication                           | [run 41165857765](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/41165857765), successful tag push at that source SHA; tested amd64/arm64 image pushes, manifests and installation ZIP publication all successful |
+| Branch CI                             | [run 41165844684](https://github.com/AlexandreBrisebois/whats-for-supper/actions/runs/41165844684), successful branch push at the same SHA                                                                                             |
+| Latest stable                         | [`dockerhub/v0.1.36`](https://github.com/AlexandreBrisebois/whats-for-supper/releases/tag/dockerhub/v0.1.36), published 2026-10-28 00:21:03 UTC                                                                                        |
+| Stable tag object / source            | `925650df2765e729ac0d6cbf3326a8695aa5f968` → `ee6e5ffe4057c1023be00112345a14e76b09ecdc`                                                                                                                                                |
 
 Release `target_commitish: main` is not the beta source: annotated-tag resolution, publication head SHA and branch CI establish the source above. Saved cloud checkout `/workspace/whats-for-supper` is clean at stable on local branch `work`; beta was fetched and reviewed in a separate detached worktree `/tmp/wfs-gesture-beta`. No remote source gap, Mac access or uncommitted local work is needed. Alex's later clarification that all changes are on the branch is consistent with the verified remote state. Published-source identity is established; the exact installed image/PWA cache on Alex's device has not been inspected.
 
@@ -23,15 +23,15 @@ Release `target_commitish: main` is not the beta source: annotated-tag resolutio
 
 All source locations below are relative to the beta worktree and pinned to `74ed4269…` unless stated otherwise.
 
-| Mechanism | DiscoveryCard | RecipeStackCard / Browse |
-| --- | --- | --- |
-| Grab activation | Motion `drag='x'`, no application hold/delay or custom activation threshold | Same; no evidence of a higher grab threshold |
-| Held displacement | `dragElastic=1`, constraints zero | `dragElastic=0.45`, constraints zero: movement visibly damped |
-| Release intent | 80 px or 500 px/s; right LOVE, left PASS | 35 px or 280 px/s; right previous, left next; thresholds are release decisions, not grab activation |
-| Tap | No detail tap | `didDrag` set at >5 px; reset only by `onDragStart`; `onTap` refuses while set |
-| Capture/cancel | Motion owns pointer listeners; no custom capture | Same, with no explicit cancel guard in drag end |
-| Layers | Front z-index `10-index`; image and cue overlays ignore hit testing | Same structure; import badge is a noninteractive span; no evident added blocker over the full card |
-| Motion details | x → ±15° rotation; no momentum; 100/15 return spring; x reset before departure | Same rotation/no momentum; layout animation; 150/22 return spring; no explicit x reset before departure |
+| Mechanism         | DiscoveryCard                                                                  | RecipeStackCard / Browse                                                                                |
+| ----------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Grab activation   | Motion `drag='x'`, no application hold/delay or custom activation threshold    | Same; no evidence of a higher grab threshold                                                            |
+| Held displacement | `dragElastic=1`, constraints zero                                              | `dragElastic=0.45`, constraints zero: movement visibly damped                                           |
+| Release intent    | 80 px or 500 px/s; right LOVE, left PASS                                       | 35 px or 280 px/s; right previous, left next; thresholds are release decisions, not grab activation     |
+| Tap               | No detail tap                                                                  | `didDrag` set at >5 px; reset only by `onDragStart`; `onTap` refuses while set                          |
+| Capture/cancel    | Motion owns pointer listeners; no custom capture                               | Same, with no explicit cancel guard in drag end                                                         |
+| Layers            | Front z-index `10-index`; image and cue overlays ignore hit testing            | Same structure; import badge is a noninteractive span; no evident added blocker over the full card      |
+| Motion details    | x → ±15° rotation; no momentum; 100/15 return spring; x reset before departure | Same rotation/no momentum; layout animation; 150/22 return spring; no explicit x reset before departure |
 
 Source anchors: `pwa/src/components/discovery/DiscoveryCard.tsx:99–156`, `pwa/src/components/recipes/RecipeStackCard.tsx:109–205`, `pwa/src/app/(app)/browse-all-stack/page.tsx:438–465,740,857–881`. A tap calls `handleCardTap` → `setDetailRecipeId`; “flip” therefore maps to opening the detail sheet, not a new reverse-card interaction. Browser navigation/state ownership remains in Browse and `browseStackStore`; movement must not import the Discovery store, vote API, LOVE/PASS or family-interest semantics.
 
@@ -50,14 +50,14 @@ Scratch packet: `/workspace/scratch/wfs-gesture-review/`. `release-evidence.json
 
 Final diagnostic runtime: exact beta-pinned Framer Motion 14.4.0, React/React DOM 19.3.1, lucide-react 1.60.0, with real browser gesture processing in installed headless Chromium, 390×700 mobile context. The preinstalled environment had Motion 13.4.6/React 19.3.0, so its exploratory run is labelled separately and was repeated after installing exact runtime packages only in scratch. This is an isolated component/CSS fixture with stub content and imposed dimensions, not a full PWA or real-device acceptance result. The first fixture run failed to resolve the badge import; after adding its stub, the experiment ran successfully.
 
-| Input | Stable Browse | Beta Browse | Beta Discovery |
-| --- | --- | --- | --- |
-| Fresh stationary mouse tap | detail callback once | detail callback once | no detail semantics |
-| 12 px slow mouse or touch drag, then two fresh stationary taps | zero detail callbacks | zero detail callbacks | no detail semantics |
-| 60 px held horizontal mouse displacement | x=27 px | x=27 px | x=60 px |
-| 60 px horizontal touch release | previous once | previous once | no vote at this displacement/low velocity |
-| Diagonal touch (35,80) or (18,48) | pointercancel | pointercancel | pointercancel |
-| Explicit cancel after 45 px horizontal touch | previous once, erroneous | previous once, erroneous | not tested in this control |
+| Input                                                          | Stable Browse            | Beta Browse              | Beta Discovery                            |
+| -------------------------------------------------------------- | ------------------------ | ------------------------ | ----------------------------------------- |
+| Fresh stationary mouse tap                                     | detail callback once     | detail callback once     | no detail semantics                       |
+| 12 px slow mouse or touch drag, then two fresh stationary taps | zero detail callbacks    | zero detail callbacks    | no detail semantics                       |
+| 60 px held horizontal mouse displacement                       | x=27 px                  | x=27 px                  | x=60 px                                   |
+| 60 px horizontal touch release                                 | previous once            | previous once            | no vote at this displacement/low velocity |
+| Diagonal touch (35,80) or (18,48)                              | pointercancel            | pointercancel            | pointercancel                             |
+| Explicit cancel after 45 px horizontal touch                   | previous once, erroneous | previous once, erroneous | not tested in this control                |
 
 Browser implicit touch capture was observed; it did not prevent browser-originated pointercancel. No evidence supports adding manual pointer capture as the primary fix. Real Safari/iOS arbitration, iPad input, production CSS hit regions and installed PWA cache remain unverified.
 
@@ -97,12 +97,12 @@ Preserve `max-w-sm`/`md:max-w-xl`, current ordinary-phone heights and image prop
 
 At the review baseline, existing tests were useful but incomplete: `RecipeStackCard.test.tsx` mocks Motion and calls captured drag/tap handlers separately; it cannot detect real grab activation, computed touch policy or the missing cross-gesture sequence. `browse-all-stack.spec.ts` uses 200 px horizontal mouse swipes and clean clicks; its default config runs Desktop Chromium only. Add short and repeated sequences rather than retries or weaker expectations.
 
-| Coverage | Required observable checks |
-| --- | --- |
-| Grab/drag | real Motion; image, title, text hit locations; pointer and touch; 2 px accidental motion; >5 px short drag; held 20/60 px movement compared with Discovery; exact 35/280 and 80/500 release boundaries retained |
-| Detail/tap | fresh tap once; short drag then first fresh tap once; repeated failed attempts do not require another drag; suppress same-session post-drag tap; close detail retains recipe and ordinal; Enter/Space still work |
-| Interruption | pointercancel below/above threshold; pointer leaving card; new gesture after cancel; navigate/filter/list/close during pending departure; no late or duplicate callbacks |
-| Preservation | forward/backward wrap and page failure/retry; no vote writes from Browse; Discovery left PASS/right LOVE once; no detail action in Discovery; rear cards inactive |
+| Coverage       | Required observable checks                                                                                                                                                                                                                                               |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Grab/drag      | real Motion; image, title, text hit locations; pointer and touch; 2 px accidental motion; >5 px short drag; held 20/60 px movement compared with Discovery; exact 35/280 and 80/500 release boundaries retained                                                          |
+| Detail/tap     | fresh tap once; short drag then first fresh tap once; repeated failed attempts do not require another drag; suppress same-session post-drag tap; close detail retains recipe and ordinal; Enter/Space still work                                                         |
+| Interruption   | pointercancel below/above threshold; pointer leaving card; new gesture after cancel; navigate/filter/list/close during pending departure; no late or duplicate callbacks                                                                                                 |
+| Preservation   | forward/backward wrap and page failure/retry; no vote writes from Browse; Discovery left PASS/right LOVE once; no detail action in Discovery; rear cards inactive                                                                                                        |
 | Geometry/input | 390×844 ordinary phone unchanged, 320×568 narrow phone, 390×700 short phone, 768×1024 iPad; text/action access, safe areas, no horizontal overflow; mouse/touch/keyboard and reduced motion; touch in iOS Safari and iPad on actual devices before release qualification |
 
 Use `task test:unit -- src/components/recipes/RecipeStackCard.test.tsx`, the shared-hook test and DiscoveryCard tests for behavior/policy; retain real-Motion tests for the pointer seam. Run `task test:e2e -- e2e/browse-all-stack.spec.ts e2e/browse-stack.spec.ts e2e/discovery.spec.ts` against local mocked APIs, never a production BASE_URL. Existing schema-compliant mock owners are `pwa/e2e/mock-api.ts` and suite-local handlers/builders; GET `/api/recipes/{id}` verifies detail identity, existing library GETs verify position/wrap and POST `/api/discovery/{id}/vote` distinguishes voting side effects. Do not weaken existing 35/280 expectations or rely on DOM-dispatched synthetic pointer events alone to assert native touch scrolling. Tasks specify red/green and final checks.

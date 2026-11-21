@@ -9,6 +9,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -19,6 +20,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -29,6 +31,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -39,6 +42,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -49,6 +53,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -59,6 +64,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -69,6 +75,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -79,6 +86,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -89,6 +97,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -99,6 +108,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -109,6 +119,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -119,6 +130,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -129,6 +141,7 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available
 
@@ -139,5 +152,6 @@
 **Migration**: Remove observation and its identity state; preserve navigation, surfaces, loaded content, cooking state and ordinary error handling. Do not clear product storage.
 
 #### Scenario: Navigate after retirement
+
 - **WHEN** the upgraded application presents or changes a screen, surface, recipe or original
 - **THEN** no Sentrame presentation event or document correlation is created and existing interactions remain available

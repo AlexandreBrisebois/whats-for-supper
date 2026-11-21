@@ -50,7 +50,7 @@ public class FamilyControllerTests : IAsyncLifetime
         using var doc = JsonDocument.Parse(json);
         var data = doc.RootElement.GetProperty("data");
         Assert.Equal("Test Member", data.GetProperty("name").GetString());
-        Assert.Equal("stack", data.GetProperty("browseViewMode").GetString());
+        Assert.Equal("list", data.GetProperty("browseViewMode").GetString());
         Assert.NotEqual(Guid.Empty, data.GetProperty("id").GetGuid());
         Assert.Equal(JsonValueKind.Null, data.GetProperty("preferredLanguage").ValueKind);
         Assert.Equal(JsonValueKind.Null, data.GetProperty("cookingViewMode").ValueKind);
@@ -161,7 +161,7 @@ public class FamilyControllerTests : IAsyncLifetime
         var updateJson = await updateResponse.Content.ReadAsStringAsync();
         using var updateDoc = JsonDocument.Parse(updateJson);
         Assert.Equal("Updated Name", updateDoc.RootElement.GetProperty("data").GetProperty("name").GetString());
-        Assert.Equal("stack", updateDoc.RootElement.GetProperty("data").GetProperty("browseViewMode").GetString());
+        Assert.Equal("list", updateDoc.RootElement.GetProperty("data").GetProperty("browseViewMode").GetString());
     }
 
     [Fact]
@@ -248,7 +248,7 @@ public class FamilyControllerTests : IAsyncLifetime
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var data = document.RootElement.GetProperty("data");
         Assert.Equal(cookingViewMode, data.GetProperty("cookingViewMode").GetString());
-        Assert.Equal("stack", data.GetProperty("browseViewMode").GetString());
+        Assert.Equal("list", data.GetProperty("browseViewMode").GetString());
         Assert.Equal(created.GetProperty("name").GetString(), data.GetProperty("name").GetString());
     }
 
@@ -274,6 +274,80 @@ public class FamilyControllerTests : IAsyncLifetime
             new { browseViewMode = "list" });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_Defaults_ContrastMode_To_Null()
+    {
+        var response = await _client.PostAsJsonAsync("/api/family", new { name = $"Contrast_{Guid.NewGuid():N}" });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var data = doc.RootElement.GetProperty("data");
+        Assert.True(data.TryGetProperty("contrastMode", out var contrastElement));
+        Assert.Equal(JsonValueKind.Null, contrastElement.ValueKind);
+    }
+
+    [Theory]
+    [InlineData("standard")]
+    [InlineData("high")]
+    public async Task UpdatePreferences_Persists_ContrastMode_Without_Changing_Other_Fields(string contrastMode)
+    {
+        var memberName = $"Contrast_{Guid.NewGuid():N}";
+        var createResponse = await _client.PostAsJsonAsync("/api/family", new { name = memberName });
+        using var createDoc = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var id = createDoc.RootElement.GetProperty("data").GetProperty("id").GetGuid();
+
+        var seedResponse = await _client.PutAsJsonAsync(
+            $"/api/family/{id}/preferences",
+            new { browseViewMode = "stack", preferredLanguage = "fr", cookingViewMode = "step-by-step" });
+        Assert.Equal(HttpStatusCode.OK, seedResponse.StatusCode);
+
+        var updateResponse = await _client.PutAsJsonAsync(
+            $"/api/family/{id}/preferences",
+            new { contrastMode });
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+
+        using var updateDoc = JsonDocument.Parse(await updateResponse.Content.ReadAsStringAsync());
+        var data = updateDoc.RootElement.GetProperty("data");
+        Assert.Equal(contrastMode, data.GetProperty("contrastMode").GetString());
+        Assert.Equal("stack", data.GetProperty("browseViewMode").GetString());
+        Assert.Equal("fr", data.GetProperty("preferredLanguage").GetString());
+        Assert.Equal("step-by-step", data.GetProperty("cookingViewMode").GetString());
+        Assert.Equal(memberName, data.GetProperty("name").GetString());
+
+        var listResponse = await _client.GetAsync("/api/family");
+        using var listDoc = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        var listed = listDoc.RootElement.GetProperty("data").EnumerateArray()
+            .Single(e => e.GetProperty("id").GetGuid() == id);
+        Assert.Equal(contrastMode, listed.GetProperty("contrastMode").GetString());
+
+        using var meRequest = new HttpRequestMessage(HttpMethod.Get, "/api/family/me");
+        meRequest.Headers.Add("X-Family-Member-Id", id.ToString());
+        var meResponse = await _client.SendAsync(meRequest);
+        Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
+        using var meDoc = JsonDocument.Parse(await meResponse.Content.ReadAsStringAsync());
+        Assert.Equal(contrastMode, meDoc.RootElement.GetProperty("data").GetProperty("contrastMode").GetString());
+    }
+
+    [Fact]
+    public async Task UpdatePreferences_Invalid_ContrastMode_Returns_BadRequest_Without_Mutating()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/family", new { name = $"ContrastInvalid_{Guid.NewGuid():N}" });
+        using var createDoc = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var id = createDoc.RootElement.GetProperty("data").GetProperty("id").GetGuid();
+
+        var validResponse = await _client.PutAsJsonAsync($"/api/family/{id}/preferences", new { contrastMode = "standard" });
+        Assert.Equal(HttpStatusCode.OK, validResponse.StatusCode);
+
+        var invalidResponse = await _client.PutAsJsonAsync($"/api/family/{id}/preferences", new { contrastMode = "ultra" });
+        Assert.Equal(HttpStatusCode.BadRequest, invalidResponse.StatusCode);
+
+        using var meRequest = new HttpRequestMessage(HttpMethod.Get, "/api/family/me");
+        meRequest.Headers.Add("X-Family-Member-Id", id.ToString());
+        var meResponse = await _client.SendAsync(meRequest);
+        using var meDoc = JsonDocument.Parse(await meResponse.Content.ReadAsStringAsync());
+        Assert.Equal("standard", meDoc.RootElement.GetProperty("data").GetProperty("contrastMode").GetString());
     }
 
     // ── DELETE /api/family/{id} ───────────────────────────────────────────────

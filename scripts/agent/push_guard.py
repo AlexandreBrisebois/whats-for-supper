@@ -163,6 +163,9 @@ def execute(root, plan):
             child_env = {k: v for k, v in os.environ.items() if k not in {
                 'WFS_E2E_SUITE', 'WFS_PUSH_E2E_SUITES', 'WFS_SMOKE_IMAGES',
                 'WFS_SMOKE_PROJECT', 'WFS_SMOKE_OVERRIDE'}}
+            if target == 'check:push:pwa':
+                child_env['WFS_BROWSER_RANGE'] = json.dumps({
+                    'head': plan['head'], 'base': plan['base'], 'files': plan['files']})
             subprocess.run(command, cwd=root, env=child_env, check=True)
     finally:
         validate(root, head)

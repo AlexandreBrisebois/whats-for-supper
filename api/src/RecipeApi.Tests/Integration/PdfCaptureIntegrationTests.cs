@@ -34,7 +34,7 @@ public class PdfCaptureIntegrationTests
     [Fact]
     public async Task Absent_configuration_and_legacy_disabled_override_do_not_block_acceptance()
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["Tests:LocalRecipeStore"] = "true" });
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         db.FeatureFlagOverrides.Add(new RecipeApi.Models.FeatureFlagOverride
@@ -54,7 +54,7 @@ public class PdfCaptureIntegrationTests
     [Fact]
     public async Task Acceptance_persists_unchanged_source_and_metadata_before_conversion()
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["Tests:LocalRecipeStore"] = "true" });
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         using var response = await Send(factory, Form());
@@ -94,7 +94,7 @@ public class PdfCaptureIntegrationTests
     [InlineData(0, "application/pdf", "recipe.pdf", "0", 400)]
     public async Task Transport_boundaries_have_no_rejected_import_side_effects(int size, string type, string name, string rating, int status)
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["Tests:LocalRecipeStore"] = "true" });
         using var response = await Send(factory, Form(size, type, name, rating));
         Assert.Equal(status, (int)response.StatusCode);
         if (status == 202) return;
@@ -111,7 +111,7 @@ public class PdfCaptureIntegrationTests
     [Fact]
     public async Task Missing_or_multiple_files_rejected()
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["Tests:LocalRecipeStore"] = "true" });
         using var empty = await Send(factory, new MultipartFormDataContent());
         Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
         using var form = Form();
@@ -125,7 +125,7 @@ public class PdfCaptureIntegrationTests
     [Fact]
     public async Task Omitted_rating_and_blank_notes_use_photo_defaults()
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["Tests:LocalRecipeStore"] = "true" });
         using var response = await Send(factory, Form(rating: null, notes: "   "));
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         using var scope = factory.Services.CreateScope();
@@ -144,7 +144,7 @@ public class PdfCaptureIntegrationTests
     [Fact]
     public async Task Live_PDF_operation_exposes_the_approved_multipart_and_response_shapes()
     {
-        await using var factory = await TestWebApplicationFactory.CreateAsync();
+        await using var factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["Tests:LocalRecipeStore"] = "true" });
         using var client = factory.CreateClient();
         using var response = await client.GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

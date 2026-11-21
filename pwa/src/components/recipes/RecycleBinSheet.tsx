@@ -105,14 +105,17 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-charcoal/45 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         ref={panelRef as React.RefObject<HTMLDivElement>}
         role="dialog"
         aria-modal="true"
         aria-label={t('recipes.recycleBin', 'Recycle Bin')}
         onKeyDown={onKeyDown}
-        className="w-full max-w-lg rounded-t-[2rem] bg-white p-6 shadow-2xl max-h-[80vh] flex flex-col"
+        className="w-full max-w-lg rounded-t-[2rem] border-t border-charcoal-200 bg-cream p-6 shadow-2xl max-h-[80vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -122,7 +125,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 hover:bg-charcoal/5 transition-colors"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-white border border-charcoal-200 text-charcoal-600 hover:bg-charcoal-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
             aria-label={t('common.close', 'Close')}
           >
             <X size={20} />
@@ -131,7 +134,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
 
         <div className="overflow-y-auto flex-1">
           {isLoading ? (
-            <div className="flex h-32 items-center justify-center text-charcoal/40 text-sm">
+            <div className="flex h-32 items-center justify-center text-charcoal-600 text-sm">
               {t('common.loading', 'Loading…')}
             </div>
           ) : loadError ? (
@@ -141,7 +144,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                 type="button"
                 data-testid="trash-retry"
                 onClick={() => setReadAttempt((attempt) => attempt + 1)}
-                className="mt-4 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-5 py-3 font-bold text-white"
+                className="mt-4 min-h-12 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-5 py-3 text-sm font-semibold text-cream-100"
               >
                 {t('common.retry', 'Retry')}
               </button>
@@ -151,7 +154,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
               {items.length === 0 ? (
                 <li
                   data-testid="trash-empty-state"
-                  className="flex h-32 items-center justify-center text-center text-charcoal/40 text-sm"
+                  className="flex h-32 items-center justify-center text-center text-charcoal-600 text-sm"
                 >
                   {t('recipes.trashEmpty', 'Your Recycle Bin is empty.')}
                 </li>
@@ -160,17 +163,17 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                   <li
                     key={item.id}
                     data-testid={`trash-item-${item.id}`}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-charcoal/10 bg-white/80 p-4"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-charcoal-200 bg-white p-4"
                   >
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <span className="font-bold text-charcoal truncate">
                         {item.name ?? t('recipes.unknownRecipe', 'Unknown Recipe')}
                       </span>
-                      <span className="text-xs text-charcoal/40">
+                      <span className="text-xs text-charcoal-600">
                         {new Date(item.deletedAt).toLocaleDateString()}
                       </span>
                       {restoreErrors.has(item.id) && (
-                        <p role="alert" className="text-sm text-red-700">
+                        <p role="alert" className="text-sm font-medium text-terracotta-700">
                           {t('recipes.restoreError', 'Could not restore this recipe. Try again.')}
                         </p>
                       )}
@@ -182,7 +185,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                         data-testid={`action-restore-${item.id}`}
                         onClick={() => void handleRestore(item.id)}
                         disabled={restoringIds.has(item.id)}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-50"
+                        className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-4 py-2 text-xs font-semibold text-cream-100 shadow-sm disabled:opacity-50"
                       >
                         <RotateCcw size={12} />
                         {t('recipes.restore', 'Restore')}
@@ -191,7 +194,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                         type="button"
                         data-testid={`action-purge-${item.id}`}
                         onClick={() => openPinDialog(item.id)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 shadow-sm hover:bg-red-100 transition-colors"
+                        className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-terracotta-200 bg-terracotta-50 px-4 py-2 text-xs font-semibold text-terracotta-700 shadow-sm hover:bg-terracotta-100 transition-colors"
                       >
                         <Trash2 size={12} />
                         {t('recipes.purge', 'Delete')}
@@ -207,7 +210,7 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
 
       {pinDialog && (
         <div
-          className="absolute inset-0 z-60 flex items-center justify-center bg-black/60"
+          className="absolute inset-0 z-60 flex items-center justify-center bg-charcoal/60 backdrop-blur-sm"
           onClick={(e) => e.stopPropagation()}
         >
           <form
@@ -222,13 +225,13 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
               }
             }}
             onSubmit={(e) => void handlePinSubmit(e)}
-            className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl mx-4 flex flex-col gap-4"
+            className="w-full max-w-sm rounded-3xl border border-charcoal-200 bg-cream p-6 shadow-2xl mx-4 flex flex-col gap-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-heading text-base font-black tracking-tight text-charcoal">
               {t('recipes.confirmDelete', 'Permanently Delete Recipe')}
             </h3>
-            <p className="text-sm text-charcoal/60">
+            <p className="text-sm text-charcoal-600">
               {t(
                 'recipes.confirmDeleteDescription',
                 'This action cannot be undone. Enter your PIN to confirm.'
@@ -242,11 +245,14 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                 setPinDialog((prev) => prev && { ...prev, pin: e.target.value, error: null })
               }
               placeholder={t('recipes.pinPlaceholder', 'Enter PIN')}
-              className="w-full rounded-2xl border border-charcoal/10 bg-white/80 px-4 py-3 text-sm font-medium text-charcoal placeholder:text-charcoal/30 focus:outline-none focus:ring-2 focus:ring-terracotta/40"
+              className="min-h-12 w-full rounded-2xl border border-charcoal-200 bg-white px-4 py-3 text-sm font-medium text-charcoal placeholder:text-charcoal-500 focus:outline-none focus:ring-2 focus:ring-terracotta/40"
               autoFocus
             />
             {pinDialog.error && (
-              <p data-testid="elevated-pin-error" className="text-xs text-red-500">
+              <p
+                data-testid="elevated-pin-error"
+                className="text-xs font-medium text-terracotta-700"
+              >
                 {pinDialog.error}
               </p>
             )}
@@ -255,14 +261,14 @@ export function RecycleBinSheet({ onClose }: RecycleBinSheetProps) {
                 type="button"
                 data-testid="elevated-pin-cancel"
                 onClick={closePinDialog}
-                className="rounded-full px-4 py-2 text-sm font-bold text-charcoal/60 hover:bg-charcoal/5 transition-colors"
+                className="min-h-12 rounded-full border border-charcoal-200 bg-white px-4 py-2 text-sm font-semibold text-charcoal-700 hover:bg-charcoal-100 transition-colors"
               >
                 {t('common.cancel', 'Cancel')}
               </button>
               <button
                 type="submit"
                 disabled={pinDialog.isSubmitting || !pinDialog.pin}
-                className="rounded-full bg-red-500 px-4 py-2 text-sm font-bold text-white shadow-sm disabled:opacity-50 hover:bg-red-600 transition-colors"
+                className="min-h-12 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-5 py-2 text-sm font-semibold text-cream-100 shadow-sm disabled:opacity-50 transition-colors"
               >
                 {pinDialog.isSubmitting
                   ? t('common.deleting', 'Deleting…')

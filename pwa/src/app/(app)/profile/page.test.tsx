@@ -29,6 +29,9 @@ vi.mock('@/components/profile/ProfileDropdown', () => ({
 vi.mock('@/components/profile/LanguageSelection', () => ({
   LanguageSelection: () => <div data-testid="language-selection-stub" />,
 }));
+vi.mock('@/components/profile/ContrastSelection', () => ({
+  ContrastSelection: () => <div data-testid="contrast-selection-stub" />,
+}));
 describe('ProfilePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -44,7 +47,11 @@ describe('ProfilePage', () => {
       expect(screen.queryByText('Pick a family member to get started.')).not.toBeInTheDocument();
       expect(screen.queryByTestId('continue-as-btn')).not.toBeInTheDocument();
       expect(screen.getByTestId('profile-dropdown-stub')).toBeInTheDocument();
-      expect(screen.getByTestId('language-selection-stub')).toBeInTheDocument();
+      const languageEl = screen.getByTestId('language-selection-stub');
+      const contrastEl = screen.getByTestId('contrast-selection-stub');
+      expect(languageEl).toBeInTheDocument();
+      expect(contrastEl).toBeInTheDocument();
+      expect(languageEl.nextElementSibling).toBe(contrastEl);
       expect(screen.getByTestId('settings-btn')).toBeInTheDocument();
       expect(state.push).not.toHaveBeenCalled();
       if (variant === 'loading') expect(state.loadFamily).toHaveBeenCalledOnce();
@@ -68,6 +75,7 @@ describe('ProfilePage', () => {
     expect(screen.queryByTestId('continue-as-btn')).not.toBeInTheDocument();
     expect(screen.getByTestId('settings-btn')).toBeInTheDocument();
     expect(screen.getByTestId('language-selection-stub')).toBeInTheDocument();
+    expect(screen.getByTestId('contrast-selection-stub')).toBeInTheDocument();
     expect(screen.getByTestId('profile-dropdown-stub')).toBeInTheDocument();
   });
 });

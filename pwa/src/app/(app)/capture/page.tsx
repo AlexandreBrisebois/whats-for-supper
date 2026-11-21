@@ -17,8 +17,12 @@ export default async function CapturePage({ searchParams }: CapturePageProps) {
   const params = await searchParams;
   const { intent, mode, url, title, text } = params;
   return (
-    <div className="px-6 pb-12 max-w-sm mx-auto w-full">
-      <Suspense fallback={<div className="animate-pulse bg-charcoal/5 h-64 rounded-3xl" />}>
+    <div className="px-4 sm:px-6 pb-12 max-w-md mx-auto w-full">
+      <Suspense
+        fallback={
+          <div className="animate-pulse motion-reduce:animate-none bg-charcoal-100 h-64 rounded-3xl" />
+        }
+      >
         <CaptureWithPdf
           intent={intent === 'goto' ? undefined : intent}
           mode={mode}

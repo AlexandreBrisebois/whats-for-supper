@@ -903,6 +903,10 @@ for (const appLocale of ['en', 'fr'] as const) {
           const unselected = page.getByTestId('action-set-goto');
           await expect(unselected).toHaveText('GOTO');
           await expect(unselected).toHaveAttribute('aria-pressed', 'false');
+          // GOTO belongs to recipe identity in the reading region; reveal it before checking reachability.
+          await unselected.scrollIntoViewIfNeeded();
+          await unselected.focus();
+          await expect(unselected).toBeFocused();
           await expect(unselected).toBeInViewport({ ratio: 1 });
           expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
           await sheet.screenshot({

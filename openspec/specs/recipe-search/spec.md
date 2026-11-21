@@ -21,12 +21,12 @@ The original preamble and qualification records above describe earlier combined-
 
 Preserved references to the former combined owners resolve through these current capability links. Each requirement retains its original normative text.
 
-| Capability | Requirements / scenarios |
-|---|---:|
-| [recipe-search](../recipe-search/spec.md) | 39 / 90 |
-| [search-indexing](../search-indexing/spec.md) | 10 / 19 |
-| [data-backup-and-recovery](../data-backup-and-recovery/spec.md) | 24 / 58 |
-| [scheduled-maintenance](../scheduled-maintenance/spec.md) | 5 / 14 |
+| Capability                                                      | Requirements / scenarios |
+| --------------------------------------------------------------- | -----------------------: |
+| [recipe-search](../recipe-search/spec.md)                       |                  39 / 90 |
+| [search-indexing](../search-indexing/spec.md)                   |                  10 / 19 |
+| [data-backup-and-recovery](../data-backup-and-recovery/spec.md) |                  24 / 58 |
+| [scheduled-maintenance](../scheduled-maintenance/spec.md)       |                   5 / 14 |
 
 - [Publish lexical content before optional embedding work](../search-indexing/spec.md#requirement-publish-lexical-content-before-optional-embedding-work)
 - [Persist filter snapshot and facts as one materialization](../search-indexing/spec.md#requirement-persist-filter-snapshot-and-facts-as-one-materialization)
@@ -45,18 +45,22 @@ Preserved references to the former combined owners resolve through these current
 Recipes navigation SHALL open `/recipes` in Explore with collapsed controls and empty Search criteria. `focus=search`, Home Search and planner Search SHALL expand controls; supplied Similar SHALL activate Search. An `open` identity SHALL select detail independently of collection loading. Planning context SHALL retain its existing target, reference week, cancellation and assignment meanings.
 
 #### Scenario: Ordinary entry
+
 - **WHEN** the person opens Search without mode parameters
 - **THEN** Explore is loaded from GET `/api/recipes?order=explore`, All scope is selected and search controls are collapsed
 
 #### Scenario: Planning entry
+
 - **WHEN** Search opens with addToDay and weekOffset
 - **THEN** controls open expanded, the target remains available to Search and selection, and a planning banner offers Cancel back to `/planner`
 
 #### Scenario: Detail link
+
 - **WHEN** Search opens with an open recipe identity
 - **THEN** that identity opens in detail while the page loads its collection; detail receives focus before any background search input
 
 #### Scenario: Home selects today
+
 - **WHEN** an unplanned Home pivot opens Search with today’s authoritative day index, week zero and reference week
 - **THEN** controls open expanded and the same planning banner, filters, selection and cancellation behavior apply as when the planner opens Search for that day
 - **AND** successful selection follows the existing planner success return and occupied-slot recovery, without a new Home/Today mode
@@ -76,11 +80,13 @@ The text input SHALL resolve after 500 ms without a change. Nonblank text SHALL 
 - **THEN** the current text is submitted immediately and the input loses focus
 
 #### Scenario: Type over Similar
+
 - **WHEN** a person types nonblank text while Similar is active, then waits 500 ms or presses Enter
 - **THEN** both paths submit text without a similar target, retaining other applied filters, scope and planning context
 - **AND** no earlier Similar debounce can submit afterward
 
 #### Scenario: Submit with no Search criteria
+
 - **WHEN** submitted text is blank and Similar, Focus and non-scope Search filters are absent
 - **THEN** the active collection becomes Explore with the current Discovery/Go-To scope rather than an empty-query POST search
 
@@ -113,6 +119,7 @@ On a current successful zero-match response, Search SHALL show empty feedback, C
 - **THEN** the filter-specific message appears and Clear Filters can submit the cleared selections
 
 #### Scenario: Empty while controls are hidden
+
 - **WHEN** an active Search succeeds without matches after its controls have been hidden
 - **THEN** the empty result stays visible with recovery actions and the active-search indication
 - **AND** revealing controls restores the current values without replacement submission
@@ -160,6 +167,7 @@ Search SHALL offer one Filters chooser for narrow and wide layouts. Opening SHAL
 - **THEN** Quick becomes active and a new search carries quickOnly
 
 #### Scenario: Apply scope alone
+
 - **WHEN** only Discovery and/or Go-To remain selected after Apply with blank text and no Similar or Focus
 - **THEN** the chooser closes, toolbar scope reflects those applied values and Recipes loads scoped Explore
 - **AND** changing or dismissing an unapplied scope draft never changes toolbar scope or results
@@ -571,8 +579,9 @@ Activating Find similar in Recipes detail SHALL dismiss detail, expand search co
 - **THEN** no similar candidates are returned
 
 #### Scenario: Recognize and remove Similar
+
 - **WHEN** Similar is active with controls expanded
-- **THEN** a localized removable Similar indicator identifies its context without requiring the source name to be available
+- **THEN** a localized removable `Similar ×` indicator identifies its context immediately beside the `Filters` button on the same single-line row without requiring the source name to be available
 - **AND** removing it retains text, filters, scope and planner context and resolves Search or Explore from the remaining criteria
 
 ### Requirement: Rank Similar using source recipe facts with lexical recovery
@@ -629,7 +638,12 @@ For a successful semantic attempt alongside typed lexical retrieval, Search SHAL
 
 ### Requirement: Keep browse rediscovery eligibility on the server
 
-Browse promotion eligibility SHALL require positive saved affinity, a saved last-cooked event date at or before the configured rediscovery cutoff, and no calendar guard. The cutoff SHALL use server UTC today and the configured interval. Active Planned, Locked or AwaitingConsensus entries dated today or later, and Cooked entries in the selected server week, SHALL block promotion without removing ordinary result membership.
+Browse promotion eligibility SHALL require positive saved affinity, a saved last-cooked event date at or before the configured rediscovery cutoff, and no calendar guard. The cutoff and week bounds SHALL use deployment-local today via `DeploymentCalendar` and the configured interval. Active Planned, Locked or AwaitingConsensus entries dated today or later, and Cooked entries in the selected deployment week, SHALL block promotion without removing ordinary membership.
+
+#### Scenario: Deployment timezone shifts browse rediscovery date
+
+- **WHEN** UTC has crossed midnight while `America/Toronto` deployment-local time is still the previous civil evening
+- **THEN** browse rediscovery cutoff and active/cooked calendar blocking use `DeploymentCalendar` Toronto local `Today` rather than UTC date
 
 #### Scenario: No cooked evidence
 
@@ -666,6 +680,7 @@ Within the POST Discovery search path, the API SHALL rank eligible promotion can
 - **THEN** H descending, then creation descending and identity break the remaining ties
 
 #### Scenario: Unified Explore does not use Search promotion
+
 - **WHEN** Recipes has no effective Search criteria, including Discovery/Go-To scope-only selection
 - **THEN** it uses GET Explore ordering rather than this POST Discovery promotion path
 
@@ -775,17 +790,17 @@ A continuation token SHALL be rejected with 409 and restart guidance when missin
 
 ### Requirement: Retain cards and expose continuation retry or restart
 
-A continuation request failure for the current search generation SHALL retain loaded cards. A 409 SHALL expose Restart search, submitting a fresh initial request with current search context; other failures SHALL expose Load more retry using the cursor. These actions SHALL offer another attempt without promising successful recovery.
+A continuation request failure for the current search generation SHALL retain loaded cards. On a `409` expired cursor during continuation, Search SHALL seamlessly perform at most one fresh initial search with active query, filters, and planner context instead of rendering a dead-end Restart button; genuine failures SHALL expose a Family Cookbook `Retry` `<Button>` using `outline-ink-body`, and all Search banners/error cards SHALL use Family Cookbook surfaces.
 
 #### Scenario: Continuation expired
 
-- **WHEN** a current continuation request returns 409
-- **THEN** loaded cards remain and Restart search is offered
+- **WHEN** a current continuation request returns 409 for the first time in this continuation attempt
+- **THEN** loaded cards stay mounted while Search seamlessly performs one fresh initial request with current context rather than showing an unstyled `Restart search` button
 
 #### Scenario: Continuation fails otherwise
 
-- **WHEN** a current continuation request fails with another status
-- **THEN** loaded cards remain and Load more retry is offered
+- **WHEN** a current continuation request fails with another status or the single automatic restart fails
+- **THEN** loaded cards remain and an Era 3 `<Button>` `Retry` is offered across list and stack presentations
 
 ### Requirement: Suppress obsolete search success without claiming network cancellation
 
@@ -806,26 +821,32 @@ Initial, replacement and continuation outcomes SHALL be ignored after departure 
 When mounted Recipes has an active Search and observes a newer promotion generation, it SHALL withhold obsolete cards and refresh browse, typed and Similar results using current query, filters, preferences, similar target and planner context. This SHALL also apply while an initial or replacement request is pending. Invalidation delivery remains with household-live-updates; server eligibility and ranking remain authoritative.
 
 #### Scenario: Browse invalidated
+
 - **WHEN** a mounted browse observes a newer promotion generation
 - **THEN** old cards are withheld and a replacement initial request is scheduled with active context
 
 #### Scenario: Ranked data invalidated
+
 - **WHEN** a mounted typed or Similar response becomes obsolete
 - **THEN** a replacement initial request retains current search context and displays its current successful results without retyping
 
 #### Scenario: Invalidation before a response
+
 - **WHEN** invalidation arrives during an initial or replacement request
 - **THEN** a fresh request starts with current context and the obsolete request cannot replace its results or error presentation
 
 #### Scenario: Repeated events and later typing
+
 - **WHEN** another invalidation or new search supersedes a pending refresh
 - **THEN** only current-generation outcomes are displayed; completed refreshes and later typing do not themselves repeat an already handled invalidation
 
 #### Scenario: Search invalidated with controls hidden
+
 - **WHEN** Search invalidation arrives with active text, Similar or filters while controls are hidden
 - **THEN** the current-context replacement proceeds with controls remaining hidden and obsolete outcomes suppressed
 
 #### Scenario: Explore is active
+
 - **WHEN** a collection refresh is required while Recipes is in Explore
 - **THEN** it follows Browse’s current scope, history-generation and retained-card/retry rules without creating an empty-query POST search
 
@@ -834,10 +855,12 @@ When mounted Recipes has an active Search and observes a newer promotion generat
 A current failed initial or replacement request SHALL show a search error and Retry instead of successful-empty guidance. Retry SHALL submit the current query, filters, preferences, similar target and planner context without requiring re-entry. A new request SHALL clear the prior error. Obsolete request failures SHALL NOT replace current results or errors.
 
 #### Scenario: Refresh fails and retry succeeds
+
 - **WHEN** an invalidation refresh fails and the person retries successfully
 - **THEN** error and Retry replace loading, retained input is submitted again and current returned cards are displayed
 
 #### Scenario: Valid empty result
+
 - **WHEN** the current request succeeds without cards
 - **THEN** existing successful-empty guidance appears without an error or retry claim
 
@@ -846,18 +869,22 @@ A current failed initial or replacement request SHALL show a search error and Re
 Historical ranking SHALL apply only to Discovery and remain stable throughout a valid Discovery continuation chain. Explicit and Find Similar SHALL exclude history from ordering and preserve their initial ordered snapshots. A changed required generation SHALL preserve the compatible snapshot or cause explicit restart rather than silently append a reordered sequence.
 
 #### Scenario: Window turns Monday
+
 - **WHEN** the historical window changes between Discovery pages
 - **THEN** the chain uses its original historical inputs or requests restart without silent duplicates or omissions
 
 #### Scenario: Revote between pages
+
 - **WHEN** a closed historical week is updated after page one
 - **THEN** the old Discovery chain is pinned or rejected for restart and existing cards remain until recovery
 
 #### Scenario: Typed continuation
+
 - **WHEN** an Explicit continuation loads after new history arrives
 - **THEN** stored order is preserved and existing eligibility rechecks remain in force
 
 #### Scenario: Similar continuation
+
 - **WHEN** Find Similar continuation loads after household or planner preference facts change
 - **THEN** stored similarity order is preserved
 
@@ -866,15 +893,18 @@ Historical ranking SHALL apply only to Discovery and remain stable throughout a 
 Regular Search cards SHALL use compact Browse list styling: edge-to-edge 4:3 images, small corners, padded names up to two lines and readable formatted time. Narrow mobile SHALL retain two columns. Supplied issue badges SHALL remain visible. An initial topPick SHALL appear once as the first ordinary card. Stack SHALL show the same order with shared stack cards. No spotlight, reason or Surprise Me control SHALL appear.
 
 #### Scenario: Narrow results with Top Pick
+
 - **WHEN** Search shows a Top Pick and ordinary alternatives at 360, 390 or 430 CSS pixels
 - **THEN** ordinary cards match Browse list image treatment and content spacing including the former Top Pick as the first ordinary card
 - **AND** long names occupy up to two lines and issue badges remain inside their images
 
 #### Scenario: No Top Pick
+
 - **WHEN** Search returns ordinary alternatives without a Top Pick
 - **THEN** the same compact grid displays them in their returned order without inventing a promoted card
 
 #### Scenario: Return from compact card detail
+
 - **WHEN** a person opens a compact card and closes its detail
 - **THEN** the mounted query, selections and cards retain their existing return behavior and compact geometry without a close-triggered search
 
@@ -883,18 +913,22 @@ Regular Search cards SHALL use compact Browse list styling: edge-to-edge 4:3 ima
 Search Filters SHALL offer GOTO as an initially visible boolean selection without Go-To management, pending-management rows or Add a Go-To acquisition actions. Existing draft, Apply, Clear, dismissal and active-count semantics SHALL include GOTO. A fresh ordinary mount SHALL initialize it inactive. Its applied value SHALL match the toolbar Go-To scope; Go-To alone SHALL use Explore, while a POST request with Go-To SHALL retain its existing filter-only or ranked API policy.
 
 #### Scenario: Apply with existing context
+
 - **WHEN** a person applies GOTO alongside a text query, other filters or planning context
 - **THEN** the replacement search carries gotoOnly true together with that context and counts GOTO as one active filter
 
 #### Scenario: Discard a changed draft
+
 - **WHEN** a person changes GOTO in the chooser and dismisses without Apply
 - **THEN** the active filter and search results remain unchanged by that draft
 
 #### Scenario: Clear selections
+
 - **WHEN** a person clears filters and applies
 - **THEN** GOTO becomes inactive alongside the other cleared selections while query text remains
 
 #### Scenario: Consistent filter presentation
+
 - **WHEN** the chooser displays GOTO beside existing filters
 - **THEN** it uses their selected/unselected visual vocabulary and explicit selected state without introducing a dedicated yellow GOTO action
 
@@ -903,18 +937,22 @@ Search Filters SHALL offer GOTO as an initially visible boolean selection withou
 POST `/api/recipes/search` SHALL accept `filters.gotoOnly`. True SHALL constrain candidates to current configured household GOTO identities before candidate limits and pagination, together with existing eligibility and constraints. False or absent SHALL be inactive. GOTO-only requests SHALL use filter-only Explicit policy; supplied text, concepts or Similar context SHALL retain their existing retrieval policies.
 
 #### Scenario: Filter-only GOTO
+
 - **WHEN** gotoOnly is true without text, concepts or Similar target
 - **THEN** the response uses Explicit policy and the existing filter-only order among eligible configured recipes
 
 #### Scenario: Lexical, semantic or Similar search
+
 - **WHEN** one of those retrieval paths runs with gotoOnly true
 - **THEN** every retrieved candidate, including any Top Pick, belongs to the configured list before the path's candidate limit
 
 #### Scenario: GOTO and Family Favorite differ
+
 - **WHEN** a configured ready unrated recipe and an unconfigured loved recipe otherwise match the search
 - **THEN** GOTO alone admits the configured recipe and excludes the unconfigured recipe; adding Family Favorite further intersects eligibility
 
 #### Scenario: Empty or unavailable recipe identities
+
 - **WHEN** no configured identity is currently eligible, including an empty list or only missing, not-ready or deleted recipes
 - **THEN** the search succeeds without matches rather than falling back to ordinary candidates
 
@@ -923,14 +961,17 @@ POST `/api/recipes/search` SHALL accept `filters.gotoOnly`. True SHALL constrain
 Search continuation fingerprints SHALL include normalized GOTO selection. A changed selection SHALL require restart under the existing 409 response. A valid ranked continuation SHALL retain its frozen order while rechecking current GOTO membership, readiness and deletion. Newly configured recipes SHALL require a fresh search rather than being inserted into an existing ranked sequence.
 
 #### Scenario: Changed filter with old cursor
+
 - **WHEN** a cursor from a search without GOTO filtering is reused with gotoOnly true
 - **THEN** the server returns the existing incompatible-continuation 409 with restart guidance
 
 #### Scenario: Removal between pages
+
 - **WHEN** an unserved ranked recipe leaves the configured list before a GOTO-filtered continuation
 - **THEN** it is excluded without reordering the remaining frozen candidates
 
 #### Scenario: Addition between pages
+
 - **WHEN** a new recipe joins the configured list after a ranked snapshot was created
 - **THEN** the existing continuation does not insert it and a fresh search evaluates its eligibility
 
@@ -939,14 +980,17 @@ Search continuation fingerprints SHALL include normalized GOTO selection. A chan
 A confirmed local membership save SHALL refresh mounted applied-GOTO Search with current query, filters, preferences, Similar and planning context, replacing its continuation chain. Obsolete successes SHALL not replace the new result generation. A failed save SHALL retain confirmed membership; a failed refresh after a successful save SHALL offer read retry without repeating the save.
 
 #### Scenario: Detail removal succeeds
+
 - **WHEN** a person removes a recipe from GOTO in Search detail and the save succeeds with GOTO applied
 - **THEN** the replacement search retains current context and excludes that recipe
 
 #### Scenario: Old continuation finishes later
+
 - **WHEN** an old continuation succeeds after the membership-triggered replacement starts
 - **THEN** it does not append to the replacement generation
 
 #### Scenario: Read retry after save
+
 - **WHEN** membership saves but replacement search fails
 - **THEN** Search exposes its normal Retry with current inputs without representing the saved action as rejected or resubmitting it
 
@@ -955,15 +999,18 @@ A confirmed local membership save SHALL refresh mounted applied-GOTO Search with
 Effective nonblank text, Similar, Focus or another supported Search filter SHALL select POST `/api/recipes/search`, constrained by applied Discovery/Go-To scope. Scope selections alone SHALL select GET Explore. Expanding or collapsing controls SHALL NOT change collection mode. Search ranking, retrieval, semantic fallback, review eligibility and cursor contracts SHALL remain unchanged.
 
 #### Scenario: Expand over Explore
+
 - **WHEN** a person reveals Search without entering or applying criteria
 - **THEN** the same Explore collection, ordering, pagination and position remain without a Search request
 
 #### Scenario: Search within scope
+
 - **WHEN** text, Similar, Focus or Quick is active alongside Discovery and/or Go-To
 - **THEN** POST search carries the existing discoverableOnly/gotoOnly constraints with Search criteria and any planner target
 - **AND** both presentations display the Search order rather than reordering matches into Explore order
 
 #### Scenario: Remove the last Search criterion
+
 - **WHEN** submitted or applied criteria contain only library scope
 - **THEN** the collection returns to scoped Explore, even if controls remain expanded
 
@@ -972,15 +1019,18 @@ Effective nonblank text, Similar, Focus or another supported Search filter SHALL
 Closing Search SHALL hide only its input, Filters and Similar indicator. It SHALL retain criteria, applied filters/preferences, scope, results, pagination, position, presentation and planning context. Reopening SHALL restore current values and focus the input. Hiding SHALL NOT submit a request, cancel pending debounce or invalidate an in-flight request.
 
 #### Scenario: Hide during debounce
+
 - **WHEN** nonblank text has a pending 500 ms debounce and the person hides Search before it fires
 - **THEN** that debounce still submits its current criteria once on schedule and the result can settle while controls remain hidden
 
 #### Scenario: Hide during request or continuation
+
 - **WHEN** a current initial, replacement or continuation request is pending and Search is hidden then reopened
 - **THEN** no disclosure-triggered request or invalidation occurs and the current result, cursor, position and presentation are preserved on completion
 - **AND** any current failure still uses its normal error/retry state
 
 #### Scenario: Hide loaded Search
+
 - **WHEN** a person at a later Search stack card or scrolled list position hides and reopens controls
 - **THEN** the same query, Similar, applied filters, loaded results, pagination, position and view remain; opening focuses the input without resetting collection position
 
@@ -989,19 +1039,22 @@ Closing Search SHALL hide only its input, Filters and Similar indicator. It SHAL
 The collapsed Search toolbar control SHALL visibly and accessibly distinguish active Search from ordinary Explore without relying on colour alone. It SHALL expose disclosure expansion separately from active collection state and provide a localized accessible description of active Search. Planning context SHALL remain visible independently of disclosure.
 
 #### Scenario: Active collapsed state
+
 - **WHEN** Search is active but controls are collapsed, including a zero-match, loading or failed Search
 - **THEN** the Search icon has a persistent non-colour active indicator, an accessible active-search description and collapsed disclosure state
 
 #### Scenario: Collapsed Explore state
+
 - **WHEN** only Discovery/Go-To scope is active with controls collapsed
 - **THEN** the Search control is collapsed without claiming an active Search; scope controls retain their selected states
 
 ### Requirement: Clear Search explicitly while retaining library scope
 
-Clear search and browse SHALL clear text, Similar, Focus and other non-scope Search filters/preferences, cancel obsolete debounce, invalidate Search requests/cursors and load Explore from its beginning. It SHALL retain current Discovery/Go-To scope, presentation and planner context. Hiding Search SHALL NOT perform this action.
+Toolbar `Clear search and browse` SHALL render as a compact icon button with an accessible localized name inline beside `Filters` and any `Similar` chip on a single row, clearing text, Similar, Focus and non-scope Search filters, cancelling debounce, and loading scoped Explore while keeping scope, presentation and planner context. Empty-state recovery SHALL retain its text button.
 
 #### Scenario: Clear active Search
-- **WHEN** a person activates Clear search and browse while Search is loaded, pending, empty or failed
+
+- **WHEN** a person activates the compact `Clear search and browse` icon button in the Search toolbar (sitting inline on one row with `Filters` and optional `Similar ×`) while Search is loaded, pending, empty or failed
 - **THEN** scoped Explore replaces it without stale Search results or errors arriving later
 - **AND** scope, presentation, planning context and current disclosure visibility are retained
 
@@ -1010,10 +1063,12 @@ Clear search and browse SHALL clear text, Similar, Focus and other non-scope Sea
 Toolbar scope SHALL apply immediately. Filters SHALL initialize from current applied scope and commit scope only on Apply. Clear Filters SHALL clear both scope selections and all filter/preference selections, retaining text and Similar. Dismissing a chooser draft SHALL discard it without requests or changes to applied scope.
 
 #### Scenario: Toolbar to chooser and back
+
 - **WHEN** Go-To or Discovery is toggled in the toolbar, then Filters is opened
 - **THEN** the draft reflects that scope; applying a changed scope updates the toolbar and reloads the correct collection from the beginning
 
 #### Scenario: Clear Filters with and without remaining intent
+
 - **WHEN** Clear Filters is applied with text or Similar still active
 - **THEN** Search continues without scope or filter/preference constraints
 - **AND** if neither text nor Similar remains, Explore starts in All scope
@@ -1023,41 +1078,53 @@ Toolbar scope SHALL apply immediately. Filters SHALL initialize from current app
 A Search stack SHALL move backward only through loaded matches and forward through the current cursor continuation, without Explore wrapping. It SHALL stop at the beginning and exhausted end, retaining position while a boundary request is pending or fails. Before exhaustion its position display SHALL distinguish loaded matches and availability of more; an exact total SHALL be shown only once no next cursor remains.
 
 #### Scenario: Reach the first match
+
 - **WHEN** previous navigation is requested at Search index zero
 - **THEN** no wrap or request for a calculated last Explore page occurs
 
 #### Scenario: Continue beyond loaded matches
+
 - **WHEN** next is requested at the last loaded Search match with a cursor
 - **THEN** at most one compatible continuation is requested and the card remains until a following unique match is available
 - **AND** success appends in order; backward navigation can revisit loaded matches without another request
 
 #### Scenario: Exhaustion or continuation failure
+
 - **WHEN** a final page has no cursor, or a boundary continuation fails
-- **THEN** exhaustion stops at the final match with an exact distinct served-result total; failure retains the current card and shows retry or Restart search for 409 without claiming exhaustion
+- **THEN** exhaustion stops at the final match with an exact distinct served-result total; a `409` expired cursor seamlessly refreshes once with active search context, and any remaining failure retains the current card and shows an Era 3 `<Button>` retry without claiming exhaustion
 
 ### Requirement: Keep Search disclosure accessible and responsive
 
 Search disclosure SHALL use semantic keyboard-operable controls with visible focus, 48 CSS px toolbar targets, correct expansion state and localized names. Expanded controls, planning banner, both presentations and recovery actions SHALL reflow or scroll above safe-area-aware app navigation. Reduced motion SHALL preserve the same actions and state transitions.
 
 #### Scenario: Keyboard disclosure and sheet return
+
 - **WHEN** Search is opened by keyboard, hidden, or Filters/detail/bin is explicitly dismissed
 - **THEN** opening focuses the input; hiding from inside its region returns focus to Search; sheet dismissal returns focus to its connected trigger or an appropriate current result
 - **AND** route departure never restores focus to a departed trigger and hidden input/Filters are absent from the tab order
 
 #### Scenario: Locale and available space
+
 - **WHEN** either presentation is used in English or French at short portrait, landscape, tablet or 200% text sizes
 - **THEN** toolbar reading order, active-state meaning, input, Filters, recovery actions and bottom navigation remain usable without clipped essential content or horizontal overflow
 
 ### Requirement: Make expanded Search recognizable and localized
 
-When Search controls are expanded, the input SHALL show a magnifier, a localized example placeholder and a soft light surface with a visible terracotta focus state. The field SHALL retain its accessible Search name, current text and existing Enter, debounce, disclosure and focus-return behavior.
+When Search controls are expanded, the input SHALL show a magnifier, a soft light surface with terracotta focus state, and dynamic placeholder shadow text drawn from the top eligible `fill-the-gap` suggestion (ranked by influencers/likes, unplanned in the target week, and not on cooldown), falling back to a localized default placeholder when no suggestion is loaded.
 
 #### Scenario: Expand Search in either view
-- **WHEN** a person expands Search in stack or list presentation in English or French
-- **THEN** the field appears directly below the toolbar with its magnifier and localized example, and receives visible focus
+
+- **WHEN** a person expands Search in stack or list presentation in English or French and no eligible suggestion is available
+- **THEN** the field appears directly below the toolbar with its magnifier and localized fallback placeholder (`Try 'Chicken' or 'Quick'…` / `Ex. 'Poulet' ou 'Rapide'…`), and receives visible focus
 - **AND** expansion alone does not submit or replace the current collection
 
+#### Scenario: Dynamic placeholder displays top eligible suggestion
+
+- **WHEN** Search expands in English or French and `fill-the-gap` returns an eligible non-planned, non-cooled suggested recipe such as `"Thai Basil Chicken"`
+- **THEN** the search input placeholder displays `"Thai Basil Chicken"` while leaving the input value empty so typing searches without deleting example text
+
 #### Scenario: Return to a hidden active Search
+
 - **WHEN** a current Search is active and its controls are hidden, then the person reopens them
 - **THEN** the existing active marker disappears from the collapsed control, the field retains its criteria and focus returns to the input without changing results, position or pending work
 
@@ -1066,16 +1133,19 @@ When Search controls are expanded, the input SHALL show a magnifier, a localized
 Expanded Search SHALL show Filters with a visible count of applied selections and an accessible count description, counting shared scope choices once. A loaded nonempty Search list SHALL have a modest localized Results heading above its ordinary cards. Stack SHALL retain its compact position context. These cues SHALL not promote any result or change recovery actions.
 
 #### Scenario: Applied filters in either presentation
+
 - **WHEN** filters or scope selections are applied and Search controls are expanded in stack or list
 - **THEN** Filters shows the applied count in text or digits as well as an accessible description
 - **AND** draft selections dismissed without Apply do not change that count
 
 #### Scenario: Ordinary list results
+
 - **WHEN** a current Search returns one or more matches in list presentation
 - **THEN** a localized Results heading introduces the compact ordinary cards in returned order
 - **AND** the former Top Pick, when supplied, remains exactly one ordinary card without a spotlight, reason, Surprise Me or other promotion
 
 #### Scenario: Empty or loading result state
+
 - **WHEN** Search is loading or returns zero matches
 - **THEN** the existing loading or empty recovery message remains the primary content instead of an empty Results section
 
@@ -1084,24 +1154,29 @@ Expanded Search SHALL show Filters with a visible count of applied selections an
 Planner-targeted Recipes SHALL show a compact, localized context row identifying the target day above the toolbar. It SHALL remain separate from Filters and visible whether Search controls are expanded or hidden, in stack and list. Search field and Filters SHALL still open directly below the toolbar. At ordinary phone text size the row's single-line height SHALL be no greater than 52 CSS px; long or enlarged text SHALL wrap and remain scrollable rather than clip.
 
 #### Scenario: Enter from Planner or Home
+
 - **WHEN** Recipes opens with a supported `addToDay` and `weekOffset` target from Planner or Home
 - **THEN** a “Choosing for Monday” style localized context identifies the target day above the toolbar and the first recipe begins higher than with the former large banner
 - **AND** the target identity, week context and existing selection action are unchanged
 
 #### Scenario: Filters expand or change
+
 - **WHEN** Filters opens, is dismissed, or applies selections that change its count or wrapping
 - **THEN** the planning context keeps its independent position and target, without becoming part of the Filters row or changing the active Search session
 
 #### Scenario: Hide Search or change view
+
 - **WHEN** Search controls hide or reopen, or the person changes stack/list while planning
 - **THEN** the compact context remains visible and the target, loaded results, current position and existing disclosure behavior are preserved
 
 #### Scenario: Leave or recover the planning path
+
 - **WHEN** the person activates the existing Cancel action or the calendar target needs its existing Retry action
 - **THEN** Cancel returns to Planner and Retry remains available without inventing a Change-day action
 - **AND** choosing a recipe continues through the existing assignment and occupied-slot recovery path
 
 #### Scenario: French and enlarged content
+
 - **WHEN** the day label or actions grow in French, at 200% text or on a short screen
 - **THEN** the row reflows with visible focus, at least 48×48 CSS px action targets and no clipped text, horizontal overflow or dock overlap
 - **AND** the first recipe and cancellation remain reachable by intentional scrolling when they cannot both fit initially

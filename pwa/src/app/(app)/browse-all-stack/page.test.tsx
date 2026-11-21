@@ -430,7 +430,7 @@ describe('BrowseAllStack — initial card display', () => {
 
     expect(await screen.findByLabelText('Recipe reported')).toBeInTheDocument();
     expect(screen.getByTestId('browse-filter-goto')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Ready to review' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ready for review' })).not.toBeInTheDocument();
   });
 });
 

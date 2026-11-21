@@ -13,7 +13,12 @@ import {
 import { apiClient } from '@/lib/api/api-client';
 import { DateOnly, type Guid } from '@microsoft/kiota-abstractions';
 import { assignRecipeToDay, normalizeScheduleRecipe } from '@/lib/api/planner';
-import type { NonCookingPlanDto, ScheduleRecipeDto } from '@/lib/api/generated/models';
+import type {
+  NonCookingPlanDto,
+  ScheduleRecipeDto,
+  SupperPreparation,
+  PrepareSupperResult,
+} from '@/lib/api/generated/models';
 
 // ─── State shape ────────────────────────────────────────────────────────────
 
@@ -33,6 +38,8 @@ export interface TodayState {
   retryCalendarAction: () => void;
   /** The recipe assigned to today's slot, or null if none. */
   currentRecipe: ScheduleRecipeDto | null;
+  occurrenceId: string | null;
+  preparation: SupperPreparation | null;
   nonCooking: NonCookingPlanDto | null;
   /**
    * Domain status for today's slot:
@@ -67,7 +74,9 @@ export interface TodayState {
     recipe: ScheduleRecipeDto | null,
     status: 0 | 2 | 3,
     nonCooking?: NonCookingPlanDto | null,
-    calendar?: CalendarContext | null
+    calendar?: CalendarContext | null,
+    occurrenceId?: string | null,
+    preparation?: SupperPreparation | null
   ) => void;
 
   /**
@@ -90,6 +99,7 @@ export interface TodayState {
    * Record cooking for a specific recipe. Complete today's slot only if its recipe matches.
    */
   markCooked: (recipeId: string) => Promise<void>;
+  confirmPreparation: (outcome: PrepareSupperResult) => void;
 
   /**
    * Optimistically set status = 3 (ordered in / skipped), then fire
@@ -114,6 +124,8 @@ export interface TodayState {
     recipe: ScheduleRecipeDto | null;
     status: number;
     nonCooking?: NonCookingPlanDto | null;
+    occurrenceId?: string | null;
+    preparation?: SupperPreparation | null;
   }) => void;
 
   /**
@@ -142,6 +154,8 @@ export const useTodayStore = create<TodayState>((set, get) => {
       ...(changed
         ? {
             currentRecipe: normalizeScheduleRecipe(entry?.recipe),
+            occurrenceId: (entry?.occurrenceId as any) ?? null,
+            preparation: entry?.preparation ?? null,
             status: entry?.status === 2 ? 2 : entry?.status === 3 ? 3 : 0,
             nonCooking: entry?.status === 3 ? (entry.nonCooking ?? null) : null,
             optimisticWriteAt: null,
@@ -202,6 +216,8 @@ export const useTodayStore = create<TodayState>((set, get) => {
           .ensureCalendar()
           .catch(() => {});
     },
+    occurrenceId: null,
+    preparation: null,
     currentRecipe: null,
     nonCooking: null,
     status: 0,
@@ -211,7 +227,7 @@ export const useTodayStore = create<TodayState>((set, get) => {
     skipCookedCelebration: false,
 
     // ── init ──────────────────────────────────────────────────────────────────
-    init(recipe, status, nonCooking, calendar) {
+    init(recipe, status, nonCooking, calendar, occurrenceId, preparation) {
       const previous = get().calendar;
       if (calendar && previous?.timeZone === calendar.timeZone && previous.today > calendar.today)
         return;
@@ -221,6 +237,8 @@ export const useTodayStore = create<TodayState>((set, get) => {
           calendarAnchor: null,
           calendarVersion: get().calendarVersion + 1,
           currentRecipe: recipe,
+          occurrenceId: occurrenceId ?? null,
+          preparation: preparation ?? null,
           status,
           nonCooking: status === 3 ? (nonCooking ?? null) : null,
           optimisticWriteAt: null,
@@ -275,6 +293,8 @@ export const useTodayStore = create<TodayState>((set, get) => {
         // Fresh mount or optimistic window expired: use provided server data.
         set({
           currentRecipe: recipe,
+          occurrenceId: occurrenceId ?? null,
+          preparation: preparation ?? null,
           status,
           nonCooking: status === 3 ? (nonCooking ?? null) : null,
           optimisticWriteAt: null,
@@ -316,6 +336,7 @@ export const useTodayStore = create<TodayState>((set, get) => {
       if (showOptimistic)
         set({
           currentRecipe: optimistic,
+          occurrenceId: null,
           nonCooking: null,
           status: 0,
           optimisticWriteAt: calendarTime.elapsed(),
@@ -350,6 +371,18 @@ export const useTodayStore = create<TodayState>((set, get) => {
           }
         })
         .catch((err) => console.warn('[todayStore] eager hydration failed:', err));
+    },
+
+    confirmPreparation(outcome) {
+      const state = get();
+      if (
+        !outcome.preparation ||
+        outcome.supperDate?.toString() !== state.calendar?.today ||
+        String(outcome.occurrenceId) !== state.occurrenceId ||
+        String(outcome.recipeId) !== state.currentRecipe?.id
+      )
+        return;
+      set({ status: 2, nonCooking: null, preparation: outcome.preparation });
     },
 
     // ── markCooked ────────────────────────────────────────────────────────────
@@ -419,10 +452,18 @@ export const useTodayStore = create<TodayState>((set, get) => {
           calendarTime.elapsed() - optimisticWriteAt < 20_000;
 
         if (todaysEntry?.status === 2) {
-          set({ status: 2, nonCooking: null, lastSyncedAt: calendarTime.instant() });
+          set({
+            occurrenceId: (todaysEntry.occurrenceId as any) ?? null,
+            preparation: todaysEntry.preparation ?? null,
+            status: 2,
+            nonCooking: null,
+            lastSyncedAt: calendarTime.instant(),
+          });
         } else if (todaysEntry?.status === 3) {
           set({
             currentRecipe: normalizeScheduleRecipe(todaysEntry.recipe),
+            occurrenceId: (todaysEntry.occurrenceId as any) ?? null,
+            preparation: todaysEntry.preparation ?? null,
             status: 3,
             nonCooking: todaysEntry.nonCooking ?? null,
             lastSyncedAt: calendarTime.instant(),
@@ -435,6 +476,8 @@ export const useTodayStore = create<TodayState>((set, get) => {
           if (recipe && recipe.id === get().currentRecipe?.id) {
             set({
               currentRecipe: recipe,
+              occurrenceId: (todaysEntry?.occurrenceId as any) ?? null,
+              preparation: todaysEntry?.preparation ?? null,
               nonCooking: null,
               lastSyncedAt: calendarTime.instant(),
             });
@@ -447,6 +490,8 @@ export const useTodayStore = create<TodayState>((set, get) => {
           if (recipe) {
             set({
               currentRecipe: recipe,
+              occurrenceId: (todaysEntry?.occurrenceId as any) ?? null,
+              preparation: todaysEntry?.preparation ?? null,
               status: 0,
               nonCooking: null,
               lastSyncedAt: calendarTime.instant(),
@@ -454,6 +499,7 @@ export const useTodayStore = create<TodayState>((set, get) => {
           } else {
             set({
               currentRecipe: null,
+              occurrenceId: null,
               status: 0,
               nonCooking: null,
               lastSyncedAt: calendarTime.instant(),
@@ -468,7 +514,7 @@ export const useTodayStore = create<TodayState>((set, get) => {
     },
 
     // ── applyServerUpdate ─────────────────────────────────────────────────────
-    applyServerUpdate({ recipe, status, nonCooking, date }) {
+    applyServerUpdate({ recipe, status, nonCooking, date, occurrenceId, preparation }) {
       date ??= get().calendar?.today;
       if (!date || date !== get().calendar?.today) return;
       // Server push is authoritative — always apply, even if optimistic write is recent.
@@ -488,6 +534,8 @@ export const useTodayStore = create<TodayState>((set, get) => {
 
       set({
         currentRecipe: recipe,
+        occurrenceId: occurrenceId ?? null,
+        preparation: preparation ?? null,
         nonCooking: status === 3 ? (nonCooking ?? null) : null,
         status: status as 0 | 2 | 3,
         optimisticWriteAt: null,

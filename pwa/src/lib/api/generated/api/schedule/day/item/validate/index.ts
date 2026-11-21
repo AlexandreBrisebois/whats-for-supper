@@ -259,7 +259,7 @@ export interface ValidatePostResponse_data extends AdditionalDataHolder, Parsabl
  */
 export interface ValidateRequestBuilder extends BaseRequestBuilder<ValidateRequestBuilder> {
   /**
-   * The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.
+   * The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled, while preserving any later actual preparation time from an explicitly prepared Cooked occurrence. Legacy calendar-date fallbacks and earlier legacy-only history do not replace that captured instant. Ordinary validation without nonCooking serializes its occurrence read/check/write with guarded preparation. Owned primary transactions commit and dispose before publication; a matched already prepared occurrence is not recorded again. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ValidatePostResponse>}
@@ -273,7 +273,7 @@ export interface ValidateRequestBuilder extends BaseRequestBuilder<ValidateReque
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<ValidatePostResponse | undefined>;
   /**
-   * The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.
+   * The path date remains literal. Today cooking and Order In callers select it from authoritative deployment calendar context at action start; browser timezone does not select the date. With status 2 and recipeId, records the viewed recipe cooking history at the captured UTC operation instant even if it is not scheduled, while preserving any later actual preparation time from an explicitly prepared Cooked occurrence. Legacy calendar-date fallbacks and earlier legacy-only history do not replace that captured instant. Ordinary validation without nonCooking serializes its occurrence read/check/write with guarded preparation. Owned primary transactions commit and dispose before publication; a matched already prepared occurrence is not recorded again. The scheduled meal is marked cooked only when its recipe ID matches. Existing stored civil dates and midnight-UTC history anchors are not migrated.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

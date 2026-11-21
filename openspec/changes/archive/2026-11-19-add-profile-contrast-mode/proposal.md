@@ -1,0 +1,42 @@
+# Proposal
+
+## Why
+
+Recent Era 3 contrast tightening pushed shared UI roles onto darker AAA-level stops (`charcoal-600`, `terracotta-700`, olive-toned `sage-700` `#525B37`, and `ochre-800`), flattening the warm, calm Family Cookbook visual hierarchy and reducing green-vs-red hue separation between Garden and Hearth roles. At the same time, household members who need or prefer maximum contrast still depend on preserved WCAG 2.2 AAA legibility and crisp, non-translucent chrome.
+
+## Outcome and Scope
+
+Add a per-profile **Contrast** preference (`standard` calm WCAG 2.2 AA default vs. `high` preserved WCAG 2.2 AAA mode) so every household member gets a warm, readable Family Cookbook experience by default while preserving high-contrast accessibility per member or via OS `@media (prefers-contrast: more)`.
+
+All core decisions are locked:
+
+- **Placement & UX:** Add a `ContrastSelection` card on `/profile` directly below `LanguageSelection`, mirroring its `aria-pressed` two-button pattern (`Standard` / `High contrast` in EN, `Standard` / `Contraste élevé` in FR, `min-h-12` targets, `Check` icon).
+- **Per-member persistence & OS fallback:** Add optional nullable `contrastMode` (`'standard' | 'high'`) on `FamilyMember` and `PUT /api/family/{id}/preferences`, falling back to OS `prefers-contrast: more` (`high`, else `standard`) when `contrastMode` is `null`, with a `ContrastProvider` + `beforeInteractive` boot script setting `data-contrast` on `<html>` without reload flash and updating immediately on member switches.
+- **Dual-mode semantic role tokens:** Keep raw numbered ramps strictly monotonic across `globals.css` and `tailwind.config.ts`, and introduce semantic role tokens switching between `:root` (Standard AA) and `:root[data-contrast="high"]` (High Contrast AAA), including cooled herb green (`#4E6E52` / `#324D36`) for Garden roles, quiet chrome + `.glass-nav` vs. crisp borders + opaque `bg-cream` nav, and `>= 3.0:1` vs. `>= 7.0:1` icon-only non-text affordances.
+- **Exclusions:** No changes to raw numbered ramp stop values/ordering (`charcoal-50..900`, `terracotta-50..900`, `ochre-50..900`, `sage-50..900`, `cream-50..500`), no new top-level navigation items or dark-mode theme, no modifications to `docs/creative-direction-north-star.md` or `docs/agent-designer-identity.md` (both already align with WCAG 2.2 AA without hardcoded tokens), and no modifications to the `explore-adaptive-hearth-and-cookbook-primitives` change.
+
+## What Changes
+
+- **Per-member contrast preference API & persistence:** Add optional nullable `contrastMode` (`standard` | `high`) to `FamilyMember` and `PUT /api/family/{id}/preferences` (PostgreSQL column `contrast_mode` with `CK_family_members_contrast_mode` check constraint, EF mapping, C# DTO/service/controller, OpenAPI specification, regenerated Kiota TypeScript client, PWA domain/API/store types, and stateful E2E mock & builders).
+- **Root contrast resolution & flash-free boot:** Add `ContrastProvider` and a `beforeInteractive` boot script in `pwa/src/app/layout.tsx` (plus `ContrastProvider` in `pwa/e2e/fixtures/profile-local/app/layout.tsx`) setting `data-contrast="standard" | "high"` on `<html>`, resolving member preference → OS `prefers-contrast: more` when `null` (and local storage only before load or when unselected), without cross-member leakage or hydration flash.
+- **Profile Contrast card & localization:** Add `ContrastSelection` directly below `LanguageSelection` on `/profile` with EN (`Contrast`, `Standard`, `High contrast`) and FR (`Contraste`, `Standard`, `Contraste élevé`) catalog strings.
+- **Dual-mode semantic role tokens & surface migration:** Define `:root` (Standard AA) and `:root[data-contrast="high"]` (High Contrast AAA) semantic role tokens in `pwa/src/app/globals.css` and `pwa/tailwind.config.ts`, migrate shared primitives (`Button`, `Navigation`, `SuccessCard`) and key household surfaces (Profile/Settings, Home, Discovery, Recipe Detail, Planner/Grocery) onto semantic role classes, and preserve opaque High Contrast chrome.
+- **Verification & visual documentation:** Extend `pwa/src/test/tokens.test.ts` to verify both Standard AA and High Contrast AAA matrices, extend `pwa/e2e/visual-a11y-contract.ts` with `contrastLevel?: 'aa' | 'aaa'`, add Playwright E2E coverage in `pwa/e2e/profile.spec.ts` for both modes, member switching, OS fallback, unselected local-only mode, and reload persistence, and update designer guidance (`.agents/skills/designer/visual-identity.md`, `.agents/skills/designer/SKILL.md`, `.agents/skills/designer/cookbook-surfaces-and-motion.md`), `docs/visual-language-reference.md`, and the four embedded visual reference SVGs under `docs/visual-language/01..04*.svg`.
+
+## Capabilities
+
+### New Capabilities
+
+_(none — reuses existing cohesive capability owners)_
+
+### Modified Capabilities
+
+- `member-preferences`: Add nullable per-member `contrastMode` (`standard` | `high`) persistence on family reads and `PUT /api/family/{id}/preferences`, OS `prefers-contrast: more` fallback when unset, flash-free root `data-contrast` boot and member-switch resolution, and the `/profile` Contrast preference group directly below Language.
+- `visual-design-contract`: Add dual-mode semantic role tokens (`:root` calm WCAG 2.2 AA default vs. `:root[data-contrast="high"]` WCAG 2.2 AAA), migrate shared `Button` and key household surfaces onto semantic roles while preserving monotonic raw ramps, and extend token and Playwright visual-a11y verification to enforce both AA and AAA thresholds.
+
+## Impact
+
+- **Contract & generated client:** [specs/openapi.yaml](../../../../specs/openapi.yaml) (`/api/family`, `/api/family/me`, `/api/family/{id}`, `/api/family/{id}/preferences`) and generated Kiota files under `pwa/src/lib/api/generated/api/family/`.
+- **Database & API:** [schema.sql](../../../../api/database/schema.sql), [compatibility.sql](../../../../api/database/compatibility.sql), [FamilyMember.cs](../../../../api/src/RecipeApi/Models/FamilyMember.cs), [RecipeDbContext.cs](../../../../api/src/RecipeApi/Data/RecipeDbContext.cs), [FamilyMemberDto.cs](../../../../api/src/RecipeApi/Dto/FamilyMemberDto.cs), [UpdateFamilyMemberPreferencesDto.cs](../../../../api/src/RecipeApi/Dto/UpdateFamilyMemberPreferencesDto.cs), [FamilyController.cs](../../../../api/src/RecipeApi/Controllers/FamilyController.cs), [FamilyService.cs](../../../../api/src/RecipeApi/Services/FamilyService.cs), and API/PostgreSQL tests under `api/src/RecipeApi.Tests/`.
+- **PWA runtime, UI & tests:** [globals.css](../../../../pwa/src/app/globals.css), [tailwind.config.ts](../../../../pwa/tailwind.config.ts), [layout.tsx](../../../../pwa/src/app/layout.tsx), `pwa/src/app/(app)/profile/page.tsx`, `pwa/src/lib/contrast.ts`, `pwa/src/components/common/ContrastProvider.tsx`, `pwa/src/components/profile/ContrastSelection.tsx`, [family.ts](../../../../pwa/src/lib/api/family.ts), [familyStore.ts](../../../../pwa/src/store/familyStore.ts), [domain.ts](../../../../pwa/src/types/domain.ts), shared UI and household components (`button.tsx`, `Navigation.tsx`, `SuccessCard.tsx`, Profile/Settings, Home, Discovery, Recipe Detail, Planner/Grocery), [en/common.json](../../../../pwa/src/locales/en/common.json), [fr/common.json](../../../../pwa/src/locales/fr/common.json), [tokens.test.ts](../../../../pwa/src/test/tokens.test.ts), [mock-api.ts](../../../../pwa/e2e/mock-api.ts), [builders.ts](../../../../pwa/src/testing/builders.ts), [visual-a11y-contract.ts](../../../../pwa/e2e/visual-a11y-contract.ts), [profile.spec.ts](../../../../pwa/e2e/profile.spec.ts), and [profile-local fixture layout](../../../../pwa/e2e/fixtures/profile-local/app/layout.tsx).
+- **Designer guidance & visual language references:** [visual-identity.md](../../../../.agents/skills/designer/visual-identity.md), [SKILL.md](../../../../.agents/skills/designer/SKILL.md), [cookbook-surfaces-and-motion.md](../../../../.agents/skills/designer/cookbook-surfaces-and-motion.md), [visual-language-reference.md](../../../../docs/visual-language-reference.md), [01-foundations-roles-and-type.svg](../../../../docs/visual-language/01-foundations-roles-and-type.svg), [02-surfaces-controls-and-recovery.svg](../../../../docs/visual-language/02-surfaces-controls-and-recovery.svg), [03-domain-supper-plan-and-week.svg](../../../../docs/visual-language/03-domain-supper-plan-and-week.svg), and [04-domain-recipe-cards-and-detail.svg](../../../../docs/visual-language/04-domain-recipe-cards-and-detail.svg).

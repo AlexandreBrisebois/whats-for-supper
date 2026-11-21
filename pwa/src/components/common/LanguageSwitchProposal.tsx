@@ -84,11 +84,11 @@ export function LanguageSwitchProposal() {
         className="w-full max-w-sm pointer-events-auto"
         data-testid="language-proposal"
       >
-        <div className="w-full overflow-hidden rounded-2xl border border-sage/30 border-l-4 border-l-sage bg-white/95 shadow-glass backdrop-blur-md">
+        <div className="w-full overflow-hidden rounded-2xl border border-sage-200 border-l-4 border-l-sage-700 bg-white shadow-card">
           <div className="flex items-center gap-3 p-3">
             <div className="flex-shrink-0">
-              <div className="h-8 w-8 rounded-full bg-sage/15 flex items-center justify-center text-sage">
-                <Globe size={16} />
+              <div className="h-8 w-8 rounded-full bg-sage-50 flex items-center justify-center text-sage-700">
+                <Globe size={16} aria-hidden="true" />
               </div>
             </div>
 
@@ -98,15 +98,17 @@ export function LanguageSwitchProposal() {
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={handleSwitch}
-                className="rounded-xl bg-sage px-4 py-1.5 text-xs font-bold text-white transition-all active:scale-95 shadow-sm"
+                className="min-h-12 min-w-12 rounded-xl bg-sage-700 hover:bg-sage-800 px-4 py-2 text-xs font-semibold text-white transition-all active:scale-95 shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
                 data-testid="language-proposal-switch"
               >
                 {content.switch}
               </button>
               <button
+                type="button"
                 onClick={handleDismiss}
-                className="rounded-xl px-3 py-1.5 text-xs font-bold text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
+                className="min-h-12 min-w-12 rounded-xl px-3 py-2 text-xs font-semibold text-charcoal-600 transition-colors hover:bg-charcoal-100 hover:text-charcoal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal"
                 data-testid="language-proposal-dismiss"
               >
                 {content.dismiss}

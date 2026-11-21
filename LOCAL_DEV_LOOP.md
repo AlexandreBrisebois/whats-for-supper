@@ -10,8 +10,8 @@ nvm use
 task hooks:setup
 ```
 
-`hooks:setup` installs the pinned OpenSpec CLI and Python/PWA/browser dependencies, restores the API test project,
-and installs both Git hooks. Use `task hooks:install` when hooks are missing or the adapter itself changes;
+`hooks:setup` installs the OpenSpec CLI and Python/PWA/browser dependencies, restores the API test project,
+and installs the commit hook. Push validation is manual. Use `task hooks:install` when hooks are missing or the adapter itself changes;
 an installed adapter reads the current repository configuration on each invocation. Docker must be running for API integration tests; the
 push check does not reset the development stack or kill an existing dev server.
 
@@ -21,11 +21,12 @@ Before staging, format or generate only the files required by your change:
 task prepare -- <reviewed-paths>
 ```
 
-Review and stage the diff, then use ordinary Git commands:
+Review and stage the diff, then run the manual push check after committing:
 
 ```sh
 git add <paths>
 git commit -m "Describe the change"
+task check:push
 git push
 ```
 
@@ -34,7 +35,7 @@ harness tests, static contracts/mocks, client freshness and PWA formatting. It d
 not generate or stage files, build the application, or run integration/E2E suites.
 Use `task check:commit` to run the staged checks manually.
 
-Push selects checks from the complete committed range being pushed. Markdown-only
+The manual push check selects checks from the complete committed range being pushed. Markdown-only
 changes run committed whitespace and introduced-link checks; OpenSpec planning also
 runs spec validation. Harness changes run existing tooling tests. API changes run
 API checks, PWA changes run production checks with affected E2E capability suites,
@@ -59,12 +60,41 @@ worktree, but still considers committed source only. No success cache is used.
 
 The existing `check:push:pwa` builds once and reuses the CI capability selector;
 `task check:push:pwa SUITES="planning household"` runs those suites, while its
-default remains all E2E. It keeps the fixed CI auth/build flags and never reuses an
+default covers the four disjoint mocked capability suites, excluding live-service qualification. It keeps the fixed CI auth/build flags and never reuses an
 external `BASE_URL`. Push-triggered database smoke calls the existing
 `task test:smoke -- --isolated`, with unique project/container/network/volume names
 and dynamic loopback ports. Its teardown only removes its owned resources. The
 legacy explicit `task test:smoke` retains its development-stack reset behavior.
-No hook reinstall is needed for an already installed pre-commit adapter.
+No automatic pre-push hook is installed.
+
+Use these distinct browser scopes with Node from `.nvmrc` and npm 11.21.1:
+
+```sh
+task test:e2e -- quiet-portions-layout.spec.ts  # Ordinary development-mode feedback
+task agent:test:impact                        # Current dirty source, shared capability inventory
+task check:push -- --plan --base origin/main  # Committed range only; no checks or writes
+task test:e2e:ci -- prepared-supper.spec.ts --workers=4 --retries=0
+task check:push:pwa SUITES='planning recipes'
+task check:push:pwa SUITES='tonight planning recipes household'
+```
+
+Both CI-named task/npm aliases and `check:push:pwa` use
+`scripts/ci/production-browser.cjs`. They build fresh production output and start an
+owned server. Inherited `BASE_URL` and suite selectors cannot redirect the run.
+Port 3000 must be free; an occupied port fails without stopping its owner. When DV
+already owns that port, run in an isolated task-owned runtime/network. A source copy
+alone does not isolate ports. No production API, household or database is a browser
+test target; these suites use mocked HTTP.
+
+CI uses the same owner's separate `build` and `run --suites <suite>` operations,
+retaining one build and the capability matrix. Build metadata travels inside `.next`;
+source/configuration/runtime or artifact mismatches require rebuilding. Invocation
+records live under `.task/production-browser/runs/<id>/`, with a copy in browser
+test results for CI artifact transfer. Records include source/build identity,
+allowlisted settings, runtime/browser versions and first-attempt/retry/skip outcomes.
+Retries are visible and do not establish a repaired first-attempt failure. Local
+Mac/ARM results and hosted Ubuntu x64 results are separate qualifications; complete
+parity requires hosted CI on the same final committed candidate.
 
 Both gates stop on failure. Fix, prepare, stage and commit again before retrying a
 push. CI repeats platform/build tests and adds Docker/security validation. A local
@@ -81,12 +111,11 @@ An explicit Task variable such as `PYTHON=python3` can select an already-provisi
 interpreter in CI or another managed environment. Do not install into Homebrew's
 externally managed system Python.
 
-`task spec:check` validates capability specs and active changes with the strict,
-non-interactive OpenSpec version pinned by `OPENSPEC_VERSION` in `Taskfile.yml`
-(currently 1.14.3). `task hooks:setup` installs that pin. The reusable CI validation
+`task spec:check` validates capability specs and active changes with strict,
+non-interactive OpenSpec checks (`@fission-ai/openspec`, without pinning a specific
+CLI version). `task hooks:setup` installs the CLI. The reusable CI validation
 workflow also validates specs for documentation-only changes. Spec validity is
 separate from implementation or deployment acceptance.
-
 
 This is a contributor guide for local development, service orchestration, and discovery. It is not a Synology installation guide; see the current [Synology operator guide](release-template/synology/README.md), for deployment and recovery procedures; local checks do not qualify a physical NAS.
 
@@ -102,6 +131,7 @@ graph TD
 ```
 
 ## Discovery Rules
+
 - **Tooling**: Always check [.agents/agent-toolbox.md](.agents/agent-toolbox.md) for custom scripts.
 - **Environment**: Infrastructure variables live in `docker/.env`. Local overrides in `docker/.env.local`.
 - **Migrations**: `api/database/schema.sql` is the authoritative source for schema changes (via `psqldef`).
@@ -126,6 +156,7 @@ choco install task
 ```
 
 Verify installation:
+
 ```bash
 task --version
 ```
@@ -139,6 +170,7 @@ All commands run from project root using Task:
 ### Quick Reference
 
 View all tasks:
+
 ```bash
 task -l
 # or just
@@ -147,25 +179,25 @@ task
 
 **Most common tasks:**
 
-| Task | Description |
-|------|-------------|
-| `task up` | Start all Phase 0 services (Traefik) 🚀 |
-| `task down` | Stop all modular services ⛔ |
-| `task dev:api` | Start API with hot reload |
-| `task dev:pwa` | Start PWA with hot reload |
-| `task gate` | Fast feedback; stops dev/test processes before checking impact |
-| `task review` | 🔒 Application validation (unit/API tests; no E2E) |
-| `task test` | Run all tests 🧪 |
-| `task test:smoke` | Shared local/CI Docker smoke checks; resets development containers and volumes |
-| `task gen:client` | 🔄 Regenerate Kiota API client from spec |
-| `task agent:drift` | 🤖 Check route, schema, and mock drift |
-| `task agent:drift:routes` | 🤖 Static controller route vs OpenAPI check |
-| `task agent:api` | 🤖 View full API controller mapping |
-| `task agent:slice` | 🤖 Vertical Slice Viewer (Route Context) |
-| `task health` | Check if services are running 🏥 |
-| `task dev:db:sync` | 🔄 Full Docker DB refresh (Forces Rebuild) |
-| `task dev:clean:sync` | 🛑 Nuclear Reset (Wipe all + Rebuild) |
-| `task clean` | Clean everything up 🧹 |
+| Task                      | Description                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------ |
+| `task up`                 | Start all Phase 0 services (Traefik) 🚀                                        |
+| `task down`               | Stop all modular services ⛔                                                   |
+| `task dev:api`            | Start API with hot reload                                                      |
+| `task dev:pwa`            | Start PWA with hot reload                                                      |
+| `task gate`               | Fast feedback; stops dev/test processes before checking impact                 |
+| `task review`             | 🔒 Application validation (unit/API tests; no E2E)                             |
+| `task test`               | Run all tests 🧪                                                               |
+| `task test:smoke`         | Shared local/CI Docker smoke checks; resets development containers and volumes |
+| `task gen:client`         | 🔄 Regenerate Kiota API client from spec                                       |
+| `task agent:drift`        | 🤖 Check route, schema, and mock drift                                         |
+| `task agent:drift:routes` | 🤖 Static controller route vs OpenAPI check                                    |
+| `task agent:api`          | 🤖 View full API controller mapping                                            |
+| `task agent:slice`        | 🤖 Vertical Slice Viewer (Route Context)                                       |
+| `task health`             | Check if services are running 🏥                                               |
+| `task dev:db:sync`        | 🔄 Full Docker DB refresh (Forces Rebuild)                                     |
+| `task dev:clean:sync`     | 🛑 Nuclear Reset (Wipe all + Rebuild)                                          |
+| `task clean`              | Clean everything up 🧹                                                         |
 
 **Detailed usage:**
 
@@ -286,6 +318,7 @@ task logs:pwa
 ```
 
 **Feedback loop:**
+
 - Edit code → Docker auto-reloads (via `dotnet watch` and Next.js HMR)
 - Refresh browser → See changes immediately
 - Check logs → `task logs:api` or `task logs:pwa`
@@ -312,6 +345,7 @@ task dev:pwa
 ```
 
 **Why this is faster:**
+
 - ⚡ API changes: instant recompile (dotnet watch)
 - ⚡ PWA changes: instant HMR (Next.js dev server)
 - ⚡ No Docker rebuild needed
@@ -354,16 +388,19 @@ task test:unit:watch &
 ### Workflow 4: Quick Commands
 
 **Before committing:**
+
 ```bash
 task check:commit
 ```
 
 **After committing, before pushing:**
+
 ```bash
 task check:push
 ```
 
 **Full ship checklist:**
+
 ```bash
 # Review + Build + Dev + Health check
 task ship
@@ -381,6 +418,7 @@ task ship
 6. **Run Gate**: `task gate` — catches stale client and type errors immediately.
 
 **Integrity Checks:**
+
 - `task agent:drift:routes`: Static no-server check that fails when a controller route is missing from `specs/openapi.yaml`, or a spec route is missing from controllers.
 - `task agent:drift:endpoints`: Live generated OpenAPI diff against `specs/openapi.yaml`; use when the API is running and reachable.
 - `task agent:drift:schemas`: Validates that backend DTOs match the OpenAPI contract (nullability, names, types).
@@ -395,28 +433,35 @@ task ship
 ## Local Loop Best Practices
 
 ### 1. **Database Migrations (psqldef)**
+
 This project uses `psqldef` for declarative schema management.
+
 - **Run Migrations**: `task migrate` (runs the migration container).
 - **Manual Control**:
-    - `task db:schema:pull`: Pulls the current live schema into `api/database/schema.sql`.
-    - `task db:schema:push`: Validates and applies local `schema.sql` to the database.
+  - `task db:schema:pull`: Pulls the current live schema into `api/database/schema.sql`.
+  - `task db:schema:push`: Validates and applies local `schema.sql` to the database.
 - **Safety**: Always run `task db:backup` before manual schema pushes.
 
 ### 2. **Test Data**
+
 Always have test families and recipes:
+
 ```bash
 task seed
 ```
 
 ### 3. **Hot Reload Setup**
+
 Both API and PWA are configured for hot reload by default:
 
 **API:** Uses `dotnet watch run`
+
 ```bash
 task dev:api
 ```
 
 **PWA:** Uses Next.js dev server (HMR enabled by default)
+
 ```bash
 task dev:pwa
 ```
@@ -430,12 +475,14 @@ This project uses a **Dual-Config Strategy** to separate your ecosystem settings
 - **`.env.test`**: Shared overrides for Playwright and unit tests.
 
 **Key Variables:**
+
 - `HEARTH_SECRET`: The family passphrase for onboarding. **Must be the same** in all active config files for authentication to work across services.
-- `NEXT_PUBLIC_API_BASE_URL`: 
+- `NEXT_PUBLIC_API_BASE_URL`:
   - Set to `http://api.wfs.localhost` (Docker) or `http://localhost:9001` (Local).
   - Leave empty or unset in production behind Traefik (including Cloudflare Tunnel); Traefik routes same-origin `/api/*` requests directly to the API.
 
 **Initialize local overrides:**
+
 ```bash
 # Create local override file for Docker
 cp docker/.env.example docker/.env.local
@@ -452,7 +499,9 @@ committed source using affected checks and the shared CI E2E suite selector.
 See the everyday flow at the top of this guide for setup and failure recovery.
 
 ### 6. **Know Your Workflows**
+
 Use Task's built-in workflows:
+
 ```bash
 # Prepare formatting/generation, inspect the diff, then validate
 task prepare -- <reviewed-paths>
@@ -468,14 +517,14 @@ task ship
 
 The workflow files are executable owners; avoid copying their YAML into this guide.
 
-| Workflow | Trigger and responsibility |
-|---|---|
-| [ci.yml](.github/workflows/ci.yml) | Branch pushes and PRs to main; invokes affected validation. CodeQL retains main/PR scope. |
-| [validate.yml](.github/workflows/validate.yml) | Reusable spec, tooling, API, contract and PWA checks selected by changed inputs. Database/container changes run AMD smoke. |
-| [container-candidate.yml](.github/workflows/container-candidate.yml) | Tag-publication helper: native AMD/ARM builds, exact-image smoke and archived candidate images. |
-| [publish-dockerhub.yml](.github/workflows/publish-dockerhub.yml) | Annotated `dockerhub/v*` tags; reuses successful exact-commit source CI or validates once, then builds, smokes and publishes the same images. |
-| [install-identity-validation.yml](.github/workflows/install-identity-validation.yml) | Targeted identity/manifest/icon/channel/dependency/container PR inputs and manual runs; stable/beta with demo off/on. |
-| [codeql.yml](.github/workflows/codeql.yml) | Security analysis via CI and its own scheduled run. |
+| Workflow                                                                             | Trigger and responsibility                                                                                                                    |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ci.yml](.github/workflows/ci.yml)                                                   | Branch pushes and PRs to main; invokes affected validation. CodeQL retains main/PR scope.                                                     |
+| [validate.yml](.github/workflows/validate.yml)                                       | Reusable spec, tooling, API, contract and PWA checks selected by changed inputs. Database/container changes run AMD smoke.                    |
+| [container-candidate.yml](.github/workflows/container-candidate.yml)                 | Tag-publication helper: native AMD/ARM builds, exact-image smoke and archived candidate images.                                               |
+| [publish-dockerhub.yml](.github/workflows/publish-dockerhub.yml)                     | Annotated `dockerhub/v*` tags; reuses successful exact-commit source CI or validates once, then builds, smokes and publishes the same images. |
+| [install-identity-validation.yml](.github/workflows/install-identity-validation.yml) | Targeted identity/manifest/icon/channel/dependency/container PR inputs and manual runs; stable/beta with demo off/on.                         |
+| [codeql.yml](.github/workflows/codeql.yml)                                           | Security analysis via CI and its own scheduled run.                                                                                           |
 
 PWA E2E uses affected capability suites (tonight, planning, recipes, household),
 one production build, separate runners, and a merged report. Shared or uncertain
@@ -521,6 +570,7 @@ that the other ran.
 ## Example: Complete Development Session
 
 ### Setup (first time)
+
 ```bash
 # Clone repo
 git clone https://github.com/AlexandreBrisebois/whats-for-supper.git
@@ -534,6 +584,7 @@ task init
 ```
 
 ### Development (iterative)
+
 ```bash
 # Terminal 1: Watch API
 task dev:api
@@ -552,6 +603,7 @@ task agent:summary
 ```
 
 ### Testing before commit
+
 ```bash
 # Fast inner loop — catch what changed
 task gate
@@ -579,6 +631,7 @@ git push
 ```
 
 ### Cleanup
+
 ```bash
 # Stop everything (keep data)
 task down
@@ -594,23 +647,27 @@ task clean
 ### Slow Local Loop? Try This:
 
 1. **Use local dev servers (FASTEST):**
+
    ```bash
    task dev:db      # Just database
    task dev:api     # API with hot reload (much faster!)
    task dev:pwa     # PWA with hot reload
    ```
+
    This skips Docker rebuilds and gives instant feedback.
 
 2. **Run only the service you're testing:**
+
    ```bash
    # Only testing PWA?
    task test:unit
-   
+
    # Only testing API?
    task test:api
    ```
 
 3. **Run specific test file for quick feedback:**
+
    ```bash
    task test:unit -- src/lib/server/deployment-identity.test.ts
    task test:api -- --filter FullyQualifiedName~CaptureTests
@@ -620,7 +677,7 @@ task clean
    ```bash
    # npm cache
    cd pwa && npm cache clean --force
-   
+
    # dotnet cache
    cd api && dotnet nuget locals all --clear
    ```
@@ -629,17 +686,17 @@ task clean
 
 ## Troubleshooting Local Loop
 
-| Problem | Solution |
-|---------|----------|
-| Port 80 in use | Another web server is running. Inspect the listener and development Compose port mapping before changing it |
-| Traefik returns 404 | Inspect `task health`, `task logs` and the configured file-provider routes |
-| Database won't start | Inspect `task logs:db`; reserve volume resets for an intentional recovery operation |
-| API can't connect to DB | Check `POSTGRES_CONNECTION_STRING` in `.env`. Ensure DB is healthy. |
-| PWA can't reach API | Check `NEXT_PUBLIC_API_BASE_URL` - should be `http://api.wfs.localhost` |
-| Check service health | `task health` (the single source of truth) |
-| Need to inspect database | `task shell:db` (opens psql) |
-| Lost test data | `task seed` to repopulate |
-| API throwing errors | `task logs:api` to see stack traces |
+| Problem                  | Solution                                                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Port 80 in use           | Another web server is running. Inspect the listener and development Compose port mapping before changing it |
+| Traefik returns 404      | Inspect `task health`, `task logs` and the configured file-provider routes                                  |
+| Database won't start     | Inspect `task logs:db`; reserve volume resets for an intentional recovery operation                         |
+| API can't connect to DB  | Check `POSTGRES_CONNECTION_STRING` in `.env`. Ensure DB is healthy.                                         |
+| PWA can't reach API      | Check `NEXT_PUBLIC_API_BASE_URL` - should be `http://api.wfs.localhost`                                     |
+| Check service health     | `task health` (the single source of truth)                                                                  |
+| Need to inspect database | `task shell:db` (opens psql)                                                                                |
+| Lost test data           | `task seed` to repopulate                                                                                   |
+| API throwing errors      | `task logs:api` to see stack traces                                                                         |
 
 ---
 
@@ -658,17 +715,18 @@ This repository is optimized for **Universal Agent Protocol (UAP)** and includes
 
 ### Agent Toolbox Quick Start
 
-| Task | AI Utility |
-|------|------------|
-| `task agent:summary` | Prints compact source/spec navigation without loading resume context or the skill registry. |
-| `task agent:status` | Explicitly reads HANDOVER for resumption or active-state ambiguity. |
-| `task agent:api` | Maps all C# endpoints to a markdown table (low token cost). |
-| `task agent:drift` | Runs route, live endpoint, schema and mock drift checks; evidence has separate scopes. |
-| `task agent:slice` | Shows the full "vertical slice" (Spec ↔ Backend ↔ Client) for a route. |
-| `task agent:audit` | Scans PWA tests for brittle selectors (missing `data-testid`). |
+| Task                     | AI Utility                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------- |
+| `task agent:summary`     | Prints compact source/spec navigation without loading resume context or the skill registry.       |
+| `task agent:status`      | Explicitly reads HANDOVER for resumption or active-state ambiguity.                               |
+| `task agent:api`         | Maps all C# endpoints to a markdown table (low token cost).                                       |
+| `task agent:drift`       | Runs route, live endpoint, schema and mock drift checks; evidence has separate scopes.            |
+| `task agent:slice`       | Shows the full "vertical slice" (Spec ↔ Backend ↔ Client) for a route.                            |
+| `task agent:audit`       | Scans PWA tests for brittle selectors (missing `data-testid`).                                    |
 | `task agent:test:impact` | Advisory worktree-based selection; unknown impact runs all E2E. Push uses committed refs instead. |
 
 ### Master Rules
+
 See [AGENT.md](AGENT.md) for core architectural constraints and agent instructions.
 
 ## 7. Troubleshooting
@@ -698,24 +756,26 @@ Check `docker/.env` has `NEXT_PUBLIC_API_BASE_URL=http://api.wfs.localhost`.
 
 - Requires a secure context (`https`) or `localhost`.
 - On headless CI or non-camera machines, use the **Gallery** option.
+
 </details>
 
 ---
 
 ## 8. Environment Variables Reference
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `POSTGRES_USER` | `recipe_app` | PG superuser / app user |
-| `POSTGRES_PASSWORD` | `secure_dev_password` | PG password |
-| `POSTGRES_DB` | `recipe_app_db` | PG database name |
-| `API_PORT` | `9001` | Host-side API port |
-| `PWA_PORT` | `3000` | Host-side PWA port |
+| Variable                   | Default                    | Description                         |
+| -------------------------- | -------------------------- | ----------------------------------- |
+| `POSTGRES_USER`            | `recipe_app`               | PG superuser / app user             |
+| `POSTGRES_PASSWORD`        | `secure_dev_password`      | PG password                         |
+| `POSTGRES_DB`              | `recipe_app_db`            | PG database name                    |
+| `API_PORT`                 | `9001`                     | Host-side API port                  |
+| `PWA_PORT`                 | `3000`                     | Host-side PWA port                  |
 | `NEXT_PUBLIC_API_BASE_URL` | `http://api.wfs.localhost` | API base URL visible to the browser |
 
 See `docker/.env.example` for the full list.
 
 ## 9. Quick Start Checklist
+
 - [x] Install Task: `brew install go-task`
 - [x] Verify Task: `task --version`
 - [x] View all tasks: `task -l`

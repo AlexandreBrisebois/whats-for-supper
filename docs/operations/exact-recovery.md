@@ -14,12 +14,12 @@ All API instances sharing a household must run this version with matching recove
 
 Use the existing authenticated API access mechanism for these endpoints:
 
-| Operation | Endpoint | Result |
-| --- | --- | --- |
-| Capture | `POST /api/management/recovery/snapshots` | `200` only after a complete independent set is published; retain `snapshotId` |
-| Exact restore | `POST /api/management/recovery/restore/{snapshotId}` | Validates the entire saved set, then replaces supported household state |
-| Status | `GET /api/management/recovery/status` | Reports availability or reconciliation required, plus the last committed restore's snapshot ID |
-| Resume | `POST /api/management/recovery/resume` | Reconciles an interrupted publication; safe to repeat |
+| Operation     | Endpoint                                             | Result                                                                                         |
+| ------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Capture       | `POST /api/management/recovery/snapshots`            | `200` only after a complete independent set is published; retain `snapshotId`                  |
+| Exact restore | `POST /api/management/recovery/restore/{snapshotId}` | Validates the entire saved set, then replaces supported household state                        |
+| Status        | `GET /api/management/recovery/status`                | Reports availability or reconciliation required, plus the last committed restore's snapshot ID |
+| Resume        | `POST /api/management/recovery/resume`               | Reconciles an interrupted publication; safe to repeat                                          |
 
 These operations are synchronous. Request acceptance alone is not success. Snapshot directories use the returned UUID without hyphens. Keep their contents together and unchanged; the manifest inventories every required artifact with length and SHA-256. Published snapshots are immutable to the application; a failed new capture does not replace an older snapshot. Operators control retention and copying to another device. An older explicit backup remains an older snapshot until the operator removes it; permanently purged recipes/history are absent from live state and subsequent snapshots.
 

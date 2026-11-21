@@ -1,6 +1,7 @@
 # Contract and Testing Governance
 
 ## 1. Contract authority
+
 - **OpenAPI is Law**: The `specs/openapi.yaml` is the ultimate source of truth.
 - **Development sequence**: Approved contract/spec → tests → implementation.
 - **API changes**: Update `specs/openapi.yaml` for every API change, including
@@ -13,9 +14,16 @@
   a changed contract when it exceeds the selected scope.
 
 ## 2. Test-first expectations
+
 - **Test-Driven Development**: You must write or update tests before implementing logic.
 - For bug fixes, add or update a regression test that reproduces the reported
   failure before implementation, and retain it after the fix.
+
+Assert observable behavior, domain invariants and relevant side effects rather than
+incidental implementation structure; retain tests for explicit architectural contracts.
+For state-changing work, include relevant duplicate, retry, interruption and
+unknown-outcome cases. A hand-verified representative example can seed these tests;
+it does not replace real seam or database acceptance.
 
 For each behavior increment, follow **red → green → refactor**:
 
@@ -62,12 +70,14 @@ must serve the first working slice. Extend to additional scenarios only after th
 path works, within the authorized task scope.
 
 ## 3. Drift prevention
+
 - API request/response shapes must conform to OpenAPI. Internal domain and UI
   models may differ, with explicit mapping at API boundaries.
 - **Schema Integrity**: Parity between the OpenAPI Specification, Mock API, and Backend implementation is mandatory.
 - **Validation**: Run applicable checks selected by change class under [execution harness](execution-harness.md). Contract changes require affected seam and database behavior evidence; static checks alone cannot establish it.
 
 ## 4. Data and mock discipline
+
 - **Mock implementation is part of every API change**: Add or update the affected
   method-sensitive handlers in `pwa/e2e/mock-api.ts`, plus supporting builders,
   fixtures and state transitions, in the same vertical slice as the real API.
@@ -82,6 +92,7 @@ path works, within the authorized task scope.
 - **High-Fidelity Mocks**: Test factories (e.g., `TestWebApplicationFactory`) should prioritize mocks that preserve domain side-effects (e.g., persisting workflow instances to the DB) rather than "shallow" mocks that return empty success objects. This ensures vertical slice integration tests can verify system state correctly.
 
 ## 5. Definition of done
+
 - The OpenAPI specification accurately reflects the required changes.
 - Tests are written or updated before implementation code.
 - Each behavior increment has observed red/green evidence and remains green after

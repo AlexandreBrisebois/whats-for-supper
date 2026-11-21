@@ -3,11 +3,14 @@
 Playwright route handlers in `pwa/e2e/mock-api.ts` and the global interceptor in `fixtures.ts` define the frontend E2E network boundary. They are not a standalone mock server.
 
 ## Mock at System Boundaries Only
+
 When testing Next.js components and workflows:
+
 - **DO MOCK:** Browser-originated API requests at the network boundary, using Playwright `mock-api` responses matching `specs/openapi.yaml`.
 - **DO NOT MOCK:** Internal React components, custom hooks, or React Context providers. E2E tests should render the actual DOM tree as the user sees it.
 
 ## The SDK & Mock Alignment
+
 Because the frontend uses Kiota-generated SDK clients, the mock data must be structurally perfect. If the mock data is slightly off from the OpenAPI spec, the generated SDK client will fail to parse it, causing a test failure.
 
 When diagnosing "Element Not Found" or "Timeout" errors in E2E tests, always verify that the mocked API response isn't causing a silent parsing failure in the frontend data layer.
@@ -22,6 +25,10 @@ Trace Server Component reads through `pwa/src/lib/api/server-client.ts`, current
 SSR-seeded state can appear before client synchronization; browser mocks alone do
 not establish the initial server data. Use the suite's isolated server fixture or
 an observed UI transition as appropriate; never require a production backend.
+
+Seed `localStorage` with `page.addInitScript()` before the first navigation. Do not
+`goto('/')` in `beforeEach` just to reach a browser context: that SSR render runs
+without a backend and can crash before any route mock applies.
 
 For Home SSR/Playwright work only, load the [Home E2E reference](../../../.kiro/steering/home-e2e.md).
 Verify its historical backend/URL assumptions against current config: managed-server

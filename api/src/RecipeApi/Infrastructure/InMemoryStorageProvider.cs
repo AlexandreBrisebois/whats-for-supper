@@ -26,6 +26,12 @@ public class InMemoryStorageProvider : IStorageProvider
         return Task.CompletedTask;
     }
 
+    public Task DeleteAtomicallyAsync(string partition, string key)
+    {
+        if (_storage.TryGetValue(partition, out var values)) values.TryRemove(key, out _);
+        return Task.CompletedTask;
+    }
+
     public Task<byte[]?> LoadAsync(string partition, string key)
     {
         if (_storage.TryGetValue(partition, out var partitionStorage) &&

@@ -45,7 +45,6 @@ Verified application SHA-256 values (unchanged by this acceptance bookkeeping):
 
 All four selected implementation tasks are accepted. The change remains active and unsynced; historical archive checkboxes, canonical owner text, deferred tooling and existing dirty work remain preserved. This acceptance edit receives a separate documentation-only verification; its final record is reported in the completion reply.
 
-
 ## Sync and archive checkpoint — 2026-10-26
 
 User authorized sync and archive after all four implementation tasks were accepted. Rechecked HEAD `e680fb7966978da3fbde25453a241c7e69e2b2a1`, empty index, source/test SHA-256 values above, both complete canonical owners, delta blocks, and the three verification records. Final acceptance documentation passed in `.task/agent-finish/runs/87fea7d07e3d44a286271c36a24a25cb.json`; the application and earlier failed fixture records retain their original status and tested identities.

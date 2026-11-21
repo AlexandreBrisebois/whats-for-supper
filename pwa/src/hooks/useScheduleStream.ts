@@ -85,6 +85,8 @@ export function useScheduleStream() {
         if (entry !== undefined)
           useTodayStore.getState().applyServerUpdate({
             date: entry.date,
+            occurrenceId: entry.occurrenceId ?? null,
+            preparation: entry.preparation ?? null,
             recipe: entry.recipe ?? null,
             status: entry.status ?? 0,
             nonCooking: entry.nonCooking ?? null,
@@ -135,11 +137,15 @@ export function useScheduleStream() {
     // (applySlotUpdate's inCurrentWeek guard handles the filtering).
     source.addEventListener('slot_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "slot_updated" event');
-      const { date, recipe, status, nonCooking } = JSON.parse(e.data);
+      const { date, recipe, status, nonCooking, occurrenceId, preparation } = JSON.parse(e.data);
       const finish = (calendar: CalendarContext | null) => {
         if (calendar && date === calendar.today)
-          useTodayStore.getState().applyServerUpdate({ date, recipe, status, nonCooking });
-        useWeekStore.getState().applySlotUpdate({ date, recipe, status, nonCooking });
+          useTodayStore
+            .getState()
+            .applyServerUpdate({ date, recipe, status, nonCooking, occurrenceId, preparation });
+        useWeekStore
+          .getState()
+          .applySlotUpdate({ date, recipe, status, nonCooking, occurrenceId, preparation });
         useSearchPromotionStore.getState().invalidate();
       };
       if (!civilDate(date)) {
@@ -156,6 +162,13 @@ export function useScheduleStream() {
     source.addEventListener('week_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "week_updated" event');
       const { schedule, echoSeq } = JSON.parse(e.data);
+      const weekStartDate = absoluteMonday(schedule.weekStartDate);
+      if (weekStartDate) {
+        const previous = useWeekStore.getState().ingredientProjectionUpdate;
+        useWeekStore.setState({
+          ingredientProjectionUpdate: { weekStartDate, sequence: (previous?.sequence ?? 0) + 1 },
+        });
+      }
       useWeekStore.getState().applySnapshot(schedule, echoSeq);
       useSearchPromotionStore.getState().invalidate();
 
@@ -275,7 +288,8 @@ export function useScheduleStream() {
     // Only apply if the event is for the currently-loaded week.
     source.addEventListener('grocery_updated', (e: MessageEvent) => {
       console.log('[SSE] Received "grocery_updated" event');
-      const { weekStartDate, groceryState } = JSON.parse(e.data);
+      const payload = JSON.parse(e.data);
+      const { weekStartDate } = payload;
       const state = useWeekStore.getState();
       if (!absoluteMonday(weekStartDate)) {
         void state.sync();
@@ -285,7 +299,10 @@ export function useScheduleStream() {
         weekStartDate === state.weekStartDate &&
         weekOffsetFor(weekStartDate, state.calendar?.referenceWeekStartDate) === state.weekOffset
       ) {
-        usePlannerStore.getState().setGroceryState(groceryState);
+        state.applyGrocerySnapshot(payload);
+        // Existing event payloads remain compatible: a check-map notification can
+        // also mean derived quantities/freshness changed during recomputation.
+        void state.refreshGroceries();
       }
     });
 

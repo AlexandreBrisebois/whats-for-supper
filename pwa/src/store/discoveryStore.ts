@@ -14,6 +14,7 @@ interface DiscoveryState {
   refreshSession: () => Promise<void>;
   applySession: (session: VotingSessionSnapshot, authoritative?: boolean) => void;
   hasPendingCards: boolean;
+  pendingCardsAvailable: boolean;
   setHasPendingCards: (hasCards: boolean) => void;
   /**
    * Incremented each time a fill-the-gap invalidation SSE event is received.
@@ -126,10 +127,13 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
       return;
     }
     sessionGeneration++;
+    const hasPendingCards =
+      session.phase === 'collecting' &&
+      (get().pendingCardsAvailable || get().discoveryStack.length > 0);
     set({
       session,
       sessionStatus: 'ready',
-      hasPendingCards: session.phase === 'converged' ? false : get().discoveryStack.length > 0,
+      hasPendingCards,
     });
     const week = useWeekStore.getState();
     if (
@@ -140,8 +144,12 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
       week.applySmartDefaultsUpdate(session.smartDefaults);
   },
   hasPendingCards: false,
+  pendingCardsAvailable: false,
   setHasPendingCards: (hasCards) =>
-    set({ hasPendingCards: get().session?.phase !== 'converged' && hasCards }),
+    set({
+      pendingCardsAvailable: hasCards,
+      hasPendingCards: get().session?.phase === 'collecting' && hasCards,
+    }),
   fillTheGapVersion: 0,
   allSuggestionsVersion: 0,
   invalidateAllSuggestions: () =>

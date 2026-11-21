@@ -14,7 +14,7 @@ namespace RecipeApi.Tests.Services;
 [Collection("WorkflowRootResolver")]
 public sealed class RecipeImportIndexingTests
 {
-    private static async Task<WorkflowOrchestrator> CreateOrchestratorAsync(RecipeDbContext db)
+    private static async Task<WorkflowOrchestrator> CreateOrchestratorAsync(RecipeDbContext db, Guid? pendingRecipeId = null)
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
         while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "api", "src", "RecipeApi", "Workflows")))
@@ -25,15 +25,34 @@ public sealed class RecipeImportIndexingTests
             var yaml = await File.ReadAllTextAsync(Path.Combine(root!.FullName, "api", "src", "RecipeApi", "Workflows", name + ".yaml"));
             await storage.SaveAsync("workflows", name + ".yaml", yaml);
         }
-        return new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), db);
+        if (pendingRecipeId is { } id)
+        {
+            db.Recipes.Add(new Recipe { Id = id });
+            await db.SaveChangesAsync();
+            await new RecipeRepository(storage).SaveInfoAsync(new RecipeInfo { Id = id }, default);
+        }
+        return new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(db, storage, new RecipeApi.Services.SystemClock()));
+    }
+
+    private static async Task SaveParentAsync(RecipeDbContext db, WorkflowTask task)
+    {
+        task.TaskId = Guid.NewGuid();
+        task.InstanceId = Guid.NewGuid();
+        task.TaskName = "queue";
+        task.ProcessorName = "QueueRecipeSearchIndex";
+        task.Status = TaskStatus.Processing;
+        var parent = new WorkflowInstance { Id = task.InstanceId, WorkflowId = "parent", Parameters = "{}", Tasks = [task] };
+        await TestPublicationStore.Create(db, new InMemoryStorageProvider(), new SystemClock()).CaptureLaunchAsync(parent);
+        db.WorkflowInstances.Add(parent);
+        await db.SaveChangesAsync();
     }
 
     [Fact]
     public async Task Import_queues_indexing_only_after_readiness_and_import_report_completion()
     {
         await using var db = TestDbContextFactory.Create();
-        var orchestrator = await CreateOrchestratorAsync(db);
         var recipeId = Guid.NewGuid();
+        var orchestrator = await CreateOrchestratorAsync(db, recipeId);
         var instance = await orchestrator.TriggerAsync("recipe-import", new() { ["recipeId"] = recipeId.ToString() });
         var queue = Assert.Single(instance.Tasks, t => t.TaskName == "queue_search_index");
         Assert.Equal(TaskStatus.Waiting, queue.Status);
@@ -57,9 +76,10 @@ public sealed class RecipeImportIndexingTests
         var processor = new QueueRecipeSearchIndexProcessor(db, orchestrator);
         var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) };
 
+        await SaveParentAsync(db, task);
         await processor.ExecuteAsync(task, CancellationToken.None);
 
-        var child = await db.WorkflowInstances.Include(i => i.Tasks).SingleAsync();
+        var child = await db.WorkflowInstances.Include(i => i.Tasks).SingleAsync(x => x.WorkflowId == "index-recipe-search");
         Assert.Equal("index-recipe-search", child.WorkflowId);
         var index = Assert.Single(child.Tasks);
         Assert.Equal("IndexRecipeSearch", index.ProcessorName);

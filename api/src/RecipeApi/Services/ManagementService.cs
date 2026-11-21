@@ -32,6 +32,7 @@ public partial class ManagementService(
     ILogger<ManagementService> logger,
     DemoModeOptions demoMode,
     RecoverySnapshotService recovery,
+    DeploymentCalendar calendar,
     IScheduleEventPublisher? publisher = null)
 {
     private static readonly HashSet<string> RetiredRecipeBackupFields = new(StringComparer.OrdinalIgnoreCase)
@@ -61,7 +62,14 @@ public partial class ManagementService(
     {
         await using var snapshotTransaction = await VotingBoundary.BeginAsync(db);
         if (db.Database.IsRelational())
-            await db.Database.ExecuteSqlRawAsync("LOCK TABLE recipes IN SHARE MODE");
+            // EXCLUSIVE also drains cooperating FOR UPDATE/SHARE file publishers.
+            // SHARE alone excludes SQL updates but still permits their row-lock phase.
+            // Ordinary SELECT reads remain available during this existing backup boundary.
+            await db.Database.ExecuteSqlRawAsync("LOCK TABLE recipes IN EXCLUSIVE MODE");
+        if (await db.RecipePhysicalDeletions.AsNoTracking().AnyAsync(x => x.CompletedAt == null))
+            throw new RecoveryBusyException("Complete or reconcile pending recipe physical retirement before backing up live recipe files.");
+        if (await db.RecipeFilePublications.AsNoTracking().AnyAsync(x => !x.Delivered))
+            throw new RecoveryBusyException("Complete or reconcile pending recipe file publication before backing up live recipe files.");
         // 1. Refresh current member values and membership, including an empty household.
         var dbMembers = await db.FamilyMembers.AsNoTracking().ToListAsync();
         await WriteJsonAsync(Path.Combine(DataRoot, "family-members.json"), dbMembers, CancellationToken.None);
@@ -70,6 +78,7 @@ public partial class ManagementService(
         var historyRecipeIds = await db.WeeklyHouseholdInterests.Select(h => h.RecipeId).Distinct().ToArrayAsync();
         var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking().Where(r => r.DeletedAt == null || historyRecipeIds.Contains(r.Id)).ToListAsync();
         int backedUpCount = 0;
+        var canonicalBackupIds = new List<Guid>();
         foreach (var recipe in recipes)
         {
             await using var pdfSource = await recipeStore.ReadSourcePdfAsync(recipe.Id);
@@ -78,6 +87,7 @@ public partial class ManagementService(
                        || (!string.IsNullOrEmpty(recipe.Name) && recipe.IsSynthesized);
             if (!historyRecipeIds.Contains(recipe.Id) && pdfSource is null && !isReady &&
                 string.IsNullOrEmpty(recipe.RawMetadata) &&
+                recipe.CanonicalContent is null &&
                 string.IsNullOrEmpty(recipe.Notes) &&
                 recipe.Rating == RecipeRating.Unknown)
             {
@@ -88,6 +98,14 @@ public partial class ManagementService(
             var existing = await recipeStore.ReadInfoAsync(recipe.Id);
             if (existing != null)
             {
+                if (recipe.CanonicalContent is not null)
+                {
+                    existing.AddedBy = recipe.AddedBy;
+                    existing.CreatedAt = recipe.CreatedAt;
+                    existing.ImageCount = recipe.ImageCount;
+                    existing.FinishedDishImageIndex = recipe.FinishedDishIndex;
+                    existing.IsReady = recipe.IsReady;
+                }
                 existing.RotationVersion = 1;
                 if (pdfSource is not null || historyRecipeIds.Contains(recipe.Id)) existing.IsReady = recipe.IsReady;
                 existing.DeletedAt = recipe.DeletedAt;
@@ -115,7 +133,7 @@ public partial class ManagementService(
             {
                 var info = new RecipeInfo
                 {
-                    IsReady = pdfSource is not null || historyRecipeIds.Contains(recipe.Id) ? recipe.IsReady : null,
+                    IsReady = recipe.CanonicalContent is not null || pdfSource is not null || historyRecipeIds.Contains(recipe.Id) ? recipe.IsReady : null,
                     DeletedAt = recipe.DeletedAt,
                     Id = recipe.Id,
                     Notes = recipe.Notes,
@@ -124,6 +142,7 @@ public partial class ManagementService(
                     Name = recipe.Name,
                     AddedBy = recipe.AddedBy,
                     ImageCount = recipe.ImageCount,
+                    FinishedDishImageIndex = recipe.FinishedDishIndex,
                     IsSynthesized = recipe.IsSynthesized,
                     CreatedAt = recipe.CreatedAt,
                     Category = recipe.Category,
@@ -147,6 +166,7 @@ public partial class ManagementService(
             // Refresh supported content, including cleared values, without touching media.
             await recipeStore.WriteRecipeJsonAsync(recipe.Id, SerializeRecipeBackup(recipe));
 
+            if (recipe.CanonicalContent is not null) canonicalBackupIds.Add(recipe.Id);
             backedUpCount++;
         }
 
@@ -264,7 +284,9 @@ public partial class ManagementService(
         await WriteJsonAsync(GroceryExtrasBackupPath, new GroceryExtraBackup(1, groceryExtras), CancellationToken.None);
         logger.LogInformation("Backed up {Count} grocery extras to {Path}", groceryExtras.Count, GroceryExtrasBackupPath);
 
+        await ExportSupperServingsAsync(CancellationToken.None);
         await ExportInterestAsync(Path.Combine(DataRoot, "weekly-household-interest.json"), CancellationToken.None, boundaryHeld: true);
+        await WriteCanonicalBackupInventoryAsync(canonicalBackupIds, CancellationToken.None);
         if (snapshotTransaction is not null) await snapshotTransaction.CommitAsync();
         logger.LogInformation("Backed up {Count} recipes", backedUpCount);
         return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
@@ -320,17 +342,42 @@ public partial class ManagementService(
                 && i.UpdatedAt < cutoff)
             .ToListAsync(ct);
 
-        var taskCount = instances.Sum(i => i.Tasks.Count);
-        db.WorkflowInstances.RemoveRange(instances);
-        await db.SaveChangesAsync(ct);
+        var taskCount = 0;
+        var instanceCount = 0;
+        foreach (var candidate in instances)
+        {
+            await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
+            try
+            {
+                var instance = await WorkflowLifecycle.LoadLockedAsync(db, candidate.Id, ct);
+                if (instance is null || instance.Status is not (WorkflowStatus.Completed or WorkflowStatus.Failed) || instance.UpdatedAt >= cutoff)
+                    continue;
+                await WorkflowLifecycle.RetainAsync(db, instance, "pruned", Guid.NewGuid(), clock.UtcNow, ct);
+                taskCount += instance.Tasks.Count;
+                db.WorkflowInstances.Remove(instance);
+                await db.SaveChangesAsync(ct);
+                if (transaction is not null) await transaction.CommitAsync(ct);
+                instanceCount++;
+            }
+            catch
+            {
+                if (transaction is not null)
+                {
+                    try { await transaction.RollbackAsync(CancellationToken.None); } catch { /* Reconcile without compensation. */ }
+                    await transaction.DisposeAsync();
+                }
+                await WorkflowLifecycle.ReloadAttemptAsync(db, candidate.Id);
+                throw;
+            }
+        }
 
         logger.LogInformation(
             "Pruned {InstanceCount} workflow instances and {TaskCount} workflow tasks older than {Cutoff}",
-            instances.Count,
+            instanceCount,
             taskCount,
             cutoff);
 
-        return new WorkflowPruneResult(instances.Count, taskCount);
+        return new WorkflowPruneResult(instanceCount, taskCount);
     }
 
     public async Task<MaintenanceCommandBatchResult> ProcessMaintenanceCommandsAsync(CancellationToken ct = default)
@@ -396,8 +443,14 @@ public partial class ManagementService(
             ? await db.Database.BeginTransactionAsync(ct)
             : null;
 
+        var operationId = Guid.NewGuid();
+        var attempted = new HashSet<Guid>();
         try
         {
+            // Drain terminal writers before observing final command/result facts.
+            // Keep the same bounded batch and completion-clock policy.
+            if (db.Database.IsNpgsql())
+                await db.Database.ExecuteSqlRawAsync("LOCK TABLE maintenance_commands IN SHARE ROW EXCLUSIVE MODE", ct);
             // Legacy terminal rows and recovery-invalidated rows from older releases did
             // not always have a completion time. Start their retention clock now rather
             // than treating an old creation time as evidence that they are safe to erase.
@@ -410,7 +463,13 @@ public partial class ManagementService(
                 .Take(batchSize)
                 .ToListAsync(ct);
             foreach (var command in missingCompletionTimes)
+            {
+                attempted.Add(command.Id);
+                if (db.Database.IsRelational()) await db.Entry(command).ReloadAsync(ct);
+                if (command.Status is not ("completed" or "skipped") || command.CompletedAt is not null) continue;
+                await MaintenanceCommandLifecycle.RetainAsync(db, command, "retention-started", operationId, now, ct);
                 command.CompletedAt = now;
+            }
 
             var expired = await db.MaintenanceCommands
                 .Where(c =>
@@ -422,7 +481,14 @@ public partial class ManagementService(
                 .Take(batchSize)
                 .ToListAsync(ct);
 
-            db.MaintenanceCommands.RemoveRange(expired);
+            foreach (var command in expired)
+            {
+                attempted.Add(command.Id);
+                if (db.Database.IsRelational()) await db.Entry(command).ReloadAsync(ct);
+                if (command.Status is not ("completed" or "skipped") || command.CompletedAt is null || command.CompletedAt > cutoff) continue;
+                await MaintenanceCommandLifecycle.RetainAsync(db, command, "pruned", operationId, now, ct);
+                db.MaintenanceCommands.Remove(command);
+            }
             await db.SaveChangesAsync(ct);
             if (transaction is not null)
             {
@@ -443,7 +509,11 @@ public partial class ManagementService(
         catch
         {
             if (transaction is not null)
-                await transaction.RollbackAsync(CancellationToken.None);
+            {
+                try { await transaction.RollbackAsync(CancellationToken.None); } catch { /* Read back an uncertain commit; never compensate. */ }
+                await transaction.DisposeAsync();
+            }
+            await MaintenanceCommandLifecycle.ReloadAttemptAsync(db, attempted);
             throw;
         }
     }
@@ -452,67 +522,85 @@ public partial class ManagementService(
     {
         var payload = JsonSerializer.Deserialize<DeleteFailedCaptureResiduePayload>(command.Payload, JsonDefaults.CamelCase)
             ?? new DeleteFailedCaptureResiduePayload();
-
-        if (payload.WorkflowInstanceId is Guid workflowInstanceId)
+        async Task RetireWorkflow()
         {
-            var workflow = await db.WorkflowInstances.FirstOrDefaultAsync(w => w.Id == workflowInstanceId, ct);
-            if (workflow is not null)
-                db.WorkflowInstances.Remove(workflow);
+            if (payload.WorkflowInstanceId is not Guid workflowId) return;
+            var workflow = await WorkflowLifecycle.LoadLockedAsync(db, workflowId, ct);
+            if (workflow is null) return;
+            await WorkflowLifecycle.RetainAsync(db, workflow, "cleared", command.Id, clock.UtcNow, ct, command);
+            db.WorkflowInstances.Remove(workflow);
         }
-
-        var status = "completed";
-        var reason = "deleted";
-        var filesDeleted = false;
-        var recipeDeleted = false;
-
-        if (payload.RecipeId is Guid recipeId)
+        try
         {
-            var recipe = await db.Recipes
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(r => r.Id == recipeId, ct);
-
-            if (recipe is null)
+            RecipePhysicalResult physical = new("no-recipe-id");
+            if (payload.RecipeId is Guid recipeId)
             {
-                reason = "recipe-not-found";
-            }
-            else if (RecipeIsReadyOrDiscoverable(recipe))
-            {
-                status = "skipped";
-                reason = "recipe-became-ready-or-discoverable";
-            }
-            else
-            {
-                var dir = Path.Combine(ActiveRecipesRoot, recipeId.ToString());
-                if (Directory.Exists(dir))
+                try
                 {
-                    Directory.Delete(dir, recursive: true);
-                    filesDeleted = true;
+                    physical = await RecipePhysicalLifecycle.DeleteAsync(db, recipeId, "failed-capture", clock, recipesRoot,
+                        recipe => !CaptureFailureService.ShouldRetainRecipe(recipe),
+                        () => Task.FromResult<bool?>(LocalRecipeStore.DeleteDirectory(ActiveRecipesRoot, recipeId)),
+                        enlistRetirement: RetireWorkflow, command: command, ct: ct);
                 }
-
-                db.Recipes.Remove(recipe);
-                recipeDeleted = true;
+                catch
+                {
+                    // A lost final commit acknowledgement is reconciled only from
+                    // this original command's independently committed physical receipt.
+                    var receipt = await db.RecipePhysicalDeletions.AsNoTracking().SingleOrDefaultAsync(
+                        x => x.RecipeId == recipeId && x.OperationId == command.Id && x.CompletedAt != null, CancellationToken.None);
+                    if (receipt is null) throw;
+                    physical = RecipePhysicalLifecycle.CompletedResult(receipt, command);
+                }
             }
+            if (!physical.Deleted)
+            {
+                // Skipped/missing recipes retain the original workflow cleanup behavior.
+                await using var retirement = await SupperServingsService.BeginAsync(db, ct);
+                try
+                {
+                    await RetireWorkflow();
+                    await db.SaveChangesAsync(ct);
+                    if (retirement is not null) await retirement.CommitAsync(ct);
+                }
+                catch
+                {
+                    if (retirement is not null)
+                    {
+                        try { await retirement.RollbackAsync(CancellationToken.None); } catch { }
+                        await retirement.DisposeAsync();
+                    }
+                    await WorkflowLifecycle.ReloadAttemptAsync(db, payload.WorkflowInstanceId.GetValueOrDefault(), command.Id, payload.RecipeId);
+                    throw;
+                }
+            }
+            var reason = physical.Outcome == "ineligible" ? "recipe-retained" : physical.Outcome;
+            var status = physical.Outcome == "ineligible" ? "skipped" : "completed";
+            command.Status = status;
+            command.CompletedAt = clock.UtcNow;
+            command.Result = JsonSerializer.Serialize(new
+            {
+                payload.RecipeId,
+                payload.WorkflowInstanceId,
+                payload.SourceWorkflowId,
+                payload.Reason,
+                filesDeleted = physical.FilesRemoved == true,
+                recipeDeleted = physical.Deleted,
+                outcome = reason
+            }, JsonDefaults.CamelCase);
+            await db.SaveChangesAsync(ct);
+            return new(command.Id, command.CommandType, status, payload.RecipeId, payload.WorkflowInstanceId, reason);
         }
-        else
+        catch
         {
-            reason = "no-recipe-id";
+            await WorkflowLifecycle.ReloadAttemptAsync(db, payload.WorkflowInstanceId.GetValueOrDefault(), command.Id, payload.RecipeId);
+            if (command.Status is "completed" or "skipped" && command.Result is not null)
+            {
+                using var saved = JsonDocument.Parse(command.Result);
+                return new(command.Id, command.CommandType, command.Status, payload.RecipeId, payload.WorkflowInstanceId,
+                    saved.RootElement.GetProperty("outcome").GetString());
+            }
+            throw;
         }
-
-        command.Status = status;
-        command.CompletedAt = clock.UtcNow;
-        command.Result = JsonSerializer.Serialize(new
-        {
-            payload.RecipeId,
-            payload.WorkflowInstanceId,
-            payload.SourceWorkflowId,
-            payload.Reason,
-            filesDeleted,
-            recipeDeleted,
-            outcome = reason,
-        }, JsonDefaults.CamelCase);
-
-        await db.SaveChangesAsync(ct);
-        return new(command.Id, command.CommandType, status, payload.RecipeId, payload.WorkflowInstanceId, reason);
     }
 
     private async Task<MaintenanceCommandReportItem> SkipUnsupportedCommandAsync(MaintenanceCommand command, CancellationToken ct)
@@ -703,10 +791,6 @@ public partial class ManagementService(
         return report.ToString();
     }
 
-    private static bool RecipeIsReadyOrDiscoverable(Recipe recipe) =>
-        recipe.IsDiscoverable
-        || (!string.IsNullOrWhiteSpace(recipe.Name) && (recipe.ImageCount > 0 || recipe.IsSynthesized));
-
     private sealed class DeleteFailedCaptureResiduePayload
     {
         public Guid? RecipeId { get; set; }
@@ -724,6 +808,8 @@ public partial class ManagementService(
 
     private static string SerializeRecipeBackup(Recipe recipe)
     {
+        if (CanonicalRecipeContentStore.Read(recipe) is { } content)
+            return RecipeExportContent.WriteCurrent(new(recipe.Id, content, recipe.RawMetadata));
         var root = JsonSerializer.SerializeToNode(recipe, _cycleIgnoreOptions)?.AsObject()
             ?? throw new InvalidOperationException("Recipe backup serialization did not produce an object.");
         RemoveRetiredRecipeFields(root);
@@ -782,7 +868,15 @@ public partial class ManagementService(
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)
     {
         demoMode.EnsureManagementAvailable();
+        var canonicalInputs = await PreflightCanonicalSeedAsync(ct);
         var result = new SeedResult();
+        SupperServingsBackup? servingBackup = null;
+        try { servingBackup = await ReadSupperServingsAsync(ct); }
+        catch (Exception ex) when (ex is JsonException or InvalidDataException or IOException or UnauthorizedAccessException or FormatException)
+        {
+            result.Errors++;
+            logger.LogWarning("Skipping invalid supper-servings backup artifact: {Reason}", ex.Message);
+        }
         GroceryExtraBackup? groceryExtraBackup = null;
         try
         {
@@ -836,6 +930,7 @@ public partial class ManagementService(
         logger.LogInformation("Found {Count} recipes in store", recipeIds.Count);
         var missingMemberIds = new HashSet<Guid>();
         var recipesToRestore = new List<Recipe>();
+        var canonicalSeedConflicts = new HashSet<Guid>();
         var pendingPdfIds = new HashSet<Guid>();
         var explicitReadiness = new Dictionary<Guid, bool>();
 
@@ -860,7 +955,9 @@ public partial class ManagementService(
 
                 if (hasInfo)
                 {
-                    var info = await recipeStore.ReadInfoAsync(recipeId, ct);
+                    var info = canonicalInputs.TryGetValue(recipeId, out var canonicalInfo)
+                        ? JsonSerializer.Deserialize<RecipeInfo>(canonicalInfo.Info, JsonDefaults.CamelCase)
+                        : await recipeStore.ReadInfoAsync(recipeId, ct);
                     if (info != null)
                     {
                         if (info.RotationVersion is < 0 or > 1 ||
@@ -912,7 +1009,8 @@ public partial class ManagementService(
 
                 if (hasJson)
                 {
-                    var json5 = await recipeStore.ReadRecipeJsonAsync(recipeId, ct);
+                    var json5 = canonicalInputs.TryGetValue(recipeId, out var canonicalJson)
+                        ? canonicalJson.Json : await recipeStore.ReadRecipeJsonAsync(recipeId, ct);
 
                     // We avoid deserializing directly into the 'Recipe' model because properties like 'Ingredients'
                     // in local files are often arrays/objects, whereas in the EF model they are raw JSON strings (mapped to JSONB).
@@ -927,22 +1025,29 @@ public partial class ManagementService(
 
                         logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeId);
 
-                        var exportedContent = RecipeExportContent.Read(rootElement);
-                        recipe.RawMetadata = exportedContent is null ? currentJson
-                            : exportedContent.RawMetadata is null ? null
-                            : RemoveRetiredRecipeFields(exportedContent.RawMetadata);
+                        if (canonicalInputs.TryGetValue(recipeId, out var canonical))
+                        {
+                            SetCanonicalSeedContent(recipe, canonical.Content);
+                        }
+                        else
+                        {
+                            var exportedContent = RecipeExportContent.Read(rootElement);
+                            recipe.RawMetadata = exportedContent is null ? currentJson
+                                : exportedContent.RawMetadata is null ? null
+                                : RemoveRetiredRecipeFields(exportedContent.RawMetadata);
 
-                        recipe.Servings = exportedContent is null ? RecipeServings.FromMetadata(recipe.RawMetadata) : exportedContent.Servings;
+                            recipe.Servings = exportedContent is null ? RecipeServings.FromMetadata(recipe.RawMetadata) : exportedContent.Servings;
 
-                        if (exportedContent is not null) recipe.Ingredients = exportedContent.Ingredients;
-                        else if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
-                            recipe.Ingredients = ingProp.GetRawText();
-                        else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
-                            recipe.Ingredients = legacyIngProp.GetRawText();
-                        else if (rootElement.TryGetProperty("ingredients", out var serializedIngredients)
-                            && serializedIngredients.ValueKind == JsonValueKind.String
-                            && IsJsonArray(serializedIngredients.GetString()))
-                            recipe.Ingredients = serializedIngredients.GetString();
+                            if (exportedContent is not null) recipe.Ingredients = exportedContent.Ingredients;
+                            else if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
+                                recipe.Ingredients = ingProp.GetRawText();
+                            else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
+                                recipe.Ingredients = legacyIngProp.GetRawText();
+                            else if (rootElement.TryGetProperty("ingredients", out var serializedIngredients)
+                                && serializedIngredients.ValueKind == JsonValueKind.String
+                                && IsJsonArray(serializedIngredients.GetString()))
+                                recipe.Ingredients = serializedIngredients.GetString();
+                        }
 
                         if (string.IsNullOrEmpty(recipe.Category) && rootElement.TryGetProperty("category", out var catProp))
                             recipe.Category = catProp.GetString();
@@ -1019,6 +1124,19 @@ public partial class ManagementService(
                     logger.LogDebug("Updating existing recipe: {Id} ({Name}) (deleted={IsDeleted})",
                         recipe.Id, recipe.Name ?? "unknown", existing.DeletedAt.HasValue);
 
+                    // Current content has no implicit disk-over-live authority. An
+                    // identical seed is a no-write replay; any divergence needs the
+                    // captured publication owner rather than this household operation.
+                    if (recipe.CanonicalContent is not null || existing.CanonicalContent is not null)
+                    {
+                        if (!IdenticalCanonicalSeed(recipe, existing))
+                        {
+                            result.Errors++;
+                            canonicalSeedConflicts.Add(existing.Id);
+                        }
+                        if (rotationTransaction is not null) await rotationTransaction.CommitAsync(ct);
+                        continue;
+                    }
                     // Update metadata
                     existing.Rating = recipe.Rating;
                     existing.Notes = recipe.Notes;
@@ -1068,7 +1186,7 @@ public partial class ManagementService(
 
         // 4b. Restore search index sidecars
         var configuredModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2";
-        foreach (var recipe in recipesToRestore)
+        foreach (var recipe in recipesToRestore.Where(x => !canonicalSeedConflicts.Contains(x.Id)))
         {
             if (ct.IsCancellationRequested) break;
             try
@@ -1171,8 +1289,14 @@ public partial class ManagementService(
         var eventsPath = Path.Combine(DataRoot, "calendar-events.json");
         if (File.Exists(eventsPath))
         {
-            var eventsJson = await File.ReadAllTextAsync(eventsPath, ct);
-            var events = JsonSerializer.Deserialize<List<CalendarEvent>>(eventsJson, JsonDefaults.CamelCase) ?? [];
+            List<CalendarEvent> events;
+            try { events = await ReadCalendarEventsAsync(eventsPath, ct); }
+            catch (Exception ex) when (ex is JsonException or InvalidDataException or FormatException)
+            {
+                result.Errors++;
+                logger.LogWarning("Skipping invalid calendar preparation artifact: {Reason}", ex.Message);
+                events = [];
+            }
             foreach (var @event in events)
             {
                 if (ct.IsCancellationRequested) break;
@@ -1330,6 +1454,8 @@ public partial class ManagementService(
             }
         }
 
+        await RestoreSupperServingsAsync(servingBackup, ct);
+
         logger.LogInformation("Restore complete - Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, WeeklyPlans: {WeeklyPlans}, CalendarEvents: {CalendarEvents}, Backfilled: {Backfilled}, Errors: {Errors}",
             result.RecipesAdded, result.RecipesUpdated, result.RecipesSkipped, result.WeeklyPlansRestored, result.CalendarEventsRestored, result.FinishedDishIndicesBackfilled, result.Errors);
         return result;
@@ -1348,7 +1474,7 @@ public partial class ManagementService(
         return backup;
     }
 
-    private static void ValidateGroceryExtraHistory(IReadOnlyList<GroceryExtraOccurrence> rows)
+    internal static void ValidateGroceryExtraHistory(IReadOnlyList<GroceryExtraOccurrence> rows)
     {
         if (rows.Any(row => row.Id == Guid.Empty || row.LineageId == Guid.Empty || row.Version < 1
             || row.WeekStartDate.DayOfWeek != DayOfWeek.Monday || string.IsNullOrWhiteSpace(row.Name) || row.Name.Length > 200
@@ -1431,7 +1557,9 @@ public partial class ManagementService(
     {
         try
         {
-            var recipes = await db.Recipes.IgnoreQueryFilters().ToListAsync(ct);
+            // Canonical metadata was already staged with its recipe. This legacy
+            // repair must not reapply old disk choices after a guarded seed defers.
+            var recipes = await db.Recipes.IgnoreQueryFilters().Where(x => x.CanonicalContent == null).ToListAsync(ct);
             int updated = 0;
             foreach (var recipe in recipes)
             {

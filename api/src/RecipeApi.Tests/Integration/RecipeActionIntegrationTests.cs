@@ -2,10 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
+using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using RecipeApi.Workflow;
 using Xunit;
@@ -21,7 +23,7 @@ public class RecipeActionIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _factory = await TestWebApplicationFactory.CreateAsync();
+        _factory = await TestWebApplicationFactory.CreateAsync(new Dictionary<string, string?> { ["Tests:LocalRecipeStore"] = "true" });
         _client = _factory.CreateClient();
         _scope = _factory.Services.CreateScope();
         _db = _scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
@@ -75,15 +77,49 @@ public class RecipeActionIntegrationTests : IAsyncLifetime
         Assert.Equal(3, recipe!.ImageCount);
 
         // Verify Workflow Trigger
-        _factory.WorkflowOrchestratorMock.Verify(o => o.TriggerAsync(
-            "recipe-hero-regeneration",
-            It.Is<Dictionary<string, string>>(d => d["recipeId"] == recipeId.ToString())),
-            Times.Once);
+        var accepted = await _db.WorkflowInstances.AsNoTracking().SingleAsync(x => x.WorkflowId == "recipe-hero-regeneration");
+        var publication = await _db.RecipeFilePublications.AsNoTracking().SingleAsync(x => x.OperationId == accepted.Id);
+        using (var saved = JsonDocument.Parse(publication.Payload))
+        {
+            using var intent = JsonDocument.Parse(saved.RootElement.GetProperty("candidate").GetProperty("followupIntent").GetString()!);
+            Assert.Equal(recipeId.ToString(), intent.RootElement.GetProperty("parameters").GetProperty("recipeId").GetString());
+        }
+        _factory.WorkflowOrchestratorMock.Verify(o => o.InitializeRecipeFollowupAsync(accepted.Id, It.IsAny<CancellationToken>()), Times.Once);
         _factory.WorkflowOrchestratorMock.Verify(o => o.TriggerAsync(
             "recipe_ready",
             It.IsAny<Dictionary<string, string>>(),
             It.IsAny<DateTimeOffset?>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task UploadOriginal_PendingPublicationConflictsWithoutAppendingOrStartingHero()
+    {
+        var recipeId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = recipeId, ImageCount = 1 });
+        await _db.SaveChangesAsync();
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        await store.WriteInfoAsync(new RecipeInfo { Id = recipeId, ImageCount = 1 });
+        // Retain a real valid journal: vocabulary absence checks inspect saved
+        // publication authority before the new upload reaches its conflict guard.
+        var publications = _scope.ServiceProvider.GetRequiredService<RecipeFilePublicationStore>();
+        var operation = Guid.NewGuid();
+        await publications.PublishAsync(await publications.CaptureAsync(recipeId),
+            new RecipePublicationCandidate("{}", (await store.ReadInfoAsync(recipeId))!), operation);
+        (await _db.RecipeFilePublications.SingleAsync(x => x.OperationId == operation)).Delivered = false;
+        await _db.SaveChangesAsync();
+        using var content = new MultipartFormDataContent();
+        var file = new ByteArrayContent([1, 2, 3]);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        content.Add(file, "file", "photo.png");
+        using var response = await _client.PostAsync($"/api/recipes/{recipeId}/originals", content);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("recipe_content_conflict", body.GetProperty("code").GetString());
+        Assert.Equal(1, (await store.ReadInfoAsync(recipeId))!.ImageCount);
+        Assert.Null(await store.ReadOriginalImageAsync(recipeId, 1));
+        _factory.WorkflowOrchestratorMock.Verify(o => o.InitializeRecipeFollowupAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Empty(await _db.WorkflowInstances.ToListAsync());
     }
 
     [Fact]

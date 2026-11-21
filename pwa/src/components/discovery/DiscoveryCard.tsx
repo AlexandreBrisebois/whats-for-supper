@@ -27,6 +27,7 @@ interface DiscoveryCardProps {
 export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   id,
   name,
+  description,
   imageUrl,
   onSwipeRight,
   onSwipeLeft,
@@ -120,6 +121,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
   };
 
   const formattedTime = formatRecipeTime(totalTime);
+  const trimmedDescription = description?.trim() ?? '';
 
   return (
     <motion.div
@@ -134,8 +136,11 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
       data-front={isFront}
       whileTap={isFront ? { scale: 0.98 } : {}}
     >
-      <motion.div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border-t border-white/20 flex flex-col">
-        <div data-testid="discovery-card-image" className="relative h-[62%] w-full overflow-hidden">
+      <motion.div className="h-full w-full overflow-hidden rounded-[2.5rem] bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_20px_40px_-1px_rgba(0,0,0,0.05)] border border-chrome-line flex flex-col">
+        <div
+          data-testid="discovery-card-image"
+          className={`relative w-full overflow-hidden ${trimmedDescription ? 'h-[58%]' : 'h-[62%]'}`}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={getImageUrl(imageUrl)}
@@ -146,7 +151,7 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
           {formattedTime && (
             <span
               data-testid="discovery-time-badge"
-              className="pointer-events-none absolute bottom-4 left-4 z-10 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full border border-white bg-terracotta-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-terracotta-700 shadow-md"
+              className="pointer-events-none absolute bottom-4 left-4 z-10 inline-flex max-w-[calc(100%-2rem)] items-center gap-1.5 rounded-full border border-chrome-line bg-cream px-3 py-2 text-xs font-semibold tracking-wide text-ink-body shadow-md"
             >
               <Clock size={14} aria-hidden="true" className="shrink-0" />
               <span>
@@ -163,9 +168,9 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                   opacity: likeOpacity,
                   scale: likeScale,
                 }}
-                className="flex flex-col items-center gap-2 rounded-full p-8 text-white backdrop-blur-md shadow-2xl bg-sage/30"
+                className="flex flex-col items-center gap-2 rounded-full p-8 text-white backdrop-blur-md shadow-2xl bg-garden-fill"
               >
-                <Heart size={48} fill="currentColor" />
+                <Heart size={48} fill="currentColor" aria-hidden="true" />
                 <span className="text-xl font-black tracking-widest">
                   {t('discovery.love', 'LOVE')}
                 </span>
@@ -176,9 +181,9 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
                   opacity: passOpacity,
                   scale: passScale,
                 }}
-                className="flex flex-col items-center gap-2 rounded-full bg-terracotta p-8 text-white backdrop-blur-md shadow-2xl"
+                className="flex flex-col items-center gap-2 rounded-full bg-hearth-fill p-8 text-white backdrop-blur-md shadow-2xl"
               >
-                <X size={48} />
+                <X size={48} aria-hidden="true" />
                 <span className="text-xl font-black tracking-widest">
                   {t('discovery.pass', 'PASS')}
                 </span>
@@ -189,12 +194,18 @@ export const DiscoveryCard: React.FC<DiscoveryCardProps> = ({
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         </div>
 
-        <div className="flex-1 p-8 flex flex-col justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight font-heading mb-4 leading-tight">
-              {name}
-            </h2>
-          </div>
+        <div className="flex-1 p-6 flex flex-col justify-start">
+          <h2 className="text-2xl font-bold tracking-tight font-heading text-ink-body leading-tight">
+            {name}
+          </h2>
+          {trimmedDescription && (
+            <p
+              data-testid="discovery-card-description"
+              className="mt-2 text-sm font-medium text-ink-muted leading-relaxed line-clamp-2"
+            >
+              {trimmedDescription}
+            </p>
+          )}
         </div>
       </motion.div>
     </motion.div>

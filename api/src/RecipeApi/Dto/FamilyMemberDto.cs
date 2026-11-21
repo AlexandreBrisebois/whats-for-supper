@@ -19,6 +19,9 @@ public class FamilyMemberDto
     [JsonPropertyName("cookingViewMode")]
     public string? CookingViewMode { get; set; }
 
+    [JsonPropertyName("contrastMode")]
+    public string? ContrastMode { get; set; }
+
     [JsonPropertyName("createdAt")]
     public DateTimeOffset CreatedAt { get; set; }
 

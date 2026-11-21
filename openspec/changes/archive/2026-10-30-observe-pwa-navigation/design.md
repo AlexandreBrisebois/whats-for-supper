@@ -28,12 +28,12 @@ Coverage uses a test-maintained route inventory from `app/**/page.tsx`, exact st
 
 ### Closed envelope and ordering
 
-| Record | Trigger | Allowed record fields | Interpretation |
-| --- | --- | --- | --- |
-| `pwa.app.opened` | First eligible visible shell, once per document | `stage.name`, `session.id`, `tab.id`, `event.id`, integer `source.sequence` | Entry observation, not a completion goal |
-| `pwa.screen.presented` | Eligible visible primary-shell transition | `stage.name`, `session.id`, `tab.id`, `event.id`, integer `source.sequence` | Presented shell, not full readiness or intent |
-| `pwa.surface.opened` | Adopted surface becomes presented | Same fields, surface identity in `stage.name` | Open presentation, no business outcome |
-| `pwa.surface.closed` | Previously observed surface actually closes | Same fields | Closure only; missing closure remains unknown |
+| Record                 | Trigger                                         | Allowed record fields                                                       | Interpretation                                |
+| ---------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------- |
+| `pwa.app.opened`       | First eligible visible shell, once per document | `stage.name`, `session.id`, `tab.id`, `event.id`, integer `source.sequence` | Entry observation, not a completion goal      |
+| `pwa.screen.presented` | Eligible visible primary-shell transition       | `stage.name`, `session.id`, `tab.id`, `event.id`, integer `source.sequence` | Presented shell, not full readiness or intent |
+| `pwa.surface.opened`   | Adopted surface becomes presented               | Same fields, surface identity in `stage.name`                               | Open presentation, no business outcome        |
+| `pwa.surface.closed`   | Previously observed surface actually closes     | Same fields                                                                 | Closure only; missing closure remains unknown |
 
 INFO 9, service `wfs-pwa-browser`, scope `wfs.anonymous`, fixed body `WFS opening observed` for opening and `WFS presentation observed` for screen/surface records, standard `/v1/logs`, JSON/no compression. Put timestamps in standard `timeUnixNano` (browser observation) and `observedTimeUnixNano` (server forwarding), not arbitrary attributes. Strict input accepts only the event enum, static identity enum, UUID context, positive safe-integer sequence and positive safe-integer browser timestamp in Unix milliseconds; max serialized input 2 KiB. Reject unknown own fields, arrays, invalid UUIDs/integers and malformed values without echo. Do not forward arbitrary OTLP.
 

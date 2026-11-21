@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Dto;
 using RecipeApi.Models;
+using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
 using Xunit;
 
@@ -48,6 +50,41 @@ public class GroceryItemsIntegrationTests : IAsyncLifetime
     /// Creates a recipe with a supply[] array in raw_metadata and persists it to the DB.
     /// Returns the recipe ID.
     /// </summary>
+    private static readonly JsonSerializerOptions CanonicalJson = new(JsonSerializerDefaults.Web);
+
+    private static string BuildCanonicalContentFromSupplyJson(string supplyJson)
+    {
+        using var document = JsonDocument.Parse(supplyJson);
+        var lines = new List<RecipeIngredientLineDto>();
+        if (document.RootElement.TryGetProperty("supply", out var supplyArray) && supplyArray.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var element in supplyArray.EnumerateArray())
+            {
+                var itemName = element.GetProperty("name").GetString()!;
+                var amountText = element.TryGetProperty("quantity", out var qty) && qty.ValueKind == JsonValueKind.Number
+                    ? qty.GetRawText()
+                    : null;
+                var unitText = element.TryGetProperty("unitText", out var unit) && unit.ValueKind == JsonValueKind.String
+                    ? unit.GetString()
+                    : null;
+                lines.Add(new RecipeIngredientLineDto
+                {
+                    Id = Guid.NewGuid(),
+                    Description = itemName,
+                    Amount = amountText is null ? null : QuantityMath.Parse(amountText),
+                    AmountText = amountText,
+                    Unit = string.IsNullOrWhiteSpace(unitText) ? null : new(unitText, null),
+                    Scaling = "proportional",
+                    Package = null,
+                    Shopping = new(itemName, null, null),
+                    Provenance = new("human", "source", [])
+                });
+            }
+        }
+        return JsonSerializer.Serialize(new CanonicalRecipeContent(
+            2, Guid.NewGuid().ToString("N"), "source", null, lines, []), CanonicalJson);
+    }
+
     private async Task<Guid> CreateRecipeWithSupplyAsync(
         string name,
         string supplyJson)
@@ -58,6 +95,7 @@ public class GroceryItemsIntegrationTests : IAsyncLifetime
             Name = name,
             ImageCount = 1,
             RawMetadata = supplyJson,
+            CanonicalContent = BuildCanonicalContentFromSupplyJson(supplyJson),
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };

@@ -49,7 +49,6 @@ This revision changes contracts and tasks only. All implementation/qualification
 
 F2-1 is tasks 1.1–1.4; no Planner/Quick Find implementation is included. The smallest end-to-end result includes correlated opening plus route presentations, not a standalone context utility. F2-2/F2-3 keep the same shared coordinator and own their real-action/receiver acceptance for newly adopted surfaces; F2-4 reconciles that integrated baseline rather than postponing earlier acceptance. No SDK migration, generic OTLP relay, heartbeat, fake closure or business instrumentation belongs in these groups.
 
-
 ## F2-1 execution evidence — 2026-10-29
 
 Authorized scope: tasks 1.1–1.4 only, confirmed by the user. Starting WFS HEAD
@@ -72,8 +71,8 @@ change, collection enablement, sync/archive or successor implementation.
   disabled/no scope, local sequence gaps, exact clock limits, strict unknown input,
   failed delivery and independent process rate/concurrency capacity.
 - Required acceptance: `WFS_NAV_SENTRAME_BINARY=/tmp/wfs-navigation-sentrame task
-  test:e2e -- telemetry-opening.spec.ts telemetry-navigation.spec.ts auth-flow.spec.ts
-  onboarding.spec.ts --project=chromium` passed 11/11. Business APIs are mocked at
+test:e2e -- telemetry-opening.spec.ts telemetry-navigation.spec.ts auth-flow.spec.ts
+onboarding.spec.ts --project=chromium` passed 11/11. Business APIs are mocked at
   their boundary; observer, Action, deferred Node export and actual receiver are real.
   The unchanged Quick Replace relative-next-week/reload case passed its focused
   baseline run; historical failure cause remains unestablished and no repair was made.
@@ -97,7 +96,6 @@ change, collection enablement, sync/archive or successor implementation.
   Deployed-route and physical-device cells: not-run. API contract/schema/client changes:
   not-applicable. Final gate failure/blocker, if any, prevents 1.4 acceptance.
 
-
 ### F2-1 initial final gate checkpoint (historical)
 
 `task verify -- <all 22 reviewed paths>` returned failed record
@@ -116,7 +114,6 @@ The other writer's edits are preserved. At that checkpoint, task 1.4 remained un
 change 3/12). The next action was a fresh scoped final verification after concurrent
 writing stopped; no unrelated repair or successor implementation is authorized.
 A later scoped documentation check qualifies this evidence update only.
-
 
 ### F2-1 completion — stable-tree retry
 
@@ -144,7 +141,6 @@ SDK migration, enablement, commit or archival was added. Later completion-docume
 bytes receive a separate documentation-only verification; that record does not
 replace the application record above. F2-2 and later groups remain pending.
 
-
 ## F2-2 execution evidence — 2026-10-29
 
 Authorized scope: tasks 2.1–2.3 only. Starting WFS HEAD
@@ -153,7 +149,7 @@ F2-1 prerequisite: passing application record
 `.task/agent-finish/runs/48fdfcc05c60422bbe2247ac1d0e92a9.json`.
 
 - RED: `task test:unit -- 'src/app/(app)/planner/page.test.tsx'
-  src/lib/telemetry/navigation.test.ts` produced 4 failures / 81 passes. Intended
+src/lib/telemetry/navigation.test.ts` produced 4 failures / 81 passes. Intended
   missing-behavior failures: Grocery still observed as `planner`, undeclared
   composition prematurely emitted Planner, and the adopted surface envelope was
   rejected. The missing registration function failure alone is not behavioral red.
@@ -171,8 +167,8 @@ F2-1 prerequisite: passing application record
   fixture now uses the existing accessible Close grocery list control. This was
   a fixture interaction error, not a production behavior failure or passed check.
 - Required acceptance: `WFS_NAV_SENTRAME_BINARY=/tmp/wfs-navigation-sentrame task
-  test:e2e -- planner.spec.ts grocery.spec.ts telemetry-navigation.spec.ts
-  --project=chromium` passed **134/134**. Real browser → Action → Node JSON/no
+test:e2e -- planner.spec.ts grocery.spec.ts telemetry-navigation.spec.ts
+--project=chromium` passed **134/134**. Real browser → Action → Node JSON/no
   compression → actual disposable Sentrame; business API boundary only is mocked.
   Phone viewport 390×844, wide 1280×900 and simulated hidden/resume pass. These
   do not qualify a physical installed device or OS unlock/background behavior.
@@ -220,7 +216,6 @@ F2-1 prerequisite: passing application record
 F2-2 tasks **2.1–2.3 complete**; change progress **7/12**. Stop here.
 F2-3, F2-4 and all successor business instrumentation remain unselected/pending.
 
-
 ## F2-3 execution evidence — 2026-10-29
 
 Authorized tasks 3.1–3.3 only; clean worktree at entry. F2-2 prerequisite confirmed by passing 134-case acceptance log, final record `c5e3c887907e482d808caa95213cf7de` and all eight matching prepared source hashes.
@@ -252,7 +247,6 @@ semantic selection/cancellation/outcome events. Deployed/physical-device cells
 remain not-run. No commit/deploy, production collection enablement, receiver
 source change, sync or archive. No unrelated worktree edits existed or were altered.
 
-
 ## F2-4 execution evidence — 2026-10-29
 
 Authorized tasks 4.1–4.2 only; clean starting WFS
@@ -273,8 +267,8 @@ Audit: `.task/telemetry-navigation/f2-4/prerequisite-audit.json`.
   neither evidence nor journey contributions before/after process restart/reopen.
 - Acceptance **passed**: 256 tests in ten focused unit/component/HTTP files;
   `WFS_NAV_SENTRAME_BINARY=/tmp/wfs-navigation-sentrame BASE_URL=http://127.0.0.1:1
-  PLAYWRIGHT_HTML_OPEN=never task test:e2e -- telemetry-navigation.spec.ts
-  telemetry-opening.spec.ts --project=chromium` **2/2**. Opening gates/one attempt,
+PLAYWRIGHT_HTML_OPEN=never task test:e2e -- telemetry-navigation.spec.ts
+telemetry-opening.spec.ts --project=chromium` **2/2**. Opening gates/one attempt,
   hidden/resume/effect replay, invalid/disabled configuration, closed inputs,
   rejection/redirect/timeout, 60/document and 120/producer/process minute limits,
   four active exports, independent server capacity and no retry remain accepted.
@@ -301,7 +295,6 @@ Audit: `.task/telemetry-navigation/f2-4/prerequisite-audit.json`.
   SDK migration/receiver source work: **not-applicable**. Goal-free production
   definition activation remains separate receiver work; no production goal invented.
   No business events, commit, deployment, production enablement, sync or archive.
-
 
 Task 4.2 **passed**: one scoped `task verify` on the stable reviewed three-path tree.
 `record_path`: `.task/agent-finish/runs/0254f1b321aa4e2e84fabe1096fefdeb.json`;

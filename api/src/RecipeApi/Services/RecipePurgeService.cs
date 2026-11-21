@@ -12,8 +12,8 @@ public class RecipePurgeService(
     ILogger<RecipePurgeService> logger)
 {
     /// <summary>
-    /// Hard-delete a soft-deleted recipe. Filesystem cleanup runs first; DB deletion follows.
-    /// Returns null when the recipe does not exist.
+    /// Hard-delete a soft-deleted recipe using retained intent and observed delivery.
+    /// Returns NotFound when the recipe does not exist.
     /// </summary>
     public async Task<PurgeResult> PurgeAsync(Guid recipeId, string? elevatedPin)
     {
@@ -52,45 +52,22 @@ public class RecipePurgeService(
 
         logger.LogInformation("Purge authorized for recipe {RecipeId}.", recipeId);
 
-        var recipe = await db.Recipes
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(r => r.Id == recipeId);
-
-        if (recipe is null)
-            return PurgeResult.NotFound;
-
-        if (recipe.DeletedAt is null)
-            return PurgeResult.NotInTrash;
-
-        await using var transaction = await db.Database.BeginTransactionAsync();
-
-        // Cancel pending index jobs before destructive work.
-        await CancelPendingIndexJobsAsync(recipeId);
-
-        var searchDocs = await db.RecipeSearchDocuments
-            .IgnoreQueryFilters()
-            .Where(d => d.RecipeId == recipeId)
-            .ToListAsync();
-        db.RecipeSearchDocuments.RemoveRange(searchDocs);
-
-        var votes = await db.RecipeVotes
-            .Where(v => v.RecipeId == recipeId)
-            .ToListAsync();
-        db.RecipeVotes.RemoveRange(votes);
-
-        var calendarEvents = await db.CalendarEvents
-            .Where(e => e.RecipeId == recipeId)
-            .ToListAsync();
-        db.CalendarEvents.RemoveRange(calendarEvents);
-
-        // Filesystem first: if this fails, pending DB changes are not saved.
-        DeleteRecipeDirectory(recipeId);
-
-        db.Recipes.Remove(recipe);
-        await db.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        return PurgeResult.Success;
+        var outcome = await RecipePhysicalLifecycle.DeleteAsync(db, recipeId, "purge", new SystemClock(), recipesRoot,
+            recipe => recipe.DeletedAt is not null,
+            () => Task.FromResult<bool?>(LocalRecipeStore.DeleteDirectory(recipesRoot.Root, recipeId)),
+            enlistRemoval: async () =>
+            {
+                await CancelPendingIndexJobsAsync(recipeId);
+                db.RecipeSearchDocuments.RemoveRange(await db.RecipeSearchDocuments.IgnoreQueryFilters().Where(x => x.RecipeId == recipeId).ToListAsync());
+                db.RecipeVotes.RemoveRange(await db.RecipeVotes.Where(x => x.RecipeId == recipeId).ToListAsync());
+                db.CalendarEvents.RemoveRange(await db.CalendarEvents.Where(x => x.RecipeId == recipeId).ToListAsync());
+            });
+        return outcome.Outcome switch
+        {
+            "deleted" => PurgeResult.Success,
+            "ineligible" => PurgeResult.NotInTrash,
+            _ => PurgeResult.NotFound
+        };
     }
 
     private async Task CancelPendingIndexJobsAsync(Guid recipeId)
@@ -121,12 +98,7 @@ public class RecipePurgeService(
         // The caller persists these status changes with the rest of the purge.
     }
 
-    private void DeleteRecipeDirectory(Guid recipeId)
-    {
-        var dir = Path.Combine(recipesRoot.Root, recipeId.ToString());
-        if (Directory.Exists(dir))
-            Directory.Delete(dir, recursive: true);
-    }
+
 }
 
 public enum PurgeResult

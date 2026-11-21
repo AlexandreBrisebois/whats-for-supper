@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
@@ -138,6 +139,59 @@ public sealed class MaintenanceCommandPruningTests : IAsyncLifetime
 
         Assert.Equal(1, result.PrunedCommands);
         Assert.Equal(Now.AddDays(-30), result.Cutoff);
+    }
+
+    [Fact]
+    public async Task Prune_RetainsOriginalTerminalCommandAndExplicitInertAssociation()
+    {
+        var command = Command("skipped", Now.AddDays(-31), Now.AddDays(-45));
+        command.Payload = """{"recipeId":null,"reason":"original request"}""";
+        command.Result = null;
+        command.LastError = "Original failure before recovery invalidation";
+        command.Attempts = 3;
+        command.RequestedBy = Guid.NewGuid();
+        command.ScheduledFor = Now.AddDays(-40);
+        command.StartedAt = Now.AddDays(-35);
+        var workflowId = Guid.NewGuid();
+        db.WorkflowLifecycleRecords.Add(new WorkflowLifecycleRecord { Id = workflowId, OperationId = command.Id,
+            Disposition = "cleared", Payload = "{}", PayloadHash = "original-retirement-hash", CreatedAt = Now.AddDays(-40) });
+        db.MaintenanceCommands.Add(command); await db.SaveChangesAsync();
+        var original = JsonSerializer.SerializeToElement(command, JsonDefaults.CamelCase);
+
+        Assert.Equal(1, (await service.PruneMaintenanceCommandsAsync()).PrunedCommands);
+
+        db.ChangeTracker.Clear();
+        var history = await db.MaintenanceCommandLifecycleRecords.SingleAsync();
+        Assert.Equal(command.Id, history.Id);
+        Assert.NotEqual(Guid.Empty, history.OperationId);
+        Assert.Equal("pruned", history.Disposition);
+        Assert.Equal(Now, history.CreatedAt);
+        using var snapshot = JsonDocument.Parse(history.Payload);
+        Assert.Equal(1, snapshot.RootElement.GetProperty("version").GetInt32());
+        Assert.Equal("inert", snapshot.RootElement.GetProperty("executionDisposition").GetString());
+        Assert.True(JsonElement.DeepEquals(original, snapshot.RootElement.GetProperty("command")));
+        var association = Assert.Single(snapshot.RootElement.GetProperty("workflowRetirements").EnumerateArray());
+        Assert.Equal(workflowId, association.GetProperty("id").GetGuid());
+        Assert.Equal("cleared", association.GetProperty("disposition").GetString());
+        Assert.Equal("original-retirement-hash", association.GetProperty("payloadHash").GetString());
+        Assert.Equal(64, history.PayloadHash.Length);
+        Assert.Equal(0, (await service.PruneMaintenanceCommandsAsync()).PrunedCommands);
+        Assert.Single(await db.MaintenanceCommandLifecycleRecords.ToArrayAsync());
+    }
+
+    [Fact]
+    public async Task LegacyNullCompletion_RetainsObservedNullBeforeStartingRetentionClock()
+    {
+        var command = Command("completed", null, Now.AddDays(-100));
+        command.Result = """{"outcome":"original"}""";
+        db.MaintenanceCommands.Add(command); await db.SaveChangesAsync();
+        Assert.Equal(1, (await service.PruneMaintenanceCommandsAsync()).InitializedCompletionTimestamps);
+        var history = await db.MaintenanceCommandLifecycleRecords.SingleAsync();
+        Assert.Equal("retention-started", history.Disposition);
+        using var snapshot = JsonDocument.Parse(history.Payload);
+        Assert.Equal(JsonValueKind.Null, snapshot.RootElement.GetProperty("command").GetProperty("completedAt").ValueKind);
+        Assert.Equal(command.Result, snapshot.RootElement.GetProperty("command").GetProperty("result").GetString());
+        Assert.Equal(Now, (await db.MaintenanceCommands.SingleAsync()).CompletedAt);
     }
 
     private static MaintenanceCommand Command(string status, DateTimeOffset? completedAt, DateTimeOffset createdAt) => new()

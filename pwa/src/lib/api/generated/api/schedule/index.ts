@@ -30,6 +30,12 @@ import { LockRequestBuilderRequestsMetadata, type LockRequestBuilder } from './l
 // @ts-ignore
 import { MoveRequestBuilderRequestsMetadata, type MoveRequestBuilder } from './move/index';
 // @ts-ignore
+import {
+  ServingsRequestBuilderNavigationMetadata,
+  ServingsRequestBuilderRequestsMetadata,
+  type ServingsRequestBuilder,
+} from './servings/index';
+// @ts-ignore
 import { type VotingRequestBuilder, VotingRequestBuilderNavigationMetadata } from './voting/index';
 // @ts-ignore
 import {
@@ -109,6 +115,10 @@ export interface ScheduleRequestBuilder extends BaseRequestBuilder<ScheduleReque
    * The move property
    */
   get move(): MoveRequestBuilder;
+  /**
+   * The servings property
+   */
+  get servings(): ServingsRequestBuilder;
   /**
    * The voting property
    */
@@ -200,6 +210,10 @@ export const ScheduleRequestBuilderNavigationMetadata: Record<
   },
   move: {
     requestsMetadata: MoveRequestBuilderRequestsMetadata,
+  },
+  servings: {
+    requestsMetadata: ServingsRequestBuilderRequestsMetadata,
+    navigationMetadata: ServingsRequestBuilderNavigationMetadata,
   },
   voting: {
     navigationMetadata: VotingRequestBuilderNavigationMetadata,

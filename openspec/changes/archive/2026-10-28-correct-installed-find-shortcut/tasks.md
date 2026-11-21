@@ -20,7 +20,6 @@
 
 The manifest destination and focused regression were modified after explicit post-draft approval. Canonical specs remain unchanged until the normal lifecycle. Strict change/documentation validation and observed runtime results are reported below.
 
-
 ## Applied evidence
 
 The destination assertion first failed against `/discovery` in `.task/cooking-original-source/shortcut-red.log`. The one-field manifest correction is green in the 44-test combined run (`qualified-browser.log`), including all install-identity scenarios. The new server-request entry checks exercise both advertised destinations without access, with household access but no member, and with both accepted cookies. They do not qualify an installed Android launcher refresh. Capture/copy/icons/identity remain unchanged; normal Discovery navigation is not edited. Preparation, strict OpenSpec validation, whitespace/scope review and aggregate invocation include the complete reviewed path set; aggregate status/record_path are reported at delivery. The first aggregate exposed a cooking viewer locale-key issue, repaired without touching this shortcut behavior.

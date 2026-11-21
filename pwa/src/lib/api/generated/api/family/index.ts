@@ -175,6 +175,11 @@ export function deserializeIntoFamilyGetResponse_data(
         FamilyGetResponse_data_browseViewModeObject
       );
     },
+    contrastMode: (n) => {
+      familyGetResponse_data.contrastMode = n.getEnumValue<FamilyGetResponse_data_contrastMode>(
+        FamilyGetResponse_data_contrastModeObject
+      );
+    },
     cookingViewMode: (n) => {
       familyGetResponse_data.cookingViewMode =
         n.getEnumValue<FamilyGetResponse_data_cookingViewMode>(
@@ -249,6 +254,11 @@ export function deserializeIntoFamilyPostResponse_data(
           FamilyPostResponse_data_browseViewModeObject
         );
     },
+    contrastMode: (n) => {
+      familyPostResponse_data.contrastMode = n.getEnumValue<FamilyPostResponse_data_contrastMode>(
+        FamilyPostResponse_data_contrastModeObject
+      );
+    },
     cookingViewMode: (n) => {
       familyPostResponse_data.cookingViewMode =
         n.getEnumValue<FamilyPostResponse_data_cookingViewMode>(
@@ -303,6 +313,10 @@ export interface FamilyGetResponse_data extends AdditionalDataHolder, Parsable {
    */
   browseViewMode?: FamilyGetResponse_data_browseViewMode | null;
   /**
+   * The contrastMode property
+   */
+  contrastMode?: FamilyGetResponse_data_contrastMode | null;
+  /**
    * The cookingViewMode property
    */
   cookingViewMode?: FamilyGetResponse_data_cookingViewMode | null;
@@ -329,6 +343,8 @@ export interface FamilyGetResponse_data extends AdditionalDataHolder, Parsable {
 }
 export type FamilyGetResponse_data_browseViewMode =
   (typeof FamilyGetResponse_data_browseViewModeObject)[keyof typeof FamilyGetResponse_data_browseViewModeObject];
+export type FamilyGetResponse_data_contrastMode =
+  (typeof FamilyGetResponse_data_contrastModeObject)[keyof typeof FamilyGetResponse_data_contrastModeObject];
 export type FamilyGetResponse_data_cookingViewMode =
   (typeof FamilyGetResponse_data_cookingViewModeObject)[keyof typeof FamilyGetResponse_data_cookingViewModeObject];
 export type FamilyGetResponse_data_preferredLanguage =
@@ -350,6 +366,10 @@ export interface FamilyPostResponse_data extends AdditionalDataHolder, Parsable 
    * The browseViewMode property
    */
   browseViewMode?: FamilyPostResponse_data_browseViewMode | null;
+  /**
+   * The contrastMode property
+   */
+  contrastMode?: FamilyPostResponse_data_contrastMode | null;
   /**
    * The cookingViewMode property
    */
@@ -377,6 +397,8 @@ export interface FamilyPostResponse_data extends AdditionalDataHolder, Parsable 
 }
 export type FamilyPostResponse_data_browseViewMode =
   (typeof FamilyPostResponse_data_browseViewModeObject)[keyof typeof FamilyPostResponse_data_browseViewModeObject];
+export type FamilyPostResponse_data_contrastMode =
+  (typeof FamilyPostResponse_data_contrastModeObject)[keyof typeof FamilyPostResponse_data_contrastModeObject];
 export type FamilyPostResponse_data_cookingViewMode =
   (typeof FamilyPostResponse_data_cookingViewModeObject)[keyof typeof FamilyPostResponse_data_cookingViewModeObject];
 export type FamilyPostResponse_data_preferredLanguage =
@@ -515,6 +537,10 @@ export function serializeFamilyGetResponse_data(
     'browseViewMode',
     familyGetResponse_data.browseViewMode
   );
+  writer.writeEnumValue<FamilyGetResponse_data_contrastMode>(
+    'contrastMode',
+    familyGetResponse_data.contrastMode
+  );
   writer.writeEnumValue<FamilyGetResponse_data_cookingViewMode>(
     'cookingViewMode',
     familyGetResponse_data.cookingViewMode
@@ -588,6 +614,10 @@ export function serializeFamilyPostResponse_data(
     'browseViewMode',
     familyPostResponse_data.browseViewMode
   );
+  writer.writeEnumValue<FamilyPostResponse_data_contrastMode>(
+    'contrastMode',
+    familyPostResponse_data.contrastMode
+  );
   writer.writeEnumValue<FamilyPostResponse_data_cookingViewMode>(
     'cookingViewMode',
     familyPostResponse_data.cookingViewMode
@@ -610,6 +640,10 @@ export const FamilyGetResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
 } as const;
+export const FamilyGetResponse_data_contrastModeObject = {
+  Standard: 'standard',
+  High: 'high',
+} as const;
 export const FamilyGetResponse_data_cookingViewModeObject = {
   StepByStep: 'step-by-step',
   AllSteps: 'all-steps',
@@ -621,6 +655,10 @@ export const FamilyGetResponse_data_preferredLanguageObject = {
 export const FamilyPostResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const FamilyPostResponse_data_contrastModeObject = {
+  Standard: 'standard',
+  High: 'high',
 } as const;
 export const FamilyPostResponse_data_cookingViewModeObject = {
   StepByStep: 'step-by-step',

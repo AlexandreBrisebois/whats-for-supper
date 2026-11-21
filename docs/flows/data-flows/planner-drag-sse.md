@@ -22,7 +22,7 @@ The previous code stored the Framer-reported order in `lastReorderRef`:
 
 ```ts
 const handleReorder = (newSchedule) => {
-  lastReorderRef.current = newSchedule;  // never updated for terminal position
+  lastReorderRef.current = newSchedule; // never updated for terminal position
 };
 ```
 
@@ -69,6 +69,7 @@ if (optimisticIsRecent) { skip update; }
 ```
 
 Flaws:
+
 - The window expired by time, not by server acknowledgement. A `week_updated` arriving at `T + 10.1s` would apply unconditionally, even if the server's stored order was wrong due to Bug 1.
 - Multiple rapid moves within 10 seconds extended the window implicitly (each `reorderLocally` reset `optimisticWriteAt`) but there was no way to know which SSE event corresponded to which move.
 - Another family member's legitimate move arriving just after 10 seconds would clobber the local state.
@@ -80,8 +81,8 @@ Flaws:
 `optimisticWriteAt` is replaced with a monotonic counter pair in `plannerStore`:
 
 ```ts
-localMoveSeq: number      // incremented before every moveRecipe API call
-confirmedMoveSeq: number  // contiguous sequence settled by local HTTP completion
+localMoveSeq: number; // incremented before every moveRecipe API call
+confirmedMoveSeq: number; // contiguous sequence settled by local HTTP completion
 ```
 
 **Flow:**
@@ -146,14 +147,14 @@ The `week_updated` SSE payload must include `echoSeq` when the event was trigger
 
 ## Files changed
 
-| File | Change |
-|---|---|
-| `pwa/src/app/(app)/planner/page.tsx` | `handleReorder` calls `reorderLocally`; `onDragEnd` reads store; drag start/end set the active-drag boundary and flush deferred remote snapshots when safe |
-| `pwa/src/store/weekStore.ts` | `applySnapshot` signature adds `echoSeq?`; HTTP-settled sequence guard replaces wall-clock; remote snapshots are deferred during active drag or pending move confirmation |
-| `pwa/src/store/plannerStore.ts` | Added `localMoveSeq`, `confirmedMoveSeq`, `nextMoveSeq()`, `confirmMoveSeq()`, `isDragActive`, and `deferredWeekSnapshot` |
-| `api/src/RecipeApi/Controllers/ScheduleController.cs` | Parses `X-Move-Seq` and threads it into move processing |
-| `api/src/RecipeApi/Services/ScheduleService.cs` | Publishes `week_updated` with `echoSeq` for move-driven updates |
-| `api/src/RecipeApi/Infrastructure/SseEventPublisher.cs` | Serializes `echoSeq` only when present |
-| `pwa/src/lib/api/api-client.ts` | `HearthAuthProvider` injects `X-Move-Seq` when moves are pending |
-| `pwa/src/lib/api/planner.ts` | `moveRecipe` calls `nextMoveSeq()` before the API call |
-| `pwa/src/hooks/useScheduleStream.ts` | `week_updated` handler passes `echoSeq` to `applySnapshot` |
+| File                                                    | Change                                                                                                                                                                    |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pwa/src/app/(app)/planner/page.tsx`                    | `handleReorder` calls `reorderLocally`; `onDragEnd` reads store; drag start/end set the active-drag boundary and flush deferred remote snapshots when safe                |
+| `pwa/src/store/weekStore.ts`                            | `applySnapshot` signature adds `echoSeq?`; HTTP-settled sequence guard replaces wall-clock; remote snapshots are deferred during active drag or pending move confirmation |
+| `pwa/src/store/plannerStore.ts`                         | Added `localMoveSeq`, `confirmedMoveSeq`, `nextMoveSeq()`, `confirmMoveSeq()`, `isDragActive`, and `deferredWeekSnapshot`                                                 |
+| `api/src/RecipeApi/Controllers/ScheduleController.cs`   | Parses `X-Move-Seq` and threads it into move processing                                                                                                                   |
+| `api/src/RecipeApi/Services/ScheduleService.cs`         | Publishes `week_updated` with `echoSeq` for move-driven updates                                                                                                           |
+| `api/src/RecipeApi/Infrastructure/SseEventPublisher.cs` | Serializes `echoSeq` only when present                                                                                                                                    |
+| `pwa/src/lib/api/api-client.ts`                         | `HearthAuthProvider` injects `X-Move-Seq` when moves are pending                                                                                                          |
+| `pwa/src/lib/api/planner.ts`                            | `moveRecipe` calls `nextMoveSeq()` before the API call                                                                                                                    |
+| `pwa/src/hooks/useScheduleStream.ts`                    | `week_updated` handler passes `echoSeq` to `applySnapshot`                                                                                                                |

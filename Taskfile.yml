@@ -12,7 +12,6 @@ shopt: [globstar]
 
 vars:
   PYTHON: '{{.ROOT_DIR}}/.venv/bin/python'
-  OPENSPEC_VERSION: '1.15.0'
   API_PORT: '5050'
   PWA_PORT: '3000'
   DB_PORT: '5432'
@@ -35,6 +34,10 @@ vars:
     sh: (grep "^POSTGRES_PASSWORD=" docker/.env.local 2>/dev/null || grep "^POSTGRES_PASSWORD=" docker/.env 2>/dev/null || echo "POSTGRES_PASSWORD=secure_dev_password") | cut -d'=' -f2-
   POSTGRES_DB:
     sh: (grep "^POSTGRES_DB=" docker/.env.local 2>/dev/null || grep "^POSTGRES_DB=" docker/.env 2>/dev/null || echo "POSTGRES_DB=recipe_app_db") | cut -d'=' -f2-
+  CALENDAR_TIMEZONE:
+    sh: |
+      val="${Calendar__TimeZone:-$( (grep "^Calendar__TimeZone=" docker/.env.local 2>/dev/null || grep "^Calendar__TimeZone=" docker/.env 2>/dev/null) | tail -n1 | cut -d'=' -f2- )}"
+      printf '%s' "${val:-America/Toronto}"
 
 tasks:
   default:
@@ -69,6 +72,7 @@ tasks:
       RECIPES_ROOT: "/Users/alex/Code/whats-for-supper/data/recipes"
       ASPNETCORE_URLS: http://localhost:9001
       HEARTH_SECRET: "{{.HEARTH_SECRET}}"
+      Calendar__TimeZone: "{{.CALENDAR_TIMEZONE}}"
       POSTGRES_CONNECTION_STRING: "Host=localhost;Port=5432;Database={{.POSTGRES_DB}};Username={{.POSTGRES_USER}};Password={{.POSTGRES_PASSWORD}}"
     cmds:
       - dotnet watch run --project RecipeApi.csproj
@@ -210,8 +214,7 @@ tasks:
     desc: "Run E2E against production build (CI parity: build + test)"
     dir: pwa
     cmds:
-      - npm run build
-      - npm run test:e2e -- {{.CLI_ARGS}}
+      - node ../scripts/ci/production-browser.cjs qualify -- {{.CLI_ARGS}}
 
   test:audit:
     desc: "🔍 Audit tests for a specific area (Usage: task test:audit AREA=<keyword>)"
@@ -1014,7 +1017,7 @@ tasks:
     cmds:
       - task: check:node
       - task: init:python
-      - npm install --global "@fission-ai/openspec@{{.OPENSPEC_VERSION}}"
+      - npm install --global @fission-ai/openspec
       - task: spec:check
       - npm install --global npm@11.21.1
       - npm ci --prefix pwa
@@ -1060,48 +1063,29 @@ tasks:
     env:
       WFS_PUSH_E2E_SUITES: '{{.SUITES | default "all"}}'
     cmds:
-      - |
-        set -e
-        unset BASE_URL WFS_E2E_SUITE CALENDAR_API_URL TONIGHT_API_URL TOMORROW_API_URL
-        export CI=true HEARTH_SECRET=Paris-Montreal
-        export NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:5001 API_INTERNAL_URL=http://127.0.0.1:5001
-        export NEXT_PUBLIC_ENABLE_AGENT_SEARCH=true NEXT_PUBLIC_ENABLE_PHOTO_SEARCH=true
-        for suite in $WFS_PUSH_E2E_SUITES; do
-          case "$suite" in
-            all|tonight|planning|recipes|household) ;;
-            *) echo "Unknown E2E suite: $suite" >&2; exit 2 ;;
-          esac
-        done
-        npm run format:check
-        npm run lint
-        npm run typecheck
-        npm run test:unit
-        npm run build
-        for suite in $WFS_PUSH_E2E_SUITES; do
-          case "$suite" in
-            all) unset WFS_E2E_SUITE ;;
-            tonight|planning|recipes|household) export WFS_E2E_SUITE="$suite" ;;
-            *) echo "Unknown E2E suite: $suite" >&2; exit 2 ;;
-          esac
-          npm run test:e2e
-        done
+      - node ../scripts/ci/production-browser.cjs check --suites "$WFS_PUSH_E2E_SUITES"
 
   # ============================================================================
   # DOCUMENTATION
   # ============================================================================
 
   spec:check:
-    desc: "Validate all OpenSpec artifacts, or a selected name/type via CLI args, with the pinned CLI"
+    desc: "Validate all OpenSpec artifacts, or a selected name/type via CLI args"
     preconditions:
-      - sh: 'test "$(openspec --version)" = "{{.OPENSPEC_VERSION}}"'
-        msg: 'OpenSpec {{.OPENSPEC_VERSION}} is required. Install with npm install --global @fission-ai/openspec@{{.OPENSPEC_VERSION}}.'
+      - sh: 'openspec --version >/dev/null 2>&1'
+        msg: 'OpenSpec is required. Install with npm install --global @fission-ai/openspec.'
     cmds:
       - openspec validate {{.CLI_ARGS | default "--all"}} --strict --no-interactive
 
   spec:search:
     desc: "Search specification documents before creating or revising a spec"
     cmds:
-      - rg -n -i --glob '*.md' -- {{.CLI_ARGS}} openspec/specs openspec/changes
+      - |
+        if command -v rg >/dev/null 2>&1; then
+          rg -n -i --glob '*.md' -- {{.CLI_ARGS}} openspec/specs openspec/changes
+        else
+          grep -rn -i -E --include='*.md' -- {{.CLI_ARGS}} openspec/specs openspec/changes
+        fi
 
   spec:audit:
     desc: "Read-only canonical inventory (use -- --format json or --capability <exact-id>)"
@@ -1224,6 +1208,16 @@ tasks:
     cmds:
       - '"{{.PYTHON}}" -B scripts/agent/slice.py {{.CLI_ARGS}}'
 
+  agent:skills:claude:
+    desc: "🤖 Regenerate .claude/skills shims from .agents/skills (use --check via agent:skills:claude:check)"
+    cmds:
+      - '"{{.PYTHON}}" -B scripts/agent/claude_skills.py'
+
+  agent:skills:claude:check:
+    desc: "🤖 Fail when .claude/skills shims drift from .agents/skills"
+    cmds:
+      - '"{{.PYTHON}}" -B scripts/agent/claude_skills.py --check'
+
   agent:drift:
     desc: "🤖 Schema Drift — static route drift + Tier 0 endpoint diff + Tier 1 DTO schema comparison + Tier 2 Mock compliance"
     cmds:
@@ -1283,8 +1277,7 @@ tasks:
       - sh: test -f "{{.ROOT_DIR}}/.venv/bin/python"
         msg: "Python venv not found. Run: task init:python"
     cmds:
-      - '"{{.PYTHON}}" -B -m unittest discover -s scripts/agent/tests -p "test_*.py"'
-      - node --test scripts/ci/*.test.cjs
+      - '"{{.PYTHON}}" -B scripts/agent/test_agent.py'
 
   # ============================================================================
   # AUTH

@@ -8,12 +8,12 @@ account topology or deployment. Verify prices, limits, versions and policy scope
 against current provider documentation before relying on them. Existing authorization
 and shared repository policy govern any actual action.
 
-
 ## Pattern Overview
 
 An IaC-only pipeline deploys infrastructure changes (CDK stacks) without a specific application runtime target. The same CDK pipeline pattern also serves as the backbone for Lambda, ECS, and other target pipelines.
 
 Two approaches:
+
 1. **GitHub Actions → CDK CLI** — simple, explicit, flexible (recommended for most teams)
 2. **CDK Pipelines (self-mutating)** — CDK manages the pipeline itself; useful for large multi-stage environments
 
@@ -21,7 +21,7 @@ Two approaches:
 
 ## Approach 1 — GitHub Actions → CDK CLI (Recommended)
 
-```yaml
+````yaml
 name: CDK Infrastructure Deploy
 
 on:
@@ -135,7 +135,7 @@ jobs:
         env:
           CDK_DEFAULT_ACCOUNT: ${{ vars.AWS_PROD_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
-```
+````
 
 ---
 
@@ -199,16 +199,8 @@ npx cdk bootstrap \
     {
       "Sid": "S3ArtifactAccess",
       "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:ListBucket",
-        "s3:GetBucketLocation"
-      ],
-      "Resource": [
-        "arn:aws:s3:::cdk-*-assets-*",
-        "arn:aws:s3:::cdk-*-assets-*/*"
-      ]
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": ["arn:aws:s3:::cdk-*-assets-*", "arn:aws:s3:::cdk-*-assets-*/*"]
     }
   ]
 }
@@ -238,6 +230,7 @@ my-service/
 ```
 
 **bin/app.ts pattern:**
+
 ```typescript
 import * as cdk from 'aws-cdk-lib';
 import { ApiStack } from '../lib/stacks/api-stack';
@@ -318,10 +311,10 @@ Add this as a scheduled GitHub Actions workflow (weekly) to catch out-of-band ch
 
 ## GitHub Actions Variables to Configure
 
-| Variable | Value |
-|---|---|
-| `AWS_DEPLOY_ROLE_ARN` | ARN of staging GitHubActions role |
-| `AWS_PROD_DEPLOY_ROLE_ARN` | ARN of prod GitHubActions role |
-| `AWS_READONLY_ROLE_ARN` | ARN of read-only role (for CDK diff on PRs) |
-| `AWS_ACCOUNT_ID` | Non-prod AWS account ID |
-| `AWS_PROD_ACCOUNT_ID` | Prod AWS account ID |
+| Variable                   | Value                                       |
+| -------------------------- | ------------------------------------------- |
+| `AWS_DEPLOY_ROLE_ARN`      | ARN of staging GitHubActions role           |
+| `AWS_PROD_DEPLOY_ROLE_ARN` | ARN of prod GitHubActions role              |
+| `AWS_READONLY_ROLE_ARN`    | ARN of read-only role (for CDK diff on PRs) |
+| `AWS_ACCOUNT_ID`           | Non-prod AWS account ID                     |
+| `AWS_PROD_ACCOUNT_ID`      | Prod AWS account ID                         |

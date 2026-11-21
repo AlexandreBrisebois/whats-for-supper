@@ -49,13 +49,13 @@ channel for each origin. On each physical platform install stable, demo, beta
 and beta-demo together. Keep one origin for each variant; changing demo mode on
 one origin preserves manifest `id: /` and does not create a separate app.
 
-| Check | Observation required on each physical platform |
-|---|---|
-| Coexistence | All four launchers coexist and open their corresponding origins. All labels use the common name; note any OS truncation. |
-| Artwork | Original backgrounds/artwork remain; DEMO and BETA marks are legible at launcher size. Inspect the actual OS rounded/masked crops. |
-| Light/dark | Inspect launcher, installed splash/startup and welcome/main hint under both OS appearances. Record unwanted cropping or contrast problems. |
-| Refresh | After an authorized same-origin demo toggle/recreation, record fresh manifest/Apple metadata and the actual old installed icon behavior after reopening. No immediate OS refresh is promised. |
-| Reinstall | Remove/reinstall only the disposable acceptance installation and confirm current artwork/name and correct origin. Record whether reinstallation was needed. |
+| Check             | Observation required on each physical platform                                                                                                                                                                                                                                                            |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Coexistence       | All four launchers coexist and open their corresponding origins. All labels use the common name; note any OS truncation.                                                                                                                                                                                  |
+| Artwork           | Original backgrounds/artwork remain; DEMO and BETA marks are legible at launcher size. Inspect the actual OS rounded/masked crops.                                                                                                                                                                        |
+| Light/dark        | Inspect launcher, installed splash/startup and welcome/main hint under both OS appearances. Record unwanted cropping or contrast problems.                                                                                                                                                                |
+| Refresh           | After an authorized same-origin demo toggle/recreation, record fresh manifest/Apple metadata and the actual old installed icon behavior after reopening. No immediate OS refresh is promised.                                                                                                             |
+| Reinstall         | Remove/reinstall only the disposable acceptance installation and confirm current artwork/name and correct origin. Record whether reinstallation was needed.                                                                                                                                               |
 | Existing behavior | Authentication remains required for main routes; launch retained shortcuts. Current Search shortcut metadata targets `/recipes?focus=search`; older installed metadata may still open bare `/recipes` in collapsed Explore until the OS refreshes it. Keep PDF gates and backend demo behavior unchanged. |
 
 Record iOS model, iOS version, Safari version and Add to Home Screen procedure;

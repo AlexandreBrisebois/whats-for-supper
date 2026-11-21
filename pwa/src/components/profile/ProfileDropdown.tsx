@@ -33,9 +33,9 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
     return (
       <div
         role="status"
-        className="flex min-h-24 w-full items-center rounded-3xl bg-white/70 p-5 shadow-[0_8px_28px_-8px_rgba(31,41,55,0.16)]"
+        className="flex min-h-24 w-full items-center rounded-3xl bg-white/70 border border-chrome-line p-5 shadow-[0_8px_28px_-8px_rgba(31,41,55,0.16)]"
       >
-        <span className="text-sm text-charcoal-600">
+        <span className="text-sm text-ink-muted">
           {t('profile.loading', 'Loading family members…')}
         </span>
       </div>
@@ -66,7 +66,7 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         data-testid="profile-dropdown-toggle"
-        className="flex w-full items-center justify-between gap-4 min-h-24 rounded-3xl bg-white/80 border border-white p-[20px] shadow-[0_8px_28px_-8px_rgba(31,41,55,0.16)] hover:bg-terracotta-50 active:bg-terracotta-100 scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-terracotta-700"
+        className="flex w-full items-center justify-between gap-4 min-h-24 rounded-3xl bg-white/80 border border-chrome-line p-[20px] shadow-[0_8px_28px_-8px_rgba(31,41,55,0.16)] hover:bg-terracotta-50 active:bg-terracotta-100 scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-hearth-ink"
         aria-label={
           isOpen
             ? t('profile.closeMemberMenu', 'Close member menu')
@@ -74,16 +74,16 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
         }
       >
         <div className="flex min-w-0 items-center gap-[12px]">
-          <div className="hidden h-[48px] w-[48px] shrink-0 min-[380px]:flex items-center justify-center rounded-full bg-terracotta-50 text-terracotta-700">
+          <div className="hidden h-[48px] w-[48px] shrink-0 min-[380px]:flex items-center justify-center rounded-full bg-terracotta-50 text-hearth-ink">
             <UserCircle aria-hidden="true" className="h-7 w-7" />
           </div>
           <div className="min-w-0 text-left">
-            <p className="text-sm font-medium text-charcoal-600">
+            <p className="text-sm font-medium text-ink-muted">
               {t('profile.activeMember', 'Active member')}
             </p>
             <p
               data-testid="selected-member-name"
-              className="break-words font-outfit text-2xl font-bold text-charcoal leading-tight"
+              className="break-words font-outfit text-2xl font-bold text-ink-body leading-tight"
             >
               {selectedMember?.name || t('profile.selectMember', 'Select member')}
             </p>
@@ -91,7 +91,7 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
         </div>
         <ChevronDown
           aria-hidden="true"
-          className={`h-5 w-5 shrink-0 text-terracotta-700 transition-transform motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`}
+          className={`h-5 w-5 shrink-0 text-hearth-ink transition-transform motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -101,7 +101,7 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
             id={choicesId}
             aria-label={t('profile.activeMember', 'Active member')}
             data-testid="profile-dropdown-menu"
-            className="max-h-[min(60dvh,24rem)] overflow-y-auto overscroll-contain scroll-py-2 rounded-3xl bg-white/90 backdrop-blur-2xl border border-white/80 shadow-2xl p-[8px] flex flex-col gap-1"
+            className="max-h-[min(60dvh,24rem)] overflow-y-auto overscroll-contain scroll-py-2 rounded-3xl bg-white/90 backdrop-blur-2xl border border-chrome-line shadow-2xl p-[8px] flex flex-col gap-1"
           >
             {familyMembers?.map((member) => (
               <li key={member.id}>
@@ -114,10 +114,10 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
                   type="button"
                   onClick={() => handleSelect(member.id)}
                   data-testid={`profile-dropdown-option-${member.id}`}
-                  className={`flex min-h-12 w-full items-center justify-between gap-[12px] px-[12px] py-[16px] rounded-2xl text-left scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-terracotta-700 ${
+                  className={`flex min-h-12 w-full items-center justify-between gap-[12px] px-[12px] py-[16px] rounded-2xl text-left scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-hearth-ink ${
                     String(member.id).toLowerCase() === String(selectedMember?.id).toLowerCase()
-                      ? 'bg-terracotta-50 text-terracotta-700'
-                      : 'text-charcoal hover:bg-cream'
+                      ? 'bg-terracotta-50 text-hearth-ink'
+                      : 'text-ink-body hover:bg-cream'
                   }`}
                 >
                   <span className="min-w-0 break-words font-inter font-semibold">
@@ -128,7 +128,7 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
                       <span className="sr-only">
                         {t('profile.currentMember', 'Current family member')}
                       </span>
-                      <Check aria-hidden="true" className="h-5 w-5 shrink-0 text-terracotta-700" />
+                      <Check aria-hidden="true" className="h-5 w-5 shrink-0 text-hearth-ink" />
                     </>
                   )}
                 </button>

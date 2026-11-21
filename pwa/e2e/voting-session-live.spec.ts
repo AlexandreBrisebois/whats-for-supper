@@ -115,12 +115,26 @@ test('two real members converge next week, receive late suggestions, reconnect a
     ).data;
     expect(afterHandoff.status).toBe(1);
     expect(afterHandoff.days.filter((day: { recipe?: unknown }) => day.recipe)).toHaveLength(0);
-    await first.getByTestId('nav-item-discovery').click();
+    // Direct /discovery keeps the celebration card while the medallion carries the converged signal.
+    await expect(first.getByTestId('nav-item-discovery')).toContainText("Menu's in");
+    await first.goto('/discovery');
     await expect(first.getByTestId('discovery-converged')).toBeVisible();
 
     const lastSuggestion = converged.smartDefaults.preSelectedRecipes.at(-1).recipeId;
     await vote(members[2], lastSuggestion);
     const reordered = await session();
+    // Every member reads the identical household-wide day assignments.
+    const placements = async (member: string) =>
+      (
+        (
+          await (
+            await request.get(`${api}/api/discovery/session`, {
+              headers: { ...headers, 'X-Family-Member-Id': member },
+            })
+          ).json()
+        ).data.smartDefaults.preSelectedRecipes as { recipeId: string; dayIndex: number }[]
+      ).map(({ recipeId, dayIndex }) => ({ recipeId, dayIndex }));
+    expect(await placements(members[0])).toEqual(await placements(members[1]));
     expect(reordered.smartDefaults.preSelectedRecipes[0].recipeId).toBe(lastSuggestion);
     await expect(planner.getByTestId('day-card-4')).toContainText(
       `Live supper ${Number(lastSuggestion.slice(-1))}`
@@ -171,8 +185,12 @@ test('two real members converge next week, receive late suggestions, reconnect a
         response.request().method() === 'POST',
       { timeout: 15_000 }
     );
+    await expect(planner.getByTestId('nudge-family-cta')).toHaveCount(0);
+    await expect(planner.getByTestId('close-voting-btn')).toHaveClass(/bg-garden-fill/);
     await planner.getByTestId('close-voting-btn').click();
     expect((await closed).status()).toBe(200);
+    await expect(planner.getByTestId('planner-week-finalized')).toHaveText('Menu saved!');
+    await expect(first.getByTestId('nav-item-discovery')).toContainText('Discovery');
     console.log('[voting-live] Close Voting saved suggestions and closed round');
     expect((await session()).phase).toBe('unowned');
     const afterClose = (

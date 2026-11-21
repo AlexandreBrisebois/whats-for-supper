@@ -29,7 +29,7 @@ export const BrowseAllEmptyState: React.FC = () => {
         <h2 className="font-heading text-3xl font-bold tracking-tight text-charcoal">
           Your library is empty
         </h2>
-        <p className="text-base font-medium leading-relaxed text-charcoal/60">
+        <p className="text-base font-medium leading-relaxed text-charcoal-600">
           Add your first recipe and start building your library
         </p>
       </div>
@@ -38,7 +38,7 @@ export const BrowseAllEmptyState: React.FC = () => {
       <Link
         href="/capture"
         data-testid="browse-all-empty-capture-cta"
-        className="inline-flex items-center gap-2 rounded-full bg-ochre px-8 py-4 text-sm font-black tracking-wide text-white shadow-md shadow-ochre/20 transition-opacity hover:opacity-90 active:opacity-80"
+        className="inline-flex min-h-12 items-center gap-2 rounded-full bg-terracotta px-8 py-4 text-sm font-semibold text-cream-100 shadow-sm transition-colors hover:bg-terracotta-600 active:bg-terracotta-700"
       >
         Capture a Recipe
       </Link>

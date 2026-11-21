@@ -59,7 +59,7 @@ public partial class TomorrowPushPostgresTests(ITestOutputHelper output)
                 Assert.NotNull(plan.GroceryItems);
                 if (monday == new DateOnly(2026,10,12)) {
                     Assert.Equal(WeeklyPlanStatus.Locked, plan.Status);
-                    Assert.True(JsonDocument.Parse(plan.GroceryState!).RootElement.GetProperty("carrot").GetBoolean());
+                    Assert.True(GroceryTestRows.Checked(plan,"carrot"));
                 }
             }
         });
@@ -212,19 +212,51 @@ public partial class TomorrowPushPostgresTests(ITestOutputHelper output)
         });
     }
 
+    internal static async Task ResetToLegacyAsync(RecipeDbContext db, Guid recipeId, Action<Recipe> configure)
+    {
+        if (db.Database.IsRelational())
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE recipes DISABLE TRIGGER canonical_recipe_content_guard");
+        try
+        {
+            var recipe = await db.Recipes.SingleAsync(x => x.Id == recipeId);
+            recipe.CanonicalContent = null;
+            configure(recipe);
+            await db.SaveChangesAsync();
+            await db.Entry(recipe).ReloadAsync();
+        }
+        finally
+        {
+            if (db.Database.IsRelational())
+                await db.Database.ExecuteSqlRawAsync("ALTER TABLE recipes ENABLE TRIGGER canonical_recipe_content_guard");
+        }
+    }
+
     internal static async Task Seed(TestWebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        db.Recipes.AddRange(new Recipe { Id = Selected, Name = "Sunday Chicken", Ingredients = "[\"Carrot\"]", IsReady = true }, new Recipe { Id = Other, Name = "Chain Lasagna", Ingredients = "[\"Potato\"]", IsReady = true });
+        db.Recipes.AddRange(
+            new Recipe
+            {
+                Id = Selected, Name = "Sunday Chicken", Ingredients = "[\"Carrot\"]",
+                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)]), IsReady = true
+            },
+            new Recipe
+            {
+                Id = Other, Name = "Chain Lasagna", Ingredients = "[\"Potato\"]",
+                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)]), IsReady = true
+            });
         for (var i=0; i<15; i++) db.CalendarEvents.Add(new CalendarEvent {
             Id = Guid.NewGuid(), Date = Sunday.AddDays(i), RecipeId = i is 0 or 4 ? Selected : Other,
             Status = i == 2 ? CalendarEventStatus.Locked : CalendarEventStatus.Planned,
             VoteCount = i, CandidateIds = [Selected, Other],
         });
         db.CalendarEvents.Add(new CalendarEvent { Date = Sunday.AddDays(2), MealSlot = 1, RecipeId = Other, VoteCount = 99 });
-        db.WeeklyPlans.Add(new WeeklyPlan { Id = Guid.NewGuid(), WeekStartDate = new(2026,10,12), Status = WeeklyPlanStatus.Locked, GroceryState = "{\"carrot\":true}" });
+        db.WeeklyPlans.Add(new WeeklyPlan { Id = Guid.NewGuid(), WeekStartDate = new(2026,10,12), Status = WeeklyPlanStatus.Locked, GroceryState = "{}" });
         await db.SaveChangesAsync();
+        await scope.ServiceProvider.GetRequiredService<RecipeApi.Services.GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12),default);
+        using var shopper = factory.CreateAuthenticatedClient();
+        await GroceryTestRows.CheckAsync(shopper,new(2026,10,12),"carrot");
     }
 
     internal static Task<TestWebApplicationFactory> CreateFactory(NpgsqlConnectionStringBuilder settings) => TestWebApplicationFactory.CreateWithAuthAsync(new DeploymentCalendarIntegrationTests.CalendarClock(), new() {

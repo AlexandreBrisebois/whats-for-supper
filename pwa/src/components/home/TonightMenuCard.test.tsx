@@ -1,9 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { setLocale } from '@/locales';
 import { TonightMenuCard } from './TonightMenuCard';
 
-beforeEach(() => setLocale('en'));
+const projectionMocks = vi.hoisted(() => ({
+  read: vi.fn(),
+  invalidate: null as (() => void) | null,
+}));
+vi.mock('@/lib/api/recipes', () => ({ getIngredientProjection: projectionMocks.read }));
+vi.mock('@/lib/ingredient-projection-invalidation', () => ({
+  subscribeIngredientProjectionInvalidation: (_context: unknown, invalidate: () => void) => {
+    projectionMocks.invalidate = invalidate;
+    return () => {
+      projectionMocks.invalidate = null;
+    };
+  },
+}));
+beforeEach(() => {
+  setLocale('en');
+  projectionMocks.read.mockReset();
+  projectionMocks.invalidate = null;
+});
 const recipe = {
   recipeId: 'one',
   recipeName: 'Garden supper',
@@ -109,4 +126,199 @@ it('handles a cached failure that completed before the image handler attached', 
   } finally {
     complete.mockRestore();
   }
+});
+
+const assigned = {
+  context: 'assigned' as const,
+  supperDate: '2026-05-04',
+  occurrenceId: 'occurrence-one',
+};
+const projected = (quantity = 600, extra = {}) => ({
+  version: 'version-one',
+  recipeId: 'one',
+  ...assigned,
+  originalServings: 2,
+  targetServings: 6,
+  factor: 3,
+  status: 'complete',
+  lines: [
+    { originalText: '200 g pasta', name: 'pasta', quantity, unitText: 'g', status: 'scaled' },
+  ],
+  ...extra,
+});
+
+describe('Tonight captured dated ingredients', () => {
+  it('reads only on disclosure and shows the dated six portions instead of original two', async () => {
+    projectionMocks.read.mockResolvedValue(projected());
+    render(
+      <TonightMenuCard {...recipe} ingredients={['200 g pasta']} ingredientContext={assigned} />
+    );
+    expect(projectionMocks.read).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    expect(screen.queryByText('200 g pasta')).not.toBeInTheDocument();
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+    expect(screen.getByTestId('ingredients-info-title')).toHaveTextContent('6 portions');
+    expect(projectionMocks.read).toHaveBeenCalledExactlyOnceWith('one', assigned);
+  });
+
+  it('keeps partial/unknown lines verbatim and the existing review feedback', async () => {
+    projectionMocks.read.mockResolvedValue(
+      projected(600, {
+        status: 'partial',
+        lines: [...projected().lines, { originalText: 'salt to taste', status: 'unresolved' }],
+      })
+    );
+    render(<TonightMenuCard {...recipe} ingredientContext={assigned} />);
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+    expect(screen.getByText('salt to taste')).toBeVisible();
+    expect(
+      screen.getByText('Some amounts need review. Consult the original recipe.')
+    ).toBeVisible();
+  });
+
+  it('honestly shows pending, failed and retry states without original fallback', async () => {
+    let fail!: (error: Error) => void;
+    projectionMocks.read.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          fail = reject;
+        })
+    );
+    render(
+      <TonightMenuCard {...recipe} ingredients={['200 g pasta']} ingredientContext={assigned} />
+    );
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    expect(screen.getByRole('status')).toHaveTextContent('Loading ingredients for this date');
+    expect(screen.queryByText('200 g pasta')).not.toBeInTheDocument();
+    await act(async () => fail(new Error('changed occurrence')));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Could not confirm ingredients for this supper.'
+    );
+    expect(screen.queryByText('No ingredients listed')).not.toBeInTheDocument();
+    projectionMocks.read.mockResolvedValue(projected());
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+  });
+
+  it('does not fetch or label originals current when assigned identity is unavailable', () => {
+    render(<TonightMenuCard {...recipe} ingredients={['200 g pasta']} ingredientContext={null} />);
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not confirm ingredients');
+    expect(screen.queryByText('200 g pasta')).not.toBeInTheDocument();
+    expect(projectionMocks.read).not.toHaveBeenCalled();
+  });
+
+  it('rejects late responses from the same recipe on another occurrence and invalidation', async () => {
+    let finishOld!: (value: unknown) => void;
+    projectionMocks.read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishOld = resolve;
+        })
+    );
+    const { rerender } = render(<TonightMenuCard {...recipe} ingredientContext={assigned} />);
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    const next = { ...assigned, occurrenceId: 'replacement-occurrence' };
+    projectionMocks.read.mockResolvedValue(projected(800));
+    rerender(<TonightMenuCard {...recipe} ingredientContext={next} />);
+    expect(await screen.findByText('800 g pasta')).toBeVisible();
+    await act(async () => finishOld(projected()));
+    expect(screen.queryByText('600 g pasta')).not.toBeInTheDocument();
+    projectionMocks.read.mockResolvedValue(projected(1000));
+    act(() => projectionMocks.invalidate?.());
+    expect(await screen.findByText('1,000 g pasta')).toBeVisible();
+    expect(projectionMocks.read).toHaveBeenLastCalledWith('one', next);
+  });
+
+  it('invalidates an in-flight same-key read before an old result can settle', async () => {
+    let finishOld!: (value: unknown) => void;
+    let finishNew!: (value: unknown) => void;
+    projectionMocks.read
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishOld = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishNew = resolve;
+          })
+      );
+    render(<TonightMenuCard {...recipe} ingredientContext={assigned} />);
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    await act(async () => {
+      projectionMocks.invalidate?.();
+      finishOld(projected());
+      await Promise.resolve();
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('Loading ingredients for this date');
+    expect(screen.queryByText('600 g pasta')).not.toBeInTheDocument();
+    await act(async () => finishNew(projected(800)));
+    expect(screen.getByText('800 g pasta')).toBeVisible();
+  });
+
+  it('refreshes an opened list honestly instead of exposing cached dated amounts', async () => {
+    projectionMocks.read.mockResolvedValueOnce(projected());
+    render(<TonightMenuCard {...recipe} ingredientContext={assigned} />);
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    expect(await screen.findByText('600 g pasta')).toBeVisible();
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    projectionMocks.read.mockReturnValue(new Promise(() => {}));
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    expect(screen.getByRole('status')).toHaveTextContent('Loading ingredients for this date');
+    expect(screen.queryByText('600 g pasta')).not.toBeInTheDocument();
+  });
+
+  it('keeps an unknown basis and target as original evidence without inventing a portion count', async () => {
+    projectionMocks.read.mockResolvedValue(
+      projected(600, {
+        originalServings: null,
+        targetServings: null,
+        factor: null,
+        status: 'unresolved',
+        lines: [{ originalText: '200 g pasta', status: 'unresolved' }],
+      })
+    );
+    render(<TonightMenuCard {...recipe} ingredientContext={assigned} />);
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    expect(await screen.findByText('200 g pasta')).toBeVisible();
+    expect(screen.getByTestId('ingredients-info-title')).toHaveTextContent(/^Ingredients & info$/);
+    expect(screen.queryByText('600 g pasta')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { id: 'one', context: { ...assigned, supperDate: '2026-05-05' } },
+    { id: 'two', context: assigned },
+  ])(
+    'rejects delayed amounts after recipe/date identity changes: $id $context.supperDate',
+    async ({ id, context }) => {
+      let finishOld!: (value: unknown) => void;
+      projectionMocks.read.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishOld = resolve;
+          })
+      );
+      const { rerender } = render(<TonightMenuCard {...recipe} ingredientContext={assigned} />);
+      fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+      projectionMocks.read.mockResolvedValue(projected(800));
+      rerender(<TonightMenuCard {...recipe} recipeId={id} ingredientContext={context} />);
+      if (id !== recipe.recipeId) fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+      expect(await screen.findByText('800 g pasta')).toBeVisible();
+      await act(async () => finishOld(projected()));
+      expect(screen.queryByText('600 g pasta')).not.toBeInTheDocument();
+      expect(projectionMocks.read).toHaveBeenLastCalledWith(id, context);
+    }
+  );
+
+  it('renders frozen prepared seven from the projection without recalculating', async () => {
+    projectionMocks.read.mockResolvedValue(projected(700, { targetServings: 7, factor: 3.5 }));
+    render(<TonightMenuCard {...recipe} ingredientContext={assigned} />);
+    fireEvent.click(screen.getByTestId('tonight-ingredients-toggle'));
+    expect(await screen.findByText('700 g pasta')).toBeVisible();
+    expect(screen.getByTestId('ingredients-info-title')).toHaveTextContent('7 portions');
+  });
 });

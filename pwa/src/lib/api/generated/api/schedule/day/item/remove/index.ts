@@ -10,38 +10,158 @@ import {
 } from '../../../../../models/index';
 // @ts-ignore
 import {
+  type AdditionalDataHolder,
+  type ApiError,
   type BaseRequestBuilder,
   type Parsable,
   type ParsableFactory,
+  type ParseNode,
   type RequestConfiguration,
   type RequestInformation,
   type RequestsMetadata,
+  type SerializationWriter,
 } from '@microsoft/kiota-abstractions';
 
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {Remove400Error}
+ */
+// @ts-ignore
+export function createRemove400ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRemove400Error;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {Remove409Error}
+ */
+// @ts-ignore
+export function createRemove409ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRemove409Error;
+}
+/**
+ * The deserialization information for the current model
+ * @param Remove400Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRemove400Error(
+  remove400Error: Partial<Remove400Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      remove400Error.messageEscaped = n.getStringValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param Remove409Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRemove409Error(
+  remove409Error: Partial<Remove409Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      remove409Error.messageEscaped = n.getStringValue();
+    },
+  };
+}
+export interface Remove400Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+}
+export interface Remove409Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+}
 /**
  * Builds and executes requests for operations under /api/schedule/day/{date}/remove
  */
 export interface RemoveRequestBuilder extends BaseRequestBuilder<RemoveRequestBuilder> {
   /**
-   * Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
+   * Optional expectedPlanToken atomically compares and removes only the matching current supper entry. Malformed supplied tokens return 400; stale or missing entries return 409 without mutation or follow-up. Omission preserves legacy date deletion. Removal, stale grocery metadata and durable refresh work commit before best-effort grocery/publication follow-ups. A committed removal returns 204 even if those follow-ups fail; read the captured week to inspect updating or failed groceryRefresh and retry refresh without repeating DELETE. A lost or uncertain primary response still requires authoritative reconciliation before further writes. Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
+   * @throws {Remove400Error} error when the service returns a 400 status code
+   * @throws {Remove409Error} error when the service returns a 409 status code
    * @throws {DemoResetRequiredError} error when the service returns a 412 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
-  delete(requestConfiguration?: RequestConfiguration<object> | undefined): Promise<void>;
+  delete(
+    requestConfiguration?:
+      RequestConfiguration<RemoveRequestBuilderDeleteQueryParameters> | undefined
+  ): Promise<void>;
   /**
-   * Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
+   * Optional expectedPlanToken atomically compares and removes only the matching current supper entry. Malformed supplied tokens return 400; stale or missing entries return 409 without mutation or follow-up. Omission preserves legacy date deletion. Removal, stale grocery metadata and durable refresh work commit before best-effort grocery/publication follow-ups. A committed removal returns 204 even if those follow-ups fail; read the captured week to inspect updating or failed groceryRefresh and retry refresh without repeating DELETE. A lost or uncertain primary response still requires authoritative reconciliation before further writes. Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toDeleteRequestInformation(
-    requestConfiguration?: RequestConfiguration<object> | undefined
+    requestConfiguration?:
+      RequestConfiguration<RemoveRequestBuilderDeleteQueryParameters> | undefined
   ): RequestInformation;
+}
+/**
+ * Optional expectedPlanToken atomically compares and removes only the matching current supper entry. Malformed supplied tokens return 400; stale or missing entries return 409 without mutation or follow-up. Omission preserves legacy date deletion. Removal, stale grocery metadata and durable refresh work commit before best-effort grocery/publication follow-ups. A committed removal returns 204 even if those follow-ups fail; read the captured week to inspect updating or failed groceryRefresh and retry refresh without repeating DELETE. A lost or uncertain primary response still requires authoritative reconciliation before further writes. Removing a Cooked calendar entry recalculates its recipe last-cooked value from remaining Cooked calendar dates, or null when none remain, before grocery and publication follow-ups. Ordinary Planned removal does not change last-cooked values.
+ */
+export interface RemoveRequestBuilderDeleteQueryParameters {
+  /**
+   * Captured opaque removalToken; supplied empty or malformed values are invalid. Omit only for legacy unguarded deletion.
+   */
+  expectedPlanToken?: string;
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param Remove400Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRemove400Error(
+  writer: SerializationWriter,
+  remove400Error: Partial<Remove400Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!remove400Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', remove400Error.messageEscaped);
+  writer.writeAdditionalData(remove400Error.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param Remove409Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRemove409Error(
+  writer: SerializationWriter,
+  remove409Error: Partial<Remove409Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!remove409Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', remove409Error.messageEscaped);
+  writer.writeAdditionalData(remove409Error.additionalData);
 }
 /**
  * Uri template for the request builder.
  */
-export const RemoveRequestBuilderUriTemplate = '{+baseurl}/api/schedule/day/{date}/remove';
+export const RemoveRequestBuilderUriTemplate =
+  '{+baseurl}/api/schedule/day/{date}/remove{?expectedPlanToken*}';
 /**
  * Metadata for all the requests in the request builder.
  */
@@ -50,6 +170,8 @@ export const RemoveRequestBuilderRequestsMetadata: RequestsMetadata = {
     uriTemplate: RemoveRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     errorMappings: {
+      400: createRemove400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
+      409: createRemove409ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       412: createDemoResetRequiredErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },

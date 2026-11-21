@@ -25,6 +25,8 @@ import {
   type FeatureFlagsRequestBuilder,
 } from './featureFlags/index';
 // @ts-ignore
+import { FoodsRequestBuilderNavigationMetadata, type FoodsRequestBuilder } from './foods/index';
+// @ts-ignore
 import {
   GotoRequestBuilderNavigationMetadata,
   GotoRequestBuilderRequestsMetadata,
@@ -105,6 +107,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
    */
   get featureFlags(): FeatureFlagsRequestBuilder;
   /**
+   * The foods property
+   */
+  get foods(): FoodsRequestBuilder;
+  /**
    * The goto property
    */
   get goto(): GotoRequestBuilder;
@@ -174,6 +180,9 @@ export const ApiRequestBuilderNavigationMetadata: Record<
   featureFlags: {
     requestsMetadata: FeatureFlagsRequestBuilderRequestsMetadata,
     navigationMetadata: FeatureFlagsRequestBuilderNavigationMetadata,
+  },
+  foods: {
+    navigationMetadata: FoodsRequestBuilderNavigationMetadata,
   },
   goto: {
     requestsMetadata: GotoRequestBuilderRequestsMetadata,

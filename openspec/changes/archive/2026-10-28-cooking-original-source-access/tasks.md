@@ -59,7 +59,6 @@
 - Desktop Chromium has zero safe-area insets; physical iPhone/iPad, installed Android launcher refresh, real device zoom, reduced motion and live API/assets remain unrun. Existing viewport zoom restrictions and shared visual-language policies remain unchanged. The illustrative mockup geometry is not asserted universally.
 - Final aggregate verification was invoked with the complete 16-file reviewed path set. Its first run exposed unregistered common.back/common.next keys (1,250 other unit tests passed); the viewer now reuses cook.back/cook.next without shared-locale edits. The obsolete aggregate was intentionally stopped and its mutation/exit-130 record is `.task/agent-finish/runs/1af6338669234fb6922723e3292d8894.json`, not a success. The repaired component/detail/locale-integrity subset passes 70 tests in unit-locales-final.log. Fresh final aggregate status and record_path are reported at delivery; focused acceptance does not replace that gate. No archive, canonical-spec merge, staging, commit or deployment is performed.
 
-
 ## Terminal aggregate checkpoint
 
 The repaired aggregate's browser phase completed in 8.9 minutes: **507 passed, 43 failed, 47 skipped, one flaky**. All **44 cases** in the four cooking/source/install-identity suites passed on repaired source. Results are preserved at `.task/cooking-original-source/aggregate-browser-results.json`; error classification is in `aggregate-failure-summary.json` and the full log is `verify-repaired.log`.
@@ -70,7 +69,6 @@ The repaired aggregate wrapper/session is no longer present and produced no term
 
 The previously owned server on 3117 and its known parent PID are absent; no remaining server was killed and no other process was interrupted. Index entries/HEAD and all 19 unrelated file contents were preserved at final inspection. A stable broad runner/fresh aggregate qualification remains follow-up work; physical-device and live-service qualifications remain as listed above.
 
-
 ## Supervised retry and reporting-layout repair
 
 A single foreground supervisor owned both the fresh isolated server and full 16-path gate. It recorded a terminal gate result at `.task/agent-finish/runs/fff4a17583ae48d7a84686e4d0901f0e.json`: server alive at gate exit, content identity passed, then explicit owned-server SIGTERM and exit 0. Lifecycle evidence is `.task/cooking-original-source/supervised-retry/lifecycle.jsonl`. The earlier server's exit cause remains unproven; the retry avoids relying on separately surviving tool sessions and has no server-loss cascade.
@@ -80,7 +78,6 @@ The broad browser result was **542 passed, four failed, 47 skipped and five flak
 The reporting regression now reached cooking and exposed the noninteractive fixed-bottom reimport acknowledgement intercepting Back over the compact footer (`recipe-import-reporting.spec.ts:390`). Its earlier pre-cooking timeout did not establish this. The acknowledgement is now in normal reading-column flow immediately above the footer; its wording and reporting state remain unchanged. This is an in-scope preservation fix with an existing meaningful red browser test. The repaired component/detail/locale subset passes 70 tests in `unit-reimport-layout.log`. Focused browser and complete cooking-path verification results are reported at delivery; Find code is unchanged.
 
 The two Browse All cycle failures still report lost navigation context, and Capture's library-toast auto-dismiss assertion also failed while the server stayed alive. Those owners were not edited. No baseline comparison establishes whether those failures pre-date this change; they require separate triage rather than unrelated application edits here. Full repository verification remains red. The complete cooking change can be checked separately after this repair without repeating the already-failing unrelated 598-case gate.
-
 
 ## Final repaired cooking verification
 

@@ -35,12 +35,12 @@ Corrective setup installed task-local Node 26.12.0, npm 11.21.1, OpenSpec 1.14.3
 
 Tool discovery exposed no Android/device connector. Local discovery found no `adb` or `emulator` on PATH or under inspected workspace/tool locations, no Android SDK in the inspected standard locations, no `/dev/kvm` or `/dev/bus/usb`, and no running adb/emulator/qemu process. No paid service was provisioned or permissions changed. This is unavailable device evidence, not a finding that Android cannot display the tagline.
 
-| Qualification | Result | Evidence still required |
-| --- | --- | --- |
-| Original installed-app details location | Blocked | Exact navigation, screenshot/text, Android/Chrome versions, install mechanism and field ownership |
-| Fresh installation | Not run: no supported device | Before/after on the actual target surface; use an approved test origin/device without replacing an existing installation |
-| Existing-install refresh | Not run: no supported device | Same installation identity, before/after text, elapsed time and browser update status; no destructive reinstall |
-| OS-owned field feasibility | Unresolved | Inspect the actual field; if unconfigurable, evidence the limitation and review a supported alternative |
+| Qualification                           | Result                       | Evidence still required                                                                                                  |
+| --------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Original installed-app details location | Blocked                      | Exact navigation, screenshot/text, Android/Chrome versions, install mechanism and field ownership                        |
+| Fresh installation                      | Not run: no supported device | Before/after on the actual target surface; use an approved test origin/device without replacing an existing installation |
+| Existing-install refresh                | Not run: no supported device | Same installation identity, before/after text, elapsed time and browser update status; no destructive reinstall          |
+| OS-owned field feasibility              | Unresolved                   | Inspect the actual field; if unconfigurable, evidence the limitation and review a supported alternative                  |
 
 Keep issue #274 open, PR draft and this OpenSpec change active. Do not infer success from JSON, HTML, install prompts, desktop Playwright or Android viewport emulation. Further device work must preserve installation identity and production boundaries.
 

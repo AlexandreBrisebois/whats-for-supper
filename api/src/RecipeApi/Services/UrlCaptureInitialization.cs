@@ -8,7 +8,7 @@ namespace RecipeApi.Services;
 internal static class UrlCaptureInitialization
 {
     public const string TaskName = "initialize_url_import";
-    private const string ProcessorName = "UrlCaptureInitialization";
+    public const string ProcessorName = "UrlCaptureInitialization";
 
     public static WorkflowInstance Create(Guid recipeId, string url, DateTimeOffset now)
     {

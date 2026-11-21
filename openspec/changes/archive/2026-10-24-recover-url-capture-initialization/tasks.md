@@ -24,7 +24,6 @@
 - Browser: `task test:e2e -- url-capture-recovery.spec.ts --project=chromium` passed 1/0/0 against Chromium/managed Next dev server. Method-sensitive route overrides use all required failure fields, show saved-but-not-started guidance, retry the same workflow ID, reread empty state on reload and assert no intake POST. This mocked API/browser evidence does not replace real backend acceptance.
 - Central generation/client drift and combined repository checks passed as recorded below; actual URL database/storage/orchestration acceptance and Settings mocked browser evidence are recorded above. Photo/PDF extension and historical orphan migration are outside scope.
 
-
 Focused final backend command (the coordinator connection is injected privately as WFS_TEST_POSTGRES_CONNECTION):
 
 ```sh

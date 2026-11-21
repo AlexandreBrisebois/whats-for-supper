@@ -8,7 +8,11 @@ import {
   ChevronDown,
   Clock,
 } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { getIngredientProjection, type IngredientContext } from '@/lib/api/recipes';
+import type { IngredientProjection } from '@/lib/api/generated/models';
+import { ingredientProjectionText } from '@/lib/ingredient-presentation';
+import { subscribeIngredientProjectionInvalidation } from '@/lib/ingredient-projection-invalidation';
 import { cn } from '@/lib/utils';
 import { TonightRecipeImage } from './TonightRecipeImage';
 import { t, tWithVars } from '@/locales';
@@ -46,6 +50,7 @@ interface TonightMenuCardProps {
   imageUrl?: string;
   totalTime?: string;
   ingredients?: string[];
+  ingredientContext?: IngredientContext | null;
   onCookMode?: (id: string) => void;
   onSkip?: (id: string) => void;
 }
@@ -57,6 +62,7 @@ export function TonightMenuCard({
   imageUrl,
   totalTime,
   ingredients = [],
+  ingredientContext,
   onCookMode,
   onSkip,
 }: TonightMenuCardProps) {
@@ -68,16 +74,58 @@ export function TonightMenuCard({
   }
   const expanded = disclosure.recipeId === recipeId && disclosure.expanded;
   const formattedTime = formatRecipeTime(totalTime);
+  const contextKey = ingredientContext ? JSON.stringify([recipeId, ingredientContext]) : null;
+  const [projectionRead, setProjectionRead] = useState<{
+    key: string;
+    data?: IngredientProjection;
+    error?: boolean;
+  } | null>(null);
+  const reloadProjection = useRef<() => void>(() => {});
+  const projection = projectionRead?.key === contextKey ? projectionRead?.data : undefined;
+  const projectionError =
+    ingredientContext === null || (projectionRead?.key === contextKey && projectionRead?.error);
+  const datedReading = ingredientContext !== undefined;
+  const displayedIngredients = datedReading
+    ? (projection?.lines ?? []).map(ingredientProjectionText)
+    : ingredients;
+
+  useEffect(() => {
+    if (!expanded || !contextKey) return;
+    let active = true;
+    let generation = 0;
+    const [id, context] = JSON.parse(contextKey);
+    const load = () => {
+      // Invalidation revokes the old read synchronously, before React renders.
+      const request = ++generation;
+      setProjectionRead(null);
+      void getIngredientProjection(id, context)
+        .then((data) => {
+          if (active && request === generation) setProjectionRead({ key: contextKey, data });
+        })
+        .catch(() => {
+          if (active && request === generation) setProjectionRead({ key: contextKey, error: true });
+        });
+    };
+    reloadProjection.current = load;
+    load();
+    const unsubscribe = subscribeIngredientProjectionInvalidation(context, load);
+    return () => {
+      active = false;
+      generation++;
+      reloadProjection.current = () => {};
+      unsubscribe();
+    };
+  }, [expanded, contextKey]);
 
   return (
     <div className="w-full min-w-0 [overflow-wrap:anywhere]" data-testid="tonight-menu-card">
       <TonightCardBase className="flex flex-col p-6 [container-type:inline-size]">
         <div className="flex flex-wrap justify-between items-center gap-2 mb-3 px-1">
-          <h2 className="font-heading text-base font-medium text-charcoal-600">
+          <h2 className="font-heading text-base font-medium text-ink-muted">
             {t('home.tonightsMenu', "Tonight's menu")}
           </h2>
           {formattedTime && (
-            <span className="inline-flex max-w-full items-center gap-2 text-sm font-semibold text-terracotta-700 bg-terracotta-50 px-3 py-2 rounded-full uppercase tracking-wide">
+            <span className="inline-flex max-w-full items-center gap-2 text-sm font-semibold text-hearth-ink bg-terracotta-50 px-3 py-2 rounded-full uppercase tracking-wide">
               <Clock size={14} aria-hidden="true" className="shrink-0" />
               {tWithVars('common.readyIn', 'READY IN {{time}}', {
                 time: formattedTime,
@@ -96,9 +144,9 @@ export function TonightMenuCard({
         />
 
         <div className="flex flex-col gap-2 px-1">
-          <h3 className="font-heading text-[2rem] font-black text-charcoal leading-tight tracking-tight">
+          <h3 className="font-heading text-[2rem] font-black text-ink-body leading-tight tracking-tight">
             {recipeName || (
-              <span className="text-charcoal-600 italic text-xl">
+              <span className="text-ink-muted italic text-xl">
                 {t('home.preparingRecipe', 'Preparing recipe…')}
               </span>
             )}
@@ -107,7 +155,7 @@ export function TonightMenuCard({
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             onClick={() => onCookMode?.(recipeId)}
-            className="flex min-w-[min(100%,6.5em)] max-w-full flex-[1_1_6em] items-center justify-center gap-1.5 min-h-14 px-2 py-3 rounded-[1.5rem] bg-terracotta text-cream-100 hover:bg-terracotta-600 active:bg-terracotta-700 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+            className="flex min-w-[min(100%,6.5em)] max-w-full flex-[1_1_6em] items-center justify-center gap-1.5 min-h-14 px-2 py-3 rounded-[1.5rem] bg-hearth-fill text-cream-100 hover:bg-hearth-fill-hover active:bg-hearth-fill-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
             data-testid="cook-mode-btn"
           >
             <UtensilsCrossed size={16} aria-hidden="true" className="shrink-0" />
@@ -117,7 +165,7 @@ export function TonightMenuCard({
           </button>
           <button
             onClick={() => onSkip?.(recipeId)}
-            className="flex min-w-[min(100%,7.5em)] max-w-full flex-[1.4_1_7.5em] items-center justify-center gap-1.5 min-h-14 px-2 py-3 rounded-[1.5rem] border border-terracotta-200 bg-white text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+            className="flex min-w-[min(100%,7.5em)] max-w-full flex-[1.4_1_7.5em] items-center justify-center gap-1.5 min-h-14 px-2 py-3 rounded-[1.5rem] border border-hearth-line bg-white text-hearth-ink hover:bg-terracotta-50 active:bg-terracotta-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
             data-testid="skip-tonight-btn"
           >
             <ArrowRightLeft size={16} aria-hidden="true" className="shrink-0" />
@@ -131,8 +179,11 @@ export function TonightMenuCard({
           data-testid="tonight-ingredients-toggle"
           aria-expanded={expanded}
           aria-controls={detailsId}
-          onClick={() => setDisclosure({ recipeId, expanded: !expanded })}
-          className="mt-1 flex min-h-12 min-w-12 items-center justify-start gap-2 self-start rounded-xl px-2 py-3 text-base font-medium leading-normal text-terracotta-700 hover:bg-terracotta-50 active:bg-terracotta-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-charcoal"
+          onClick={() => {
+            if (!expanded) setProjectionRead(null);
+            setDisclosure({ recipeId, expanded: !expanded });
+          }}
+          className="mt-1 flex min-h-12 min-w-12 items-center justify-start gap-2 self-start rounded-xl px-2 py-3 text-base font-medium leading-normal text-hearth-ink hover:bg-terracotta-50 active:bg-terracotta-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
         >
           {expanded
             ? t('home.hideIngredients', 'Hide ingredients')
@@ -146,36 +197,66 @@ export function TonightMenuCard({
         <div id={detailsId} hidden={!expanded}>
           {expanded && (
             <section
-              className="mt-6 border-t border-charcoal/20 pt-6"
+              className="mt-6 border-t border-chrome-line pt-6"
               aria-labelledby={`${detailsId}-title`}
             >
               <div className="mb-6 flex items-center justify-between gap-3">
                 <h4
                   id={`${detailsId}-title`}
-                  className="text-base font-semibold text-charcoal"
+                  className="text-base font-semibold text-ink-body"
                   data-testid="ingredients-info-title"
                 >
                   {t('home.ingredientsAndInfo', 'Ingredients & info')}
+                  {projection?.targetServings != null &&
+                    ` · ${tWithVars('recipes.portionCount', '{{count}} portions', { count: projection.targetServings })}`}
                 </h4>
-                <Sparkles size={16} className="shrink-0 text-ochre-800" aria-hidden="true" />
+                <Sparkles size={16} className="shrink-0 text-sunlight-ink" aria-hidden="true" />
               </div>
               {description && (
-                <p className="text-sm text-charcoal-600 leading-relaxed mb-8 font-medium italic">
+                <p className="text-sm text-ink-muted leading-relaxed mb-8 font-medium italic">
                   {description}
                 </p>
               )}
 
+              {datedReading && !projection && !projectionError && (
+                <p role="status" className="mb-4 text-sm text-ink-muted">
+                  {t('recipes.projectionLoading', 'Loading ingredients for this date…')}
+                </p>
+              )}
+              {projectionError && (
+                <p role="alert" className="mb-4 text-sm text-ink-body">
+                  {t('recipes.projectionFailed', 'Could not confirm ingredients for this supper.')}{' '}
+                  {ingredientContext && (
+                    <button
+                      type="button"
+                      data-testid="tonight-ingredients-retry"
+                      className="min-h-12 min-w-12 rounded-xl px-3 font-semibold underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
+                      onClick={() => reloadProjection.current()}
+                    >
+                      {t('common.retry', 'Retry')}
+                    </button>
+                  )}
+                </p>
+              )}
+              {(projection?.status === 'partial' || projection?.status === 'unresolved') && (
+                <p className="mb-4 text-sm text-ink-muted">
+                  {t(
+                    'recipes.projectionReview',
+                    'Some amounts need review. Consult the original recipe.'
+                  )}
+                </p>
+              )}
               <div className="flex flex-wrap gap-2 mb-8">
-                {ingredients.map((ing, i) => (
+                {displayedIngredients.map((ing, i) => (
                   <span
                     key={i}
-                    className="text-sm font-medium bg-charcoal/10 px-3 py-1.5 rounded-xl text-charcoal"
+                    className="text-sm font-medium bg-charcoal/10 px-3 py-1.5 rounded-xl text-ink-body"
                   >
                     {ing}
                   </span>
                 ))}
-                {ingredients.length === 0 && (
-                  <span className="text-sm text-charcoal-600 italic">
+                {displayedIngredients.length === 0 && (!datedReading || projection) && (
+                  <span className="text-sm text-ink-muted italic">
                     {t('home.noIngredients', 'No ingredients listed')}
                   </span>
                 )}

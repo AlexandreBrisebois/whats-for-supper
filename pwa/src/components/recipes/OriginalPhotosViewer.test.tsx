@@ -7,9 +7,15 @@ import { OriginalPhotosViewer } from './OriginalPhotosViewer';
 vi.mock('next/navigation', () => ({ usePathname: () => '/recipes' }));
 vi.mock('@/locales', () => ({ t: (_key: string, fallback: string) => fallback }));
 
+const motionPreference = vi.hoisted(() => ({
+  reduced: false,
+  start: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => motionPreference.reduced }));
+
 vi.mock('framer-motion', async () => {
   const React = await import('react');
-  const controls = { start: vi.fn().mockResolvedValue(undefined) };
+  const controls = { start: motionPreference.start };
   return {
     AnimatePresence: ({ children }: { children: ReactNode }) => children,
     useAnimation: () => controls,
@@ -39,6 +45,8 @@ vi.mock('framer-motion', async () => {
 });
 
 afterEach(() => {
+  motionPreference.reduced = false;
+  motionPreference.start.mockClear();
   vi.restoreAllMocks();
 });
 
@@ -127,4 +135,16 @@ it('updates the original source when image metadata changes', async () => {
     view.unmount();
     await Promise.resolve();
   }
+});
+
+it('honours reduced motion when fitting and zooming original photos', () => {
+  motionPreference.reduced = true;
+  render(<OriginalPhotosViewer {...props} />);
+  expect(motionPreference.start).toHaveBeenLastCalledWith(
+    expect.objectContaining({ transition: { duration: 0 } })
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'View Original ×2.5' }));
+  expect(motionPreference.start).toHaveBeenLastCalledWith(
+    expect.objectContaining({ scale: 2.5, transition: { duration: 0 } })
+  );
 });

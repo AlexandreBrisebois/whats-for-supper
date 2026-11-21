@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "revision": "three-anchor-reviewed-2026-11-14.1",
+  "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1",
+  "units": [],
+  "releases": [
+    {
+      "revision": "three-anchor-reviewed-2026-11-14.1",
+      "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1",
+      "foods": [
+        {
+          "id": "ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+          "revision": "model-reviewed-2026-11-13.1/food-1",
+          "labels": {
+            "en": "Fresh bulb onion",
+            "fr": "Oignon frais"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "plantPart": "bulb",
+            "variety": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "onion",
+              "matchKey": "onion",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "onions",
+              "matchKey": "onions",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "onion, diced",
+              "matchKey": "onion, diced",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "onion, sliced",
+              "matchKey": "onion, sliced",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "oignon",
+              "matchKey": "oignon",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "oignons",
+              "matchKey": "oignons",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "oignon émincé",
+              "matchKey": "oignon émincé",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/ac9818ee-4c30-4f91-a4ea-0aa4fc7265ee",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "d9940182-48c9-4823-a820-1c7c54869d5f",
+          "revision": "model-reviewed-2026-11-13.1/food-2",
+          "labels": {
+            "en": "Fresh tomato",
+            "fr": "Tomate fraîche"
+          },
+          "qualifiers": {
+            "state": "fresh",
+            "productForm": "raw tomato",
+            "variety": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "tomato",
+              "matchKey": "tomato",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d9940182-48c9-4823-a820-1c7c54869d5f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "tomatoes",
+              "matchKey": "tomatoes",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d9940182-48c9-4823-a820-1c7c54869d5f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "tomate",
+              "matchKey": "tomate",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d9940182-48c9-4823-a820-1c7c54869d5f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "tomates",
+              "matchKey": "tomates",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/d9940182-48c9-4823-a820-1c7c54869d5f",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        },
+        {
+          "id": "031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+          "revision": "model-reviewed-2026-11-13.1/food-3",
+          "labels": {
+            "en": "Canned tomatoes, unspecified cut",
+            "fr": "Tomates en conserve, coupe non précisée"
+          },
+          "qualifiers": {
+            "preservation": "canned",
+            "productForm": "tomatoes",
+            "cut": "unspecified"
+          },
+          "status": "validated",
+          "aliases": [
+            {
+              "locale": "en",
+              "text": "canned tomato",
+              "matchKey": "canned tomato",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "en",
+              "text": "canned tomatoes",
+              "matchKey": "canned tomatoes",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "tomate en conserve",
+              "matchKey": "tomate en conserve",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            },
+            {
+              "locale": "fr",
+              "text": "tomates en conserve",
+              "matchKey": "tomates en conserve",
+              "relation": "exact",
+              "sourceRef": "wfs-local-model-proposal:model-draft-2026-11-12.1#food/031a0c4b-2d73-4a70-88aa-8ad3dd680ebb",
+              "reviewedAt": "2026-11-13T16:22:14.296144+00:00"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

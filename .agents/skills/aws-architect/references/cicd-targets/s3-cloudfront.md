@@ -8,7 +8,6 @@ account topology or deployment. Verify prices, limits, versions and policy scope
 against current provider documentation before relying on them. Existing authorization
 and shared repository policy govern any actual action.
 
-
 ## Pattern Overview
 
 S3 hosts the built assets. CloudFront serves them globally with caching. The deployment is a 3-step process:
@@ -64,12 +63,12 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_API_URL: ${{ vars.STAGING_API_URL }}   # or NEXT_PUBLIC_*, etc.
+          VITE_API_URL: ${{ vars.STAGING_API_URL }} # or NEXT_PUBLIC_*, etc.
 
       - uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: dist/   # or out/ for Next.js static export
+          path: dist/ # or out/ for Next.js static export
 
   deploy-staging:
     needs: build
@@ -153,12 +152,7 @@ jobs:
     {
       "Sid": "S3Deploy",
       "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucket"
-      ],
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"],
       "Resource": [
         "arn:aws:s3:::my-site-staging",
         "arn:aws:s3:::my-site-staging/*",
@@ -169,10 +163,7 @@ jobs:
     {
       "Sid": "CloudFrontInvalidate",
       "Effect": "Allow",
-      "Action": [
-        "cloudfront:CreateInvalidation",
-        "cloudfront:GetInvalidation"
-      ],
+      "Action": ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation"],
       "Resource": [
         "arn:aws:cloudfront::*:distribution/STAGING_DIST_ID",
         "arn:aws:cloudfront::*:distribution/PROD_DIST_ID"
@@ -202,9 +193,7 @@ export class FrontendStack extends cdk.Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       versioned: false,
-      removalPolicy: props.env === 'prod'
-        ? cdk.RemovalPolicy.RETAIN
-        : cdk.RemovalPolicy.DESTROY,
+      removalPolicy: props.env === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: props.env !== 'prod',
     });
 
@@ -245,13 +234,13 @@ export class FrontendStack extends cdk.Stack {
 
 ## Cache-Control Strategy
 
-| File type | Cache-Control | Rationale |
-|---|---|---|
-| `index.html`, `*.html` | `no-cache, no-store` | Always fetch fresh; HTML points to hashed assets |
-| `*.js`, `*.css` with hash | `public, max-age=31536000, immutable` | Content-addressable — safe to cache forever |
-| `*.woff2`, fonts | `public, max-age=31536000, immutable` | Fonts don't change |
-| `favicon.ico`, `robots.txt` | `public, max-age=86400` | Mostly static, 1-day cache |
-| `manifest.json` | `no-cache` | PWA manifest changes need to be picked up |
+| File type                   | Cache-Control                         | Rationale                                        |
+| --------------------------- | ------------------------------------- | ------------------------------------------------ |
+| `index.html`, `*.html`      | `no-cache, no-store`                  | Always fetch fresh; HTML points to hashed assets |
+| `*.js`, `*.css` with hash   | `public, max-age=31536000, immutable` | Content-addressable — safe to cache forever      |
+| `*.woff2`, fonts            | `public, max-age=31536000, immutable` | Fonts don't change                               |
+| `favicon.ico`, `robots.txt` | `public, max-age=86400`               | Mostly static, 1-day cache                       |
+| `manifest.json`             | `no-cache`                            | PWA manifest changes need to be picked up        |
 
 **Cost note:** CloudFront invalidations are free for the first 1,000 paths/month. Invalidating `/*` counts as one path. For high-frequency deploys, consider path-specific invalidations for changed files only.
 
@@ -259,12 +248,12 @@ export class FrontendStack extends cdk.Stack {
 
 ## GitHub Actions Variables to Configure
 
-| Variable Name | Value |
-|---|---|
-| `AWS_DEPLOY_ROLE_ARN` | ARN of the staging deploy role |
-| `AWS_PROD_DEPLOY_ROLE_ARN` | ARN of the prod deploy role |
-| `S3_BUCKET_STAGING` | S3 bucket name (staging) |
-| `S3_BUCKET_PROD` | S3 bucket name (prod) |
-| `CF_DISTRIBUTION_STAGING` | CloudFront distribution ID (staging) |
-| `CF_DISTRIBUTION_PROD` | CloudFront distribution ID (prod) |
-| `STAGING_API_URL` | Backend API URL for staging builds |
+| Variable Name              | Value                                |
+| -------------------------- | ------------------------------------ |
+| `AWS_DEPLOY_ROLE_ARN`      | ARN of the staging deploy role       |
+| `AWS_PROD_DEPLOY_ROLE_ARN` | ARN of the prod deploy role          |
+| `S3_BUCKET_STAGING`        | S3 bucket name (staging)             |
+| `S3_BUCKET_PROD`           | S3 bucket name (prod)                |
+| `CF_DISTRIBUTION_STAGING`  | CloudFront distribution ID (staging) |
+| `CF_DISTRIBUTION_PROD`     | CloudFront distribution ID (prod)    |
+| `STAGING_API_URL`          | Backend API URL for staging builds   |

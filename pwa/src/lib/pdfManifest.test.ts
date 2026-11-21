@@ -6,6 +6,13 @@ describe('always-on PDF share manifest', () => {
     expect(manifest.id).toBe('/');
     expect(manifest.shortcuts).toEqual([
       {
+        name: 'Vote Together',
+        short_name: 'Vote',
+        description: 'Vote on supper ideas with your family',
+        url: '/discovery',
+        icons: [{ src: '/android-chrome-192x192.png', sizes: '192x192' }],
+      },
+      {
         name: 'Search',
         short_name: 'Search',
         description: 'Search your recipe library',

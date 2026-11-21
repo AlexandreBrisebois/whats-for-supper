@@ -16,11 +16,13 @@ Non-normative review history is also rendered in design.md; comments are not pro
 For authorized ordinary-household URL or photo capture with an existing bound member, when initial persistence succeeds, the API SHALL record that member's ID as `addedBy` in both the recipe row and initial recipe metadata. This attribution SHALL identify the submitting member without establishing a personal account or exclusive ownership of the shared recipe. Capture acceptance, dispatch and readiness SHALL follow recipe-capture requirements.
 
 #### Scenario: Attribute a successfully persisted URL intake
+
 - **WHEN** POST `/api/recipes/capture-url` binds an existing member and initial persistence succeeds
 - **THEN** the new recipe row and initial recipe metadata record that member as addedBy
 - **AND** this records the submitter without certifying background completion
 
 #### Scenario: Attribute a successfully persisted photo intake
+
 - **WHEN** POST `/api/recipes` binds an existing member and initial photo persistence succeeds
 - **THEN** the new recipe row and initial recipe metadata record that member as addedBy
 - **AND** this records the submitter without certifying background completion

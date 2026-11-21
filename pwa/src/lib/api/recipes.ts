@@ -1,5 +1,10 @@
-import { createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
+import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
+import { DateOnly, createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
 import { JsonParseNode } from '@microsoft/kiota-serialization-json';
+import { normalizeGroceryQuantity } from './grocery-quantities';
+import { canonicalIngredientLinesForTransport } from './canonical-edit-wire';
+import { normalizeSupperPreparation } from './supper-servings';
+import { civilDate } from '@/lib/deployment-calendar';
 import { demoFetch } from './demo-session';
 import { apiClient, requestAdapter } from './api-client';
 import { useFamilyStore } from '@/store/familyStore';
@@ -7,11 +12,17 @@ import { usePlannerStore } from '@/store/plannerStore';
 import { getFamilyMemberIdCookie } from '@/lib/identity/cookie';
 
 import { ImportReportRequestBuilderRequestsMetadata } from './generated/api/recipes/item/importReport';
+import type { OriginalsPostResponse } from './generated/api/recipes/item/originals';
 import { createRecipeImportReportSubmissionResponseDtoFromDiscriminatorValue } from './generated/models';
 import { RecipeShareInfoDto_bundleSourceObject } from './generated/models/index';
 import type {
+  IngredientProjection,
+  IngredientPreview,
   ImportedRecipeDto,
   RecipeDto,
+  RecipeIngredientLine,
+  RecipeInstructionSection,
+  UpdateRecipeDto,
   RecipeShareBundleDto,
   RecipeShareInfoDto_bundleSource,
   UpdateRecipeDto_mealTypes,
@@ -36,6 +47,10 @@ export interface Recipe {
   rating: number;
   notes?: string | null;
   isDiscoverable?: boolean;
+  contentSchemaVersion?: number | null;
+  contentRevision?: string | null;
+  ingredientLines?: RecipeIngredientLine[] | null;
+  instructionSections?: RecipeInstructionSection[] | null;
   ingredients?: string[];
   servings?: number | null;
   isVegetarian?: boolean;
@@ -154,6 +169,12 @@ function unwrapUntypedNode(node: any): any {
   return node;
 }
 
+// Kiota's object factory can represent a wire null as an empty object.
+// Normalize those optional facts before they become an editable saved snapshot.
+function nullableFact<T extends object>(value: T | null | undefined): T | null {
+  return value && Object.keys(value).length > 0 ? value : null;
+}
+
 function mapToRecipe(dto: RecipeDto): Recipe {
   const recipeInstructions = unwrapUntypedNode(dto.recipeInstructions);
 
@@ -167,6 +188,26 @@ function mapToRecipe(dto: RecipeDto): Recipe {
     rating: dto.rating || 0,
     notes: dto.notes ?? null,
     isDiscoverable: dto.isDiscoverable ?? false,
+    contentSchemaVersion: dto.contentSchemaVersion,
+    contentRevision: dto.contentRevision,
+    ingredientLines: dto.ingredientLines?.map((row) => {
+      const pack = nullableFact(row.packageEscaped);
+      return {
+        ...row,
+        amount: normalizeGroceryQuantity(row.amount),
+        unit: nullableFact(row.unit),
+        packageEscaped: pack?.capacity
+          ? {
+              ...pack,
+              capacity: {
+                ...pack.capacity,
+                amount: normalizeGroceryQuantity(pack.capacity.amount),
+              },
+            }
+          : pack,
+      };
+    }),
+    instructionSections: dto.instructionSections,
     ingredients: dto.ingredients ?? [],
     servings: dto.servings ?? null,
     isVegetarian: dto.isVegetarian ?? false,
@@ -243,6 +284,58 @@ export async function getRecipe(id: string): Promise<Recipe> {
   const result = await apiClient.api.recipes.byId(id as any).get();
   if (!result?.recipe) throw new Error('Recipe not found');
   return mapToRecipe(result.recipe);
+}
+
+export type IngredientContext = { supperDate: string } & (
+  { context: 'proposed' } | { context: 'assigned'; occurrenceId: string }
+);
+
+export async function getIngredientProjection(
+  id: string,
+  context: IngredientContext
+): Promise<IngredientProjection> {
+  const result = await apiClient.api.recipes.byId(id as any).ingredientProjection.get({
+    queryParameters: {
+      supperDate: DateOnly.parse(context.supperDate)!,
+      context: context.context,
+      ...(context.context === 'assigned' ? { occurrenceId: context.occurrenceId as any } : {}),
+    },
+  });
+  if (
+    !result?.version ||
+    String(result.recipeId) !== id ||
+    civilDate(result.supperDate) !== context.supperDate ||
+    result.context !== context.context ||
+    (context.context === 'assigned' && String(result.occurrenceId) !== context.occurrenceId) ||
+    !Array.isArray(result.lines)
+  )
+    throw new Error('Could not confirm ingredients for this supper.');
+  return {
+    ...result,
+    preparation: normalizeSupperPreparation(result.preparation),
+    instructionProjection: Array.isArray(result.instructionProjection?.sections)
+      ? result.instructionProjection
+      : null,
+  };
+}
+
+export type PreviewPortions = 2 | 4 | 6;
+
+export async function getIngredientPreview(
+  id: string,
+  target: PreviewPortions
+): Promise<IngredientPreview> {
+  const result = await apiClient.api.recipes
+    .byId(id as any)
+    .ingredientPreview.get({ queryParameters: { targetServings: target } });
+  if (
+    !result?.version ||
+    String(result.recipeId) !== id ||
+    result.targetServings !== target ||
+    !Array.isArray(result.lines)
+  )
+    throw new Error('Could not confirm ingredient preview.');
+  return result;
 }
 
 // Local classification of raw Save response validity before generated decoding.
@@ -431,7 +524,7 @@ export async function getRecipeImportStatus(importId: string): Promise<RecipeImp
   };
 }
 
-export async function uploadRecipeOriginal(id: string, file: File): Promise<{ id: string }> {
+export async function uploadRecipeOriginal(id: string, file: File): Promise<{ id: number }> {
   const familyMemberId = useFamilyStore.getState().selectedFamilyMemberId;
   const formData = new FormData();
   formData.append('file', file);
@@ -448,9 +541,11 @@ export async function uploadRecipeOriginal(id: string, file: File): Promise<{ id
     throw new Error(`Failed to upload photo: ${response.statusText}`);
   }
 
-  const result = await response.json();
+  const result: OriginalsPostResponse = await response.json();
+  if (typeof result.data?.id !== 'number')
+    throw new Error('Upload response is missing its image index.');
   return {
-    id: result?.id || '',
+    id: result.data.id,
   };
 }
 
@@ -484,7 +579,10 @@ export async function getRecipeShareBundle(id: string): Promise<RecipeShareBundl
 }
 
 export async function importRecipeShareBundle(bundle: RecipeShareBundleDto): Promise<Recipe> {
-  const result = await apiClient.api.recipes.importBundle.post(bundle);
+  // An uncertain reply may follow publication; another POST creates another recipe.
+  const result = await apiClient.api.recipes.importBundle.post(bundle, {
+    options: [new RetryHandlerOptions({ maxRetries: 0 })],
+  });
   if (!result?.data) {
     throw new Error('Could not import this recipe right now.');
   }
@@ -705,6 +803,9 @@ async function readFileAsText(file: File): Promise<string> {
 export async function updateRecipe(
   id: string,
   updates: {
+    expectedContentRevision?: string;
+    ingredientLines?: UpdateRecipeDto['ingredientLines'];
+    instructionSections?: UpdateRecipeDto['instructionSections'];
     servings?: number;
     name?: string;
     description?: string;
@@ -716,8 +817,11 @@ export async function updateRecipe(
     cuisineType?: string | null;
     mealTypes?: UpdateRecipeDto_mealTypes[] | null;
   }
-): Promise<void> {
-  await apiClient.api.recipes.byId(id as any).patch({
+): Promise<Recipe | void> {
+  const result = await apiClient.api.recipes.byId(id as any).patch({
+    expectedContentRevision: updates.expectedContentRevision,
+    ingredientLines: canonicalIngredientLinesForTransport(updates.ingredientLines),
+    instructionSections: updates.instructionSections,
     servings: updates.servings,
     name: updates.name,
     description: updates.description,
@@ -734,6 +838,7 @@ export async function updateRecipe(
     cuisineType: updates.cuisineType,
     mealTypes: updates.mealTypes,
   });
+  return result?.recipe ? mapToRecipe(result.recipe) : undefined;
 }
 
 export class RecipeSearchRequestError extends Error {

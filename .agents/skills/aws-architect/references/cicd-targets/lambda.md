@@ -8,7 +8,6 @@ account topology or deployment. Verify prices, limits, versions and policy scope
 against current provider documentation before relying on them. Existing authorization
 and shared repository policy govern any actual action.
 
-
 ## Prerequisites
 
 - CDK bootstrapped in each target account + region: `cdk bootstrap aws://ACCOUNT/REGION`
@@ -115,7 +114,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  SAM_BUCKET: my-sam-artifacts-bucket   # S3 bucket for SAM artifacts
+  SAM_BUCKET: my-sam-artifacts-bucket # S3 bucket for SAM artifacts
 
 jobs:
   deploy-staging:

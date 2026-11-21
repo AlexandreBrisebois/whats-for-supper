@@ -1,4 +1,6 @@
 'use client';
+import { PreparationStatus } from '@/components/planner/PreparationStatus';
+import { prepareSupper } from '@/lib/api/supper-servings';
 import { CalendarUnavailableError } from '@/lib/deployment-calendar';
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
@@ -24,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import {
   getRecipe,
+  getIngredientProjection,
   resolveRecipeImportIssue,
   saveRecipeImportIssue,
   updateRecipe,
@@ -33,8 +36,15 @@ import { SolarLoader } from '@/components/ui/SolarLoader';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
 import { OriginalPhotosViewer } from '@/components/recipes/OriginalPhotosViewer';
 import { RecipeImportIssueSheet } from '@/components/recipes/RecipeImportIssueSheet';
+import { subscribeIngredientProjectionInvalidation } from '@/lib/ingredient-projection-invalidation';
+import { ingredientProjectionText } from '@/lib/ingredient-presentation';
+import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
 import { t, tWithVars } from '@/locales';
-import { parseRecipeSteps, type CookingStep } from '@/lib/cooking/stepParser';
+import {
+  parseRecipeSteps,
+  projectedCookingSteps,
+  type CookingStep,
+} from '@/lib/cooking/stepParser';
 import { formatCookingInstruction } from '@/lib/cooking/instructionPresentation';
 import { getImageUrl } from '@/lib/imageUtils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -52,6 +62,7 @@ interface CooksModeProps {
     isVegetarian?: boolean;
     isCold?: boolean;
   };
+  ingredientContext?: import('@/lib/api/recipes').IngredientContext;
   onClose: () => void;
   /** Optional notification after the viewed recipe's cooking completion has been saved. */
   onCooked?: () => void;
@@ -65,10 +76,158 @@ function updateInstructionValue(value: unknown, instruction: string): unknown {
   return { ...step, name: instruction };
 }
 
-export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksModeProps) {
+export function CooksMode({
+  recipe: initialRecipe,
+  onClose,
+  onCooked,
+  ingredientContext,
+}: CooksModeProps) {
   const router = useRouter();
   const stackedLayout = useMediaQuery('(max-width: 767px)');
   const [recipeDetails, setRecipeDetails] = useState<Recipe | null>(null);
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const contextKey = ingredientContext
+    ? JSON.stringify([initialRecipe.id, ingredientContext])
+    : null;
+  const contentKey = contextKey ?? JSON.stringify([initialRecipe.id, 'original']);
+  const [projectionRead, setProjectionRead] = useState<{
+    key: string;
+    data?: import('@/lib/api/generated/models').IngredientProjection;
+    error?: boolean;
+  } | null>(null);
+  const [projectionAttempt, setProjectionAttempt] = useState(0);
+  const quantityRequest = useRef(0);
+  useEffect(
+    () => () => {
+      quantityRequest.current++;
+    },
+    [contentKey]
+  );
+  const projection = projectionRead?.key === contextKey ? projectionRead?.data : undefined;
+  const projectionError = projectionRead?.key === contextKey && projectionRead?.error;
+  useEffect(() => {
+    if (!contextKey) return;
+    let active = true;
+    const generation = ++quantityRequest.current;
+    const [id, context] = JSON.parse(contextKey);
+    void getIngredientProjection(id, context)
+      .then((data) => {
+        if (active && generation === quantityRequest.current)
+          setProjectionRead({ key: contextKey, data });
+      })
+      .catch(() => {
+        if (active && generation === quantityRequest.current)
+          setProjectionRead({ key: contextKey, error: true });
+      });
+    return () => {
+      active = false;
+    };
+  }, [contextKey, projectionAttempt]);
+  const [quantityNotice, setQuantityNotice] = useState<{
+    key: string;
+    available: boolean;
+    error: boolean;
+  } | null>(null);
+  const quantitiesAvailable = quantityNotice?.key === contentKey && quantityNotice.available;
+  const quantityRefreshError = quantityNotice?.key === contentKey && quantityNotice.error;
+  const [quantityRefreshing, setQuantityRefreshing] = useState(false);
+  const quantityInvalidated = useRef(false);
+  const quantityRefreshInFlight = useRef(false);
+  const appliedProjection = useRef(projection);
+  const gatheredRef = useRef<Record<string, boolean>>({});
+  const currentStepRef = useRef(0);
+  const isEditingRef = useRef(false);
+  const instructionScrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    appliedProjection.current = projection;
+  }, [projection]);
+  useEffect(() => {
+    if (!contextKey) return;
+    let active = true;
+    let probeRequest = 0;
+    const [id, context] = JSON.parse(contextKey);
+    const probe = async () => {
+      if (!appliedProjection.current || quantityRefreshInFlight.current) {
+        quantityInvalidated.current = true;
+        return;
+      }
+      quantityInvalidated.current = false;
+      // A background hint can retire another probe, but cannot supersede an
+      // explicit Save or refresh. Foreground work still retires older probes.
+      const generation = quantityRequest.current;
+      const probeGeneration = ++probeRequest;
+      try {
+        const current = await getIngredientProjection(id, context);
+        if (!active || generation !== quantityRequest.current || probeGeneration !== probeRequest)
+          return;
+        const hasCookingProgress =
+          Object.values(gatheredRef.current).some(Boolean) ||
+          currentStepRef.current > 0 ||
+          isEditingRef.current ||
+          (instructionScrollRef.current?.scrollTop ?? 0) > 0;
+        const changed =
+          current.version !== appliedProjection.current!.version ||
+          current.contentRevision !== appliedProjection.current!.contentRevision;
+        if (!changed || !hasCookingProgress) {
+          setProjectionRead({ key: contextKey, data: current });
+          setQuantityNotice({ key: contextKey, error: false, available: false });
+        } else {
+          setQuantityNotice({ key: contextKey, error: false, available: true });
+        }
+      } catch {
+        if (active && generation === quantityRequest.current && probeGeneration === probeRequest)
+          setQuantityNotice((previous) => ({
+            key: contextKey,
+            error: true,
+            available: previous?.key === contextKey && previous.available,
+          }));
+      }
+    };
+    const unsubscribe = subscribeIngredientProjectionInvalidation(context, () => void probe());
+    if (quantityInvalidated.current) void probe();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [contextKey, projection]);
+  const refreshQuantities = async () => {
+    if (quantityRefreshInFlight.current) return;
+    quantityRefreshInFlight.current = true;
+    const generation = ++quantityRequest.current;
+    setQuantityRefreshing(true);
+    try {
+      if (contextKey) {
+        const [id, context] = JSON.parse(contextKey);
+        const data = await getIngredientProjection(id, context);
+        if (generation !== quantityRequest.current) return;
+        setProjectionRead({ key: contextKey, data });
+      } else {
+        const details = await getRecipe(initialRecipe.id);
+        if (generation !== quantityRequest.current) return;
+        setRecipeDetails(details);
+        setParsedSteps(parseRecipeSteps(details.recipeInstructions));
+      }
+      setQuantityNotice({ key: contentKey, error: false, available: false });
+      if (preparationReview === 'quantities') {
+        uncertainPreparation.current = null;
+        setCheckingPreparation(false);
+        setPreparationReview(null);
+        setCompletionError(null);
+      }
+    } catch {
+      if (generation === quantityRequest.current)
+        setQuantityNotice((previous) => ({
+          key: contentKey,
+          error: true,
+          available: previous?.key === contentKey && previous.available,
+        }));
+    } finally {
+      // Only one explicit refresh runs at a time. A report may retire its data
+      // generation, but the settled request must still release the retry control.
+      quantityRefreshInFlight.current = false;
+      setQuantityRefreshing(false);
+    }
+  };
   const [parsedSteps, setParsedSteps] = useState<CookingStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [contentError, setContentError] = useState(false);
@@ -79,6 +238,61 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [isCompleting, setIsCompleting] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
   const completionInFlight = useRef(false);
+  const uncertainPreparation = useRef<
+    import('@/lib/api/generated/models').PrepareSupperRequest | null
+  >(null);
+  const [checkingPreparation, setCheckingPreparation] = useState(false);
+  const [preparationReview, setPreparationReview] = useState<'required' | 'quantities' | null>(
+    null
+  );
+  const [reviewingPreparation, setReviewingPreparation] = useState(false);
+  const reviewPreparation = async () => {
+    if (!contextKey || ingredientContext?.context !== 'assigned' || reviewingPreparation) return;
+    setReviewingPreparation(true);
+    setCompletionError(null);
+    const generation = ++quantityRequest.current;
+    try {
+      // The captured identity stays fixed: a recreated assignment must fail this read.
+      const current = await getIngredientProjection(initialRecipe.id, ingredientContext);
+      if (generation !== quantityRequest.current) return;
+      if (current.preparation) {
+        setProjectionRead({ key: contextKey, data: current });
+        uncertainPreparation.current = null;
+        setCheckingPreparation(false);
+        setPreparationReview(null);
+        useTodayStore.getState().confirmPreparation({
+          occurrenceId: current.occurrenceId,
+          recipeId: current.recipeId,
+          supperDate: current.supperDate,
+          preparation: current.preparation,
+        });
+        return;
+      }
+      if (!current.preparationPlanToken || !current.preparationServingVersion)
+        throw new Error('Preparation needs confirmation.');
+      if (current.version !== appliedProjection.current?.version) {
+        setPreparationReview('quantities');
+        setQuantityNotice({ key: contextKey, available: true, error: false });
+      } else {
+        // Explicit review may accept fresh guards only for the quantities already displayed.
+        setProjectionRead({ key: contextKey, data: current });
+        uncertainPreparation.current = null;
+        setCheckingPreparation(false);
+        setPreparationReview(null);
+        setQuantityNotice({ key: contextKey, available: false, error: false });
+      }
+    } catch {
+      if (generation === quantityRequest.current)
+        setCompletionError(
+          t(
+            'cook.preparationReviewFailed',
+            'Could not review this supper. Your cooking work is kept.'
+          )
+        );
+    } finally {
+      setReviewingPreparation(false);
+    }
+  };
   const [showDetailId, setShowDetailId] = useState<string | null>(null);
 
   const [showOriginals, setShowOriginals] = useState(false);
@@ -88,7 +302,17 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const [reimportAcknowledgement, setReimportAcknowledgement] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingValue, setEditingValue] = useState('');
+  const activeInstructionDraft = useRef(editingValue);
+  useLayoutEffect(() => {
+    activeInstructionDraft.current = editingValue;
+  }, [editingValue]);
   const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
+  const [editSnapshot, setEditSnapshot] = useState<{
+    details: Recipe;
+    projection: typeof projection;
+    step: CookingStep;
+  } | null>(null);
+  const uncertainInstructionSave = useRef(false);
   const [editPending, setEditPending] = useState(false);
   const [editError, setEditError] = useState(false);
   const [editAnnouncement, setEditAnnouncement] = useState('');
@@ -116,7 +340,23 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
   const currentViewSaveState = viewSaveMemberId === selectedFamilyMemberId ? viewSaveState : 'idle';
   const singlePageEnabled = cookingViewMode === 'all-steps';
   const { cookProgress, setCookProgress } = usePlannerStore();
-  const currentStep = Math.min(cookProgress[initialRecipe.id] ?? 0, parsedSteps.length);
+  const progressKey = ingredientContext
+    ? JSON.stringify([
+        initialRecipe.id,
+        ingredientContext.supperDate,
+        ingredientContext.context,
+        ingredientContext.context === 'assigned' ? ingredientContext.occurrenceId : null,
+      ])
+    : initialRecipe.id;
+  const projectedSteps = projectedCookingSteps(projection);
+  const steps = projectedSteps ?? parsedSteps;
+  const currentStep = Math.min(cookProgress[progressKey] ?? 0, steps.length);
+
+  useLayoutEffect(() => {
+    gatheredRef.current = gathered;
+    currentStepRef.current = currentStep;
+    isEditingRef.current = isEditing;
+  }, [gathered, currentStep, isEditing]);
 
   useLayoutEffect(() => {
     if (viewSelectionRef.current.memberId !== selectedFamilyMemberId) {
@@ -162,7 +402,16 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     };
   }, [initialRecipe.id, readAttempt]);
 
-  const steps = parsedSteps;
+  const ingredients = ingredientContext
+    ? (projection?.lines ?? []).map((line, index) => ({
+        key: `${index}:${line.originalText}`,
+        text: ingredientProjectionText(line),
+      }))
+    : (recipeDetails?.ingredients ?? []).map((text) => ({ key: text, text }));
+  const scaled =
+    projection?.factor != null &&
+    projection.factor !== 1 &&
+    projection.lines?.some((line) => line.status === 'scaled');
   const hasInstructions = steps.length > 0;
   const isPrepStep = currentStep === 0 || (singlePageEnabled && showIngredients);
   const isResumingSteps = singlePageEnabled && showIngredients && currentStep > 0;
@@ -174,7 +423,6 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     editPending || reportPending || isCompleting || currentViewSaveState === 'saving';
   const isCompletionAction =
     !hasInstructions || (!isPrepStep && (singlePageEnabled || currentStep === steps.length));
-  const instructionScrollRef = useRef<HTMLDivElement>(null);
   const resumeScrollTopRef = useRef<number | null>(null);
 
   const saveCookingView = async (mode: CookingViewMode) => {
@@ -229,7 +477,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       resumeScrollTopRef.current = null;
       return;
     }
-    const savedStep = usePlannerStore.getState().cookProgress[initialRecipe.id] ?? 1;
+    const savedStep = usePlannerStore.getState().cookProgress[progressKey] ?? 1;
     const row = surface?.querySelector<HTMLElement>(`[data-cooking-step="${savedStep}"]`);
     if (surface && row && savedStep > 1) {
       surface.scrollTop +=
@@ -237,7 +485,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     } else if (surface) {
       surface.scrollTop = 0;
     }
-  }, [isLoading, singlePageCooking, isResumingSteps, initialRecipe.id]);
+  }, [isLoading, singlePageCooking, isResumingSteps, progressKey]);
 
   const trackReadingPosition = (event: React.UIEvent<HTMLDivElement>) => {
     if (!singlePageCooking || showOriginals) return;
@@ -256,18 +504,79 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     ) {
       readingStep = steps.length;
     }
-    if (readingStep !== currentStep) setCookProgress(initialRecipe.id, readingStep);
+    if (readingStep !== currentStep) setCookProgress(progressKey, readingStep);
   };
 
-  const editingStep = editingStepIndex === null ? null : steps[editingStepIndex];
+  const editingStep = editingStepIndex === null ? null : editSnapshot?.step;
 
   const finishCooking = async () => {
-    if (completionInFlight.current) return;
+    if (completionInFlight.current || projection?.preparation || preparationReview) return;
     completionInFlight.current = true;
     setIsCompleting(true);
     setCompletionError(null);
     try {
-      await useTodayStore.getState().markCooked(initialRecipe.id);
+      if (ingredientContext?.context === 'assigned') {
+        const displayed = appliedProjection.current;
+        if (
+          !uncertainPreparation.current &&
+          (!displayed?.preparationPlanToken ||
+            !displayed.preparationServingVersion ||
+            quantitiesAvailable)
+        )
+          throw new Error(
+            t(
+              'cook.reviewPreparation',
+              'Review the current supper and quantities before preparing it.'
+            )
+          );
+        const request = uncertainPreparation.current ?? {
+          expectedOccurrenceId: ingredientContext.occurrenceId as any,
+          recipeId: initialRecipe.id as any,
+          expectedPlanToken: displayed!.preparationPlanToken,
+          expectedServingVersion: displayed!.preparationServingVersion,
+        };
+        const confirmCaptured = async () => {
+          const current = await getIngredientProjection(initialRecipe.id, ingredientContext);
+          if (
+            current.preparation?.planToken !== request.expectedPlanToken ||
+            current.preparation?.servingVersion !== request.expectedServingVersion
+          ) {
+            setPreparationReview('required');
+            throw new Error(
+              t(
+                'cook.preparationUnconfirmed',
+                'Preparation could not be confirmed. Review this supper before trying again.'
+              )
+            );
+          }
+          return {
+            occurrenceId: request.expectedOccurrenceId,
+            recipeId: request.recipeId,
+            supperDate: current.supperDate,
+            preparation: current.preparation,
+          };
+        };
+        let outcome;
+        if (uncertainPreparation.current) outcome = await confirmCaptured();
+        else {
+          try {
+            outcome = await prepareSupper(ingredientContext.supperDate, request);
+          } catch (error) {
+            const status = (error as { responseStatusCode?: number })?.responseStatusCode;
+            if (status === 400 || status === 409 || status === 412) {
+              setPreparationReview('required');
+              throw error;
+            }
+            // Retain the original guards across failed reads; recovery never replays this write.
+            uncertainPreparation.current = request;
+            setCheckingPreparation(true);
+            outcome = await confirmCaptured();
+          }
+        }
+        uncertainPreparation.current = null;
+        setCheckingPreparation(false);
+        useTodayStore.getState().confirmPreparation(outcome);
+      } else await useTodayStore.getState().markCooked(initialRecipe.id);
       setShowCelebration(true);
       setTimeout(() => {
         onCooked?.();
@@ -286,10 +595,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
   const nextStep = () => {
     if (isPrepStep) {
-      if (!isResumingSteps) setCookProgress(initialRecipe.id, 1);
+      if (!isResumingSteps) setCookProgress(progressKey, 1);
       setShowIngredients(false);
     } else if (currentStep < steps.length) {
-      setCookProgress(initialRecipe.id, currentStep + 1);
+      setCookProgress(progressKey, currentStep + 1);
     } else {
       void finishCooking();
     }
@@ -297,7 +606,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
   const prevStep = () => {
     if (currentStep > 0) {
-      setCookProgress(initialRecipe.id, currentStep - 1);
+      setCookProgress(progressKey, currentStep - 1);
     }
   };
 
@@ -306,8 +615,23 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     setShowIngredients(true);
   };
 
+  const startEdit = (index: number) => {
+    if (!recipeDetails) return;
+    const step = steps[index];
+    // A retained draft stays bound to its original content even across explicit refresh.
+    setEditSnapshot({ details: recipeDetails, projection, step });
+    setIsEditing(true);
+    setEditingStepIndex(index);
+    setEditingValue(step.editableInstruction ?? step.instruction);
+    setEditError(false);
+  };
+
   const handleSaveEdit = async () => {
-    if (!recipeDetails || !editingStep || editingValue === editingStep.editableInstruction) {
+    if (editPending) return;
+    const snapshot = editSnapshot;
+    const details = snapshot?.details;
+    const capturedProjection = snapshot?.projection;
+    if (!details || !editingStep || editingValue === editingStep.editableInstruction) {
       setIsEditing(false);
       setEditingStepIndex(null);
       return;
@@ -316,7 +640,93 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     setEditPending(true);
     setEditError(false);
     try {
-      const originalInstructions = [...(recipeDetails.recipeInstructions || [])];
+      const datedSections = capturedProjection?.instructionProjection?.sections;
+      if (datedSections || (details.instructionSections && details.contentRevision)) {
+        // A dated editor requires its captured coherent projection even while
+        // recovering. A detail read cannot turn it into an original-context save.
+        if (ingredientContext && (!datedSections || !capturedProjection?.contentRevision))
+          throw new Error('Missing captured cooking instruction projection');
+        const revision = capturedProjection?.contentRevision ?? details.contentRevision!;
+        const [sectionIndex, stepIndex] = editingStep.sourcePath!;
+        const instructionSections = datedSections
+          ? datedSections.map((section, outer) => ({
+              id: section.sectionId,
+              name: section.name ?? null,
+              steps: (section.steps ?? []).map((step, inner) => ({
+                id: step.stepId,
+                text:
+                  outer === sectionIndex && inner === stepIndex ? editingValue : step.originalText,
+              })),
+            }))
+          : details.instructionSections!.map((section, outer) => ({
+              id: section.id,
+              name: section.name ?? null,
+              steps: (section.steps ?? []).map((step, inner) => ({
+                id: step.id,
+                text: outer === sectionIndex && inner === stepIndex ? editingValue : step.text,
+              })),
+            }));
+        const generation = ++quantityRequest.current;
+        let saved: Recipe | void = undefined;
+        if (uncertainInstructionSave.current) {
+          const current = await getRecipe(initialRecipe.id);
+          if (
+            generation !== quantityRequest.current ||
+            editingValue !== activeInstructionDraft.current
+          )
+            throw new Error('Instruction recovery superseded');
+          const savedSections = current.instructionSections?.map((section) => ({
+            id: section.id,
+            name: section.name ?? null,
+            steps: (section.steps ?? []).map((step) => ({ id: step.id, text: step.text })),
+          }));
+          if (
+            current.contentRevision &&
+            JSON.stringify(savedSections) === JSON.stringify(instructionSections)
+          ) {
+            // Confirm the entire intended original content, not just a changed
+            // opaque revision or the prior attempt's text after the draft changes.
+            saved = current;
+          } else if (current.contentRevision !== revision) {
+            throw new Error('Instruction recovery needs current-content review');
+          }
+        }
+        if (!saved) {
+          uncertainInstructionSave.current = true;
+          saved = await updateRecipe(initialRecipe.id, {
+            expectedContentRevision: revision,
+            instructionSections,
+          });
+        }
+        if (!saved) throw new Error('Missing authoritative recipe after instruction save');
+        // A failed post-save read is also uncertain from the editor's perspective:
+        // recovery reads current detail instead of resubmitting the instruction.
+        if (ingredientContext && contextKey) {
+          const current = await getIngredientProjection(initialRecipe.id, ingredientContext);
+          if (
+            generation !== quantityRequest.current ||
+            editingValue !== activeInstructionDraft.current
+          )
+            throw new Error('Instruction save superseded');
+          quantityRequest.current++;
+          setProjectionRead({ key: contextKey, data: current });
+        } else {
+          if (
+            generation !== quantityRequest.current ||
+            editingValue !== activeInstructionDraft.current
+          )
+            throw new Error('Instruction save superseded');
+          setParsedSteps(parseRecipeSteps(saved.recipeInstructions));
+        }
+        setRecipeDetails(saved);
+        setQuantityNotice({ key: contentKey, error: false, available: false });
+        uncertainInstructionSave.current = false;
+        setIsEditing(false);
+        setEditingStepIndex(null);
+        setEditAnnouncement('Step saved');
+        return;
+      }
+      const originalInstructions = [...(details.recipeInstructions || [])];
       const [outerIndex, innerIndex] = editingStep.sourcePath ?? [editingStepIndex ?? 0];
       const updatedInstructions = originalInstructions.map((entry, index) => {
         if (index !== outerIndex) return entry;
@@ -338,7 +748,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
       // Update local state for immediate feedback
       const updatedDetails = {
-        ...recipeDetails,
+        ...details,
         recipeInstructions: updatedInstructions,
       };
       setRecipeDetails(updatedDetails);
@@ -371,13 +781,32 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     }
   };
 
+  const applyReportRecipe = (updated: Recipe) => {
+    // A report owns quality metadata, not the active content snapshot.
+    setRecipeDetails(
+      (current) =>
+        current && {
+          ...current,
+          importIssue: updated.importIssue,
+          canReimport: updated.canReimport,
+          isReady: updated.isReady,
+        }
+    );
+    const displayedRevision =
+      appliedProjection.current?.contentRevision ?? recipeDetails?.contentRevision;
+    if (updated.contentRevision && updated.contentRevision !== displayedRevision) {
+      // Retire reads started before this content hint, including a pending refresh.
+      quantityRequest.current++;
+      setQuantityNotice({ key: contentKey, error: false, available: true });
+    }
+  };
+
   const handleSaveImportIssue = async (draft: RecipeImportIssueDraft) => {
     if (!recipeDetails) return;
     setReportPending(true);
     try {
       const submission = await saveRecipeImportIssue(recipeDetails.id, draft);
-      setRecipeDetails(submission.recipe);
-      setParsedSteps(parseRecipeSteps(submission.recipe.recipeInstructions));
+      applyReportRecipe(submission.recipe);
       if (submission.reimportLaunchFailed) throw new Error('Re-import launch failed');
       setReportContext(null);
       setReimportAcknowledgement(submission.reimportStarted);
@@ -391,13 +820,30 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
     setReportPending(true);
     try {
       const updated = await resolveRecipeImportIssue(recipeDetails.id);
-      setRecipeDetails(updated);
-      setParsedSteps(parseRecipeSteps(updated.recipeInstructions));
+      applyReportRecipe(updated);
       setReportContext(null);
     } finally {
       setReportPending(false);
     }
   };
+
+  const stepEditError = editError && (
+    <div
+      role="alert"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body shadow-sm"
+    >
+      <p className="min-w-0 flex-1 font-semibold text-hearth-ink">Couldn&apos;t save this step.</p>
+      <Button
+        type="button"
+        variant="primary"
+        size="md"
+        disabled={editPending}
+        onClick={() => void handleSaveEdit()}
+      >
+        Try again
+      </Button>
+    </div>
+  );
 
   const currentStepData = steps[activeRecipeStepIndex];
   const focusedEdit = hasInstructions && !isEditing && !isPrepStep && !singlePageEnabled && (
@@ -406,9 +852,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
       data-testid="cooks-mode-edit-step"
       aria-label="Edit step"
       onClick={() => {
-        setIsEditing(true);
-        setEditingStepIndex(activeRecipeStepIndex);
-        setEditingValue(currentStepData.editableInstruction ?? currentStepData.instruction);
+        startEdit(activeRecipeStepIndex);
       }}
       className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-terracotta-700 focus-visible:ring-2 focus-visible:ring-terracotta"
     >
@@ -447,7 +891,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             transition={{ duration: 0.3 }}
             className="absolute inset-0 flex flex-col items-center justify-center bg-cream z-10"
           >
-            <Sparkles size={48} className="text-ochre mb-4" />
+            <Sparkles size={48} className="text-ochre-800 mb-4" />
             <p className="font-heading text-3xl font-black text-charcoal">Supper&apos;s done!</p>
             <p className="text-charcoal/60 mt-2 font-medium">Nice work.</p>
           </motion.div>
@@ -468,10 +912,11 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             onClick={() => setShowDetailId(initialRecipe.id)}
             className="absolute inset-0 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-terracotta"
           />
-          {initialRecipe.image ? (
+          {initialRecipe.image && failedPhoto !== initialRecipe.image ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={getImageUrl(initialRecipe.image)}
+              onError={() => setFailedPhoto(initialRecipe.image)}
               alt={initialRecipe.name || 'Recipe'}
               className="absolute inset-0 h-full w-full object-cover"
             />
@@ -524,10 +969,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                       : label
                   }
                   onClick={() => chooseCookingView(mode)}
-                  className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`inline-flex h-[48px] w-[48px] items-center justify-center rounded-full transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:cursor-not-allowed disabled:opacity-60 ${
                     selected
-                      ? 'bg-sage/20 text-sage-900 shadow-sm'
-                      : 'text-charcoal/55 hover:bg-white'
+                      ? 'bg-sage-50 text-garden-ink shadow-sm'
+                      : 'text-ink-muted hover:bg-white hover:text-ink-body'
                   }`}
                 >
                   {mode === 'all-steps' ? (
@@ -540,32 +985,36 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
             })}
           </div>
 
-          {stackedLayout && focusedEdit}
-          {hasOriginal && (
-            <button
-              type="button"
-              data-testid="cooks-mode-original"
-              ref={originalActionRef}
-              disabled={originalPending}
-              aria-busy={originalPending}
-              title={originalPending ? t('common.saving', 'Saving') : undefined}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (originalPending) return;
-                if (originalUrl) {
-                  if (recipeDetails?.id === initialRecipe.id)
-                    window.open(originalUrl, '_blank', 'noopener,noreferrer');
-                } else setShowOriginals(true);
-              }}
-              className="relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-charcoal/10 bg-white px-3 py-2 text-sm font-semibold text-charcoal-600 hover:bg-cream active:bg-charcoal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-charcoal-500 disabled:cursor-wait disabled:opacity-60"
-            >
-              {originalUrl ? (
-                <ExternalLink size={18} aria-hidden="true" />
-              ) : (
-                <Images size={18} aria-hidden="true" />
+          {((stackedLayout && focusedEdit) || hasOriginal) && (
+            <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 md:ml-0 md:justify-start">
+              {stackedLayout && focusedEdit}
+              {hasOriginal && (
+                <button
+                  type="button"
+                  data-testid="cooks-mode-original"
+                  ref={originalActionRef}
+                  disabled={originalPending}
+                  aria-busy={originalPending}
+                  title={originalPending ? t('common.saving', 'Saving') : undefined}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (originalPending) return;
+                    if (originalUrl) {
+                      if (recipeDetails?.id === initialRecipe.id)
+                        window.open(originalUrl, '_blank', 'noopener,noreferrer');
+                    } else setShowOriginals(true);
+                  }}
+                  className="relative z-20 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full border border-chrome-line bg-white px-3 py-2 text-sm font-semibold text-ink-body shadow-sm hover:bg-cream active:bg-charcoal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:cursor-wait disabled:opacity-60"
+                >
+                  {originalUrl ? (
+                    <ExternalLink size={18} aria-hidden="true" />
+                  ) : (
+                    <Images size={18} aria-hidden="true" />
+                  )}
+                  {t('recipes.viewOriginal', 'View Original')}
+                </button>
               )}
-              {t('recipes.viewOriginal', 'View Original')}
-            </button>
+            </div>
           )}
         </div>
         <div
@@ -581,7 +1030,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 event.stopPropagation();
                 setReportContext(isPrepStep ? 'ingredients' : 'steps');
               }}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-terracotta-600 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-chrome-line bg-white/95 text-hearth-ink shadow-md transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
               <Flag size={20} aria-hidden="true" />
             </button>
@@ -595,7 +1044,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 event.stopPropagation();
                 onClose();
               }}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/80 text-charcoal/60 shadow-md backdrop-blur-md transition hover:bg-white active:scale-90"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-chrome-line bg-white/95 text-ink-body shadow-md transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
               <X size={20} aria-hidden="true" />
             </button>
@@ -645,8 +1094,140 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
           ref={instructionScrollRef}
           onScroll={trackReadingPosition}
           data-testid="cooks-mode-instructions"
-          className="flex-1 overflow-y-auto bg-white/60"
+          className="min-h-0 flex-1 overflow-y-auto bg-white/60"
         >
+          {ingredientContext && (
+            <div className="border-b border-charcoal/10 px-4 py-2 text-sm text-charcoal md:px-6">
+              <p data-testid="cooking-portion-context">
+                {formatSupperPlanDate(ingredientContext.supperDate)}
+                {projection?.targetServings != null
+                  ? ` · ${tWithVars('recipes.portionCount', '{{count}} portions', { count: projection.targetServings })}`
+                  : ''}
+              </p>
+              {projection?.preparation && (
+                <PreparationStatus preparation={projection.preparation} />
+              )}
+              {!projection && !projectionError && (
+                <p role="status">
+                  {t('recipes.projectionLoading', 'Loading ingredients for this date…')}
+                </p>
+              )}
+              {projectionError && (
+                <div
+                  role="alert"
+                  className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body shadow-sm"
+                >
+                  <p className="min-w-0 flex-1 font-medium text-hearth-ink">
+                    {t(
+                      'recipes.projectionFailed',
+                      'Could not confirm ingredients for this supper.'
+                    )}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    onClick={() => setProjectionAttempt((value) => value + 1)}
+                  >
+                    {t('common.retry', 'Retry')}
+                  </Button>
+                </div>
+              )}
+              {(projection?.status === 'partial' || projection?.status === 'unresolved') && (
+                <p role="status">
+                  {t(
+                    'recipes.projectionReview',
+                    'Some amounts need review. Consult the original recipe.'
+                  )}
+                </p>
+              )}
+              {scaled && !projectedSteps && (
+                <p data-testid="cooking-instruction-limitation">
+                  {t(
+                    'cook.originalAmounts',
+                    'Ingredients are adjusted; step amounts remain original.'
+                  )}
+                </p>
+              )}
+            </div>
+          )}
+          {(quantitiesAvailable || quantityRefreshError || preparationReview) && (
+            <div
+              data-testid={preparationReview ? 'preparation-review' : 'cooking-update-bar'}
+              className="sticky top-0 z-10 shrink-0 flex flex-wrap items-center justify-between gap-3 border-y border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body md:px-6"
+            >
+              <div className="min-w-0 flex-1 space-y-1">
+                {preparationReview === 'required' ? (
+                  <p role="status" className="font-medium text-ink-body">
+                    {t(
+                      'cook.reviewCurrentSupperHelp',
+                      'Review the current supper and quantities before another attempt. Your cooking work is kept.'
+                    )}
+                  </p>
+                ) : (
+                  <>
+                    {quantitiesAvailable && (
+                      <p
+                        data-testid="cooking-quantities-available"
+                        role="status"
+                        className="font-medium text-ink-body"
+                      >
+                        {preparationReview === 'quantities'
+                          ? t(
+                              'cook.reviewChangedQuantities',
+                              'Refresh the changed quantities before marking this supper prepared.'
+                            )
+                          : t('cook.quantitiesAvailable', 'Updated quantities are available.')}
+                      </p>
+                    )}
+                    {quantityRefreshError && (
+                      <p role="alert" className="font-semibold text-hearth-ink">
+                        {t(
+                          'cook.quantityRefreshFailed',
+                          'Could not confirm updated quantities. Your current quantities and cooking work are kept.'
+                        )}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+              {preparationReview === 'required' ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  className="max-w-full whitespace-normal text-center"
+                  disabled={reviewingPreparation}
+                  onClick={() => void reviewPreparation()}
+                >
+                  {reviewingPreparation
+                    ? t('cook.reviewingCurrentSupper', 'Reviewing supper…')
+                    : t('cook.reviewCurrentSupper', 'Review current supper')}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  className="max-w-full whitespace-normal text-center"
+                  disabled={quantityRefreshing}
+                  onClick={() => void refreshQuantities()}
+                >
+                  {quantityRefreshing
+                    ? t('cook.refreshingQuantities', 'Refreshing quantities…')
+                    : t('cook.refreshQuantities', 'Refresh quantities')}
+                </Button>
+              )}
+            </div>
+          )}
+          {completionError && (
+            <p
+              role="alert"
+              className="border-y border-hearth-line bg-terracotta-50 px-4 py-3 text-sm font-medium text-hearth-ink md:px-6"
+            >
+              {completionError}
+            </p>
+          )}
           <div
             className={`min-h-full flex flex-col items-start justify-start ${singlePageCooking ? 'px-4 pt-5 pb-8 md:px-10 md:pt-8 lg:px-16' : 'px-8 pt-12 pb-24 md:px-16 md:pt-16 lg:px-24 lg:pt-16'} text-left`}
           >
@@ -667,9 +1248,18 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                 {!hasInstructions ? (
                   <div
                     data-testid="cooks-mode-no-steps"
-                    className="space-y-5 rounded-3xl border border-charcoal/10 bg-white p-6 text-charcoal"
+                    className={`space-y-5 rounded-3xl border p-6 text-ink-body ${
+                      contentError
+                        ? 'border-hearth-line bg-terracotta-50'
+                        : 'border-chrome-line bg-white'
+                    }`}
                   >
-                    <p role={contentError ? 'alert' : 'status'} className="text-lg font-bold">
+                    <p
+                      role={contentError ? 'alert' : 'status'}
+                      className={`text-lg font-bold ${
+                        contentError ? 'text-hearth-ink' : 'text-ink-body'
+                      }`}
+                    >
                       {contentError
                         ? t('cook.instructionsLoadError', 'Could not load cooking instructions.')
                         : t(
@@ -677,7 +1267,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                             'Cooking instructions are not available for this recipe.'
                           )}
                     </p>
-                    <p className="text-sm text-charcoal/70">
+                    <p className="text-sm text-ink-muted">
                       {t(
                         'cook.instructionsRecovery',
                         'You can open recipe details to view the original, or mark this recipe as cooked.'
@@ -704,10 +1294,10 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                   <div className="space-y-10">
                     <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
                       <div className="flex flex-col gap-2">
-                        <h3 className="text-3xl md:text-4xl lg:text-5xl font-heading font-black text-charcoal leading-tight">
+                        <h3 className="text-3xl md:text-4xl lg:text-5xl font-heading font-black text-ink-body leading-tight">
                           {t('cook.checkAndPrep', 'Check & Prep')}
                         </h3>
-                        <p className="text-xl md:text-2xl font-medium text-charcoal/50 leading-relaxed max-w-lg">
+                        <p className="text-xl md:text-2xl font-medium text-ink-muted leading-relaxed max-w-lg">
                           {t(
                             'cook.ingredientsReady',
                             'Check off your ingredients before you start cooking.'
@@ -717,19 +1307,19 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                     </div>
 
                     {/* Ingredients Grid */}
-                    {recipeDetails?.ingredients && recipeDetails.ingredients.length > 0 ? (
+                    {ingredients.length > 0 ? (
                       <div className="space-y-6">
                         {/* Progress counter */}
-                        <div className="flex items-center gap-2 text-sage">
+                        <div className="flex items-center gap-2 text-sage-700">
                           <CheckCircle2 size={16} />
-                          <span className="text-sm font-black uppercase tracking-wider">
-                            {Object.values(gathered).filter(Boolean).length} of{' '}
-                            {recipeDetails.ingredients.length} ready
+                          <span className="text-sm font-semibold">
+                            {ingredients.filter(({ key }) => gathered[key]).length} of{' '}
+                            {ingredients.length} ready
                           </span>
                         </div>
 
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 text-left">
-                          {recipeDetails.ingredients.map((ing, idx) => {
+                          {ingredients.map(({ key: ing, text }, idx) => {
                             const isChecked = !!gathered[ing];
                             return (
                               <motion.button
@@ -744,25 +1334,25 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                                 }
                                 className={`group flex items-center p-4 md:p-5 rounded-[1.5rem] w-full text-left border transition-all ${
                                   isChecked
-                                    ? 'bg-sage/10 border-sage/20'
-                                    : 'bg-white border-charcoal/5 shadow-sm hover:border-charcoal/10'
+                                    ? 'bg-sage-50 border-sage-200'
+                                    : 'bg-white border-charcoal-200 shadow-sm hover:border-charcoal-300'
                                 }`}
                               >
                                 <div
                                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 mr-4 transition-all ${
                                     isChecked
-                                      ? 'bg-sage border-sage text-white'
-                                      : 'border-charcoal/10 group-hover:border-charcoal/20'
+                                      ? 'bg-sage-700 border-sage-700 text-white'
+                                      : 'border-charcoal-200 group-hover:border-charcoal-400'
                                   }`}
                                 >
                                   {isChecked && <Check size={14} strokeWidth={4} />}
                                 </div>
                                 <span
                                   className={`text-lg font-bold transition-all ${
-                                    isChecked ? 'text-charcoal/40 line-through' : 'text-charcoal/80'
+                                    isChecked ? 'text-charcoal-600 line-through' : 'text-charcoal'
                                   }`}
                                 >
-                                  {ing}
+                                  {text}
                                 </span>
                               </motion.button>
                             );
@@ -770,9 +1360,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                         </div>
                       </div>
                     ) : (
-                      <div className="py-16 px-8 rounded-[2.5rem] bg-charcoal/5 border border-dashed border-charcoal/10 flex flex-col items-center text-center">
-                        <UtensilsCrossed size={32} className="text-charcoal/20 mb-4" />
-                        <p className="text-charcoal/40 font-bold max-w-xs">
+                      <div className="py-16 px-8 rounded-[2.5rem] bg-charcoal-100 border border-dashed border-charcoal-200 flex flex-col items-center text-center">
+                        <UtensilsCrossed size={32} className="text-charcoal-400 mb-4" />
+                        <p className="text-charcoal-600 font-semibold max-w-xs">
                           {t(
                             'cook.extractionInProgress',
                             "Extraction in progress... we're still identifying the exact quantities."
@@ -786,7 +1376,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                     <ol role="list" aria-label="Cooking steps" className="list-none space-y-4">
                       {steps.map((step, index) => {
                         const rowEditing = editingStepIndex === index;
-                        const instruction = step.editableInstruction ?? step.instruction;
+                        const instruction = projectedSteps
+                          ? step.instruction
+                          : (step.editableInstruction ?? step.instruction);
                         const showTitle =
                           Boolean(step.title.trim()) &&
                           !/^step\s+\d+$/i.test(step.title.trim()) &&
@@ -800,12 +1392,9 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                             data-testid={`single-page-edit-step-${step.index}`}
                             aria-label={`Edit step ${step.index}`}
                             onClick={() => {
-                              setIsEditing(true);
-                              setEditingStepIndex(index);
-                              setEditingValue(step.editableInstruction ?? step.instruction);
-                              setEditError(false);
+                              startEdit(index);
                             }}
-                            className={`h-11 w-11 shrink-0 items-center justify-center rounded-xl text-charcoal/70 hover:bg-charcoal/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta disabled:opacity-40 ${
+                            className={`h-12 w-12 shrink-0 items-center justify-center rounded-xl text-ink-muted hover:bg-charcoal/5 hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-40 ${
                               showTitle
                                 ? 'col-start-2 row-start-1 flex'
                                 : 'float-right -mt-1.5 ml-3 inline-flex'
@@ -822,14 +1411,14 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                             className="border-b border-charcoal/10 py-5 first:pt-0 last:border-0"
                           >
                             {showSection && (
-                              <p className="mb-3 text-sm font-bold text-terracotta-700">
+                              <p className="mb-3 text-sm font-bold text-hearth-ink">
                                 {step.sectionTitle}
                               </p>
                             )}
-                            <div className="grid grid-cols-[minmax(0,1fr)_2.75rem] items-start gap-x-3 gap-y-2">
+                            <div className="grid grid-cols-[minmax(0,1fr)_3rem] items-start gap-x-3 gap-y-2">
                               <div className="contents">
                                 {showTitle && (
-                                  <h4 className="col-start-1 row-start-1 min-w-0 break-words pt-1.5 font-heading text-xl font-semibold leading-[1.5] text-charcoal">
+                                  <h4 className="col-start-1 row-start-1 min-w-0 break-words pt-1.5 font-heading text-xl font-semibold leading-[1.5] text-ink-body">
                                     {step.title}
                                   </h4>
                                 )}
@@ -841,38 +1430,31 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                                       aria-label={`Edit step ${step.index} instructions`}
                                       value={editingValue}
                                       onChange={(event) => setEditingValue(event.target.value)}
-                                      className="min-h-40 w-full rounded-2xl border-2 border-charcoal/10 bg-white p-4 text-lg text-charcoal outline-none focus:border-terracotta"
+                                      className="min-h-40 w-full rounded-2xl border-2 border-chrome-line bg-white p-4 text-lg text-ink-body outline-none focus:border-hearth-line"
                                     />
                                     <div className="flex flex-wrap gap-3">
-                                      <button
+                                      <Button
                                         type="button"
+                                        variant="primary"
+                                        size="md"
                                         disabled={editPending}
                                         onClick={() => void handleSaveEdit()}
-                                        className="min-h-11 rounded-full bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-6 font-bold text-white disabled:opacity-50"
+                                        className="rounded-full px-6"
                                       >
                                         {editPending ? 'Saving…' : 'Save'}
-                                      </button>
-                                      <button
+                                      </Button>
+                                      <Button
                                         type="button"
+                                        variant="secondary"
+                                        size="md"
                                         disabled={editPending}
                                         onClick={handleCancelEdit}
-                                        className="min-h-11 rounded-full border border-charcoal/15 bg-white px-6 font-bold text-charcoal"
+                                        className="rounded-full px-6"
                                       >
                                         Cancel
-                                      </button>
+                                      </Button>
                                     </div>
-                                    {editError && (
-                                      <p role="alert" className="font-semibold text-terracotta">
-                                        Couldn&apos;t save this step.{' '}
-                                        <button
-                                          type="button"
-                                          onClick={() => void handleSaveEdit()}
-                                          className="min-h-11 underline"
-                                        >
-                                          Try again
-                                        </button>
-                                      </p>
-                                    )}
+                                    {stepEditError}
                                   </div>
                                 ) : (
                                   <div
@@ -911,26 +1493,33 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
                       value={editingValue}
                       onChange={(e) => setEditingValue(e.target.value)}
                     />
-                    <div className="flex items-center gap-4">
-                      <button
+                    <div className="flex flex-wrap items-center gap-4">
+                      <Button
                         type="button"
+                        variant="primary"
+                        size="lg"
                         data-testid="cooks-mode-save-edit"
+                        disabled={editPending}
                         onClick={handleSaveEdit}
-                        className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-terracotta active:bg-terracotta-700 px-10 text-base font-black text-white shadow-xl shadow-terracotta/20 transition hover:bg-terracotta-600 active:scale-95"
+                        className="gap-3 rounded-full px-8 shadow-xl shadow-terracotta/20"
                       >
                         <Check size={20} strokeWidth={3} />
-                        <span>{t('common.save', 'Save')}</span>
-                      </button>
-                      <button
+                        <span>{editPending ? 'Saving…' : t('common.save', 'Save')}</span>
+                      </Button>
+                      <Button
                         type="button"
+                        variant="secondary"
+                        size="lg"
                         data-testid="cooks-mode-cancel-edit"
+                        disabled={editPending}
                         onClick={handleCancelEdit}
-                        className="inline-flex h-14 items-center justify-center gap-3 rounded-full border-2 border-charcoal/10 bg-white px-8 text-base font-black text-charcoal shadow-sm transition hover:bg-charcoal/5 active:scale-95"
+                        className="gap-3 rounded-full px-8"
                       >
                         <X size={20} />
                         <span>{t('common.cancel', 'Cancel')}</span>
-                      </button>
+                      </Button>
                     </div>
+                    {stepEditError}
                   </div>
                 ) : (
                   <p
@@ -947,38 +1536,43 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
 
         {/* Controls */}
         {currentViewSaveState === 'failed' && selectedFamilyMember && (
-          <p role="alert" className="px-6 py-2 text-sm font-semibold text-terracotta">
-            {tWithVars('cook.viewSaveFailed', "View changed for now. Couldn't save for {{name}}.", {
-              name: selectedFamilyMember.name,
-            })}{' '}
-            <button
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 border-t border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-ink-body md:px-6"
+          >
+            <p className="min-w-0 flex-1 font-semibold text-hearth-ink">
+              {tWithVars(
+                'cook.viewSaveFailed',
+                "View changed for now. Couldn't save for {{name}}.",
+                {
+                  name: selectedFamilyMember.name,
+                }
+              )}
+            </p>
+            <Button
               type="button"
-              className="min-h-11 underline"
+              variant="primary"
+              size="md"
               onClick={() => {
                 const failedMode = failedViewModeRef.current;
                 if (failedMode) void saveCookingView(failedMode);
               }}
             >
               {t('cook.viewRetry', 'Retry')}
-            </button>
-          </p>
-        )}
-        {completionError && (
-          <p role="alert" className="px-6 py-2 text-sm text-terracotta">
-            {completionError}
-          </p>
+            </Button>
+          </div>
         )}
         {reimportAcknowledgement && (
           <p
             role="status"
-            className="shrink-0 px-4 py-2 text-sm font-semibold text-charcoal md:px-6"
+            className="shrink-0 px-4 py-2 text-sm font-semibold text-ink-body md:px-6"
           >
             Reimporting in background
           </p>
         )}
         <div
           data-testid="cooks-mode-controls"
-          className={`px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6 flex flex-wrap gap-3 bg-white/80 backdrop-blur-xl border-t border-charcoal/5 shrink-0`}
+          className="px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6 flex flex-wrap gap-3 bg-white border-t border-chrome-line shrink-0"
         >
           {hasInstructions && (!singlePageEnabled || singlePageCooking) && (
             <Button
@@ -986,7 +1580,7 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               disabled={singlePageCooking ? isEditing : currentStep === 0}
               onClick={singlePageCooking ? openIngredients : prevStep}
               data-testid="cooks-mode-step-prev"
-              className={`h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-base font-semibold text-charcoal/80 border-charcoal/10 flex items-center justify-center space-x-2 active:scale-95 transition-all bg-white`}
+              className="h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-base font-semibold text-ink-body border-chrome-line flex items-center justify-center space-x-2 transition-all bg-white"
             >
               {!singlePageCooking && <ChevronLeft size={24} />}
               <span>
@@ -994,33 +1588,47 @@ export function CooksMode({ recipe: initialRecipe, onClose, onCooked }: CooksMod
               </span>
             </Button>
           )}
-          <Button
-            disabled={isCompleting}
-            onClick={
-              !hasInstructions || (!isPrepStep && singlePageEnabled) ? finishCooking : nextStep
-            }
-            data-testid="cooks-mode-step-next"
-            aria-label={
-              isCompletionAction ? t('cook.markCooked', 'Mark recipe as cooked') : undefined
-            }
-            className={`h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-lg font-bold shadow-sm bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 text-white flex items-center justify-center space-x-2 active:scale-95 transition-all`}
-          >
-            <span>
-              {isCompletionAction
-                ? t('cook.cooked', 'Cooked')
-                : isResumingSteps
-                  ? t('cook.resumeSteps', 'Resume steps')
-                  : isPrepStep
-                    ? t('cook.letsCook', "Let's Cook")
-                    : t('cook.next', 'Next')}
-            </span>
-            {!isCompletionAction && <ChevronRight size={24} />}
-          </Button>
+          {!(projection?.preparation && isCompletionAction) && (
+            <Button
+              variant="primary"
+              disabled={
+                isCompleting ||
+                !!preparationReview ||
+                (ingredientContext?.context === 'assigned' && !projection)
+              }
+              onClick={
+                !hasInstructions || (!isPrepStep && singlePageEnabled) ? finishCooking : nextStep
+              }
+              data-testid="cooks-mode-step-next"
+              aria-label={
+                isCompletionAction
+                  ? checkingPreparation
+                    ? t('cook.checkPreparation', 'Check preparation')
+                    : t('cook.markCooked', 'Mark recipe as cooked')
+                  : undefined
+              }
+              className="h-auto min-h-12 min-w-0 flex-auto whitespace-normal rounded-xl py-2 text-lg font-bold shadow-sm flex items-center justify-center space-x-2 transition-all"
+            >
+              <span>
+                {isCompletionAction
+                  ? checkingPreparation
+                    ? t('cook.checkPreparation', 'Check preparation')
+                    : t('cook.cooked', 'Cooked')
+                  : isResumingSteps
+                    ? t('cook.resumeSteps', 'Resume steps')
+                    : isPrepStep
+                      ? t('cook.letsCook', "Let's Cook")
+                      : t('cook.next', 'Next')}
+              </span>
+              {!isCompletionAction && <ChevronRight size={24} />}
+            </Button>
+          )}
         </div>
       </div>
 
       {showDetailId && (
         <RecipeDetailSheet
+          ingredientContext={ingredientContext}
           recipeId={showDetailId}
           plannerDayLabel={null}
           onClose={() => setShowDetailId(null)}

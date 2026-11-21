@@ -24,6 +24,10 @@ public class SettingsController(SettingsService settingsService) : ControllerBas
     [HttpPost("{key}")]
     public async Task<IActionResult> UpsertSetting([FromRoute] string key, [FromBody] JsonElement body)
     {
+        if (key == SupperServingsService.DefaultKey)
+            return BadRequest(new { message = "Use PUT /api/schedule/servings to save usual portions with its captured version." });
+        if (key == SettingsService.FoodVocabularyMembershipKey)
+            return BadRequest(new { message = "Use the reviewed vocabulary publication owner." });
         // Extract "value" from the body if present, otherwise use the whole body
         var value = body.ValueKind == JsonValueKind.Object && body.TryGetProperty("value", out var v) ? v : body;
 

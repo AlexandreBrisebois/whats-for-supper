@@ -52,7 +52,6 @@ Keep immediate checkbox feedback and ordinary navigation; the request remains pe
 
 This planning pass used GitHub Connector source/spec inspection only. No runtime reproduction, local OpenSpec CLI, task harness, database test or browser qualification was run. That initial planning pass established no runtime qualification. Current implementation progress and observed runtime evidence are recorded in tasks.md.
 
-
 ## Implementation audit (2026-10-24, task 1.2)
 
 - Normal map assignment inventory: only `ScheduleService.UpdateGroceryStateAsync`, `ScheduleService.ToggleGroceryItemAsync` and `GroceryRecomputeService.RecomputeForWeekAsync` assign `WeeklyPlan.GroceryState`. Administrative restore is outside this boundary.

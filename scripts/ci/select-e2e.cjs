@@ -1,5 +1,5 @@
 // Conservative capability selection: only known route/test boundaries narrow a run.
-const { suites } = require('./e2e-suites.cjs');
+const { suites, inventory, validateInventory } = require('./e2e-suites.cjs');
 const all = Object.keys(suites);
 const routes = {
   home: all,
@@ -33,10 +33,17 @@ function selectSuites(files, full = false) {
   }
   return all.filter(name => selected.has(name));
 }
-module.exports = { selectSuites };
+function selectFiles(files, full = false) {
+  validateInventory(inventory());
+  const selected = selectSuites(files, full);
+  return { suites: selected, fullInventory: selected.length === all.length,
+    files: selected.flatMap(name => suites[name].map(spec => `${spec}.spec.ts`)) };
+}
+module.exports = { selectSuites, selectFiles };
 if (require.main === module) {
   let input = '';
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', chunk => { input += chunk; });
-  process.stdin.on('end', () => console.log(JSON.stringify(selectSuites(input.trim().split('\n'), process.env.FULL_VALIDATION === 'true'))));
+  process.stdin.on('end', () => console.log(JSON.stringify(
+    (process.argv.includes('--files') ? selectFiles : selectSuites)(input.trim().split('\n'), process.env.FULL_VALIDATION === 'true'))));
 }

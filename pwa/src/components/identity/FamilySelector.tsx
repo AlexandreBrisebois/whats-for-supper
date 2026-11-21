@@ -55,15 +55,15 @@ export function FamilySelector({
       )}
 
       {showAddForm && (
-        <div className="rounded-2xl bg-white/60 p-5 shadow-card">
+        <div className="rounded-2xl bg-white/60 border border-chrome-line p-5 shadow-card">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-medium text-charcoal">
+            <p className="text-sm font-medium text-ink-body">
               {t('family.addMember', 'Add a family member')}
             </p>
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="text-xs text-charcoal-400 hover:text-charcoal focus:outline-none"
+              className="min-h-12 px-2 text-xs font-medium text-ink-muted hover:text-ink-body focus-visible:outline-2 focus-visible:outline-hearth-ink"
               aria-label="Hide add member form"
             >
               {t('buttons.cancel', 'Cancel')}

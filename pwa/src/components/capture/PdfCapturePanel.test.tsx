@@ -5,6 +5,11 @@ import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
 import { useFamilyStore } from '@/store/familyStore';
 import { claimSharedPdf } from '@/lib/pdfShare';
 
+let mockLocale: 'en' | 'fr' = 'en';
+vi.mock('@/components/common/LocaleProvider', () => ({
+  useLocale: () => ({ locale: mockLocale, setCurrentLocale: vi.fn() }),
+}));
+
 const navigation = vi.hoisted(() => ({ query: '' }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -22,6 +27,7 @@ const file = new File(['%PDF'], 'supper.pdf', { type: 'application/pdf' });
 const resetPhotos = () => {};
 beforeEach(() => {
   navigation.query = '';
+  mockLocale = 'en';
   vi.clearAllMocks();
   usePdfCaptureStore.getState().reset();
   useFamilyStore.setState({ selectedFamilyMemberId: member });
@@ -63,5 +69,17 @@ describe('PDF capture draft ownership', () => {
       deliver({ token: 'opaque-token', file });
     });
     expect(usePdfCaptureStore.getState().selection).toBeNull();
+  });
+
+  it('renders share error with role=alert, semantic text-hearth-ink token, and reactive locale', () => {
+    navigation.query = 'pdfShareError=1';
+    mockLocale = 'fr';
+    render(<PdfCapturePanel isGoto={false} resetPhotos={resetPhotos} />);
+
+    const errorEl = screen.getByTestId('pdf-share-error');
+    expect(errorEl).toHaveAttribute('role', 'alert');
+    expect(errorEl.className).toContain('text-hearth-ink');
+    expect(errorEl.className).not.toContain('text-terracotta-700');
+    expect(errorEl).toHaveTextContent(/partagez le pdf|choisissez/i);
   });
 });

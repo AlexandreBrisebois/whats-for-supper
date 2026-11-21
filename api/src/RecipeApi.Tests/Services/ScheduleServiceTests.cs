@@ -1,4 +1,5 @@
 using RecipeApi.Data;
+using Microsoft.EntityFrameworkCore;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Tests.Infrastructure;
@@ -27,7 +28,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         _publisherMock = new Mock<IScheduleEventPublisher>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>());
+        _service = new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, _scope.ServiceProvider.GetRequiredService<IClock>(), new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), new SupperProjectionInvalidation(_db,_scope.ServiceProvider.GetRequiredService<IClock>(),new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
     }
 
     public async Task DisposeAsync()
@@ -131,6 +132,35 @@ public class ScheduleServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SmartDefaults_TiedNeverCookedConsensusPlacesByAscendingRecipeIdWithMoreCandidatesThanSlots()
+    {
+        var monday = new DateOnly(2026, 10, 19);
+        for (var i = 0; i < 4; i++)
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday.AddDays(i),
+                Status = CalendarEventStatus.Skipped, NonCookingKind = "eating_out" });
+        // Insert in descending RecipeId order so insertion/provider order disagrees with the tie-breaker.
+        var recipes = Enumerable.Range(1, 5).Reverse().Select(i => new Recipe
+            { Id = new Guid(i, 0, 0, new byte[8]), Name = $"Tied {i}", LastCookedDate = null }).ToArray();
+        foreach (var recipe in recipes)
+        {
+            _db.Recipes.Add(recipe);
+            _db.RecipeVotes.Add(new RecipeVote { RecipeId = recipe.Id,
+                FamilyMemberId = _factory.DefaultFamilyMemberId, Vote = VoteType.Like });
+            await _db.SaveChangesAsync();
+        }
+
+        var first = await _service.GetSmartDefaultsAsync(1);
+        var second = await _service.GetSmartDefaultsAsync(1);
+
+        var expected = recipes.Select(r => r.Id).OrderBy(id => id).Take(3).ToArray();
+        Assert.Equal(5, first.ConsensusRecipesCount);
+        Assert.Equal(expected, first.PreSelectedRecipes.Select(x => x.RecipeId));
+        Assert.Equal(new[] { 4, 5, 6 }, first.PreSelectedRecipes.Select(x => x.DayIndex));
+        Assert.Equal(first.PreSelectedRecipes.Select(x => (x.RecipeId, x.DayIndex)),
+            second.PreSelectedRecipes.Select(x => (x.RecipeId, x.DayIndex)));
+    }
+
+    [Fact]
     public async Task SmartDefaults_FourMembersStillRequireThreeLikes()
     {
         var others = Enumerable.Range(0, 3).Select(i => new FamilyMember
@@ -231,8 +261,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         _db.CalendarEvents.Add(new CalendarEvent { Date = latest, RecipeId = recipe.Id, Status = CalendarEventStatus.Cooked });
         await _db.SaveChangesAsync();
         if (publicationFails) _publisherMock.Setup(p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(), null, null)).ThrowsAsync(new IOException("Refresh failed"));
-        if (publicationFails) await Assert.ThrowsAsync<IOException>(() => _service.RemoveRecipeAsync(removeEarlier ? earlier : latest));
-        else await _service.RemoveRecipeAsync(removeEarlier ? earlier : latest);
+        await _service.RemoveRecipeAsync(removeEarlier ? earlier : latest);
 
         DateTimeOffset? expected = removeEarlier ? new(2026, 10, 12, 0, 0, 0, TimeSpan.Zero)
             : earlierExists ? new(2026, 10, 5, 0, 0, 0, TimeSpan.Zero) : null;
@@ -363,8 +392,10 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var sourceMonday = new DateOnly(2026, 10, 12);
         var targetMonday = sourceMonday.AddDays(7);
-        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Carrot supper", Ingredients = "[\"carrots\"]" };
-        var existing = new Recipe { Id = Guid.NewGuid(), Name = "Onion supper", Ingredients = "[\"onions\"]" };
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Carrot supper", Ingredients = "[\"carrots\"]",
+            CanonicalContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([("carrots", null, null)]) };
+        var existing = new Recipe { Id = Guid.NewGuid(), Name = "Onion supper", Ingredients = "[\"onions\"]",
+            CanonicalContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([("onions", null, null)]) };
         _db.Recipes.AddRange(recipe, existing);
         _db.CalendarEvents.AddRange(
             new CalendarEvent { Id = Guid.NewGuid(), Date = sourceMonday, RecipeId = recipe.Id },
@@ -396,15 +427,30 @@ public class ScheduleServiceTests : IAsyncLifetime
     public async Task PlanLater_RecomputeFailureStillPublishesBothWeeksAndConfirmsMovement()
     {
         var sourceMonday = new DateOnly(2026, 10, 12);
-        var moved = new Recipe { Id = Guid.NewGuid(), Name = "Move this", Ingredients = "[\"carrots\"]" };
-        // A valid JSON value with an unsupported metadata shape makes source recomputation fail.
-        var malformed = new Recipe { Id = Guid.NewGuid(), Name = "Existing bad metadata", RawMetadata = "[]" };
+        var moved = new Recipe { Id = Guid.NewGuid(), Name = "Move this", Ingredients = "[\"carrots\"]",
+            CanonicalContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([("carrots", null, null)]) };
+        // Unsupported metadata is intentionally unresolved, not a grocery infrastructure failure.
+        var malformed = new Recipe { Id = Guid.NewGuid(), Name = "Existing bad metadata", RawMetadata = "[]",
+            CanonicalContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([]) };
         _db.Recipes.AddRange(moved, malformed);
         _db.CalendarEvents.AddRange(new CalendarEvent { Date = sourceMonday, RecipeId = moved.Id },
             new CalendarEvent { Date = sourceMonday.AddDays(1), RecipeId = malformed.Id });
         await _db.SaveChangesAsync();
 
-        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, moved.Id, 0, "push", 1, 0));
+        var options = _scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.DbContextOptions<RecipeDbContext>>();
+        var freshReads = 0;
+        using var groceryScopes = new ServiceCollection().AddScoped<RecipeDbContext>(_ =>
+            Interlocked.Increment(ref freshReads) == 1 ? throw new IOException("Injected source grocery read failure") : new RecipeDbContext(options)).BuildServiceProvider();
+        var clock = _scope.ServiceProvider.GetRequiredService<IClock>();
+        var calendar = new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager());
+        var grocery = new GroceryRecomputeService(_db, _scope.ServiceProvider.GetRequiredService<AisleMapper>(),
+            _scope.ServiceProvider.GetRequiredService<ILogger<GroceryRecomputeService>>(), clock, calendar,
+            new GroceryCheckCoordinator(groceryScopes.GetRequiredService<IServiceScopeFactory>()));
+        var service = new ScheduleService(_db, _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>(),
+            _publisherMock.Object, grocery, clock, calendar, TestHistoricalInterest.Create(_db, clock, calendar),
+            _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), new SupperProjectionInvalidation(_db,clock,calendar));
+
+        var result = await service.MoveScheduleEventAsync(new MoveScheduleDto(0, moved.Id, 0, "push", 1, 0));
 
         Assert.NotNull(result);
         Assert.True(result.Moved);
@@ -560,7 +606,7 @@ public class ScheduleServiceTests : IAsyncLifetime
 
         Assert.Equal(CalendarEventStatus.Cooked, _db.CalendarEvents.Single(e => e.Date == date).Status);
         Assert.Equal(clock.UtcNow, _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
-        _publisherMock.Verify(p => p.PublishSlotUpdatedAsync(date, It.Is<ScheduleRecipeDto>(r => r.Id == recipeId), 2, null), Times.Once);
+        _publisherMock.Verify(p => p.PublishSlotUpdatedAsync(date, It.Is<ScheduleRecipeDto>(r => r.Id == recipeId), 2, null, null, It.Is<Guid?>(id => id != null)), Times.Once);
     }
 
     [Fact]
@@ -651,12 +697,20 @@ public class ScheduleServiceTests : IAsyncLifetime
         Assert.Equal(CalendarEventStatus.Skipped, _db.CalendarEvents.Single(e => e.Date == yesterday.AddDays(-1)).Status);
     }
 
-    [Fact]
-    public async Task FinalizeOverdueMeals_RecalculatesLastCookedDateFromNewlyCookedEventDate()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FinalizeOverdueMeals_RecalculatesLastCookedDateFromNewlyCookedEventDate(bool laterCookedExists)
     {
         var recipeId = Guid.NewGuid();
         var cookedDate = new DateOnly(2026, 5, 12);
-        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup" });
+        var recipe = new Recipe { Id = recipeId, Name = "Soup" };
+        _db.Recipes.Add(recipe);
+        var laterCookedDate = cookedDate.AddDays(1);
+        if (laterCookedExists) {
+            recipe.LastCookedDate = new DateTimeOffset(laterCookedDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = laterCookedDate, Status = CalendarEventStatus.Cooked });
+        }
         _db.CalendarEvents.Add(new CalendarEvent
         {
             Id = Guid.NewGuid(), RecipeId = recipeId, Date = cookedDate, Status = CalendarEventStatus.Planned
@@ -665,11 +719,18 @@ public class ScheduleServiceTests : IAsyncLifetime
 
         var service = CreateService(new FixedClock(new DateTimeOffset(2026, 5, 13, 12, 0, 0, TimeSpan.Zero)));
 
+        var expected = new DateTimeOffset((laterCookedExists ? laterCookedDate : cookedDate).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var publications = 0;
+        _publisherMock.Setup(p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(), null, null)).Returns(async () => {
+            using var fresh = _factory.Services.CreateScope();
+            var persisted = await fresh.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(r => r.Id == recipeId);
+            Assert.Equal(expected, persisted.LastCookedDate);
+            publications++;
+        });
         await service.FinalizeOverdueMealsAsync();
 
-        Assert.Equal(
-            new DateTimeOffset(2026, 5, 12, 0, 0, 0, TimeSpan.Zero),
-            _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
+        Assert.Equal(1, publications);
+        Assert.Equal(expected, _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
     }
 
     [Fact]
@@ -715,7 +776,7 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var logger = _scope.ServiceProvider.GetRequiredService<ILogger<ScheduleService>>();
         var groceryRecomputeService = _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>();
-        return new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>());
+        return new ScheduleService(_db, logger, _publisherMock.Object, groceryRecomputeService, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()), RecipeApi.Tests.Infrastructure.TestHistoricalInterest.Create(_db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())), _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), new SupperProjectionInvalidation(_db,clock,new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager())));
     }
 
     private sealed class FixedClock(DateTimeOffset now) : IClock
@@ -965,18 +1026,20 @@ public class ScheduleServiceTests : IAsyncLifetime
         var daysToMonday = ((int)today.DayOfWeek - 1 + 7) % 7;
         var monday = today.AddDays(-daysToMonday);
 
-        var groceryMap = new Dictionary<string, bool>
-        {
-            { "Chicken", true },
-            { "Broccoli", false }
-        };
+        var chicken = Guid.NewGuid().ToString("D");
+        var broccoli = Guid.NewGuid().ToString("D");
+        var groceryMap = new Dictionary<string, bool> { [chicken] = true, [broccoli] = false };
+        var rows = new[] { (chicken, "Chicken"), (broccoli, "Broccoli") }.Select(entry =>
+            new GroceryLineItemDto(entry.Item2, entry.Item2.ToLowerInvariant(), "Grocery", null, null, [])
+            { RowId = entry.Item1, RowVersion = "1", WeekStartDate = monday, DemandIdentity = entry.Item2 });
 
         _db.WeeklyPlans.Add(new WeeklyPlan
         {
             Id = Guid.NewGuid(),
             WeekStartDate = monday,
             Status = WeeklyPlanStatus.Draft,
-            GroceryState = System.Text.Json.JsonSerializer.Serialize(groceryMap)
+            GroceryState = System.Text.Json.JsonSerializer.Serialize(groceryMap),
+            GroceryItems = System.Text.Json.JsonSerializer.Serialize(rows)
         });
         await _db.SaveChangesAsync();
 
@@ -986,8 +1049,8 @@ public class ScheduleServiceTests : IAsyncLifetime
         // Assert
         Assert.NotNull(result.GroceryState);
         Assert.Equal(2, result.GroceryState.Count);
-        Assert.True(result.GroceryState["Chicken"]);
-        Assert.False(result.GroceryState["Broccoli"]);
+        Assert.True(result.GroceryState[chicken]);
+        Assert.False(result.GroceryState[broccoli]);
     }
 
     [Fact]
@@ -999,6 +1062,8 @@ public class ScheduleServiceTests : IAsyncLifetime
         var result = await _service.GetScheduleAsync(0);
 
         // Assert
-        Assert.Null(result.GroceryState);
+        Assert.NotNull(result.GroceryState);
+        Assert.Empty(result.GroceryState);
+        Assert.Null(result.GroceryListVersion);
     }
 }

@@ -1,19 +1,60 @@
-# Visual identity reference
+# Family Cookbook Visual Identity & Token Contract
 
-For WFS color and typography work, inspect the tokens in
-[pwa globals.css](../../../pwa/src/app/globals.css) and font setup in
-[layout.tsx](../../../pwa/src/app/layout.tsx). These files own implemented values;
-this reference does not require a persona.
+Authoritative color-science, contrast, typography, and token rules for What's For Supper (WFS). Runtime tokens live in [globals.css](../../../pwa/src/app/globals.css), [tailwind.config.ts](../../../pwa/tailwind.config.ts), [layout.tsx](../../../pwa/src/app/layout.tsx), and [button.tsx](../../../pwa/src/components/ui/button.tsx), and are enforced continuously by [tokens.test.ts](../../../pwa/src/test/tokens.test.ts) and [visual-contract.test.ts](../../../pwa/src/test/visual-contract.test.ts).
 
-Terracotta identifies primary actions, ochre highlights, sage success and cream the
-warm canvas. Reuse existing token variants with sufficient contrast rather than
-copying hex values or banning colors already used by the design system.
-Outfit supplies headings and Inter supplies body/data text in the current layout.
+## 1. Perceptual Lightness & Warm Neutrals
 
-Keep primary actions reachable on the selected viewport and preserve touch targets.
-Use progressive disclosure when it reduces reading without hiding necessary state.
+Brand hues occupy different WCAG luminance bands: Terracotta `#B85542` ($L \approx 0.56$), Sage `#8A9A5B` ($L \approx 0.66$), and Ochre `#E1AD01` ($L \approx 0.77$). Never treat hues symmetrically with `"bg-<hue> text-white"`, and never put dark or black ink on mid-tone `#8A9A5B` or `#E1AD01`.
 
-For reviewable examples of roles, type and states, load the
-[visual language reference](../../../docs/visual-language-reference.md) on demand.
-It separates current source evidence from proposed treatments; it does not change
-runtime tokens or authorize implementation.
+### Warm Espresso-Ink Neutral Scale (`charcoal`)
+
+Raw numbered stops `50` → `900` remain strictly monotonic and immutable across modes with a subtle warm umber undertone ($R \ge G \ge B$) so muted text and borders harmonize with warm cream `#FDFCF0` without simultaneous-contrast blue-slate chill. Semantic roles map onto these anchors per contrast mode:
+
+| Stop                   | Hex                                        | Cream `#FDFCF0` ratio | Primary use                                                                                                   |
+| ---------------------- | ------------------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `charcoal-50` .. `300` | `#FAF8F5`, `#F3EFEA`, `#E5DFD7`, `#CFC6BC` | —                     | Hairline dividers, quiet Standard panel borders (`--role-chrome-line: #E5DFD7`), disabled fills               |
+| `charcoal-400` / `500` | `#9B9085` / `#6E645B`                      | `3.03:1` / `5.60:1`   | Standard icon-only affordances (`400`, `>= 3.0:1`), Standard muted copy & High Contrast crisp borders (`500`) |
+| `charcoal-600`         | `#524A43`                                  | `8.42:1`              | High Contrast muted copy & AAA icon-only affordances                                                          |
+| `charcoal-700`         | `#3D3630`                                  | `11.43:1`             | Strong secondary ink                                                                                          |
+| `charcoal` (`800`)     | `#28231F`                                  | `15.08:1`             | Standard body ink (`15.55:1` on `#FFFFFF`) and standard focus ring (`outline-ink-body`)                       |
+| `charcoal-900`         | `#191512`                                  | `17.59:1`             | High Contrast primary body ink (`18.15:1` on `#FFFFFF`) and AAA focus ring                                    |
+
+## 2. Dual-Mode Semantic Role Matrix (Standard AA vs. High Contrast AAA)
+
+Semantic custom properties live in `:root` (Standard AA default) and `:root[data-contrast="high"]` (High Contrast AAA), bound via `@theme inline` in [globals.css](../../../pwa/src/app/globals.css) and mirrored in [tailwind.config.ts](../../../pwa/tailwind.config.ts). Components use semantic utilities (`text-ink-body`, `text-ink-muted`, `bg-hearth-fill`, `text-hearth-ink`, `border-hearth-line`, `bg-garden-fill`, `text-garden-ink`, `border-garden-line`, `text-sunlight-ink`, `border-sunlight-line`, `border-chrome-line`, `text-icon-affordance`) so both modes adapt without JS re-renders:
+
+| Semantic role token                            | Standard (`:root`, AA)                        | High Contrast (`:root[data-contrast="high"]`, AAA) | Verified ratios & usage notes                                                                                                   |
+| ---------------------------------------------- | --------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `--role-ink-body` (`ink-body`)                 | `#28231F`                                     | `#191512`                                          | `15.08:1` / `15.55:1` -> `17.59:1` / `18.15:1` on cream / white; primary text & focus outline                                   |
+| `--role-ink-muted` (`ink-muted`)               | `#6E645B`                                     | `#524A43`                                          | `5.60:1` / `5.77:1` -> `8.42:1` / `8.68:1` on cream / white; supporting copy & labels                                           |
+| `--role-hearth-fill` (`hearth-fill`)           | `#B85542` (hover `#A44A37`, active `#7B3829`) | `#7B3829` (hover `#52251B`, active `#29130E`)      | `4.61:1` cream / `4.76:1` white -> `8.34:1` / `8.61:1`; primary Hearth CTAs                                                     |
+| `--role-hearth-ink` (`hearth-ink`)             | `#A44A37`                                     | `#7B3829`                                          | `5.81:1` white / `5.04:1` blush -> `8.61:1` / `7.46:1`; secondary, ghost, `danger` (`bg-terracotta-50`), Dislike                |
+| `--role-hearth-line` (`hearth-line`)           | `#E6B3A9`                                     | `#A44A37`                                          | Quiet blush outline -> crisp high-contrast boundary                                                                             |
+| `--role-garden-fill` (`garden-fill` / `-deep`) | `#4E6E52` / `#3D5940`                         | `#324D36` / `#243A27`                              | Cooled herb green: `5.71:1` / `7.77:1` white -> `9.33:1` / `12.28:1` white (`SuccessCard`, switches, overlays)                  |
+| `--role-garden-ink` (`garden-ink`)             | `#4E6E52`                                     | `#324D36`                                          | `5.10:1` `sage-50` / `4.54:1` `sage-100` -> `8.34:1` / `7.41:1`; `Like`, `Dismiss`, household plans, progress, links            |
+| `--role-garden-line` (`garden-line`)           | `#C7CFB0`                                     | `#324D36`                                          | Soft botanical border -> crisp high-contrast border                                                                             |
+| `--role-sunlight-ink` (`sunlight-ink`)         | `#856400`                                     | `#664E01`                                          | `5.50:1` white, `5.09:1` `ochre-100`, `4.70:1` `ochre-200` -> `7.91:1`, `7.32:1`, `6.76:1` (never solid `bg-ochre` + text)      |
+| `--role-sunlight-line` (`sunlight-line`)       | `#FFE666`                                     | `#8F6D01`                                          | Soft sunlit border -> crisp high-contrast border                                                                                |
+| `--role-chrome-line` (`chrome-line`)           | `#E5DFD7`                                     | `#6E645B`                                          | Quiet structural hairlines -> crisp AAA card/input boundaries                                                                   |
+| `--role-icon-affordance` (`icon-affordance`)   | `#9B9085`                                     | `#524A43`                                          | `3.03:1` cream / `3.12:1` white (`>= 3.0:1` WCAG 1.4.11) -> `8.42:1` / `8.68:1` (`>= 7.0:1`) for icon-only non-text affordances |
+| `--role-nav-bg` / `--role-nav-border`          | `rgba(253,252,240,0.85)` + `blur(20px)`       | `#FDFCF0` (`backdrop-filter: none`) + `#6E645B`    | Translucent `.glass-nav` in Standard AA vs. opaque `bg-cream` bottom nav with crisp top border in High Contrast AAA             |
+
+## 3. Typography, `Ready in` & Selection Roles
+
+- **Fonts:** **Outfit** (`font-heading`, `--font-outfit`) for headings/recipe titles; **Inter** (`font-sans`, `--font-inter`) for body, ingredients, controls, and numeric data.
+- **Minimum size floor:** **`12 CSS px` (`text-xs` / `text-[12px]`) minimum** across all copy, metadata, badges, and navigation labels. Prefer sentence case over tiny tracked uppercase labels.
+- **Context-paired `Ready in` pill:** Sentence case (`Ready in 30m`, `12–14 CSS px` semibold/bold)—`bg-terracotta-50 text-hearth-ink` on white cards (`TonightMenuCard`), and solid `bg-cream text-ink-body` when overlaid directly on food photos (`RecipeStackCard`, `DiscoveryCard`, `RecipeDetailSheet`).
+- **Role-locked `aria-pressed` choices:** Raised `bg-white shadow-sm` for neutral view/appreciation (`Rating` borderless choices with semantic ink `text-hearth-ink` / `text-garden-ink`, `Stack / List` view switcher); blush `bg-terracotta-50 border-hearth-line text-hearth-ink` + `Check` for personal/recipe config (`2 / 4 / 6` portions, `Language`, `Contrast` directly below `Language` on Profile); tonal `bg-sage-50 border-garden-line text-garden-ink` + `Check` for household supper plans (`NonCooking`).
+- **Large text threshold:** Only text `>= 24 CSS px` regular or `>= 18.67 CSS px` bold qualifies for the `3.0:1` AA / `4.5:1` AAA floor; all ordinary text requires `>= 4.5:1` (`contrastLevel: 'aa'`) or `>= 7.0:1` (`contrastLevel: 'aaa'`).
+
+## 4. Do / Do Not Matrix
+
+| Do (Era 3 Family Cookbook)                                                                                                                                                                                                      | Do Not (Blocked by Visual Ratchet)                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use semantic role tokens (`bg-hearth-fill`, `text-hearth-ink`, `text-ink-body`, `text-ink-muted`, `bg-garden-fill`, `text-garden-ink`, `text-sunlight-ink`, `border-chrome-line`, `text-icon-affordance`) and shared `<Button>` | Never use off-palette Tailwind hues (`indigo`, `lavender`, `pink`, `red-*`, `ochre-dark`) or override raw `--color-*` stops per contrast mode                                |
+| Use tonal sunlit `bg-ochre-50`/`bg-ochre-100 text-sunlight-ink` for voting/highlights; reserve `#E1AD01` strictly for non-text accents (filled star glyph, glow)                                                                | Never place text or icon controls on solid `bg-ochre`, `bg-ochre-400`, or `bg-ochre-500` (with white, charcoal, or black ink), or use bare `text-ochre` on light backgrounds |
+| Use cooled herb Garden role tokens (`bg-garden-fill` + `text-white`/`cream-100`, or `sage-50`/`100` + `text-garden-ink`)                                                                                                        | Never pair mid-tone `bg-sage` / `bg-sage-500` (`#8A9A5B`) with dark ink (`sage-900` / `charcoal`), with `text-white` (`3.06:1`), or bare `text-sage` (`2.97:1`)              |
+| Use `text-ink-muted` for supporting text, `text-icon-affordance` for subtle icon-only controls, and `>= 12 px` (`text-xs`)                                                                                                      | Never use `text-charcoal/20`–`40` copy or `< 12 px` micro-text (`text-[8px]`..`text-[11px]`)                                                                                 |
+| Model new UI on Era 3 clean files ([TonightMenuCard.tsx](../../../pwa/src/components/home/TonightMenuCard.tsx), [ui/button.tsx](../../../pwa/src/components/ui/button.tsx)) and verify both `contrastLevel: 'aa'` and `'aaa'`   | Never copy styling patterns from files still tracked in `LEGACY_ERA_ALLOWLIST` inside `visual-contract.test.ts`                                                              |
+
+Consult the four layered schematic boards and prose standards in the [visual language reference](../../../docs/visual-language-reference.md).

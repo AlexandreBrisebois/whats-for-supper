@@ -14,7 +14,6 @@ Human acceptance and promotion are pending lifecycle actions, not checked extrac
 
 Verification: individual selected strict checks passed; complete-store strict validation passed 89/89 with informational archive-conflict notices for already-promoted unrelated deltas. Corrected 27-path `task verify` passed documentation, selected spec checks and content identity in `.task/agent-finish/runs/e6a55d512e3645408c44877515635bab.json`. The initial link-format check failure and its correction are retained in the capability plan. Final bookkeeping edits require the final scoped verification run reported at handoff. These checkboxes mean extraction/verification work only; human acceptance and promotion remain pending.
 
-
 SR-D05 resume reconciliation: re-inspected source/assertion evidence and complete
 requirement/scenario mappings; fresh selected strict validation passed and stable
 complete-store validation passed 90/90. Earlier invocation results above remain
@@ -22,7 +21,6 @@ historical. Final `task verify` selects all 27 authorized paths; use its immutab
 record reported at handoff for the final documentation identity. See the capability
 plan's SR-D05 record for authorization, exclusions and the exact human-review next
 action. These tasks authorize no application work, acceptance or promotion.
-
 
 SR-P01 (2026-10-16): the user accepted and authorized promotion of all five
 reviewed recipe-search deltas. This slice's unchanged requirements/scenarios are

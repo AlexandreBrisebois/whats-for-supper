@@ -28,7 +28,7 @@ Jordan's browser:
 
 **Fade exit, 200ms.** Not instant disappear. Not a full swipe animation.
 
-**Mère-Designer ruling:** Instant disappearance is jarring and unexplained. A soft fade signals "that card was claimed" — intentional, not a bug. Glassmorphism + fade feels natural within the Solar Earth aesthetic.
+**Mère-Designer ruling:** Instant disappearance is jarring and unexplained. A soft fade signals "that card was claimed" — intentional, not a bug. Glassmorphism + fade feels natural within the Shared Table aesthetic.
 
 ```typescript
 // Framer Motion exit variant on DiscoveryCard

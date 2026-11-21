@@ -17,14 +17,26 @@ public partial class RecoverySnapshotService
     {
         ["family_members"] = "restore",
         ["recipes"] = "restore-clear-cooking-history",
+        ["canonical_recipe_operations"] = "restore",
+        ["recipe_file_publications"] = "restore",
         ["recipe_search_documents"] = "restore-compatible-rebuild-lexical",
         ["feature_flag_overrides"] = "restore",
         ["family_settings"] = "restore-declared-keys",
         ["ingredient_categories"] = "restore",
         ["recipe_import_reports"] = "clear",
+        ["recipe_repair_intents"] = "clear",
+        ["workflow_child_intents"] = "retain-original-commands",
+        ["workflow_reset_intents"] = "retain-original-commands",
+        ["workflow_processor_attempts"] = "retain-original-observations",
+        ["workflow_launch_intents"] = "retain-original-commands",
+        ["workflow_lifecycle_records"] = "retain-inert-history",
+        ["maintenance_command_lifecycle_records"] = "retain-inert-history",
+        ["recipe_physical_deletions"] = "retain-physical-lifecycle",
         ["weekly_plans"] = "clear",
         ["calendar_events"] = "clear",
         ["grocery_extra_occurrences"] = "clear",
+        ["grocery_mutation_outcomes"] = "clear",
+        ["supper_servings"] = "clear",
         ["recipe_votes"] = "clear",
         ["weekly_household_interest"] = "clear",
         ["voting_round_state"] = "fresh-current-round",
@@ -35,7 +47,10 @@ public partial class RecoverySnapshotService
         ["maintenance_commands"] = "invalidate",
         ["recovery_publication"] = "fresh-publication"
     };
-    private static readonly HashSet<string> DemoClearTables = ["recipe_import_reports", "weekly_plans", "calendar_events", "weekly_household_interest", "grocery_extra_occurrences"];
+    private static readonly IReadOnlyDictionary<string, string> CurrentDemoDispositions =
+        new SortedDictionary<string, string>(DemoDispositions.ToDictionary(x => x.Key, x => x.Value), StringComparer.Ordinal)
+        { ["household_food_overrides"] = "restore" };
+    private static readonly HashSet<string> DemoClearTables = ["recipe_repair_intents", "recipe_import_reports", "weekly_plans", "calendar_events", "weekly_household_interest", "grocery_extra_occurrences", "supper_servings", "grocery_mutation_outcomes"];
     internal string DemoBaselineRoot
     {
         get
@@ -132,7 +147,7 @@ public partial class RecoverySnapshotService
         finally { if (stage is not null && Directory.Exists(stage)) Directory.Delete(stage, true); }
     }
 
-    private static string NormalizeDemoRows(string table, string rows)
+    private static string NormalizeDemoRows(string table, string rows, bool currentFormat = false)
     {
         if (DemoClearTables.Contains(table)) return "[]";
         var values = JsonNode.Parse(rows)!.AsArray();
@@ -155,18 +170,88 @@ public partial class RecoverySnapshotService
                     row["is_discoverable"] = row["is_ready"]!.GetValue<bool>() && RecipeRotation.Suitable(recipe) && !recipe.RotationHumanOff;
                 }
             }
-        if (table == "family_settings" && values.Any(row => row!["key"]!.GetValue<string>() != "family_goto"))
+        if (table == "family_settings" && values.Any(row => row!["key"]!.GetValue<string>() is not ("family_goto" or SupperServingsService.DefaultKey)
+            && !(currentFormat && row["key"]!.GetValue<string>() == "food_vocabulary_publication")))
             throw new InvalidDataException("Unclassified household setting; declare ownership before demo capture/reset.");
         return values.ToJsonString();
     }
 
-    private static async Task ValidateDemoInventoryAsync(NpgsqlConnection connection, CancellationToken ct)
+    private async Task ValidateDemoInventoryAsync(NpgsqlConnection connection, CancellationToken ct, bool currentFormat = false, bool prospectiveDemoInvalidation = false)
     {
         var names = await ScalarAsync(connection, "SELECT string_agg(tablename,',' ORDER BY tablename) FROM pg_tables WHERE schemaname='public'", ct);
-        if (!names.Split(',').SequenceEqual(DemoDispositions.Keys.Order()))
+        var actual = names.Split(',');
+        if (!actual.SequenceEqual(DemoDispositions.Keys.Append("household_food_overrides").Order()))
             throw new InvalidDataException("Household schema has unclassified state; recapture requires an explicit disposition for every table.");
+        if (!currentFormat) await RequireLegacyDemoFoodFreeAsync(ct, prospectiveDemoInvalidation);
     }
-    private static void ValidateDemoSettingReferences(string settingRows, string recipeRows)
+    private async Task RequireLegacyDemoFoodFreeAsync(CancellationToken ct, bool prospectiveDemoInvalidation)
+    {
+        var facts = await vocabulary.ObserveInventoryFactsAsync(ct);
+        if (facts.Membership.RawJson is not null || facts.Overrides.Coverage != FoodVocabularyOverrideCoverage.CapturedV1
+            || facts.Overrides.Rows is not { Count: 0 } || facts.Recipes.Any(x => x.FoodMappingEvidence is not null)
+            || (prospectiveDemoInvalidation
+                ? FoodVocabularyInventoryQualification.RequiredReferencesForDemoInvalidation(facts)
+                : FoodVocabularyInventoryQualification.RequiredReferences(facts)).Count != 0)
+            throw new InvalidDataException("Legacy demo format 2 cannot represent food vocabulary authority or private food overrides; capture format 4 is required.");
+        foreach (var operation in facts.CanonicalOperations)
+        {
+            if (operation.OriginalRequest is null) continue;
+            using var request = JsonDocument.Parse(operation.OriginalRequest);
+            if (request.RootElement.GetProperty("version").GetInt32() == 2)
+                throw new InvalidDataException("Legacy demo format 2 cannot represent current canonical operation authority; capture format 4 is required.");
+        }
+    }
+
+    private async Task ValidateLegacyTableAuthorityAsync(NpgsqlConnection connection, CancellationToken ct)
+    {
+        if (await ScalarAsync(connection, "SELECT count(*)::text FROM pg_temp.recovery_family_settings WHERE key='food_vocabulary_publication'", ct) != "0"
+            || await ScalarAsync(connection, "SELECT count(*)::text FROM pg_temp.recovery_recipes WHERE food_mapping_evidence IS NOT NULL", ct) != "0"
+            || await ScalarAsync(connection, "SELECT count(*)::text FROM pg_temp.recovery_canonical_recipe_operations WHERE original_request::jsonb->>'version'='2'", ct) != "0")
+            throw new InvalidDataException("Legacy demo format 2 contains unsupported food vocabulary authority.");
+        await using (var command = new NpgsqlCommand("SELECT id,canonical_content::text,food_mapping_evidence::text FROM pg_temp.recovery_recipes", connection))
+        await using (var reader = await command.ExecuteReaderAsync(ct))
+            while (await reader.ReadAsync(ct))
+            {
+                var recipe = new FoodVocabularyRecipeObservation(reader.GetGuid(0), reader.IsDBNull(1) ? null : reader.GetString(1),
+                    reader.IsDBNull(2) ? null : reader.GetString(2));
+                if (FoodVocabularyInventoryQualification.RecipeReferences(recipe).Length != 0)
+                    throw new InvalidDataException("Historical snapshots contain unsupported ingredient food authority.");
+            }
+        await using (var command = new NpgsqlCommand("SELECT recipe_id,operation_id,input_hash,payload::text,result_hash,delivered,created_at FROM pg_temp.recovery_recipe_file_publications", connection))
+        await using (var reader = await command.ExecuteReaderAsync(ct))
+            while (await reader.ReadAsync(ct))
+            {
+                var publication = new RecipeFilePublication
+                {
+                    RecipeId = reader.GetGuid(0),
+                    OperationId = reader.GetGuid(1),
+                    InputHash = reader.GetString(2),
+                    Payload = reader.GetString(3),
+                    ResultHash = reader.GetString(4),
+                    Delivered = reader.GetBoolean(5),
+                    CreatedAt = reader.GetFieldValue<DateTimeOffset>(6)
+                };
+                if (RecipeFilePublicationStore.VocabularyReferences(publication).Length != 0)
+                    throw new InvalidDataException("Historical snapshots contain unsupported retained publication food authority.");
+            }
+        await using (var command = new NpgsqlCommand("SELECT id,recipe_id,input_hash,payload::text,created_at FROM pg_temp.recovery_recipe_repair_intents", connection))
+        await using (var reader = await command.ExecuteReaderAsync(ct))
+            while (await reader.ReadAsync(ct))
+            {
+                var repair = new RecipeRepairIntent
+                {
+                    Id = reader.GetGuid(0),
+                    RecipeId = reader.GetGuid(1),
+                    InputHash = reader.GetString(2),
+                    Payload = reader.GetString(3),
+                    CreatedAt = reader.GetFieldValue<DateTimeOffset>(4)
+                };
+                if (RecipeReportRepairIntent.VocabularyReferences(repair).Length != 0)
+                    throw new InvalidDataException("Historical snapshots contain unsupported retained repair food authority.");
+            }
+    }
+
+    private static void ValidateDemoSettingReferences(string settingRows, string recipeRows, bool currentFormat = false)
     {
         using var recipes = JsonDocument.Parse(recipeRows);
         var ids = recipes.RootElement.EnumerateArray().Select(r => r.GetProperty("id").GetGuid()).ToHashSet();
@@ -174,6 +259,16 @@ public partial class RecoverySnapshotService
         foreach (var row in settings.RootElement.EnumerateArray())
         {
             var value = row.GetProperty("value");
+            if (currentFormat && row.GetProperty("key").GetString() == "food_vocabulary_publication")
+            {
+                _ = FoodVocabularyStore.InspectMembership(value.GetRawText());
+                continue;
+            }
+            if (row.GetProperty("key").GetString() == SupperServingsService.DefaultKey)
+            {
+                SupperServingsService.ValidateDefaultSetting(value);
+                continue;
+            }
             if (value.ValueKind != JsonValueKind.Object || !value.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
                 throw new InvalidDataException("Declared family_goto setting must contain an explicit items array.");
             foreach (var item in items.EnumerateArray())
@@ -206,7 +301,7 @@ public partial class RecoverySnapshotService
         var preserved = futureMaintenance.Where(i => IsSafeFutureDemoMaintenance(i, clock.UtcNow)).Select(i => i.Id).ToHashSet();
         preserved.Add(workflowInstanceId ?? Guid.Empty);
         var preserve = string.Join(',', preserved.Select(id => $"'{id}'"));
-        await ScalarAsync(connection, $"UPDATE workflow_tasks SET status=4,error_message='Invalidated by demo reset' WHERE status IN (0,1,2) AND instance_id NOT IN ({preserve}); UPDATE workflow_instances SET status=3,updated_at='{clock.UtcNow:O}'::timestamptz WHERE status IN (0,1,4) AND id NOT IN ({preserve}); UPDATE maintenance_commands SET status='skipped',completed_at='{clock.UtcNow:O}'::timestamptz,last_error='Invalidated by demo reset' WHERE status IN ('pending','processing')", ct);
+        await ScalarAsync(connection, $"UPDATE workflow_tasks SET child_launch_intent_id=NULL WHERE instance_id NOT IN ({preserve}); UPDATE workflow_tasks SET status=4,error_message='Invalidated by demo reset' WHERE status IN (0,1,2) AND instance_id NOT IN ({preserve}); UPDATE workflow_instances SET status=3,updated_at='{clock.UtcNow:O}'::timestamptz WHERE status IN (0,1,4) AND id NOT IN ({preserve}); UPDATE maintenance_commands SET status='skipped',completed_at='{clock.UtcNow:O}'::timestamptz,last_error='Invalidated by demo reset' WHERE status IN ('pending','processing')", ct);
         var builder = new RecipeSearchDocumentBuilder();
         var documents = await restored.RecipeSearchDocuments.ToDictionaryAsync(d => d.RecipeId, ct);
         foreach (var recipe in await restored.Recipes.AsNoTracking().ToListAsync(ct))
@@ -234,15 +329,20 @@ public partial class RecoverySnapshotService
 
     private static bool IsSafeFutureDemoMaintenance(WorkflowInstance instance, DateTimeOffset now)
     {
+        var roots = instance.Tasks.Where(t => t.DependsOn.Length == 0).ToArray();
+        return roots.Length != 0 && roots.All(t => t.Status == Models.TaskStatus.Pending && t.ScheduledAt > now)
+            && instance.Tasks.All(t => t.Status is Models.TaskStatus.Waiting or Models.TaskStatus.Pending && t.RetryCount == 0)
+            && IsReviewedDemoMaintenanceGraph(instance);
+    }
+
+    internal static bool IsReviewedDemoMaintenanceGraph(WorkflowInstance instance)
+    {
         try
         {
             using var parameters = JsonDocument.Parse(instance.Parameters ?? "{}");
             if (parameters.RootElement.ValueKind != JsonValueKind.Object || parameters.RootElement.EnumerateObject().Any()) return false;
-            var roots = instance.Tasks.Where(t => t.DependsOn.Length == 0).ToArray();
-            if (roots.Length == 0 || roots.Any(t => t.Status != Models.TaskStatus.Pending || t.ScheduledAt is null || t.ScheduledAt <= now)) return false;
             foreach (var task in instance.Tasks)
             {
-                if (task.Status is not (Models.TaskStatus.Waiting or Models.TaskStatus.Pending) || task.RetryCount != 0) return false;
                 if (task.ProcessorName is "PruneWorkflows" or "ProcessMaintenanceCommands" or "PruneMaintenanceCommands"
                     or "FinalizeOverdueMeals" or "RolloverGroceryExtras" or "ReconcileRecipeRotation"
                     or "MaterializeRecipeSearchFilters" or "GenerateDreamingReport") continue;

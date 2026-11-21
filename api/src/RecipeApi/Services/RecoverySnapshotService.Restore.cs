@@ -22,15 +22,34 @@ public partial class RecoverySnapshotService
             : new("available", "Last committed exact restore is identified by snapshotId.", publication.SnapshotId);
     }
 
-    public async Task<RecoveryResult> RestoreExactAsync(Guid snapshotId, CancellationToken ct)
+    public async Task<RecoveryResult> RestoreExactAsync(Guid snapshotId, CancellationToken ct, string? expectedDestinationRevision = null)
     {
         _demoPolicy.EnsureManagementAvailable();
-        return await RestoreFromAsync(Path.Combine(BackupRoot, snapshotId.ToString("N")), snapshotId, ct);
+        return await RestoreFromAsync(Path.Combine(BackupRoot, snapshotId.ToString("N")), snapshotId, ct, expectedDestinationRevision: expectedDestinationRevision);
     }
 
-    private async Task<RecoveryResult> RestoreFromAsync(string source, Guid snapshotId, CancellationToken ct, bool demo = false, Guid? workflowInstanceId = null)
+    private async Task<RecoveryResult> RestoreFromAsync(string source, Guid snapshotId, CancellationToken ct, bool demo = false, Guid? workflowInstanceId = null, string? expectedDestinationRevision = null)
     {
-        var tables = demo ? DemoTables : Tables;
+        if (expectedDestinationRevision is not null && !IsDestinationRevision(expectedDestinationRevision))
+            throw new InvalidDataException("Expected destination revision must be a lowercase SHA-256 value.");
+        RejectLinks(Path.Combine(source, "manifest.json"));
+        if (!File.Exists(Path.Combine(source, "manifest.json"))) throw new InvalidDataException("Snapshot manifest is missing.");
+        var sourceManifest = FoodVocabularyDefinitions.ReadStrict<RecoveryManifest>(SnapshotText(await File.ReadAllBytesAsync(Path.Combine(source, "manifest.json"), ct)));
+        _ = FormatTables(sourceManifest.Version, demo);
+        var currentSource = IsCurrentFormat(sourceManifest.Version, demo)
+            ? await ReadCurrentSnapshotAsync(source, snapshotId, demo, ct) : null;
+        DestinationVocabularyObservation destination;
+        await using (var observationLease = await boundary.EnterAsync(RecoveryAccess.Snapshot, ct))
+            destination = await ObserveDestinationVocabularyAsync(ct, demo);
+        if (currentSource is not null)
+        {
+            if (!demo && (expectedDestinationRevision is not null && expectedDestinationRevision != destination.Baseline.Revision
+                || RequiresExpectedDestinationRevision(currentSource, destination) && expectedDestinationRevision is null))
+                throw new RecoveryDestinationConflictException("The destination changed or requires its reviewed preflight revision.");
+            _ = MergeRecoveryVocabulary(currentSource, destination);
+        }
+        else RequireLegacyDestination(destination);
+
         var operation = Guid.NewGuid();
         var stage = Path.Combine(recipes.BaseRoot, ".recovery-generations", operation.ToString("N"));
         RejectLinks(stage);
@@ -41,8 +60,13 @@ public partial class RecoverySnapshotService
         try
         {
             RecoveryManifest manifest;
-            try { manifest = await ValidateAndStageAsync(source, stage, snapshotId, ct, demo); }
+            try
+            {
+                manifest = currentSource is null ? await ValidateAndStageAsync(source, stage, snapshotId, ct, demo)
+                : await StageCurrentSnapshotAsync(currentSource, stage, destination, ct);
+            }
             catch (InvalidOperationException ex) { throw new InvalidDataException("Snapshot JSON has an invalid content shape.", ex); }
+            var tables = FormatTables(manifest.Version, demo);
             await using var connection = await OpenAsync(ct);
             await using var transaction = await connection.BeginTransactionAsync(ct);
             try { await ValidateTablesAsync(connection, stage, manifest, ct, demo); }
@@ -53,14 +77,26 @@ public partial class RecoverySnapshotService
             if (checkpoint is not null) await checkpoint.ReachedAsync("staged", ct);
             // No live changes above this line. Existing users can continue reading/writing during preflight.
             await using var lease = await boundary.EnterAsync(RecoveryAccess.Publish, ct);
+            if (currentSource is not null) await RequireUnchangedSnapshotAsync(currentSource, ct);
             if (File.Exists(JournalPath)) throw new RecoveryBusyException("Resume the interrupted restore before starting another.");
+            if (await db.RecipePhysicalDeletions.AsNoTracking().AnyAsync(x => x.CompletedAt == null, ct))
+                throw new RecoveryBusyException("Complete or reconcile pending recipe physical retirement before restoring household state.");
+            if (currentSource is not null)
+            {
+                var observed = await ObserveDestinationVocabularyAsync(ct, demo);
+                if (observed.Baseline.Revision != destination.Baseline.Revision)
+                    throw new RecoveryDestinationConflictException("The destination changed while the restore was staging.");
+            }
+            else RequireLegacyDestination(await ObserveDestinationVocabularyAsync(ct, demo));
+            if (demo) await ValidateDemoInventoryAsync(connection, ct, currentSource is not null, prospectiveDemoInvalidation: true);
             if (demo && workflowInstanceId is { } resetId)
             {
                 // Recheck after draining: another publication may have fenced this claimed worker.
                 var eligible = await ScalarAsync(connection, $"SELECT count(*)::text FROM workflow_instances i WHERE i.id='{resetId}' AND i.status IN (0,1) AND EXISTS (SELECT 1 FROM workflow_tasks t WHERE t.instance_id=i.id AND t.processor_name='RestoreDemoState' AND t.status IN (1,2))", ct);
                 if (eligible != "1") throw new InvalidOperationException("Demo reset work was invalidated; it cannot publish into the current household.");
             }
-            if (demo && await ScalarAsync(connection, "SELECT count(*)::text FROM family_settings WHERE key <> 'family_goto'", ct) != "0")
+            var allowedDemoSettings = currentSource is null ? "'family_goto','supper_servings_default'" : "'family_goto','supper_servings_default','food_vocabulary_publication'";
+            if (demo && await ScalarAsync(connection, "SELECT count(*)::text FROM family_settings WHERE key NOT IN (" + allowedDemoSettings + ")", ct) != "0")
                 throw new InvalidDataException("Unclassified live setting; declare operator ownership before demo reset. Live state is unchanged.");
             using var duration = CancellationTokenSource.CreateLinkedTokenSource(ct);
             duration.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(configuration.GetValue("Recovery:MaxFreezeSeconds", 30), 1, 3600)));
@@ -92,13 +128,17 @@ public partial class RecoverySnapshotService
                     await ScalarAsync(connection, "DELETE FROM recipe_votes; DELETE FROM voting_round_state; DELETE FROM recipe_search_filter_state; DELETE FROM recipe_search_affinity_facts; DELETE FROM recipe_search_documents", ct);
                     var round = Guid.NewGuid();
                     await ScalarAsync(connection, $"INSERT INTO voting_round_state(id,round_id,history_generation,requires_round_identity,week_start_date) VALUES(1,'{round}','{Guid.NewGuid()}',true,(SELECT CASE WHEN count(*)=1 THEN min(week_start_date) END FROM weekly_plans WHERE status=1)); UPDATE weekly_plans SET requires_round_identity=true,last_closed_round_id=NULL,voting_round_id=CASE WHEN status=1 AND (SELECT count(*) FROM weekly_plans WHERE status=1)=1 THEN '{round}'::uuid ELSE NULL END", ct);
-                    await ScalarAsync(connection, $"UPDATE workflow_tasks SET status=4,error_message='Invalidated by exact recovery' WHERE status IN (0,1,2) AND instance_id IN (SELECT id FROM workflow_instances WHERE workflow_id NOT IN ('dreaming','demo-restore')); UPDATE workflow_instances SET status=3 WHERE status IN (0,1,4) AND workflow_id NOT IN ('dreaming','demo-restore'); UPDATE maintenance_commands SET status='skipped',completed_at='{clock.UtcNow:O}'::timestamptz,last_error='Invalidated by exact recovery' WHERE status IN ('pending','processing')", ct);
+                    await ScalarAsync(connection, $"UPDATE workflow_tasks SET child_launch_intent_id=NULL WHERE instance_id IN (SELECT id FROM workflow_instances WHERE workflow_id NOT IN ('dreaming','demo-restore')); UPDATE workflow_tasks SET status=4,error_message='Invalidated by exact recovery' WHERE status IN (0,1,2) AND instance_id IN (SELECT id FROM workflow_instances WHERE workflow_id NOT IN ('dreaming','demo-restore')); UPDATE workflow_instances SET status=3 WHERE status IN (0,1,4) AND workflow_id NOT IN ('dreaming','demo-restore'); UPDATE maintenance_commands SET status='skipped',completed_at='{clock.UtcNow:O}'::timestamptz,last_error='Invalidated by exact recovery' WHERE status IN ('pending','processing')", ct);
                     await using (var restored = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(connection).Options))
                     {
                         await restored.Database.UseTransactionAsync(transaction, ct);
                         await new RecipeApi.Services.RecipeSearchFilterMaterializer(restored, clock).MaterializeAsync(ct);
+                        // Re-derive current inputs even when an older snapshot called its cache current.
+                        // This uses the restore transaction and publication lease, never a nested lease.
+                        await new SupperProjectionInvalidation(restored, clock, new DeploymentCalendar(configuration))
+                            .AuditSavedWeeksAsync(true, ct);
                     }
-                    await ScalarAsync(connection, "UPDATE recipe_import_reports SET last_workflow_instance_id=NULL,last_error=CASE WHEN status='reimporting' THEN 'Exact recovery invalidated the unfinished import; retry reimport.' ELSE last_error END,status=CASE WHEN status='reimporting' THEN 'reimport_failed' ELSE status END", ct);
+                    await ScalarAsync(connection, "UPDATE recipe_import_reports SET repair_intent_id=NULL,last_workflow_instance_id=NULL,last_error=CASE WHEN status='reimporting' THEN 'Exact recovery invalidated the unfinished import; retry reimport.' ELSE last_error END,status=CASE WHEN status='reimporting' THEN 'reimport_failed' ELSE status END", ct);
                     await QueueDerivedRepairAsync(connection, ct);
                 }
                 await ScalarAsync(connection, $"INSERT INTO recovery_publication(id,operation_id,snapshot_id) VALUES(1,'{operation}','{snapshotId}') ON CONFLICT(id) DO UPDATE SET operation_id=excluded.operation_id,snapshot_id=excluded.snapshot_id", ct);
@@ -106,7 +146,7 @@ public partial class RecoverySnapshotService
                 if (demo)
                 {
                     stateCounts = new();
-                    foreach (var table in DemoDispositions.Keys)
+                    foreach (var table in (currentSource is null ? DemoDispositions : CurrentDemoDispositions).Keys)
                         stateCounts[table] = int.Parse(await ScalarAsync(connection, $"SELECT count(*)::text FROM public.{table}", ct), System.Globalization.CultureInfo.InvariantCulture);
                 }
                 await ActivateAsync(journal.Next);
@@ -133,6 +173,11 @@ public partial class RecoverySnapshotService
             // Never delete a generation that might be active or awaiting commit reconciliation.
             if (!journalWritten && Directory.Exists(stage)) Directory.Delete(stage, true);
         }
+    }
+
+    internal async Task ResumeIfInterruptedAsync(CancellationToken ct)
+    {
+        if (File.Exists(JournalPath)) await ResumeAsync(ct);
     }
 
     public async Task<RecoveryResult> ResumeAsync(CancellationToken ct)
@@ -207,6 +252,8 @@ public partial class RecoverySnapshotService
         RejectLinks(manifestPath);
         var manifest = JsonSerializer.Deserialize<RecoveryManifest>(await File.ReadAllTextAsync(manifestPath, ct), Json)
             ?? throw new InvalidDataException("Invalid manifest.");
+        if (IsCurrentFormat(manifest.Version, demo))
+            return await StageCurrentSnapshotAsync(await ReadCurrentSnapshotAsync(source, id, demo, ct), stage, null, ct);
         if (manifest.Version != (demo ? 2 : 1) || manifest.Id != id || manifest.Tables is null || !manifest.Tables.SequenceEqual(tables) || manifest.Files is null)
             throw new InvalidDataException("Unsupported or incomplete snapshot format.");
         var names = new HashSet<string>(StringComparer.Ordinal);
@@ -307,16 +354,32 @@ public partial class RecoverySnapshotService
     private static Task<string> WritableColumnsAsync(NpgsqlConnection connection, string table, CancellationToken ct)
         => ScalarAsync(connection, $"SELECT string_agg(column_name,',' ORDER BY ordinal_position) FROM information_schema.columns WHERE table_schema='public' AND table_name='{table}' AND is_generated='NEVER'", ct);
 
-    private async Task ValidateTablesAsync(NpgsqlConnection connection, string stage, RecoveryManifest manifest, CancellationToken ct, bool demo = false)
+    private async Task ValidateTablesAsync(NpgsqlConnection connection, string stage, RecoveryManifest manifest, CancellationToken ct,
+        bool demo = false, IReadOnlyDictionary<string, byte[]>? artifacts = null)
     {
-        var tables = demo ? DemoTables : Tables;
-        if (demo) await ValidateDemoInventoryAsync(connection, ct);
-        if (manifest.Schema != await SchemaAsync(connection, ct, demo ? DemoDispositions.Keys.Order().ToArray() : null)) throw new InvalidDataException("Snapshot schema is incompatible; use the matching application version or migrate a separate copy.");
+        try { await ValidateTablesCoreAsync(connection, stage, manifest, ct, demo, artifacts); }
+        catch (Exception error) when (error is JsonException or KeyNotFoundException or FormatException or InvalidOperationException or OverflowException)
+        { throw new InvalidDataException("Snapshot database or history rows have an invalid content shape.", error); }
+    }
+
+    private async Task ValidateTablesCoreAsync(NpgsqlConnection connection, string stage, RecoveryManifest manifest, CancellationToken ct,
+        bool demo, IReadOnlyDictionary<string, byte[]>? artifacts)
+    {
+        Task<string> ReadSnapshotTextAsync(string path)
+        {
+            if (artifacts is null) return File.ReadAllTextAsync(Path.Combine(stage, ".snapshot", path), ct);
+            if (!artifacts.TryGetValue(path, out var bytes)) throw new InvalidDataException("A required snapshot artifact is missing.");
+            return Task.FromResult(SnapshotText(bytes));
+        }
+        var tables = FormatTables(manifest.Version, demo);
+        var current = IsCurrentFormat(manifest.Version, demo);
+        if (demo) await ValidateDemoInventoryAsync(connection, ct, current, prospectiveDemoInvalidation: true);
+        if (manifest.Schema != await SchemaAsync(connection, ct, demo ? (current ? CurrentDemoDispositions : DemoDispositions).Keys.Order().ToArray() : tables)) throw new InvalidDataException("Snapshot schema is incompatible; use the matching application version or migrate a separate copy.");
         foreach (var table in tables)
         {
-            var text = await File.ReadAllTextAsync(Path.Combine(stage, ".snapshot/tables", table + ".json"), ct);
+            var text = await ReadSnapshotTextAsync("tables/" + table + ".json");
             using var parsed = JsonDocument.Parse(text);
-            if (demo && NormalizeDemoRows(table, text) != JsonNode.Parse(text)!.ToJsonString())
+            if (demo && NormalizeDemoRows(table, text, current) != JsonNode.Parse(text)!.ToJsonString())
                 throw new InvalidDataException($"Demo {table} must satisfy its declared fresh-state disposition.");
             if (parsed.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException($"{table} must be an explicit array.");
             var writable = await WritableColumnsAsync(connection, table, ct);
@@ -326,10 +389,11 @@ public partial class RecoverySnapshotService
                     throw new InvalidDataException($"{table} row has missing, duplicate or unknown fields.");
             await ScalarAsync(connection, $"CREATE TEMP TABLE recovery_{table} (LIKE public.{table} INCLUDING ALL) ON COMMIT DROP; INSERT INTO pg_temp.recovery_{table} ({writable}) SELECT {writable} FROM jsonb_populate_recordset(NULL::public.{table}, @json)", ct, text);
         }
+        if (!current) await ValidateLegacyTableAuthorityAsync(connection, ct);
         if (demo)
             ValidateDemoSettingReferences(
-                await File.ReadAllTextAsync(Path.Combine(stage, ".snapshot/tables/family_settings.json"), ct),
-                await File.ReadAllTextAsync(Path.Combine(stage, ".snapshot/tables/recipes.json"), ct));
+                await ReadSnapshotTextAsync("tables/family_settings.json"),
+                await ReadSnapshotTextAsync("tables/recipes.json"), current);
         var foreignKeys = new List<(string Table, string Definition)>();
         await using (var command = new NpgsqlCommand("SELECT c.conrelid::regclass::text,pg_get_constraintdef(c.oid) FROM pg_constraint c WHERE c.contype='f'", connection))
         await using (var reader = await command.ExecuteReaderAsync(ct))
@@ -362,11 +426,11 @@ public partial class RecoverySnapshotService
             """, ct);
         if (!long.TryParse(invalidGroceryExtraLineageCount, out var invalidLineages) || invalidLineages != 0)
             throw new InvalidDataException("grocery_extra_occurrences contains invalid lineage relationships.");
-        using var history = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(stage, ".snapshot/weekly-household-interest.json"), ct));
+        using var history = JsonDocument.Parse(await ReadSnapshotTextAsync("weekly-household-interest.json"));
         if (history.RootElement.GetProperty("version").GetInt32() != 1 || history.RootElement.GetProperty("generation").GetGuid() == Guid.Empty)
             throw new InvalidDataException("Invalid history sidecar version or generation.");
         var rows = history.RootElement.GetProperty("rows").Deserialize<List<WeeklyHouseholdInterest>>(Json) ?? throw new InvalidDataException("Missing history rows.");
-        using var expected = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(stage, ".snapshot/tables/weekly_household_interest.json"), ct));
+        using var expected = JsonDocument.Parse(await ReadSnapshotTextAsync("tables/weekly_household_interest.json"));
         if (rows.Count != expected.RootElement.GetArrayLength() || rows.Select(r => (r.WeekStartDate, r.RecipeId)).Distinct().Count() != rows.Count)
             throw new InvalidDataException("History membership mismatch.");
         foreach (var row in expected.RootElement.EnumerateArray())

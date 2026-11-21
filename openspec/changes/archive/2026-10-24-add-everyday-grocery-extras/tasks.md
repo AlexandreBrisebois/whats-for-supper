@@ -71,7 +71,6 @@
 
 See [evidence](evidence.md) for requirement/scenario and per-task mapping, current behavior, observed regression cycles, preserved prior records, and limitations. Thirteen tasks have implementation/acceptance evidence. Tasks 1.2, 2.2, 3.1, 4.2 and 5.1 remain unchecked because their complete original preimplementation red evidence is unavailable; current green coverage and new regression reds do not reconstruct that history. Final integration tasks remained unchecked pending the final gate and unresolved evidence at that checkpoint. The subsequent user-authorized lifecycle disposition below supersedes the instruction to keep the change active.
 
-
 ## Authorized lifecycle disposition (2026-10-24)
 
 After reviewing that the behavior is implemented, the user authorized sync/archive

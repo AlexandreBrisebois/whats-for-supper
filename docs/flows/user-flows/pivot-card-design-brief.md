@@ -12,7 +12,7 @@
 "GOTO" is a developer term borrowed from assembly language. It carries zero meaning for a parent standing in a kitchen at 5:30 pm. The Toddler Rule is clear: if you can't explain it while holding a crying child, rename it. "Confirm" is also weak — it implies a bureaucratic approval step, not a decisive action.
 
 **How (Parental Utility)**
-The button should answer the question the parent is already asking: *"Are we making this tonight?"* A label like **"Make This Tonight"** or **"Yes, This One"** is self-explanatory, thumb-friendly, and removes the cognitive pause of decoding jargon.
+The button should answer the question the parent is already asking: _"Are we making this tonight?"_ A label like **"Make This Tonight"** or **"Yes, This One"** is self-explanatory, thumb-friendly, and removes the cognitive pause of decoding jargon.
 
 **Proposed label:** `Make This Tonight`
 
@@ -27,6 +27,7 @@ When `gotoReady === true`, the card presents three actions: **Confirm GOTO** (oc
 The primary action (making the planned meal) should dominate. The two escape hatches should feel like footnotes — present but not competing. The fix is to reduce the secondary buttons to text links or ghost buttons with smaller type, not pill buttons with background fills. The parent's eye should land on the primary action in under 300 ms.
 
 **Proposed hierarchy:**
+
 - Primary: `Make This Tonight` — full-width, ochre, pill button (current size is correct)
 - Secondary row: `Quick Find` + `Order In` — ghost/outline style, smaller text, no background fill
 
@@ -38,7 +39,7 @@ The primary action (making the planned meal) should dominate. The two escape hat
 A grey box with a centred icon is a placeholder, not a design. It communicates "nothing here" rather than "something is possible here." The current implementation uses a `<Utensils>` icon at `text-charcoal/10` opacity — nearly invisible. The empty state is the most important state for a new user; it is the first thing they see.
 
 **How (Parental Utility)**
-The empty state should be an invitation, not a void. Replace the grey box with a warm, illustrated prompt — a soft terracotta gradient background with a short, human line like *"Your family's go-to meal lives here"* and a visible CTA to set one. Current setup navigation is the ordinary-empty **Choose GOTO recipes** text link to `/browse-all-stack`, below Quick Find and Order In. The earlier callout-card proposal in this brief is superseded for GOTO education; preserve the existing cookbook shell and modest icon.
+The empty state should be an invitation, not a void. Replace the grey box with a warm, illustrated prompt — a soft terracotta gradient background with a short, human line like _"Your family's go-to meal lives here"_ and a visible CTA to set one. Current setup navigation is the ordinary-empty **Choose GOTO recipes** text link to `/browse-all-stack`, below Quick Find and Order In. The earlier callout-card proposal in this brief is superseded for GOTO education; preserve the existing cookbook shell and modest icon.
 
 **Proposed treatment:** Terracotta/10 gradient background, centred icon at full opacity (`text-terracotta`), label text at `text-sm` (not `text-[11px]`), and a visible underline or arrow on the link.
 
@@ -62,7 +63,7 @@ Using the product's own tagline as the card header reinforces brand recognition 
 The pivot card currently feels like a fallback — a card that appears when the "real" card (TonightMenuCard) is absent. The layout, typography, and colour choices are nearly identical to TonightMenuCard, which makes the pivot feel like a broken version of it rather than a purposeful state. A Command Center should feel active and directive, not passive and apologetic.
 
 **How (Parental Utility)**
-The single highest-impact change is **adding a contextual status line** below the header that tells the parent exactly where they are: *"No meal planned yet"* or *"Your GOTO is ready"* or *"Checking your GOTO…"* — in plain language, not italic muted text. This one line transforms the card from a dead end into a live status display. Pair it with a subtle animated pulse on the GOTO image area when `gotoStatus === 'pending'` (Framer Motion, standard spring profile) to signal that something is happening.
+The single highest-impact change is **adding a contextual status line** below the header that tells the parent exactly where they are: _"No meal planned yet"_ or _"Your GOTO is ready"_ or _"Checking your GOTO…"_ — in plain language, not italic muted text. This one line transforms the card from a dead end into a live status display. Pair it with a subtle animated pulse on the GOTO image area when `gotoStatus === 'pending'` (Framer Motion, standard spring profile) to signal that something is happening.
 
 ---
 

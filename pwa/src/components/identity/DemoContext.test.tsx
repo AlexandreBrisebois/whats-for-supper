@@ -3,12 +3,18 @@ import { StrictMode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DemoContext } from './DemoContext';
 import { InstallIdentityProvider } from './IdentityHint';
+import { Header } from '@/components/common/Header';
 import { DEMO_CONTEXT_ACK_KEY, useDemoContextVisit } from '@/store/demoContextStore';
 
 const state = vi.hoisted(() => ({
   mode: { mode: true as boolean | null, loading: false, error: false, retry: vi.fn() },
   route: { path: '/home', query: '' },
-  family: { selectedFamilyMemberId: 'synthetic-member', hasLoaded: true, isLoading: false },
+  family: {
+    familyMembers: [] as { id: string; name: string }[],
+    selectedFamilyMemberId: 'synthetic-member',
+    hasLoaded: true,
+    isLoading: false,
+  },
   ui: { isLoading: false },
   capture: { pendingRecipes: [] as unknown[] },
   pdf: { selection: null as unknown },
@@ -19,7 +25,8 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(state.route.query),
 }));
 vi.mock('@/store/familyStore', () => ({
-  useFamilyStore: (selector: (value: unknown) => unknown) => selector(state.family),
+  useFamilyStore: (selector?: (value: unknown) => unknown) =>
+    selector ? selector(state.family) : state.family,
 }));
 vi.mock('@/store/uiStore', () => ({
   useUiStore: (selector: (value: unknown) => unknown) => selector(state.ui),
@@ -94,6 +101,11 @@ describe('demo context', () => {
       </InstallIdentityProvider>
     );
     expect(await screen.findByRole('dialog')).toHaveAccessibleName('Beta · Better with your ideas');
+    expect(
+      screen.getByText(
+        "Welcome to the beta of What's for Supper? Try choosing meals together, planning your week, and making supper one less thing to think about."
+      )
+    ).toBeVisible();
     expect(
       screen.getByText(
         'We’re still working on this version. Some things may change, and you might run into a bug along the way. We’re building this in public, together. Your ideas and feedback help shape what comes next.'
@@ -390,6 +402,13 @@ describe('demo context', () => {
     state.mode.mode = false;
     render(<DemoContext />);
     expect(screen.queryByTestId('demo-context-band')).not.toBeInTheDocument();
+  });
+
+  it('does not render Command Center or Matchmaking subtitles in Header', () => {
+    const view = render(<Header />);
+    expect(screen.queryByText(/Command Center|Matchmaking/i)).not.toBeInTheDocument();
+    view.rerender(<Header title="Discovery" />);
+    expect(screen.queryByText(/Command Center|Matchmaking/i)).not.toBeInTheDocument();
   });
 
   it('remains readable when the browser denies all local storage access', async () => {

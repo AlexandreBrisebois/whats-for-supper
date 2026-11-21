@@ -5,6 +5,7 @@
 > ✅ **Updated for `home-command-center-hardening`.**
 >
 > This document reflects the corrected implementation after the hardening spec:
+>
 > - `todayStore` is the single source of truth for today's recipe and status.
 > - The primary action button is labelled **"Make This Tonight"** (prop name `onConfirmGoto` is unchanged).
 > - Empty state shows an ochre CTA pill in the footer: **"Add your family's GOTO recipe"**.
@@ -26,7 +27,7 @@ ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../specs/decisions/03
 ```ts
 interface TodayState {
   currentRecipe: { id: string; name: string; image: string } | null;
-  status: 0 | 2 | 3;   // 0 = none, 2 = cooked, 3 = ordered-in / skipped
+  status: 0 | 2 | 3; // 0 = none, 2 = cooked, 3 = ordered-in / skipped
   isLoading: boolean;
   lastSyncedAt: number | null;
   optimisticWriteAt: number | null;
@@ -36,8 +37,8 @@ interface TodayState {
 Derived flags in `HomeCommandCenter`:
 
 ```ts
-const isCooked    = status === 2;
-const isSkipped   = status === 3;
+const isCooked = status === 2;
+const isSkipped = status === 3;
 const sessionDone = status === 2 || status === 3;
 ```
 
@@ -92,15 +93,16 @@ Do not revert this condition. The previous `!currentRecipe || isSkipped || sessi
 
 `HomeCommandCenter` renders views in priority order. Multiple views can be visible simultaneously (e.g. a cooked badge alongside the voting nudge card).
 
-| Priority | Condition | View shown |
-|----------|-----------|------------|
-| 1 | `isLoading === true` | `SolarLoader` (replaces all below) |
-| 2a | `isCooked && !cookedDismissed` | `CookedSuccessCard` (full card) |
-| 2b | `isCooked && cookedDismissed` | Compact cooked badge (tap → Cook's Mode) |
-| 3 | `!currentRecipe && !isSkipped && !sessionDone && !isCooked` | `TonightPivotCard` |
-| 4 | `currentRecipe && currentRecipe.id && currentRecipe.name && !isSkipped && !isCooked && !sessionDone` | `TonightMenuCard` |
+| Priority | Condition                                                                                            | View shown                               |
+| -------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 1        | `isLoading === true`                                                                                 | `SolarLoader` (replaces all below)       |
+| 2a       | `isCooked && !cookedDismissed`                                                                       | `CookedSuccessCard` (full card)          |
+| 2b       | `isCooked && cookedDismissed`                                                                        | Compact cooked badge (tap → Cook's Mode) |
+| 3        | `!currentRecipe && !isSkipped && !sessionDone && !isCooked`                                          | `TonightPivotCard`                       |
+| 4        | `currentRecipe && currentRecipe.id && currentRecipe.name && !isSkipped && !isCooked && !sessionDone` | `TonightMenuCard`                        |
 
 Notes:
+
 - `cookedDismissed` is UI-only local state in `HomeCommandCenter`. Dismissing `CookedSuccessCard` collapses it to the compact badge; `todayStore.status` remains `2`.
 - Condition 4 requires both `id` and `name` to be non-null. A recipe with `name = null` (broken import state) falls through to `TonightPivotCard`. This is the Phase 14 D3 guard.
 - The compact cooked badge (2b) taps into `CooksMode` so the user can recover from an accidental "Done" tap.
@@ -163,12 +165,12 @@ When `gotoRecipeStatus === 'pending'`:
 - "Make This Tonight" button is disabled; spinner shown
 - Polling continues every 5 s via `GET /api/recipes/{id}/status` until `status === 'ready'`
 
-| `gotoRecipeStatus` | `gotoRecipeId` | Button state |
-|---|---|---|
-| `'ready'` | non-null | ✅ Enabled — "Make This Tonight" |
-| `'pending'` | non-null | ❌ Disabled — spinner shown |
-| `null` (fetch not complete) | non-null | ❌ Disabled — loading |
-| any | null | Footer CTA only — "Add your family's GOTO recipe" |
+| `gotoRecipeStatus`          | `gotoRecipeId` | Button state                                      |
+| --------------------------- | -------------- | ------------------------------------------------- |
+| `'ready'`                   | non-null       | ✅ Enabled — "Make This Tonight"                  |
+| `'pending'`                 | non-null       | ❌ Disabled — spinner shown                       |
+| `null` (fetch not complete) | non-null       | ❌ Disabled — loading                             |
+| any                         | null           | Footer CTA only — "Add your family's GOTO recipe" |
 
 ---
 
@@ -178,11 +180,11 @@ When `gotoRecipeStatus === 'pending'`:
 
 Reconciliation rules:
 
-| `optimisticWriteAt` | Elapsed since write | Sync behaviour |
-|---|---|---|
-| `null` | — | Always update `currentRecipe` from server |
-| set | < 10 000 ms | Skip update — protect the optimistic write |
-| set | ≥ 10 000 ms | Update `currentRecipe` from server |
+| `optimisticWriteAt` | Elapsed since write | Sync behaviour                             |
+| ------------------- | ------------------- | ------------------------------------------ |
+| `null`              | —                   | Always update `currentRecipe` from server  |
+| set                 | < 10 000 ms         | Skip update — protect the optimistic write |
+| set                 | ≥ 10 000 ms         | Update `currentRecipe` from server         |
 
 This prevents a background sync from clobbering an optimistic recipe assignment that hasn't yet been confirmed by the server.
 
@@ -192,11 +194,11 @@ This prevents a background sync from clobbering an optimistic recipe assignment 
 
 All capture-originated paths share the same `pending → ready` lifecycle via `RecipeReadyProcessor`.
 
-| How GOTO was set | Workflow first step | `recipeId` in setting when? | Recipe status journey |
-|---|---|---|---|
-| Library pick (QuickFindModal) | none — recipe exists | at save time | immediately `ready` (name + images exist) |
-| Describe it | `SynthesizeRecipe` | after `POST /api/recipes/describe` returns | `pending` → `ready` via `RecipeReadyProcessor` |
-| Camera / gallery | `ExtractRecipe` | after capture upload returns | `pending` → `ready` via `RecipeReadyProcessor` |
+| How GOTO was set              | Workflow first step  | `recipeId` in setting when?                | Recipe status journey                          |
+| ----------------------------- | -------------------- | ------------------------------------------ | ---------------------------------------------- |
+| Library pick (QuickFindModal) | none — recipe exists | at save time                               | immediately `ready` (name + images exist)      |
+| Describe it                   | `SynthesizeRecipe`   | after `POST /api/recipes/describe` returns | `pending` → `ready` via `RecipeReadyProcessor` |
+| Camera / gallery              | `ExtractRecipe`      | after capture upload returns               | `pending` → `ready` via `RecipeReadyProcessor` |
 
 The `family_goto` setting stores `{ description, recipeId }` in all cases. Readiness is always read from `GET /api/recipes/{id}/status`.
 
@@ -204,19 +206,19 @@ The `family_goto` setting stores `{ description, recipeId }` in all cases. Readi
 
 ## E2E Test Coverage
 
-| Scenario | Test file | Status |
-|----------|-----------|--------|
-| No recipe → pivot card shown, "What's for Supper?" header | `home-goto.spec.ts` | ✅ |
-| Empty state → ochre CTA in footer (not buried in image area) | `home-goto.spec.ts` | ✅ |
-| GOTO ready → "Make This Tonight" enabled | `home-goto.spec.ts` | ✅ |
-| "Make This Tonight" tap → menu card immediately (no network wait) | `home-goto.spec.ts` | ✅ |
-| Page reload after "Make This Tonight" → menu card still shown | `home-goto.spec.ts` | ✅ |
-| Quick Find → menu card immediately (optimistic) | `home-goto.spec.ts` | ✅ |
-| GOTO pending → "Make This Tonight" disabled, spinner shown | `home-goto.spec.ts` | ✅ |
-| "Order In" with no recipe → backend write, pivot hidden | `home-recipe.spec.ts` | ✅ |
-| "Order In" with recipe → `SkipRecoveryDialog` opens first | `home-recipe.spec.ts` | ✅ |
-| Page reload after "Order In" → pivot card not shown | `home-recipe.spec.ts` | ✅ |
-| SSR returns name=null → pivot card shown (not menu card) | — | ❌ Gap — needs unit test with null-name SSR prop |
+| Scenario                                                          | Test file             | Status                                           |
+| ----------------------------------------------------------------- | --------------------- | ------------------------------------------------ |
+| No recipe → pivot card shown, "What's for Supper?" header         | `home-goto.spec.ts`   | ✅                                               |
+| Empty state → ochre CTA in footer (not buried in image area)      | `home-goto.spec.ts`   | ✅                                               |
+| GOTO ready → "Make This Tonight" enabled                          | `home-goto.spec.ts`   | ✅                                               |
+| "Make This Tonight" tap → menu card immediately (no network wait) | `home-goto.spec.ts`   | ✅                                               |
+| Page reload after "Make This Tonight" → menu card still shown     | `home-goto.spec.ts`   | ✅                                               |
+| Quick Find → menu card immediately (optimistic)                   | `home-goto.spec.ts`   | ✅                                               |
+| GOTO pending → "Make This Tonight" disabled, spinner shown        | `home-goto.spec.ts`   | ✅                                               |
+| "Order In" with no recipe → backend write, pivot hidden           | `home-recipe.spec.ts` | ✅                                               |
+| "Order In" with recipe → `SkipRecoveryDialog` opens first         | `home-recipe.spec.ts` | ✅                                               |
+| Page reload after "Order In" → pivot card not shown               | `home-recipe.spec.ts` | ✅                                               |
+| SSR returns name=null → pivot card shown (not menu card)          | —                     | ❌ Gap — needs unit test with null-name SSR prop |
 
 > **Note:** `home-recovery.spec.ts` was deleted in `952d879` and split into `home-goto.spec.ts` and `home-recipe.spec.ts`. `home-race.spec.ts` covers polling and optimistic scenarios.
 

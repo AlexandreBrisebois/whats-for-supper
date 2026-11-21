@@ -79,13 +79,13 @@ def linux_network(stack, runtime):
     return network
 
 
-def linux_command(stack, runtime, directory, args):
+def linux_command(stack, runtime, directory, args, postgres_container):
     # Copy only repository inputs, including untracked source in the selected worktree.
     # Host bin/obj outputs must never be used by the Linux SDK.
     source = directory / 'source'
     source.mkdir()
     paths = command(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard',
-                     '--', 'api', 'global.json', 'Taskfile.yml']).split('\0')
+                     '--', 'api', 'global.json', 'Taskfile.yml', 'docs/data/food-vocabulary']).split('\0')
     manifest = {}
     for name in sorted(set(paths)):
         path = Path(name)
@@ -103,12 +103,15 @@ def linux_command(stack, runtime, directory, args):
     runtime['source_sha256'] = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
     name = 'wfs-database-sdk-' + uuid.uuid4().hex
     runtime['container'] = name
+    # Share only this run's owned PostgreSQL namespace. Loopback avoids the
+    # bridge's same-destination TIME_WAIT port ceiling with unpooled fixtures.
+    runtime['network_namespace'] = 'container:' + postgres_container
     stack.callback(remove_resource, ['docker', 'rm', '--force', name], runtime)
     container_args = list(args)
     container_args[container_args.index('--results-directory') + 1] = '/results'
     script = ('set -eu\nmkdir /work\ncp -a /source/. /work/\ncd /work\n'
               'dotnet --info > /results/runtime.txt\nexec "$@"')
-    return ['docker', 'run', '--name', name, '--network', runtime['network']['name'],
+    return ['docker', 'run', '--name', name, '--network', runtime['network_namespace'],
             '--env', 'WFS_TEST_POSTGRES_CONNECTION', '--env', 'DOTNET_EnableWriteXorExecute=0',
             '--env', 'DOTNET_CLI_TELEMETRY_OPTOUT=1',
             '--mount', f'type=bind,src={source},dst=/source,readonly',
@@ -132,16 +135,21 @@ def database_environment(metadata, network=None):
     image = postgres_image()
     password = secrets.token_urlsafe(24)
     docker_env = {**env, 'POSTGRES_PASSWORD': password}
+    # initdb otherwise trusts loopback before the image's appended remote rule.
+    # Retain the prior bridge's TCP password authentication for shared loopback.
+    if network:
+        docker_env['POSTGRES_INITDB_ARGS'] = '--auth-host=scram-sha-256'
     metadata.update(source='temporary-container', container=name, image=image)
     try:
         networking = (['--network', network, '--network-alias', 'postgres'] if network
                       else ['--publish', '127.0.0.1::5432'])
         command(['docker', 'run', '--detach', '--rm', '--name', name, *networking,
                  '--env', 'POSTGRES_PASSWORD',
+                 *(['--env', 'POSTGRES_INITDB_ARGS'] if network else []),
                  '--env', 'POSTGRES_USER=wfs_test', '--env', 'POSTGRES_DB=postgres',
                  '--tmpfs', '/var/lib/postgresql', image], env=docker_env, timeout=60)
         metadata['image_id'] = command(['docker', 'inspect', '--format', '{{.Image}}', name])
-        host, port = 'postgres', 5432
+        host, port = '127.0.0.1', 5432
         if not network:
             ports = json.loads(command(['docker', 'inspect', '--format', '{{json .NetworkSettings.Ports}}', name]))
             host, port = '127.0.0.1', int(ports['5432/tcp'][0]['HostPort'])
@@ -170,7 +178,9 @@ def execute_tests(args, env, log):
         except OSError as error:
             raise Unavailable('Could not start dotnet test.') from error
         try:
-            return child.wait(timeout=180)
+            # Covers the pinned SDK build and the complete relational suite.
+            # Keep a finite deadline and the same stop/reap/no-retry behavior.
+            return child.wait(timeout=600)
         except (subprocess.TimeoutExpired, KeyboardInterrupt):
             try:
                 os.killpg(child.pid, signal.SIGKILL)
@@ -219,7 +229,7 @@ def run_database_tests(filter_expression=None):
             network = linux_network(stack, record.setdefault('runtime', {})) if linux else None
             env = stack.enter_context(database_environment(record['database'], network))
             if linux:
-                args = linux_command(stack, record['runtime'], directory, args)
+                args = linux_command(stack, record['runtime'], directory, args, record['database']['container'])
             record['command'] = args
             code = execute_tests(args, env, directory / 'test.log')
             record['exit_code'] = code

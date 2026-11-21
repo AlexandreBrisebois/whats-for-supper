@@ -9,6 +9,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -19,6 +20,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -29,6 +31,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -39,6 +42,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -49,6 +53,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -59,6 +64,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -69,6 +75,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -79,6 +86,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -89,6 +97,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -99,6 +108,7 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available
 
@@ -109,5 +119,6 @@
 **Migration**: Stop this observation/export; preserve ordinary application behavior and logs. Historical received evidence remains historical and is not deleted.
 
 #### Scenario: Retired collection
+
 - **WHEN** the upgraded application executes the formerly observed operation, including with obsolete enabled configuration
 - **THEN** this integration emits no observation and business behavior remains available

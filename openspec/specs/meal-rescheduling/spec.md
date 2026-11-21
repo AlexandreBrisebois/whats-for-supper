@@ -18,7 +18,6 @@ Cross-capability requirement references resolve to the following authoritative o
 - [Submit chosen-recipe assignment through the protected operation](../meal-assignment/spec.md#requirement-submit-chosen-recipe-assignment-through-the-protected-operation)
 - [Persist recipe-free skipped plans without changing week status](../non-cooking-plans/spec.md#requirement-persist-recipe-free-skipped-plans-without-changing-week-status)
 
-
 ## Incoming Tomorrow reconciliation (non-normative)
 
 The accepted Tomorrow change from upstream commit `8357a8bd` (PR #242, merged at `e4a48c85`) is incorporated under the current owners. Its normative blocks are copied exactly from upstream. This supersedes the original split snapshot only for the changed/added Tomorrow requirements; all other original blocks and evidence records remain intact. See the [upstream change design](../../changes/archive/2026-10-16-tomorrow-preserve-meals/design.md) and [recorded acceptance evidence](../../changes/archive/2026-10-16-tomorrow-preserve-meals/tasks.md). This reconciliation did not rerun application/runtime qualification.
@@ -33,22 +32,27 @@ The accepted Tomorrow change from upstream commit `8357a8bd` (PR #242, merged at
 For an existing recipe-free entry, clear SHALL delete the selected date's calendar entry, await grocery recomputation for its containing week, read that schedule, attempt week_updated and then fill_the_gap_invalidated with connection exclusion. Recomputation SHALL retain existing week status or create a missing Draft plan. A missing entry SHALL complete without those follow-ups. Completed deletion SHALL return 204 without a body.
 
 #### Scenario: Entry exists
+
 - **WHEN** recipe-free clear and all its awaited work complete
 - **THEN** deletion precedes recomputation, schedule retrieval, week publication and fill-the-gap invalidation, then the API returns 204
 
 #### Scenario: Entry is already absent
+
 - **WHEN** clear finds no entry at its date
 - **THEN** it returns 204 without invoking those follow-ups
 
 #### Scenario: Later clear work fails
+
 - **WHEN** a follow-up throws after the entry was deleted
 - **THEN** clear does not return successful completion through that invocation, without establishing restoration of the entry
 
 #### Scenario: Clear creates a missing weekly plan
+
 - **WHEN** the entry is deleted with no containing weekly plan and recomputation persistence succeeds
 - **THEN** the follow-up creates a Draft weekly plan for that Monday
 
 #### Scenario: Clear retains existing week status
+
 - **WHEN** the entry is deleted from a week with an existing weekly plan and recomputation persistence succeeds
 - **THEN** that plan retains its Draft, VotingOpen or Locked status
 
@@ -57,29 +61,35 @@ For an existing recipe-free entry, clear SHALL delete the selected date's calend
 During a supported recipe-card drag, Planner SHALL exchange source and destination content locally while retaining each date/day label. Dates SHALL remain outside the moving surface; intermediate dates SHALL NOT shift. Intermediate drag updates SHALL submit no move request. A valid changed drop with a recipe ID SHALL submit one movement request with the pre-drag source index and final destination index; an unchanged drop SHALL submit none.
 
 #### Scenario: Drag crosses multiple days
+
 - **WHEN** a recipe card crosses intermediate positions and is dropped at another date
 - **THEN** local swap feedback precedes one request for the original source and final destination
 - **AND** only source and destination content change; all date labels retain their ordered slots
 
 #### Scenario: Return to the source
+
 - **WHEN** a drag ends at its original position
 - **THEN** no movement request is submitted
 - **AND** the original content arrangement is retained
 
 #### Scenario: Movement rejects
+
 - **WHEN** the committed drag request rejects
 - **THEN** Planner attempts restoration of the captured pre-drag schedule only if no newer edit or active drag owns the displayed schedule, without establishing server rollback
 - **AND** date labels remain outside the moving surface throughout preview and restoration
 
 #### Scenario: Destination contains another recipe
+
 - **WHEN** a recipe is dropped onto a date containing another recipe
 - **THEN** the two dates exchange meal content without shifting intervening meals
 
 #### Scenario: Destination is empty
+
 - **WHEN** a recipe is dropped onto an ordinary empty date
 - **THEN** the destination displays the moved recipe and the source displays its empty planning action
 
 #### Scenario: Destination contains a non-cooking plan
+
 - **WHEN** a supported recipe move targets a recipe-free non-cooking date
 - **THEN** the source and destination exchange content under the existing same-week swap rules, retaining the non-cooking kind and label
 
@@ -88,10 +98,12 @@ During a supported recipe-card drag, Planner SHALL exchange source and destinati
 POST /api/schedule/move SHALL accept weekOffset, recipeId and toIndex, with optional fromIndex, intent and targetWeekOffset. Its source and target week dates SHALL use the accepted deployment-calendar-relative week interpretation. Access SHALL follow household-identity's Authenticate protected API requests independently requirement.
 
 #### Scenario: Explicit drag source
+
 - **WHEN** Planner commits a recipe drag
 - **THEN** the request supplies source week, recipe ID, fromIndex and toIndex without an explicit cross-week target
 
 #### Scenario: Protected movement lacks credentials
+
 - **WHEN** movement lacks accepted household credentials
 - **THEN** shared API authentication rejects it independently of page access
 
@@ -100,14 +112,17 @@ POST /api/schedule/move SHALL accept weekOffset, recipeId and toIndex, with opti
 Movement SHALL first inspect the supplied source date when fromIndex exists. If no entry is found there, or fromIndex is absent, it SHALL fall back to a stored entry matching recipeId. If the selected entry has a different recipe ID or no entry is found, movement SHALL return without relocating an entry.
 
 #### Scenario: Repeated recipe has an explicit source
+
 - **WHEN** the same recipe appears on multiple dates and the supplied source date contains it
 - **THEN** movement selects that date rather than another occurrence
 
 #### Scenario: Legacy source lookup
+
 - **WHEN** fromIndex is omitted or its resolved date has no entry
 - **THEN** lookup falls back to a stored matching recipe without guaranteeing which duplicate is selected
 
 #### Scenario: Selected source differs
+
 - **WHEN** the explicit source contains another recipe
 - **THEN** movement does not relocate that selected entry
 
@@ -116,10 +131,12 @@ Movement SHALL first inspect the supplied source date when fromIndex exists. If 
 For ordinary same-week swap movement with a found source and successful persistence, an occupied destination SHALL exchange recipe ID, saved vote count, day status and non-cooking kind/label with the source. With no destination entry, the source SHALL move to that date. Weekly plan status SHALL remain distinct from the moved day status.
 
 #### Scenario: Destination is occupied
+
 - **WHEN** a recipe swaps onto another stored date
 - **THEN** the two dates exchange their recipe/status/non-cooking content and saved vote counts
 
 #### Scenario: Destination is empty
+
 - **WHEN** the selected destination has no entry
 - **THEN** the source entry moves to that date with its content retained
 
@@ -128,10 +145,12 @@ For ordinary same-week swap movement with a found source and successful persiste
 Same-offset push SHALL seek an empty date from toIndex through index thirteen relative to that week's Monday. When found, it SHALL shift intervening stored entries one day forward and place the source at the requested destination. With no empty date in that window it SHALL fall back to swap. This SHALL NOT establish relational collision safety for every shift.
 
 #### Scenario: Later date is empty
+
 - **WHEN** an ordinary source pushes to index one, which is occupied, and index two is empty
 - **THEN** the occupied destination shifts to index two and the source is placed at index one after successful persistence
 
 #### Scenario: Search window is full
+
 - **WHEN** no empty date exists from the requested destination through index thirteen
 - **THEN** the operation takes the swap path rather than continuing an unbounded push
 
@@ -140,10 +159,12 @@ Same-offset push SHALL seek an empty date from toIndex through index thirteen re
 For legacy swap and push intents only: With a different targetWeekOffset and an ordinary target index zero through six, movement SHALL search that target week from toIndex through Sunday for a date with no entry. A found destination SHALL receive the source and have a weekly plan ensured as Draft only if absent. If no destination exists, the source SHALL remain in place through this path.
 
 #### Scenario: Target Monday is occupied
+
 - **WHEN** cross-week movement starts at Monday and Tuesday is the first date without an entry
 - **THEN** successful persistence moves the source to Tuesday without shifting Monday
 
 #### Scenario: Target week has no free date
+
 - **WHEN** every target date from the requested index through Sunday is occupied
 - **THEN** this path leaves the source unchanged without extending its search into another week
 
@@ -152,10 +173,12 @@ For legacy swap and push intents only: With a different targetWeekOffset and an 
 When a recipe-backed Skipped source is pushed into an available destination or moved cross-week into an available date, movement SHALL preserve a recipe-free source and create a separate Planned destination carrying the recipe and saved vote count. The source SHALL remain Skipped; this rule SHALL NOT apply to ordinary swap fallback.
 
 #### Scenario: Push a skipped source
+
 - **WHEN** a skipped recipe is pushed forward with an available destination and persistence succeeds
 - **THEN** its source remains recipe-free Skipped and the destination contains the Planned recipe
 
 #### Scenario: Move a skipped source cross-week
+
 - **WHEN** cross-week placement succeeds for a skipped recipe
 - **THEN** the original date remains recipe-free Skipped while a new Planned recipe entry is saved in the target week
 
@@ -164,43 +187,52 @@ When a recipe-backed Skipped source is pushed into an available destination or m
 For legacy swap and push intents, same-week saved movement SHALL attempt a source-week snapshot without grocery recomputation. Cross-week persistence SHALL attempt grocery recomputation and snapshot publication for both weeks independently. Follow-up failure SHALL NOT turn committed movement into a failed response. Publication receipt SHALL remain household-live-updates-owned.
 
 #### Scenario: Committed movement reports its refresh outcome
+
 - **WHEN** an actual cross-week movement completes
 - **THEN** the response SHALL return the existing moved=true, sourceDate, destinationDate, affectedWeekStartDates and refreshComplete result, with refreshComplete=false when any follow-up fails; completed moves, including supported no-op returns, SHALL return 200 with data.message Recipe moved
 
 #### Scenario: Same-week movement completes
+
 - **WHEN** same-week movement saves and its schedule read and publication return
 - **THEN** the success response follows source-week publication without requesting grocery recomputation through this path
 
 #### Scenario: Cross-week movement completes
+
 - **WHEN** cross-week persistence and both recomputations complete
 - **THEN** both affected snapshots are attempted before returning moved=true and refreshComplete=true
 
 #### Scenario: Full target returns completion
+
 - **WHEN** cross-week destination search finds no free date and the subsequent source read/publication complete
 - **THEN** the response still says Recipe moved and does not confirm relocation
 
 #### Scenario: Publication or recomputation fails after movement
+
 - **WHEN** cross-week movement is saved and any subsequent recomputation or snapshot publication fails
 - **THEN** remaining affected-week follow-ups are still attempted and the response confirms moved=true and refreshComplete=false without replaying movement
 
 ### Requirement: Request Plan later from the selected Planner week
 
-Planner's recipe-backed Plan later action SHALL close its pivot and submit explicit source index, target offset selected offset plus one, target index zero and push intent. Completion SHALL initialize the selected week and sync Today for a week-zero source dated deployment-local today. Request failure SHALL be logged without a dedicated Plan later error toast.
+Planner's recipe-backed Next Week action SHALL defer the exact dated recipe starting at the captured source week plus one, continuing into later weeks when full without shifting other plans. Completion SHALL confirm the actual destination and refresh the selected source week and Today when affected. Failure or an uncertain outcome SHALL retain actionable feedback without claiming movement or blindly replaying it.
 
 #### Scenario: Committed Plan later has incomplete refresh
-- **WHEN** the response confirms moved=true and refreshComplete=false
+
+- **WHEN** the move is confirmed but its separate view refresh is incomplete
 - **THEN** Planner SHALL explain that the meal moved and some updates could not refresh, with guidance to refresh the plan rather than repeat movement
 
 #### Scenario: Plan later for next selected week
+
 - **WHEN** a person chooses Save for Next Week for a recipe in selected offset one
-- **THEN** movement targets offset two starting at Monday rather than deployment-current next week
+- **THEN** deferral starts at offset two Monday rather than deployment-current next week and can continue into later weeks
 
 #### Scenario: Movement request resolves or rejects
-- **WHEN** the Plan later request resolves, including a supported no-op, or rejects
-- **THEN** resolution proceeds to initialization while rejection is logged without success confirmation of relocation
+
+- **WHEN** the Plan later request returns a confirmed destination, rejects or has an uncertain outcome
+- **THEN** confirmed destination is reported and the source week refreshed; rejection or uncertainty shows recovery feedback without confirming relocation or repeating an uncertain write
 
 #### Scenario: Committed move has incomplete refresh
-- **WHEN** Plan later returns moved=true and refreshComplete=false
+
+- **WHEN** a committed Next Week result is followed by incomplete refresh
 - **THEN** Planner rereads the selected week and shows a warning that the meal moved and the plan should be refreshed, without resubmitting movement
 
 ### Requirement: Defer the exact dated recipe through a protected operation
@@ -208,14 +240,17 @@ Planner's recipe-backed Plan later action SHALL close its pivot and submit expli
 POST /api/schedule/defer SHALL identify the source by sourceDate and recipeId. No matching entry SHALL return 404; an AwaitingConsensus source SHALL return 409 before deferral. Access SHALL follow household-identity's Authenticate protected API requests independently requirement. Other supported day states SHALL not acquire a Locked-week prohibition through this action.
 
 #### Scenario: Source does not match
+
 - **WHEN** an authorized defer request has no entry matching both source date and recipe ID
 - **THEN** it returns 404 without moving another occurrence of the recipe
 
 #### Scenario: Source awaits consensus
+
 - **WHEN** the exact source is AwaitingConsensus
 - **THEN** it returns 409 without deferring that entry
 
 #### Scenario: Household credentials are absent
+
 - **WHEN** defer lacks accepted household credentials
 - **THEN** the shared API authentication gate rejects the request
 
@@ -224,18 +259,22 @@ POST /api/schedule/defer SHALL identify the source by sourceDate and recipeId. N
 Deferral SHALL accept optional integer targetWeekOffset relative to the captured reference Monday, defaulting to one. Search SHALL start on that week's Monday and continue date by date until finding a date with no calendar entry. Any stored entry SHALL occupy its date. It SHALL ensure a Draft plan for the destination Monday only if absent, without changing an existing destination week's status.
 
 #### Scenario: Next Monday is free
+
 - **WHEN** defer omits targetWeekOffset with no stored entry on reference-next Monday
 - **THEN** that date is chosen regardless of the source's relative week offset, retaining deployment-current next week when reference Monday is also omitted
 
 #### Scenario: Next week is full
+
 - **WHEN** all seven dates of the requested destination week are occupied
 - **THEN** search continues into the following week until a date without an entry is found
 
 #### Scenario: Explicit future destination
+
 - **WHEN** reference Monday is October 12, targetWeekOffset is two, October 26 is occupied and October 27 has no entry
 - **THEN** defer selects October 27 without moving or replacing October 26's entry or using an earlier free date
 
 #### Scenario: Non-cooking entry occupies a date
+
 - **WHEN** the requested destination Monday has a stored recipe-free non-cooking entry and Tuesday has no entry
 - **THEN** defer preserves Monday and selects Tuesday
 
@@ -244,14 +283,17 @@ Deferral SHALL accept optional integer targetWeekOffset relative to the captured
 Successful deferral of a non-Skipped source SHALL move that entry to the selected date, set it Planned and retain its saved vote count. For a recipe-backed Skipped source it SHALL instead leave a recipe-free Skipped entry at the source and create a separate Planned destination with the recipe and saved vote count. A Cooked source SHALL invoke last-cooked recalculation.
 
 #### Scenario: Locked source is deferred
+
 - **WHEN** a Locked recipe source defers successfully
 - **THEN** the moved entry is Planned at the selected destination with its saved vote count retained
 
 #### Scenario: Skipped source is deferred
+
 - **WHEN** a recipe-backed Skipped source defers successfully
 - **THEN** its original date remains recipe-free Skipped and the new destination contains the Planned recipe and saved vote count
 
 #### Scenario: Cooked source is deferred
+
 - **WHEN** a Cooked entry is moved back to Planned through defer
 - **THEN** the persistence path recalculates that recipe's last-cooked value from remaining Cooked calendar entries
 
@@ -260,10 +302,12 @@ Successful deferral of a non-Skipped source SHALL move that entry to the selecte
 After defer persistence completes, the operation SHALL await grocery recomputation for each distinct source/destination Monday, then attempt a snapshot for each affected week with request exclusion and optional move sequence. Only after these steps return SHALL it return 200 data containing scheduledDate, scheduledWeekOffset and message. Live delivery SHALL remain household-live-updates-owned.
 
 #### Scenario: Both affected weeks complete
+
 - **WHEN** save, recomputation and publication calls all return
 - **THEN** the completed response identifies the chosen destination date and its deployment-calendar-relative week offset
 
 #### Scenario: Later work rejects
+
 - **WHEN** a recomputation or publication throws after persistence
 - **THEN** the successful defer response is not reached without establishing reversal of the moved entry
 
@@ -272,51 +316,66 @@ After defer persistence completes, the operation SHALL await grocery recomputati
 Planner's recipe-backed pivot SHALL offer Remove recipe. Activation SHALL close the pivot, clear the indexed displayed recipe/non-cooking content to status zero, clear pending state and mark the date user-cleared while dispatching date deletion. It SHALL restore captured local schedule and grocery items on rejection without dedicated removal failure feedback or a server rollback guarantee.
 
 #### Scenario: Removal is pending
+
 - **WHEN** a person removes the recipe from a dated Planner pivot
 - **THEN** the day becomes locally unplanned before DELETE completion and the accepted date-delete lifecycle is invoked
 
 #### Scenario: Deletion rejects
+
 - **WHEN** the asynchronous deletion rejects
 - **THEN** captured local schedule and grocery items are restored without a removal toast through this handler
 
 ### Requirement: Apply the shared date-delete lifecycle to recipe-backed entries
 
-Recipe-backed removal SHALL use the same protected date-only DELETE and persistence-before-follow-up lifecycle as the accepted Delete the recipe-free entry before clear follow-up work requirement. It SHALL remove the selected calendar entry rather than delete the recipe. It SHALL add no expected-recipe, day-status or week-status precondition. Removing a Cooked entry SHALL recalculate that recipe's last-cooked value from remaining Cooked calendar dates before refresh work.
+Recipe-backed removal SHALL follow Delete the recipe-free entry before clear follow-up work: protected date-only DELETE, persistence before follow-up, and recipe retention. Unguarded removal SHALL add no expected-recipe, day-status or week-status precondition; guarded callers SHALL follow conditional removal. Cooked removal SHALL recalculate last-cooked from remaining Cooked entries before refresh, using explicit actual preparation time when present, otherwise the legacy calendar date.
 
 #### Scenario: Recipe-backed date exists
+
 - **WHEN** the selected date contains a recipe-backed entry and deletion persistence succeeds
 - **THEN** that entry is removed, while the recipe remains available and the accepted recompute/publication sequence follows
 
 #### Scenario: No calendar entry exists
-- **WHEN** the date is already empty
+
+- **WHEN** the date is already empty and no expected-plan token is supplied
 - **THEN** deletion returns 204 without invoking the existing-entry follow-up sequence
 
 #### Scenario: Correct a cooked meal with earlier history
-- **WHEN** the latest Cooked assignment is removed and an earlier Cooked calendar entry remains for that recipe
+
+- **WHEN** the latest Cooked assignment is removed and an earlier legacy Cooked calendar entry remains for that recipe
 - **THEN** its last-cooked value becomes that earlier calendar date at midnight UTC
 - **AND** assigning and marking the actual replacement Cooked uses the existing completion operation independently
 
 #### Scenario: Remove the only cooked occurrence
+
 - **WHEN** a recipe's only Cooked assignment is removed
 - **THEN** its last-cooked value becomes null before follow-up publication
 
 #### Scenario: Remove an ordinary planned entry
+
 - **WHEN** a Planned entry is removed
 - **THEN** removal does not change its recipe's last-cooked value
+
+#### Scenario: Remaining occurrence was prepared ahead
+
+- **WHEN** removal leaves Friday lasagna that was explicitly prepared Tuesday
+- **THEN** recalculation uses Tuesday’s stored preparation time for that occurrence, not Friday’s planned date
 
 ### Requirement: Activate Planner dragging after a deliberate hold
 
 The Planner drag handle SHALL always wait for an uninterrupted 250 millisecond hold before starting for an eligible primary-button pointer, show grabbed feedback on activation, and request a brief vibration when the browser supplies that facility. This behavior SHALL NOT depend on a feature-flag snapshot, deployment variable or saved member override. Secondary-button and explicitly non-primary pointers SHALL not start a hold.
 
 #### Scenario: Hold reaches activation
+
 - **WHEN** an eligible pointer remains pending for 250 milliseconds without cancellation
 - **THEN** dragging starts once and the handle shows grabbed feedback, with a vibration request when supported
 
 #### Scenario: Retired preview state is absent or stale
+
 - **WHEN** feature flags are absent, loading or failed, or a legacy hold-to-move override was disabled
 - **THEN** an eligible pointer still requires the deliberate hold and can activate movement
 
 #### Scenario: Ineligible pointer
+
 - **WHEN** a secondary-button or explicitly non-primary pointer presses the handle
 - **THEN** that press does not start dragging or a pending hold
 
@@ -325,14 +384,17 @@ The Planner drag handle SHALL always wait for an uninterrupted 250 millisecond h
 A pending Planner hold SHALL cancel when its pointer moves more than eight pixels from the press position, its pointer ends or cancels, another pointer begins, the window loses focus, or a pre-activation touch movement occurs on the handle. A cancelled hold SHALL not later activate from its retired timer. Removing the handle SHALL also retire pending activation.
 
 #### Scenario: Scroll movement before activation
+
 - **WHEN** a pending pointer moves more than eight pixels or the handle receives touch movement before activation
 - **THEN** the pending hold is cancelled without preventing that pre-activation touch movement through the handle
 
 #### Scenario: Release or interruption
+
 - **WHEN** a pending hold receives its pointer end or cancellation, another pointer begins, or the window loses focus
 - **THEN** waiting beyond the hold duration does not start dragging from that hold
 
 #### Scenario: Handle unmounts
+
 - **WHEN** the handle unmounts while a hold is pending
 - **THEN** the previous pending activation is retired
 
@@ -341,10 +403,12 @@ A pending Planner hold SHALL cancel when its pointer moves more than eight pixel
 After held activation, the handle SHALL prevent cancelable touch movement received on the handle while active. Ending or cancelling the tracked pointer or losing window focus SHALL clear grabbed feedback. This activation behavior SHALL not itself confirm a persisted calendar move; the existing Planner drag-preview and drop requirements govern that handoff.
 
 #### Scenario: Touch movement after activation
+
 - **WHEN** an activated held drag receives cancelable touch movement on its handle
 - **THEN** the handle prevents the default for that event
 
 #### Scenario: Activated pointer ends
+
 - **WHEN** the tracked pointer ends after held activation
 - **THEN** grabbed feedback clears without this feedback change confirming server persistence
 
@@ -353,11 +417,13 @@ After held activation, the handle SHALL prevent cancelable touch movement receiv
 The Planner drag handle SHALL be keyboard focusable and expose its localized hold guidance as an accessible name. Arrow Up and Arrow Down SHALL move the selected Planner content one available slot through the same optimistic movement, persistence and recovery path used by pointer dragging, retaining fixed date order and focus on the moved recipe's handle. A boundary key press SHALL submit no movement.
 
 #### Scenario: Keyboard movement within the week
+
 - **WHEN** the focused recipe handle receives Arrow Up or Arrow Down with an in-bounds adjacent slot
 - **THEN** Planner previews and commits exactly one movement
 - **AND** focus follows the moved recipe's handle while date order stays unchanged
 
 #### Scenario: Keyboard movement at a boundary
+
 - **WHEN** the first handle receives Arrow Up or the last handle receives Arrow Down
 - **THEN** Planner leaves the schedule unchanged and submits no movement
 
@@ -366,10 +432,12 @@ The Planner drag handle SHALL be keyboard focusable and expose its localized hol
 Successful deferral SHALL report the actual scheduled date and its offset relative to the captured reference Monday. Full-next-week feedback SHALL appear only when the destination lies after the requested search-start week, rather than whenever its offset exceeds one.
 
 #### Scenario: Future destination has room
+
 - **WHEN** deferral starts at offset two and finds a free date in offset two
 - **THEN** feedback identifies that date without claiming next week is full
 
 #### Scenario: Future destination spills over
+
 - **WHEN** deferral starts at offset two and the first free date is in offset three
 - **THEN** feedback identifies the actual date and indicates that the requested next week was full
 
@@ -378,10 +446,12 @@ Successful deferral SHALL report the actual scheduled date and its offset relati
 Tomorrow SHALL move the exact source supper to the next deployment-calendar date. Each contiguous occupied supper date from that destination SHALL move one day forward until the first empty supper slot, across as many weeks as required. No two-week cap, swap fallback or silent no-op success SHALL apply. Other meal slots SHALL remain unchanged.
 
 #### Scenario: Sunday and two following weeks are occupied
+
 - **WHEN** Sunday contains A and every supper date in the next two weeks is occupied, with the following Monday empty
 - **THEN** A moves to the first Monday, each displaced entry moves exactly one day and the last entry reaches the third Monday without loss
 
 #### Scenario: First gap ends the chain
+
 - **WHEN** Tomorrow encounters occupied Monday and Tuesday, empty Wednesday and occupied Thursday
 - **THEN** Monday and Tuesday move one day forward and Thursday remains unchanged
 
@@ -390,10 +460,12 @@ Tomorrow SHALL move the exact source supper to the next deployment-calendar date
 Displaced Planned, Locked and Skipped entries SHALL retain identity, recipe association, status, saved votes, candidate identities, meal slot and non-cooking details while their dates advance. Existing weekly plan status SHALL remain unchanged; a missing affected plan SHALL be created as Draft. Recipe occurrences SHALL be conserved even when the same recipe occurs more than once.
 
 #### Scenario: Mixed future entries
+
 - **WHEN** the chain contains a Locked recipe, a recipe-free Order In entry with a label and a recipe-backed Skipped entry
 - **THEN** all three move one day with their distinct saved content retained
 
 #### Scenario: Repeated recipe
+
 - **WHEN** two different supper entries contain the same recipe
 - **THEN** both occurrences survive at their respective next dates
 
@@ -402,14 +474,17 @@ Displaced Planned, Locked and Skipped entries SHALL retain identity, recipe asso
 Tomorrow SHALL require an explicit source index and matching recipe at supper slot zero. Missing or changed sources, Cooked entries in the source or displaced chain, and AwaitingConsensus entries SHALL reject without calendar, weekly plan or grocery mutation. Invalid dates, indices or a destination other than the source's next day SHALL reject before work. A rejected operation SHALL NOT report Recipe moved.
 
 #### Scenario: Cooked entry blocks the chain
+
 - **WHEN** any entry that would move is Cooked
 - **THEN** the entire push rejects with conflict and every original entry and adjunct remains unchanged
 
 #### Scenario: Stale source cannot select another occurrence
+
 - **WHEN** the source date no longer contains the requested recipe but another date does
 - **THEN** Tomorrow rejects with conflict without moving the other occurrence
 
 #### Scenario: Pending consensus or invalid destination
+
 - **WHEN** a chain entry awaits consensus or the supplied target is not the next calendar day
 - **THEN** consensus rejects with conflict and invalid targeting rejects as bad input, both without mutation
 
@@ -418,10 +493,12 @@ Tomorrow SHALL require an explicit source index and matching recipe at supper sl
 All date shifts and any requested Order In source disposition SHALL commit together or leave persisted calendar content unchanged. Concurrent Tomorrow submissions SHALL NOT move one source occurrence twice or overwrite another entry. The response SHALL distinguish rejected movement from committed movement whose follow-up refresh is incomplete. Unknown transport outcomes SHALL NOT authorize blind repetition.
 
 #### Scenario: Persistence fails during a shift
+
 - **WHEN** persistence fails after some date updates have been attempted
 - **THEN** no partial chain or source disposition is persisted
 
 #### Scenario: Duplicate requests overlap
+
 - **WHEN** two requests concurrently target the same source occurrence
 - **THEN** at most one moves that occurrence and the other cannot repeat the push from a different source
 
@@ -430,10 +507,12 @@ All date shifts and any requested Order In source disposition SHALL commit toget
 An explicit Order In source disposition SHALL leave a recipe-free Skipped Order In source and place its original recipe at tomorrow as Planned, retaining saved votes. Moving a legacy recipe-backed Skipped source SHALL likewise retain its non-cooking source details and transfer its recipe as Planned. Displaced Skipped entries SHALL instead move intact. Rejection SHALL leave the source unchanged.
 
 #### Scenario: Order In and Tomorrow succeeds
+
 - **WHEN** a planned source requests Order In with Tomorrow and the chain can move
 - **THEN** the source becomes recipe-free Skipped Order In in the same commit as the chain, with one Planned occurrence of its original recipe tomorrow
 
 #### Scenario: Order In and Tomorrow is blocked
+
 - **WHEN** Order In with Tomorrow encounters a Cooked displaced entry
 - **THEN** the original source remains unchanged and no Order In disposition is saved
 
@@ -442,10 +521,12 @@ An explicit Order In source disposition SHALL leave a recipe-free Skipped Order 
 After a Tomorrow commit, the system SHALL recompute groceries and attempt authoritative week snapshots and suggestion invalidation for every changed week using the captured deployment-calendar reference. Unrelated weeks and grocery check state SHALL be preserved. Follow-up failure SHALL report committed movement with incomplete refresh rather than an uncommitted rejection; live delivery remains household-live-updates-owned.
 
 #### Scenario: Three or more affected weeks
+
 - **WHEN** a successful push changes three or more weeks
 - **THEN** all changed weeks have recomputed groceries and publication attempts, including the final spill week
 
 #### Scenario: Publication or recomputation fails after commit
+
 - **WHEN** follow-up work fails after calendar persistence
 - **THEN** the result identifies the committed move and incomplete refresh, and a read reveals the conserved chain without repeating the push
 
@@ -454,15 +535,18 @@ After a Tomorrow commit, the system SHALL recompute groceries and attempt author
 Planner SHALL display each loaded date to the left of its meal content, outside the draggable surface. Dragging SHALL move recipe content without dragging or reordering date labels. Empty slots and recipe-free non-cooking plans SHALL remain visible destinations without presenting a recipe drag handle.
 
 #### Scenario: Recipe is lifted
+
 - **WHEN** an eligible recipe card begins a drag
 - **THEN** its date label remains in the date column and its source slot remains identifiable
 - **AND** the moving surface contains recipe content rather than the date
 
 #### Scenario: Empty or non-cooking source
+
 - **WHEN** a date has no recipe or displays a recipe-free non-cooking plan
 - **THEN** its content remains usable through existing planning actions without a recipe drag handle
 
 #### Scenario: Long content or narrow viewport
+
 - **WHEN** recipe names or translated labels wrap on a narrow viewport
 - **THEN** each date remains aligned with its own slot and essential content and actions remain reachable
 
@@ -471,6 +555,7 @@ Planner SHALL display each loaded date to the left of its meal content, outside 
 During an active drag over a valid date slot, Planner SHALL visibly identify the candidate destination in addition to showing the moving card. Feedback SHALL distinguish an empty destination from an exchange with occupied content without suggesting that intermediate dates or meals will shift.
 
 #### Scenario: Candidate changes
+
 - **WHEN** the dragged card moves from one valid destination to another
 - **THEN** destination feedback follows the current candidate and the preview is based on the original source arrangement
 - **AND** previously crossed dates do not accumulate changes
@@ -480,14 +565,17 @@ During an active drag over a valid date slot, Planner SHALL visibly identify the
 An active drag cancelled by Escape, pointer cancellation, leaving Planner or changing the selected week SHALL end without a movement request. Dropping outside a valid date slot SHALL also cancel. Uncommitted preview SHALL be discarded without applying an old week's content to a newly selected week.
 
 #### Scenario: Cancel or drop outside
+
 - **WHEN** an active drag is cancelled or dropped outside a valid date slot
 - **THEN** no movement request is submitted and the uncommitted swap preview is removed
 
 #### Scenario: Week changes during drag
+
 - **WHEN** the selected week changes during an active drag
 - **THEN** the old drag cannot submit a movement request or overwrite the newly selected week's content
 
 #### Scenario: Native scrolling before activation
+
 - **WHEN** touch scrolling begins before the existing hold-to-move activation completes
 - **THEN** the page scrolls without moving a meal or submitting a movement request
 
@@ -496,6 +584,7 @@ An active drag cancelled by Escape, pointer cancellation, leaving Planner or cha
 During a drag over a changed valid destination, Planner SHALL tint and outline the fixed destination date and show a decorative arrow in the existing gap without changing layout. The overlay SHALL retain the full recipe title and localized swap/move cue. Invalid or unchanged destinations SHALL clear these cues. The app shell SHALL own bottom navigation clearance without a second full-screen minimum or bottom reservation inside Planner.
 
 #### Scenario: Long title covers the destination card
+
 - **WHEN** a full recipe title wraps across several lines during dragging
 - **THEN** the destination date and arrow remain visible outside the overlay without shifting rows
 - **AND** swap/move text remains inside the overlay
@@ -505,6 +594,7 @@ During a drag over a changed valid destination, Planner SHALL tint and outline t
 Planner SHALL settle the captured movement sequence when its HTTP request completes, including rejection. Pending moves SHALL continue to guard snapshots. Successful moves SHALL reconcile a fresh schedule for the captured week; a later selected week SHALL NOT be overwritten. Later non-cooking saves and clears SHALL update the meal plan without navigation or refresh even when no self SSE echo arrives.
 
 #### Scenario: Other plans after movement without an echo
+
 - **WHEN** a movement completes without a self SSE echo and Other plans is saved or cleared
 - **THEN** the dated content immediately reflects the successful save or clear without leaving Planner
 
@@ -513,6 +603,7 @@ Planner SHALL settle the captured movement sequence when its HTTP request comple
 Planner SHALL acknowledge local movement requests through their captured HTTP completions. An incoming schedule event SHALL NOT acknowledge local requests solely because it contains a move sequence. Remote schedules SHALL follow the same selected-week and pending-movement guards with or without sequence metadata.
 
 #### Scenario: Another device moves a meal
+
 - **WHEN** a selected-week schedule event contains another device's move sequence
 - **THEN** Planner applies or defers the schedule under its ordinary guards
 - **AND** the event does not settle this client's pending movements
@@ -522,14 +613,17 @@ Planner SHALL acknowledge local movement requests through their captured HTTP co
 After outstanding movements settle, Planner SHALL reconcile a fresh schedule for their captured week. A superseded read SHALL NOT overwrite newer movement, editing or authoritative-event state. Rejection recovery SHALL preserve newer independent edits and active drag previews. Failed refresh SHALL report that the plan could not be refreshed without claiming server confirmation or retrying movement.
 
 #### Scenario: Movement reads finish out of order
+
 - **WHEN** concurrent movements settle and their schedule reads finish in a different order
 - **THEN** an older response cannot replace a newer result
 
 #### Scenario: Earlier movement rejects after a later independent movement
+
 - **WHEN** an earlier movement rejects after a later independent movement succeeds
 - **THEN** Planner preserves the later movement through failure recovery and authoritative reconciliation
 
 #### Scenario: Refresh fails during failure recovery
+
 - **WHEN** movement recovery cannot obtain an authoritative schedule
 - **THEN** Planner preserves newer local edits and reports that refresh failed
 
@@ -538,6 +632,7 @@ After outstanding movements settle, Planner SHALL reconcile a fresh schedule for
 A valid selected-week authoritative schedule without saved recipes SHALL clear previously displayed saved recipes, including the last saved meal. Existing round-owned pending suggestions SHALL retain their separate supported reconciliation behavior.
 
 #### Scenario: Final saved meal is removed elsewhere
+
 - **WHEN** a schedule read or live snapshot confirms that the final saved meal was removed
 - **THEN** its date displays the empty planning action without navigation or reload
 
@@ -546,18 +641,73 @@ A valid selected-week authoritative schedule without saved recipes SHALL clear p
 An enabled Planner drag grip SHALL maintain at least 3:1 contrast against its actual adjacent background in default and applicable hover, pressed, focused and grabbed states. Recognition SHALL NOT depend on hover. Stronger visual treatment SHALL preserve the existing accessible name, keyboard focus, hit area and hold-to-move behavior.
 
 #### Scenario: Idle touch handle
+
 - **WHEN** an enabled recipe handle is displayed without hover on a past, current or future date
 - **THEN** its grip meets the contrast target and is recognizable before hold activation
 
 #### Scenario: Handle changes state
+
 - **WHEN** an enabled handle is hovered, focused or grabbed
 - **THEN** its grip remains sufficiently contrasted and existing state/focus feedback remains distinguishable from date emphasis
 
 #### Scenario: Gesture behavior is preserved
+
 - **WHEN** a person scrolls before activation, holds to drag or uses the handle's keyboard commands
 - **THEN** existing activation, fixed-date movement, focus-following and boundary rules continue independently of the stronger colors
 
 #### Scenario: Drag feedback crosses temporal treatments
+
 - **WHEN** a recipe is dragged between past, today and future slots
 - **THEN** the existing source marker, destination date highlight/arrow and move/swap overlay remain distinguishable
 - **AND** dates and temporal emphasis stay fixed without changing preview, cancellation, persistence or reconciliation behavior
+
+### Requirement: Identify the original dated meal in disposition choices
+
+Replacement choices SHALL name the original recipe and source date. Following-day movement SHALL show the actual next date and explain that consecutive occupied plans shift forward. Next Week SHALL describe first availability starting the following week. Removal SHALL say it removes that dated plan while keeping the recipe in the library. These choices SHALL NOT claim ingredients are already owned.
+
+#### Scenario: Change a future Wednesday meal
+
+- **WHEN** a person replaces a meal planned for a future Wednesday
+- **THEN** the choice names that recipe and Wednesday, offers Thursday's actual date and does not call the source Tonight
+
+### Requirement: Use consistent Next Week disposition across planning callers
+
+Home, Planner and recipe-selection Next Week actions SHALL use exact-source deferral beginning the captured source week plus one. They SHALL use its confirmed scheduled date, preserve other dated plans and explain spillover beyond a full requested week. A no-op or missing destination SHALL NOT permit replacement assignment or success feedback.
+
+#### Scenario: Next two weeks are full
+
+- **WHEN** a replacement's Next Week disposition finds both the following and subsequent week full
+- **THEN** the original moves to the next available date after those weeks, other plans stay in place and confirmation identifies the actual date and spillover
+
+#### Scenario: Movement has no confirmed destination
+
+- **WHEN** disposition returns no movement or no usable destination
+- **THEN** replacement is not submitted and the selected recipe is retained with actionable feedback
+
+### Requirement: Expose a removal precondition for a dated supper plan
+
+Successful schedule reads SHALL expose a nullable opaque removalToken for each saved supper entry; empty supper dates SHALL have none. The token SHALL identify that entry and its persisted plan state without exposing that state in plaintext. A token from a different entry or changed state SHALL NOT authorise removal of the current plan.
+
+#### Scenario: Another household member changes the day
+
+- **WHEN** a read captures a removalToken and another member changes that dated plan
+- **THEN** the previous token is stale even if the date is unchanged
+
+### Requirement: Remove only the expected dated plan when guarded
+
+Date deletion SHALL accept optional expectedPlanToken, rejecting malformed supplied tokens with 400. Comparison and removal SHALL be atomic: only a matching current supper entry can be removed. A missing or different entry SHALL return 409 without calendar, grocery or publication mutation. A match SHALL follow existing persistence and follow-up semantics. Omitted tokens SHALL preserve the legacy operation.
+
+#### Scenario: Stale removal cannot delete a new plan
+
+- **WHEN** guarded deletion uses a token from Lasagna but the date now holds Curry or a changed non-cooking plan
+- **THEN** it returns 409 with no mutation and recovery asks the person to review the updated plan
+
+#### Scenario: Guarded non-cooking replacement
+
+- **WHEN** a person explicitly confirms replacing Take Out and its saved token still matches
+- **THEN** the confirmed plan can be removed and guarded recipe assignment can follow
+
+#### Scenario: Legacy deletion and later follow-up failure
+
+- **WHEN** deletion omits a token, or a matching guarded deletion commits before a follow-up fails
+- **THEN** omitted-token behavior remains compatible, and the latter failure does not imply restoration or authorise blind deletion replay

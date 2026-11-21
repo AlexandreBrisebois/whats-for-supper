@@ -54,8 +54,10 @@ for (const demoMode of [false, true]) {
         });
       }
       await page.goto('/home');
-      await expect(page.getByTestId('voting-nudge-vote-now')).toBeVisible();
-      await page.getByTestId('voting-nudge-vote-now').focus();
+      await expect(page.getByTestId('voting-nudge-card')).toHaveCount(0);
+      const medallion = page.locator('[data-testid="nav-item-discovery"]:visible').first();
+      await expect(medallion).toBeVisible();
+      await medallion.focus();
       await page.keyboard.press('Enter');
       await expect(page.getByTestId('like-button')).toBeVisible();
       // Same absolute round, expressed by the Home/Discovery matches handoff URL.

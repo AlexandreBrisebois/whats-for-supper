@@ -1,6 +1,7 @@
 import { startUnselectedProfileFixture } from './profile-local-fixture';
 import { test, expect } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes } from './mock-api';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 
 test.describe('Profile Page', () => {
   test.beforeEach(async ({ page }) => {
@@ -61,6 +62,8 @@ test.describe('Profile Page', () => {
         await expect(page.getByTestId('settings-btn')).toBeVisible();
         await expect(page.getByTestId('locale-btn-en')).toBeEnabled();
         await expect(page.getByTestId('locale-btn-fr')).toBeEnabled();
+        await expect(page.getByTestId('contrast-btn-standard')).toBeEnabled();
+        await expect(page.getByTestId('contrast-btn-high')).toBeEnabled();
         await expect(page).toHaveURL(/\/profile$/);
       });
     });
@@ -275,6 +278,8 @@ for (const locale of ['en', 'fr'] as const) {
           'profile-dropdown-toggle',
           'locale-btn-en',
           'locale-btn-fr',
+          'contrast-btn-standard',
+          'contrast-btn-high',
         ]) {
           const control = page.getByTestId(id);
           await control.scrollIntoViewIfNeeded();
@@ -294,6 +299,8 @@ for (const locale of ['en', 'fr'] as const) {
           'profile-dropdown-toggle',
           'locale-btn-en',
           'locale-btn-fr',
+          'contrast-btn-standard',
+          'contrast-btn-high',
         ]) {
           await page.getByTestId(id).focus();
           expect(
@@ -430,3 +437,453 @@ for (const locale of ['en', 'fr'] as const) {
     });
   });
 }
+
+test.describe('Wave D Family Cookbook visual & a11y contract', () => {
+  test.beforeEach(async ({ page }) => {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: MOCK_IDS.MEMBER_ALEX,
+        url: baseUrl,
+        httpOnly: true,
+      },
+    ]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupCommonRoutes(page);
+  });
+
+  test('profile, settings (with failed captures), and recycle bin satisfy Cookbook contrast, targets, and reflow', async ({
+    page,
+  }) => {
+    await page.goto('/profile');
+    await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+    await assertCookbookVisualA11y(page);
+
+    await page.route('**/api/captures/failures', (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [
+              {
+                id: '880e8400-e29b-41d4-a716-446655440040',
+                workflowInstanceId: '880e8400-e29b-41d4-a716-446655440040',
+                recipeId: null,
+                familyMemberId: MOCK_IDS.MEMBER_ALEX,
+                sourceWorkflowId: 'capture-url',
+                sourceType: 'url',
+                previewText: 'https://example.com/recipe',
+                friendlyReason: 'Could not import recipe link.',
+                status: 'failed',
+                retryCount: 0,
+                createdAt: '2026-10-20T12:00:00.000Z',
+                lastFailedAt: '2026-10-20T12:05:00.000Z',
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.goto('/profile/settings');
+    await expect(page.getByTestId('failed-captures-section')).toBeVisible();
+    await expect(page.getByTestId('family-list')).toBeVisible();
+    await assertCookbookVisualA11y(page);
+
+    const trashId = '550e8400-e29b-41d4-a716-446655440111';
+    await page.route('**/api/recipes/trash', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [
+              {
+                id: trashId,
+                name: 'Grandma Apple Pie',
+                deletedAt: '2026-10-20T12:00:00.000Z',
+                imageUrl: null,
+                deletedBy: null,
+              },
+            ],
+          },
+        }),
+      })
+    );
+
+    await page.goto('/recipes');
+    await expect(page.getByTestId('recycle-bin-entry')).toBeVisible();
+    await page.getByTestId('recycle-bin-entry').click();
+    await expect(page.getByTestId(`trash-item-${trashId}`)).toBeVisible();
+    await assertCookbookVisualA11y(page, { rootSelector: '[role="dialog"]' });
+
+    await page.getByTestId(`action-purge-${trashId}`).click();
+    await expect(page.getByTestId('elevated-pin-dialog')).toBeVisible();
+    await assertCookbookVisualA11y(page, { rootSelector: '[data-testid="elevated-pin-dialog"]' });
+  });
+});
+
+test.describe('Profile contrast integration', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupCommonRoutes(page);
+  });
+
+  test('renders Contrast directly below Language, persists via PUT preferences, and reloads without flash', async ({
+    page,
+  }) => {
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: MOCK_IDS.MEMBER_ALEX,
+        url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+      },
+    ]);
+
+    await page.goto('/profile');
+    await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+
+    const languageGroup = page.getByRole('group', { name: 'Language' });
+    const contrastGroup = page.getByRole('group', { name: 'Contrast' });
+    await expect(languageGroup).toBeVisible();
+    await expect(contrastGroup).toBeVisible();
+
+    const languageBox = await languageGroup.boundingBox();
+    const contrastBox = await contrastGroup.boundingBox();
+    expect(contrastBox!.y).toBeGreaterThanOrEqual(languageBox!.y + languageBox!.height - 1);
+
+    const standardBtn = page.getByTestId('contrast-btn-standard');
+    const highBtn = page.getByTestId('contrast-btn-high');
+    await expect(standardBtn).toHaveText('Standard');
+    await expect(highBtn).toHaveText('High contrast');
+    await expect(standardBtn).toHaveAttribute('aria-pressed', 'true');
+    await expect(highBtn).toHaveAttribute('aria-pressed', 'false');
+    await expect(standardBtn.locator('[data-contrast-check]')).toBeVisible();
+
+    const save = page.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/api/family/${MOCK_IDS.MEMBER_ALEX}/preferences`) &&
+        r.request().method() === 'PUT'
+    );
+    await highBtn.click();
+    expect((await save).request().postDataJSON()).toEqual({ contrastMode: 'high' });
+
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
+    await expect(highBtn).toHaveAttribute('aria-pressed', 'true');
+    await expect(standardBtn).toHaveAttribute('aria-pressed', 'false');
+    await expect(highBtn.locator('[data-contrast-check]')).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('contrastMode'))).toBe('high');
+    await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+    await expect(page).toHaveURL(/\/profile$/);
+    await expect(page.getByRole('status').filter({ hasText: /saved|enregistr/i })).toHaveCount(0);
+
+    // Switch to French and verify localized contrast labels
+    const langSave = page.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/api/family/${MOCK_IDS.MEMBER_ALEX}/preferences`) &&
+        r.request().method() === 'PUT'
+    );
+    await page.getByTestId('locale-btn-fr').click();
+    await langSave;
+    await expect(page.getByRole('group', { name: 'Contraste' })).toBeVisible();
+    await expect(standardBtn).toHaveText('Standard');
+    await expect(highBtn).toHaveText('Contraste élevé');
+
+    // Reload and verify data-contrast="high" is applied before hydration without flashing standard
+    await page.addInitScript(() => {
+      const transitions: string[] = [];
+      let domReadyContrast = '';
+      const record = () => {
+        const value = document.documentElement?.dataset.contrast ?? '';
+        if (value && transitions[transitions.length - 1] !== value) {
+          transitions.push(value);
+        }
+      };
+      const observer = new MutationObserver(() => record());
+      observer.observe(document, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['data-contrast'],
+      });
+      document.addEventListener('DOMContentLoaded', () => {
+        domReadyContrast = document.documentElement?.dataset.contrast ?? '';
+        record();
+      });
+      (window as unknown as Record<string, unknown>).__getContrastBoot = () => ({
+        domReadyContrast: domReadyContrast || document.documentElement?.dataset.contrast || '',
+        transitions,
+      });
+    });
+
+    await page.reload();
+    await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+    await expect(highBtn).toHaveAttribute('aria-pressed', 'true');
+    const boot = await page.evaluate(() =>
+      (
+        window as unknown as {
+          __getContrastBoot: () => { domReadyContrast: string; transitions: string[] };
+        }
+      ).__getContrastBoot()
+    );
+    expect(boot.domReadyContrast).toBe('high');
+    expect(boot.transitions).not.toContain('standard');
+  });
+
+  test('switching from high-contrast member to unset member clears leaked contrast and tracks prefers-contrast live', async ({
+    page,
+  }) => {
+    const alexHigh = builders.familyMember({
+      id: MOCK_IDS.MEMBER_ALEX,
+      name: 'Alex',
+      contrastMode: 'high' as any,
+    });
+    const jordanUnset = builders.familyMember({
+      id: MOCK_IDS.MEMBER_JORDAN,
+      name: 'Jordan',
+      contrastMode: null as any,
+    });
+    await page.route('**/api/family', (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      return route.fulfill({ json: { data: [alexHigh, jordanUnset] } });
+    });
+    await page.route('**/api/family/me', async (route) => {
+      const cookies = await page.context().cookies();
+      const value = cookies.find((c) => c.name === 'x-family-member-id')?.value?.toLowerCase();
+      const member = value === MOCK_IDS.MEMBER_JORDAN.toLowerCase() ? jordanUnset : alexHigh;
+      return route.fulfill({ json: { data: member } });
+    });
+
+    await page.emulateMedia({ contrast: 'no-preference' });
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: MOCK_IDS.MEMBER_ALEX,
+        url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+      },
+    ]);
+
+    await page.goto('/profile');
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
+    expect(await page.evaluate(() => localStorage.getItem('contrastMode'))).toBe('high');
+
+    await page.getByTestId('profile-dropdown-toggle').click();
+    await page.getByTestId(`profile-dropdown-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+    await expect(page).toHaveURL(/\/home/);
+
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'standard');
+    expect(await page.evaluate(() => localStorage.getItem('contrastMode'))).toBeNull();
+
+    await page.emulateMedia({ contrast: 'more' });
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
+
+    await page.emulateMedia({ contrast: 'no-preference' });
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'standard');
+  });
+
+  test('without a selected member contrast is local-only and persists across reload', async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    const fixture = await startUnselectedProfileFixture();
+    try {
+      await page.route('**/api/family/me', (route) => route.fulfill({ json: { data: null } }));
+      let saves = 0;
+      page.on('request', (r) => {
+        if (r.method() === 'PUT' && r.url().includes('/preferences')) saves++;
+      });
+
+      await page.goto(fixture.url);
+      await expect(page.getByTestId('contrast-btn-standard')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+
+      await page.getByTestId('contrast-btn-high').click();
+      await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
+      await expect(page.getByTestId('contrast-btn-high')).toHaveAttribute('aria-pressed', 'true');
+      expect(await page.evaluate(() => localStorage.getItem('contrastMode'))).toBe('high');
+      expect(saves).toBe(0);
+      await expect(page).toHaveURL(`${fixture.url}/`);
+
+      await page.addInitScript(() => {
+        const transitions: string[] = [];
+        let domReadyContrast = '';
+        const record = () => {
+          const value = document.documentElement?.dataset.contrast ?? '';
+          if (value && transitions[transitions.length - 1] !== value) {
+            transitions.push(value);
+          }
+        };
+        const observer = new MutationObserver(() => record());
+        observer.observe(document, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          attributeFilter: ['data-contrast'],
+        });
+        document.addEventListener('DOMContentLoaded', () => {
+          domReadyContrast = document.documentElement?.dataset.contrast ?? '';
+          record();
+        });
+        (window as unknown as Record<string, unknown>).__getContrastBoot = () => ({
+          domReadyContrast: domReadyContrast || document.documentElement?.dataset.contrast || '',
+          transitions,
+        });
+      });
+
+      await page.reload();
+      await expect(page.getByTestId('contrast-btn-high')).toHaveAttribute('aria-pressed', 'true');
+      const boot = await page.evaluate(() =>
+        (
+          window as unknown as {
+            __getContrastBoot: () => { domReadyContrast: string; transitions: string[] };
+          }
+        ).__getContrastBoot()
+      );
+      expect(boot.domReadyContrast).toBe('high');
+      expect(boot.transitions).not.toContain('standard');
+    } finally {
+      await page.goto('about:blank');
+      await fixture.stop();
+    }
+  });
+
+  test('rejected contrast save reconciles back to prior contrast without saved claim', async ({
+    page,
+  }) => {
+    await page.context().addCookies([
+      {
+        name: 'x-family-member-id',
+        value: MOCK_IDS.MEMBER_ALEX,
+        url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+      },
+    ]);
+    await page.route('**/api/family/*/preferences', (route) =>
+      route.fulfill({ status: 500, json: { status: 500, message: 'Test rejection' } })
+    );
+
+    await page.goto('/profile');
+    await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'standard');
+
+    const rejected = page.waitForResponse(
+      (r) => r.url().includes('/preferences') && r.status() === 500
+    );
+    await page.getByTestId('contrast-btn-high').click();
+    expect((await rejected).request().postDataJSON()).toEqual({ contrastMode: 'high' });
+
+    await expect(page.locator('html')).toHaveAttribute('data-contrast', 'standard');
+    await expect(page.getByTestId('contrast-btn-standard')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('contrast-btn-high')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByRole('status').filter({ hasText: /saved|enregistr/i })).toHaveCount(0);
+    await expect(page.getByRole('alert').filter({ hasText: /saved|enregistr/i })).toHaveCount(0);
+  });
+
+  for (const mode of ['standard', 'high'] as const) {
+    test(`household surfaces satisfy ${mode === 'high' ? 'AAA' : 'AA'} contrast, targets, and chrome in ${mode} mode`, async ({
+      page,
+    }) => {
+      await page.context().addCookies([
+        {
+          name: 'x-family-member-id',
+          value: MOCK_IDS.MEMBER_ALEX,
+          url: process.env.BASE_URL || 'http://127.0.0.1:3000',
+          httpOnly: true,
+        },
+      ]);
+      await page.setViewportSize({ width: 390, height: 844 });
+
+      await page.route('**/api/captures/failures', (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              items: [
+                {
+                  id: '880e8400-e29b-41d4-a716-446655440040',
+                  workflowInstanceId: '880e8400-e29b-41d4-a716-446655440040',
+                  recipeId: null,
+                  familyMemberId: MOCK_IDS.MEMBER_ALEX,
+                  sourceWorkflowId: 'capture-url',
+                  sourceType: 'url',
+                  previewText: 'https://example.com/recipe',
+                  friendlyReason: 'Could not import recipe link.',
+                  status: 'failed',
+                  retryCount: 0,
+                  createdAt: '2026-10-20T12:00:00.000Z',
+                  lastFailedAt: '2026-10-20T12:05:00.000Z',
+                },
+              ],
+            },
+          }),
+        });
+      });
+
+      const contrastLevel = mode === 'high' ? 'aaa' : 'aa';
+
+      await page.goto('/profile');
+      await expect(page.getByTestId('selected-member-name')).toHaveText('Alex');
+      const save = page.waitForResponse(
+        (r) =>
+          r.url().endsWith(`/api/family/${MOCK_IDS.MEMBER_ALEX}/preferences`) &&
+          r.request().method() === 'PUT'
+      );
+      await page.getByTestId(`contrast-btn-${mode}`).click();
+      await save;
+      await expect(page.locator('html')).toHaveAttribute('data-contrast', mode);
+
+      if (mode === 'high') {
+        const navStyles = await page.locator('nav.glass-nav').evaluate((el) => {
+          const cs = getComputedStyle(el);
+          return {
+            backgroundColor: cs.backgroundColor,
+            backdropFilter: cs.backdropFilter,
+            boxShadow: cs.boxShadow,
+          };
+        });
+        expect(navStyles.backgroundColor).toBe('rgb(253, 252, 240)');
+        expect(navStyles.backdropFilter).toBe('none');
+      }
+
+      await assertCookbookVisualA11y(page, { contrastLevel });
+
+      await page.goto('/profile/settings');
+      await expect(page.getByTestId('failed-captures-section')).toBeVisible();
+      await expect(page.getByTestId('family-list')).toBeVisible();
+      await assertCookbookVisualA11y(page, { contrastLevel });
+
+      await page.goto('/home');
+      await expect(page.getByTestId('quick-capture-trigger')).toBeVisible();
+      await assertCookbookVisualA11y(page, { contrastLevel });
+
+      await page.route(
+        (url) => url.pathname === '/api/discovery',
+        (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              data: [
+                builders.recipe({
+                  id: MOCK_IDS.RECIPE_LASAGNA,
+                  name: 'Sunday Lasagna',
+                  description: 'Layered pasta baked with tomatoes and fresh herbs.',
+                  totalTime: 'PT35M',
+                }),
+              ],
+            }),
+          })
+      );
+
+      await page.goto('/discovery');
+      await expect(page.getByTestId('discovery-card').first()).toBeVisible();
+      await expect(page.getByTestId('dislike-button')).toBeVisible();
+      await assertCookbookVisualA11y(page, { contrastLevel });
+    });
+  }
+});

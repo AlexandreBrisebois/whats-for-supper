@@ -18,14 +18,14 @@ The proposed visual language and North Star favor clear hierarchy, sentence case
 
 Replace the charcoal-led/warm-action A/B implementation sequence with one baseline/proposed comparison. Keep one local treatment and revise only demonstrated problems. No runtime variants, flags, settings, analytics, new fonts or dependencies.
 
-| Element | Selected starting treatment |
-|---|---|
-| Week context | Outfit, sentence case, approximately 14px/20px semibold, normal tracking, opaque charcoal-600; date range remains more prominent |
-| Plan supper | Existing localized sentence-case label; opaque terracotta-600 text and Plus, darker terracotta feedback; retain the light open action and existing sizes/targets |
-| Grip | Opaque charcoal-600 default; sage-700 hover/grabbed; independent visible keyboard focus |
-| Fixed weekday/month | Opaque charcoal-600, existing date-column width and hierarchy; adjust local spacing/wrapping only if needed for legibility |
-| Today | One readable terracotta-600 Today label above its row, followed by a faint decorative rule; fixed date marker remains neutral, with no added fill or contour |
-| Past | Reduce shadow/glow and use a flatter existing cream surface; preserve essential foregrounds and actions |
+| Element             | Selected starting treatment                                                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Week context        | Outfit, sentence case, approximately 14px/20px semibold, normal tracking, opaque charcoal-600; date range remains more prominent                                 |
+| Plan supper         | Existing localized sentence-case label; opaque terracotta-600 text and Plus, darker terracotta feedback; retain the light open action and existing sizes/targets |
+| Grip                | Opaque charcoal-600 default; sage-700 hover/grabbed; independent visible keyboard focus                                                                          |
+| Fixed weekday/month | Opaque charcoal-600, existing date-column width and hierarchy; adjust local spacing/wrapping only if needed for legibility                                       |
+| Today               | One readable terracotta-600 Today label above its row, followed by a faint decorative rule; fixed date marker remains neutral, with no added fill or contour     |
+| Past                | Reduce shadow/glow and use a flatter existing cream surface; preserve essential foregrounds and actions                                                          |
 
 Terracotta already carries actions; the Today label and fixed date placement must make its temporal meaning explicit. Sage keeps its broad existing roles and movement feedback. Neither hue alone communicates state. Today adds no separate badge, full-row border, animation or larger meal card.
 

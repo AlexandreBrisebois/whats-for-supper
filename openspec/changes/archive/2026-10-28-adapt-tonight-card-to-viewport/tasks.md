@@ -23,7 +23,6 @@
 
 Task 1.1: `task test:e2e -- home-recipe.spec.ts --grep 'adaptive planned Tonight'` failed all four EN/FR one-/two-line fixtures for the intended landscape assertion (330 by 330px square photo), before production changes. Log: `/tmp/wfs-adaptive-red.log`. Initial geometry and viewport screenshots were recorded in Playwright attachments. Supplemental physical Pixel 10 check: not run (no device connected).
 
-
 ## Browser and interaction evidence
 
 - Primary green: `task test:e2e -- home-recipe.spec.ts --grep 'adaptive planned Tonight'`: 10 passed (latest run 8.6s), including four primary one-/two-line EN/FR cases, two long-title matrix cases and four missing/failed photo cases. Logs: `/tmp/wfs-adaptive-green.log`, `/tmp/wfs-adaptive-matrix.log`. The matrix uses 200% rendered Tonight text, not hardware zoom or a physical-device text setting.

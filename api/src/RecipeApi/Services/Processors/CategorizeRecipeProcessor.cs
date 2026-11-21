@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
+using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
@@ -14,7 +15,8 @@ public class CategorizeRecipeProcessor(
     IChatClient chatClient,
     ILogger<CategorizeRecipeProcessor> logger,
     VegetarianClassificationPolicy? vegetarianPolicy = null,
-    DemoModeOptions? demoMode = null) : IWorkflowProcessor
+    DemoModeOptions? demoMode = null,
+    RecipeFilePublicationStore? publications = null) : IWorkflowProcessor
 {
     public string ProcessorName => "CategorizeRecipe";
 
@@ -43,21 +45,31 @@ public class CategorizeRecipeProcessor(
     {
         // Demo refusal must not fall through to heuristic replacement facts.
         demoMode?.EnsureAiAvailable();
-        if (string.IsNullOrEmpty(task.Payload))
-            throw new ArgumentException("Task payload is empty.");
-
-        using var doc = JsonDocument.Parse(task.Payload);
-        if (!doc.RootElement.TryGetProperty("recipeId", out var idProp) &&
-            !doc.RootElement.TryGetProperty("RecipeId", out idProp))
-            throw new ArgumentException("Task payload does not contain recipeId.");
-
-        var recipeId = idProp.GetGuid();
+        var recipeId = ReadRecipeId(task.Payload);
 
         var recipe = await db.Recipes.FindAsync([recipeId], ct);
         if (recipe is null)
         {
             logger.LogWarning("CategorizeRecipe: recipe {RecipeId} not found — skipping", recipeId);
-            return new { Message = $"Recipe {recipeId} not found — skipping" };
+            return new { Message = MissingMessage(recipeId) };
+        }
+
+        var capturedWorkflow = task.InstanceId != Guid.Empty && await db.WorkflowInstances.AsNoTracking()
+            .AnyAsync(x => x.Id == task.InstanceId && (x.WorkflowId == "url-import" || x.WorkflowId == "recipe-import"), ct);
+        if (capturedWorkflow)
+        {
+            var publisher = publications ?? throw new InvalidOperationException("Captured categorization requires its publication store.");
+            var input = ProcessorName + "\n" + CanonicalRecipeContentStore.NormalizeJson(task.Payload);
+            if (await publisher.TryResumeAsync(recipeId, task.TaskId, input, ct))
+                return new { Message = CompletionMessage(recipeId) };
+            var capture = await publisher.CaptureForTaskAsync(task, recipeId, ct);
+            // Classification observes captured originals, never mutates the tracked row
+            // before the publication lock rechecks the complete launch chain.
+            var candidate = RecipeFilePublicationStore.RestoreObservation(capture.Fields
+                ?? throw new InvalidDataException("Categorization needs captured field observations."));
+            await CategorizeAsync(candidate, ct, persist: false);
+            await publisher.PublishCategorizationAsync(task, capture, candidate, ct);
+            return new { Message = CompletionMessage(recipeId) };
         }
 
         try
@@ -69,10 +81,39 @@ public class CategorizeRecipeProcessor(
             logger.LogError(ex, "CategorizeRecipe: unexpected error for recipe {RecipeId} — workflow continues", recipeId);
         }
 
-        return new { Message = $"CategorizeRecipe completed for recipe {recipeId}." };
+        return new { Message = CompletionMessage(recipeId) };
     }
 
-    private async Task CategorizeAsync(Recipe recipe, CancellationToken ct)
+    private static Guid ReadRecipeId(string? payload)
+    {
+        if (string.IsNullOrEmpty(payload))
+            throw new ArgumentException("Task payload is empty.");
+        using var doc = JsonDocument.Parse(payload);
+        if (!doc.RootElement.TryGetProperty("recipeId", out var idProp) &&
+            !doc.RootElement.TryGetProperty("RecipeId", out idProp))
+            throw new ArgumentException("Task payload does not contain recipeId.");
+        return idProp.GetGuid();
+    }
+
+    private static string MissingMessage(Guid recipeId) => $"Recipe {recipeId} not found — skipping";
+    private static string CompletionMessage(Guid recipeId) => $"CategorizeRecipe completed for recipe {recipeId}.";
+
+    internal static Guid ValidateOriginalHistory(string? payload, string? returned)
+    {
+        WorkflowProcessorHistory.ReadObservation<JsonElement>(payload ?? "null");
+        var recipeId = ReadRecipeId(payload);
+        var result = WorkflowProcessorHistory.ReadObservation<JsonElement>(returned ?? "null");
+        if (recipeId == Guid.Empty || result.ValueKind != JsonValueKind.Object
+            || !result.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.String
+            || message.GetString() is not { } text || (text != MissingMessage(recipeId) && text != CompletionMessage(recipeId)))
+            throw new InvalidDataException("Original recipe categorization receipt differs from its invocation.");
+        // Completion also follows caught failures and fallback categorization.
+        // Neither message certifies historical source, provider or row state.
+        // Unknown extensions are preserved without qualifying their meaning.
+        return recipeId;
+    }
+
+    private async Task CategorizeAsync(Recipe recipe, CancellationToken ct, bool persist = true)
     {
         string? cuisineType = null;
         var mealTypesList = new List<string>();
@@ -189,7 +230,7 @@ public class CategorizeRecipeProcessor(
         }
         recipe.UpdatedAt = clock.UtcNow;
 
-        await db.SaveChangesAsync(ct);
+        if (persist) await db.SaveChangesAsync(ct);
 
         logger.LogInformation("CategorizeRecipe: categorized recipe {RecipeId} (Category: {Category}, CuisineType: {CuisineType}, MealTypes: {MealTypes})",
             recipe.Id, recipe.Category, recipe.CuisineType, string.Join(", ", recipe.MealTypes));

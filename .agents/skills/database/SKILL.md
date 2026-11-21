@@ -36,12 +36,12 @@ Check the selected package/release metadata before adopting a current-doc exampl
 
 Load only the evidence relevant to the selected persistence decision:
 
-| Decision | Existing evidence to inspect |
-|---|---|
-| Schema transitions and constraints | `SchemaIntegrityTests.cs` (static/model assertions) and `NonCookingPostgresTests.cs`, `RecipeImportReportPostgresTests.cs` (database assertions) |
-| Search SQL, filtering, vectors or plans | `recipe-search` and `search-indexing` specs; `RecipeLexicalSearchPostgresTests.cs` and `RecipeSearchFilterMaterializerPostgresTests.cs` |
-| Concurrent grocery writes | `grocery-shopping` spec; `GroceryCheckConcurrencyPostgresTests*.cs`; `GroceryCheckCoordinator.cs` for the single-instance processing boundary |
-| Backup/restore dependencies | `data-backup-and-recovery` spec; `OnlineRecoveryPostgresTests.cs` and the affected merge/sidecar tests |
+| Decision                                | Existing evidence to inspect                                                                                                                     |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Schema transitions and constraints      | `SchemaIntegrityTests.cs` (static/model assertions) and `NonCookingPostgresTests.cs`, `RecipeImportReportPostgresTests.cs` (database assertions) |
+| Search SQL, filtering, vectors or plans | `recipe-search` and `search-indexing` specs; `RecipeLexicalSearchPostgresTests.cs` and `RecipeSearchFilterMaterializerPostgresTests.cs`          |
+| Concurrent grocery writes               | `grocery-shopping` spec; `GroceryCheckConcurrencyPostgresTests*.cs`; `GroceryCheckCoordinator.cs` for the single-instance processing boundary    |
+| Backup/restore dependencies             | `data-backup-and-recovery` spec; `OnlineRecoveryPostgresTests.cs` and the affected merge/sidecar tests                                           |
 
 Tests above live under `api/src/RecipeApi.Tests/Integration/`; service owners live
 under `api/src/RecipeApi/Services/`. For query work, inspect parameter binding,
@@ -56,13 +56,13 @@ isolation and lock effects belong here; .NET scope/cancellation/disposal belong 
 Run from the repository root after verifying the target database, Compose inputs
 and authorized effects. Inspect generated SQL before applying it.
 
-| Operation | Command | Coverage / effect |
-|---|---|---|
-| Schema preview | `task db:schema:push DRY_RUN=true` | psqldef dry-run of schema.sql only; does not preview compatibility.sql |
-| Apply migration | `task migrate` | Compose migration sidecar, including compatibility SQL; changes the configured DB |
-| Start database | `task dev:db` | Starts configured PostgreSQL service |
-| Database shell | `task shell:db` | Interactive access to configured DB |
-| Export schema | `task db:schema:pull` | Overwrites schema.sql from live DB; inspect and preserve local edits first |
+| Operation       | Command                            | Coverage / effect                                                                 |
+| --------------- | ---------------------------------- | --------------------------------------------------------------------------------- |
+| Schema preview  | `task db:schema:push DRY_RUN=true` | psqldef dry-run of schema.sql only; does not preview compatibility.sql            |
+| Apply migration | `task migrate`                     | Compose migration sidecar, including compatibility SQL; changes the configured DB |
+| Start database  | `task dev:db`                      | Starts configured PostgreSQL service                                              |
+| Database shell  | `task shell:db`                    | Interactive access to configured DB                                               |
+| Export schema   | `task db:schema:pull`              | Overwrites schema.sql from live DB; inspect and preserve local edits first        |
 
 Review compatibility SQL separately; schema-only preview cannot establish safety
 of the full migration. Declarative tooling can still produce destructive changes.

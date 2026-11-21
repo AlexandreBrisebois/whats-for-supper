@@ -6,13 +6,28 @@ namespace RecipeApi.Tests.Services;
 
 public class FamilyServiceTests
 {
+    private static FamilyService CreateService(RecipeApi.Data.RecipeDbContext db)
+    {
+        var clock = new SystemClock();
+        var calendar = new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton(services, db);
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<IClock>(services, clock);
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton(services, calendar);
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<RecipeApi.Infrastructure.IScheduleEventPublisher>(services, Moq.Mock.Of<RecipeApi.Infrastructure.IScheduleEventPublisher>());
+        var provider = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(services);
+        var scopes = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(provider);
+        return new(clock, db, calendar, new SupperProjectionInvalidation(db, clock, calendar),
+            Moq.Mock.Of<ISupperProjectionPublisher>(), new VotingSession(scopes, Microsoft.Extensions.Logging.Abstractions.NullLogger<VotingSession>.Instance));
+    }
+
     // ── CreateFamilyMember ────────────────────────────────────────────────────
 
     [Fact]
     public async Task CreateFamilyMember_Creates_With_Unique_Id()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         var alice = await service.CreateFamilyMember("Alice");
         var bob   = await service.CreateFamilyMember("Bob");
@@ -23,21 +38,21 @@ public class FamilyServiceTests
     }
 
     [Fact]
-    public async Task CreateFamilyMember_Defaults_BrowseViewMode_To_Stack()
+    public async Task CreateFamilyMember_Defaults_BrowseViewMode_To_List()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         var member = await service.CreateFamilyMember("Alice");
 
-        Assert.Equal("stack", member.BrowseViewMode);
+        Assert.Equal("list", member.BrowseViewMode);
     }
 
     [Fact]
     public async Task CreateFamilyMember_Empty_Name_Throws()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.CreateFamilyMember(""));
         await Assert.ThrowsAsync<ArgumentException>(() => service.CreateFamilyMember("   "));
@@ -47,7 +62,7 @@ public class FamilyServiceTests
     public async Task CreateFamilyMember_Exact_Duplicate_Throws_DuplicateFamilyMemberException()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         await service.CreateFamilyMember("Alex");
         await Assert.ThrowsAsync<DuplicateFamilyMemberException>(() => service.CreateFamilyMember("Alex"));
@@ -57,7 +72,7 @@ public class FamilyServiceTests
     public async Task CreateFamilyMember_Casing_Variant_Throws_DuplicateFamilyMemberException()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         await service.CreateFamilyMember("Alex");
         await Assert.ThrowsAsync<DuplicateFamilyMemberException>(() => service.CreateFamilyMember("alex"));
@@ -67,7 +82,7 @@ public class FamilyServiceTests
     public async Task CreateFamilyMember_Whitespace_Variant_Throws_DuplicateFamilyMemberException()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         await service.CreateFamilyMember("Alex");
         await Assert.ThrowsAsync<DuplicateFamilyMemberException>(() => service.CreateFamilyMember(" Alex "));
@@ -81,7 +96,7 @@ public class FamilyServiceTests
         ctx.FamilyMembers.Add(new RecipeApi.Models.FamilyMember { Name = " Alex " });
         await ctx.SaveChangesAsync();
 
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
         await Assert.ThrowsAsync<DuplicateFamilyMemberException>(() => service.CreateFamilyMember("alex"));
     }
 
@@ -89,7 +104,7 @@ public class FamilyServiceTests
     public async Task CreateFamilyMember_Distinct_Name_Preserves_Display_Casing()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         var member = await service.CreateFamilyMember(" aLeX ");
         Assert.Equal("aLeX", member.Name);
@@ -101,7 +116,7 @@ public class FamilyServiceTests
     public async Task GetAllFamilyMembers_Returns_All_Members()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         await service.CreateFamilyMember("Charlie");
         await service.CreateFamilyMember("Dana");
@@ -121,7 +136,7 @@ public class FamilyServiceTests
     public async Task UpdateFamilyMember_Updates_Name_And_UpdatedAt()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         var member = await service.CreateFamilyMember("Old Name");
         var originalUpdatedAt = member.UpdatedAt;
@@ -143,7 +158,7 @@ public class FamilyServiceTests
     public async Task UpdateFamilyMember_Empty_Name_Throws()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         var member = await service.CreateFamilyMember("Valid Name");
 
@@ -155,7 +170,7 @@ public class FamilyServiceTests
     public async Task UpdateFamilyMember_NonExistent_Throws_KeyNotFoundException()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.UpdateFamilyMember(Guid.NewGuid(), "New Name"));
@@ -168,7 +183,7 @@ public class FamilyServiceTests
         string browseViewMode)
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
         var member = await service.CreateFamilyMember("Alex");
 
         var updated = await service.UpdateFamilyMemberPreferences(member.Id, browseViewMode, null, null);
@@ -185,7 +200,7 @@ public class FamilyServiceTests
     public async Task UpdateFamilyMemberPreferences_Invalid_BrowseViewMode_Throws()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
         var member = await service.CreateFamilyMember("Alex");
 
         await Assert.ThrowsAsync<ArgumentException>(
@@ -196,7 +211,7 @@ public class FamilyServiceTests
     public async Task UpdateFamilyMemberPreferences_NonExistent_Throws_KeyNotFoundException()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.UpdateFamilyMemberPreferences(Guid.NewGuid(), "list", null, null));
@@ -208,7 +223,7 @@ public class FamilyServiceTests
     public async Task UpdateFamilyMemberPreferences_Persists_CookingView_Only(string cookingViewMode)
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
         var member = await service.CreateFamilyMember("Alex");
         member.PreferredLanguage = "fr";
         await ctx.SaveChangesAsync();
@@ -216,7 +231,7 @@ public class FamilyServiceTests
         var updated = await service.UpdateFamilyMemberPreferences(member.Id, null, null, cookingViewMode);
 
         Assert.Equal(cookingViewMode, updated.CookingViewMode);
-        Assert.Equal("stack", updated.BrowseViewMode);
+        Assert.Equal("list", updated.BrowseViewMode);
         Assert.Equal("fr", updated.PreferredLanguage);
         Assert.Equal("Alex", updated.Name);
     }
@@ -225,12 +240,60 @@ public class FamilyServiceTests
     public async Task UpdateFamilyMemberPreferences_Invalid_CookingView_Does_Not_Change_Member()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
         var member = await service.CreateFamilyMember("Alex");
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.UpdateFamilyMemberPreferences(member.Id, null, null, "carousel"));
         Assert.Null(member.CookingViewMode);
+    }
+
+    [Theory]
+    [InlineData("standard", "standard")]
+    [InlineData("HIGH", "high")]
+    [InlineData("  Standard  ", "standard")]
+    public async Task UpdateFamilyMemberPreferences_Persists_And_Normalizes_ContrastMode_Only(
+        string supplied,
+        string expected)
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = CreateService(ctx);
+        var member = await service.CreateFamilyMember("Alex");
+        await service.UpdateFamilyMemberPreferences(member.Id, "stack", "fr", "step-by-step");
+
+        var updated = await service.UpdateFamilyMemberPreferences(member.Id, null, null, null, supplied);
+
+        Assert.Equal(expected, updated.ContrastMode);
+        Assert.Equal("stack", updated.BrowseViewMode);
+        Assert.Equal("fr", updated.PreferredLanguage);
+        Assert.Equal("step-by-step", updated.CookingViewMode);
+        Assert.Equal("Alex", updated.Name);
+    }
+
+    [Theory]
+    [InlineData("ultra")]
+    [InlineData("   ")]
+    public async Task UpdateFamilyMemberPreferences_Invalid_ContrastMode_Does_Not_Change_Member(string supplied)
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = CreateService(ctx);
+        var member = await service.CreateFamilyMember("Alex");
+        await service.UpdateFamilyMemberPreferences(member.Id, null, null, null, "high");
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdateFamilyMemberPreferences(member.Id, null, null, null, supplied));
+        Assert.Equal("high", member.ContrastMode);
+    }
+
+    [Fact]
+    public async Task UpdateFamilyMemberPreferences_All_Null_Throws_ArgumentException()
+    {
+        await using var ctx = TestDbContextFactory.Create();
+        var service = CreateService(ctx);
+        var member = await service.CreateFamilyMember("Alex");
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.UpdateFamilyMemberPreferences(member.Id, null, null, null, null));
     }
 
     // ── DeleteFamilyMember ────────────────────────────────────────────────────
@@ -239,7 +302,7 @@ public class FamilyServiceTests
     public async Task DeleteFamilyMember_Removes_Member()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         var member = await service.CreateFamilyMember("Frank");
 
@@ -253,7 +316,7 @@ public class FamilyServiceTests
     public async Task DeleteFamilyMember_NonExistent_Throws_KeyNotFoundException()
     {
         await using var ctx = TestDbContextFactory.Create();
-        var service = new FamilyService(new RecipeApi.Services.SystemClock(), ctx);
+        var service = CreateService(ctx);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.DeleteFamilyMember(Guid.NewGuid()));

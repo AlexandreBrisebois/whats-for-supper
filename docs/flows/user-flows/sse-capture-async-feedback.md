@@ -47,12 +47,12 @@ If the user has navigated away before `recipe_ready` fires → `LibraryToast` ha
 
 ### Path-specific copy
 
-| Submit path | Queued heading | Queued subtext |
-|---|---|---|
-| Photo upload | "Recipe queued" | "We're processing your photo. You'll get a notification when it's ready." |
-| URL capture | "Recipe queued" | "We're fetching the recipe from that link. You'll get a notification when it's ready." |
-| Describe (non-GOTO) | "Synthesizing…" | "We're building your recipe. Hang tight — it'll be ready shortly." |
-| Describe (GOTO intent) | "Your GOTO is being prepared" | "We'll notify you when it's ready on the home screen." (existing copy, kept) |
+| Submit path            | Queued heading                | Queued subtext                                                                         |
+| ---------------------- | ----------------------------- | -------------------------------------------------------------------------------------- |
+| Photo upload           | "Recipe queued"               | "We're processing your photo. You'll get a notification when it's ready."              |
+| URL capture            | "Recipe queued"               | "We're fetching the recipe from that link. You'll get a notification when it's ready." |
+| Describe (non-GOTO)    | "Building your recipe…"       | "Hang tight — we'll notify you when it's ready."                                       |
+| Describe (GOTO intent) | "Your GOTO is being prepared" | "We'll notify you when it's ready on the home screen." (existing copy, kept)           |
 
 ---
 
@@ -86,7 +86,8 @@ captureStore.hasPending  // drives nav dot visibility
 The describe path (`/api/recipes/describe`) is synchronous in the sense that the API immediately creates a full recipe stub with `IsSynthesized = false`, then the workflow generates the full recipe. The `recipe_ready` event fires when `RecipeReadyProcessor` confirms it.
 
 For the describe path:
-- The success screen shows "Synthesizing…" with a pulse loader
+
+- The success screen shows "Building your recipe…" with a pulse loader
 - If the user stays on the screen, the transition to "ready" state happens in-place
 - If the user navigates away, `LibraryToast` handles it
 

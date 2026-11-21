@@ -106,6 +106,33 @@ public class WorkflowWorkerTests : IAsyncLifetime
         }
     }
 
+    // Synthetic processor tests still accept their complete command before dispatch.
+    // This helper seeds only disposable fixture recipes; no capture is made by Worker.
+    private async Task AcceptLaunchAsync(RecipeDbContext db)
+    {
+        var storage = new InMemoryStorageProvider();
+        var instances = db.ChangeTracker.Entries<WorkflowInstance>()
+            .Where(x => x.State == EntityState.Added).Select(x => x.Entity).ToArray();
+        foreach (var instance in instances)
+        {
+            var parameters = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(instance.Parameters ?? "{}")!;
+            if (instance.Tasks.Any(x => x.ProcessorName is "ExtractRecipe" or "GenerateHero"))
+            {
+                if (!parameters.TryGetValue("recipeId", out var value) || !Guid.TryParse(value, out var id))
+                { id = Guid.NewGuid(); parameters["recipeId"] = id.ToString(); }
+                if (await db.Recipes.FindAsync(id) is null)
+                    db.Recipes.Add(new Recipe { Id = id, Name = "Worker fixture" });
+                await storage.SaveAsync("recipes", $"{id}/recipe.info",
+                    System.Text.Json.JsonSerializer.Serialize(new RecipeInfo { Id = id }, JsonDefaults.CamelCase));
+            }
+            instance.Parameters = System.Text.Json.JsonSerializer.Serialize(parameters);
+        }
+        await db.SaveChangesAsync();
+        var store = TestPublicationStore.Create(db, storage, _clock);
+        foreach (var instance in instances) await store.CaptureLaunchAsync(instance);
+        await db.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task Worker_PicksUpPendingTasks_WhenScheduled()
     {
@@ -135,7 +162,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         _db.WorkflowTasks.Add(task);
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Ensure throttles are initialized by doing a dummy call first
         // This initializes the semaphores and everything else needed
@@ -182,7 +209,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             _db.WorkflowTasks.Add(task);
             taskIds.Add(task.TaskId);
         }
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Act: Simulate two workers running concurrently
         var cts1 = new CancellationTokenSource();
@@ -232,7 +259,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             };
             _db.WorkflowTasks.Add(task);
         }
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Act: Run worker
         var workerTask = _worker.StartAsync(_cts.Token);
@@ -270,7 +297,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             Instance = instance
         };
         _db.WorkflowTasks.Add(task);
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Act: Run worker
         var workerTask = _worker.StartAsync(_cts.Token);
@@ -365,7 +392,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
 
@@ -481,7 +508,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -556,7 +583,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         _db.WorkflowTasks.Add(taskA);
         _db.WorkflowTasks.Add(taskB);
-        _db.SaveChanges();
+        await AcceptLaunchAsync(_db);
 
         // Verify: Task A is in database and pending
         var preTask = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId);
@@ -640,7 +667,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         };
 
         _db.WorkflowTasks.AddRange(taskA, taskB, taskC);
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Verify setup: ensure tasks are saved correctly
         var savedTaskB = await _db.WorkflowTasks.FirstAsync(t => t.TaskId == taskB.TaskId);
@@ -754,7 +781,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         };
 
         _db.WorkflowTasks.AddRange(taskA, taskB, taskC, taskD);
-        await _db.SaveChangesAsync();
+        await AcceptLaunchAsync(_db);
 
         // Act: Process task A
         await _worker.ProcessPendingTasksAsync(_cts.Token);
@@ -876,7 +903,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -990,7 +1017,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -1055,6 +1082,12 @@ public class WorkflowWorkerTests : IAsyncLifetime
             MaxRetries = 10
         }));
 
+        // This direct test entrypoint does not run BackgroundService.ExecuteAsync.
+        // Initialize the configured throttle deterministically before dispatch.
+        await (Task)typeof(WorkflowWorker).GetMethod("InitializeThrottles",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(testWorker, [CancellationToken.None])!;
+
         var now = _clock.UtcNow;
         var instance = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "test", Status = WorkflowStatus.Processing };
         db.WorkflowInstances.Add(instance);
@@ -1068,7 +1101,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             TaskName = "A",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
-            ScheduledAt = now.AddSeconds(-1)
+            ScheduledAt = now.AddMinutes(-5)
         };
 
         // Task B: should be proactively rescheduled
@@ -1080,7 +1113,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             TaskName = "B",
             ProcessorName = "ExtractRecipe",
             Status = TaskStatus.Pending,
-            ScheduledAt = now.AddMinutes(-5) // Much older task to ensure it's picked up first
+            ScheduledAt = now.AddSeconds(-1) // A is selected first; B waits for its configured throttle slot.
         };
 
         // Task C: different type, should NOT be rescheduled to the same future time
@@ -1096,7 +1129,6 @@ public class WorkflowWorkerTests : IAsyncLifetime
         };
 
         db.WorkflowTasks.AddRange(taskA, taskB, taskC);
-        await db.SaveChangesAsync();
 
         // Task D: another pending task that won't be picked up (because it's scheduled in the future)
         var taskDId = Guid.NewGuid();
@@ -1110,7 +1142,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             ScheduledAt = now.AddMinutes(10)
         };
         db.WorkflowTasks.Add(taskD);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         // Act: Process tasks
         await testWorker.ProcessPendingTasksAsync(default);
@@ -1120,6 +1152,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
         var queryDb = queryScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
 
         var updatedA = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskAId);
+        var updatedB = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskBId);
         var updatedD = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskDId);
         var updatedC = await queryDb.WorkflowTasks.FirstAsync(t => t.TaskId == taskCId);
 
@@ -1128,12 +1161,17 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Equal(TaskStatus.Pending, updatedA.Status);
         Assert.NotNull(updatedA.ScheduledAt);
 
+        // A's 429 reaches the waiting task before it invokes the processor again.
+        Assert.Equal(0, updatedB.RetryCount);
+        Assert.Equal(TaskStatus.Pending, updatedB.Status);
+        Assert.Equal(updatedA.ScheduledAt!.Value.AddMinutes(1), updatedB.ScheduledAt);
+
         // Task D should be rescheduled to the future (proactively)
-        // It should be staggered at least 1 minute after Task A (or more if Task B also rescheduled it)
+        // It should be staggered at least 1 minute after Task A, after the pending B slot
         Assert.Equal(TaskStatus.Pending, updatedD.Status);
-        Assert.True(updatedD.ScheduledAt > updatedA.ScheduledAt, 
+        Assert.True(updatedD.ScheduledAt > updatedA.ScheduledAt,
             $"Task D schedule {updatedD.ScheduledAt} should be staggered after Task A schedule {updatedA.ScheduledAt}");
-        
+
         var diffMinutes = (updatedD.ScheduledAt!.Value - updatedA.ScheduledAt!.Value).TotalMinutes;
         Assert.True(diffMinutes >= 0.9, $"Task D should be at least 1 minute after Task A, but was {diffMinutes} min");
 
@@ -1232,7 +1270,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
 
@@ -1339,7 +1377,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -1447,7 +1485,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -1560,7 +1598,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -1593,11 +1631,14 @@ public class WorkflowWorkerTests : IAsyncLifetime
     /// that the recipe import failed or changing its import report.
     /// </summary>
     [Theory]
-    [InlineData("recipe-import", "ExtractRecipe", "extract_recipe", true)]
-    [InlineData("url-import", "ExtractRecipe", "extract_recipe", true)]
-    [InlineData("index-recipe-search", "IndexRecipeSearch", "index_job", false)]
+    [InlineData("recipe-import", "ExtractRecipe", "extract_recipe", true, true, false)]
+    [InlineData("url-import", "ExtractRecipe", "extract_recipe", true, true, false)]
+    [InlineData("index-recipe-search", "IndexRecipeSearch", "index_job", false, true, false)]
+    [InlineData("url-import", "ExtractRecipe", "extract_recipe", true, false, true)]
+    [InlineData("url-import", "GenerateHero", "generate_hero", true, false, false)]
+    [InlineData("url-import", "ExtractRecipe", "extract_recipe", true, false, false)]
     public async Task WorkflowFatalFailure_IndexingDoesNotReportAnImportFailure(
-        string workflowId, string processorName, string taskName, bool importFailed)
+        string workflowId, string processorName, string taskName, bool importFailed, bool existingReport, bool contentReview)
     {
         // Arrange
         var services = new ServiceCollection();
@@ -1624,7 +1665,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
 
         // Fatal exception — not transient, not 429 — exhausts retries immediately
         services.AddScoped<IWorkflowProcessor>(sp =>
-            new ThrowingWorkflowProcessor(processorName, new InvalidOperationException("AI pipeline exploded")));
+            new ThrowingWorkflowProcessor(processorName, contentReview ? new RecipeContentReviewException("AI pipeline exploded", ["steps"]) : new InvalidOperationException("AI pipeline exploded")));
 
         // Capture published events via a mock publisher
         var publishedEvents = new List<(Guid RecipeId, string ErrorMessage, string FailedStep, object? PartialData)>();
@@ -1664,6 +1705,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             Id = recipeId,
             Name = "Spaghetti Bolognese",
             ImageCount = 0,
+            Ingredients = contentReview ? "[\"Salt\"]" : null,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -1682,10 +1724,11 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowInstances.Add(instance);
-        db.RecipeImportReports.Add(new RecipeImportReport
+        if (existingReport) db.RecipeImportReports.Add(new RecipeImportReport
         {
             RecipeId = recipeId,
             Reasons = ["ingredients"],
+            Note = "Original private feedback",
             Status = RecipeImportReportStatus.Reimporting,
             LastWorkflowInstanceId = instance.Id,
             LastAttemptAt = now
@@ -1706,7 +1749,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         // Act
         using var cts = new CancellationTokenSource();
@@ -1722,7 +1765,25 @@ public class WorkflowWorkerTests : IAsyncLifetime
         Assert.Contains("AI pipeline exploded", failedTask.ErrorMessage);
 
         var failures = await new CaptureFailureService(queryDb, _clock, Mock.Of<IWorkflowOrchestrator>()).GetActiveFailuresAsync();
-        var report = await queryDb.RecipeImportReports.SingleAsync(r => r.RecipeId == recipeId);
+        var report = await queryDb.RecipeImportReports.SingleOrDefaultAsync(r => r.RecipeId == recipeId);
+        if (!existingReport)
+        {
+            if (contentReview)
+            {
+                Assert.NotNull(report);
+                Assert.Equal(RecipeImportReportStatus.ReadyToReview, report.Status);
+                Assert.Equal(["steps"], report.Reasons);
+                Assert.Contains("cooking steps", report.Note);
+                Assert.Null(report.RepairIntentId);
+            }
+            else Assert.Null(report);
+            Assert.Single(failures);
+            Assert.Single(publishedEvents);
+            testWorker.Dispose(); initCts.Dispose(); await db.DisposeAsync();
+            return;
+        }
+        Assert.NotNull(report);
+        Assert.Equal("Original private feedback", report.Note);
         if (!importFailed)
         {
             Assert.Empty(publishedEvents);
@@ -1847,7 +1908,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         // Act
         using var cts = new CancellationTokenSource();
@@ -1952,7 +2013,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
 
@@ -2062,7 +2123,7 @@ public class WorkflowWorkerTests : IAsyncLifetime
             UpdatedAt = now
         };
         db.WorkflowTasks.Add(task);
-        await db.SaveChangesAsync();
+        await AcceptLaunchAsync(db);
 
         var taskId = task.TaskId;
         var instanceId = instance.Id;
@@ -2128,7 +2189,7 @@ public class CapturingEventPublisher(
     List<(Guid RecipeId, string ErrorMessage, string FailedStep, object? PartialData)> captured)
     : IScheduleEventPublisher
 {
-    public Task PublishSlotUpdatedAsync(DateOnly date, RecipeApi.Dto.ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, RecipeApi.Dto.NonCookingPlanDto? nonCooking = null) => Task.CompletedTask;
+    public Task PublishSlotUpdatedAsync(DateOnly date, RecipeApi.Dto.ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, RecipeApi.Dto.NonCookingPlanDto? nonCooking = null, Guid? occurrenceId = null) => Task.CompletedTask;
     public Task PublishWeekUpdatedAsync(RecipeApi.Dto.ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null) => Task.CompletedTask;
     public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null) => Task.CompletedTask;
     public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, RecipeApi.Dto.SmartDefaultsDto defaults, string? excludeConnectionId = null) => Task.CompletedTask;

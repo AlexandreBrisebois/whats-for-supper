@@ -53,8 +53,16 @@ public partial class PlanLaterPostgresTests(Xunit.Abstractions.ITestOutputHelper
         await using var app = await TestWebApplicationFactory.CreateWithAuthAsync(new TestClock(),
             new() { ["Tests:PostgresConnectionString"] = connection });
         using var client = app.CreateAuthenticatedClient();
-        var source = new Recipe { Id = Guid.NewGuid(), Name = "Carrot supper", Ingredients = "[\"carrots\"]", IsReady = true };
-        var target = new Recipe { Id = Guid.NewGuid(), Name = "Onion supper", Ingredients = "[\"onions\"]", IsReady = true };
+        var source = new Recipe
+        {
+            Id = Guid.NewGuid(), Name = "Carrot supper", Ingredients = "[\"carrots\"]", IsReady = true,
+            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("carrots", null, null)])
+        };
+        var target = new Recipe
+        {
+            Id = Guid.NewGuid(), Name = "Onion supper", Ingredients = "[\"onions\"]", IsReady = true,
+            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("onions", null, null)])
+        };
         db.Recipes.AddRange(source, target);
         db.CalendarEvents.AddRange(new CalendarEvent { Date = new(2026, 10, 12), RecipeId = source.Id },
             new CalendarEvent { Date = new(2026, 10, 19), RecipeId = target.Id });

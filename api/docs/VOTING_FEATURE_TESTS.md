@@ -43,9 +43,9 @@ This document lists all test cases for the voting feature. Tests are written **b
 - **Setup**: Create recipe, add 3 votes from 3 family members (all Like)
 - **Action**: Call `GetSmartDefaultsAsync(0)`
 - **Assert**:
-    - PreSelectedRecipeDto.UnanimousVote == true
-    - PreSelectedRecipeDto.VoteCount == 3
-    - PreSelectedRecipeDto.FamilySize == 3
+  - PreSelectedRecipeDto.UnanimousVote == true
+  - PreSelectedRecipeDto.VoteCount == 3
+  - PreSelectedRecipeDto.FamilySize == 3
 
 ---
 
@@ -117,17 +117,17 @@ public record ScheduleRecipeDto(
 - [ ] **Add VoteCount column to CalendarEvent** (Entity + Migration)
 - [ ] **Update ScheduleRecipeDto** to include VoteCount
 - [ ] **Modify LockScheduleAsync()** to:
-    - Query current week's RecipeVotes
-    - Count votes per recipe
-    - Persist counts to CalendarEvent.VoteCount
-    - Clear RecipeVotes table
+  - Query current week's RecipeVotes
+  - Count votes per recipe
+  - Persist counts to CalendarEvent.VoteCount
+  - Clear RecipeVotes table
 - [ ] **Update GetScheduleAsync()** to:
-    - Include VoteCount from CalendarEvent in response
+  - Include VoteCount from CalendarEvent in response
 - [ ] **Run all tests** to verify implementation
 - [ ] **Enhance DiscoveryService** (future):
-    - Add `weekOffset` parameter to `GetRecipesForDiscoveryAsync()`
-    - Filter out recipes with CalendarEvents for the target week
-    - Write and run discovery filtering test
+  - Add `weekOffset` parameter to `GetRecipesForDiscoveryAsync()`
+  - Filter out recipes with CalendarEvents for the target week
+  - Write and run discovery filtering test
 
 ---
 

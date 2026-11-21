@@ -128,7 +128,7 @@ def classes_for(paths):
             classes.add('contract')
         elif (openspec_class := test_ops.openspec_path_class(path)) is not None:
             classes.add(openspec_class)
-        elif path in {'Taskfile.yml', '.gitignore', '.pre-commit-config.yaml', '.nvmrc', 'scripts/requirements.txt'} or path.startswith(('scripts/agent/', '.agents/', '.github/workflows/')):
+        elif path in {'Taskfile.yml', '.gitignore', '.pre-commit-config.yaml', '.nvmrc', 'scripts/requirements.txt'} or path.startswith(('scripts/agent/', 'scripts/ci/', '.agents/', '.github/workflows/')):
             classes.add('harness')
         elif path.endswith('.md') or test_ops.documentation_artifact(path):
             classes.add('documentation')
@@ -185,7 +185,7 @@ def verification_plan(paths, changed, *, explicit):
             item['prerequisites'] = 'Running API exposing its generated OpenAPI document.'
             item['limitations'] = 'Live endpoint parity only; does not prove database behavior.'
         elif check == 'spec:check':
-            item['prerequisites'] = 'Taskfile-pinned OpenSpec CLI.'
+            item['prerequisites'] = 'Installed OpenSpec CLI (@fission-ai/openspec).'
         elif check == 'documentation':
             item['prerequisites'] = 'Git and readable selected documents/link targets.'
         else:
@@ -227,6 +227,33 @@ def can_scope_documentation(paths):
     return bool(paths) and classes_for(paths) == {'documentation'} and documentation_spec_targets(paths) is not None
 
 
+def markdown_links(text):
+    """Extract Markdown inline link targets, supporting balanced parentheses."""
+    links = []
+    index = 0
+    while (start := text.find('](', index)) != -1:
+        pos = start + 2
+        depth = 0
+        matched = False
+        while pos < len(text):
+            ch = text[pos]
+            if ch.isspace():
+                break
+            if ch == '(':
+                depth += 1
+            elif ch == ')':
+                if depth == 0:
+                    if pos > start + 2:
+                        links.append(text[start + 2:pos])
+                    matched = True
+                    pos += 1
+                    break
+                depth -= 1
+            pos += 1
+        index = pos if matched else start + 2
+    return links
+
+
 def documentation_inputs(paths):
     """Inputs to bounded link/grammar checks, not application qualification."""
     inputs = set(paths) | {'Taskfile.yml', '.gitignore', 'openspec/config.yaml',
@@ -252,7 +279,7 @@ def documentation_inputs(paths):
         if name in visited or path.suffix != '.md' or not path.is_file():
             continue
         visited.add(name)
-        for link in re.findall(r'\]\(([^)\s]+)\)', path.read_text()):
+        for link in markdown_links(path.read_text()):
             if '://' in link or link.startswith(('#', '/')):
                 continue
             target = (path.parent / link.split('#')[0]).resolve()
@@ -317,9 +344,8 @@ def run_command(command, timeout=1200, cwd=None):
 
 
 def introduced_links(current, baseline):
-    pattern = r'\]\(([^)\s]+)\)'
-    existing = set(re.findall(pattern, baseline))
-    return [link for link in re.findall(pattern, current) if link not in existing]
+    existing = set(markdown_links(baseline))
+    return [link for link in markdown_links(current) if link not in existing]
 
 
 def documentation_check(paths, *, baseline_ref="HEAD"):

@@ -31,11 +31,17 @@ public class DeploymentCalendarStreamTests
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            db.Recipes.Add(new Recipe { Id = recipeId, Name = "Carrot supper", Ingredients = "[\"Carrot\"]" });
+            db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Name = "Carrot supper",
+                Ingredients = "[\"Carrot\"]",
+                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+            });
             db.WeeklyPlans.Add(new WeeklyPlan
             {
-                WeekStartDate = new DateOnly(2026, 10, 5), GroceryState = "{\"Carrot\":true}",
-                GroceryItems = JsonSerializer.Serialize(new[] { new GroceryLineItemDto("Carrot", "carrot", "Produce", null, null, [recipeId]) }),
+                WeekStartDate = new DateOnly(2026, 10, 5), GroceryState = "{}",
+                GroceryItems = "[]",
             });
             await db.SaveChangesAsync();
         }

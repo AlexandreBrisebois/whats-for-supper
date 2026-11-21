@@ -73,10 +73,24 @@ describe('entry branding', () => {
   it.each(['en', 'fr'])('keeps the exact app name on landing and Welcome in %s', async (locale) => {
     localStorage.setItem('locale', locale);
     const landing = render(<LandingPage />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Whats for Supper?' })).toBeVisible();
+    const landingHeading = screen.getByRole('heading', { level: 1, name: "What's for Supper?" });
+    expect(landingHeading).toBeVisible();
+    expect(landingHeading).toHaveClass('text-charcoal');
+    expect(landingHeading).not.toHaveClass('text-indigo');
+    const getStartedLink = screen.getByRole('link', {
+      name: locale === 'en' ? 'Get Started' : 'Commencer',
+    });
+    expect(getStartedLink).toHaveClass('bg-terracotta', 'text-cream-100');
+    expect(getStartedLink).not.toHaveClass('bg-indigo', 'text-lavender');
     landing.unmount();
     await welcome();
-    expect(screen.getByRole('heading', { level: 1, name: 'Whats for Supper?' })).toBeVisible();
+    const welcomeHeading = screen.getByRole('heading', { level: 1, name: "What's for Supper?" });
+    expect(welcomeHeading).toBeVisible();
+    expect(welcomeHeading).toHaveClass('text-charcoal');
+    expect(welcomeHeading).not.toHaveClass('text-indigo');
+    const enterBtn = screen.getByTestId('welcome-enter-btn');
+    expect(enterBtn).toHaveClass('bg-hearth-fill', 'text-cream-100', 'min-h-14');
+    expect(enterBtn).not.toHaveClass('bg-ochre', 'uppercase');
     expect(screen.getByTestId('welcome-helper')).toHaveTextContent(
       locale === 'en'
         ? 'The demo passphrase is filled in for you. Tap Enter to explore.'
@@ -138,7 +152,10 @@ describe('Welcome public prefill', () => {
     const input = screen.getByTestId('passphrase-input');
     fireEvent.change(input, { target: { value: 'incorrect' } });
     fireEvent.click(screen.getByTestId('welcome-enter-btn'));
-    expect(await screen.findByTestId('auth-error')).toHaveTextContent(/Incorrect passphrase/);
+    const authError = await screen.findByTestId('auth-error');
+    expect(authError).toHaveTextContent(/Incorrect passphrase/);
+    expect(authError).toHaveAttribute('role', 'alert');
+    expect(authError).toHaveClass('text-terracotta-700');
     expect(input).toHaveValue('incorrect');
     expect(mocks.cookie).not.toHaveBeenCalled();
     let finishCookie!: () => void;
@@ -350,7 +367,7 @@ it('keeps Beta in the selected in-memory French locale when storage writes fail'
   expect(screen.getByRole('button', { name: 'Commencer à explorer' })).toBeVisible();
   expect(
     screen.getByText(
-      'Bienvenue dans la version bêta de Whats for Supper? Essayez de choisir vos repas ensemble, de planifier votre semaine et de faire du souper une chose de moins à gérer.'
+      "Bienvenue dans la version bêta de What's for Supper? Essayez de choisir vos repas ensemble, de planifier votre semaine et de faire du souper une chose de moins à gérer."
     )
   ).toBeVisible();
   expect(

@@ -18,13 +18,13 @@ No installed-app runtime or Sentrame deployment was exercised during planning.
 
 Protocol revision source: `/Users/alex/Code/sentrame`, read locally on 2026-10-29. HEAD is `42d7c79cd72a83753abe7034ddc19b5d140029d2`, but the relevant implementation/docs are uncommitted; HEAD alone does not identify this target. The following SHA-256 hashes identify the reviewed documentation, relative to that local root:
 
-| Local document | SHA-256 |
-| --- | --- |
-| `docs/DEVELOPER-GUIDE.md` | `78bb1701b866d771319fc421480a42a999404dd74b7e14c7fb2d0801391f5153` |
-| `docs/integration/OTEL-CONTRACT.md` | `5f89f62711dae041895fdd6255a572ee5188a6b7fd94703bddbe6f71ef495ace` |
+| Local document                          | SHA-256                                                            |
+| --------------------------------------- | ------------------------------------------------------------------ |
+| `docs/DEVELOPER-GUIDE.md`               | `78bb1701b866d771319fc421480a42a999404dd74b7e14c7fb2d0801391f5153` |
+| `docs/integration/OTEL-CONTRACT.md`     | `5f89f62711dae041895fdd6255a572ee5188a6b7fd94703bddbe6f71ef495ace` |
 | `docs/integration/AGENT-INTEGRATION.md` | `66123a8dd3475c9645ecaa225e49e5fcd4ec7db090379d29135b08004fc59bf0` |
-| `docs/USER-GUIDE.md` | `d61d1e5c071f665875505ce3fe69e1b9f551fbe128ebd6a4847d097481a27944` |
-| `docs/verification/standard-otel.md` | `1a2aa4acfb17830fbb08da0021c7c76c95e7b449de8530e07b69d36faf6aa35e` |
+| `docs/USER-GUIDE.md`                    | `d61d1e5c071f665875505ce3fe69e1b9f551fbe128ebd6a4847d097481a27944` |
+| `docs/verification/standard-otel.md`    | `1a2aa4acfb17830fbb08da0021c7c76c95e7b449de8530e07b69d36faf6aa35e` |
 
 The local qualification ledger describes schema 3, projection `structural-v2` and journey computation `journey-native-v3`. Unsupported earlier storage schemas fail explicitly; use fresh disposable storage, never an automatic reset. The ledger's actual Next/browser exporter cells use uncompressed HTTP Protobuf, not WFS's hand-serialized JSON path. WFS and its deployment route remain unqualified. Do not infer compatibility from that sample's pass, the older GitHub guide or a published image predating this model. Reconcile this snapshot if the local target changes before implementation.
 

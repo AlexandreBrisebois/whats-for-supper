@@ -6,19 +6,19 @@ Start with the current request and [AGENT.md](../../AGENT.md), this document and
 only the active host's adapter. Reuse content already supplied in the session;
 do not re-read it merely because another document links to it.
 
-| Load | When |
-|---|---|
+| Load                                                    | When                                                                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Selected specification, task and immediate dependencies | Work on a change is selected; use its workflow to locate artifacts and load only relevant capability behavior |
-| [Mission](mission.md) | Product behavior, UX or engineering posture is relevant |
-| [Contract/testing](contract-testing.md) | Planning, implementing or verifying contract, code or test changes |
-| [Execution harness](execution-harness.md) | Running commands or validating/completing implementation |
-| [Ontology](ontology.md) | Terms or boundaries need clarification |
-| Relevant contract and directly affected source/tests | Needed to establish the selected change's behavior |
-| [Network topology](network-topology.md) | Network, deployment, cookies or SSE origin work; verify against current configuration |
-| [Home E2E reference](../../.kiro/steering/home-e2e.md) | Home SSR/Playwright investigation only |
-| HANDOVER via `task agent:status` | Resuming work or resolving active-state ambiguity |
-| JOURNAL, ADRs or a specific archived spec | A current question requires historical rationale |
-| A specific skill or prompt | Explicitly invoked, or its specialized procedure is needed for the selected task |
+| [Mission](mission.md)                                   | Product behavior, UX or engineering posture is relevant                                                       |
+| [Contract/testing](contract-testing.md)                 | Planning, implementing or verifying contract, code or test changes                                            |
+| [Execution harness](execution-harness.md)               | Running commands or validating/completing implementation                                                      |
+| [Ontology](ontology.md)                                 | Terms or boundaries need clarification                                                                        |
+| Relevant contract and directly affected source/tests    | Needed to establish the selected change's behavior                                                            |
+| [Network topology](network-topology.md)                 | Network, deployment, cookies or SSE origin work; verify against current configuration                         |
+| [Home E2E reference](../../.kiro/steering/home-e2e.md)  | Home SSR/Playwright investigation only                                                                        |
+| HANDOVER via `task agent:status`                        | Resuming work or resolving active-state ambiguity                                                             |
+| JOURNAL, ADRs or a specific archived spec               | A current question requires historical rationale                                                              |
+| A specific skill or prompt                              | Explicitly invoked, or its specialized procedure is needed for the selected task                              |
 
 Links are navigation, not recursive loading instructions. No skill is a mandatory
 startup dependency. Load only the supporting files needed by an activated skill;
@@ -55,8 +55,13 @@ editing; a named tracing skill is not required for that investigation.
 
 ## Decomposition and context hygiene
 
-Keep dependent changes sequential. Where independent work is useful and authorized,
-use bounded delegation with explicit inputs, expected output and file ownership.
+For substantial work, identify the dependency chain and bounded assignments with
+concrete outcomes. Keep dependent changes sequential. When delegation is authorized,
+use independent assignments in parallel where their expected benefit exceeds
+coordination cost; continue useful critical-path work while they run. Keep trivial,
+tightly coupled or unresolved-dependent work direct. More agents are not a
+completion criterion. Use bounded delegation with explicit inputs, expected output
+and file ownership.
 Tool availability alone does not authorize delegation. Follow host restrictions;
 this conditional guidance is not an explicit request to spawn sub-agents.
 Only one writer owns a shared file at a time; read-only reviewers may inspect it.
@@ -66,21 +71,41 @@ Summarize findings and narrow context between steps. Check the current task/spec
 first, targeted code next, then history only if still needed. A large context
 window is not a reason to load unrelated material.
 
+Reuse a worker for a related bounded assignment when its relevant context, evidence
+and ownership remain valid. Prefer fresh scoped context for unrelated work, noisy
+history or an independent review. Pass the [existing handoff fields](#delegation-handoff)
+and required OpenSpec dependencies; do not copy unrelated conversation history or
+replace mandatory context with a summary. Recheck actual worker and command state
+before resuming or retrying uncertain work.
+
+Consider elapsed time at meaningful boundaries and when work takes unexpectedly
+long. Inspect actual progress, results, blockers and contention, then adapt the
+remaining assignments or sequence and communicate material changes. Do not claim
+workers are running without evidence, restart active checks for a status update,
+or reduce required verification to meet a time estimate. Use the
+[execution harness](execution-harness.md#preparation-and-verification) for concurrent
+test-resource coordination.
+
 ## Investigation
 
 For an unknown or complex path, start at the reported component, route or failing
-test. Follow the API wrapper/generated client → approved OpenAPI operation →
-controller → service → persistence or workflow boundary, loading only affected
-source and immediate dependencies. Use the conditional [WFS source map](wfs-source-map.md)
-as navigation, then verify current code. `task agent:slice -- <route>` and
-`task agent:api` support discovery; their static output is not proof of live parity.
+test. Follow the API wrapper (`pwa/src/lib/api/`) and generated client
+(`pwa/src/lib/api/generated/`) → approved OpenAPI operation (`specs/openapi.yaml`) →
+controller → service → persistence (`api/src/RecipeApi/Data/RecipeDbContext.cs`,
+`api/database/`) or workflow boundary (`api/src/RecipeApi/Workflows/`), loading only
+affected source and immediate dependencies. `task agent:slice -- <route>` and
+`task agent:api` support static discovery; their output is not proof of live parity.
 
 When a bug's cause is uncertain or an attempted correction fails, choose the
 smallest repeatable experiment that distinguishes plausible causes. State the
 observation, hypothesis and predicted result; vary one relevant factor at a time,
 then compare the actual result before choosing the next correction. Source
-inspection can help construct the experiment. Keep the evidence in existing task
-notes or a concise update; no separate artifact or fixed hypothesis count is needed.
+inspection can help construct the experiment. Repeated failures call for revisiting
+the shared premise or representation before layering another patch or rerunning the
+same work. For an unfamiliar transformation or proposed reusable automation, work
+through one small representative input and expected outcome by hand before scaling
+the tooling; retain it as a test where useful. Keep evidence in existing task notes
+or a concise update; no separate artifact or fixed hypothesis count is needed.
 
 Record the ordered source paths, representation changes (DTO/entity/client/state),
 contract agreement or mismatch, observed side effects and likely failure point.

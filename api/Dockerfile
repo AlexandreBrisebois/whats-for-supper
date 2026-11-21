@@ -1,7 +1,7 @@
 # =============================================================================
 # Stage 1 — Base (Chiseled for Production Runtime)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.2-resolute-chiseled AS base
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-resolute-chiseled AS base
 WORKDIR /app
 EXPOSE 9001
 ENV ASPNETCORE_URLS=http://+:9001
@@ -51,7 +51,7 @@ RUN mkdir -p /licenses/pdfium-linux-x64 /licenses/pdfium-linux-arm64 && \
 # =============================================================================
 # Stage 3 — Development (Hot Reload)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.2-resolute AS development
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100-resolute AS development
 WORKDIR /src
 # Workaround for JIT crashes under QEMU emulation (Mac ARM64 -> Linux AMD64)
 ENV DOTNET_EnableWriteXorExecute=0
@@ -64,7 +64,7 @@ ENTRYPOINT ["dotnet", "watch", "run", "--project", "RecipeApi.csproj", "--urls",
 # =============================================================================
 # Stage 4 — Build (Pinned SDK + QEMU Workaround)
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.2-resolute AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100-resolute AS build
 WORKDIR /src
 # Workaround for JIT crashes under QEMU emulation (Mac ARM64 -> Linux AMD64)
 ENV DOTNET_EnableWriteXorExecute=0

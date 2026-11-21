@@ -43,7 +43,6 @@ Implementation follows the explicit apply request for this change. Initial plann
 
 GitHub source/spec inspection completed against main `3d1bd68ea0965bb6df2c3689dd8f4aed1c6e598e`. Local OpenSpec CLI and task harness had not run at the end of that connector-only planning pass. CI uses `openspec validate --all --strict --no-interactive`; report its actual result separately. Runtime TDD was not applicable to that initial documentation-only planning diff; implementation status and actual red/green evidence now follow below.
 
-
 ## Implementation evidence
 
 - 2026-10-24 task 1.1: `task test:database -- --filter FullyQualifiedName~GroceryCheckConcurrencyPostgresTests` observed the intended lost-update red (one executed, zero skipped). Separate authenticated HTTP PATCH requests both returned 204 after a command interceptor held both PostgreSQL weekly-plan reads before saves. Third fresh DI scope read `{"Tomato":false,"Lettuce":true}`. Record: `.task/database-tests/runs/c5870aa2c4b14d3a84f32e807b17b2a1/result.json`; TRX and log in that directory. No production edits preceded this run.

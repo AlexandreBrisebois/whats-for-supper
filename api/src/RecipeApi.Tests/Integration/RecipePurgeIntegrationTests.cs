@@ -10,15 +10,18 @@ using Xunit;
 
 namespace RecipeApi.Tests.Integration;
 
+[Collection("ElevatedActionsPin")]
 public class RecipePurgeIntegrationTests : IAsyncLifetime
 {
     private TestWebApplicationFactory _factory = null!;
     private HttpClient _client = null!;
+    private string? _initialPin;
 
     private const string ValidPin = "test-elevated-pin-1234";
 
     public async Task InitializeAsync()
     {
+        _initialPin = Environment.GetEnvironmentVariable("ELEVATED_ACTIONS_PIN");
         Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", ValidPin);
         _factory = await TestWebApplicationFactory.CreateAsync();
         _client = _factory.CreateClient();
@@ -26,7 +29,7 @@ public class RecipePurgeIntegrationTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", null);
+        Environment.SetEnvironmentVariable("ELEVATED_ACTIONS_PIN", _initialPin);
         _client.Dispose();
         await _factory.DisposeAsync();
     }

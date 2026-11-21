@@ -22,12 +22,12 @@ ownership boundaries; reuse existing registration and routing conventions.
 
 Load specialist detail only for the selected decision:
 
-| Work | Reference |
-|---|---|
-| Designing an interface, async flow or dependency lifetime | [Architecture](architecture-guidelines.md) |
-| Choosing a test seam or replacing a dependency | [Testing and mocking](testing-and-mocking.md) |
-| Changing an API contract, generated client or mocks | [OpenAPI procedure](../openapi-expert/SKILL.md) |
-| Changing PostgreSQL SQL, EF mappings, indexes, migrations or persistence concurrency | [Database procedure](../database/SKILL.md) |
+| Work                                                                                 | Reference                                       |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| Designing an interface, async flow or dependency lifetime                            | [Architecture](architecture-guidelines.md)      |
+| Choosing a test seam or replacing a dependency                                       | [Testing and mocking](testing-and-mocking.md)   |
+| Changing an API contract, generated client or mocks                                  | [OpenAPI procedure](../openapi-expert/SKILL.md) |
+| Changing PostgreSQL SQL, EF mappings, indexes, migrations or persistence concurrency | [Database procedure](../database/SKILL.md)      |
 
 ## Implementation and testing
 

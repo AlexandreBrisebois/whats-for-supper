@@ -23,6 +23,41 @@ def load_module():
 
 
 class ImpactPlanningTests(IsolatedGitTestCase):
+    def mocked_inventory(self, module):
+        return tuple(sorted(str(p) for p in module.E2E_DIR.glob('*.spec.ts')
+                            if not p.name.endswith('-live.spec.ts')))
+    def test_shared_detail_and_cooking_select_cross_capability_scenarios(self):
+        module = load_module()
+        for source, expected in [
+            ('pwa/src/components/recipes/RecipeDetailSheet.tsx', 'quiet-portions-layout.spec.ts'),
+            ('pwa/src/components/planner/CooksMode.tsx', 'prepared-supper.spec.ts'),
+            ('pwa/src/components/planner/CooksMode.tsx', 'supper-servings-context.spec.ts'),
+        ]:
+            with self.subTest(source=source, expected=expected):
+                plan = module.build_impact_plan([source])
+                self.assertIn(str(module.E2E_DIR / expected), plan.tests)
+
+    def test_source_plus_test_does_not_narrow_shared_component_coverage(self):
+        module = load_module()
+        source = 'pwa/src/components/recipes/RecipeDetailSheet.tsx'
+        for files in [[source, 'pwa/e2e/recipes.spec.ts'], ['pwa/e2e/recipes.spec.ts', source]]:
+            with self.subTest(files=files):
+                plan = module.build_impact_plan(files)
+                self.assertIn(str(module.E2E_DIR / 'quiet-portions-layout.spec.ts'), plan.tests)
+
+    def test_deleted_renamed_unknown_and_shared_pwa_inputs_keep_the_complete_mocked_inventory(self):
+        module = load_module()
+        for paths in [
+            ['pwa/src/components/recipes/DeletedDetail.tsx'],
+            ['pwa/src/components/planner/CooksMode.tsx', 'pwa/src/components/recipes/RenamedCook.tsx'],
+            ['pwa/new-input.ts'], ['pwa/src/store/weekStore.ts'], ['pwa/e2e/mock-api.ts'],
+        ]:
+            with self.subTest(paths=paths):
+                plan = module.build_impact_plan(paths)
+                self.assertEqual(plan.tests, self.mocked_inventory(module))
+                self.assertTrue(plan.run_all)
+        self.assertEqual(module.build_impact_plan(['docs/development.md']).tests, ())
+
     def test_changed_files_include_untracked_paths(self):
         module = load_module()
 
@@ -58,16 +93,23 @@ class ImpactPlanningTests(IsolatedGitTestCase):
 
         self.assertEqual(changed, ["pwa/src/app/(app)/recipes/page.tsx"])
 
-    def test_recipe_api_wrapper_maps_to_recipe_flows_instead_of_all_e2e(self):
+    def test_shared_recipe_api_wrapper_requires_all_e2e(self):
         module = load_module()
         plan = module.build_impact_plan(["pwa/src/lib/api/recipes.ts"])
 
-        self.assertFalse(plan.run_all)
-        self.assertEqual(
-            {Path(test).name for test in plan.tests},
-            {"recipes.spec.ts", "home-recipe.spec.ts"},
-        )
+        self.assertTrue(plan.run_all)
+        self.assertEqual(plan.tests, self.mocked_inventory(module))
         self.assertTrue(any("pwa/src/lib/api/recipes.ts" in reason for reason in plan.reasons))
+
+    def test_shared_recipe_wrapper_widens_mixed_changes_in_either_order(self):
+        module = load_module()
+        wrapper = "pwa/src/lib/api/recipes.ts"
+        browser_test = "pwa/e2e/recipes.spec.ts"
+        for changed in [[wrapper, browser_test], [browser_test, wrapper]]:
+            with self.subTest(changed=changed):
+                plan = module.build_impact_plan(changed)
+                self.assertTrue(plan.run_all)
+                self.assertEqual(plan.tests, self.mocked_inventory(module))
 
     def test_shared_generated_client_reports_why_all_e2e_are_required(self):
         module = load_module()

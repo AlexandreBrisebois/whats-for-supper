@@ -1,10 +1,12 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { AlertCircle, RotateCcw, X } from 'lucide-react';
 import { useState } from 'react';
 import { retryCaptureFailure } from '@/lib/api/captures';
 import { useLibraryStore } from '@/store/libraryStore';
+import { t } from '@/locales';
+import { useLocale } from '@/components/common/LocaleProvider';
 
 const MAX_VISIBLE_BANNERS = 2;
 
@@ -16,9 +18,11 @@ const MAX_VISIBLE_BANNERS = 2;
  * - Retry → resumes the failed workflow instance.
  * - Dismiss → hides without retry.
  *
- * Mounted at layout level (pwa/src/app/(app)/layout.tsx).
+ * Mounted at layout level (`pwa/src/app/(app)/layout.tsx`).
  */
 export function RecipeFailureBanner() {
+  const { locale } = useLocale();
+  const reducedMotion = useReducedMotion();
   const notifications = useLibraryStore((s) => s.notifications);
   const dismissNotification = useLibraryStore((s) => s.dismissNotification);
   const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
@@ -43,7 +47,7 @@ export function RecipeFailureBanner() {
           const recipeName =
             (notification.partialData as { name?: string } | undefined)?.name ||
             notification.name ||
-            'your recipe';
+            t('capture.failure.fallbackName', 'your recipe', locale);
 
           const retryId = notification.workflowInstanceId;
           const isRetrying = retryId ? retryingIds.has(retryId) : false;
@@ -70,46 +74,52 @@ export function RecipeFailureBanner() {
           return (
             <motion.div
               key={notification.recipeId}
-              initial={{ y: -24, opacity: 0 }}
+              initial={reducedMotion ? false : { y: -24, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+              transition={
+                reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }
+              }
             >
               <div
                 data-testid={`recipe-failure-banner-${notification.recipeId}`}
-                className="w-full overflow-hidden rounded-2xl border border-terracotta/30 border-l-4 border-l-terracotta bg-white/95 shadow-glass backdrop-blur-md"
+                className="w-full overflow-hidden rounded-2xl border border-hearth-line border-l-4 border-l-hearth-fill bg-white shadow-card"
               >
                 <div className="flex items-start gap-3 p-3">
                   <div className="mt-0.5 flex-shrink-0">
-                    <div className="h-8 w-8 rounded-full bg-terracotta/15 flex items-center justify-center text-terracotta-600">
-                      <AlertCircle size={16} />
+                    <div className="h-8 w-8 rounded-full bg-terracotta-50 flex items-center justify-center text-hearth-ink">
+                      <AlertCircle size={16} aria-hidden="true" />
                     </div>
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-charcoal leading-snug">
-                      Recipe couldn&apos;t be saved —{' '}
+                    <p className="text-sm text-ink-body leading-snug">
+                      {t('capture.failure.prefix', "Recipe couldn't be saved —", locale)}{' '}
                       <span className="font-bold">{recipeName}</span>.{' '}
-                      <span className="text-terracotta-600 font-medium">Tap to try again.</span>
+                      <span className="text-hearth-ink font-medium">
+                        {t('capture.failure.tapRetry', 'Tap to try again.', locale)}
+                      </span>
                     </p>
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={handleRetry}
                         disabled={!retryId || isRetrying}
                         data-testid={`recipe-failure-retry-${notification.recipeId}`}
-                        className="inline-flex items-center gap-1 rounded-xl bg-terracotta hover:bg-terracotta-600 active:bg-terracotta-700 px-3 py-1.5 text-xs font-bold text-white transition-all active:scale-95 disabled:opacity-50"
+                        className="inline-flex min-h-12 min-w-12 items-center justify-center gap-1.5 rounded-xl bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active px-4 py-2 text-xs font-semibold text-cream-100 transition-colors active:scale-95 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                       >
-                        <RotateCcw size={13} />
-                        {isRetrying ? 'Retrying...' : 'Retry'}
+                        <RotateCcw size={14} aria-hidden="true" />
+                        {isRetrying
+                          ? t('capture.failure.retrying', 'Retrying...', locale)
+                          : t('capture.failure.retry', 'Retry', locale)}
                       </button>
                       <button
                         type="button"
                         onClick={handleDismiss}
                         data-testid={`recipe-failure-dismiss-${notification.recipeId}`}
-                        className="rounded-xl px-3 py-1.5 text-xs font-bold text-charcoal/60 transition-colors hover:bg-charcoal/5"
+                        className="min-h-12 min-w-12 rounded-xl border border-chrome-line bg-white px-4 py-2 text-xs font-semibold text-ink-muted transition-colors hover:bg-charcoal-50 hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                       >
-                        Dismiss
+                        {t('capture.failure.dismiss', 'Dismiss', locale)}
                       </button>
                     </div>
                   </div>
@@ -117,11 +127,15 @@ export function RecipeFailureBanner() {
                   <button
                     type="button"
                     onClick={handleDismiss}
-                    aria-label="Dismiss failure notification"
+                    aria-label={t(
+                      'capture.failure.dismissAria',
+                      'Dismiss failure notification',
+                      locale
+                    )}
                     data-testid={`recipe-failure-dismiss-icon-${notification.recipeId}`}
-                    className="rounded-full p-1.5 text-charcoal/40 transition-colors hover:bg-charcoal/5 hover:text-charcoal/70"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-charcoal-100 hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                   >
-                    <X size={14} />
+                    <X size={16} aria-hidden="true" />
                   </button>
                 </div>
               </div>

@@ -57,6 +57,7 @@ function buildSpaghettiSchedule() {
             })
           : null,
       status: 0,
+      occurrenceId: dateStr === todayStr ? MOCK_IDS.SUPPER_OCCURRENCE : null,
     };
   });
   return {
@@ -68,6 +69,93 @@ function buildSpaghettiSchedule() {
       status: 0,
       days,
     },
+  };
+}
+
+async function originalProjection(page: import('@playwright/test').Page, recipe: any) {
+  await page.route('**/api/recipes/*/ingredient-projection*', async (route) => {
+    const url = new URL(route.request().url());
+    const assigned = url.searchParams.get('context') === 'assigned';
+    if (assigned && url.searchParams.get('occurrenceId') !== MOCK_IDS.SUPPER_OCCURRENCE)
+      return route.fulfill({ status: 409, json: { message: 'That supper plan changed.' } });
+    return route.fulfill({
+      json: {
+        recipeId: recipe.id,
+        supperDate: url.searchParams.get('supperDate'),
+        context: assigned ? 'assigned' : 'proposed',
+        occurrenceId: assigned ? MOCK_IDS.SUPPER_OCCURRENCE : null,
+        baseServings: recipe.servings ?? null,
+        targetServings: null,
+        factor: null,
+        servingVersion: 'unset',
+        preparationPlanToken: assigned ? `v1.${'A'.repeat(43)}` : null,
+        preparationServingVersion: assigned ? 'A'.repeat(64) : null,
+        preparation: null,
+        version: JSON.stringify([recipe.id, recipe.ingredients]),
+        editable: true,
+        status: 'original',
+        lines: (recipe.ingredients ?? []).map((text: string) => ({
+          originalText: text,
+          name: text,
+          quantity: null,
+          unitText: null,
+          status: 'unquantified',
+          issues: [],
+        })),
+      },
+    });
+  });
+}
+
+async function expectCookingActionAlignment(page: import('@playwright/test').Page, tablet = false) {
+  const toolbar = page.getByTestId('cooks-mode-header-controls');
+  const toggle = page.getByTestId('cooking-view-toggle');
+  const original = page.getByTestId('cooks-mode-original');
+  const bounds = await toolbar.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return {
+      left: rect.left + parseFloat(style.paddingLeft),
+      right: rect.right - parseFloat(style.paddingRight),
+    };
+  });
+  const left = (await toggle.boundingBox())!;
+  const source = (await original.boundingBox())!;
+  expect(left.x).toBeCloseTo(bounds.left, 0);
+  if (!tablet) expect(source.x + source.width).toBeCloseTo(bounds.right, 0);
+  else {
+    expect(source.x).toBeLessThan(bounds.right - source.width + 1);
+    expect((await toolbar.boundingBox())!.y).toBeGreaterThan(page.viewportSize()!.height / 2);
+  }
+  for (const button of await toolbar.getByRole('button').all()) {
+    const box = (await button.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.x).toBeGreaterThanOrEqual(bounds.left - 1);
+    expect(box.x + box.width).toBeLessThanOrEqual(bounds.right + 1);
+    expect(await button.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+      true
+    );
+  }
+  const edit = page.getByTestId('cooks-mode-edit-step');
+  if (!tablet && (await edit.count())) {
+    const box = (await edit.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(left.y);
+    if (Math.abs(box.y - left.y) < 10) expect(box.x).toBeGreaterThanOrEqual(left.x + left.width);
+    await page.getByTestId('cooking-view-all-steps').focus();
+    await page.keyboard.press('Tab');
+    await expect(edit).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(original).toBeFocused();
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    page.viewportSize()!.width
+  );
+  return {
+    toolbar: await toolbar.boundingBox(),
+    toggle: left,
+    original: source,
+    edit: (await edit.count()) ? await edit.boundingBox() : null,
   };
 }
 
@@ -104,6 +192,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     }, MOCK_IDS.MEMBER_ALEX);
 
     await setupCommonRoutes(page);
+    await originalProjection(page, REALISTIC_RECIPES[MOCK_IDS.RECIPE_SPAGHETTI]);
 
     // Override the SSE stream to emit a slot_updated event for 2026-05-04 (today in the
     // pinned clock). This updates todayStore.currentRecipe, which the home page server
@@ -115,7 +204,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
     });
     await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
       const connected = `event: connected\ndata: ${JSON.stringify({ type: 'connected', schedule: { weekOffset: 0, calendar: builders.deploymentCalendar() as any, weekStartDate: '2026-05-04' as any, locked: false, status: 0, days: buildSpaghettiSchedule().data.days } })}\n\n`;
-      const slotUpdated = `event: slot_updated\ndata: ${JSON.stringify({ type: 'slot_updated', date: '2026-05-04', recipe: spaghettiRecipe, status: 0 })}\n\n`;
+      const slotUpdated = `event: slot_updated\ndata: ${JSON.stringify({ type: 'slot_updated', date: '2026-05-04', recipe: spaghettiRecipe, status: 0, occurrenceId: MOCK_IDS.SUPPER_OCCURRENCE })}\n\n`;
       await route.fulfill({
         status: 200,
         contentType: 'text/event-stream',
@@ -165,6 +254,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
       })),
       ...overrides,
     };
+    await originalProjection(page, recipe);
     await page.route('**/api/recipes/*', async (route) => {
       if (route.request().method() === 'GET') return route.fulfill({ json: { recipe } });
       if (route.request().method() === 'PATCH') {
@@ -489,6 +579,69 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
   });
 
   for (const appLocale of ['en', 'fr'] as const) {
+    test.describe(`Cook cleanup alignment ${appLocale}`, () => {
+      test.use({ appLocale });
+      for (const width of [320, 390, 430, 820]) {
+        test(`group layout and ingredient resume ${width}`, async ({ page }, testInfo) => {
+          await page.setViewportSize({ width, height: 844 });
+          await openOriginalCooking(page);
+          const geometries = [];
+          const ingredient = page.getByTestId('ingredient-toggle').first();
+          await ingredient.click();
+          geometries.push({
+            mode: 'preparation',
+            ...(await expectCookingActionAlignment(page, width >= 768)),
+          });
+          await page.getByTestId('cooks-mode-step-next').click();
+          await page.getByTestId('cooking-view-step-by-step').click();
+          geometries.push({
+            mode: 'focused',
+            ...(await expectCookingActionAlignment(page, width >= 768)),
+          });
+          await page.screenshot({
+            path: testInfo.outputPath('cleanup-focused.png'),
+            animations: 'disabled',
+          });
+          await page.getByTestId('cooking-view-all-steps').click();
+          geometries.push({
+            mode: 'all-steps',
+            ...(await expectCookingActionAlignment(page, width >= 768)),
+          });
+          await expect(page.getByTestId('cooking-step-uncertainty')).toHaveCount(0);
+          await expect(page.getByRole('button', { name: /View adjusted ingredients/ })).toHaveCount(
+            0
+          );
+          const reading = page.getByTestId('cooks-mode-instructions');
+          await reading.evaluate((element) => {
+            element.scrollTop = 300;
+          });
+          await expect
+            .poll(() => reading.evaluate((element) => element.scrollTop))
+            .toBeGreaterThan(0);
+          const offset = await reading.evaluate((element) => element.scrollTop);
+          const bookmark = await page.getByRole('progressbar').getAttribute('aria-valuenow');
+          await page.getByTestId('cooks-mode-step-prev').click();
+          await expect(ingredient).toHaveAttribute('aria-checked', 'true');
+          await page.getByTestId('cooks-mode-step-next').click();
+          await expect.poll(() => reading.evaluate((element) => element.scrollTop)).toBe(offset);
+          await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', bookmark!);
+          const edit = page.getByTestId('single-page-edit-step-1');
+          await edit.click();
+          await expect(page.getByTestId('cooks-mode-step-prev')).toBeDisabled();
+          await testInfo.attach('cleanup settled geometry', {
+            body: JSON.stringify(geometries),
+            contentType: 'application/json',
+          });
+          await page.screenshot({
+            path: testInfo.outputPath('cleanup-edit-guard.png'),
+            animations: 'disabled',
+          });
+        });
+      }
+    });
+  }
+
+  for (const appLocale of ['en', 'fr'] as const) {
     test.describe(`Original responsive ${appLocale}`, () => {
       test.use({ appLocale });
       for (const width of [320, 390, 430, 820]) {
@@ -501,6 +654,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
                 : 'Roasted vegetables and golden potatoes with fresh garden herbs',
           });
           await page.getByTestId('cooks-mode-step-next').click();
+          await page.getByTestId('cooking-view-step-by-step').click();
           await page.getByTestId('cooks-mode-overlay').evaluate((root) => {
             const elements = Array.from(root.querySelectorAll<HTMLElement>('*'));
             const sizes = elements.map((element) => {
@@ -512,6 +666,11 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
               if (Number.isFinite(sizes[index][1]))
                 element.style.lineHeight = `${sizes[index][1] * 2}px`;
             });
+          });
+          const geometry = await expectCookingActionAlignment(page, width >= 768);
+          await testInfo.attach('cleanup enlarged layout', {
+            body: JSON.stringify(geometry),
+            contentType: 'application/json',
           });
           const original = page.getByTestId('cooks-mode-original');
           await expect(original).toBeInViewport();
@@ -810,7 +969,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
         recipeId
       );
       await page.getByTestId('stack-card-front').click();
-      await page.getByTestId('time-cook-btn').click();
+      await page.getByTestId('action-cooks-mode').click();
       await page.getByTestId('cooks-mode-step-next').click();
       await expect(page.getByTestId('cooks-mode-step-next')).toHaveAccessibleName(
         'Mark recipe as cooked'
@@ -941,24 +1100,47 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
   test('completing all steps shows celebration overlay then navigates to /home', async ({
     page,
   }) => {
+    const schedule = buildSpaghettiSchedule();
+    let preparations = 0;
     await page.route(
-      (url) => url.pathname.includes('/api/schedule') && !url.pathname.includes('smart-defaults'),
+      (url) => url.pathname === '/api/schedule',
       async (route) => {
-        if (route.request().method() === 'GET') {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify(buildSpaghettiSchedule()),
-          });
-        } else {
-          await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ data: { message: 'ok' } }),
-          });
-        }
+        if (route.request().method() !== 'GET') return route.fallback();
+        return route.fulfill({ json: schedule });
       }
     );
+    await page.route('**/api/schedule/day/*/prepare', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      preparations++;
+      const body = route.request().postDataJSON();
+      expect(new URL(route.request().url()).pathname).toBe('/api/schedule/day/2026-05-04/prepare');
+      expect(body).toMatchObject({
+        recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+        expectedOccurrenceId: MOCK_IDS.SUPPER_OCCURRENCE,
+        expectedPlanToken: `v1.${'A'.repeat(43)}`,
+        expectedServingVersion: 'A'.repeat(64),
+      });
+      const preparation = {
+        preparedOn: '2026-05-04',
+        preparedAtUtc: '2026-05-04T12:00:00Z',
+        servings: null,
+        originalServings: null,
+        portionContext: 'original',
+        planToken: body.expectedPlanToken,
+        servingVersion: body.expectedServingVersion,
+      };
+      Object.assign(schedule.data.days[0], { status: 2, preparation });
+      return route.fulfill({
+        json: {
+          data: {
+            occurrenceId: body.expectedOccurrenceId,
+            recipeId: body.recipeId,
+            supperDate: '2026-05-04',
+            preparation,
+          },
+        },
+      });
+    });
 
     await page.goto('/home');
     await expect(page.getByTestId('home-loader')).not.toBeVisible({ timeout: 10_000 });
@@ -985,5 +1167,7 @@ test.describe('Cook Mode — HowToSection[] steps display', () => {
 
     await expect(page.getByTestId('cooks-mode-celebration')).toBeVisible({ timeout: 2_000 });
     await expect(page).toHaveURL(/\/home/, { timeout: 5_000 });
+    expect(preparations).toBe(1);
+    expect(schedule.data.days[0].status).toBe(2);
   });
 });

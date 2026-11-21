@@ -18,11 +18,12 @@
 
 Every ingredient has a `CheckCircle2` icon — a filled, sage-green tick. This is a completed-state icon used on an incomplete-state screen. Parents see ✓ and assume "already done." It is visually inert.
 
-**Mère-Designer ruling:** This card is the *gathering ritual* — the moment the cook confirms every ingredient is on the counter before turning on the heat. It must be interactive.
+**Mère-Designer ruling:** This card is the _gathering ritual_ — the moment the cook confirms every ingredient is on the counter before turning on the heat. It must be interactive.
 
 ### Fix: Interactive ingredient toggle
 
 **Before (current):**
+
 ```tsx
 <div className="h-8 w-8 rounded-full bg-terracotta/10 text-terracotta ...">
   <CheckCircle2 size={16} />
@@ -31,27 +32,33 @@ Every ingredient has a `CheckCircle2` icon — a filled, sage-green tick. This i
 ```
 
 **After:**
+
 ```tsx
 // Local state: Record<string, boolean> — no server sync
 const [gathered, setGathered] = useState<Record<string, boolean>>({});
 
 // Each item:
 <motion.button
-  onClick={() => setGathered(g => ({ ...g, [ing]: !g[ing] }))}
+  onClick={() => setGathered((g) => ({ ...g, [ing]: !g[ing] }))}
   className={`flex items-center p-4 rounded-3xl border transition-all w-full text-left
-    ${gathered[ing]
-      ? 'bg-sage/10 border-sage/20 text-charcoal/40'
-      : 'bg-white border-charcoal/5 text-charcoal hover:bg-charcoal/2'
+    ${
+      gathered[ing]
+        ? 'bg-sage/10 border-sage/20 text-charcoal/40'
+        : 'bg-white border-charcoal/5 text-charcoal hover:bg-charcoal/2'
     }`}
 >
-  <div className={`h-8 w-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 transition-all
-    ${gathered[ing] ? 'bg-sage text-white' : 'bg-terracotta/10 text-terracotta/40 border-2 border-terracotta/20'}`}>
+  <div
+    className={`h-8 w-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 transition-all
+    ${gathered[ing] ? 'bg-sage text-white' : 'bg-terracotta/10 text-terracotta/40 border-2 border-terracotta/20'}`}
+  >
     {gathered[ing] ? <CheckCircle2 size={16} /> : <Circle size={16} />}
   </div>
-  <span className={`text-base font-bold transition-all ${gathered[ing] ? 'line-through opacity-50' : ''}`}>
+  <span
+    className={`text-base font-bold transition-all ${gathered[ing] ? 'line-through opacity-50' : ''}`}
+  >
     {ing}
   </span>
-</motion.button>
+</motion.button>;
 ```
 
 **State lives only in CooksMode component local state.** No plannerStore, no API call. This is a pre-flight ritual, not a persistent record.
@@ -66,7 +73,8 @@ Remove the entire "Plant-Powered Choice!" / "Healthy Pick!" badge from Card 0. T
 
 ### Card 0 visual identity fix
 
-The ingredient card and step cards share `text-charcoal/60`. Card 0 must feel like a distinct *zone*. Fixes:
+The ingredient card and step cards share `text-charcoal/60`. Card 0 must feel like a distinct _zone_. Fixes:
+
 - Card 0 heading: `text-charcoal` (full opacity) — "Let's get everything together" replaces current step title
 - Ingredient label: `text-charcoal/80` (darker than steps)
 - Background of Card 0 content area: soft `bg-terracotta/[0.02]` wash to signal "gathering zone"
@@ -97,6 +105,7 @@ The ingredient card and step cards share `text-charcoal/60`. Card 0 must feel li
 Current grid is `grid-cols-2 gap-6` — Back and Next share equal width. Back is a secondary action that should feel secondary.
 
 **Fix:** `grid-cols-[2fr_3fr] gap-4`
+
 - Back: smaller, `text-lg`, ghost/muted
 - Next: larger, `text-2xl font-black`, full terracotta — the parent's thumb WANTS to hit this
 
@@ -107,6 +116,7 @@ Current grid is `grid-cols-2 gap-6` — Back and Next share equal width. Back is
 Current: user taps "Done" → `onCooked()` fires → overlay closes → navigates to /home. No signal that something important just happened.
 
 **Fix:** Before the overlay closes, show a 600ms in-place celebration:
+
 ```tsx
 // On the last step, "Done" triggers a celebration overlay layer
 <motion.div

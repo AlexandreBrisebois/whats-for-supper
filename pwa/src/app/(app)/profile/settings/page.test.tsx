@@ -36,6 +36,10 @@ vi.mock('@/components/profile/FailedCapturesSection', () => ({
   FailedCapturesSection: () => <div data-testid="failed-captures-stub" />,
 }));
 
+vi.mock('@/components/profile/UsualPortionsSection', () => ({
+  UsualPortionsSection: () => <div data-testid="usual-portions-stub" />,
+}));
+
 // ---------------------------------------------------------------------------
 // Import component under test AFTER mocks
 // ---------------------------------------------------------------------------
@@ -60,6 +64,7 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('family-management-stub')).toBeDefined();
     expect(screen.queryByTestId('family-goto-stub')).not.toBeInTheDocument();
     expect(screen.getByTestId('failed-captures-stub')).toBeDefined();
+    expect(screen.getByTestId('usual-portions-stub')).toBeInTheDocument();
   });
 
   it('does not render language selection', () => {

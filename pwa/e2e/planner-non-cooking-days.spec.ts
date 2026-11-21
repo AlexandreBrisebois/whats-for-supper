@@ -525,3 +525,50 @@ for (const removalPath of ['menu', 'editor'] as const) {
     expect(state.days![0]).toMatchObject({ status: 0, nonCooking: null });
   });
 }
+
+test('recipe detail requires consent and captures the non-cooking token before guarded replacement', async ({
+  page,
+}) => {
+  await setupCommonRoutes(page);
+  await page.goto('/welcome');
+  await page.evaluate(async () => {
+    const r = await fetch('/api/schedule/day/2026-05-06/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 3,
+        nonCooking: { kind: 'custom', customLabel: 'Birthday dinner' },
+      }),
+    });
+    if (!r.ok) throw new Error('seed');
+  });
+  const operations: string[] = [];
+  page.on('request', (r) => {
+    if (['POST', 'DELETE'].includes(r.method()) && r.url().includes('/api/schedule/'))
+      operations.push(r.url());
+  });
+  await page.goto(
+    `/recipes?addToDay=2&weekOffset=0&referenceWeekStartDate=2026-05-04&open=${MOCK_IDS.RECIPE_LASAGNA}`
+  );
+  await page.getByTestId('action-add-to-day').click();
+  await expect(page.getByTestId('non-cooking-confirmation')).toContainText('Birthday dinner');
+  await page.getByTestId('non-cooking-cancel').click();
+  expect(operations).toEqual([]);
+  await page.getByTestId('action-add-to-day').click();
+  await page.getByTestId('non-cooking-confirm').click();
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 6');
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText(
+    'Birthday dinner was removed'
+  );
+  await expect(page.getByTestId('planner-confirmation-refresh')).toHaveCount(0);
+  expect(operations).toHaveLength(2);
+  expect(operations[0]).toContain('expectedPlanToken=');
+  expect(operations[1]).toContain('/api/schedule/assign');
+  const snapshot = await page.evaluate(
+    async () =>
+      (await (await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-05-04')).json())
+        .data
+  );
+  expect(snapshot.days[2]).toMatchObject({ recipe: { id: MOCK_IDS.RECIPE_LASAGNA } });
+  expect(snapshot.days[2].nonCooking ?? null).toBeNull();
+});

@@ -19,34 +19,51 @@ References in preserved requirements to the former combined meal-planning owner 
 From a loaded recipe detail outside Edit, View steps SHALL open cooking for that recipe. Home cooking entry SHALL open the current recipe when it has an identity. Opening cooking SHALL not itself record completion.
 
 #### Scenario: Open from detail
+
 - **WHEN** a person activates View steps on a loaded non-editing detail
 - **THEN** cooking opens with that displayed recipe identity, name and image
 
 #### Scenario: Open from Home
+
 - **WHEN** Home cooking is requested with an identified current recipe
 - **THEN** cooking opens for that current recipe without a completion submission
 
 ### Requirement: Load recipe content for the cooking view
 
-On cooking entry the view SHALL display loading feedback while requesting detail for the entry recipe. On a successful detail read it SHALL use the returned ingredients and supported instructions for preparation and reading.
+On cooking entry the view SHALL show loading feedback until detail loads, then use canonical current ingredient lines and supported instructions. Dated entry SHALL project those canonical lines through matching supper-servings; undated entry SHALL keep canonical original-basis text and quantities without a preview calculator. Missing or conflicting projection SHALL remain visible rather than presenting base amounts as scaled.
 
 #### Scenario: Detail request pending
+
 - **WHEN** cooking detail has not finished loading
 - **THEN** the cooking loading surface is displayed
 
 #### Scenario: Recipe detail available
+
 - **WHEN** the detail request succeeds with ingredients and parseable instructions
-- **THEN** the preparation checklist and subsequent steps use that returned content
+- **THEN** the preparation checklist uses the canonical original or matching dated ingredient context and subsequent steps use that same revision’s original or validated projected instructions
+
+#### Scenario: Same recipe has retained legacy supply
+
+- **WHEN** canonical current ingredients differ from retained legacy metadata
+- **THEN** cooking uses the canonical current ingredients and does not independently rebuild quantities from metadata supply or legacy strings
+
+#### Scenario: Valid unquantified ingredient
+
+- **WHEN** a canonical line is intentionally unquantified or has an honestly unknown amount
+- **THEN** preparation retains its original wording without inventing a number or requiring numeric completion before cooking
+- **AND** missing numeric data alone creates no ingredient-repair flag or new reading warning cue
 
 ### Requirement: Prepare ingredients before starting an unbookmarked recipe
 
 Without a client-held recipe position, cooking SHALL begin at Check & Prep. Each ingredient control SHALL toggle its checked indication and the view SHALL show a ready count. Starting cooking SHALL enter the first recipe step without requiring every ingredient to be checked.
 
 #### Scenario: Toggle an ingredient
+
 - **WHEN** a person activates an unchecked ingredient control and then activates it again
 - **THEN** its checked indication changes to true then false and the ready count follows
 
 #### Scenario: Start without all checks
+
 - **WHEN** a person activates Let’s Cook from preparation with unchecked ingredients
 - **THEN** the first recipe instruction is displayed
 
@@ -55,10 +72,12 @@ Without a client-held recipe position, cooking SHALL begin at Check & Prep. Each
 Ingredient checks SHALL remain local to the mounted cooking view. Returning to preparation in that view SHALL retain those checks. A newly mounted cooking view SHALL start with an empty ingredient check map.
 
 #### Scenario: Return during the same view
+
 - **WHEN** a person checks an ingredient and returns to preparation without unmounting cooking
 - **THEN** the ingredient remains checked
 
 #### Scenario: Open a new view
+
 - **WHEN** cooking is unmounted and a new cooking view is mounted
 - **THEN** its preparation checklist starts unchecked
 
@@ -67,14 +86,17 @@ Ingredient checks SHALL remain local to the mounted cooking view. Returning to p
 Activating the cooking hero SHALL open detail for the cooking entry recipe without a target planning day. Dismissing that detail SHALL return to the mounted cooking view. Choosing similar recipes from that detail SHALL close cooking and request recipe search for that identity.
 
 #### Scenario: Inspect the viewed recipe
+
 - **WHEN** a person activates the cooking hero
 - **THEN** detail opens for the cooking recipe identity without a planner-day action
 
 #### Scenario: Dismiss detail
+
 - **WHEN** the nested detail is closed
 - **THEN** the underlying mounted cooking view is available again
 
 #### Scenario: Find similar from nested detail
+
 - **WHEN** the nested detail requests similar recipes
 - **THEN** detail and cooking close and navigation requests recipes with that recipe as the similarity target
 
@@ -83,6 +105,7 @@ Activating the cooking hero SHALL open detail for the cooking entry recipe witho
 The cooking close control SHALL dismiss cooking through its caller. Closing before any completion request SHALL not submit cooking completion.
 
 #### Scenario: Leave before completion
+
 - **WHEN** a person closes cooking before requesting Cooked
 - **THEN** the caller dismisses cooking without submitting completion
 
@@ -91,14 +114,17 @@ The cooking close control SHALL dismiss cooking through its caller. Closing befo
 Cooking SHALL read a string-array recipe as ordered nonblank trimmed instructions with sequential step labels. For a flat object array it SHALL use nonblank trimmed text, falling back to name, omit empty entries and use a supplied name or sequential step label as the heading.
 
 #### Scenario: Legacy strings
+
 - **WHEN** supported string-array content contains a blank entry between two instructions
 - **THEN** only the two nonblank instructions are presented in order with consecutive step labels
 
 #### Scenario: Flat objects
+
 - **WHEN** supported flat instructions contain a named text step and a nameless text step
 - **THEN** both are presented in order with the supplied heading and a sequential heading respectively
 
 #### Scenario: Name supplies instruction
+
 - **WHEN** a supported flat step has a nonblank name but no nonblank text
 - **THEN** the trimmed name supplies its instruction
 
@@ -107,10 +133,12 @@ Cooking SHALL read a string-array recipe as ordered nonblank trimmed instruction
 For supported section arrays, cooking SHALL flatten nonblank child text or name in section order with consecutive step numbering. Non-generic section names SHALL supply reading context; generic preparation/instruction section names SHALL not prefix focused instruction text.
 
 #### Scenario: Named sections
+
 - **WHEN** a supported recipe has two named sections with nonblank children
 - **THEN** children appear in section order and retain contextual section names
 
 #### Scenario: Generic preparation
+
 - **WHEN** a section is named Preparation or Préparation
 - **THEN** focused instructions omit that generic section prefix
 
@@ -119,14 +147,17 @@ For supported section arrays, cooking SHALL flatten nonblank child text or name 
 Cooking SHALL offer a compact, named View group with direct Step by step and All steps buttons in preparation and both reading presentations. The selected member's explicit cookingViewMode SHALL select the presentation; an absent member or absent preference SHALL default to All steps. Each choice SHALL expose its selected state, use at least a 44 px target and stop hero navigation. Selecting a view SHALL retain focus on that choice.
 
 #### Scenario: No explicit preference
+
 - **WHEN** cooking opens for a member without a saved cookingViewMode
 - **THEN** All steps is selected without consulting a feature flag
 
 #### Scenario: Saved focused preference
+
 - **WHEN** cooking opens for a member whose cookingViewMode is step-by-step
 - **THEN** Step by step is selected
 
 #### Scenario: Direct presentation selection
+
 - **WHEN** the cook activates the other presentation button while no existing editing/completion guard blocks it
 - **THEN** the presentation changes in one activation, its selected state is exposed, focus remains on that choice and hero detail does not open
 
@@ -135,10 +166,12 @@ Cooking SHALL offer a compact, named View group with direct Step by step and All
 Changing presentation SHALL update immediately and persist only for the currently selected loaded member. The chooser SHALL identify the member whose confirmed choice is remembered. A failed save SHALL retain the session presentation and cooking work, report that it was not remembered for that member and offer Retry. A missing profile SHALL permit a session-only choice without saving to a previous or guessed member.
 
 #### Scenario: Change presentation
+
 - **WHEN** a loaded member chooses the other view and persistence succeeds
 - **THEN** the mounted recipe changes presentation without losing cooking work and the choice is remembered for that member
 
 #### Scenario: Save fails
+
 - **WHEN** a view change cannot be saved
 - **THEN** the session keeps the chosen presentation and cooking work, reports that it was not remembered and offers Retry
 
@@ -147,6 +180,7 @@ Changing presentation SHALL update immediately and persist only for the currentl
 Changing presentation SHALL retain ingredient checks, preparation context, recipe content, current bookmark and completion state. Focused to all-steps SHALL align the current step; all-steps to focused SHALL use the reading bookmark. An all-steps round trip SHALL restore its prior exact offset when the step has not changed, otherwise it SHALL align the new current step.
 
 #### Scenario: Switch from focused reading
+
 - **WHEN** the cook changes from Step by step to All steps on a later step
 - **THEN** that step is aligned in the list and ingredient checks remain unchanged
 
@@ -155,6 +189,7 @@ Changing presentation SHALL retain ingredient checks, preparation context, recip
 Presentation changes SHALL be disabled while an instruction editor or cooking completion is pending. Changing view SHALL never discard an edit, restart cooking, reload recipe content or submit Cooked.
 
 #### Scenario: Editing blocks change
+
 - **WHEN** an instruction editor is active
 - **THEN** the chooser explains that the edit must be saved or cancelled and no presentation change occurs
 
@@ -163,14 +198,17 @@ Presentation changes SHALL be disabled while an instruction editor or cooking co
 With Step by step selected, cooking SHALL display one active instruction and its heading. Next SHALL advance until the last step, where Cooked becomes the completion action. Back SHALL return to the preceding position, including preparation; it SHALL be disabled at preparation. Scrolling SHALL not change focused position.
 
 #### Scenario: Read focused steps
+
 - **WHEN** a person starts a two-step recipe with Step by step selected and activates Next
 - **THEN** the second instruction is displayed and the action becomes Cooked
 
 #### Scenario: Back to preparation
+
 - **WHEN** a person activates Back from the first focused instruction
 - **THEN** preparation is shown and Back is disabled
 
 #### Scenario: Scroll focused content
+
 - **WHEN** a person scrolls focused instructions
 - **THEN** the held step position is unchanged
 
@@ -179,10 +217,12 @@ With Step by step selected, cooking SHALL display one active instruction and its
 With All steps selected, starting from preparation SHALL display every parsed step in one ordered reading list with a Cooked action. The list SHALL show meaningful supplied headings, suppress generic Step-number or instruction-identical headings, and show section context when it changes.
 
 #### Scenario: Read the full recipe
+
 - **WHEN** a person starts a recipe with All steps selected
 - **THEN** all parsed instructions appear together and Cooked is available
 
 #### Scenario: Avoid redundant headings
+
 - **WHEN** a step heading is Step 1 or equals its instruction
 - **THEN** the list omits that redundant heading while preserving the instruction
 
@@ -191,10 +231,12 @@ With All steps selected, starting from preparation SHALL display every parsed st
 Single-page reading SHALL retain instruction content and split paragraphs at explicit blank lines, keeping ordinary sentence punctuation, measurements and single line breaks together. Presentation SHALL not rewrite the editable instruction value.
 
 #### Scenario: Measurements remain together
+
 - **WHEN** an instruction includes decimal quantities and multiple sentences without blank lines
 - **THEN** they remain together in one paragraph
 
 #### Scenario: Explicit paragraphs
+
 - **WHEN** an instruction contains a blank line between two text groups
 - **THEN** the groups appear as separate paragraphs and editing receives the original instruction text
 
@@ -203,10 +245,12 @@ Single-page reading SHALL retain instruction content and split paragraphs at exp
 Cooking SHALL keep its current step by recipe identity in client memory. A newly mounted cooking view in the same client store SHALL use that held position. All steps scrolling SHALL update the reading bookmark without remounting its rows, replacing an active editor or submitting completion.
 
 #### Scenario: Reopen the same recipe
+
 - **WHEN** a recipe has a held second-step bookmark and cooking mounts again using the same client store
 - **THEN** its reading position is the second step
 
 #### Scenario: Scroll during editing
+
 - **WHEN** single-page reading moves to another visible step while an editor is open
 - **THEN** the bookmark follows reading and the same editor and draft remain, without cooking completion
 
@@ -215,14 +259,17 @@ Cooking SHALL keep its current step by recipe identity in client memory. A newly
 Single-page reading SHALL offer Ingredients when no step is being edited. Returning to ingredients SHALL retain the mounted checklist, recipe bookmark and reading offset. Resume steps SHALL restore that offset and bookmark instead of restarting the recipe.
 
 #### Scenario: Consult ingredients mid-recipe
+
 - **WHEN** a person returns to Ingredients from a later reading position
 - **THEN** preparation opens with checks and bookmark retained
 
 #### Scenario: Resume the list
+
 - **WHEN** a person activates Resume steps from that preparation view
 - **THEN** the reading list returns at its saved offset and bookmark
 
 #### Scenario: Editor is active
+
 - **WHEN** a single-page step editor is active
 - **THEN** Ingredients is disabled until editing ends
 
@@ -231,46 +278,60 @@ Single-page reading SHALL offer Ingredients when no step is being edited. Return
 Cooking SHALL expose position/count through an accessible progressbar without implying completion. Stacked phones SHALL omit the status row and visible counter; tablet sidebars SHALL retain their indicator beside instructions, separate from tools. Preparation/unavailable states SHALL be honest. Ingredient checks, named Close and Mark recipe as cooked actions SHALL remain. Single-page instructions SHALL use an ordered list with named per-step Edit controls.
 
 #### Scenario: Reading position is exposed
+
 - **WHEN** the single-page reading bookmark changes to step two
 - **THEN** the progressbar exposes position two and the total count without submitting completion; the phone has no separate visible counter and the tablet retains its indicator
 
 #### Scenario: Find step controls
+
 - **WHEN** single-page instructions are displayed
 - **THEN** the ordered list and named per-step edit controls are available
 
 #### Scenario: Read the final step without completing cooking
+
 - **WHEN** the cook scrolls to the last All steps instruction
 - **THEN** the position reaches the last step but cooking remains uncompleted until the existing explicit completion action succeeds
 
 #### Scenario: Preparation or no usable instructions
+
 - **WHEN** the cook is in preparation or a loaded recipe has no usable instructions
 - **THEN** the reading content identifies preparation or unavailable instructions respectively, without presenting a fictitious step count as progress or adding a phone status strip
 
 ### Requirement: Edit a supported cooking instruction explicitly
 
-From a focused instruction or single-page row, cooking SHALL offer editing of that step’s source instruction without adding section context to the editable value. Save SHALL submit the instruction array for the viewed recipe with the targeted string or object field replaced, retaining other entries and section structure.
+From a focused instruction or single-page row, cooking SHALL offer editing of that step’s source instruction without adding section context to the editable value. Save SHALL submit original-basis instruction content with the captured content revision, retaining stable unaffected IDs, entries and section structure. Scaled rendered text SHALL NOT initialize the stored draft.
 
 #### Scenario: Edit a legacy instruction
+
 - **WHEN** a person edits the second supported string instruction and activates Save
 - **THEN** the viewed recipe update contains the changed second string and the other instruction entries
 
 #### Scenario: Edit a section child
+
 - **WHEN** a person saves a child instruction in a supported section
 - **THEN** the corresponding child text or name is replaced while the section and its other children remain
 
 #### Scenario: Edit section content
+
 - **WHEN** a section supplies a non-generic display prefix
 - **THEN** the editor contains the source instruction without that added prefix
 
+#### Scenario: Edit while scaled
+
+- **WHEN** a rendered step shows 300 g from original 200 g
+- **THEN** Edit initializes original 200 g wording and Save uses the coherent content revision
+
 ### Requirement: Apply a successful step edit locally
 
-After a changed step update resolves successfully, cooking SHALL apply the submitted instruction array to its local recipe, reparse supported steps, close the editor and announce Step saved. Saving an unchanged supported instruction SHALL close the editor without sending an update.
+After a changed step update resolves successfully, cooking SHALL install the authoritative returned coherent content revision, ingredients and instruction bindings, reparse supported steps, close the editor and announce Step saved. Saving an unchanged supported instruction SHALL close the editor without sending an update.
 
 #### Scenario: Save a changed step
+
 - **WHEN** the instruction update request resolves successfully
-- **THEN** the edited instruction appears locally, the editor closes and a polite Step saved announcement is supplied
+- **THEN** the authoritative edited instruction and its coherent projection appear locally, the editor closes and a polite Step saved announcement is supplied
 
 #### Scenario: Save unchanged text
+
 - **WHEN** the editor value equals the supported step’s original editable instruction
 - **THEN** the editor closes without an update request
 
@@ -279,10 +340,12 @@ After a changed step update resolves successfully, cooking SHALL apply the submi
 Cancel SHALL discard the open instruction edit without updating the recipe. For single-page rows, cancellation SHALL request focus return to that row’s edit control.
 
 #### Scenario: Cancel a draft
+
 - **WHEN** a person changes instruction text and activates Cancel before saving
 - **THEN** the original displayed instruction remains and no recipe update is submitted
 
 #### Scenario: Return focus to row
+
 - **WHEN** a single-page instruction edit is cancelled and its edit control remains mounted
 - **THEN** focus is requested on that row’s edit control
 
@@ -291,10 +354,12 @@ Cancel SHALL discard the open instruction edit without updating the recipe. For 
 Single-page Save and Cancel SHALL be disabled during an edit save. A rejected save SHALL retain the editor and draft, display an alert with Try again, and end pending feedback so another attempt is available. Other row editors SHALL be disabled while an editor is open.
 
 #### Scenario: Save pending
+
 - **WHEN** a single-page changed instruction save is still pending
 - **THEN** Save and Cancel are disabled and another row editor cannot be opened
 
 #### Scenario: Save rejects
+
 - **WHEN** a single-page instruction update rejects
 - **THEN** the draft stays open with an error alert and Try again can resubmit it
 
@@ -303,58 +368,70 @@ Single-page Save and Cancel SHALL be disabled during an edit save. A rejected sa
 When the loaded recipe permits content reporting and no step editor is open, preparation SHALL offer Report issue with ingredients and reading SHALL offer Report issue with steps. These controls SHALL open the shared quality form with the corresponding context and loaded issue, without opening recipe detail.
 
 #### Scenario: Report ingredients
+
 - **WHEN** an eligible recipe is in preparation and a person requests ingredient reporting
 - **THEN** the quality form opens with ingredients context while the cooking view remains mounted
 
 #### Scenario: Report steps
+
 - **WHEN** an eligible recipe is being read and a person requests step reporting
 - **THEN** the quality form opens with steps context and the loaded issue
 
 #### Scenario: Reporting unavailable
+
 - **WHEN** the loaded recipe does not permit content reporting
 - **THEN** cooking does not offer its contextual report control
 
 ### Requirement: Return from quality reporting to the mounted cooking context
 
-Dismissing the cooking report form SHALL retain the mounted ingredient checks and reading bookmark. After a successful report submission or resolution, cooking SHALL apply the returned local recipe and close the form. A submission that reports a re-import launch failure SHALL leave the form open through its existing quality error handling.
+Dismissing the cooking report form SHALL retain the mounted ingredient checks and reading bookmark. After a successful report submission or resolution, cooking SHALL apply returned report metadata and close the form; changed semantic recipe content SHALL use the explicit coherent refresh path. A submission that reports a re-import launch failure SHALL leave the form open through its existing quality error handling.
 
 #### Scenario: Dismiss a report draft
+
 - **WHEN** a person closes the quality form during cooking
 - **THEN** the cooking checks and reading bookmark remain
 
 #### Scenario: Report or resolve succeeds
+
 - **WHEN** the cooking report or resolution request returns successfully without a launch failure
-- **THEN** the returned recipe is applied locally and the quality form closes
+- **THEN** report metadata is applied and any changed content revision is offered through explicit refresh and the quality form closes
 
 #### Scenario: Launch fails after report save
+
 - **WHEN** report submission returns its recipe with re-import launch failure
-- **THEN** cooking applies that recipe but leaves the quality form open for its saved-report/launch-failure feedback
+- **THEN** cooking applies report metadata and leaves the quality form open for its saved-report/launch-failure feedback
+- **AND** any changed semantic content revision is offered through explicit coherent ingredient/step refresh without replacing the active cooking content immediately
 
 ### Requirement: Acknowledge cooking report background launch locally
 
 When cooking receives reimportStarted from a successful quality submission, it SHALL show Reimporting in background as status feedback. This acknowledgement SHALL not claim that replacement recipe content is ready.
 
 #### Scenario: Background launch acknowledged
+
 - **WHEN** successful cooking report submission reports that re-import started
 - **THEN** the form closes and Reimporting in background status appears without a readiness claim
 
 ### Requirement: Submit completion for the viewed recipe and current local date
 
-Cooked SHALL request recording the cooking entry recipe identity with status two for the deployment-local current date from meal-planning’s authoritative calendar context at submission time. Focused cooking SHALL offer this action at its last instruction; single-page cooking SHALL offer it from the reading list. The request SHALL not substitute tonight’s recipe or a planner target date.
+Undated Cooked SHALL complete the viewed recipe for deployment-local today at submission. Saved-occurrence completion SHALL guard its captured identity/date and record the server-authoritative actual preparation date. Cooking SHALL offer completion at the final focused step or from single-page reading. It SHALL not substitute tonight’s recipe or another occurrence, or treat an unsaved planning destination as a saved cooking occurrence merely by opening Cook’s Mode.
 
 #### Scenario: Cook another recipe
-- **WHEN** a person finishes viewing a recipe different from the current supper
+
+- **WHEN** a person finishes an undated recipe different from the current supper
 - **THEN** the submitted recipe identity is the viewed recipe with status two
 
 #### Scenario: Finish from either reading mode
+
 - **WHEN** Cooked is activated at the focused final step or in single-page reading
-- **THEN** completion targets the deployment-local current date from meal-planning’s authoritative calendar context at that submission
+- **THEN** undated completion targets deployment-local today; saved-occurrence completion targets the captured supper date and records actual preparation today
 
 #### Scenario: Browser and deployment dates differ
-- **WHEN** Cooked is activated at 2026-10-12T01:30:00Z in a Tokyo browser for a Toronto deployment
+
+- **WHEN** undated Cooked is activated at 2026-10-12T01:30:00Z in a Tokyo browser for a Toronto deployment
 - **THEN** completion submits the viewed recipe with status two for October 11, even if the response arrives on October 12
 
 #### Scenario: Current date cannot be refreshed
+
 - **WHEN** completion needs fresh deployment context and the refresh fails
 - **THEN** no validation is submitted and the existing failed-completion retry presentation remains available
 
@@ -363,39 +440,51 @@ Cooked SHALL request recording the cooking entry recipe identity with status two
 During a pending completion request, cooking SHALL disable its forward/completion action and suppress another completion submission from that mounted view. After the request resolves, cooking SHALL show its celebration, then invoke the optional cooked callback and close callback after the scheduled celebration delay without requesting route navigation.
 
 #### Scenario: Request pending
+
 - **WHEN** a completion request has started but has not resolved
 - **THEN** the completion action is disabled and no celebration or success callback occurs
 
 #### Scenario: Repeated activation during request
+
 - **WHEN** completion is activated again while this view already has an in-flight completion
 - **THEN** this view does not submit a second completion request
 
 #### Scenario: Completion resolves
+
 - **WHEN** the completion request resolves successfully and the view remains mounted through the delay
 - **THEN** celebration appears, then the optional cooked callback and close callback are invoked without route navigation
 
 ### Requirement: Keep failed cooking completion open for retry
 
-When the completion request rejects, cooking SHALL retain its mounted view and position, show an alert that completion could not be saved, re-enable the completion action and permit another attempt. A subsequent attempt SHALL clear the previous completion error before awaiting its result.
+When the completion request rejects, cooking SHALL retain its mounted view and position, show an alert that completion could not be saved, and permit safe recovery. A known no-write rejection permits another attempt; an uncertain dated preparation SHALL first reread the occurrence and never blindly repeat completion. A subsequent attempt SHALL clear the previous completion error before awaiting its result.
 
 #### Scenario: Completion rejects
+
 - **WHEN** recording cooking rejects
 - **THEN** cooking remains open with its position and error alert and does not invoke success callbacks
 
 #### Scenario: Retry completion
+
 - **WHEN** a person activates Cooked after a rejected completion
-- **THEN** another completion request starts and the previous error clears
+- **THEN** a known no-write rejection permits a fresh guarded completion; an uncertain dated result is checked first, and the previous error clears only for the selected recovery
+
+#### Scenario: Prepared response is lost
+
+- **WHEN** dated preparation commits but its reply is lost
+- **THEN** a fresh occurrence read can confirm Already prepared and its original actual date without another completion or a change to today’s different supper
 
 ### Requirement: Confirm local supper completion only for a matching confirmed result
 
-After completion resolves, the local Today view SHALL become Cooked and clear its non-cooking metadata only when the response confirms mealMarkedCooked and its then-current recipe identity equals the submitted recipe. A false or absent confirmation SHALL leave local Today unchanged through this completion response path.
+After completion resolves, the local Today view SHALL become Cooked and clear its non-cooking metadata only when the response confirms mealMarkedCooked and its then-current recipe identity equals the submitted recipe and the completed occurrence date is today. Dated preparation SHALL reconcile only its matching occurrence; a future occurrence of the same recipe SHALL not complete Today. A false or absent confirmation SHALL leave local Today unchanged through this completion response path.
 
 #### Scenario: Matching supper confirmed
-- **WHEN** the server reports mealMarkedCooked true and the current local recipe matches the submitted recipe
+
+- **WHEN** the server reports mealMarkedCooked true and the current local recipe matches the submitted recipe and the completed occurrence date is today
 - **THEN** local Today becomes Cooked and its non-cooking metadata clears
 
 #### Scenario: Different or unconfirmed supper
-- **WHEN** the server reports false or omits confirmation, or the then-current local recipe differs
+
+- **WHEN** the server reports false or omits confirmation, or the then-current local recipe differs or the prepared occurrence belongs to another date
 - **THEN** this response path leaves local Today unchanged even though the cooking request resolved
 
 ### Requirement: Keep cooking feedback separate from calendar matching
@@ -403,36 +492,45 @@ After completion resolves, the local Today view SHALL become Cooked and clear it
 A resolved recipe-specific completion SHALL allow cooking success feedback even when mealMarkedCooked is false. Calendar matching and unavailable-recipe rejection SHALL follow meal planning’s “Validate recipe-specific cooking without completing another assignment”; live-update receipt SHALL remain separate from this local success.
 
 #### Scenario: Unscheduled recipe recorded
+
 - **WHEN** recipe-specific completion resolves with mealMarkedCooked false
 - **THEN** cooking succeeds locally without claiming that tonight’s assignment was completed
 
 #### Scenario: Recipe unavailable
+
 - **WHEN** the meal-planning validation operation rejects the viewed recipe as unavailable
 - **THEN** the cooking completion request follows the failed-completion feedback path rather than confirming success
 
 ### Requirement: Explain unavailable cooking instructions honestly
+
 Cooking SHALL distinguish a failed detail read from a successful read with no usable instructions and SHALL NOT substitute invented recipe steps. Both states SHALL offer Retry and retain Close, the presentation choices and hero detail access. Mark recipe as cooked SHALL remain available through existing completion pending and failure recovery.
 
 #### Scenario: Detail read rejects
+
 - **WHEN** the current cooking detail read rejects
 - **THEN** cooking shows a read failure and Retry without invented instructions, retaining completion and detail access
 
 #### Scenario: Stored instructions are absent or unusable
+
 - **WHEN** the current detail read succeeds without usable instructions
 - **THEN** cooking explains that steps are unavailable and retains Retry, completion and detail access
 
 ### Requirement: Report unavailable cooking steps through existing quality recovery
+
 For a loaded recipe eligible for content reporting with no usable instructions, cooking SHALL offer Report steps using the shared quality form with steps context. Existing server-owned submission and reimport policy SHALL apply. Cooking SHALL apply returned instructions and acknowledge a started reimport as background work, without claiming readiness. Retry SHALL reread current content explicitly.
 
 #### Scenario: Flag missing steps and start reimport
+
 - **WHEN** an eligible recipe has no usable steps and a report submission starts reimport
 - **THEN** the shared form submits the report, cooking applies its returned recipe and acknowledges background work while Retry remains available
 
 #### Scenario: Read recovered instructions
+
 - **WHEN** Retry subsequently returns usable instructions
 - **THEN** cooking presents those instructions using the selected reading mode
 
 #### Scenario: Departed recipe response
+
 - **WHEN** the cooking identity changes before its old detail read settles
 - **THEN** the old response does not replace current content or failure feedback
 
@@ -441,62 +539,81 @@ For a loaded recipe eligible for content reporting with no usable instructions, 
 When the viewed recipe has a dish image, cooking SHALL retain it in the fixed phone hero/header and full-image tablet sidebar while only instructions scroll. Essential header/source/presentation controls SHALL remain outside that scroller. Cooking SHALL NOT replace the image with a collapsed header on scroll or place it behind instruction text. Missing images SHALL retain honest existing fallback behavior.
 
 #### Scenario: Read further down a phone recipe
+
 - **WHEN** the cook scrolls through All steps on a phone with an available recipe image
 - **THEN** the same dish image, hero/title and essential controls stay visible and stationary while instruction content moves
 
 #### Scenario: Preserve the iPad cookbook view
+
 - **WHEN** the cook reads later instructions in tablet portrait or landscape with an available recipe image
 - **THEN** the full-image sidebar remains visible beside the scrolling instruction pane without an image background behind instruction text
 
 #### Scenario: Read in narrow Split View
+
 - **WHEN** available width changes to the stacked phone layout during cooking
 - **THEN** the recipe image remains in the fixed hero/header rather than scrolling away or becoming a compact image-free replacement
 
 ### Requirement: Arrange cooking in the approved phone and tablet compositions
 
-Phone cooking SHALL keep a photo/title header and compact Original/direct two-button view tools fixed above one scrolling reading surface without a padded recipe card or status row. The progressbar SHALL sit directly above instructions; focused Edit SHALL join tools below the image. Tablet cooking SHALL retain its 40% full-image sidebar with lower-left controls and a clear reading column. Reflow SHALL preserve these roles without fixed mockup allocations.
+Phone cooking SHALL fix the photo/title header and compact Original/direct view tools above one scrolling surface without a padded card or status row, with the progressbar above instructions and focused Edit below the image. The view toggle SHALL stay left and Edit/Original right in the wrapping toolbar, preserving labels, target sizes, keyboard order, focus and disabled states. Tablet cooking SHALL keep its 40% image sidebar and reading column across reflow.
 
 #### Scenario: Read the approved phone composition
+
 - **WHEN** the cook opens a loaded recipe on a phone
 - **THEN** the dish-photo/title header and compact controls underneath remain fixed above a single scrolling instruction surface, without a separate padded recipe card or reading-status row
 
 #### Scenario: Use the approved iPad composition
+
 - **WHEN** cooking uses its tablet sidebar layout
 - **THEN** the full-image 40% sidebar retains its lower-left controls and cookbook character while the separate reading column stays clear
 
 #### Scenario: Accommodate text and safe-area growth
+
 - **WHEN** long English/French content, enlarged text, landscape or safe-area insets reduce available instruction space
 - **THEN** the composition reflows to retain readable labels, visible dish image and reachable controls without assuming the mockup's instruction-region height
 
 #### Scenario: Recover phone reading space
+
 - **WHEN** the same loaded recipe in All steps is compared before and after this change at ordinary 390 by 844 and 430 by 932 CSS-pixel portrait viewports with default text size
 - **THEN** both the dish-photo region and instruction viewport are taller, with no separate status row or replacement counter badge
 
 #### Scenario: Keep focused editing with the phone tools
+
 - **WHEN** a supported instruction is displayed in Step by step on a phone outside an active editor
 - **THEN** a named Edit action with at least a 44 by 44 CSS-pixel target is available beside the controls below the image and opens that current instruction without opening recipe detail
 
 #### Scenario: Avoid an ambiguous global edit action
+
 - **WHEN** the phone is in preparation, has no usable instructions, is already editing, or displays All steps
 - **THEN** the focused-step header Edit action is absent and All steps retains its named per-instruction edit controls when instructions exist
+
+#### Scenario: Restore the right-aligned phone action group
+
+- **WHEN** a loaded phone cooking view exposes Edit and/or Original beside its view toggle
+- **THEN** the view toggle stays left and the Edit/Original action group aligns to the inner right edge of the toolbar, wrapping to right-aligned rows as necessary without clipping labels, targets or focus outlines
+- **AND** English/French labels and enlarged text at narrow widths remain reachable without horizontal page overflow, while tablet retains its lower-left controls
 
 ### Requirement: Offer direct Original access from loaded cooking
 
 After successful current-recipe detail loading, cooking SHALL offer a visibly labelled Original action when its URL source has a nonempty source URL or original images exist. It SHALL be available from preparation and both reading presentations without requiring recipe detail to be opened first. A failed or pending detail read SHALL NOT infer source availability.
 
 #### Scenario: Consult source from preparation
+
 - **WHEN** a loaded recipe has original images and the cook is preparing ingredients
 - **THEN** Original is available directly in cooking without opening recipe detail
 
 #### Scenario: Consult source while reading
+
 - **WHEN** a loaded recipe has a URL source and nonempty source URL in either reading presentation
 - **THEN** Original remains a visibly labelled action in cooking
 
 #### Scenario: Instructions unavailable but source present
+
 - **WHEN** detail loading succeeds with no usable instructions and a supported original destination
 - **THEN** Original remains available alongside existing instruction recovery
 
 #### Scenario: Source metadata unavailable
+
 - **WHEN** the current recipe detail read is pending or fails
 - **THEN** cooking does not expose an actionable Original based on guessed or departed-recipe metadata
 
@@ -505,18 +622,22 @@ After successful current-recipe detail loading, cooking SHALL offer a visibly la
 Cooking Original SHALL use the existing `recipe-media` external-URL or original-image behavior for the viewed recipe. A URL source with a present website URL SHALL open a new browsing context with noopener/noreferrer, without navigating the app. Otherwise available original photos or rendered PDF-page images SHALL open the existing image experience, retaining shared ordering, paging and zoom semantics, without introducing a PDF-document reader.
 
 #### Scenario: Open the recipe source URL
+
 - **WHEN** Original is activated for a URL recipe with a nonempty source URL
 - **THEN** that URL is requested in a new browsing context with noopener/noreferrer and cooking stays mounted on the current app page
 
 #### Scenario: View original images
+
 - **WHEN** Original is activated for a photo recipe with three originals and finished-dish index one
 - **THEN** the original-image experience opens at its initial sequence position, leading with image one, under existing media ordering/navigation/zoom behavior
 
 #### Scenario: Missing URL falls back to available images
+
 - **WHEN** a URL recipe has no source URL but has original images and Original is activated
 - **THEN** the image experience opens instead of requesting external navigation
 
 #### Scenario: Consult rendered PDF originals
+
 - **WHEN** a recipe has retained rendered PDF-page images as its original destination and Original is activated
 - **THEN** those page images open in the existing image overlay rather than an external website, new PDF-document reader or raw-document download
 
@@ -525,18 +646,22 @@ Cooking Original SHALL use the existing `recipe-media` external-URL or original-
 Opening or dismissing originals SHALL retain the mounted recipe, presentation, bookmark, exact reading offset, preparation context/checks and any retained instruction draft. It SHALL NOT save/discard edits, refetch recipe detail solely for consultation, change preferences or submit completion. Reopening images SHALL use their normal fresh initial view without resetting cooking.
 
 #### Scenario: Return to preparation
+
 - **WHEN** a cook with checked ingredients opens and closes the image experience
 - **THEN** the same preparation context and checked indications remain without a completion request
 
 #### Scenario: Return to later single-page reading
+
 - **WHEN** the cook opens and closes originals from a later All steps bookmark and offset
 - **THEN** the selected mode, bookmark and exact prior reading offset remain unchanged
 
 #### Scenario: Repeated consultation
+
 - **WHEN** the cook changes the viewed original image/zoom, closes, then reopens originals twice
 - **THEN** each reopening starts at the media experience's normal initial image/fit state while cooking work remains unchanged and no update or completion is submitted
 
 #### Scenario: Return from an external source
+
 - **WHEN** a cook returns to the app after opening the recipe's source in another browsing context
 - **THEN** the existing cooking recipe, mode, bookmark, preparation checks and draft remain without consultation-triggered completion or saving
 
@@ -545,18 +670,22 @@ Opening or dismissing originals SHALL retain the mounted recipe, presentation, b
 The cooking original-image experience SHALL appear above every cooking control, expose a named modal dialog and named interactive controls, contain keyboard focus and prevent background interaction. Close or Escape SHALL dismiss only that experience, restore focus to the invoking Original action and retain cooking. Dismissal SHALL remain available when an image cannot load.
 
 #### Scenario: No cooking controls above the viewer
+
 - **WHEN** original images are open
 - **THEN** cooking Report, Close, view and completion controls are behind the overlay and cannot receive pointer or keyboard activation
 
 #### Scenario: Keyboard dismissal returns to Original
+
 - **WHEN** Escape is pressed while focus is inside the original-image dialog
 - **THEN** only that dialog closes, cooking stays open, and focus returns to Original without cancelling a retained instruction draft
 
 #### Scenario: Named viewer controls and contained focus
+
 - **WHEN** a keyboard user traverses the open image experience
 - **THEN** focus stays within it and its available previous, next, zoom/fit and close controls have accessible names
 
 #### Scenario: Image unavailable
+
 - **WHEN** the requested original image fails to load
 - **THEN** a named Close remains reachable and returns to retained cooking work
 
@@ -565,14 +694,17 @@ The cooking original-image experience SHALL appear above every cooking control, 
 Original SHALL remain available with an unsaved instruction draft, preserving it during read-only source consultation. New Original activation SHALL be disabled while a cooking save/write or completion request is pending, including instruction and presentation-preference saves, with an understandable busy indication and stable control placement. No delayed activation SHALL be replayed after a request settles.
 
 #### Scenario: Compare a source while correcting a step
+
 - **WHEN** the cook has changed an instruction draft without saving and consults original images
 - **THEN** returning restores that same editor/draft and no instruction update is submitted
 
 #### Scenario: Write request pending
+
 - **WHEN** an instruction save or cooking completion request is pending
 - **THEN** Original cannot open a source, explains its busy state, and does not open automatically when that request settles
 
 #### Scenario: Preference save pending
+
 - **WHEN** a cooking presentation-preference save is pending
 - **THEN** Original remains in place but cannot activate until that request settles, without changing or repeating the preference request
 
@@ -581,10 +713,12 @@ Original SHALL remain available with an unsaved instruction draft, preserving it
 Cooking SHALL suppress Original when loaded metadata has neither a present URL for a URL source nor original images. It SHALL NOT open an empty image experience or invent a URL. This cooking-only availability rule SHALL leave the library's existing eligibility and behavior unchanged.
 
 #### Scenario: URL type has no URL or images
+
 - **WHEN** a loaded cooking recipe has source type URL, absent source URL and zero originals
 - **THEN** cooking has no Original action and no empty viewer is opened
 
 #### Scenario: Synthesized recipe has no source
+
 - **WHEN** a loaded cooking recipe is synthesized with no original images
 - **THEN** cooking omits Original while retaining its existing reading, detail and completion controls
 
@@ -593,14 +727,17 @@ Cooking SHALL suppress Original when loaded metadata has neither a present URL f
 Cooking SHALL keep Original, presentation choices and Close reachable without overlap, clipped labels or horizontal scrolling on phone/tablet portrait, landscape and narrow Split View, accounting for safe-area insets. Interactive targets SHALL be at least 44 by 44 CSS pixels. English/French expansion and enlarged text SHALL reflow the composition rather than shrink essential labels or targets to preserve a fixed header height.
 
 #### Scenario: Narrow phone with expanded French labels
+
 - **WHEN** cooking is shown at 320 CSS pixels wide with a long recipe name and French labels
 - **THEN** the title and controls wrap without colliding, Original stays labelled/reachable, and every control retains its target size without horizontal overflow
 
 #### Scenario: Tablet sidebar and Split View
+
 - **WHEN** available space changes between tablet portrait, landscape and narrow Split View
 - **THEN** the cooking hero/sidebar or stacked composition adapts and retains usable source/presentation/close controls
 
 #### Scenario: Enlarge text
+
 - **WHEN** text is enlarged to 200 percent in the cooking surface
 - **THEN** labels and instruction context remain readable and controls reflow without clipped actions, overlap or smaller hit targets
 
@@ -609,6 +746,7 @@ Cooking SHALL keep Original, presentation choices and Close reachable without ov
 The cooking composition SHALL let food imagery and the recipe title lead, with warm surfaces, readable supporting text and quieter secondary controls. Original and presentation selection SHALL NOT compete visually with the primary cooking action. Rendered acceptance SHALL assess cookbook character separately from contrast, target-size and interaction checks, using matched recipe content and food photographs.
 
 #### Scenario: Review ordinary food-led composition
+
 - **WHEN** phone and tablet cooking layouts are compared with the same recipe, locale and light/dark food photographs
 - **THEN** review records photo prominence, title hierarchy, spacing, depth and control emphasis as well as readability, without treating automated passes as approval of warmth or calm
 
@@ -617,10 +755,12 @@ The cooking composition SHALL let food imagery and the recipe title lead, with w
 The phone recipe title SHALL appear as live, wrapping white text over a continuous dark photo gradient without a separate rectangular title backing. Text SHALL achieve at least 4.5:1 contrast against its actual composited background. Long titles and enlarged text SHALL remain readable without clipping or colliding with header actions. Missing images SHALL retain the existing fallback.
 
 #### Scenario: Read titles over different photographs
+
 - **WHEN** a phone displays the same recipe with light or dark food photographs
 - **THEN** the title sits directly over the graded photo and every occupied title region meets the contrast target without relying on text shadow
 
 #### Scenario: Wrap a long title
+
 - **WHEN** a long English or French title is displayed at 320 CSS pixels wide or text is enlarged to 200 percent
 - **THEN** the title wraps readably, the gradient covers all title lines and the title and header controls do not overlap
 
@@ -629,9 +769,201 @@ The phone recipe title SHALL appear as live, wrapping white text over a continuo
 The phone progress bar SHALL distinguish filled and remaining lengths by lightness with at least 3:1 contrast, preserving an understandable position without relying on terracotta hue. During instruction reading it SHALL expose current position and total count to assistive technology. All steps SHALL identify this as reading position, without implying that reading records cooking completion.
 
 #### Scenario: Read progress without colour perception
+
 - **WHEN** a phone recipe is partly read and the progress bar is viewed in grayscale
 - **THEN** filled and remaining lengths remain distinguishable and the accessible bar exposes its current position and total count
 
 #### Scenario: Reach the last instruction
+
 - **WHEN** the cook reads to the last All steps instruction on a phone
 - **THEN** the bar reaches the last reading position and cooking remains uncompleted until the explicit completion request succeeds
+
+### Requirement: Carry the planned supper date into cooking ingredients
+
+Home, Planner and dated recipe detail SHALL pass the absolute supper date into cooking, which SHALL show the shared canonical ingredient projection for that recipe, date and captured occurrence. Reading SHALL NOT mark cooked, alter recipe basis or update dated portions. Home and cooking SHALL agree for the same captured context before display rounding; instructions, edits and bookmarks SHALL keep their owners, and dated completion SHALL follow the captured occurrence.
+
+#### Scenario: Cook the planned six-serving supper
+
+- **WHEN** a two-serving recipe is opened from a date configured for six
+- **THEN** preparation shows three times each usable original amount with the six-serving context and no completion request is sent merely by opening it
+
+#### Scenario: Home ingredients and Cook agree
+
+- **WHEN** Home Tonight and its Cook entry refer to the same saved occurrence and effective portions
+- **THEN** they use the same canonical line identities, original facts, reliable amounts and completeness for that assigned context rather than Home showing an independent original string list
+
+#### Scenario: Prepared occurrence with a later recipe correction
+
+- **WHEN** a prepared occurrence is consulted after a canonical recipe correction
+- **THEN** its recorded prepared portion count, preparation date and receipt facts remain unchanged while ingredients and eligible steps use the current recipe projected to that recorded count
+- **AND** no historical ingredient snapshot or new preparation authority is inferred
+
+### Requirement: Explain original instruction amounts during scaling
+
+Cooking SHALL show projected validated step quantities and original wording for uncertain spans, and SHALL NOT render a routine step-uncertainty notice, duplicate View adjusted ingredients header action, or replacement banner, badge, tooltip or hidden warning. Ingredients SHALL remain reachable via the All steps footer Ingredients/Resume path and focused Back navigation without per-step prompts; time and equipment SHALL never scale.
+
+#### Scenario: Step text contains half a cup
+
+- **WHEN** a whole-ingredient half-cup span is validated and portions double
+- **THEN** the rendered use becomes one cup; if its binding is uncertain, original wording remains readable without the routine uncertainty notice or an invented scaled amount
+
+#### Scenario: Consult ingredients after removing the duplicate header link
+
+- **WHEN** a cook in All steps activates footer Ingredients and then Resume steps
+- **THEN** the mounted checklist, bookmark and exact reading offset are retained without a View adjusted ingredients header link
+- **AND** Ingredients remains disabled during step editing; focused reading retains its existing Back route to preparation
+
+#### Scenario: Preserve actionable feedback
+
+- **WHEN** cooking encounters a real loading, projection, conflict or refresh failure, or detects changed quantities/content
+- **THEN** its existing pending, error, retry and explicit Refresh feedback remains available despite removal of the routine step-uncertainty notice
+
+### Requirement: Preserve cooking work when serving context changes remotely
+
+Before the cook checks ingredients, advances instructions, or edits steps, remote serving or recipe revisions SHALL apply automatically without interrupting cooking. Once cooking work is underway, Cook's Mode SHALL preserve checks, position, and drafts, unify updated-quantities and preparation review into a single Era 3 bar with one pull-forward `<Button>`, and style inline projection/completion/step/view errors with Family Cookbook tokens.
+
+#### Scenario: Remote update before cooking progress applies automatically
+
+- **WHEN** another household member changes dated servings or recipe content before the cook has checked any ingredient, navigated away from the initial step, or started editing a step
+- **THEN** Cook's Mode updates to the latest coherent projection automatically without displaying a manual `Refresh quantities` prompt
+
+#### Scenario: Portions increase while cooking is open
+
+- **WHEN** the cook has already checked ingredients, advanced steps, or opened a step draft and another household member changes that supper from four to six
+- **THEN** Cook's Mode preserves the cook's checks, position, and draft and displays a single Era 3 bar with one pull-forward `<Button>` to refresh quantities cleanly
+
+#### Scenario: Preparation conflict unifies with quantity refresh into one Era 3 bar
+
+- **WHEN** preparation submission detects changed quantities or a plan conflict while cooking work is underway
+- **THEN** Cook's Mode surfaces one unified Era 3 Hearth bar with one primary pull-forward `<Button>` (`Refresh quantities` or `Review current supper`) rather than stacking two separate recovery bars
+
+#### Scenario: Inline cooking errors use Family Cookbook tokens and 48px Retry buttons
+
+- **WHEN** dated projection loading, step editing, cooking completion, or saving cooking view preference fails
+- **THEN** each inline alert uses Hearth styling and `>= 48 CSS px` shared `<Button>` retry actions with `outline-ink-body` focus rings
+
+### Requirement: Finish cooking the captured planned occurrence
+
+Completion from a saved dated supper SHALL prepare that occurrence on its existing supper date and record the actual preparation date. A future supper SHALL then show Already prepared and Prepared followed by that actual date. Reading an already prepared occurrence SHALL not offer completion again. Eating on another night requires an explicit plan move before cooking.
+
+#### Scenario: Prepare Friday on Tuesday
+
+- **WHEN** Friday lasagna for six portions is explicitly completed in cooking on Tuesday
+- **THEN** Friday retains lasagna and its six-portion prepared context, shows Already prepared and Prepared Tuesday, and Tuesday's separate supper remains unchanged
+
+#### Scenario: Eat on Tuesday instead
+
+- **WHEN** the person explicitly moves Friday lasagna to Tuesday before cooking
+- **THEN** existing guarded movement/replacement rules resolve Tuesday, its portions apply, and completion prepares that moved occurrence
+
+#### Scenario: Same recipe on two dates
+
+- **WHEN** Wednesday and Friday both contain lasagna and Friday's cooking is completed
+- **THEN** only the captured Friday occurrence is marked prepared
+
+#### Scenario: Consult an already prepared supper
+
+- **WHEN** someone reopens Friday's prepared lasagna
+- **THEN** ingredients and instructions remain readable with the prepared portions, without a second completion prompt or changed actual preparation date
+
+### Requirement: Keep cooking independent of ingredient correction publication
+
+Cooking reads and source consultation SHALL NOT publish ingredient corrections or change household report membership. Recipe corrections SHALL use the existing guarded Edit and Save flow. Current checks, instruction position, drafts, captured occurrence and completion SHALL retain their existing owners across consultation and existing household reporting.
+
+#### Scenario: Inspect evidence while cooking
+
+- **WHEN** the cook opens an available original source or recipe detail
+- **THEN** source consultation alone neither changes canonical amounts nor acknowledges household reports or completes the occurrence
+- **AND** returning retains mounted preparation checks and reading position under the existing consultation requirements
+
+#### Scenario: Canonical correction becomes available remotely
+
+- **WHEN** another member saves changed canonical ingredients or basis for the active dated cooking context
+- **THEN** the existing changed-quantities refresh path offers an explicit refresh with honest pending/failure behavior
+- **AND** late prior-revision responses cannot silently install obsolete quantities or discard unrelated cooking work
+
+#### Scenario: Temporary detail preview before returning to cooking
+
+- **WHEN** the person selects a temporary ingredient preview in detail and returns to cooking
+- **THEN** cooking retains its original or captured dated context instead of adopting the temporary count or any ingredient draft not saved
+
+### Requirement: Project validated ingredient uses without changing unrelated instruction text
+
+Cooking SHALL project only validated ingredient-use spans from the same original content revision and serving context as its ingredient list. Time, temperature, equipment, package capacities and unrelated numbers SHALL stay unchanged. Uses SHALL allocate existing demand without adding grocery requirements.
+
+#### Scenario: Ingredient and fixed numbers together
+
+- **WHEN** a doubled recipe step has verified 50 g partial use, 400 g package capacity, 20 minutes and 180 °C
+- **THEN** only the use becomes 100 g; capacity, time and temperature remain unchanged
+
+#### Scenario: Save ingredient-only correction
+
+- **WHEN** a guarded ingredient correction is saved
+- **THEN** original instruction text/order/sections stay retained and dependent quantity bindings revalidate before projected replacement
+
+#### Scenario: Split oil
+
+- **WHEN** total oil is 2 tbsp with two validated 1 tbsp allocations and portions double
+- **THEN** steps show 2 tbsp each and groceries count 4 tbsp total, never 8 tbsp
+
+### Requirement: Keep uncertain step scaling quiet and nonblocking
+
+A stale, overlapping, missing, contradictory or unverified binding SHALL leave its affected source text unchanged without disabling cooking or eligible completion. Other valid bindings SHALL project. Relevant scaled step wording SHALL retain correction/source access without a routine contextual uncertainty notice or per-step warning clutter. Actual failure/error feedback and explicit changed-content Refresh controls SHALL remain available.
+
+#### Scenario: Mixed coverage
+
+- **WHEN** one step amount is valid and another binding is uncertain
+- **THEN** the valid amount scales and uncertain text remains readable without a routine contextual notice or a claim that all amounts were adjusted
+
+#### Scenario: Span mismatch
+
+- **WHEN** a repeated ingredient phrase or Unicode edit no longer matches a validated span
+- **THEN** no arbitrary occurrence is replaced and unaffected bindings remain usable
+
+#### Scenario: Unknown basis
+
+- **WHEN** recipe basis is unknown
+- **THEN** trusted original measurements and step wording remain available without an invented multiplier or cooking block
+
+### Requirement: Represent bounded ingredient-use allocation roles
+
+Validated uses SHALL distinguish mention, whole total, original absolute partial, relative fraction, remainder, fixed and per-item meaning. Numeric remainder SHALL require a defined compatible exhaustive allocation sequence. Ambiguous alternatives, over-allocation and unknown or incompatible uses SHALL not yield fabricated exact amounts.
+
+#### Scenario: Absolute partial and fraction
+
+- **WHEN** total is 200 g with absolute 50 g use and a separate explicit half use at factor 1.5
+- **THEN** absolute use renders 75 g, half stays half and any numeric half display agrees with projected demand
+
+#### Scenario: Remainder
+
+- **WHEN** known total 2 tbsp has a validated 1 tbsp prior use and explicit final remainder
+- **THEN** double portions yields a provable 2 tbsp remainder; unknown or incompatible prior use keeps remainder wording without an invented number
+
+#### Scenario: Per item
+
+- **WHEN** a verified step says 1/2 tsp on each of 4 pieces and portions double
+- **THEN** the linked count becomes 8 and the per-item dose remains 1/2 tsp
+
+#### Scenario: Over-allocation and alternatives
+
+- **WHEN** explicit exhaustive uses exceed the total or alternative branches cannot be identified
+- **THEN** contradictory numeric bindings/remainders remain uncertain rather than increasing grocery demand
+
+### Requirement: Preserve explicit partial uses after ingredient-total correction
+
+An ingredient-total correction SHALL preserve saved original absolute partial-use amounts; those amounts SHALL still scale with portions. Relative fractions SHALL remain relative to the corrected total and proven whole uses SHALL track it. Inconsistent allocations SHALL retain readable source wording and correction/source access without a routine uncertainty notice, cooking block or silent redistribution.
+
+#### Scenario: Correct total without rewriting partial use
+
+- **WHEN** total pasta changes from 200 g to 250 g while a validated step explicitly uses 50 g
+- **THEN** its saved use stays 50 g and a portion factor of 1.5 renders 75 g, not 93.75 g or the whole total
+
+#### Scenario: Relative half follows corrected total
+
+- **WHEN** a step says add half and total changes from 200 g to 250 g
+- **THEN** it remains half; any numeric original-basis annotation is 125 g and portion scaling uses that relationship
+
+#### Scenario: Corrected total makes allocations inconsistent
+
+- **WHEN** a total is reduced below its exhaustive explicit uses or a remainder becomes unprovable
+- **THEN** affected numeric bindings/remainders revalidate or become uncertain with readable wording and correction/source access, while cooking and eligible completion remain available

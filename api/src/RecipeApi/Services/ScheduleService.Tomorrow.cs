@@ -1,4 +1,3 @@
-using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using RecipeApi.Dto;
@@ -18,8 +17,7 @@ public partial class ScheduleService
         if (context.WeekStart(dto.TargetWeekOffset ?? dto.WeekOffset).AddDays(dto.ToIndex) != destination)
             throw new ArgumentException("Tomorrow must target the next calendar day.");
         var affected = new SortedSet<DateOnly> { GetMonday(sourceDate), GetMonday(destination) };
-        await using var transaction = _dbContext.Database.IsRelational()
-            ? await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct) : null;
+        await using var transaction = await SupperServingsService.BeginAsync(_dbContext, ct);
         try
         {
             var source = await _dbContext.CalendarEvents.SingleOrDefaultAsync(e => e.Date == sourceDate && e.MealSlot == 0, ct);
@@ -77,6 +75,7 @@ public partial class ScheduleService
             }
             else source.Date = destination;
             await _dbContext.SaveChangesAsync(ct);
+            await EnlistSupperWeeksAsync(affected, ct);
             if (transaction is not null) await transaction.CommitAsync(ct);
         }
         catch (Exception ex) when (IsTomorrowConcurrencyConflict(ex))
@@ -91,10 +90,7 @@ public partial class ScheduleService
         foreach (var monday in affected)
         {
             var offset = GetWeekOffset(monday, context);
-            try { await _groceryRecomputeService.RecomputeForWeekAsync(monday, CancellationToken.None, context); }
-            catch (Exception ex) { complete = false; _logger.LogWarning(ex, "Tomorrow committed; grocery refresh failed for {Week}", monday); }
-            try { await _publisher.PublishWeekUpdatedAsync(await ReadScheduleAsync(offset, context), excludeConnectionId, echoSeq); }
-            catch (Exception ex) { complete = false; _logger.LogWarning(ex, "Tomorrow committed; schedule publication failed for {Week}", monday); }
+            complete &= await RefreshCommittedWeekAsync(monday, context, excludeConnectionId, echoSeq);
             try { await _publisher.PublishFillTheGapInvalidatedAsync(offset, monday, excludeConnectionId); }
             catch (Exception ex) { complete = false; _logger.LogWarning(ex, "Tomorrow committed; suggestion publication failed for {Week}", monday); }
         }

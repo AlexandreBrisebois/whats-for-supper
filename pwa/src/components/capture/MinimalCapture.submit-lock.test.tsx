@@ -13,6 +13,12 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/locales', () => ({
   t: (_key: string, defaultValue: string) => defaultValue,
   tWithVars: (_key: string, defaultValue: string) => defaultValue,
+  getLocale: () => 'en',
+  setLocale: vi.fn(),
+}));
+
+vi.mock('@/components/common/LocaleProvider', () => ({
+  useLocale: () => ({ locale: 'en', setCurrentLocale: vi.fn() }),
 }));
 
 vi.mock('@/hooks/useCapture', () => ({

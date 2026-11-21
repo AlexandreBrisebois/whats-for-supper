@@ -6,13 +6,23 @@ import {
   createDemoManagementUnavailableErrorFromDiscriminatorValue,
   createRecoveryErrorFromDiscriminatorValue,
   createRecoveryResultFromDiscriminatorValue,
+  serializeRecoveryRestoreRequest,
+  serializeRecoveryResult,
   type DemoManagementUnavailableError,
   type RecoveryError,
+  type RecoveryRestoreRequest,
   type RecoveryResult,
 } from '../../../../../models/index';
 // @ts-ignore
 import {
+  PreflightRequestBuilderRequestsMetadata,
+  type PreflightRequestBuilder,
+} from './preflight/index';
+// @ts-ignore
+import {
   type BaseRequestBuilder,
+  type KeysToExcludeForNavigationMetadata,
+  type NavigationMetadata,
   type Parsable,
   type ParsableFactory,
   type RequestConfiguration,
@@ -25,7 +35,12 @@ import {
  */
 export interface WithSnapshotItemRequestBuilder extends BaseRequestBuilder<WithSnapshotItemRequestBuilder> {
   /**
-   * Replace household state from a validated exact snapshot
+   * The preflight property
+   */
+  get preflight(): PreflightRequestBuilder;
+  /**
+   * Historical empty-body restores keep their existing interpretation. New ordinary3/demo4 snapshots validate exact vocabulary/history authority and require the preflight destination revision when replacing a different valid head. Every new-format request captures and rechecks its destination baseline after writers drain, before the durable journal or live writes. An uncertain response must be reconciled through recovery status before another write.
+   * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecoveryResult>}
    * @throws {RecoveryError} error when the service returns a 400 status code
@@ -34,14 +49,17 @@ export interface WithSnapshotItemRequestBuilder extends BaseRequestBuilder<WithS
    * @throws {RecoveryError} error when the service returns a 503 status code
    */
   post(
+    body: RecoveryRestoreRequest,
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<RecoveryResult | undefined>;
   /**
-   * Replace household state from a validated exact snapshot
+   * Historical empty-body restores keep their existing interpretation. New ordinary3/demo4 snapshots validate exact vocabulary/history authority and require the preflight destination revision when replacing a different valid head. Every new-format request captures and rechecks its destination baseline after writers drain, before the durable journal or live writes. An uncertain response must be reconciled through recovery status before another write.
+   * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toPostRequestInformation(
+    body: RecoveryRestoreRequest,
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
 }
@@ -50,6 +68,17 @@ export interface WithSnapshotItemRequestBuilder extends BaseRequestBuilder<WithS
  */
 export const WithSnapshotItemRequestBuilderUriTemplate =
   '{+baseurl}/api/management/recovery/restore/{snapshotId}';
+/**
+ * Metadata for all the navigation properties in the request builder.
+ */
+export const WithSnapshotItemRequestBuilderNavigationMetadata: Record<
+  Exclude<keyof WithSnapshotItemRequestBuilder, KeysToExcludeForNavigationMetadata>,
+  NavigationMetadata
+> = {
+  preflight: {
+    requestsMetadata: PreflightRequestBuilderRequestsMetadata,
+  },
+};
 /**
  * Metadata for all the requests in the request builder.
  */
@@ -65,6 +94,9 @@ export const WithSnapshotItemRequestBuilderRequestsMetadata: RequestsMetadata = 
     },
     adapterMethodName: 'send',
     responseBodyFactory: createRecoveryResultFromDiscriminatorValue,
+    requestBodyContentType: 'application/json',
+    requestBodySerializer: serializeRecoveryRestoreRequest,
+    requestInformationContentSetMethod: 'setContentFromParsable',
   },
 };
 /* tslint:enable */

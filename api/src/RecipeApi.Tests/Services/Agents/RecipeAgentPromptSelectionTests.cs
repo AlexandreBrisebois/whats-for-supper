@@ -1,3 +1,4 @@
+using RecipeApi.Tests.Infrastructure;
 using System.Text;
 using System.Text.Json;
 using FsCheck;
@@ -29,7 +30,8 @@ public class RecipeAgentPromptSelectionTests
             string aiExtractionResponse,
             string aiDescriptionResponse = "A delicious recipe.",
             string? targetLanguage = null,
-            string? aiRefinementResponse = null)
+            string? aiRefinementResponse = null,
+            Guid? recipeId = null)
     {
         var storage = new InMemoryStorageProvider();
         var repo = new RecipeRepository(storage);
@@ -71,14 +73,19 @@ public class RecipeAgentPromptSelectionTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         var db = new RecipeDbContext(dbOptions);
+        if (recipeId is { } savedId)
+        {
+            db.Recipes.Add(new Recipe { Id = savedId, Name = "Pending" });
+            db.SaveChanges();
+        }
 
         var agent = new RecipeAgent(
             chatClientMock.Object,
-            repo,
             promptRepoMock.Object,
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
-            db,
+            new RecipeFilePublicationStore(db, repo, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(),
+                new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, repo.StorageProvider, new SystemClock())),
             "ExtractRecipe");
 
         return (agent, storage, repo, promptRepoMock, chatClientMock, capturedMessages);
@@ -128,7 +135,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 0);
         await repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe</body></html>", CancellationToken.None);
@@ -146,7 +153,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -173,7 +180,7 @@ public class RecipeAgentPromptSelectionTests
               ]
             }
             """;
-        var (agent, storage, _, _, _, capturedMessages) = CreateSut(flatSteps);
+        var (agent, storage, _, _, _, capturedMessages) = CreateSut(flatSteps, recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
@@ -208,7 +215,7 @@ public class RecipeAgentPromptSelectionTests
             """;
         var (agent, storage, _, _, _, capturedMessages) = CreateSut(
             unusableInstructions,
-            aiRefinementResponse: refinedInstructions);
+            aiRefinementResponse: refinedInstructions, recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
@@ -234,12 +241,13 @@ public class RecipeAgentPromptSelectionTests
             """;
         var (agent, storage, _, _, _, _) = CreateSut(
             unusableInstructions,
-            aiRefinementResponse: unusableInstructions);
+            aiRefinementResponse: unusableInstructions, recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
-        var exception = await Assert.ThrowsAsync<Exception>(() => agent.DoExtractRecipeAsync(recipeId, CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<RecipeContentReviewException>(() => agent.DoExtractRecipeAsync(recipeId, CancellationToken.None));
 
+        Assert.Equal(["steps"], exception.Reasons);
         Assert.Contains("usable instruction step", exception.Message);
         Assert.Null(await storage.LoadAsync("recipes", $"{recipeId}/recipe.json"));
     }
@@ -248,7 +256,7 @@ public class RecipeAgentPromptSelectionTests
     public async Task ImageExtraction_WithRepairSnapshot_AddsDelimitedUntrustedIngredientsFocus()
     {
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, _, _, capturedMessages) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, _, _, capturedMessages) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
@@ -276,7 +284,7 @@ public class RecipeAgentPromptSelectionTests
     public async Task UrlExtraction_WithRepairSnapshot_AddsDelimitedUntrustedStepsFocus()
     {
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, _, _, capturedMessages) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, _, _, capturedMessages) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId);
         await repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe</body></html>", CancellationToken.None);
 
@@ -300,7 +308,7 @@ public class RecipeAgentPromptSelectionTests
     public async Task NormalExtraction_OmitsUserReportedFocus()
     {
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, _, _, capturedMessages) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, _, _, capturedMessages) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId);
 
@@ -317,7 +325,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, promptRepoMock, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 0);
         // No content.html, no images
@@ -336,7 +344,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, _, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, _, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 0);
         await repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe page</body></html>", CancellationToken.None);
@@ -359,7 +367,7 @@ public class RecipeAgentPromptSelectionTests
         // Arrange
         var recipeId = Guid.NewGuid();
         var targetLanguage = "French";
-        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage);
+        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage, recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -380,7 +388,7 @@ public class RecipeAgentPromptSelectionTests
         // Arrange
         var recipeId = Guid.NewGuid();
         var targetLanguage = "NONE";
-        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage);
+        var (agent, storage, repo, _, chatClientMock, capturedMessages) = CreateSut(ValidRecipeJson(), targetLanguage: targetLanguage, recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -400,7 +408,7 @@ public class RecipeAgentPromptSelectionTests
     {
         // Arrange
         var recipeId = Guid.NewGuid();
-        var (agent, storage, _, _, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, _, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         await WriteRecipeInfo(storage, recipeId, imageCount: 1);
         await WriteImage(storage, recipeId, 0);
@@ -424,7 +432,7 @@ public class RecipeAgentPromptSelectionTests
     public async Task ImageExtraction_SendsEveryPageInOrder_WithItsActualMediaType(string extension, string mediaType, int count)
     {
         var id = Guid.NewGuid();
-        var (agent, storage, _, _, _, captured) = CreateSut(ValidRecipeJson());
+        var (agent, storage, _, _, _, captured) = CreateSut(ValidRecipeJson(), recipeId: id);
         await WriteRecipeInfo(storage, id, count);
         for (var i = 0; i < count; i++)
         {
@@ -477,16 +485,16 @@ public class RecipeAgentPromptSelectionTests
             nonWhitespaceStringGen.ToArbitrary(),
             (recipeName, ingredient) =>
         {
-        var recipeId = Guid.NewGuid();
+            var recipeId = Guid.NewGuid();
 
-        // Build a valid SchemaOrgRecipe JSON — include an extra "rawHtml" field to stress-test
-        // that the agent strips it during normalization
-        var aiResponse = JsonSerializer.Serialize(new
-        {
-            name = recipeName,
-            recipeIngredient = new[] { ingredient },
-            recipeInstructions = new object[]
+            // Build a valid SchemaOrgRecipe JSON — include an extra "rawHtml" field to stress-test
+            // that the agent strips it during normalization
+            var aiResponse = JsonSerializer.Serialize(new
             {
+                name = recipeName,
+                recipeIngredient = new[] { ingredient },
+                recipeInstructions = new object[]
+                {
                 new Dictionary<string, object>
                 {
                     ["@type"] = "HowToSection",
@@ -499,34 +507,34 @@ public class RecipeAgentPromptSelectionTests
                         }
                     }
                 }
-            },
-            rawHtml = "<html>should be stripped</html>"
-        });
+                },
+                rawHtml = "<html>should be stripped</html>"
+            });
 
-        var (agent, storage, repo, _, _, _) = CreateSut(aiResponse);
+            var (agent, storage, repo, _, _, _) = CreateSut(aiResponse, recipeId: recipeId);
 
-        // Set up: content.html path (web extraction)
-        var info = new RecipeInfo { Id = recipeId, ImageCount = 0 };
-        storage.SaveAsync("recipes", $"{recipeId}/recipe.info",
-            JsonSerializer.Serialize(info, JsonDefaults.CamelCase)).GetAwaiter().GetResult();
-        repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe</body></html>", CancellationToken.None)
-            .GetAwaiter().GetResult();
+            // Set up: content.html path (web extraction)
+            var info = new RecipeInfo { Id = recipeId, ImageCount = 0 };
+            storage.SaveAsync("recipes", $"{recipeId}/recipe.info",
+                JsonSerializer.Serialize(info, JsonDefaults.CamelCase)).GetAwaiter().GetResult();
+            repo.SaveContentHtmlAsync(recipeId, "<html><body>Recipe</body></html>", CancellationToken.None)
+                .GetAwaiter().GetResult();
 
-        agent.DoExtractRecipeAsync(recipeId, CancellationToken.None).GetAwaiter().GetResult();
+            agent.DoExtractRecipeAsync(recipeId, CancellationToken.None).GetAwaiter().GetResult();
 
-        var recipeJsonBytes = storage.LoadAsync("recipes", $"{recipeId}/recipe.json").GetAwaiter().GetResult();
-        if (recipeJsonBytes == null) return true; // no file written — acceptable if name was empty
+            var recipeJsonBytes = storage.LoadAsync("recipes", $"{recipeId}/recipe.json").GetAwaiter().GetResult();
+            if (recipeJsonBytes == null) return true; // no file written — acceptable if name was empty
 
-        var recipeJsonStr = Encoding.UTF8.GetString(recipeJsonBytes);
-        try
-        {
-            using var doc = JsonDocument.Parse(recipeJsonStr);
-            return !doc.RootElement.TryGetProperty("rawHtml", out _);
-        }
-        catch (JsonException)
-        {
-            return true; // unparseable JSON has no rawHtml by definition
-        }
+            var recipeJsonStr = Encoding.UTF8.GetString(recipeJsonBytes);
+            try
+            {
+                using var doc = JsonDocument.Parse(recipeJsonStr);
+                return !doc.RootElement.TryGetProperty("rawHtml", out _);
+            }
+            catch (JsonException)
+            {
+                return true; // unparseable JSON has no rawHtml by definition
+            }
         });
     }
 
@@ -546,7 +554,7 @@ public class RecipeAgentPromptSelectionTests
         var imageCount = rawImageCount.Get % 6; // 0..5
 
         var recipeId = Guid.NewGuid();
-        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson());
+        var (agent, storage, repo, promptRepoMock, _, _) = CreateSut(ValidRecipeJson(), recipeId: recipeId);
 
         // Capture which PromptTypes were requested
         var capturedPromptTypes = new List<PromptType>();
@@ -628,66 +636,66 @@ public class RecipeAgentPromptSelectionTests
             ingredientCountGen.ToArbitrary(),
             (recipeName, ingredientCount) =>
         {
-        // Clamp ingredient count to 1–5
-        var count = (ingredientCount % 5) + 1;
-        var ingredients = Enumerable.Range(1, count).Select(i => $"{i} cup ingredient{i}").ToArray();
+            // Clamp ingredient count to 1–5
+            var count = (ingredientCount % 5) + 1;
+            var ingredients = Enumerable.Range(1, count).Select(i => $"{i} cup ingredient{i}").ToArray();
 
-        var aiResponse = JsonSerializer.Serialize(new SchemaOrgRecipe
-        {
-            Name = recipeName,
-            RecipeIngredient = ingredients.ToList(),
-            RecipeInstructions =
-            [
-                new HowToSection
+            var aiResponse = JsonSerializer.Serialize(new SchemaOrgRecipe
+            {
+                Name = recipeName,
+                RecipeIngredient = ingredients.ToList(),
+                RecipeInstructions =
+                [
+                    new HowToSection
                 {
                     ItemListElement = [new HowToStep { Text = "Mix the ingredients." }]
                 }
-            ]
-        }, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
+                ]
+            }, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
 
-        // ── Web path (content.html present) ──────────────────────────────────
-        var webRecipeId = Guid.NewGuid();
-        var (webAgent, webStorage, webRepo, _, _, _) = CreateSut(aiResponse);
+            // ── Web path (content.html present) ──────────────────────────────────
+            var webRecipeId = Guid.NewGuid();
+            var (webAgent, webStorage, webRepo, _, _, _) = CreateSut(aiResponse, recipeId: webRecipeId);
 
-        var webInfo = new RecipeInfo { Id = webRecipeId, ImageCount = 0 };
-        webStorage.SaveAsync("recipes", $"{webRecipeId}/recipe.info",
-            JsonSerializer.Serialize(webInfo, JsonDefaults.CamelCase)).GetAwaiter().GetResult();
-        webRepo.SaveContentHtmlAsync(webRecipeId, "<html><body>Recipe</body></html>", CancellationToken.None)
-            .GetAwaiter().GetResult();
+            var webInfo = new RecipeInfo { Id = webRecipeId, ImageCount = 0 };
+            webStorage.SaveAsync("recipes", $"{webRecipeId}/recipe.info",
+                JsonSerializer.Serialize(webInfo, JsonDefaults.CamelCase)).GetAwaiter().GetResult();
+            webRepo.SaveContentHtmlAsync(webRecipeId, "<html><body>Recipe</body></html>", CancellationToken.None)
+                .GetAwaiter().GetResult();
 
-        webAgent.DoExtractRecipeAsync(webRecipeId, CancellationToken.None).GetAwaiter().GetResult();
+            webAgent.DoExtractRecipeAsync(webRecipeId, CancellationToken.None).GetAwaiter().GetResult();
 
-        var webJsonBytes = webStorage.LoadAsync("recipes", $"{webRecipeId}/recipe.json").GetAwaiter().GetResult();
-        if (webJsonBytes == null) return false;
+            var webJsonBytes = webStorage.LoadAsync("recipes", $"{webRecipeId}/recipe.json").GetAwaiter().GetResult();
+            if (webJsonBytes == null) return false;
 
-        var webRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(
-            Encoding.UTF8.GetString(webJsonBytes), JsonDefaults.CaseInsensitive);
-        if (string.IsNullOrWhiteSpace(webRecipe?.Name)) return false;
-        if (webRecipe.RecipeIngredient == null) return false;
-        if (webRecipe.RecipeInstructions == null) return false;
+            var webRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(
+                Encoding.UTF8.GetString(webJsonBytes), JsonDefaults.CaseInsensitive);
+            if (string.IsNullOrWhiteSpace(webRecipe?.Name)) return false;
+            if (webRecipe.RecipeIngredient == null) return false;
+            if (webRecipe.RecipeInstructions == null) return false;
 
-        // ── Photo path (images only) ──────────────────────────────────────────
-        var photoRecipeId = Guid.NewGuid();
-        var (photoAgent, photoStorage, _, _, _, _) = CreateSut(aiResponse);
+            // ── Photo path (images only) ──────────────────────────────────────────
+            var photoRecipeId = Guid.NewGuid();
+            var (photoAgent, photoStorage, _, _, _, _) = CreateSut(aiResponse, recipeId: photoRecipeId);
 
-        var photoInfo = new RecipeInfo { Id = photoRecipeId, ImageCount = 1 };
-        photoStorage.SaveAsync("recipes", $"{photoRecipeId}/recipe.info",
-            JsonSerializer.Serialize(photoInfo, JsonDefaults.CamelCase)).GetAwaiter().GetResult();
-        photoStorage.SaveAsync("recipes", $"{photoRecipeId}/original/0.jpg", new byte[] { 0xFF, 0xD8, 0xFF })
-            .GetAwaiter().GetResult();
+            var photoInfo = new RecipeInfo { Id = photoRecipeId, ImageCount = 1 };
+            photoStorage.SaveAsync("recipes", $"{photoRecipeId}/recipe.info",
+                JsonSerializer.Serialize(photoInfo, JsonDefaults.CamelCase)).GetAwaiter().GetResult();
+            photoStorage.SaveAsync("recipes", $"{photoRecipeId}/original/0.jpg", new byte[] { 0xFF, 0xD8, 0xFF })
+                .GetAwaiter().GetResult();
 
-        photoAgent.DoExtractRecipeAsync(photoRecipeId, CancellationToken.None).GetAwaiter().GetResult();
+            photoAgent.DoExtractRecipeAsync(photoRecipeId, CancellationToken.None).GetAwaiter().GetResult();
 
-        var photoJsonBytes = photoStorage.LoadAsync("recipes", $"{photoRecipeId}/recipe.json").GetAwaiter().GetResult();
-        if (photoJsonBytes == null) return false;
+            var photoJsonBytes = photoStorage.LoadAsync("recipes", $"{photoRecipeId}/recipe.json").GetAwaiter().GetResult();
+            if (photoJsonBytes == null) return false;
 
-        var photoRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(
-            Encoding.UTF8.GetString(photoJsonBytes), JsonDefaults.CaseInsensitive);
-        if (string.IsNullOrWhiteSpace(photoRecipe?.Name)) return false;
-        if (photoRecipe.RecipeIngredient == null) return false;
-        if (photoRecipe.RecipeInstructions == null) return false;
+            var photoRecipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(
+                Encoding.UTF8.GetString(photoJsonBytes), JsonDefaults.CaseInsensitive);
+            if (string.IsNullOrWhiteSpace(photoRecipe?.Name)) return false;
+            if (photoRecipe.RecipeIngredient == null) return false;
+            if (photoRecipe.RecipeInstructions == null) return false;
 
-        return true;
+            return true;
         });
     }
 }

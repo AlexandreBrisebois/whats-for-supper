@@ -84,23 +84,28 @@ Queue reads SHALL order by descending like count, then by last-cooked date ascen
 
 ### Requirement: Display recipe card facts and vote controls
 
-Cards SHALL display the recipe name and named-image alternative text. Usable formatted total time SHALL appear once in a lower-left hero badge matching Recipes stack cards; absent time SHALL omit the badge. Cuisine and meal-type pills and the former time footer SHALL be absent. The front card SHALL retain right-drag like and left-drag pass; buttons named Like recipe and Dislike recipe SHALL remain alternatives and be disabled for an empty queue.
+Cards SHALL display the recipe name, named-image alt text, and up to two clamped lines of non-empty description, omitted when blank. Usable formatted total time SHALL appear once in a solid warm-cream lower-left hero badge preserving localized Ready in copy; cuisine and meal-type pills SHALL remain absent. Right-drag like, left-drag pass, and WCAG AA `Like recipe` / `Dislike recipe` controls SHALL remain operable.
 
 #### Scenario: Card loaded
 
-- **WHEN** a front card has cuisine, meal types and total time
-- **THEN** the name and named image appear with one formatted Ready in badge inside the hero and with Like recipe and Dislike recipe controls
-- **AND** cuisine and meal-type pills and the former time footer are absent
+- **WHEN** a front card has a non-empty description, cuisine, meal types, and usable total time
+- **THEN** the name, named image, clamped supporting description, one readable warm-cream Ready in badge, and `Like recipe` / `Dislike recipe` controls appear
+- **AND** cuisine and meal-type pills remain absent
+
+#### Scenario: No usable time
+
+- **WHEN** the existing duration formatting yields an empty value or description is blank
+- **THEN** no Ready in badge or empty description/time block appears, while the title and voting controls remain available
+
+#### Scenario: Card loaded without description
+
+- **WHEN** a front card has usable total time and an empty or whitespace-only description
+- **THEN** no blank description block renders beneath the title while the hero image, Ready in badge, title, and voting controls remain intact
 
 #### Scenario: Empty queue controls
 
 - **WHEN** the queue is empty
 - **THEN** like and dislike buttons are disabled
-
-#### Scenario: No usable time
-
-- **WHEN** the existing duration formatting yields an empty value for a card
-- **THEN** no Ready in badge or empty time footer appears, while the title and voting remain available
 
 #### Scenario: Vote after presentation change
 
@@ -128,11 +133,13 @@ An exhausted queue without confirmed convergence SHALL offer Refresh Feed and a 
 - **THEN** the page requests categories and the Supper queue again without resetting stored votes
 
 #### Scenario: Queue ends before household convergence
+
 - **WHEN** a member has no cards left while confirmed matches do not cover the active week's slots
 - **THEN** existing warm exhausted-feed copy and Refresh Feed remain, Capture is reachable, and Nudge family opens the reused sharing dialog without sending anything automatically
 - **AND** the page does not show the Menu's In celebration or claim that named family members have not voted
 
 #### Scenario: Early voting queue ends without a week owner
+
 - **WHEN** the queue ends before any week owns voting
 - **THEN** existing exhausted-feed behavior remains without inventing an active week or household convergence
 
@@ -320,12 +327,13 @@ Smart defaults SHALL exclude recipe identities already selected in persisted rec
 - **THEN** preSelectedRecipes and openSlots are empty even if qualifying candidates exist
 
 #### Scenario: Already selected recipe also has consensus
+
 - **WHEN** A is already persisted in the requested week and both A and B have consensus with one empty date
 - **THEN** only B can cover that date and A contributes no additional candidate to the available-slot count
 
 ### Requirement: Distinguish unanimity metadata from persisted locks
 
-Suggestions SHALL rank unanimous candidates before other consensus candidates, then by last-cooked date descending. Each suggestion SHALL carry its recipe display facts, like count, family size, day index and unanimity flag. It SHALL return suggestion isLocked metadata without that metadata establishing a persisted calendar lock.
+Suggestions SHALL rank unanimous candidates before other consensus candidates, then by last-cooked date descending, then by ascending recipe identity for deterministic selection and placement. Each suggestion SHALL carry its recipe display facts, like count, family size, day index and unanimity flag. It SHALL return suggestion isLocked metadata without that metadata establishing a persisted calendar lock.
 
 #### Scenario: Unanimous suggestion
 
@@ -336,6 +344,11 @@ Suggestions SHALL rank unanimous candidates before other consensus candidates, t
 
 - **WHEN** a candidate meets consensus without unanimity
 - **THEN** its unanimousVote flag is false without establishing a persisted lock
+
+#### Scenario: Tied never-cooked consensus recipes
+
+- **WHEN** multiple eligible consensus recipes share the same unanimity status and null or equal last-cooked date, including when more tied candidates qualify than open slots
+- **THEN** every read selects the same candidates ordered by ascending recipe identity and assigns them to the same open day indices across all household members
 
 ### Requirement: Keep suggestion display and assignment distinct at the discovery handoff
 
@@ -370,10 +383,12 @@ On a later discovery read, a recipe whose requesting-member vote has been remove
 Historical ranking SHALL operate only within the existing member-eligible Discovery queue and retain vote-count then cooked-recency priority. History SHALL not restore a member-voted, unavailable or non-discoverable recipe to that queue.
 
 #### Scenario: Current votes dominate
+
 - **WHEN** A has more current likes than B but B has greater H
 - **THEN** A remains first
 
 #### Scenario: Historical tie
+
 - **WHEN** A and B share live count and cooked date but B has greater H
 - **THEN** B precedes A without changing either displayed vote count
 
@@ -382,22 +397,27 @@ Historical ranking SHALL operate only within the existing member-eligible Discov
 Discovery SHALL exclude matching recipe-backed CalendarEvents in the current deployment-calendar week with status Planned (0), Locked (1) or Cooked (2). This includes manual assignment before voting closes. Uncommitted suggestions, Skipped (3) and AwaitingConsensus (4) SHALL not count as committed selections. This gate SHALL use existing week events, not a new selection-history store, and SHALL not restrict Search/Browse.
 
 #### Scenario: Manual selection before close
+
 - **WHEN** a recipe is assigned to this week's meal plan through Quick Find or Search while voting is still open
 - **THEN** it is excluded from current-week Discovery without requiring vote close or a cooked event
 
 #### Scenario: Pending suggestion only
+
 - **WHEN** a recipe is only a displayed pending suggestion and has not been assigned
 - **THEN** the suggestion alone does not count as selected for this exclusion
 
 #### Scenario: Future-week plan
+
 - **WHEN** a recipe is assigned only to a future week
 - **THEN** that assignment alone does not exclude it from current-week Discovery under the current-week scope
 
 #### Scenario: Remove the selected meal
+
 - **WHEN** the recipe is no longer selected anywhere in the current week
 - **THEN** plan membership no longer excludes it; all other eligibility, including effective cooked suppression, still applies
 
 #### Scenario: Plan visibility is not library visibility
+
 - **WHEN** a recipe is excluded from Discovery because it is selected this week
 - **THEN** normal Search/Browse and direct recipe detail remain accessible under their existing rules
 
@@ -406,14 +426,17 @@ Discovery SHALL exclude matching recipe-backed CalendarEvents in the current dep
 The proposed interaction contract SHALL remove a newly selected recipe from Discovery after assignment commits through existing invalidation and refetch, without waiting for Dreaming. Queue reads and category counts SHALL use the same plan-membership guard. Stale responses SHALL not override newer selection state. This SHALL NOT recompute cooked cooldown on reads.
 
 #### Scenario: Card is open during another member's selection
+
 - **WHEN** an assignment commits while another member has that recipe in their Discovery queue
 - **THEN** invalidation and refresh remove the card; a subsequent queue read also excludes it
 
 #### Scenario: Assignment fails
+
 - **WHEN** assignment persistence fails before commit
 - **THEN** an optimistic selection alone does not permanently remove the recipe from Discovery
 
 #### Scenario: Delayed response
+
 - **WHEN** a pre-assignment queue response arrives after a post-assignment refresh
 - **THEN** the stale response cannot restore the selected card
 
@@ -422,14 +445,17 @@ The proposed interaction contract SHALL remove a newly selected recipe from Disc
 Discovery plan exclusion SHALL not require the week to be closed or an individual status-1 validation request. A committed Planned event SHALL be sufficient. Historical vote rows SHALL remain unchanged by this eligibility check; it SHALL not imply a historical-priority veto on other surfaces.
 
 #### Scenario: Planned before weekly close
+
 - **WHEN** Quick Find or Search commits a Planned (0) recipe event for this week while voting remains open
 - **THEN** Discovery excludes that recipe without calling the API-only AwaitingConsensus-to-Locked transition
 
 #### Scenario: Cooked or still awaiting confirmation
+
 - **WHEN** A has a current-week Cooked (2) event and B only an AwaitingConsensus (4) event
 - **THEN** A is excluded by committed-plan membership while B is not excluded by that gate alone
 
 #### Scenario: Keep historical evidence
+
 - **WHEN** last week's liked-unselected recipe is committed to this week's plan
 - **THEN** it leaves current-week Discovery while its stored history remains; normal Search/Browse do not gain a new historical-boost veto
 
@@ -438,18 +464,22 @@ Discovery plan exclusion SHALL not require the week to be closed or an individua
 Coverage SHALL use the active owner's absolute week, persisted occupied dates and distinct consensus candidates not already selected in that week. Required slots SHALL be unoccupied dates before pending suggestions are placed. Covered slots SHALL be the lesser of required slots and eligible distinct candidates. Existing consensus and ranking rules SHALL remain unchanged.
 
 #### Scenario: Three slots and three matches
+
 - **WHEN** four dates have Other plans and three distinct eligible recipes have confirmed consensus
 - **THEN** required and covered slots are both three and the session converges without a fourth match
 
 #### Scenario: One saved recipe
+
 - **WHEN** four dates have Other plans and one has a saved recipe
 - **THEN** two additional distinct eligible matches suffice; neither the saved recipe nor pending UI content reduces the target twice
 
 #### Scenario: Missing consensus
+
 - **WHEN** four stored members produce only two likes for a candidate
 - **THEN** that candidate does not count toward coverage under the unchanged threshold of three
 
 #### Scenario: Unknown progress
+
 - **WHEN** a read is pending, fails or lacks usable session identity
 - **THEN** no new convergence claim is derived from empty arrays, optimistic swipes or retained Planner suggestions
 
@@ -458,56 +488,68 @@ Coverage SHALL use the active owner's absolute week, persisted occupied dates an
 Discovery SHALL replace its voting arena with a static green success card when authoritative session state reports convergence, even with cards remaining. English copy SHALL be "Menu's in!" and "See your matches", with French equivalents. The localized description field SHALL be empty in both languages. The card SHALL reuse the cooked-success visual, centered above navigation, with a decorative circled check. Existing app navigation SHALL remain available; no sound or confetti SHALL occur.
 
 #### Scenario: Another member completes the menu
+
 - **WHEN** the client reconciles a converged active round after another member's vote
 - **THEN** it shows the celebration without requiring another swipe, queue exhaustion or a local match counter
 
 #### Scenario: Returning member
+
 - **WHEN** a member opens Discovery during a still-open converged round
 - **THEN** successful session hydration shows the same celebration without requiring previous participation
 
 #### Scenario: Gesture in progress
+
 - **WHEN** convergence arrives while a card is being dragged
 - **THEN** the transition cancels any unsubmitted gesture without manufacturing a vote, leaves navigation usable and does not steal focus into a modal
 - **AND** any already submitted vote continues through normal processing
 
 #### Scenario: Asset fails to load
+
 - **WHEN** decorative image resources are unavailable
 - **THEN** accessible text still communicates "Menu's in!" and the matches action without dependence on image pixels or color
 
 #### Scenario: Late session update
+
 - **WHEN** a newer snapshot changes suggestions in the same converged round
 - **THEN** the card remains stable and immediately visible, including with reduced motion, and performs no automatic navigation
 
 #### Scenario: Usable screen area
+
 - **WHEN** the card renders on a 320px phone, phone portrait, tablet portrait or desktop
 - **THEN** it is centered in the usable area above the navigation dock without horizontal overflow, and the action remains reachable
 
 #### Scenario: Empty description
+
 - **WHEN** Discovery presents the success card in English or French
 - **THEN** the description field is empty
 
 #### Scenario: Readable action
+
 - **WHEN** Discovery presents the matches action on the green card
 - **THEN** its rendered foreground/background contrast is at least 4.5:1, including the translucent button hover background
-- **AND** Home's existing cooked-card presentation remains unchanged
+- **AND** Home's cooked-success card shares the same accessible Deep Herb celebration contrast while preserving its existing cooked copy and dismiss behavior
 
 ### Requirement: Continue recording votes after convergence
 
 Convergence SHALL NOT reject, cancel or rewrite otherwise valid votes. Votes received while the round is still open SHALL continue to affect consensus, counts and suggestion ordering under existing rules. Discovery SHALL remain stopped within that host lifetime. Convergence SHALL NOT freeze suggestions, persist assignments or capture history.
 
 #### Scenario: Late vote creates a match
+
 - **WHEN** an in-flight vote persists after convergence and creates another qualifying candidate
 - **THEN** updated suggestions follow existing ranking, fit only available dates, and leave Discovery celebrating
 
 #### Scenario: Late vote changes ranking
+
 - **WHEN** a late vote changes a candidate's unanimity and therefore its existing ranking
 - **THEN** Planner reconciles the revised pending suggestions without persisting them or replaying the celebration transition
 
 #### Scenario: Vote fails
+
 - **WHEN** a submitted vote fails before persistence
 - **THEN** that optimistic vote does not establish confirmed coverage; existing vote failure behavior remains unchanged
 
 #### Scenario: Ordinary close boundary
+
 - **WHEN** a vote competes with manual close
 - **THEN** existing serialized close semantics determine whether it belongs to the closing round or becomes an early vote afterward; convergence introduces no new rejection or clearing rule
 
@@ -516,14 +558,17 @@ Convergence SHALL NOT reject, cancel or rewrite otherwise valid votes. Votes rec
 An empty member queue SHALL NOT establish household convergence. Existing warm copy SHALL be retained unless it contradicts confirmed session state. Nudge family SHALL reuse existing link generation, Copy and optional native Share, with user initiation. This feature SHALL NOT infer who still needs to vote, send automatic reminders or introduce member-completion tracking.
 
 #### Scenario: Everyone may have voted without matches
+
 - **WHEN** a member exhausts their feed and the menu still lacks coverage
 - **THEN** Capture and refresh remain available without claiming that waiting for another member will necessarily solve the gap
 
 #### Scenario: User shares a nudge
+
 - **WHEN** the member explicitly invokes Share from the reused nudge dialog
 - **THEN** the existing warm invitation and generated voting link are passed to native sharing; dismissing the dialog changes no votes or plan state
 
 #### Scenario: New recipe later becomes available
+
 - **WHEN** the non-converged member returns or refreshes after new eligible recipes are available
 - **THEN** normal discovery queue rules allow voting without any reset of previously stored votes
 
@@ -532,18 +577,22 @@ An empty member queue SHALL NOT establish household convergence. Existing warm c
 Activating "See your matches" SHALL open the meal-plan tab for the authoritative converged session's absolute week, including after a prior grocery-tab visit. Navigation SHALL use the existing anchored-week route. Rendering or activating the card SHALL NOT assign meals, close voting, lock the week, clear votes or suppress future convergence. Home's cooked confirmation SHALL retain its existing copy and dismiss behavior.
 
 #### Scenario: Completed week differs from browser week
+
 - **WHEN** a member activates the action for a converged round whose week differs from browser today
 - **THEN** Planner opens with offset zero anchored to that round's week rather than browser today
 
 #### Scenario: Prior grocery tab and keyboard activation
+
 - **WHEN** Planner previously showed groceries and the member focuses the action and presses Enter or Space
 - **THEN** navigation opens the completed week's meal-plan tab without issuing lifecycle or assignment mutations
 
 #### Scenario: Returning to Discovery
+
 - **WHEN** the member returns to Discovery while that round remains converged
 - **THEN** the same card is available again
 
 #### Scenario: Home confirmation
+
 - **WHEN** Home shows its cooked-success card and the member dismisses it
 - **THEN** existing cooked copy and local dismiss behavior remain unchanged
 
@@ -578,3 +627,41 @@ The Discovery time badge SHALL use readable text on an opaque contrasting surfac
 - **THEN** the existing card drag and vote rules apply without a separate badge action
 - **AND** LOVE/PASS swipe feedback appears above the time badge during the drag, including where their bounds overlap
 - **AND** the badge retains its lower-left position and passive interactions
+
+### Requirement: Pulse navigation Discover control only during an open collecting session
+
+The primary bottom-navigation control SHALL show quiet Sunlight ochre (`Compass`, localized Discovery) when `unowned` or unavailable; add a reduced-motion-safe pulse when `collecting` with unvoted cards off `/discovery`; and show steady Garden green (`Check`, localized Menu's in / Menu prêt) persistently when `converged` until closed or superseded, opening that round's Planner meal-plan tab without mutation. The control SHALL NOT render any badge, dot or pip overlay in any state.
+
+#### Scenario: No voting session open on Home or Planner
+
+- **WHEN** the household has unvoted discoverable recipes in the catalog and the voting session phase is `unowned`, absent, or unavailable
+- **THEN** the primary bottom-navigation control renders statically in Sunlight ochre (`Compass`, localized `Discovery` / `Découverte`) without the pulsing animation, linking to `/discovery` for optional preemptive voting
+- **AND** no badge, dot or pip is rendered on the control
+
+#### Scenario: Open collecting voting session with unvoted cards
+
+- **WHEN** the authoritative voting session phase is `collecting` and unvoted discovery categories or cards remain
+- **THEN** while on Home, Planner, Recipes, or Profile, the bottom-navigation control displays Sunlight ochre with `Compass`, the pulsing animation (suppressed under `prefers-reduced-motion: reduce`), and a localized accessible label indicating active voting
+- **AND** no badge, dot or pip is rendered on the control, including when `prefers-reduced-motion: reduce` suppresses the pulse
+- **AND** it stops pulsing when active on `/discovery` or when the member has no remaining cards
+
+#### Scenario: Converged voting session displays persistent green Menu's in signal across routes
+
+- **WHEN** the authoritative voting session phase is `converged` with a valid round identity and absolute Monday
+- **THEN** on every route in both Standard AA and High Contrast AAA modes, the bottom-navigation medallion displays cooled-herb Garden green (`bg-garden-fill` with white `Check` icon and `text-garden-ink` label, without an infinite looping pulse), sets the visible label to `Menu's in` in English or `Menu prêt` in French, and exposes a localized accessible name indicating meal-plan matches are ready
+- **AND** that steady Garden green `Check` presentation persists across navigation and reloads until explicit voting closure returns the session to `unowned` or a new `collecting` round supersedes it
+
+#### Scenario: Activating converged bottom navigation opens the converged Planner week without mutation
+
+- **WHEN** a person activates the converged `Menu's in` / `Menu prêt` bottom-navigation link (by pointer or keyboard), including after a prior Grocery-tab visit, across a deployment week rollover, or while editing Portions
+- **THEN** navigation honors Planner's unsaved Portions departure guard when active and opens Planner's meal-plan tab for the converged round's absolute Monday (`/planner?weekOffset=0&referenceWeekStartDate=<monday>`) without assigning recipes, closing voting, or locking the week
+
+#### Scenario: Direct Discovery entry still shows the celebration card during convergence
+
+- **WHEN** a voter is already on `/discovery` when convergence arrives or navigates directly to `/discovery` (such as from a shared nudge link) while converged
+- **THEN** `/discovery` continues displaying the green `Menu's in!` celebration card with `See your matches` without auto-redirecting away from `/discovery`
+
+#### Scenario: Converged round with unavailable week identity falls back safely
+
+- **WHEN** the session phase reads `converged` without a valid absolute Monday week identity
+- **THEN** activating the primary bottom-navigation link falls back to `/discovery` rather than navigating to a guessed week

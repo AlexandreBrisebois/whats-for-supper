@@ -81,12 +81,18 @@ describe('runtime install identity', () => {
       const manifest = await GET().json();
       const metadata = await generateMetadata();
       expect(manifest.shortcuts[0]).toMatchObject({
+        name: 'Vote Together',
+        short_name: 'Vote',
+        description: 'Vote on supper ideas with your family',
+        url: '/discovery',
+      });
+      expect(manifest.shortcuts[1]).toMatchObject({
         name: 'Search',
         short_name: 'Search',
         description: 'Search your recipe library',
         url: '/recipes?focus=search',
       });
-      expect(manifest.shortcuts[1]).toMatchObject({
+      expect(manifest.shortcuts[2]).toMatchObject({
         name: 'Capture Meal',
         short_name: 'Capture',
         url: '/capture',

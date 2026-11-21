@@ -8,6 +8,7 @@ import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
 import { useFamilyStore } from '@/store/familyStore';
 import { PreviewFeaturesSection } from '@/components/profile/PreviewFeaturesSection';
+import { UsualPortionsSection } from '@/components/profile/UsualPortionsSection';
 
 interface SettingsPageContentProps {
   buildVersion?: string;
@@ -29,16 +30,16 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
       <div className="flex items-center gap-5">
         <button
           onClick={() => router.push(ROUTES.PROFILE)}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-white/40 backdrop-blur-xl border border-white/60 shadow-glass hover:bg-white/60 transition-all active:scale-90"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-white border border-chrome-line shadow-card hover:bg-cream-100 transition-all active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
           aria-label={t('buttons.back', 'Back')}
         >
-          <ChevronLeft className="h-6 w-6 text-terracotta" />
+          <ChevronLeft className="h-6 w-6 text-hearth-ink" />
         </button>
         <div>
-          <h1 className="font-outfit text-3xl font-bold text-charcoal tracking-tight leading-none">
+          <h1 className="font-heading text-3xl font-bold text-ink-body tracking-tight leading-none">
             {t('profile.settings', 'Settings')}
           </h1>
-          <p className="mt-1 text-base font-medium text-charcoal/60 leading-relaxed">
+          <p className="mt-1 text-base font-medium text-ink-muted leading-relaxed">
             {t('profile.settingsSubtitle', 'Family & app preferences')}
           </p>
         </div>
@@ -46,6 +47,8 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
 
       <div className="flex min-w-0 flex-col gap-8">
         <FamilyManagement />
+
+        <UsualPortionsSection />
 
         <FailedCapturesSection />
 
@@ -55,7 +58,7 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
       {buildVersion && (
         <p
           data-testid="build-version"
-          className="-mt-4 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-charcoal/35"
+          className="-mt-4 text-center text-xs font-medium text-ink-muted"
         >
           Build {buildVersion}
         </p>

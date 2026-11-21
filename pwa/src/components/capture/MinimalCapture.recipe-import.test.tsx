@@ -34,6 +34,12 @@ vi.mock('@/locales', () => ({
       value
     );
   },
+  getLocale: () => 'en',
+  setLocale: vi.fn(),
+}));
+
+vi.mock('@/components/common/LocaleProvider', () => ({
+  useLocale: () => ({ locale: 'en', setCurrentLocale: vi.fn() }),
 }));
 
 let mockImages: any[] = [];
@@ -335,6 +341,9 @@ describe('MinimalCapture recipe import', () => {
         expect.objectContaining({
           version: '1.0',
           recipe: expect.objectContaining({ name: 'Imported Shared Recipe' }),
+        }),
+        expect.objectContaining({
+          options: [expect.objectContaining({ maxRetries: 0 })],
         })
       );
       expect(mockSubmitRecipe).not.toHaveBeenCalled();
@@ -639,11 +648,11 @@ describe('MinimalCapture recipe import', () => {
     expect(mockById).toHaveBeenCalledWith(newRecipeId);
     expect(mockDeleteRecipe).toHaveBeenCalled();
 
-    // Verify toast is triggered and redirect to home happens
+    // Verify redirect to home happens without a redundant discard toast
     await waitFor(() => {
-      expect(mockAddToast).toHaveBeenCalledWith('Duplicate recipe discarded.');
       expect(mockPush).toHaveBeenCalledWith('/');
     });
+    expect(mockAddToast).not.toHaveBeenCalled();
   });
   it('observes bundle review/reject/reopen and the actual ready panel without picker or import-result facts', async () => {
     const view = render(<MinimalCapture preparedOnly />);

@@ -1,5 +1,6 @@
 """Exercise the existing push command against real committed ranges, with task doubles."""
 import json
+import importlib.util
 import os
 from pathlib import Path
 import shutil
@@ -31,6 +32,8 @@ class PushSelectionTests(IsolatedGitTestCase):
         shutil.copytree(ROOT / 'scripts/ci', self.root / 'scripts/ci')
         (self.root / 'pwa/e2e').mkdir(parents=True)
         (self.root / 'pwa/e2e/.gitkeep').touch()
+        for file in (ROOT / 'pwa/e2e').glob('*.spec.ts'):
+            (self.root / 'pwa/e2e' / file.name).write_text('')
         (self.root / 'README.md').write_text('Baseline\n')
         (self.root / 'record.py').write_text(
             'import os,sys\nfrom pathlib import Path\n'
@@ -81,6 +84,27 @@ class PushSelectionTests(IsolatedGitTestCase):
         result, calls = self.push_check()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(calls, [], result.stdout + result.stderr)
+
+    def test_shared_detail_range_and_dirty_impact_use_the_same_capability_inventory(self):
+        source = 'pwa/src/components/recipes/RecipeDetailSheet.tsx'
+        self.change(source)
+        self.commit('detail source')
+        self.change('README.md', 'Docs after detail source\n')
+        self.commit('docs')
+        result, calls = self.push_check('--plan')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(calls, [])
+        committed = json.loads(result.stdout)
+        spec = importlib.util.spec_from_file_location('fixture_test_ops', self.root / 'scripts/agent/test_ops.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        dirty = module.build_impact_plan([source, 'pwa/e2e/recipes.spec.ts'])
+        self.assertIn(str(module.E2E_DIR / 'quiet-portions-layout.spec.ts'), dirty.tests)
+        selected = subprocess.check_output(['node', str(self.root / 'scripts/ci/select-e2e.cjs'), '--files'],
+                                           input='\n'.join(committed['files']), text=True, cwd=self.root)
+        expected = json.loads(selected)
+        self.assertEqual(committed['e2e_suites'], expected['suites'])
+        self.assertEqual(set(dirty.tests), {str(module.E2E_DIR / name) for name in expected['files']})
 
     def test_all_unpushed_commits_are_selected_even_when_last_commit_is_docs(self):
         self.change('api/src/RecipeApi/Services/RecipeService.cs')

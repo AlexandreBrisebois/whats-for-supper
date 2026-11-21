@@ -4,15 +4,15 @@
 
 See [proposal](proposal.md) for scope. Source inspection establishes the following chain, without a new runtime reproduction:
 
-| Owner | Current behavior and required seam |
-| --- | --- |
-| `pwa/src/components/home/HomeCommandCenter.tsx` | Captures calendar context and original recipe, awaits disposition, calls void assignment, closes and refreshes/navigates. Tomorrow already retains a source object for committed-result reuse. |
-| `pwa/src/store/todayStore.ts` | `assignRecipe` installs an optimistic recipe, dispatches `assignRecipeToDay`, catches only to console and separately hydrates details. Do not use that fire-and-forget path as persistence acknowledgement. |
-| `pwa/src/lib/api/planner.ts` | `assignRecipeToDay` returns generated POST completion with relative week/index and optional reference Monday; extend its options for guarded recovery. |
-| `pwa/src/lib/planner/slotAssignment.ts` | `moveTomorrow` caches known commits per source object, suppresses duplicates and disables automatic HTTP retries. Preserve its movement/reconciliation policy. |
-| `api/src/RecipeApi/Services/ScheduleService.cs` | `AssignRecipeAsync` finds a date's entry without filtering meal slot, overwrites occupied targets and carries Sunday displacement onto Monday. Saves before grocery/read/publication follow-ups; later errors do not prove rollback. |
-| `api/src/RecipeApi/Controllers/ScheduleController.cs`, `api/src/RecipeApi/Dto/AssignScheduleDto.cs` | Existing assignment boundary returns the wrapped message/displacement response. |
-| Existing tests | `HomeCommandCenter.test.tsx`, `todayStore.test.ts`, `SkipRecoveryDialog.test.tsx`, `ScheduleServiceTests`, `ScheduleIntegrationTests`, and real PostgreSQL/live patterns in `TomorrowPushPostgresTests` provide insertion points. |
+| Owner                                                                                               | Current behavior and required seam                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pwa/src/components/home/HomeCommandCenter.tsx`                                                     | Captures calendar context and original recipe, awaits disposition, calls void assignment, closes and refreshes/navigates. Tomorrow already retains a source object for committed-result reuse.                                       |
+| `pwa/src/store/todayStore.ts`                                                                       | `assignRecipe` installs an optimistic recipe, dispatches `assignRecipeToDay`, catches only to console and separately hydrates details. Do not use that fire-and-forget path as persistence acknowledgement.                          |
+| `pwa/src/lib/api/planner.ts`                                                                        | `assignRecipeToDay` returns generated POST completion with relative week/index and optional reference Monday; extend its options for guarded recovery.                                                                               |
+| `pwa/src/lib/planner/slotAssignment.ts`                                                             | `moveTomorrow` caches known commits per source object, suppresses duplicates and disables automatic HTTP retries. Preserve its movement/reconciliation policy.                                                                       |
+| `api/src/RecipeApi/Services/ScheduleService.cs`                                                     | `AssignRecipeAsync` finds a date's entry without filtering meal slot, overwrites occupied targets and carries Sunday displacement onto Monday. Saves before grocery/read/publication follow-ups; later errors do not prove rollback. |
+| `api/src/RecipeApi/Controllers/ScheduleController.cs`, `api/src/RecipeApi/Dto/AssignScheduleDto.cs` | Existing assignment boundary returns the wrapped message/displacement response.                                                                                                                                                      |
+| Existing tests                                                                                      | `HomeCommandCenter.test.tsx`, `todayStore.test.ts`, `SkipRecoveryDialog.test.tsx`, `ScheduleServiceTests`, `ScheduleIntegrationTests`, and real PostgreSQL/live patterns in `TomorrowPushPostgresTests` provide insertion points.    |
 
 `tonight-meal-decisions` owns staged Home orchestration; `meal-assignment` owns the guarded persistence rule. Calendar resolution, movement, grocery aggregation and household publication remain with existing owners.
 
@@ -32,17 +32,17 @@ Home Pick Something Else → Tomorrow commits → replacement assignment is reje
 
 Use a small Home-owned recovery record containing session identity, captured original/target context, selected recipe, chosen disposition, disposition outcome, replacement outcome and pending state. Do not derive original identity from later optimistic Today state.
 
-| State | Allowed continuation |
-| --- | --- |
-| Choosing | Existing pre-mutation cancellation and selection |
-| Disposing | One request; mutation controls, Back and dismissal disabled |
-| Disposition rejected | Retain choices, show conflict; no replacement |
-| Disposition unknown | Read/review only; do not infer successful defer from source absence or replay it |
-| Saving | Disposition recorded complete; one guarded save, no Back to disposition |
-| Save rejected or reconciled empty | Retain choice; Retry save only |
-| Save unknown | Retry check only until an authoritative slot is available |
-| Changed-plan conflict | Show persisted slot, retain unsaved choice; Review plan or explicit abandonment |
-| Saved | Refresh/navigate using captured target; refresh errors cannot turn this back into retry-save |
+| State                             | Allowed continuation                                                                         |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| Choosing                          | Existing pre-mutation cancellation and selection                                             |
+| Disposing                         | One request; mutation controls, Back and dismissal disabled                                  |
+| Disposition rejected              | Retain choices, show conflict; no replacement                                                |
+| Disposition unknown               | Read/review only; do not infer successful defer from source absence or replay it             |
+| Saving                            | Disposition recorded complete; one guarded save, no Back to disposition                      |
+| Save rejected or reconciled empty | Retain choice; Retry save only                                                               |
+| Save unknown                      | Retry check only until an authoritative slot is available                                    |
+| Changed-plan conflict             | Show persisted slot, retain unsaved choice; Review plan or explicit abandonment              |
+| Saved                             | Refresh/navigate using captured target; refresh errors cannot turn this back into retry-save |
 
 Known Tomorrow outcomes reuse the same source object and helper. Defer/Delete errors can occur after persistence; conservative unknown-disposition behavior prevents guessing where the old meal went. Retain context and offer plan review without replay. Full automatic reconciliation for these disposition operations is excluded.
 

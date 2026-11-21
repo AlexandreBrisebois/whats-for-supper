@@ -20,7 +20,12 @@ vi.mock('./api-client', async () => {
   return { apiClient: createApiClient(adapter) };
 });
 
-import { createFamilyMember } from './family';
+import {
+  createFamilyMember,
+  getCurrentFamilyMember,
+  getFamilyMembers,
+  updateFamilyMemberPreferences,
+} from './family';
 
 beforeEach(() => fetchMock.mockReset());
 
@@ -49,6 +54,7 @@ describe('family creation contract and client', () => {
             browseViewMode: 'stack',
             cookingViewMode: null,
             preferredLanguage: null,
+            contrastMode: null,
             createdAt: '2026-10-15T12:00:00Z',
             updatedAt: '2026-10-15T12:00:00Z',
           },
@@ -63,6 +69,7 @@ describe('family creation contract and client', () => {
       browseViewMode: 'stack',
       cookingViewMode: null,
       preferredLanguage: '',
+      contrastMode: null,
     });
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, request] = fetchMock.mock.calls[0];
@@ -83,5 +90,110 @@ describe('family creation contract and client', () => {
     );
 
     await expect(createFamilyMember({ name: 'Alex' })).rejects.toThrow();
+  });
+
+  it('documents contrastMode as nullable standard|high in OpenAPI across family schemas', () => {
+    const spec = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../../../../specs/openapi.yaml'),
+      'utf8'
+    );
+    const matches = spec.match(
+      /contrastMode:\s*\n\s*type:\s*\[string,\s*'null'\]\s*\n\s*enum:\s*\[standard,\s*high\]/g
+    );
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBe(6);
+  });
+
+  it('maps contrastMode across family list, current member, and preferences update', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: [
+              {
+                id: MOCK_IDS.MEMBER_TEST,
+                name: 'Alex',
+                browseViewMode: 'list',
+                cookingViewMode: 'all-steps',
+                preferredLanguage: 'fr',
+                contrastMode: 'high',
+                createdAt: '2026-10-15T12:00:00Z',
+                updatedAt: '2026-10-15T12:00:00Z',
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: MOCK_IDS.MEMBER_TEST,
+              name: 'Alex',
+              browseViewMode: 'list',
+              cookingViewMode: null,
+              preferredLanguage: null,
+              contrastMode: 'standard',
+              createdAt: '2026-10-15T12:00:00Z',
+              updatedAt: '2026-10-15T12:00:00Z',
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: MOCK_IDS.MEMBER_TEST,
+              name: 'Alex',
+              browseViewMode: 'list',
+              cookingViewMode: null,
+              preferredLanguage: null,
+              contrastMode: 'high',
+              createdAt: '2026-10-15T12:00:00Z',
+              updatedAt: '2026-10-15T12:00:00Z',
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+    await expect(getFamilyMembers()).resolves.toEqual([
+      {
+        id: MOCK_IDS.MEMBER_TEST,
+        name: 'Alex',
+        browseViewMode: 'list',
+        cookingViewMode: 'all-steps',
+        preferredLanguage: 'fr',
+        contrastMode: 'high',
+      },
+    ]);
+
+    await expect(getCurrentFamilyMember()).resolves.toEqual({
+      id: MOCK_IDS.MEMBER_TEST,
+      name: 'Alex',
+      browseViewMode: 'list',
+      cookingViewMode: null,
+      preferredLanguage: '',
+      contrastMode: 'standard',
+    });
+
+    await expect(
+      updateFamilyMemberPreferences(MOCK_IDS.MEMBER_TEST, { contrastMode: 'high' } as any)
+    ).resolves.toEqual({
+      id: MOCK_IDS.MEMBER_TEST,
+      name: 'Alex',
+      browseViewMode: 'list',
+      cookingViewMode: null,
+      preferredLanguage: '',
+      contrastMode: 'high',
+    });
+
+    const [url, request] = fetchMock.mock.calls[2];
+    expect(String(url)).toBe(`https://family.test/api/family/${MOCK_IDS.MEMBER_TEST}/preferences`);
+    expect(request.method).toBe('PUT');
+    expect(JSON.parse(new TextDecoder().decode(request.body))).toEqual({ contrastMode: 'high' });
   });
 });

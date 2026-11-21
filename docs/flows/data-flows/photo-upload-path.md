@@ -45,14 +45,13 @@ sequenceDiagram
 
 ## Key contrast with describe path
 
-| Aspect | Photo upload | Describe (text) |
-|--------|-------------|-----------------|
-| `recipe.info` written | Immediately at upload | Immediately at POST /describe |
-| `ImageCount` at creation | `n` (actual image count) | `0` |
-| `ImageCount` after workflow | Unchanged (already > 0) | Stays `0` — readiness gated on `IsSynthesized` instead |
-| Workflow | `recipe-import` | `goto-synthesis` |
-| `recipe.json` | Written by SyncRecipe | Written by SyncRecipe |
-| Status path | Pending until RecipeReady runs | Pending until RecipeReady runs |
-
+| Aspect                      | Photo upload                   | Describe (text)                                        |
+| --------------------------- | ------------------------------ | ------------------------------------------------------ |
+| `recipe.info` written       | Immediately at upload          | Immediately at POST /describe                          |
+| `ImageCount` at creation    | `n` (actual image count)       | `0`                                                    |
+| `ImageCount` after workflow | Unchanged (already > 0)        | Stays `0` — readiness gated on `IsSynthesized` instead |
+| Workflow                    | `recipe-import`                | `goto-synthesis`                                       |
+| `recipe.json`               | Written by SyncRecipe          | Written by SyncRecipe                                  |
+| Status path                 | Pending until RecipeReady runs | Pending until RecipeReady runs                         |
 
 The source and pending recipe/search sidecar commit before workflow launch. Upload acceptance starts only recipe-import; search indexing waits until the recipe is ready and its import report is complete. Enqueue errors follow existing persisted-ID acceptance semantics; acceptance is not readiness or verified delivery. PDFs use a [dedicated acceptance and conversion path](pdf-upload-path.md) and do not change the image-only photo endpoint.

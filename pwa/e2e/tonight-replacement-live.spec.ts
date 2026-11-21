@@ -12,8 +12,16 @@ test('real Home retries only replacement and two clients receive its saved state
   request,
   baseURL,
 }) => {
+  // The isolated API clock owns calendar dates; browser Date stubs can desynchronize
+  // native animation timelines after repeated full navigations in this live fixture.
   const api = process.env.TONIGHT_API_URL!;
   const headers = { 'X-Hearth-Secret': process.env.HEARTH_SECRET! };
+  page.on('response', async (response) => {
+    if (new URL(response.url()).pathname.startsWith('/api/schedule') && response.status() >= 400)
+      console.log(
+        `ACTUAL HTTP ${response.request().method()} ${response.url()} ${response.status()} ${await response.text().catch(() => '<response unavailable>')}`
+      );
+  });
   const member = (await (await request.get(`${api}/api/family`, { headers })).json()).data[0];
   const cookies = [
     {
@@ -24,7 +32,6 @@ test('real Home retries only replacement and two clients receive its saved state
     { name: 'x-family-member-id', value: member.id, url: baseURL! },
   ];
   await page.context().addCookies(cookies);
-  await page.clock.setFixedTime(new Date('2026-10-12T01:30:00Z'));
   await page.addInitScript((member) => {
     localStorage.setItem('locale', 'en');
     localStorage.setItem(
@@ -114,7 +121,7 @@ test('real Home retries only replacement and two clients receive its saved state
   await page.goto('/home');
   await page.reload();
   await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
-  // Same session keeps its Sunday target after both server and browser roll into Monday.
+  // Same session keeps its Sunday target after the deployment calendar rolls into Monday.
   await request.post(`${api}/_test/tonight/reject-next`, { headers });
   await page.getByTestId('tonight-menu-card').click();
   await page.getByTestId('skip-tonight-btn').dispatchEvent('click');
@@ -126,7 +133,6 @@ test('real Home retries only replacement and two clients receive its saved state
     headers,
     data: { instant: '2026-10-12T05:00:00Z' },
   });
-  await page.clock.setFixedTime(new Date('2026-10-12T05:00:00Z'));
   const rolloverSave = page.waitForRequest(
     (r) => r.method() === 'POST' && new URL(r.url()).pathname === '/api/schedule/assign'
   );
@@ -140,16 +146,16 @@ test('real Home retries only replacement and two clients receive its saved state
   await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
   // The new Monday view must show its persisted meal, never Sunday's late replacement.
   await expect(page.getByTestId('tonight-menu-card')).toContainText(mondayRecipe.name);
-  expect(
-    (await (await request.get(`${api}/api/schedule`, { headers })).json()).data.days[0].recipe.id
-  ).toBe(mondayRecipe.id);
+  const mondayRead = await request.get(`${api}/api/schedule`, { headers });
+  const mondayBody = await mondayRead.text();
+  expect(mondayRead.status(), `Real post-rollover schedule response: ${mondayBody}`).toBe(200);
+  expect(JSON.parse(mondayBody).data.days[0].recipe.id).toBe(mondayRecipe.id);
 
   // Return test clock to Sunday. A remote insertion between move and retry wins the slot.
   await request.post(`${api}/_test/tonight/clock`, {
     headers,
     data: { instant: '2026-10-12T01:30:00Z' },
   });
-  await page.clock.setFixedTime(new Date('2026-10-12T01:30:00Z'));
   await page.goto('/home');
   await request.post(`${api}/_test/tonight/reject-next`, { headers });
   await page.getByTestId('tonight-menu-card').click();
@@ -199,14 +205,23 @@ test('real Home retries only replacement and two clients receive its saved state
     await request.post(`${api}/_test/tonight/fail-groceries`, { headers });
     await route.continue();
   });
+  const committedAssignment = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname === '/api/schedule/assign'
+  );
   await page.getByTestId('recovery-action-drop').click();
-  await expect(
-    page
-      .getByTestId('toast')
-      .filter({ hasText: /plan updates could not be confirmed/i })
-      .first()
-  ).toBeVisible();
-  expect((await read(0)).days[6].recipe.id).toBe('660e8400-e29b-41d4-a716-446655440011');
+  expect((await committedAssignment).status()).toBe(200);
+  // The primary receipt is confirmed; the failed grocery adjunct remains an explicit retry obligation.
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText(
+    'Sunday Chicken is planned'
+  );
+  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('was removed');
+  await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
+  const savedAfterFollowupFailure = await read(0);
+  expect(savedAfterFollowupFailure.days[6].recipe.id).toBe('660e8400-e29b-41d4-a716-446655440011');
+  expect(savedAfterFollowupFailure.groceryRefresh.status).toBe('failed');
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
   const afterFollowup = await (
     await request.get(`${api}/_test/tonight/requests`, { headers })
   ).json();

@@ -3,6 +3,7 @@
 > ✅ **Updated for `home-command-center-hardening`.**
 >
 > This document reflects the corrected implementation:
+>
 > - `todayStore` owns all today-scoped recipe and status state — `HomeCommandCenter` holds no local state for these.
 > - Optimistic writes go through `todayStore.assignRecipe()`, which sets `currentRecipe` and `optimisticWriteAt` synchronously before firing the network call.
 > - `router.refresh()` is **not** called from any action handler. Re-hydration happens via background `sync()` with a 10-second optimistic write protection window.
@@ -92,13 +93,13 @@ sequenceDiagram
 
 ## Optimistic Write Summary
 
-| Step | Actor | State after |
-|------|-------|-------------|
-| User selects recipe | User | — |
-| `todayStore.assignRecipe(recipe)` | HCC / Planner | `currentRecipe` populated, `optimisticWriteAt` set — Menu Card shown immediately ✅ |
-| `POST /api/schedule/assign` fires | Store (background) | Request in flight |
-| `POST /api/schedule/assign` completes | Store | `optimisticWriteAt` remains set for 10-second protection window |
-| `sync()` runs (background) | Store | Skips `currentRecipe` update if within 10-second window; updates after window expires |
+| Step                                  | Actor              | State after                                                                           |
+| ------------------------------------- | ------------------ | ------------------------------------------------------------------------------------- |
+| User selects recipe                   | User               | —                                                                                     |
+| `todayStore.assignRecipe(recipe)`     | HCC / Planner      | `currentRecipe` populated, `optimisticWriteAt` set — Menu Card shown immediately ✅   |
+| `POST /api/schedule/assign` fires     | Store (background) | Request in flight                                                                     |
+| `POST /api/schedule/assign` completes | Store              | `optimisticWriteAt` remains set for 10-second protection window                       |
+| `sync()` runs (background)            | Store              | Skips `currentRecipe` update if within 10-second window; updates after window expires |
 
 ---
 
@@ -106,11 +107,11 @@ sequenceDiagram
 
 `todayStore.sync()` reconciles local state with the server schedule. It is called on mount (non-blocking) and does not block the UI.
 
-| `optimisticWriteAt` | Elapsed since write | Sync behaviour |
-|---|---|---|
-| `null` | — | Always update `currentRecipe` from server |
-| set | < 10 000 ms | Skip update — protect the optimistic write |
-| set | ≥ 10 000 ms | Update `currentRecipe` from server |
+| `optimisticWriteAt` | Elapsed since write | Sync behaviour                             |
+| ------------------- | ------------------- | ------------------------------------------ |
+| `null`              | —                   | Always update `currentRecipe` from server  |
+| set                 | < 10 000 ms         | Skip update — protect the optimistic write |
+| set                 | ≥ 10 000 ms         | Update `currentRecipe` from server         |
 
 This replaces the old `router.refresh()` + `pendingConfirmRef` pattern. There is no longer a gap between the optimistic write and the server confirmation during which a background fetch could clobber the recipe.
 
@@ -118,14 +119,14 @@ This replaces the old `router.refresh()` + `pendingConfirmRef` pattern. There is
 
 ## E2E Verification
 
-| Scenario | Test file |
-|----------|-----------|
-| Quick Find → menu card immediately (no network wait) | `home-goto.spec.ts` |
-| "Make This Tonight" → menu card immediately | `home-goto.spec.ts` |
-| Page reload after "Make This Tonight" → menu card still shown | `home-goto.spec.ts` |
-| Planner assignment for today → home reflects without navigation | `home-recipe.spec.ts` |
-| Page reload after "Take Out" → pivot card not shown | `home-recipe.spec.ts` |
-| Optimistic recipe survives background sync within 10-second window | `home-race.spec.ts` |
+| Scenario                                                           | Test file             |
+| ------------------------------------------------------------------ | --------------------- |
+| Quick Find → menu card immediately (no network wait)               | `home-goto.spec.ts`   |
+| "Make This Tonight" → menu card immediately                        | `home-goto.spec.ts`   |
+| Page reload after "Make This Tonight" → menu card still shown      | `home-goto.spec.ts`   |
+| Planner assignment for today → home reflects without navigation    | `home-recipe.spec.ts` |
+| Page reload after "Take Out" → pivot card not shown                | `home-recipe.spec.ts` |
+| Optimistic recipe survives background sync within 10-second window | `home-race.spec.ts`   |
 
 ---
 

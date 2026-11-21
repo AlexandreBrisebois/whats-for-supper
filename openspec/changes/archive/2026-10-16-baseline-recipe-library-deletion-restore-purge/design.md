@@ -7,11 +7,12 @@ See proposal.md for motivation and the recipe-library delta for the observable c
 ## Goals / Non-Goals
 
 **Goals:** Document the connected deletion, bin, restore, and purge paths:
+
 - Loaded detail gear menu `action-move-to-bin` → `handleMoveToBin` → client `deleteRecipe` → `DELETE /api/recipes/{id}` → `SoftDeleteRecipe` (calendar conflict check, `deleted_at`/`deleted_by` assignment, synchronous search doc removal) → 200 OK or 409 Conflict → detail sheet dismissal and list search refresh.
 - Browse header `recycle-bin-entry` → `RecycleBinSheet` → `getTrashItems` → `GET /api/recipes/trash` → `GetTrash` (`IgnoreQueryFilters()`, `deleted_at != null`, desc order) → loading, empty, and populated trash list presentation.
 - Trash item `action-restore-${id}` → `restoreRecipe` → `POST /api/recipes/{id}/restore` → `RestoreRecipe` (clearing `deleted_at`/`deleted_by`, `updated_at`, search index trigger) → 200 OK → removal from bin list, re-inclusion in active queries.
 - Trash item `action-purge-${id}` → PIN dialog modal → `purgeRecipe` → `DELETE /api/recipes/{id}/purge` with `X-Elevated-Pin` → `PurgeAsync` (PIN check against `ELEVATED_ACTIONS_PIN`, trash check, index workflow cancellation, filesystem directory deletion, dependent records removal, db row deletion) → 200 OK, 403, 409, 503, or 404 → removal from bin list or inline error feedback.
-Map every requirement and scenario to BSL-recipe-library-024–026 and actual assertion coverage.
+  Map every requirement and scenario to BSL-recipe-library-024–026 and actual assertion coverage.
 
 **Non-Goals:** Application modifications, bug fixes (such as adding a soft-delete confirmation dialog or user error toast), new tests/contracts/SQL, runtime qualification, or expanding into capture, hero generation, sharing, or editing.
 
@@ -48,6 +49,7 @@ This session instruction authorizes this bounded draft only. BSL-recipe-library-
 Reuse library “Retrieve the selected library recipe for detail reading”, “Return persisted recipe detail for an available record”, “Open the household library and offer list presentation”, “Return only eligible household library recipes”, and “Dismiss recipe detail back to the loaded library”. These additions cover only missing ordinary-household recipe deletion (Move to Bin / soft-delete), Recycle Bin listing, recipe restore, and PIN-protected permanent purge behavior. Household-identity retains “Gate protected page entry with household access”, “Apply member context after household access” and “Authenticate protected API requests independently”.
 
 U48–U52 retain source/assertion limits without repair:
+
 - Move to Bin is activated directly from the detail gear menu without a confirmation dialog. If soft delete fails (e.g. 409 Conflict due to active planner schedule, or network error), the error is logged to `console.error` and no user-facing toast or inline error banner is displayed; the sheet simply remains open with the recipe unchanged.
 - Soft-deleted recipes are excluded from standard library listings, detail GET (returning 404), and search queries via the EF Core query filter `DeletedAt == null`. Neither soft-delete, restore, nor purge broadcasts an SSE event. Multi-client synchronization relies on manual or route-driven query refreshes.
 - There is no unit test file for `RecycleBinSheet.tsx` (`RecycleBinSheet.test.tsx` is missing); test coverage relies on mock verification in `browse-all-stack/page.test.tsx` and Playwright E2E tests (`search-hardening.spec.ts` and `browse-all-stack.spec.ts`).

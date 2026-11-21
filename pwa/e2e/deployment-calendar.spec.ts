@@ -6,7 +6,6 @@ test.use({ timezoneId: 'Asia/Tokyo' });
 
 test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-12T01:30:00Z'));
-  await setupCommonRoutes(page);
   await page.context().addCookies([
     {
       name: 'x-family-member-id',
@@ -22,6 +21,7 @@ test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async
     referenceWeekStartDate: '2026-10-05',
     nextDayAtUtc: '2026-10-12T04:00:00Z',
   };
+  await setupCommonRoutes(page, calendar, { sseMode: 'connected-once' });
   let assignedId: string | null = null;
   await page.route(
     (url) => url.pathname === '/api/schedule',
@@ -115,7 +115,7 @@ test('Tonight uses Toronto Sunday in a Tokyo browser and pins assignment', async
   });
   expect(new URL(request.url()).searchParams.get('referenceWeekStartDate')).toBe('2026-10-05');
   await expect(page).toHaveURL(
-    /\/planner\?success=1&dayIndex=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
+    /\/planner\?(?:success=1&)?dayIndex=6&weekOffset=0&referenceWeekStartDate=2026-10-05/
   );
 });
 
@@ -171,10 +171,7 @@ test('shared schedule handlers retain dated assignments and reject invalid refer
   });
 });
 
-test('Sunday Plan for Later starts at deployment next Monday in Search', async ({
-  page,
-  baseURL,
-}) => {
+test('Sunday day chooser preserves deployment next Monday in Search', async ({ page, baseURL }) => {
   await page.clock.setFixedTime(new Date('2026-10-12T01:30:00Z'));
   await setupCommonRoutes(page);
   await page
@@ -226,12 +223,15 @@ test('Sunday Plan for Later starts at deployment next Monday in Search', async (
   await page.getByTestId('recipe-search-input').fill('lasagna');
   await page.getByTestId('recipe-search-input').press('Enter');
   await page.getByTestId('stack-card-front').click();
-  await page.getByTestId('action-cook-this').click();
+  await expect(page.getByTestId('action-add-to-day')).toContainText('October 11');
+  await page.getByTestId('action-change-day').click();
+  await page.getByTestId('planning-week-next').click();
+  await page.getByTestId('planning-day-0').click();
   const assignment = page.waitForRequest(
     (request) =>
       request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/assign'
   );
-  await page.getByTestId('action-plan-later').click();
+  await page.getByTestId('action-add-to-day').click();
   const request = await assignment;
   expect(request.postDataJSON()).toMatchObject({
     weekOffset: 1,

@@ -33,6 +33,24 @@ public class RecipeUpdateIntegrationTests : IAsyncLifetime
         await _factory.DisposeAsync();
     }
 
+    [Theory]
+    [InlineData("Less chilli")]
+    [InlineData("")]
+    public async Task UpdateRecipe_Notes_PersistsExactTextForFreshDetailRead(string notes)
+    {
+        var id = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = id, Name = "Family notes", Notes = "Original note", IsReady = true });
+        await _db.SaveChangesAsync();
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        await store.WriteInfoAsync(new RecipeInfo { Id = id, Name = "Family notes" });
+        var response = await _client.PatchAsJsonAsync($"/api/recipes/{id}", new { notes });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        _db.ChangeTracker.Clear();
+        Assert.Equal(notes, (await _db.Recipes.FindAsync(id))!.Notes);
+        using var detail = JsonDocument.Parse(await _client.GetStringAsync($"/api/recipes/{id}"));
+        Assert.Equal(notes, detail.RootElement.GetProperty("recipe").GetProperty("notes").GetString());
+    }
+
     [Fact]
     public async Task UpdateRecipe_WithInstructions_UpdatesDbAndRecipeInfo()
     {

@@ -9,6 +9,8 @@ const hasExternalBaseUrl = !!process.env.BASE_URL;
 const shouldManageWebServer = !hasExternalBaseUrl;
 
 export default defineConfig({
+  outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR ?? 'test-results',
+
   // Directory containing E2E test files
   testDir: './e2e',
 

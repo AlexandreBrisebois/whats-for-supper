@@ -59,29 +59,29 @@ Successfully implemented the voting feature for the weekly meal planner that tra
 ### New Tests (All Passing ✅)
 
 1. **LockScheduleAsync_PersistsVoteCount_WhenVotesExist**
-    - Verifies vote counts are persisted to CalendarEvent when locking
-    - Setup: 3 family member votes
-    - Assert: CalendarEvent.VoteCount == 3
+   - Verifies vote counts are persisted to CalendarEvent when locking
+   - Setup: 3 family member votes
+   - Assert: CalendarEvent.VoteCount == 3
 
 2. **LockScheduleAsync_ClearsRecipeVotes_AfterPersistingVoteCount**
-    - Verifies RecipeVotes table is cleared after persisting
-    - Setup: 2 family member votes
-    - Assert: RecipeVotes.Count() == 0 after locking
+   - Verifies RecipeVotes table is cleared after persisting
+   - Setup: 2 family member votes
+   - Assert: RecipeVotes.Count() == 0 after locking
 
 3. **GetSmartDefaultsAsync_IncludesVoteCount_FromRecipeVotes**
-    - Verifies smart defaults show real-time vote counts during voting
-    - Setup: 2 family member votes on recipe
-    - Assert: PreSelectedRecipeDto.VoteCount == 2
+   - Verifies smart defaults show real-time vote counts during voting
+   - Setup: 2 family member votes on recipe
+   - Assert: PreSelectedRecipeDto.VoteCount == 2
 
 4. **GetSmartDefaultsAsync_MarksUnanimous_WhenAllFamilyMembersVote**
-    - Verifies unanimous recipes are marked correctly
-    - Setup: All 3 family members vote for recipe
-    - Assert: UnanimousVote == true, VoteCount == FamilySize
+   - Verifies unanimous recipes are marked correctly
+   - Setup: All 3 family members vote for recipe
+   - Assert: UnanimousVote == true, VoteCount == FamilySize
 
 5. **GetScheduleAsync_ReturnsVoteCount_FromCalendarEvent_AfterVotingClosed**
-    - Verifies vote counts are returned from CalendarEvent after voting
-    - Setup: CalendarEvent with Locked status and VoteCount = 4
-    - Assert: VoteCount is available in response
+   - Verifies vote counts are returned from CalendarEvent after voting
+   - Setup: CalendarEvent with Locked status and VoteCount = 4
+   - Assert: VoteCount is available in response
 
 ### Overall Test Results
 

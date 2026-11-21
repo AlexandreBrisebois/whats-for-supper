@@ -8,14 +8,14 @@ Let household members read and navigate planner weeks, interpret displayed sched
 
 The former combined meal-planning specification is organized by the following owners. Normative blocks match accepted upstream behavior under their current owners, including the incoming Tomorrow changes from PR #242.
 
-| Capability | Responsibility | Requirements / scenarios |
-|---|---|---:|
-| [Meal planning](../meal-planning/spec.md) | Week reading, navigation, displayed schedule and suggestion-read boundaries | 17 / 44 |
-| [Deployment calendar](../deployment-calendar/spec.md) | Authoritative deployment dates, timezone, references and rollover | 7 / 20 |
-| [Meal assignment](../meal-assignment/spec.md) | Quick Find, recipe assignment, first-open placement and replacement recovery | 29 / 64 |
-| [Meal rescheduling](../meal-rescheduling/spec.md) | Drag, move, defer, recipe removal and shared date deletion | 26 / 65 |
-| [Non cooking plans](../non-cooking-plans/spec.md) | Recipe-free supper plans, editing, clearing UI and Home handoff | 18 / 39 |
-| [Planning lifecycle](../planning-lifecycle/spec.md) | Voting, lock, day validation and overdue finalization | 14 / 31 |
+| Capability                                            | Responsibility                                                               | Requirements / scenarios |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------- | -----------------------: |
+| [Meal planning](../meal-planning/spec.md)             | Week reading, navigation, displayed schedule and suggestion-read boundaries  |                  17 / 44 |
+| [Deployment calendar](../deployment-calendar/spec.md) | Authoritative deployment dates, timezone, references and rollover            |                   7 / 20 |
+| [Meal assignment](../meal-assignment/spec.md)         | Quick Find, recipe assignment, first-open placement and replacement recovery |                  29 / 64 |
+| [Meal rescheduling](../meal-rescheduling/spec.md)     | Drag, move, defer, recipe removal and shared date deletion                   |                  26 / 65 |
+| [Non cooking plans](../non-cooking-plans/spec.md)     | Recipe-free supper plans, editing, clearing UI and Home handoff              |                  18 / 39 |
+| [Planning lifecycle](../planning-lifecycle/spec.md)   | Voting, lock, day validation and overdue finalization                        |                  14 / 31 |
 
 Across these six owners, the current 111 requirements and 263 scenarios are conserved against upstream `e4a48c85`. The original split preserved 104/249; incoming Tomorrow changes add seven requirements and fourteen scenarios.
 
@@ -51,7 +51,6 @@ Remaining-scope promotion MP-P01 (2026-10-16) adds the five reviewed MP-G01 delt
 
 MP-U01–MP-U12 remain non-normative limitations: separate requests and persistence before fallible follow-ups; caller-specific recovery and unsafe-retry boundaries; Sunday destination collisions and stale vote fields; first-by-date/global recipe fallback and relational/concurrency limits; move no-op success and incomplete cross-week follow-ups; distinct browser/server availability/date semantics; cooked-history and metadata differences; lock state regression/global vote-clearing qualifications; disputed status-one vocabulary; navigation/optimistic races; overdue scheduling/publication limits; and substituted/contract-only evidence. Preserve A34, U95–U122 and all earlier qualifications. Acceptance/promoting the supported documentation does not settle these disputed policies, establish runtime behavior or authorize repairs. Discovery/voting eligibility, groceries, cooking history, Tonight and live delivery remain owner capabilities. All five source changes remain active; no archival or application implementation occurs.
 
-
 ## Requirements
 
 ### Requirement: Initialize week reading from shell and planner entry
@@ -59,14 +58,17 @@ MP-U01–MP-U12 remain non-normative limitations: separate requests and persiste
 The mounted app shell SHALL request current-week initialization when the loaded week offset is zero. Planner entry SHALL request initialization for its selected week, and SHALL request it again when that selection or the success query value changes. These requests SHALL NOT imply a single shared initialization transaction.
 
 #### Scenario: Shell has the initial offset
+
 - **WHEN** the app shell mounts while the loaded offset is zero
 - **THEN** it requests initialization for offset zero
 
 #### Scenario: Shell sees another selected week
+
 - **WHEN** the app shell mounts while the loaded offset is nonzero
 - **THEN** it does not request offset-zero initialization from its initializer
 
 #### Scenario: Planner selection or success changes
+
 - **WHEN** the planner mounts or its selected offset or success query value changes
 - **THEN** it requests initialization for the selected offset
 
@@ -75,14 +77,17 @@ The mounted app shell SHALL request current-week initialization when the loaded 
 The planner SHALL interpret an absent weekOffset query as zero and a present value using base-ten integer-prefix parsing. A finite parsed value different from the selection SHALL select that offset. A nonfinite result SHALL leave the selection unchanged.
 
 #### Scenario: Offset is absent
+
 - **WHEN** the planner reads a URL with no weekOffset
 - **THEN** it selects zero if another offset was selected
 
 #### Scenario: Integer prefix is present
+
 - **WHEN** the planner reads weekOffset=-2 or weekOffset=1suffix
 - **THEN** it selects -2 or 1 respectively if different from the current selection
 
 #### Scenario: Offset is not parseable
+
 - **WHEN** the planner reads weekOffset=abc
 - **THEN** the invalid result leaves its selected offset unchanged
 
@@ -91,28 +96,34 @@ The planner SHALL interpret an absent weekOffset query as zero and a present val
 The planner SHALL offer Previous week and Next week controls that request the selected offset minus or plus one through URL replacement. It SHALL offer Back to this week for nonzero offsets. For negative offsets its right-pointing arrow SHALL follow the label; for positive offsets its left-pointing arrow SHALL precede the label. URL replacement SHALL preserve other query parameters, omit weekOffset for zero and include it otherwise.
 
 #### Scenario: Navigate forward or backward
+
 - **WHEN** a person activates Next week or Previous week
 - **THEN** the planner requests URL replacement with the selected offset incremented or decremented by one
 
 #### Scenario: Return to zero
+
 - **WHEN** a person activates Back to this week from a nonzero offset
 - **THEN** the planner requests its URL without weekOffset while preserving other query parameters
 
 #### Scenario: Return from a past week
+
 - **WHEN** the selected week offset is negative
 - **THEN** Back to this week displays a right-pointing arrow after its localized label
 - **AND** the arrow is decorative and does not change the control's accessible name
 
 #### Scenario: Return from a future week
+
 - **WHEN** the selected week offset is positive
 - **THEN** Back to this week displays a left-pointing arrow before its localized label
 - **AND** the arrow is decorative and does not change the control's accessible name
 
 #### Scenario: Already viewing this week
+
 - **WHEN** the selected week offset is zero
 - **THEN** Back to this week is absent
 
 #### Scenario: Selection changes while displayed dates are retained
+
 - **WHEN** the selected offset changes while days from the previous selection remain displayed during a read
 - **THEN** the return control's direction, placement and visibility reflect the selected offset
 
@@ -121,14 +132,17 @@ The planner SHALL offer Previous week and Next week controls that request the se
 GET /api/schedule SHALL apply household-identity API authentication and accept an optional integer weekOffset defaulting to zero. This schedule action SHALL NOT add an endpoint-specific member-existence check. Successful reads SHALL return 200 with the schedule under data.
 
 #### Scenario: Default week read
+
 - **WHEN** an authorized GET /api/schedule omits weekOffset and retrieval succeeds
 - **THEN** 200 data contains the offset-zero schedule
 
 #### Scenario: Explicit week read
+
 - **WHEN** an authorized GET supplies a representable offset and retrieval succeeds
 - **THEN** 200 data identifies that requested offset
 
 #### Scenario: No household access
+
 - **WHEN** GET /api/schedule has no accepted household credential
 - **THEN** the shared API authentication gate rejects it independently of planner page access
 
@@ -137,10 +151,12 @@ GET /api/schedule SHALL apply household-identity API authentication and accept a
 A successful schedule read SHALL return seven entries in Monday-through-Sunday order for the Monday containing the deployment-local current date plus the requested number of weeks. Entries SHALL use Mon through Sun and yyyy-MM-dd dates. Missing calendar entries SHALL still produce dated empty days with planned status zero.
 
 #### Scenario: Read a supported relative week
+
 - **WHEN** schedule retrieval succeeds at offset -1, 0 or 1
 - **THEN** its seven dates span that relative Monday through Sunday inclusive
 
 #### Scenario: No calendar entry exists
+
 - **WHEN** the selected week has a date with no stored calendar entry
 - **THEN** the response includes that date with no recipe and day status zero
 
@@ -149,14 +165,17 @@ A successful schedule read SHALL return seven entries in Monday-through-Sunday o
 A schedule day SHALL expose its selected stored calendar entry status and available related recipe facts. A recipe-free skipped entry SHALL expose non-cooking kind and label, defaulting absent kind to order_in. Recipe-backed skipped entries SHALL retain their recipe representation without a non-cooking plan.
 
 #### Scenario: Related recipe is available
+
 - **WHEN** the selected calendar entry has a loaded related recipe
 - **THEN** the day returns its ID, name, hero reference, saved vote count, ingredient strings, description and total time
 
 #### Scenario: Recipe-free skipped entry
+
 - **WHEN** the selected entry has status three and no recipe ID
 - **THEN** the day returns its non-cooking kind or order_in fallback and stored label
 
 #### Scenario: Legacy skipped recipe entry
+
 - **WHEN** the selected status-three entry still has a recipe association
 - **THEN** its loaded recipe remains in the response and nonCooking is null
 
@@ -165,10 +184,12 @@ A schedule day SHALL expose its selected stored calendar entry status and availa
 The schedule SHALL report the selected weekly plan status as zero Draft, one VotingOpen or two Locked and locked as true only for Locked. With no plan it SHALL report Draft and unlocked. Available stored grocery state and items SHALL be returned as adjuncts without a read-time recomputation or plan creation.
 
 #### Scenario: Weekly plan exists
+
 - **WHEN** a supported stored weekly-plan status is read successfully
 - **THEN** the response reports that status and its derived locked flag with available stored adjuncts
 
 #### Scenario: Weekly plan is absent
+
 - **WHEN** the selected week has no stored weekly plan and retrieval succeeds
 - **THEN** the response reports status zero, locked false and null grocery adjuncts without creating a plan
 
@@ -177,14 +198,17 @@ The schedule SHALL report the selected weekly plan status as zero Draft, one Vot
 The browser schedule reader SHALL request the selected weekOffset and accept data only when its weekOffset is defined. Initialization SHALL use returned days, status defaulting to zero and supplied grocery items or an empty list. A missing days collection SHALL produce an empty displayed schedule.
 
 #### Scenario: Usable response arrives
+
 - **WHEN** initialization receives usable enveloped schedule data for its still-selected request
 - **THEN** it builds displayed days from that response and updates week status and synchronization time
 
 #### Scenario: Envelope or offset is absent
+
 - **WHEN** the generated read resolves without data carrying a defined weekOffset
 - **THEN** the browser reader yields no usable schedule
 
 #### Scenario: Days are absent
+
 - **WHEN** otherwise usable initialization data has no days collection
 - **THEN** initialization builds no day cards
 
@@ -193,14 +217,17 @@ The browser schedule reader SHALL request the selected weekOffset and accept dat
 Initialization SHALL request suggestions for the same requested offset only when returned week status is VotingOpen. Persisted recipe content SHALL take precedence; skipped days SHALL not receive suggestions. An ordinary day without a recipe SHALL display a matching day-index suggestion as pending when one is available. This composition SHALL NOT persist an assignment.
 
 #### Scenario: Draft or locked read
+
 - **WHEN** initialization receives Draft or Locked status
 - **THEN** it builds days without requesting suggestions for that initialization
 
 #### Scenario: Voting read
+
 - **WHEN** initialization receives VotingOpen and the requested week remains selected
 - **THEN** it requests suggestions for that offset and marks eligible composed suggestions pending
 
 #### Scenario: Suggestions are unavailable
+
 - **WHEN** suggestion retrieval throws or supplies no usable data
 - **THEN** initialization can complete from schedule data without adding those suggestions
 
@@ -209,10 +236,12 @@ Initialization SHALL request suggestions for the same requested offset only when
 Initialization SHALL check that its requested offset remains selected after schedule retrieval and again after any suggestion retrieval. When it differs at either check, that invocation SHALL return without applying its successful read content. This offset comparison SHALL NOT establish ordering between requests for the same offset.
 
 #### Scenario: Navigate before schedule completes
+
 - **WHEN** initialization for zero completes successfully after the loaded selection changed to one
 - **THEN** its result does not replace the loaded week-one days
 
 #### Scenario: Navigate while suggestions load
+
 - **WHEN** the loaded offset changes while an initialization suggestion request is pending
 - **THEN** that invocation does not apply its combined read content
 
@@ -221,10 +250,12 @@ Initialization SHALL check that its requested offset remains selected after sche
 Initialization SHALL mark loading while retaining previously loaded content. The planner SHALL show Curating your week loading feedback when loading and no days exist. With existing days it SHALL continue rendering content while the read is pending.
 
 #### Scenario: First read is pending
+
 - **WHEN** loading is true and the displayed schedule is empty
 - **THEN** the planner shows its loading indicator and Curating your week feedback
 
 #### Scenario: Another read is pending
+
 - **WHEN** loading is true with existing displayed days
 - **THEN** the planner keeps its content rather than replacing it with the initial loading indicator
 
@@ -233,14 +264,17 @@ Initialization SHALL mark loading while retaining previously loaded content. The
 When initialization receives no usable schedule or catches a read failure, it SHALL end loading without clearing existing days, status or synchronization time. This path SHALL display no dedicated read-failure or Retry control. An empty retained schedule SHALL render no day cards and retain the Loading date-heading fallback.
 
 #### Scenario: No usable response
+
 - **WHEN** initialization receives no usable schedule while its requested offset remains selected
 - **THEN** it ends loading and retains the previously loaded content
 
 #### Scenario: Read rejects
+
 - **WHEN** an initialization read throws
 - **THEN** its catch ends loading without clearing the existing schedule or showing dedicated read-error feedback
 
 #### Scenario: No content has ever loaded
+
 - **WHEN** the read has ended without usable content and the schedule remains empty
 - **THEN** no day cards render and the date heading still shows Loading...
 
@@ -249,70 +283,94 @@ When initialization receives no usable schedule or catches a read failure, it SH
 The planner SHALL label offset zero This week, offset one Next week and other offsets with its Week label and offset. With at least seven loaded days it SHALL format the first and seventh dates using UTC month/day values; otherwise it SHALL show Loading... for that heading. Selected offset labels SHALL remain distinct from loaded-date content.
 
 #### Scenario: Standard offset labels
+
 - **WHEN** the selected offset is zero, one or another finite offset
 - **THEN** the label is This week, Next week or the corresponding Week label
 
 #### Scenario: Loaded range
+
 - **WHEN** at least seven days are displayed
 - **THEN** the heading formats their first and seventh dates, repeating month only when the UTC months differ
 
 #### Scenario: Selection changes before content
+
 - **WHEN** a new offset is selected while old days remain
 - **THEN** the selected label can change while the heading and cards still reflect retained dates
 
 ### Requirement: Render day content and planned count from displayed state
 
-The planner SHALL render displayed days in their supplied order. Status-three days SHALL use non-cooking presentation before recipe presentation. Other days with recipe IDs SHALL display recipe names; ordinary days without them SHALL offer Plan supper. The planner SHALL NOT display a weekly recipe-count badge or a replacement aggregate progress indicator.
+In recipe view the planner SHALL render displayed days in their supplied order. Status-three days SHALL use non-cooking presentation before recipe presentation. Other days with recipe IDs SHALL display recipe names; ordinary days without them SHALL offer Plan supper. The planner SHALL NOT display a weekly recipe-count badge or a replacement aggregate progress indicator. Portions mode SHALL use the same ordered dates for portion controls without altering saved recipes or suggestion state.
 
 #### Scenario: Empty persisted week
+
 - **WHEN** a successful read returns seven ordinary empty dates and no suggestions apply
 - **THEN** the planner renders seven Plan supper day cards
 - **AND** it displays no weekly recipe-count badge or replacement aggregate progress indicator
 
 #### Scenario: Recipe and non-cooking presentation
+
 - **WHEN** a day has status three or an ordinary day has a recipe ID
 - **THEN** status three selects non-cooking presentation; an ordinary recipe displays its name
 - **AND** it displays no weekly recipe-count badge or replacement aggregate progress indicator
 
 #### Scenario: Pending recipe contributes to count
+
 - **WHEN** a displayed suggestion has a recipe ID and pending marker
 - **THEN** the suggestion remains pending without proving a persisted assignment
 - **AND** it displays no weekly recipe-count badge or replacement aggregate progress indicator
 
 #### Scenario: Planner status or viewport changes
+
 - **WHEN** the planner displays a Draft, VotingOpen or Locked week at a narrow or wide viewport
 - **THEN** no weekly recipe-count badge or replacement aggregate progress indicator is displayed
 - **AND** the existing week-status rules still determine the available voting actions
 
 #### Scenario: Actions remain after badge removal
+
 - **WHEN** the planner displays available voting actions
 - **THEN** the actions remain reachable without a layout slot reserved for the removed badge
 
 ### Requirement: Display read week status without implying a transition
 
-The planner SHALL derive voting-open and locked display state from the loaded numeric week status. VotingOpen SHALL show the voting signal, Nudge family and Close Voting. Draft or Locked SHALL offer Ask the Family when the loaded week is not past. A loaded seven-day week SHALL be considered past when its Sunday date precedes the deployment-local current date.
+The planner SHALL derive voting-open and locked display from loaded week status. Collecting VotingOpen SHALL show the collecting signal, Nudge family, and Close Voting. Confirmed converged VotingOpen for the loaded round SHALL show a steady Garden-green signal, hide Nudge family, and promote closing to primary Garden green (Save menu & close voting with pending suggestions, else Close Voting). Non-past Draft or Locked weeks SHALL offer Ask the Family.
 
 #### Scenario: Voting status is loaded
-- **WHEN** the displayed week status is one
-- **THEN** the planner shows its voting signal and voting controls without a separate voting-status badge
+
+- **WHEN** the displayed week status is one and confirmed convergence is absent or does not match the loaded round and week
+- **THEN** the planner shows its collecting voting signal, `Nudge family`, and `Close Voting` without a separate voting-status badge
 
 #### Scenario: Draft or locked non-past week
+
 - **WHEN** the loaded status is zero or two and its week is not past
-- **THEN** the planner offers Ask the Family
+- **THEN** the planner offers `Ask the Family`
 
 #### Scenario: Past week
+
 - **WHEN** seven loaded dates have Sunday before the deployment-local current date and status is zero or two
-- **THEN** the planner omits Ask the Family
+- **THEN** the planner omits `Ask the Family`
+
+#### Scenario: Converged week with pending suggestions
+
+- **WHEN** the displayed week status is one and the session is confirmed `converged` for the loaded round and Monday with one or more pending suggestions
+- **THEN** the planner shows a steady Garden-green voting indicator, hides `Nudge family`, and promotes the close control to primary Garden green (`bg-garden-fill` with white `Check` icon and `Save menu & close voting` in English or `Enregistrer et fermer le vote` in French) without mutating until activated
+- **AND** the promoted control keeps a minimum `48 x 48 CSS px` target and wraps legibly without horizontal clipping at `320px` width and `200%` text scaling
+
+#### Scenario: Converged week with no pending suggestions
+
+- **WHEN** the displayed week status is one and the session is confirmed `converged` for the loaded round and Monday with zero pending suggestions
+- **THEN** the planner shows a steady Garden-green voting indicator, hides `Nudge family`, and promotes the close control to primary Garden green (`Check` icon) labeled `Close Voting` in English or `Fermer le vote` in French
 
 ### Requirement: Expose direct fill-the-gap reads without assigning recipes
 
 Protected GET /api/schedule/fill-the-gap SHALL accept optional weekOffset defaulting to zero and return successful suggestion reads under data as a recipe list. The read SHALL not create calendar assignments or transition weekly plans. Suggestion selection, ranking, eligibility and recipe vote meanings SHALL remain discovery-owned.
 
 #### Scenario: Direct suggestion read completes
+
 - **WHEN** an authorized fill-the-gap read completes for a supported offset
 - **THEN** 200 data contains its returned recipe list without persisting any returned recipe onto a planner date
 
 #### Scenario: No suggestions are returned
+
 - **WHEN** selection returns no recipes
 - **THEN** the successful response contains an empty list rather than creating a fallback assignment
 
@@ -321,10 +379,12 @@ Protected GET /api/schedule/fill-the-gap SHALL accept optional weekOffset defaul
 Protected GET /api/schedule/{weekOffset}/smart-defaults SHALL return successful data identifying the requested offset, family size, consensus threshold, preselected recipe/day metadata, open slots and consensus recipe count. Reading these suggestions SHALL not persist assignments or change week/day status, including when a returned suggestion carries isLocked. Discovery SHALL retain threshold and ranking policy ownership.
 
 #### Scenario: Suggestions are represented as locked
+
 - **WHEN** a successful smart-default read includes a suggestion with isLocked true
 - **THEN** that metadata remains a suggestion and does not by itself persist a Locked calendar entry or weekly plan
 
 #### Scenario: Direct read has no preselected recipe
+
 - **WHEN** a successful smart-default read has no preselected recipes
 - **THEN** the response still carries its offset and available open-slot/context fields without creating assignments
 
@@ -333,14 +393,17 @@ Protected GET /api/schedule/{weekOffset}/smart-defaults SHALL return successful 
 Selected week context, fixed weekday/month labels and enabled Plan supper text SHALL maintain at least 4.5:1 contrast on actual rendered backgrounds in applicable default, hover, pressed and focus states. Meaningful icons and control-identifying edges SHALL maintain at least 3:1 against adjacent backgrounds. Essential readability SHALL NOT depend on hover.
 
 #### Scenario: Touch user sees an empty day
+
 - **WHEN** Planner displays an enabled Plan supper action without hover
 - **THEN** its text and meaningful action cues meet their contrast targets and the action remains available
 
 #### Scenario: Week and fixed date context is displayed
+
 - **WHEN** Planner displays selected week context and fixed weekday/month labels
 - **THEN** those labels meet their text contrast target as informational context without acquiring button or link roles
 
 #### Scenario: Available action changes visual state
+
 - **WHEN** an enabled Plan supper action is hovered, pressed or focused
 - **THEN** its label and meaningful cues remain readable without changing its planning behavior
 
@@ -349,10 +412,12 @@ Selected week context, fixed weekday/month labels and enabled Plan supper text S
 Week context SHALL use sentence case without forced uppercase or wide letter spacing. Plan supper SHALL use its existing localized sentence-case action label. Affected labels SHALL remain complete and readable in English and French with enlarged text and narrow layouts, without reducing existing touch targets or the available meal-content width by widening the date column.
 
 #### Scenario: French labels expand
+
 - **WHEN** Planner displays French week context, fixed dates and the empty-day action at a narrow viewport
 - **THEN** essential labels remain complete and readable without overlapping adjacent controls or requiring a wider date column
 
 #### Scenario: Larger text is requested
+
 - **WHEN** affected labels are displayed with enlarged text
 - **THEN** they remain readable and reachable, wrapping where necessary without overlapping navigation or adjacent controls
 
@@ -361,22 +426,27 @@ Week context SHALL use sentence case without forced uppercase or wide letter spa
 With reliable deployment-calendar context, Planner SHALL identify today with one localized Today label and faint decorative separator above its row, outside draggable content. The fixed date marker SHALL remain neutral without added fill or contour. Label wrapping SHALL NOT widen the date column or narrow meal content. Other rows SHALL have no temporal label line; future dates SHALL retain normal treatment.
 
 #### Scenario: Today has any meal state
+
 - **WHEN** today's displayed date contains an empty slot, recipe, pending suggestion, non-cooking plan or cooked meal
 - **THEN** that date has the neutral fixed date marker and Today label without changing its meal state or introducing a completion signal
 
 #### Scenario: Today has a decorative divider
+
 - **WHEN** the Today label is displayed
 - **THEN** its faint separator is hidden from assistive technology and adds no extra label band; the separator is decorative, while the label and aria-current identify today
 
 #### Scenario: Another week is displayed
+
 - **WHEN** none of the displayed dates equals authoritative today
 - **THEN** no displayed row has a Today label or date-specific decoration
 
 #### Scenario: Recipe changes date
+
 - **WHEN** a recipe moves between today's slot and another date
 - **THEN** the Today label and fixed dates stay with today's fixed date rather than following the recipe
 
 #### Scenario: French Today label on a phone
+
 - **WHEN** Aujourd’hui is displayed at a narrow viewport or with enlarged text
 - **THEN** the complete label fits or wraps above its row without squeezing it into the date column or obscuring meal content
 
@@ -385,14 +455,17 @@ With reliable deployment-calendar context, Planner SHALL identify today with one
 Dates earlier than authoritative today SHALL receive less decorative emphasis while preserving readable essential text, recognizable controls and existing action availability. This treatment SHALL NOT fade the whole row, add completion labels, checkmarks, strike-through or success styling, or alter meal state. Actual cooked and non-cooking status SHALL remain distinct from date-relative appearance.
 
 #### Scenario: Past meal was not cooked
+
 - **WHEN** a past date contains an uncooked recipe or empty slot
 - **THEN** its decorative treatment is quieter without implying completion or disabling existing actions
 
 #### Scenario: Past date has a recorded outcome
+
 - **WHEN** a past date has a cooked status or non-cooking plan
 - **THEN** its actual content and status remain distinguishable from the temporal treatment
 
 #### Scenario: Text and controls on a quiet row
+
 - **WHEN** past rows appear alongside today and future rows
 - **THEN** affected text and meaningful controls meet their contrast targets without whole-row fading
 
@@ -401,19 +474,23 @@ Dates earlier than authoritative today SHALL receive less decorative emphasis wh
 Planner SHALL classify displayed civil dates against reliable server-owned today rather than device-local dates or selected-week assumptions. Missing, invalid or expired context SHALL produce neutral temporal treatment until reliable context is obtained. Newly accepted context SHALL update emphasis without date-related writes or automatically changing meal state.
 
 #### Scenario: Device uses another timezone
+
 - **WHEN** the browser's local date differs from the authoritative deployment date
 - **THEN** Today and past-date classification follow the deployment date
 
 #### Scenario: Context cannot be confirmed
+
 - **WHEN** context is unavailable, invalid or expired and refresh is pending or fails
 - **THEN** retained day content remains usable without temporal emphasis inferred from a guessed date
 
 #### Scenario: Deployment day changes
+
 - **WHEN** the authoritative day boundary is reached and refreshed context is accepted
 - **THEN** emphasis updates to the new today, including across a week boundary
 - **AND** no meal is automatically marked cooked or completed
 
 #### Scenario: Week selection changes before content
+
 - **WHEN** another week is selected while previously loaded dates remain visible
 - **THEN** emphasis follows the actual displayed dates and reliable authoritative today, not the newly selected offset
 
@@ -422,10 +499,12 @@ Planner SHALL classify displayed civil dates against reliable server-owned today
 Today and past-date presentation SHALL leave keyboard focus, drag source/destination cues and existing action-success feedback independently distinguishable. The compact date cue SHALL NOT introduce a full-row Today outline, additional badges, a legend or repeated explanatory text. Temporal appearance SHALL NOT change action availability.
 
 #### Scenario: Today is a drag destination
+
 - **WHEN** today's slot becomes the candidate drag destination
 - **THEN** destination feedback remains distinguishable from today's marker without moving the date or adding an overlapping label
 
 #### Scenario: Focus or success appears on a temporal row
+
 - **WHEN** a control on today's or a past row receives focus or existing action-success feedback
 - **THEN** that feedback remains visible independently of the temporal treatment and the action retains its existing meaning
 
@@ -434,25 +513,30 @@ Today and past-date presentation SHALL leave keyboard focus, drag source/destina
 Planner SHALL render its existing chosen and vote-count recipe-row labels in the selected English or French locale. A row using the chosen label SHALL show “Chosen” in English and “Choisie” in French. Translation SHALL preserve existing badge-selection rules, row actions and pending-suggestion state; a vote label SHALL NOT establish a saved assignment.
 
 #### Scenario: Assigned row without positive votes in French
+
 - **WHEN** French Planner displays an assigned recipe whose displayed vote count is zero or absent
 - **THEN** its existing recipe-row badge reads “Choisie” rather than “Chosen”
 - **AND** its saved assignment and available actions remain unchanged
 
 #### Scenario: Assigned row without positive votes in English
+
 - **WHEN** English Planner displays an assigned recipe whose displayed vote count is zero or absent
 - **THEN** its badge continues to read “Chosen”
 
 #### Scenario: Voting suggestion is still pending
+
 - **WHEN** French Planner displays an unassigned pending suggestion with two votes
 - **THEN** its badge reads “2 votes” without the English text “2 voted”
 - **AND** the suggestion remains pending and no assignment is submitted by rendering the label
 
 #### Scenario: Saved assignment also has votes
+
 - **WHEN** Planner displays an assigned recipe with a positive displayed vote count
 - **THEN** it retains the existing vote-count badge in the selected locale
 - **AND** the vote label neither removes its assignment nor implies that every recipe with votes is assigned
 
 #### Scenario: Zero or missing count preserves existing handling
+
 - **WHEN** a displayed recipe row has a zero or absent vote count
 - **THEN** the existing chosen-label branch uses the localized chosen text instead of inventing a zero-vote label
 - **AND** that text does not change whether the row is pending or assigned
@@ -462,16 +546,19 @@ Planner SHALL render its existing chosen and vote-count recipe-row labels in the
 For positive displayed vote counts, Planner SHALL use localized singular and plural forms with the actual count. French SHALL show “1 vote” for one and “{{count}} votes” for larger counts. English SHALL retain “{{count}} voted” for both forms. These labels SHALL describe vote interest without implying a saved assignment, locked week or cooked meal.
 
 #### Scenario: Singular vote
+
 - **WHEN** the displayed recipe-row vote count is one
 - **THEN** French shows “1 vote” and English shows “1 voted”
 
 #### Scenario: Plural votes
+
 - **WHEN** the displayed recipe-row vote count is two or twelve
 - **THEN** French shows “2 votes” or “12 votes” respectively
 - **AND** English shows “2 voted” or “12 voted” respectively
 - **AND** no interpolation token or translation key appears in the badge
 
 #### Scenario: Labels fit the existing row
+
 - **WHEN** Planner displays the localized chosen, singular-vote and plural-vote labels at a narrow phone viewport with enlarged text
 - **THEN** the labels remain readable without overlapping recipe content or controls
 - **AND** existing touch targets and row actions remain available
@@ -481,14 +568,175 @@ For positive displayed vote counts, Planner SHALL use localized singular and plu
 Planner's existing recipe-row change action SHALL use the same opposing horizontal arrows icon as the home meal card's Change plan action in narrow and wide layouts. The replacement SHALL preserve existing action availability, localized accessible names, sizing, hit targets and interaction behavior. Other actions' icons SHALL remain unchanged.
 
 #### Scenario: Change an assigned recipe
+
 - **WHEN** an assigned recipe row displays its change action in either Planner layout
 - **THEN** the action shows opposing horizontal arrows matching the home meal card's Change plan icon
 - **AND** its existing accessible name, dimensions and activation behavior remain unchanged, opening options for that row
 
 #### Scenario: Existing availability rules apply
+
 - **WHEN** Planner displays pending suggestions, empty days or non-cooking plans
 - **THEN** the icon replacement does not introduce a recipe-change action where it was previously unavailable
 
 #### Scenario: Other arrows retain their meaning
+
 - **WHEN** Planner displays week navigation or Save for Next Week options
 - **THEN** those actions retain their existing icons and behavior
+
+### Requirement: Switch Planner rows into At the table inline
+
+Planner SHALL expose Portions as a quiet plate-and-label control aligned with Ask the Family, using Meals view's date column, Today divider and card surfaces. Editable rows SHALL right-align a joined minus/value/plus stepper without per-row reset buttons; past rows SHALL show photo-only with no portions or Cooked label, and upcoming prepared rows SHALL show quiet plain-text Already prepared and portions without an input, keeping Week, Grocery and voting available.
+
+#### Scenario: Enter portions mode on a phone
+
+- **WHEN** Portions is activated for the loaded week
+- **THEN** the same ordered dates show effective counts and permitted editing while saved recipes remain unchanged
+- **AND** the entry is quieter than Ask the Family without looking disabled or hiding its label
+
+#### Scenario: Portions view matches Meals date column and Today divider
+
+- **WHEN** Portions renders the loaded week including deployment-local Today and past dates
+- **THEN** each row uses the same left-hand weekday/day/month column and compact Today divider above Today's row as Meals view
+- **AND** editable and past cards match Meals view card surface styling (`glass` for current/future and quiet `cream` for past) without applying full-row `grayscale`
+
+#### Scenario: Thumb-zone stepper alignment, photo-only past rows, and quiet prepared text
+
+- **WHEN** Portions renders an editable day, a past day, or a current/future read-only prepared day
+- **THEN** an editable day right-aligns its joined minus/value/plus stepper in the card's trailing thumb zone without a per-row reset button shifting the controls
+- **AND** past days show photo-only (or neutral fallback) on their quiet cream surface with no portions control, no portions count, and no `Cooked` badge
+- **AND** current or future read-only prepared days omit the stepper and input box and show quiet plain-text `Already prepared` (`Déjà préparé`) alongside subtle plain-text portions when a count is saved, matching Recipes view without greying out the row
+
+#### Scenario: Long recipe name or missing photo
+
+- **WHEN** a recipe has a long name or unavailable hero
+- **THEN** the editor omits its name and uses its photo or neutral fallback without shrinking controls
+
+#### Scenario: Empty and non-cooking nights
+
+- **WHEN** a date is empty or non-cooking
+- **THEN** an empty date permits portions editing with a neutral fallback; a non-cooking date keeps its recognizable icon/description without an active stepper
+- **AND** dormant saved portions remain available for a future recipe
+
+#### Scenario: Large text and tablet
+
+- **WHEN** English/French labels, 320 CSS px or 200% text require reflow
+- **THEN** dates, count controls, week navigation and voting remain readable with visible focus and 48 CSS px targets
+
+### Requirement: Preserve visible Swipe Match Cook voting controls
+
+Ask the Family, Nudge family, and the close-voting action SHALL retain their state-dependent visible actions in their own row in ordinary Planner and Portions, with Nudge family omitted when the loaded week is confirmed converged. When both Nudge family and the close-voting action are shown, they SHALL share one line at every supported phone width. Portions SHALL NOT consolidate them into overflow or alter votes, and starting a voting action SHALL preserve portions drafts.
+
+#### Scenario: Voting is open while portions is edited
+
+- **WHEN** collecting `VotingOpen` is displayed (including when session convergence is unconfirmed for that round) and Portions opens
+- **THEN** `Nudge family` and `Close Voting` remain visible and operable under ordinary rules
+- **AND** returning to normal recipe rows preserves voting state
+
+#### Scenario: Voting is available but not open
+
+- **WHEN** `Ask the Family` would ordinarily be available
+- **THEN** it remains a visible action rather than being replaced by the count editor or a menu
+
+#### Scenario: Converged week while portions is edited
+
+- **WHEN** confirmed converged `VotingOpen` is displayed for the loaded round and Portions opens
+- **THEN** `Nudge family` remains hidden while the primary Garden-green save-and-close action stays visible and operable in its own row without overflow
+- **AND** activating it preserves portions drafts under existing departure and recovery boundaries
+
+#### Scenario: Collecting week shows both voting actions on one line
+
+- **WHEN** collecting `VotingOpen` is displayed on a 390 CSS px phone with Portions available
+- **THEN** `Nudge family` and `Close Voting` share one horizontal line, neither label wraps, neither button sits below the other, and each target is at least 48 CSS px
+- **AND** the same holds at 320 CSS px, in French (`Fermer le vote`), and while Portions is being edited
+
+#### Scenario: Enlarged text reflows instead of overflowing
+
+- **WHEN** collecting `VotingOpen` is displayed at 320 CSS px with 200% text
+- **THEN** `Nudge family` and `Close Voting` may stack on two lines but neither overflows the viewport or is clipped
+
+### Requirement: Finish or cancel a week portions draft explicitly
+
+Portions SHALL provide a Recipes button with the planner icon, draft-only minus/plus, and direct integer entry while keeping usual configuration in Settings. Valid departures (week switch, Groceries, navigation) and Recipes SHALL save the changed batch before continuing without a multi-button confirmation menu; invalid, failed, concurrent, or uncertain saves SHALL auto-load the latest baseline into a compact Era 3 Hearth card while preserving drafts.
+
+#### Scenario: Include leftovers
+
+- **WHEN** Portions opens
+- **THEN** concise How many portions? and Include extra for leftovers guidance describe one total per date without attendance or separate leftovers controls
+
+#### Scenario: Edit two dates and finish
+
+- **WHEN** Wednesday is entered as five and Saturday as seven, then Recipes is activated
+- **THEN** one batch persists those integers and confirmed values appear on return
+- **AND** ordinary cards gain no permanent stepper or repeated default-setting field
+
+#### Scenario: Leave with a draft
+
+- **WHEN** a person changes week, opens Groceries or leaves Planner with unsaved valid counts
+- **THEN** the editor automatically saves that changed batch before continuing without displaying a three-button `Unsaved portions` confirmation card
+- **AND** only if a draft is invalid or saving fails/conflicts does navigation pause with a compact Era 3 Hearth card holding one primary recovery/save action and one quiet `Discard` / leave escape
+
+#### Scenario: Past or completed supper
+
+- **WHEN** a past date, future Cooked supper, non-cooking plan or explicitly prepared supper appears
+- **THEN** its stored/frozen portions remain read-only and historical plans remain unchanged
+
+#### Scenario: Blank usual portions
+
+- **WHEN** the legacy saved usual is blank or null and a date has no override
+- **THEN** the migrated date inherits a positive automatic family count when available, rather than preserving the former blank-as-original rule for editable future dates
+- **AND** an unavailable family count retains original quantities honestly; explicit overrides and historical/prepared original-quantity snapshots remain unchanged
+
+#### Scenario: Invalid entry or concurrent saved change
+
+- **WHEN** a count is zero, negative, fractional, nonnumeric or out of range, or saving fails or another member changes the baseline
+- **THEN** invalid counts stay focused for correction without submitting, while failed/conflicting saves automatically read current saved portions and show the updated baseline inline alongside editable drafts in an Era 3 Hearth card without requiring a separate `Review saved portions` click gate
+
+#### Scenario: Automatic usual portions
+
+- **WHEN** no explicit usual exists and family size is four
+- **THEN** editable inherited dates use four without exposing the usual-setting field in Planner
+- **AND** explicit date overrides remain effective until edited
+
+#### Scenario: Correct today's Cooked count
+
+- **WHEN** today has a Cooked supper without an explicit preparation receipt
+- **THEN** the editor shows its actual saved count and enables deliberate dated correction under the supper-servings current-day rule
+- **AND** it remains marked Cooked; Recipes saves before returning, and auto-saving on other navigation and Hearth conflict/recovery follow the week portions rules
+
+#### Scenario: Correct a frozen inherited number without an override
+
+- **WHEN** today's eligible Cooked supper has saved inherited portions five, no override and current usual four
+- **THEN** opening shows five without changing it, returning without edits preserves five, and entering four creates a real correction draft
+- **AND** Recipes persists four rather than mistaking equality with current usual for an unchanged saved count
+
+### Requirement: Recognise a supper already prepared ahead
+
+A dated supper explicitly prepared before its supper date SHALL remain on that date and show Already prepared with its actual preparation date. Planner, Home and dated detail SHALL not present it as waiting to be cooked again. Instructions SHALL remain readable. Legacy Cooked state alone SHALL not invent an actual preparation date.
+
+#### Scenario: Tuesday cooking for Friday
+
+- **WHEN** Friday lasagna is prepared on Tuesday and Friday is viewed later
+- **THEN** Friday retains lasagna, shows Already prepared and Prepared Tuesday, and offers reading without another cooking-completion prompt
+
+### Requirement: Label joined portions controls by date
+
+Each joined minus/value/plus group SHALL provide accessible date-specific names, a labeled directly editable numeric field and associated errors. Photo presentation SHALL not require visible recipe names or duplicate announcements. Compact styling SHALL preserve normal keyboard input, focus and target size rather than shrinking interaction areas.
+
+#### Scenario: Enter an odd count with a screen reader
+
+- **WHEN** a person focuses Friday's numeric field and enters seven
+- **THEN** its name identifies Friday and portions, seven remains editable, and minus/plus have distinct date-specific names
+
+### Requirement: Keep date portions rows dimensionally stable without per-row reset buttons
+
+Portions SHALL omit any per-row usual-number reset button so stepping or editing counts never shifts controls horizontally or wraps the row. Editable dates SHALL retain direct minus/plus and numeric entry to any valid integer count (including a count equal to usual) and save via Recipes. Read-only dates SHALL remain protected, and unknown usual SHALL show a quiet unavailable explanation while keeping valid date editing enabled.
+
+#### Scenario: Edit an overridden date without shifting controls
+
+- **WHEN** Sunday's saved or inherited portions are adjusted with minus/plus or direct numeric entry
+- **THEN** no per-row default-serving reset button appears, stepper controls stay dimensionally stable in place, and Recipes persists the entered count
+
+#### Scenario: Prepared and unavailable states
+
+- **WHEN** the date is frozen or the usual count is unknown
+- **THEN** no per-row reset button appears, known prepared/date values remain read-only, and unknown usual shows a quiet unavailable note while permitting direct date edits where allowed

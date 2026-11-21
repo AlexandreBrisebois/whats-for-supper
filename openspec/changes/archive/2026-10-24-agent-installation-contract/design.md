@@ -41,17 +41,17 @@ For update, inspect the already verified ZIP and existing byte-comparison/versio
 
 One UTF-8 JSON object on stdout; no prompts or progress. Proposed schema version `1` has these required fields:
 
-| Field | Meaning |
-|---|---|
-| `schemaVersion` | Integer `1`; consumers reject unsupported major versions |
-| `operation` | `setup` or `update` |
-| `target` | Non-secret directory, project, Docker context, selected Compose files, layout, installed/target image versions; unavailable values are null |
-| `checks` | Ordered objects with stable `id`, `status`, `code`, `nextAction` |
-| `readiness` | `ready`, `blocked` or `unknown`; applies only to local inspection |
-| `configuration` | `absent`, `present` or `unknown`; presence does not prove valid secret values |
-| `backupEvidence` | `not-applicable`, `missing` or `acknowledged`; never `recoverable` |
-| `publicVerification` | `not-run`; this mode does not contact the public application |
-| `installationComplete` | Always false; inspection cannot establish completion |
+| Field                  | Meaning                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schemaVersion`        | Integer `1`; consumers reject unsupported major versions                                                                                    |
+| `operation`            | `setup` or `update`                                                                                                                         |
+| `target`               | Non-secret directory, project, Docker context, selected Compose files, layout, installed/target image versions; unavailable values are null |
+| `checks`               | Ordered objects with stable `id`, `status`, `code`, `nextAction`                                                                            |
+| `readiness`            | `ready`, `blocked` or `unknown`; applies only to local inspection                                                                           |
+| `configuration`        | `absent`, `present` or `unknown`; presence does not prove valid secret values                                                               |
+| `backupEvidence`       | `not-applicable`, `missing` or `acknowledged`; never `recoverable`                                                                          |
+| `publicVerification`   | `not-run`; this mode does not contact the public application                                                                                |
+| `installationComplete` | Always false; inspection cannot establish completion                                                                                        |
 
 Check statuses are `passed`, `blocked`, `failed`, `unknown`, `not-run`. Codes and next actions come from a fixed allowlist; arbitrary diagnostic text is excluded. Initial codes cover `READY`, `CONFIGURATION_REQUIRED`, `EXISTING_STATE_REVIEW`, `TOOL_MISSING`, `DOCKER_UNAVAILABLE`, `ENVIRONMENT_UNQUALIFIED`, `IDENTITY_CONFLICT`, `CONFIGURATION_CHANGED`, `BACKUP_EVIDENCE_MISSING`, `CHECK_TIMEOUT`, `INPUTS_CHANGED`, `INSPECTION_FAILED` and `INVALID_ARGUMENT`. Encode/escape path and project strings as JSON data. No secret values, secret hashes, cookie values or private backup contents appear in any stream. Release origin/checksum approval is an external precondition, not a claim manufactured by local status.
 

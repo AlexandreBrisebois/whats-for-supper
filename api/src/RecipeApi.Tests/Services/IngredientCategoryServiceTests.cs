@@ -30,7 +30,7 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
         _recomputeMock = new Mock<GroceryRecomputeService>(_db, new AisleMapper(), logger,
             _scope.ServiceProvider.GetRequiredService<IClock>(),
             _scope.ServiceProvider.GetRequiredService<DeploymentCalendar>(),
-            _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), null)
+            _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), null, null)
 #pragma warning restore CS8625
         {
             CallBase = false
@@ -47,6 +47,23 @@ public class IngredientCategoryServiceTests : IAsyncLifetime
     {
         _scope.Dispose();
         await _factory.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task ReclassifyAsync_ManualCorrectionRetainsCreationAndUnrelatedAliasProvenance()
+    {
+        var created = DateTimeOffset.UtcNow.AddDays(-7);
+        _db.IngredientCategories.AddRange(
+            new IngredientCategory { NormalizedKey = "onion", GrocerySection = "Produce", Source = "manual", Confidence = 1, CreatedAt = created, UpdatedAt = created },
+            new IngredientCategory { NormalizedKey = "oignon", GrocerySection = "Pantry", Source = "manual", Confidence = 1, CreatedAt = created, UpdatedAt = created });
+        await _db.SaveChangesAsync();
+        await _service.ReclassifyAsync("onion", "Deli", default);
+        var corrected = await _db.IngredientCategories.SingleAsync(x => x.NormalizedKey == "onion");
+        Assert.Equal("Deli", corrected.GrocerySection);
+        Assert.Equal("manual", corrected.Source);
+        Assert.Equal(created, corrected.CreatedAt);
+        Assert.Equal("Pantry", (await _db.IngredientCategories.SingleAsync(x => x.NormalizedKey == "oignon")).GrocerySection);
+        _recomputeMock.Verify(x => x.RecomputeForIngredientAsync("onion", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

@@ -8,6 +8,7 @@ import { useCaptureStore } from '@/store/captureStore';
 import { createPdfRecipe } from '@/lib/api/recipes';
 import { claimSharedPdf, discardSharedPdf } from '@/lib/pdfShare';
 import { PdfCaptureConfirmation } from './PdfCaptureConfirmation';
+import { useLocale } from '@/components/common/LocaleProvider';
 import { t } from '@/locales';
 
 export function PdfCapturePanel({
@@ -17,11 +18,12 @@ export function PdfCapturePanel({
   isGoto: boolean;
   resetPhotos: () => void;
 }) {
+  const { locale } = useLocale();
   const router = useRouter();
   const params = useSearchParams();
   const selection = usePdfCaptureStore((state) => state.selection);
   const memberId = useFamilyStore((state) => state.selectedFamilyMemberId);
-  const [shareError, setShareError] = useState<string | null>(null);
+  const [hasShareError, setHasShareError] = useState(false);
   const token = params.get('share');
   const processedToken = useRef<string | null>(null);
   const mounted = useRef(true);
@@ -82,7 +84,7 @@ export function PdfCapturePanel({
       deliveryEpoch.current++;
       reset();
       queueMicrotask(() => {
-        if (mounted.current && previousNavigation.current === navigation) setShareError(null);
+        if (mounted.current && previousNavigation.current === navigation) setHasShareError(false);
       });
     }
     previousNavigation.current = navigation;
@@ -111,18 +113,18 @@ export function PdfCapturePanel({
         resetPhotos();
         usePdfCaptureStore.getState().select(shared.file, memberId, token);
         ownedGeneration.current = usePdfCaptureStore.getState().selection?.generation;
-        setShareError(null);
+        setHasShareError(false);
       } catch {
         if (mounted.current && deliveryEpoch.current === epoch && currentToken.current === token)
-          setShareError(t('capture.pdf.restart', 'Choose or share the PDF again.'));
+          setHasShareError(true);
       }
     })();
   }, [token, memberId, isGoto, resetPhotos]);
 
   if (!selection)
-    return shareError || params.get('pdfShareError') ? (
-      <p data-testid="pdf-share-error" role="alert" className="text-sm text-pink">
-        {shareError || t('capture.pdf.restart', 'Choose or share the PDF again.')}
+    return hasShareError || params.get('pdfShareError') ? (
+      <p data-testid="pdf-share-error" role="alert" className="text-sm font-medium text-hearth-ink">
+        {t('capture.pdf.restart', 'Choose or share the PDF again.', locale)}
       </p>
     ) : null;
   if (isGoto || selection.memberId !== memberId) return null;

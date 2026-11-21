@@ -109,6 +109,11 @@ export function deserializeIntoFamilyPutResponse_data(
         FamilyPutResponse_data_browseViewModeObject
       );
     },
+    contrastMode: (n) => {
+      familyPutResponse_data.contrastMode = n.getEnumValue<FamilyPutResponse_data_contrastMode>(
+        FamilyPutResponse_data_contrastModeObject
+      );
+    },
     cookingViewMode: (n) => {
       familyPutResponse_data.cookingViewMode =
         n.getEnumValue<FamilyPutResponse_data_cookingViewMode>(
@@ -199,6 +204,10 @@ export interface FamilyPutResponse_data extends AdditionalDataHolder, Parsable {
    */
   browseViewMode?: FamilyPutResponse_data_browseViewMode | null;
   /**
+   * The contrastMode property
+   */
+  contrastMode?: FamilyPutResponse_data_contrastMode | null;
+  /**
    * The cookingViewMode property
    */
   cookingViewMode?: FamilyPutResponse_data_cookingViewMode | null;
@@ -225,6 +234,8 @@ export interface FamilyPutResponse_data extends AdditionalDataHolder, Parsable {
 }
 export type FamilyPutResponse_data_browseViewMode =
   (typeof FamilyPutResponse_data_browseViewModeObject)[keyof typeof FamilyPutResponse_data_browseViewModeObject];
+export type FamilyPutResponse_data_contrastMode =
+  (typeof FamilyPutResponse_data_contrastModeObject)[keyof typeof FamilyPutResponse_data_contrastModeObject];
 export type FamilyPutResponse_data_cookingViewMode =
   (typeof FamilyPutResponse_data_cookingViewModeObject)[keyof typeof FamilyPutResponse_data_cookingViewModeObject];
 export type FamilyPutResponse_data_preferredLanguage =
@@ -288,6 +299,10 @@ export function serializeFamilyPutResponse_data(
     'browseViewMode',
     familyPutResponse_data.browseViewMode
   );
+  writer.writeEnumValue<FamilyPutResponse_data_contrastMode>(
+    'contrastMode',
+    familyPutResponse_data.contrastMode
+  );
   writer.writeEnumValue<FamilyPutResponse_data_cookingViewMode>(
     'cookingViewMode',
     familyPutResponse_data.cookingViewMode
@@ -347,6 +362,10 @@ export const FamilyItemRequestBuilderRequestsMetadata: RequestsMetadata = {
 export const FamilyPutResponse_data_browseViewModeObject = {
   Stack: 'stack',
   List: 'list',
+} as const;
+export const FamilyPutResponse_data_contrastModeObject = {
+  Standard: 'standard',
+  High: 'high',
 } as const;
 export const FamilyPutResponse_data_cookingViewModeObject = {
   StepByStep: 'step-by-step',

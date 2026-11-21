@@ -78,14 +78,14 @@ public class CalendarEvent
 
 1. **Planning Phase**: Mom builds week with smart defaults, can reorder/edit freely
 2. **Voting Open**: Mom clicks "End Voting" → family can vote on the recipes in the plan
-    - Family votes in discovery/match view on the planned recipes
-    - Vote counts update in real-time in the planner
-    - Planned recipes are filtered out from discovery (family can't suggest recipes already in the plan)
+   - Family votes in discovery/match view on the planned recipes
+   - Vote counts update in real-time in the planner
+   - Planned recipes are filtered out from discovery (family can't suggest recipes already in the plan)
 3. **Voting Closed**: Voting window expires or mom closes it
-    - Vote counts persisted to `CalendarEvent.VoteCount`
-    - `RecipeVotes` table cleared (current week votes no longer needed)
-    - Button state changes: "Voting Complete" → "Voting Closed"
-    - Mom can still reorder recipes and add missing ones
+   - Vote counts persisted to `CalendarEvent.VoteCount`
+   - `RecipeVotes` table cleared (current week votes no longer needed)
+   - Button state changes: "Voting Complete" → "Voting Closed"
+   - Mom can still reorder recipes and add missing ones
 
 **Button Naming**:
 

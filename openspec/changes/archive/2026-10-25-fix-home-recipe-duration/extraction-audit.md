@@ -4,13 +4,13 @@ Source baseline: ba8dca21c83000d03ce03dbe51bd7542daa76b88. No model, provider, p
 
 ## Prompt and persistence paths
 
-| Entry | Source and duration policy |
-| --- | --- |
-| Photo | RecipeAgent.DoExtractRecipeAsync selects Prompts/extract-recipe.md; Time converts to ISO 8601, template totalTime PT35M; extract only visible source content |
-| PDF | recipe-import.yaml ConvertPdf precedes ExtractRecipe; PdfConversionProcessor renders pages to the same photo extraction path; no separate PDF duration prompt |
-| Link | url-import.yaml runs web acquisition then extraction; RecipeAgent selects extract-web-recipe.md when HTML exists; Time converts to ISO 8601, totalTime template permits null |
-| User description / concept | RecipeAgent.DoSynthesizeRecipeAsync selects synthesize-recipe.md; ISO 8601 totalTime, infer time if unstated (existing synthesis semantics) |
-| Generated prose description | generate-description.md returns only descriptive prose; DoGenerateDescriptionAsync updates description, not totalTime; this is distinct from concept synthesis |
+| Entry                       | Source and duration policy                                                                                                                                                   |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Photo                       | RecipeAgent.DoExtractRecipeAsync selects Prompts/extract-recipe.md; Time converts to ISO 8601, template totalTime PT35M; extract only visible source content                 |
+| PDF                         | recipe-import.yaml ConvertPdf precedes ExtractRecipe; PdfConversionProcessor renders pages to the same photo extraction path; no separate PDF duration prompt                |
+| Link                        | url-import.yaml runs web acquisition then extraction; RecipeAgent selects extract-web-recipe.md when HTML exists; Time converts to ISO 8601, totalTime template permits null |
+| User description / concept  | RecipeAgent.DoSynthesizeRecipeAsync selects synthesize-recipe.md; ISO 8601 totalTime, infer time if unstated (existing synthesis semantics)                                  |
+| Generated prose description | generate-description.md returns only descriptive prose; DoGenerateDescriptionAsync updates description, not totalTime; this is distinct from concept synthesis               |
 
 Paths above are under api/src/RecipeApi. EmbeddedPromptRepository maps PromptType to those embedded prompt files. Refinement's fallback prompt in RecipeAgent also requests ISO 8601 totalTime. No current instruction forces all durations into minutes or changes six hours into six minutes. Minute-only ISO examples are valid examples, not a requirement to ignore hours. Inference in synthesis is distinct from extraction fidelity and is unchanged.
 
