@@ -88,6 +88,7 @@ for (const appLocale of ['en', 'fr'] as const) {
             await page.evaluate(() => {
               document.documentElement.dataset.contrast = 'high';
             });
+            await expect(edit).toHaveCSS('color', 'rgb(123, 56, 41)');
             await assertCookbookVisualA11y(page, {
               rootSelector: '[data-testid="today-non-cooking-plan"]',
               contrastLevel: 'aaa',
@@ -95,6 +96,7 @@ for (const appLocale of ['en', 'fr'] as const) {
             await page.evaluate(() => {
               delete document.documentElement.dataset.contrast;
             });
+            await expect(edit).toHaveCSS('color', 'rgb(164, 74, 55)');
           }
           if (width === 320) {
             await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
