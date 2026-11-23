@@ -185,12 +185,18 @@ export const getSmartDefaults = async (
   }
 };
 
-export async function saveNonCookingDay(date: string, plan: NonCookingPlanDto) {
+export async function saveNonCookingDay(
+  date: string,
+  plan: NonCookingPlanDto,
+  options?: { replaceRecipe?: boolean }
+) {
   const parsed = DateOnly.parse(date);
   if (!parsed) throw new Error('Invalid date');
-  const result = await apiClient.api.schedule.day
-    .byDate(parsed)
-    .validate.post({ status: 3, nonCooking: plan });
+  const result = await apiClient.api.schedule.day.byDate(parsed).validate.post({
+    status: 3,
+    nonCooking: plan,
+    ...(options?.replaceRecipe ? { replaceRecipe: true } : {}),
+  });
   void useDiscoveryStore.getState().refreshSession();
   return result;
 }

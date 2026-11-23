@@ -220,6 +220,8 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
         if (dto.SourceDisposition != null && (dto.Intent != "tomorrow" || dto.SourceDisposition != "order_in"))
             throw new ArgumentException("Source disposition is only supported for Tomorrow Order In.");
+        if (dto.SourceNonCooking != null && dto.Intent != "tomorrow")
+            throw new ArgumentException("Source non-cooking disposition is only supported for Tomorrow.");
         if (dto.Intent == "tomorrow")
             return await MoveTomorrowAsync(dto, context, excludeConnectionId, echoSeq, ct);
         var targetWeekOffset = dto.TargetWeekOffset ?? dto.WeekOffset;
@@ -432,6 +434,9 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         int targetWeekOffset = 1)
     {
         var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
+        var sourceNonCooking = dto.SourceNonCooking is not null
+            ? NormalizeNonCookingPlan(dto.SourceNonCooking, allowMystery: false)
+            : null;
         var nextWeekStart = context.WeekStart(targetWeekOffset);
         await using var transaction = await SupperServingsService.BeginAsync(_dbContext, ct);
         var source = await _dbContext.CalendarEvents
@@ -459,9 +464,17 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             });
         }
 
-        if (source.Status == CalendarEventStatus.Skipped)
+        if (sourceNonCooking is not null || source.Status == CalendarEventStatus.Skipped)
         {
             source.RecipeId = null;
+            source.Status = CalendarEventStatus.Skipped;
+            ClearPreparation(source);
+            if (sourceNonCooking is not null)
+            {
+                source.VoteCount = 0;
+                source.NonCookingKind = sourceNonCooking.Kind;
+                source.NonCookingLabel = sourceNonCooking.CustomLabel;
+            }
             _dbContext.CalendarEvents.Add(new CalendarEvent
             {
                 Id = Guid.NewGuid(),
@@ -789,14 +802,13 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
     {
         var context = _calendar.Capture(_clock.UtcNow);
         var plan = dto.NonCooking;
+        if (dto.ReplaceRecipe == true && (dto.Status != 3 || plan == null))
+            throw new ArgumentException("Replacing a recipe requires status 3 and a valid non-cooking plan.");
         if (plan != null)
         {
-            var label = plan.CustomLabel?.Trim();
-            if (dto.Status != 3 || plan.Kind is not ("order_in" or "eating_out" or "mystery" or "custom") ||
-                (plan.Kind == "mystery" ? plan.CustomLabel != null :
-                    (plan.Kind == "custom" && string.IsNullOrWhiteSpace(label)) || (label?.EnumerateRunes().Count() ?? 0) > 80))
+            if (dto.Status != 3)
                 throw new ArgumentException("Choose a valid non-cooking plan; messages must contain at most 80 characters and custom messages are required.");
-            plan = plan with { CustomLabel = string.IsNullOrWhiteSpace(label) ? null : label };
+            plan = NormalizeNonCookingPlan(plan, allowMystery: dto.ReplaceRecipe != true);
         }
         // Ordinary legacy writes must inspect preparation under the same calendar lock as
         // guarded preparation. Keep typed non-cooking validation's existing Serializable policy.
@@ -816,8 +828,18 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             .Include(e => e.Recipe)
             .FirstOrDefaultAsync(e => e.Date == date);
 
-        if (plan != null && @event != null && (@event.RecipeId != null || @event.Status != CalendarEventStatus.Skipped))
-            throw new NonCookingPlanConflictException("This day’s plan changed. Refresh it before marking it as non-cooking.");
+        if (plan != null && @event != null)
+        {
+            if (dto.ReplaceRecipe == true)
+            {
+                if (@event.PreparedAtUtc is not null || @event.Status is CalendarEventStatus.Cooked or CalendarEventStatus.AwaitingConsensus)
+                    throw new NonCookingPlanConflictException("This day’s plan changed. Refresh it before marking it as non-cooking.");
+            }
+            else if (@event.RecipeId != null || @event.Status != CalendarEventStatus.Skipped)
+            {
+                throw new NonCookingPlanConflictException("This day’s plan changed. Refresh it before marking it as non-cooking.");
+            }
+        }
 
         if (dto.Status == 2 && dto.RecipeId is { } cookedRecipeId)
         {
@@ -872,9 +894,16 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             throw new NonCookingPlanConflictException("An already prepared supper cannot be changed through legacy completion.");
         }
         var oldStatus = @event.Status;
+        var replacedRecipe = dto.ReplaceRecipe == true && plan != null && @event.RecipeId != null;
         @event.Status = (CalendarEventStatus)dto.Status;
         if (plan != null)
         {
+            if (dto.ReplaceRecipe == true)
+            {
+                @event.RecipeId = null;
+                @event.Recipe = null;
+                @event.VoteCount = 0;
+            }
             @event.NonCookingKind = plan.Kind;
             @event.NonCookingLabel = plan.CustomLabel;
         }
@@ -926,7 +955,24 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
         }
 
         await _publisher.PublishSlotUpdatedAsync(date, recipeDto, dto.Status, excludeConnectionId, GetNonCookingPlan(@event), @event.Id);
+        if (replacedRecipe)
+        {
+            var monday = GetMonday(date);
+            await RefreshCommittedWeekAsync(monday, context, excludeConnectionId);
+        }
         return dto.Status == 2;
+    }
+
+    private static NonCookingPlanDto NormalizeNonCookingPlan(NonCookingPlanDto plan, bool allowMystery)
+    {
+        var label = plan.CustomLabel?.Trim();
+        var validKind = plan.Kind is "order_in" or "eating_out" or "custom" || (allowMystery && plan.Kind == "mystery");
+        if (!validKind ||
+            (plan.Kind == "mystery"
+                ? plan.CustomLabel != null
+                : (plan.Kind == "custom" && string.IsNullOrWhiteSpace(label)) || (label?.EnumerateRunes().Count() ?? 0) > 80))
+            throw new ArgumentException("Choose a valid non-cooking plan; messages must contain at most 80 characters and custom messages are required.");
+        return plan with { CustomLabel = string.IsNullOrWhiteSpace(label) ? null : label };
     }
 
     private static NonCookingPlanDto? GetNonCookingPlan(CalendarEvent? entry) =>

@@ -1172,7 +1172,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
     // Quick Find should close, Recovery Dialog should re-open at Step 2
     await expect(page.getByTestId('quick-find-modal')).not.toBeVisible();
     await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /What about Test Lasagna on/ })).toBeVisible();
+    await expect(page.getByTestId('recovery-meal-context')).toContainText('Test Lasagna');
 
     // Click "Move to Tomorrow"
     await page.getByTestId('recovery-action-tomorrow').click();
@@ -1247,7 +1247,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Click "Take Out" → step 2
     await page.getByTestId('recovery-action-order-in').click();
-    await expect(page.getByRole('heading', { name: /What about Test Lasagna on/ })).toBeVisible();
+    await expect(page.getByTestId('recovery-meal-context')).toContainText('Test Lasagna');
 
     // Click "Move to Tomorrow"
     await page.getByTestId('recovery-action-tomorrow').click();
@@ -1372,7 +1372,7 @@ test.describe('Home Command Center — Planned Recipe Flow', () => {
 
     // Click "Take Out" → step 2
     await page.getByTestId('recovery-action-order-in').click();
-    await expect(page.getByRole('heading', { name: /What about Test Lasagna on/ })).toBeVisible();
+    await expect(page.getByTestId('recovery-meal-context')).toContainText('Test Lasagna');
 
     // Click "Just Drop Tonight"
     await page.getByTestId('recovery-action-drop').click();

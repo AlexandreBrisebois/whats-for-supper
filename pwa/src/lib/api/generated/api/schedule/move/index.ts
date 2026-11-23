@@ -16,6 +16,7 @@ import {
 // @ts-ignore
 import {
   type AdditionalDataHolder,
+  type ApiError,
   type BaseRequestBuilder,
   type DateOnly,
   type Parsable,
@@ -30,6 +31,17 @@ import {
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {Move400Error}
+ */
+// @ts-ignore
+export function createMove400ErrorFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoMove400Error;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {MovePostResponse}
  */
 // @ts-ignore
@@ -37,6 +49,24 @@ export function createMovePostResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoMovePostResponse;
+}
+/**
+ * The deserialization information for the current model
+ * @param Move400Error The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoMove400Error(
+  move400Error: Partial<Move400Error> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      move400Error.messageEscaped = n.getStringValue();
+    },
+    status: (n) => {
+      move400Error.status = n.getNumberValue();
+    },
+  };
 }
 /**
  * The deserialization information for the current model
@@ -55,6 +85,16 @@ export function deserializeIntoMovePostResponse(
     },
   };
 }
+export interface Move400Error extends AdditionalDataHolder, ApiError, Parsable {
+  /**
+   * The message property
+   */
+  messageEscaped?: string | null;
+  /**
+   * The status property
+   */
+  status?: number | null;
+}
 export interface MovePostResponse extends AdditionalDataHolder, Parsable {
   /**
    * Tomorrow and actual legacy cross-week movement return moved=true and all date/refresh fields. Same-week and cross-week no-op legacy completion return message only.
@@ -66,10 +106,11 @@ export interface MovePostResponse extends AdditionalDataHolder, Parsable {
  */
 export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilder> {
   /**
-   * Preparation metadata travels with recipe/status during swaps and whole-event moves; frozen portions and actual history remain unchanged. Legacy same-week swap and push retain their existing behavior. Actual cross-week placement returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete. Both affected weeks receive independent grocery recomputation and snapshot publication attempts. refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
+   * Preparation metadata travels with recipe/status during swaps and whole-event moves; frozen portions and actual history remain unchanged. Legacy same-week swap and push retain their existing behavior. Actual cross-week placement returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete. Both affected weeks receive independent grocery recomputation and snapshot publication attempts. refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in or sourceNonCooking (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery rejected with 400) is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<MovePostResponse>}
+   * @throws {Move400Error} error when the service returns a 400 status code
    * @throws {DemoResetRequiredError} error when the service returns a 412 status code
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
@@ -78,7 +119,7 @@ export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilde
     requestConfiguration?: RequestConfiguration<MoveRequestBuilderPostQueryParameters> | undefined
   ): Promise<MovePostResponse | undefined>;
   /**
-   * Preparation metadata travels with recipe/status during swaps and whole-event moves; frozen portions and actual history remain unchanged. Legacy same-week swap and push retain their existing behavior. Actual cross-week placement returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete. Both affected weeks receive independent grocery recomputation and snapshot publication attempts. refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
+   * Preparation metadata travels with recipe/status during swaps and whole-event moves; frozen portions and actual history remain unchanged. Legacy same-week swap and push retain their existing behavior. Actual cross-week placement returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete. Both affected weeks receive independent grocery recomputation and snapshot publication attempts. refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in or sourceNonCooking (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery rejected with 400) is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
@@ -89,13 +130,32 @@ export interface MoveRequestBuilder extends BaseRequestBuilder<MoveRequestBuilde
   ): RequestInformation;
 }
 /**
- * Preparation metadata travels with recipe/status during swaps and whole-event moves; frozen portions and actual history remain unchanged. Legacy same-week swap and push retain their existing behavior. Actual cross-week placement returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete. Both affected weeks receive independent grocery recomputation and snapshot publication attempts. refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
+ * Preparation metadata travels with recipe/status during swaps and whole-event moves; frozen portions and actual history remain unchanged. Legacy same-week swap and push retain their existing behavior. Actual cross-week placement returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete. Both affected weeks receive independent grocery recomputation and snapshot publication attempts. refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex in 0..6 and the exact matching recipe at supper slot zero. The target must be the next calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the contiguous occupied supper chain through all required weeks, stopping at the first empty supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation. Source disposition order_in or sourceNonCooking (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery rejected with 400) is allowed only for tomorrow and commits atomically with shifts. A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
  */
 export interface MoveRequestBuilderPostQueryParameters {
   /**
    * Optional yyyy-MM-dd Monday anchoring relative offsets. Omission captures the deployment current Monday (UTC by default). Invalid or non-Monday references return 400 before work.
    */
   referenceWeekStartDate?: DateOnly;
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param Move400Error The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeMove400Error(
+  writer: SerializationWriter,
+  move400Error: Partial<Move400Error> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!move400Error || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', move400Error.messageEscaped);
+  writer.writeNumberValue('status', move400Error.status);
+  writer.writeAdditionalData(move400Error.additionalData);
 }
 /**
  * Serializes information the current object
@@ -132,6 +192,7 @@ export const MoveRequestBuilderRequestsMetadata: RequestsMetadata = {
     uriTemplate: MoveRequestBuilderUriTemplate,
     responseBodyContentType: 'application/json',
     errorMappings: {
+      400: createMove400ErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       412: createDemoResetRequiredErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
       503: createRecoveryBusyErrorFromDiscriminatorValue as ParsableFactory<Parsable>,
     },

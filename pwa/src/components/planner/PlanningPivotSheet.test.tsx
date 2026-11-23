@@ -201,6 +201,35 @@ describe('PlanningPivotSheet', () => {
 
     expect(screen.queryByTestId('pivot-plan-later')).not.toBeInTheDocument();
   });
+
+  it('uses the compact Era 3 opaque shell and non-clickable terracotta-bar recipe context when a recipe is planned', () => {
+    setLocale('en');
+    render(
+      <PlanningPivotSheet
+        isOpen
+        onClose={vi.fn()}
+        dayIndex={5}
+        date="2026-11-21"
+        recipeName="Grilled Cilantro Lime Chicken"
+        hasRecipe
+        onPlanLater={vi.fn()}
+        onQuickFind={vi.fn()}
+        onSearchLibrary={vi.fn()}
+        onNoCooking={vi.fn()}
+        onRemoveRecipe={vi.fn()}
+      />
+    );
+
+    const sheet = screen.getByTestId('pivot-sheet');
+    expect(sheet).toHaveClass('bg-cream', 'p-5', 'rounded-[2rem]');
+    expect(sheet.className).not.toContain('backdrop-blur');
+    const context = screen.getByTestId('pivot-meal-context');
+    expect(context.tagName).not.toBe('BUTTON');
+    expect(context).not.toHaveClass('bg-white');
+    expect(context).toHaveTextContent('Grilled Cilantro Lime Chicken');
+    expect(screen.getByText('Saturday, November 21')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveClass('h-12', 'w-12');
+  });
 });
 
 // Run the real declaration/coordinator path rather than mocking the observation hook.

@@ -4,7 +4,8 @@ namespace RecipeApi.Dto;
 
 public record DeferScheduleDto(
     [property: JsonPropertyName("sourceDate")] DateOnly SourceDate,
-    [property: JsonPropertyName("recipeId")] Guid RecipeId);
+    [property: JsonPropertyName("recipeId")] Guid RecipeId,
+    [property: JsonPropertyName("sourceNonCooking")] NonCookingPlanDto? SourceNonCooking = null);
 
 public record DeferScheduleResultDto(
     [property: JsonPropertyName("scheduledDate")] DateOnly ScheduledDate,

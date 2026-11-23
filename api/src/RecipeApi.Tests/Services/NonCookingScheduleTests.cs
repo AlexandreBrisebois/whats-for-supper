@@ -169,6 +169,45 @@ public class NonCookingScheduleTests : IDisposable
     }
 
     [Fact]
+    public async Task NonCookingSave_ExplicitReplaceRecipeAtomicallyReplacesPlannedMealAndProtectsCooked()
+    {
+        var recipeId = await AddRecipe(_monday);
+        await _service.ValidateDayAsync("2026-10-12", new ValidationDto(3, NonCooking: new NonCookingPlanDto("custom", "  Supper at Grandma's  "), ReplaceRecipe: true));
+        var replaced = _db.CalendarEvents.Single(e => e.Date == _monday);
+        Assert.Null(replaced.RecipeId);
+        Assert.Equal(CalendarEventStatus.Skipped, replaced.Status);
+        Assert.Equal("custom", replaced.NonCookingKind);
+        Assert.Equal("Supper at Grandma's", replaced.NonCookingLabel);
+
+        var cookedId = Guid.NewGuid();
+        _db.Recipes.Add(new Recipe { Id = cookedId, Name = "Soup" });
+        _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = _monday.AddDays(1), RecipeId = cookedId, Status = CalendarEventStatus.Cooked });
+        await _db.SaveChangesAsync();
+        await Assert.ThrowsAsync<NonCookingPlanConflictException>(() =>
+            _service.ValidateDayAsync("2026-10-13", new ValidationDto(3, NonCooking: new NonCookingPlanDto("eating_out"), ReplaceRecipe: true)));
+        Assert.Equal(cookedId, _db.CalendarEvents.Single(e => e.Date == _monday.AddDays(1)).RecipeId);
+    }
+
+    [Fact]
+    public async Task Defer_WithSourceNonCookingPersistsNormalizedPlanAndDefersRecipe()
+    {
+        var recipeId = await AddRecipe(_monday);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.DeferRecipeAsync(new DeferScheduleDto(_monday, recipeId, new NonCookingPlanDto("mystery"))));
+        var result = await _service.DeferRecipeAsync(
+            new DeferScheduleDto(_monday, recipeId, new NonCookingPlanDto("custom", "  Supper at Grandma's  ")));
+        Assert.Equal(_monday.AddDays(7), result.ScheduledDate);
+        var source = _db.CalendarEvents.Single(e => e.Date == _monday);
+        Assert.Null(source.RecipeId);
+        Assert.Equal(CalendarEventStatus.Skipped, source.Status);
+        Assert.Equal("custom", source.NonCookingKind);
+        Assert.Equal("Supper at Grandma's", source.NonCookingLabel);
+        var deferred = _db.CalendarEvents.Single(e => e.Date == _monday.AddDays(7));
+        Assert.Equal(recipeId, deferred.RecipeId);
+        Assert.Equal(CalendarEventStatus.Planned, deferred.Status);
+    }
+
+    [Fact]
     public async Task AllMarkedWeek_HasNoOpenSlotsOrRecipeSideEffects()
     {
         for (var i = 0; i < 7; i++) await _service.ValidateDayAsync(_monday.AddDays(i).ToString("yyyy-MM-dd"), Plan("eating_out"));

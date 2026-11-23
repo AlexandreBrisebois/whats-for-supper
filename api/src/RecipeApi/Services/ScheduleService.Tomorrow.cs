@@ -12,6 +12,11 @@ public partial class ScheduleService
     {
         if (dto.FromIndex is not (>= 0 and <= 6) || dto.ToIndex is < 0 or > 6)
             throw new ArgumentException("Tomorrow requires an exact supper source.");
+        var sourceNonCooking = dto.SourceNonCooking is not null
+            ? NormalizeNonCookingPlan(dto.SourceNonCooking, allowMystery: false)
+            : dto.SourceDisposition == "order_in"
+                ? new NonCookingPlanDto("order_in")
+                : null;
         var sourceDate = context.WeekStart(dto.WeekOffset).AddDays(dto.FromIndex.Value);
         var destination = sourceDate.AddDays(1);
         if (context.WeekStart(dto.TargetWeekOffset ?? dto.WeekOffset).AddDays(dto.ToIndex) != destination)
@@ -56,7 +61,7 @@ public partial class ScheduleService
                 entry.Date = entry.Date.AddDays(1);
                 await _dbContext.SaveChangesAsync(ct);
             }
-            if (dto.SourceDisposition == "order_in" || source.Status == CalendarEventStatus.Skipped)
+            if (sourceNonCooking is not null || source.Status == CalendarEventStatus.Skipped)
             {
                 _dbContext.CalendarEvents.Add(new CalendarEvent
                 {
@@ -70,8 +75,8 @@ public partial class ScheduleService
                 source.RecipeId = null;
                 source.VoteCount = 0;
                 source.Status = CalendarEventStatus.Skipped;
-                if (dto.SourceDisposition == "order_in")
-                { source.NonCookingKind = "order_in"; source.NonCookingLabel = null; }
+                if (sourceNonCooking is not null)
+                { source.NonCookingKind = sourceNonCooking.Kind; source.NonCookingLabel = sourceNonCooking.CustomLabel; }
             }
             else source.Date = destination;
             await _dbContext.SaveChangesAsync(ct);

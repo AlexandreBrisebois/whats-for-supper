@@ -184,8 +184,98 @@ public partial class TomorrowPushPostgresTests(ITestOutputHelper output)
             new { weekOffset=0, fromIndex=7, toIndex=0, targetWeekOffset=1, recipeId=Selected, intent="tomorrow" },
             new { weekOffset=int.MaxValue, fromIndex=6, toIndex=0, targetWeekOffset=1, recipeId=Selected, intent="tomorrow" },
             new { weekOffset=0, fromIndex=6, toIndex=0, targetWeekOffset=1, recipeId=Selected, intent="push", sourceDisposition="order_in" },
-        }) Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(MoveUrl, request)).StatusCode);
+            new { weekOffset=0, fromIndex=6, toIndex=0, targetWeekOffset=1, recipeId=Selected, intent="push", sourceNonCooking=new { kind="eating_out" } },
+            new { weekOffset=0, fromIndex=6, toIndex=0, targetWeekOffset=1, recipeId=Selected, intent="tomorrow", sourceNonCooking=new { kind="mystery" } },
+            new { weekOffset=0, fromIndex=6, toIndex=0, targetWeekOffset=1, recipeId=Selected, intent="tomorrow", sourceNonCooking=new { kind="custom", customLabel="   " } },
+            new { weekOffset=0, fromIndex=6, toIndex=0, targetWeekOffset=1, recipeId=Selected, intent="tomorrow", sourceNonCooking=new { kind="custom", customLabel=new string('a', 81) } },
+            new { weekOffset=0, fromIndex=6, toIndex=0, targetWeekOffset=1, recipeId=Selected, intent="tomorrow", sourceNonCooking=new { kind="eating_out", customLabel=new string('a', 81) } },
+            new { weekOffset=0, fromIndex=6, toIndex=0, targetWeekOffset=1, recipeId=Selected, intent="tomorrow", sourceNonCooking=new { kind="invalid_kind" } },
+        }) {
+            var response = await client.PostAsJsonAsync(MoveUrl, request);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.False(json.RootElement.TryGetProperty("data", out _));
+            Assert.Equal(400, json.RootElement.GetProperty("status").GetInt32());
+            Assert.False(string.IsNullOrWhiteSpace(json.RootElement.GetProperty("message").GetString()));
+        }
         Assert.Equal(before, await Snapshot(db));
+    }
+
+    [Theory]
+    [InlineData("order_in", null, null)]
+    [InlineData("eating_out", null, null)]
+    [InlineData("eating_out", "  Luigi's  ", "Luigi's")]
+    [InlineData("custom", "  Supper at Grandma's  ", "Supper at Grandma's")]
+    public async Task TomorrowPush_SourceNonCookingPersistsNormalizedPlanAndMovesRecipe(string kind, string? rawLabel, string? expectedLabel)
+    {
+        await using var factory = await DeploymentCalendarIntegrationTests.CreateAsync();
+        await Seed(factory);
+        using var client = factory.CreateAuthenticatedClient();
+        var response = await client.PostAsJsonAsync(MoveUrl, new {
+            weekOffset = 0, fromIndex = 6, toIndex = 0, targetWeekOffset = 1,
+            recipeId = Selected, intent = "tomorrow",
+            sourceNonCooking = new { kind, customLabel = rawLabel },
+        });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var source = await db.CalendarEvents.AsNoTracking().SingleAsync(e => e.Date == Sunday && e.MealSlot == 0);
+        Assert.Null(source.RecipeId);
+        Assert.Equal(CalendarEventStatus.Skipped, source.Status);
+        Assert.Equal(0, source.VoteCount);
+        Assert.Equal(kind, source.NonCookingKind);
+        Assert.Equal(expectedLabel, source.NonCookingLabel);
+        var moved = await db.CalendarEvents.AsNoTracking().SingleAsync(e => e.Date == Sunday.AddDays(1) && e.MealSlot == 0);
+        Assert.Equal(Selected, moved.RecipeId);
+        Assert.Equal(CalendarEventStatus.Planned, moved.Status);
+        Assert.Equal(0, moved.VoteCount);
+    }
+
+    [Fact]
+    public async Task TomorrowPush_SourceNonCookingConflictLeavesSourceUnchanged()
+    {
+        await using var factory = await DeploymentCalendarIntegrationTests.CreateAsync();
+        await Seed(factory);
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        (await db.CalendarEvents.SingleAsync(e => e.Date == Sunday.AddDays(1) && e.MealSlot == 0)).Status = CalendarEventStatus.Cooked;
+        await db.SaveChangesAsync();
+        var before = await Snapshot(db);
+        using var client = factory.CreateAuthenticatedClient();
+        var response = await client.PostAsJsonAsync(MoveUrl, new {
+            weekOffset = 0, fromIndex = 6, toIndex = 0, targetWeekOffset = 1,
+            recipeId = Selected, intent = "tomorrow",
+            sourceNonCooking = new { kind = "custom", customLabel = "Supper at Grandma's" },
+        });
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(before, await Snapshot(db));
+    }
+
+    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
+    public async Task TomorrowPush_SourceNonCookingCommitsAtomicallyInPostgres()
+    {
+        await WithDatabase(async settings => {
+            await using var factory = await CreateFactory(settings);
+            await Seed(factory);
+            using var client = factory.CreateAuthenticatedClient();
+            var response = await client.PostAsJsonAsync(MoveUrl, new {
+                weekOffset = 0, fromIndex = 6, toIndex = 0, targetWeekOffset = 1,
+                recipeId = Selected, intent = "tomorrow",
+                sourceNonCooking = new { kind = "custom", customLabel = "  Supper at Grandma's  " },
+            });
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            var source = await db.CalendarEvents.AsNoTracking().SingleAsync(e => e.Date == Sunday && e.MealSlot == 0);
+            Assert.Null(source.RecipeId);
+            Assert.Equal(CalendarEventStatus.Skipped, source.Status);
+            Assert.Equal("custom", source.NonCookingKind);
+            Assert.Equal("Supper at Grandma's", source.NonCookingLabel);
+            var moved = await db.CalendarEvents.AsNoTracking().SingleAsync(e => e.Date == Sunday.AddDays(1) && e.MealSlot == 0);
+            Assert.Equal(Selected, moved.RecipeId);
+            Assert.Equal(CalendarEventStatus.Planned, moved.Status);
+            Assert.Equal(2, await db.CalendarEvents.CountAsync(e => e.MealSlot == 0 && e.RecipeId == Selected));
+        });
     }
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]

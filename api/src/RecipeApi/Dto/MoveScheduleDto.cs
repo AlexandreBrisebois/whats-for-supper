@@ -9,7 +9,8 @@ public record MoveScheduleDto(
     [property: JsonPropertyName("intent")] string? Intent = "swap",
     [property: JsonPropertyName("targetWeekOffset")] int? TargetWeekOffset = null,
     [property: JsonPropertyName("fromIndex")] int? FromIndex = null,
-    [property: JsonPropertyName("sourceDisposition")] string? SourceDisposition = null);
+    [property: JsonPropertyName("sourceDisposition")] string? SourceDisposition = null,
+    [property: JsonPropertyName("sourceNonCooking")] NonCookingPlanDto? SourceNonCooking = null);
 
 
 public sealed record MoveScheduleResultDto(

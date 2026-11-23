@@ -1,0 +1,276 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1260" viewBox="0 0 1440 1260" role="img" aria-labelledby="jr-title jr-desc">
+  <title id="jr-title">Household Pivot &amp; Recovery Journeys (Zero Dead Ends · Era 3)</title>
+  <desc id="jr-desc">End-to-end journey map covering all four household meal-change paths: Home Not Cooking Tonight (Take Out, Eating out, Made plans), Home Cook Something Else (Suggestions, Search), Planner Day Pivot and Other Plans, and Direct-to-Step-2 plus Partial-Failure Recovery.</desc>
+
+  <defs>
+    <filter id="cardShadow" x="-8%" y="-8%" width="116%" height="122%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#28231F" flood-opacity="0.07"/>
+    </filter>
+    <marker id="arrowHearth" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#B85542"/>
+    </marker>
+    <marker id="arrowGarden" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#4E6E52"/>
+    </marker>
+    <marker id="arrowMuted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#6E645B"/>
+    </marker>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="1260" fill="#FDFCF0"/>
+
+  <!-- HEADER -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · End-to-End Journeys</text>
+  <rect x="1116" y="24" width="284" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1258" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">4 Household Journeys · Zero Dead Ends</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Pivot &amp; Recovery Journeys — From Changed Plans to Resolution</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">Every path resolves cleanly in 2–3 taps without extra menus, scrolling on Pixel 10, or losing the original planned meal.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 1 · HOME: NOT COOKING TONIGHT (Closes the Plan B Dead End!)    -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 158)">
+    <rect x="0" y="0" width="1360" height="222" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="240" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="140" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Journey 1 · Home → Not Cooking Tonight</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#4E6E52" text-anchor="end">2 taps (Take Out / Eating out) · 2 taps + inline note (Made plans)</text>
+
+    <!-- Node 1: Home TonightMenuCard -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="218" height="142" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">ENTRY · HOME</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">TonightMenuCard</text>
+      <text x="16" y="69" font-size="12" fill="#6E645B">Planned supper active</text>
+      <rect x="16" y="88" width="186" height="38" rx="13" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.3"/>
+      <text x="109" y="112" font-size="13" font-weight="700" fill="#A44A37" text-anchor="middle">Tap “Change plan”</text>
+    </g>
+
+    <line x1="238" y1="129" x2="274" y2="129" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 2: Plan B Step 1 (3-up Not cooking) -->
+    <g transform="translate(278, 58)">
+      <rect x="0" y="0" width="330" height="142" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">PLAN B · STEP 1 OF 2 (496px)</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Not cooking tonight (3-up)</text>
+
+      <rect x="16" y="60" width="92" height="36" rx="11" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="62" y="82.5" font-size="12" font-weight="700" fill="#28231F" text-anchor="middle">Take Out</text>
+
+      <rect x="118" y="60" width="92" height="36" rx="11" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+      <text x="164" y="82.5" font-size="12" font-weight="700" fill="#28231F" text-anchor="middle">Eating out</text>
+
+      <rect x="220" y="60" width="94" height="36" rx="11" fill="#F1F3EB" stroke="#4E6E52" stroke-width="1.4"/>
+      <text x="267" y="82.5" font-size="12" font-weight="700" fill="#28231F" text-anchor="middle">Made plans</text>
+
+      <text x="16" y="116" font-size="12" fill="#4E6E52">• Take Out / Eating out → 1 tap to Step 2</text>
+      <text x="16" y="133" font-size="12" fill="#6E645B">• Made plans → inline note + Next → (no menu)</text>
+    </g>
+
+    <line x1="608" y1="129" x2="644" y2="129" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 3: Plan B Step 2 (Original Meal Disposition) -->
+    <g transform="translate(648, 58)">
+      <rect x="0" y="0" width="356" height="142" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">PLAN B · STEP 2 OF 2 (496px)</text>
+      <text x="340" y="24" font-size="12" font-weight="600" fill="#A44A37" text-anchor="end">← Back | ×</text>
+      <rect x="16" y="34" width="3" height="24" rx="1.5" fill="#B85542"/>
+      <text x="26" y="45" font-size="12" font-weight="700" fill="#28231F">Original meal · Saturday, Nov 21</text>
+      <text x="26" y="59" font-size="12" fill="#6E645B">Context copy names chosen plan</text>
+
+      <rect x="16" y="70" width="324" height="28" rx="9" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="28" y="88.5" font-size="12" font-weight="700" fill="#28231F">→ Move to Sun, Nov 22 (Suggested · atomic)</text>
+      <text x="28" y="114" font-size="12" fill="#28231F">↻ Save for Next Week  ·  🗑 Remove from Sat, Nov 21</text>
+      <text x="28" y="132" font-size="12" fill="#6E645B">← Back returns cleanly to Step 1 (keeps custom draft)</text>
+    </g>
+
+    <line x1="1004" y1="129" x2="1040" y2="129" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4: Resolution (Cookbook Bookmark Card) -->
+    <g transform="translate(1044, 58)">
+      <rect x="0" y="0" width="296" height="142" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="84" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="58" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">RESOLVED</text>
+      <text x="16" y="56" font-size="16" font-weight="800" fill="#28231F" class="heading">Cookbook Bookmark Card</text>
+      <text x="16" y="76" font-size="12" fill="#6E645B">Tonight shows saved Take Out,</text>
+      <text x="16" y="93" font-size="12" fill="#6E645B">Eating out, or custom plan card.</text>
+      <text x="16" y="115" font-size="12" font-weight="600" fill="#4E6E52">• Original meal safely moved/saved</text>
+      <text x="16" y="132" font-size="12" fill="#6E645B">• Optional note editable via Planner</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 2 · HOME: COOK SOMETHING ELSE (Suggestions / Search)           -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 398)">
+    <rect x="0" y="0" width="1360" height="196" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="262" height="26" rx="13" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+    <text x="151" y="33.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">Journey 2 · Home → Cook Something Else</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">Preserves Quick Find &amp; Library Search seams</text>
+
+    <!-- Node 1: Plan B Step 1 Cook Lane -->
+    <g transform="translate(20, 56)">
+      <rect x="0" y="0" width="276" height="120" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">PLAN B · STEP 1 OF 2</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Cook something else</text>
+      <text x="16" y="70" font-size="12.5" font-weight="600" fill="#856400">✦ Suggestions → Quick Find deck</text>
+      <text x="16" y="90" font-size="12.5" font-weight="600" fill="#A44A37">⌕ Search → /recipes?planDay=…</text>
+      <text x="16" y="109" font-size="12" fill="#6E645B">Inline searchError retry preserved</text>
+    </g>
+
+    <line x1="296" y1="116" x2="334" y2="116" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 2: Pick Replacement Recipe -->
+    <g transform="translate(338, 56)">
+      <rect x="0" y="0" width="286" height="120" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">RECIPE PICKER</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">QuickFindModal or Library</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">User picks a new recipe for tonight.</text>
+      <text x="16" y="88" font-size="12" fill="#6E645B">Dismissing returns cleanly without</text>
+      <text x="16" y="105" font-size="12" fill="#6E645B">mutating tonight’s original plan.</text>
+    </g>
+
+    <line x1="624" y1="116" x2="662" y2="116" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 3: Plan B Step 2 -->
+    <g transform="translate(666, 56)">
+      <rect x="0" y="0" width="338" height="120" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">PLAN B · STEP 2 OF 2 (496px)</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Resolve original meal</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">“Choose where to keep it before saving</text>
+      <text x="16" y="84" font-size="12" fill="#6E645B">your new recipe.”</text>
+      <text x="16" y="106" font-size="12" font-weight="600" fill="#A44A37">Move to Sun, Nov 22 · Next Week · Remove</text>
+    </g>
+
+    <line x1="1004" y1="116" x2="1040" y2="116" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4: Replacement Saved / Recovery -->
+    <g transform="translate(1044, 56)">
+      <rect x="0" y="0" width="296" height="120" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">RESOLVED · TONIGHT UPDATED</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">New TonightMenuCard</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">Original meal moved/saved/removed;</text>
+      <text x="16" y="85" font-size="12" fill="#6E645B">new recipe assigned to tonight.</text>
+      <text x="16" y="106" font-size="12" fill="#A44A37">If save fails → inline retry/review view</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 3 · PLANNER DAY PIVOT & SIBLING SHEETS                         -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 612)">
+    <rect x="0" y="0" width="1360" height="214" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="276" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="158" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Journey 3 · Planner Day Pivot &amp; Other Plans</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">Unified Era 3 compact shell across all 3 sheets</text>
+
+    <!-- Node 1: Planner Day Row -->
+    <g transform="translate(20, 56)">
+      <rect x="0" y="0" width="218" height="136" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">ENTRY · PLANNER</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">PlannerDayCard</text>
+      <text x="16" y="70" font-size="12" fill="#6E645B">Empty day, planned recipe,</text>
+      <text x="16" y="87" font-size="12" fill="#6E645B">or saved non-cooking day</text>
+      <text x="16" y="116" font-size="12.5" font-weight="700" fill="#4E6E52">Tap day / “Edit supper plan”</text>
+    </g>
+
+    <line x1="238" y1="124" x2="274" y2="124" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 2: PlanningPivotSheet -->
+    <g transform="translate(278, 56)">
+      <rect x="0" y="0" width="330" height="136" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">PLANNING PIVOT SHEET (564px)</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Locked header + terracotta meal bar</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• Direct: Save for Next Week / Remove recipe</text>
+      <text x="16" y="87" font-size="12" fill="#28231F">• Replace: Suggestions / Search library</text>
+      <text x="16" y="106" font-size="12" fill="#4E6E52">• Non-cook: Other plans / Edit supper plan</text>
+      <text x="16" y="125" font-size="12" fill="#6E645B">Fits all 5 actions with zero scroll on Pixel 10</text>
+    </g>
+
+    <!-- Branch top arrow -> NonCookingDaySheet -->
+    <path d="M 608 98 H 652 V 88 H 680" fill="none" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+    <!-- Branch bottom arrow -> SkipRecoveryDialog Step 2 -->
+    <path d="M 608 150 H 652 V 158 H 680" fill="none" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Branch Top: NonCookingDaySheet -->
+    <g transform="translate(684, 52)">
+      <rect x="0" y="0" width="656" height="66" rx="16" fill="#FDFCF0" stroke="#C7CFB0" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="23" font-size="12" font-weight="700" fill="#4E6E52">OTHER PLANS · NonCookingDaySheet (564px · Era 3 Opaque)</text>
+      <text x="640" y="23" font-size="12" font-weight="600" fill="#A44A37" text-anchor="end">← Back (to Pivot) | ×</text>
+      <text x="16" y="46" font-size="12.5" fill="#28231F">Mystery night · Take Out · Eating out · We made plans + optional note + Save / Remove supper plan</text>
+    </g>
+
+    <!-- Branch Bottom: Occupied Replacement -> Direct Step 2 -->
+    <g transform="translate(684, 128)">
+      <rect x="0" y="0" width="656" height="66" rx="16" fill="#FDFCF0" stroke="#E6B3A9" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="23" font-size="12" font-weight="700" fill="#A44A37">OCCUPIED REPLACEMENT · SkipRecoveryDialog Step 2 (496px · Direct Entry)</text>
+      <text x="640" y="23" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">× Close (no duplicate Back)</text>
+      <text x="16" y="46" font-size="12.5" fill="#28231F">After picking replacement recipe (Planner or Recipes “Use for day”), header shows Plan B + × without duplicate Back.</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 4 · PARTIAL-FAILURE RECOVERY & UNIVERSAL SHEET INVARIANTS      -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 844)">
+    <rect x="0" y="0" width="1360" height="366" rx="26" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="24" y="34" font-size="17" font-weight="800" fill="#28231F" class="heading">Journey 4 · Replacement Recovery States &amp; Shared Sheet Ergonomic Invariants</text>
+
+    <!-- Left column: Replacement Failure/Retry States -->
+    <g transform="translate(24, 54)">
+      <rect x="0" y="0" width="644" height="288" rx="20" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="20" y="28" font-size="12.5" font-weight="700" fill="#A44A37">IN-SHEET RECOVERY STATES (SkipRecoveryDialog · replacement prop)</text>
+
+      <!-- State cards row 1 -->
+      <rect x="20" y="44" width="294" height="104" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="34" y="66" font-size="13.5" font-weight="800" fill="#28231F" class="heading">moving / saving (Pending)</text>
+      <text x="34" y="86" font-size="12" fill="#6E645B">• Uses same p-5 compact Era 3 shell.</text>
+      <text x="34" y="103" font-size="12" fill="#6E645B">• Close/Back disabled while aria-busy.</text>
+      <text x="34" y="120" font-size="12" fill="#6E645B">• Stable height prevents button jumps.</text>
+
+      <rect x="330" y="44" width="294" height="104" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="344" y="66" font-size="13.5" font-weight="800" fill="#A44A37" class="heading">retry / conflict / unknown</text>
+      <text x="344" y="86" font-size="12" fill="#28231F">• Original disposition shown with</text>
+      <text x="354" y="103" font-size="12" fill="#6E645B">terracotta editorial bar on cream.</text>
+      <text x="344" y="120" font-size="12" fill="#6E645B">• Explicit Retry save / Review plan CTA.</text>
+
+      <!-- State cards row 2 -->
+      <rect x="20" y="162" width="604" height="106" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="34" y="185" font-size="13.5" font-weight="800" fill="#28231F" class="heading">confirmAbandon (“Leave this replacement?”)</text>
+      <text x="34" y="206" font-size="12.5" fill="#6E645B">• Triggered only if user taps × while a replacement is partially completed or unconfirmed.</text>
+      <text x="34" y="225" font-size="12.5" fill="#6E645B">• Primary Hearth “Keep editing” (autoFocus) + Secondary “Leave replacement” (honest copy explaining</text>
+      <text x="44" y="242" font-size="12.5" fill="#6E645B">that completed moves to the original meal remain persisted).</text>
+    </g>
+
+    <!-- Right column: Universal Sheet Invariants -->
+    <g transform="translate(692, 54)">
+      <rect x="0" y="0" width="644" height="288" rx="20" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="20" y="28" font-size="12.5" font-weight="700" fill="#4E6E52">UNIVERSAL PIXEL 10 &amp; ACCESSIBILITY INVARIANTS</text>
+
+      <text x="20" y="58" font-size="13.5" font-weight="800" fill="#28231F" class="heading">1. Zero Horizontal or Vertical Title Jump</text>
+      <text x="20" y="77" font-size="12.5" fill="#6E645B">Locked top-left title stack across Step 1 ↔ Step 2 and Planner ↔ Other plans; [← Back]</text>
+      <text x="20" y="94" font-size="12.5" fill="#6E645B">appears beside [×] on the right, and Step 1 / Step 2 share a consistent sheet min-height.</text>
+
+      <text x="20" y="124" font-size="13.5" font-weight="800" fill="#28231F" class="heading">2. Honest Visual Affordance (Cards = Clickable, Cream = Context)</text>
+      <text x="20" y="143" font-size="12.5" fill="#6E645B">Read-only recipe context sits directly on warm cream beside a 3.5px terracotta bar.</text>
+      <text x="20" y="160" font-size="12.5" fill="#6E645B">Opaque white &amp; Hearth blush rounded cards strictly represent interactive actions.</text>
+
+      <text x="20" y="190" font-size="13.5" font-weight="800" fill="#28231F" class="heading">3. Pixel 10 Zero-Scroll + 320px / 200% Graceful Fallback</text>
+      <text x="20" y="209" font-size="12.5" fill="#6E645B">All sheets measure 496–584px on 412×915 Pixel 10 (245–333px spare). At 320px or 200%</text>
+      <text x="20" y="226" font-size="12.5" fill="#6E645B">text scale, the 3-up tile row wraps cleanly and only the body region scrolls inside max-h.</text>
+
+      <text x="20" y="256" font-size="13.5" font-weight="800" fill="#28231F" class="heading">4. Touch, Focus &amp; Bilingual Parity</text>
+      <text x="20" y="275" font-size="12.5" fill="#6E645B">>= 48x48px targets, 2px outline-ink-body :focus-visible, >= 12px type floor, EN + FR parity.</text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <text x="40" y="1240" font-size="12.5" fill="#6E645B">Pivot &amp; Recovery Journeys · Exploration &amp; design board for OpenSpec change unify-compact-pivot-and-recovery-sheets.</text>
+</svg>

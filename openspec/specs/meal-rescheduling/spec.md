@@ -504,17 +504,22 @@ All date shifts and any requested Order In source disposition SHALL commit toget
 
 ### Requirement: Preserve non-cooking source disposition with Tomorrow
 
-An explicit Order In source disposition SHALL leave a recipe-free Skipped Order In source and place its original recipe at tomorrow as Planned, retaining saved votes. Moving a legacy recipe-backed Skipped source SHALL likewise retain its non-cooking source details and transfer its recipe as Planned. Displaced Skipped entries SHALL instead move intact. Rejection SHALL leave the source unchanged.
+An explicit Tomorrow non-cooking source disposition (`sourceNonCooking` or legacy `sourceDisposition: 'order_in'`) SHALL leave a recipe-free Skipped source with that normalized plan and place its recipe at tomorrow as Planned, retaining votes. Invalid `sourceNonCooking` SHALL return `400` without mutation. Legacy recipe-backed and displaced Skipped entries SHALL retain existing behavior, and rejection SHALL leave the source unchanged.
 
 #### Scenario: Order In and Tomorrow succeeds
 
-- **WHEN** a planned source requests Order In with Tomorrow and the chain can move
-- **THEN** the source becomes recipe-free Skipped Order In in the same commit as the chain, with one Planned occurrence of its original recipe tomorrow
+- **WHEN** a planned source requests Tomorrow with legacy `sourceDisposition: 'order_in'` or `sourceNonCooking` (`order_in`, `eating_out`, or `custom` with `"Supper at Grandma's"`) and the chain can move
+- **THEN** the source becomes recipe-free Skipped carrying that normalized non-cooking plan in the same commit as the chain, with one Planned occurrence of its original recipe tomorrow
+
+#### Scenario: Invalid sourceNonCooking payload is rejected before mutation
+
+- **WHEN** a Tomorrow request supplies `sourceNonCooking` with `kind: 'custom'` and a blank or `> 80`-character label, or `kind: 'mystery'`
+- **THEN** the API returns `400` with unwrapped status and message and leaves the calendar unchanged
 
 #### Scenario: Order In and Tomorrow is blocked
 
-- **WHEN** Order In with Tomorrow encounters a Cooked displaced entry
-- **THEN** the original source remains unchanged and no Order In disposition is saved
+- **WHEN** a Tomorrow move with `sourceDisposition: 'order_in'` or `sourceNonCooking` encounters a Cooked displaced entry
+- **THEN** the original source remains unchanged and no non-cooking disposition is saved
 
 ### Requirement: Refresh every week touched by Tomorrow
 
@@ -663,12 +668,17 @@ An enabled Planner drag grip SHALL maintain at least 3:1 contrast against its ac
 
 ### Requirement: Identify the original dated meal in disposition choices
 
-Replacement choices SHALL name the original recipe and source date. Following-day movement SHALL show the actual next date and explain that consecutive occupied plans shift forward. Next Week SHALL describe first availability starting the following week. Removal SHALL say it removes that dated plan while keeping the recipe in the library. These choices SHALL NOT claim ingredients are already owned.
+Disposition choices SHALL show the original recipe and full source date on warm cream beside a terracotta bar above a divider, never boxed like a clickable card. Following-day movement SHALL show the concise localized next date with Hearth emphasis and explain forward shifting. Next Week SHALL describe first next-week availability; removal SHALL show the concise source date and keep the recipe. The subtitle SHALL name the active backup intent without claiming owned ingredients.
 
 #### Scenario: Change a future Wednesday meal
 
-- **WHEN** a person replaces a meal planned for a future Wednesday
-- **THEN** the choice names that recipe and Wednesday, offers Thursday's actual date and does not call the source Tonight
+- **WHEN** a person replaces a meal planned for a future Wednesday (e.g., `Wednesday, September 23`)
+- **THEN** the non-clickable terracotta-accented header names that recipe and `Wednesday, September 23`, the Hearth-emphasized following-day choice offers `Move to Thu, Sep 24` (`Déplacer au jeu. 24 sept.`), removal offers `Remove from Wed, Sep 23` (`Retirer du mer. 23 sept.`), and neither calls the source Tonight
+
+#### Scenario: Non-cooking intent updates the Step 2 prompt subtitle
+
+- **WHEN** a person reaches Plan B Step 2 after selecting `Eating out` or `Made plans` (`"Supper at Grandma's"`)
+- **THEN** the Step 2 subtitle references `Eating out` or `"Supper at Grandma's"` rather than saying `"before saving your new recipe"`
 
 ### Requirement: Use consistent Next Week disposition across planning callers
 

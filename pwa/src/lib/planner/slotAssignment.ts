@@ -185,7 +185,10 @@ type DeferAttempt = {
 const deferAttempts = new WeakMap<DeferSource, DeferAttempt>();
 
 /** Retain the HTTP acknowledgement within the captured source's mounted recovery. */
-export async function deferToFollowingWeek(source: DeferSource) {
+export async function deferToFollowingWeek(
+  source: DeferSource,
+  sourceNonCooking?: NonCookingPlanDto
+) {
   const previous = deferAttempts.get(source);
   if (previous?.result) return previous.result;
   if (previous?.pending) return previous.pending;
@@ -204,7 +207,11 @@ export async function deferToFollowingWeek(source: DeferSource) {
   attempt.pending = (async () => {
     try {
       const response = await apiClient.api.schedule.defer.post(
-        { sourceDate, recipeId: source.recipe!.id! },
+        {
+          sourceDate,
+          recipeId: source.recipe!.id!,
+          ...(sourceNonCooking ? { sourceNonCooking } : {}),
+        },
         {
           queryParameters: {
             ...referenceRequest(source.referenceWeekStartDate)?.queryParameters,
@@ -315,7 +322,7 @@ async function rereadTomorrow(
 /** One recovery session retains its known outcome; a lost reply must never cause blind replay. */
 export async function moveTomorrow(
   source: TomorrowSource,
-  sourceDisposition?: 'order_in'
+  sourceDisposition?: NonCookingPlanDto | 'order_in'
 ): Promise<MoveScheduleResultDto> {
   const previous = tomorrowAttempts.get(source);
   if (previous?.result) return previous.result;
@@ -333,6 +340,12 @@ export async function moveTomorrow(
   attempt.pending = (async () => {
     try {
       const target = source.dayIndex + 1;
+      const sourceDispositionPayload =
+        typeof sourceDisposition === 'string'
+          ? { sourceDisposition }
+          : sourceDisposition
+            ? { sourceNonCooking: sourceDisposition }
+            : {};
       const response = await apiClient.api.schedule.move.post(
         {
           weekOffset: source.weekOffset,
@@ -341,7 +354,7 @@ export async function moveTomorrow(
           targetWeekOffset: target <= 6 ? source.weekOffset : source.weekOffset + 1,
           recipeId: source.recipe!.id!,
           intent: 'tomorrow',
-          ...(sourceDisposition ? { sourceDisposition } : {}),
+          ...sourceDispositionPayload,
         },
         {
           ...referenceRequest(source.referenceWeekStartDate),

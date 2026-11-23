@@ -167,6 +167,31 @@ describe('NonCookingDaySheet', () => {
       '  Emma’s birthday supper  '
     );
   });
+
+  it('uses an opaque Era 3 shell with 48px Close and optional top-right Back without mutating', () => {
+    const onBack = vi.fn();
+    const onSave = vi.fn();
+    const { rerender } = render(
+      <NonCookingDaySheet date="2026-11-21" onSave={onSave} onClose={vi.fn()} onBack={onBack} />
+    );
+
+    const sheet = screen.getByTestId('non-cooking-sheet');
+    expect(sheet).toHaveClass('bg-cream', 'p-5', 'rounded-[2rem]');
+    expect(sheet.className).not.toContain('backdrop-blur');
+    expect(sheet.className).not.toContain('bg-cream/90');
+
+    const closeBtn = screen.getByTestId('non-cooking-close');
+    expect(closeBtn).toHaveClass('h-12', 'w-12');
+
+    const backBtn = screen.getByTestId('non-cooking-back');
+    expect(backBtn).toHaveClass('min-h-12', 'text-sm', 'text-hearth-ink');
+    fireEvent.click(backBtn);
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(onSave).not.toHaveBeenCalled();
+
+    rerender(<NonCookingDaySheet date="2026-11-21" onSave={onSave} onClose={vi.fn()} />);
+    expect(screen.queryByTestId('non-cooking-back')).not.toBeInTheDocument();
+  });
 });
 
 // Run the real declaration/coordinator path rather than mocking the observation hook.

@@ -40,8 +40,10 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
             return result is null ? Ok(new { message = "Recipe moved" }) : Ok(result);
         }
         catch (TomorrowMoveConflictException ex) { return Conflict(new { message = ex.Message }); }
-        catch (Exception ex) when (ex is ArgumentException or OverflowException)
-        { return BadRequest(new { message = "Choose a valid source and its next calendar day." }); }
+        catch (ArgumentException ex)
+        { return BadRequest(new { status = StatusCodes.Status400BadRequest, message = ex.Message }); }
+        catch (OverflowException)
+        { return BadRequest(new { status = StatusCodes.Status400BadRequest, message = "Choose a valid source and its next calendar day." }); }
     }
 
     [HttpPost("defer")]
@@ -56,7 +58,11 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
         }
         catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException)
         {
-            return BadRequest(new { message = "targetWeekOffset must resolve to a supported calendar date." });
+            return BadRequest(new { status = StatusCodes.Status400BadRequest, message = "targetWeekOffset must resolve to a supported calendar date." });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { status = StatusCodes.Status400BadRequest, message = ex.Message });
         }
         catch (KeyNotFoundException ex)
         {

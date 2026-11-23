@@ -2530,6 +2530,7 @@ function RecipesContent() {
           pending={recovery.pending}
           isOpen={true}
           step={2}
+          canGoBack={false}
           source={pendingRecovery.slot}
           replacement={recovery.feedback}
           confirmAbandon={recovery.confirmAbandon}

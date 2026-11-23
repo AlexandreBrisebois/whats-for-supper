@@ -70,7 +70,7 @@ test('Home Take Out plus Tomorrow commits a full following week without prior va
   const request = await movement;
   expect(request.postDataJSON()).toMatchObject({
     intent: 'tomorrow',
-    sourceDisposition: 'order_in',
+    sourceNonCooking: { kind: 'order_in', customLabel: null },
     fromIndex: 6,
     toIndex: 0,
     targetWeekOffset: 1,
@@ -235,3 +235,99 @@ for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {
     expect(source).toMatchObject({ date: '2026-10-11', recipe: { id: MOCK_IDS.RECIPE_CHICKEN } });
   });
 }
+
+test('Plan B Eating out and inline Made plans resolve through Step 2 to the Cookbook Bookmark card and omit Back on Planner direct entry', async ({
+  page,
+  baseURL,
+}) => {
+  await page.clock.setFixedTime(new Date(calendar.capturedAtUtc));
+  await setupCommonRoutes(page, calendar);
+  await page
+    .context()
+    .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+  await page.addInitScript(
+    (id) =>
+      localStorage.setItem(
+        'family-storage',
+        JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+      ),
+    MOCK_IDS.MEMBER_ALEX
+  );
+  await page.goto('/onboarding');
+  await page.evaluate(async (recipeId) => {
+    await fetch('/api/schedule/assign?referenceWeekStartDate=2026-10-05', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weekOffset: 0, dayIndex: 6, recipeId }),
+    });
+  }, MOCK_IDS.RECIPE_CHICKEN);
+
+  // 1. Plan B -> Eating out (1 tap) -> Step 2 tailored subtitle -> Move to tomorrow -> Cookbook Bookmark card
+  await page.goto('/home');
+  await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+  await page.getByTestId('skip-tonight-btn').click();
+  await page.getByTestId('recovery-action-eating-out').click();
+  await expect(page.getByTestId('recovery-meal-context')).toContainText('Sunday, October 11');
+  await expect(page.getByTestId('recovery-dialog-panel')).toContainText('Eating out');
+  await expect(page.getByTestId('recovery-action-tomorrow')).toContainText('Move to Mon, Oct 12');
+  const eatingOutMove = page.waitForRequest(
+    (r) => r.method() === 'POST' && r.url().includes('/api/schedule/move')
+  );
+  await page.getByTestId('recovery-action-tomorrow').click();
+  expect((await eatingOutMove).postDataJSON()).toMatchObject({
+    intent: 'tomorrow',
+    sourceNonCooking: { kind: 'eating_out', customLabel: null },
+  });
+  await page.goto('/home');
+  await expect(page.getByTestId('today-non-cooking-plan')).toBeVisible();
+  await expect(page.getByTestId('today-non-cooking-label')).toHaveText('Eating out');
+
+  // 2. Re-assign Tonight -> Made plans inline validation, Back draft retention, Save for Next Week -> Cookbook Bookmark card
+  await page.evaluate(async (recipeId) => {
+    await fetch('/api/schedule/assign?referenceWeekStartDate=2026-10-05', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weekOffset: 0, dayIndex: 6, recipeId }),
+    });
+  }, MOCK_IDS.RECIPE_LASAGNA);
+  await page.goto('/home');
+  await expect(page.getByTestId('tonight-menu-card')).toBeVisible();
+  await page.getByTestId('skip-tonight-btn').click();
+  await page.getByTestId('recovery-action-made-plans').click();
+  await page.getByTestId('recovery-custom-plan-next').click();
+  await expect(page.getByTestId('recovery-dialog-panel').getByRole('alert')).toBeVisible();
+  await page.getByTestId('recovery-custom-plan-input').fill("Supper at Grandma's");
+  await page.getByTestId('recovery-custom-plan-next').click();
+  await expect(page.getByTestId('recovery-dialog-panel')).toContainText("Supper at Grandma's");
+
+  // Back retains draft in Step 1 without mutating
+  await page.getByTestId('recovery-go-back').click();
+  await expect(page.getByTestId('recovery-custom-plan-input')).toHaveValue("Supper at Grandma's");
+  await page.getByTestId('recovery-custom-plan-next').click();
+
+  const deferReq = page.waitForRequest(
+    (r) => r.method() === 'POST' && r.url().includes('/api/schedule/defer')
+  );
+  await page.getByTestId('recovery-action-next-week').click();
+  expect((await deferReq).postDataJSON()).toMatchObject({
+    sourceNonCooking: { kind: 'custom', customLabel: "Supper at Grandma's" },
+  });
+  await expect(page.getByTestId('today-non-cooking-plan')).toBeVisible();
+  await expect(page.getByTestId('today-non-cooking-label')).toHaveText("Supper at Grandma's");
+
+  // 3. Direct-to-Step-2 from Planner omits duplicate Back button
+  await page.route('**/api/schedule/fill-the-gap**', (route) =>
+    route.fulfill({
+      json: {
+        data: [builders.scheduleRecipe({ id: MOCK_IDS.RECIPE_SPAGHETTI, name: 'Spaghetti' })],
+      },
+    })
+  );
+  await page.goto('/planner?weekOffset=1&referenceWeekStartDate=2026-10-05');
+  await page.getByTestId('day-card-0').getByTestId('change-recipe-button').click();
+  await page.getByTestId('pivot-quick-find').click();
+  await page.getByTestId('quick-find-select').click();
+  await expect(page.getByTestId('recovery-dialog-title')).toBeVisible();
+  await expect(page.getByTestId('recovery-go-back')).toHaveCount(0);
+  await expect(page.getByTestId('recovery-close')).toBeVisible();
+});

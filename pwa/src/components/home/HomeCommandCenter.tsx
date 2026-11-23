@@ -40,7 +40,7 @@ import { useUiStore } from '@/store/uiStore';
 import { t } from '@/locales';
 import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
 import { ROUTES } from '@/lib/constants/routes';
-import type { GoToItem } from '@/lib/api/generated/models/index';
+import type { GoToItem, NonCookingPlanDto } from '@/lib/api/generated/models/index';
 
 interface HomeCommandCenterProps {
   todaysRecipe: any;
@@ -51,7 +51,7 @@ type RecoveryFlowState =
   | { kind: 'closed' }
   | { kind: 'step1' }
   | { kind: 'quick_find'; intent: 'pick_else' | null }
-  | { kind: 'step2'; intent: 'order_in'; pendingRecipe: any }
+  | { kind: 'step2'; intent: 'non_cooking'; nonCooking: NonCookingPlanDto; pendingRecipe: any }
   | { kind: 'step2'; intent: 'pick_else'; pendingRecipe: any };
 
 function getMondayBasedDayIndex(dateString: string) {
@@ -430,30 +430,30 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         const todayDate = DateOnly.parse(todayStr);
         if (!todayDate) return;
 
-        const finalizeOrderedIn = async () => {
-          useTodayStore.getState().applyServerUpdate({ date: todayStr, recipe: null, status: 3 });
-          useWeekStore.getState().applySlotUpdate({
-            date: todayStr,
-            recipe: null,
-            status: 3,
-          });
-          await apiClient.api.schedule.day.byDate(todayDate).validate.post({ status: 3 });
+        const applyConfirmedNonCooking = (plan: NonCookingPlanDto) => {
+          const update = { date: todayStr, recipe: null, status: 3, nonCooking: plan };
+          useTodayStore.getState().applyServerUpdate(update);
+          useWeekStore.getState().applySlotUpdate(update);
         };
 
-        if (action === 'order_in') {
+        if (action === 'order_in' || action === 'eating_out') {
+          const selectedPlan: NonCookingPlanDto = { kind: action, customLabel: null };
           if (!actionRecipe) {
-            markOrderedIn(context);
-            useWeekStore.getState().applySlotUpdate({
-              date: todayStr,
-              recipe: null,
-              status: 3,
-            });
+            if (action === 'order_in') {
+              markOrderedIn(context);
+              useWeekStore.getState().applySlotUpdate({
+                date: todayStr,
+                recipe: null,
+                status: 3,
+              });
+            }
             return;
           }
 
           setRecoveryFlow({
             kind: 'step2',
-            intent: 'order_in',
+            intent: 'non_cooking',
+            nonCooking: selectedPlan,
             pendingRecipe: actionRecipe,
           });
         } else if (action === 'pick_else') {
@@ -467,6 +467,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             setRecoveryFlow({ kind: 'closed' });
             return;
           }
+          const activeNonCooking =
+            recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'non_cooking'
+              ? recoveryFlow.nonCooking
+              : undefined;
           const fromIndex = getMondayBasedDayIndex(todayStr);
           tomorrowSourceRef.current ??= {
             weekOffset: 0,
@@ -475,15 +479,9 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             recipe: actionRecipe,
             referenceWeekStartDate: context.referenceWeekStartDate,
           };
-          await moveTomorrow(
-            tomorrowSourceRef.current,
-            recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in'
-              ? 'order_in'
-              : undefined
-          );
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
-            useTodayStore.getState().applyServerUpdate({ date: todayStr, recipe: null, status: 3 });
-            useWeekStore.getState().applySlotUpdate({ date: todayStr, recipe: null, status: 3 });
+          await moveTomorrow(tomorrowSourceRef.current, activeNonCooking);
+          if (activeNonCooking) {
+            applyConfirmedNonCooking(activeNonCooking);
           }
 
           setRecoveryFlow({ kind: 'closed' });
@@ -492,11 +490,12 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             useWeekStore.getState().weekStartDate === context.currentWeekStartDate
           )
             await useWeekStore.getState().init(0, context.referenceWeekStartDate);
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+          if (activeNonCooking) {
             useWeekStore.getState().applySlotUpdate({
               date: todayStr,
               recipe: null,
               status: 3,
+              nonCooking: activeNonCooking,
             });
           }
           sync();
@@ -509,9 +508,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             setRecoveryFlow({ kind: 'closed' });
             return;
           }
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
-            await finalizeOrderedIn();
-          }
+          const activeNonCooking =
+            recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'non_cooking'
+              ? recoveryFlow.nonCooking
+              : undefined;
           tomorrowSourceRef.current ??= {
             weekOffset: 0,
             dayIndex: calendarDayIndex(context),
@@ -519,7 +519,13 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             referenceWeekStartDate: context.referenceWeekStartDate,
             recipe: actionRecipe,
           };
-          const deferResult = await deferToFollowingWeek(tomorrowSourceRef.current);
+          const deferResult = await deferToFollowingWeek(
+            tomorrowSourceRef.current,
+            activeNonCooking
+          );
+          if (activeNonCooking) {
+            applyConfirmedNonCooking(activeNonCooking);
+          }
           if (deferResult?.data?.message) {
             useUiStore.getState().addToast(deferResult.data.message);
           }
@@ -530,17 +536,23 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             useWeekStore.getState().weekStartDate === context.currentWeekStartDate
           )
             await useWeekStore.getState().init(0, context.referenceWeekStartDate);
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+          if (activeNonCooking) {
             useWeekStore.getState().applySlotUpdate({
               date: todayStr,
               recipe: null,
               status: 3,
+              nonCooking: activeNonCooking,
             });
           }
           sync();
         } else if (action === 'drop') {
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
-            await finalizeOrderedIn();
+          const activeNonCooking =
+            recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'non_cooking'
+              ? recoveryFlow.nonCooking
+              : undefined;
+          if (activeNonCooking) {
+            await saveNonCookingDay(todayStr, activeNonCooking, { replaceRecipe: true });
+            applyConfirmedNonCooking(activeNonCooking);
           } else {
             await apiClient.api.schedule.day.byDate(todayDate).remove.delete();
             // Reset today's slot so the user can re-plan after dropping
@@ -552,11 +564,12 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
             useWeekStore.getState().weekStartDate === context.currentWeekStartDate
           )
             await useWeekStore.getState().init(0, context.referenceWeekStartDate);
-          if (recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'order_in') {
+          if (activeNonCooking) {
             useWeekStore.getState().applySlotUpdate({
               date: todayStr,
               recipe: null,
               status: 3,
+              nonCooking: activeNonCooking,
             });
           }
           sync();
@@ -935,6 +948,14 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           pending={recoveryPending}
           isOpen={showRecovery}
           step={recoveryStep}
+          canGoBack={true}
+          backupIntent={
+            recoveryFlow.kind === 'step2'
+              ? recoveryFlow.intent === 'non_cooking'
+                ? { kind: 'non_cooking', nonCooking: recoveryFlow.nonCooking }
+                : { kind: 'pick_else' }
+              : null
+          }
           source={
             actionContext && actionRecipe
               ? {
@@ -969,6 +990,15 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           onBack={() => {
             if (!replacementSession.current && !recoverySubmissionRef.current)
               setRecoveryFlow({ kind: 'step1' });
+          }}
+          onCustomPlan={(customLabel) => {
+            if (recoverySubmissionRef.current || !actionRecipe) return;
+            setRecoveryFlow({
+              kind: 'step2',
+              intent: 'non_cooking',
+              nonCooking: { kind: 'custom', customLabel },
+              pendingRecipe: actionRecipe,
+            });
           }}
           onAction={handleRecoveryAction}
         />

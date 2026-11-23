@@ -1,29 +1,30 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { t } from '@/locales';
-import { X, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { NonCookingIcon } from './NonCookingIcon';
+import { PivotSheetShell } from '@/components/ui/PivotSheetShell';
 import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
+import { cn } from '@/lib/utils';
 
 interface Props {
   date: string;
   plan?: NonCookingPlanDto | null;
   onSave: (plan: NonCookingPlanDto) => Promise<void>;
   onClear?: () => Promise<void>;
+  onBack?: () => void;
   onClose: () => void;
 }
 
-export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Props) {
+export function NonCookingDaySheet({ date, plan, onSave, onClear, onBack, onClose }: Props) {
   const [kind, setKind] = useState(plan?.kind ?? 'mystery');
   const [message, setMessage] = useState(plan?.customLabel ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submitting = useRef(false);
-  const panel = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
-  const close = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const inputId = useId();
   const dateId = useId();
@@ -31,34 +32,8 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
   const hintId = useId();
 
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    close.current?.focus();
-    return () => {
-      if (previous?.isConnected) previous.focus();
-      else document.querySelector<HTMLElement>(`[data-date="${date}"] button`)?.focus();
-    };
-  }, [date]);
-  useEffect(() => {
     if (kind === 'custom') input.current?.focus();
   }, [kind]);
-
-  function keyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape' && !busy) onClose();
-    if (event.key !== 'Tab') return;
-    const controls = panel.current?.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), textarea:not(:disabled)'
-    );
-    if (!controls?.length) return;
-    const first = controls[0],
-      last = controls[controls.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
 
   async function submit(clear = false) {
     if (submitting.current) return;
@@ -95,135 +70,136 @@ export function NonCookingDaySheet({ date, plan, onSave, onClear, onClose }: Pro
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-end justify-center px-4 py-6 sm:items-center"
-      onKeyDown={keyDown}
+    <PivotSheetShell
+      eyebrow={t('planner.noCooking', 'Other plans')}
+      subtitle={<time dateTime={date}>{formatSupperPlanDate(date)}</time>}
+      subtitleId={dateId}
+      ariaLabelledBy={`${titleId} ${dateId}`}
+      onBack={onBack}
+      backLabel={t('common.back', 'Back')}
+      backTestId="non-cooking-back"
+      onClose={onClose}
+      closeTestId="non-cooking-close"
+      panelTestId="non-cooking-sheet"
+      pending={busy}
+      trapFocus
+      restoreFocusSelector={`[data-date="${date}"] button`}
+      zIndexClass="z-[80]"
     >
-      <div
-        className="absolute inset-0 bg-cream/55 backdrop-blur-xl"
-        onClick={() => {
-          if (!busy) onClose();
-        }}
-        aria-hidden="true"
-      />
-      <div
-        ref={panel}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`${titleId} ${dateId}`}
-        aria-busy={busy}
-        data-testid="non-cooking-sheet"
-        className="relative w-full max-w-sm max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-[3rem] border border-white/60 bg-cream/90 p-6 sm:p-8 shadow-[0_24px_60px_-16px_rgba(74,55,40,0.18)] backdrop-blur-xl"
+      <h3
+        id={titleId}
+        className="font-heading text-xl font-extrabold leading-tight tracking-tight text-ink-body"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <time
-              id={dateId}
-              dateTime={date}
-              className="block mb-3 text-xs font-bold text-hearth-ink"
-            >
-              {formatSupperPlanDate(date)}
-            </time>
-            <h2
-              id={titleId}
-              className="font-heading text-3xl font-black tracking-tight leading-tight text-ink-body"
-            >
-              {t('planner.supperPlanTitle', 'What’s the plan?')}
-            </h2>
-          </div>
-          <button
-            ref={close}
-            disabled={busy}
-            onClick={onClose}
-            data-testid="non-cooking-close"
-            aria-label={t('common.close', 'Close')}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-charcoal/5 text-ink-muted hover:bg-charcoal/10 focus-visible:outline-2 focus-visible:outline-hearth-ink disabled:opacity-50"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div
-          className="my-6 grid grid-cols-1 gap-3"
-          role="group"
-          aria-label={t('planner.nonCookingChoice', 'Supper plan')}
-        >
-          {(
-            [
-              ['mystery', t('planner.mysteryNight', 'Mystery night'), 'non-cooking-mystery'],
-              ['order_in', t('home.orderingIn', 'Take Out'), 'non-cooking-order-in'],
-              ['eating_out', t('planner.eatingOut', 'Eating out'), 'non-cooking-eating-out'],
-              ['custom', t('planner.otherPlans', 'We made plans'), 'non-cooking-other-plans'],
-            ] as const
-          ).map(([value, label, testId]) => (
+        {t('planner.supperPlanTitle', 'What’s the plan?')}
+      </h3>
+
+      <div
+        className="my-3 grid grid-cols-1 gap-2"
+        role="group"
+        aria-label={t('planner.nonCookingChoice', 'Supper plan')}
+      >
+        {(
+          [
+            ['mystery', t('planner.mysteryNight', 'Mystery night'), 'non-cooking-mystery'],
+            ['order_in', t('home.orderingIn', 'Take Out'), 'non-cooking-order-in'],
+            ['eating_out', t('planner.eatingOut', 'Eating out'), 'non-cooking-eating-out'],
+            ['custom', t('planner.otherPlans', 'We made plans'), 'non-cooking-other-plans'],
+          ] as const
+        ).map(([value, label, testId]) => {
+          const selected = kind === value;
+          return (
             <button
               key={value}
+              type="button"
               disabled={busy}
-              aria-pressed={kind === value}
+              aria-pressed={selected}
               data-testid={testId}
               onClick={() => {
                 setKind(value);
                 setError(null);
               }}
-              className={`flex w-full items-center gap-3 rounded-[1.5rem] border-2 p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-hearth-ink disabled:opacity-50 ${kind === value ? 'border-garden-line bg-sage/10 text-ink-body' : 'border-chrome-line text-ink-body hover:border-garden-line hover:bg-sage/5'}`}
+              className={cn(
+                'flex min-h-12 min-w-0 w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-50',
+                selected
+                  ? 'border-[1.5px] border-garden-line bg-sage-50 text-ink-body'
+                  : 'border-chrome-line bg-white text-ink-body hover:border-garden-line hover:bg-sage-50'
+              )}
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sage/10 text-garden-ink">
-                <NonCookingIcon kind={value} />
+              <span
+                className={cn(
+                  'flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-xl text-garden-ink',
+                  selected ? 'bg-white' : 'bg-sage-50'
+                )}
+              >
+                <NonCookingIcon kind={value} size={18} />
               </span>
-              <span className="flex-1 font-heading text-lg font-bold">{label}</span>
-              {kind === value && (
-                <Check size={20} aria-hidden="true" className="shrink-0 text-garden-ink" />
+              <span
+                className={cn(
+                  'min-w-0 flex-1 break-words [overflow-wrap:anywhere] font-heading text-[15px] leading-tight',
+                  selected ? 'font-extrabold' : 'font-bold'
+                )}
+              >
+                {label}
+              </span>
+              {selected && (
+                <Check size={18} aria-hidden="true" className="shrink-0 text-garden-ink" />
               )}
             </button>
-          ))}
-        </div>
-        {kind !== 'mystery' && (
-          <div className="mb-4">
-            <label htmlFor={inputId} className="block text-sm font-bold text-ink-body">
-              {t('planner.nonCookingMessage', 'Tell the family the plan')}
-            </label>
-            <textarea
-              rows={2}
-              ref={input}
-              id={inputId}
-              value={message}
-              disabled={busy}
-              onChange={(event) => setMessage(event.target.value)}
-              data-testid="non-cooking-custom-label"
-              className="mt-2 w-full rounded-2xl border-2 border-chrome-line bg-white p-4 text-base text-ink-body focus:border-hearth-line focus:outline-none focus:ring-2 focus:ring-hearth-ink"
-              aria-invalid={!!error}
-              aria-describedby={error ? `${hintId} ${errorId}` : hintId}
-            />
-            <p id={hintId} className="mt-2 text-xs text-ink-muted">
-              {t('planner.nonCookingExamples', 'Supper at Grandma’s · Emma’s birthday supper')}
-            </p>
-          </div>
-        )}
-        {error && (
-          <p id={errorId} role="alert" className="mb-4 text-sm text-hearth-ink">
-            {error}
-          </p>
-        )}
-        <div className="flex flex-col gap-2">
-          <button
-            disabled={busy}
-            onClick={() => submit()}
-            data-testid="non-cooking-save"
-            className="w-full min-h-12 rounded-2xl bg-hearth-fill active:bg-hearth-fill-active px-4 py-3 font-bold text-white hover:bg-hearth-fill-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-hearth-ink disabled:opacity-50"
-          >
-            {busy ? t('planner.savingPlan', 'Saving…') : t('common.save', 'Save')}
-          </button>
-          {onClear && (
-            <button
-              disabled={busy}
-              onClick={() => submit(true)}
-              data-testid="non-cooking-clear"
-              className="min-h-12 w-full rounded-2xl border-2 border-chrome-line bg-white px-4 py-3 font-bold text-ink-body hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-hearth-ink disabled:opacity-50"
-            >
-              {t('planner.clearDay', 'Remove supper plan')}
-            </button>
-          )}
-        </div>
+          );
+        })}
       </div>
-    </div>
+
+      {kind !== 'mystery' && (
+        <div className="mb-3">
+          <label htmlFor={inputId} className="block text-xs font-bold text-ink-body">
+            {t('planner.nonCookingMessage', 'Tell the family the plan')}
+          </label>
+          <textarea
+            rows={2}
+            ref={input}
+            id={inputId}
+            value={message}
+            disabled={busy}
+            onChange={(event) => setMessage(event.target.value)}
+            data-testid="non-cooking-custom-label"
+            className="mt-1.5 w-full rounded-2xl border border-chrome-line bg-white px-3.5 py-2.5 text-base leading-snug text-ink-body focus:border-hearth-line focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-50"
+            aria-invalid={!!error}
+            aria-describedby={error ? `${hintId} ${errorId}` : hintId}
+          />
+          <p id={hintId} className="mt-1 text-xs text-ink-muted">
+            {t('planner.nonCookingExamples', 'Supper at Grandma’s · Emma’s birthday supper')}
+          </p>
+        </div>
+      )}
+
+      {error && (
+        <p id={errorId} role="alert" className="mb-3 text-xs font-medium text-hearth-ink">
+          {error}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => submit()}
+          data-testid="non-cooking-save"
+          className="min-h-12 w-full rounded-2xl bg-hearth-fill px-4 py-3 text-base font-bold text-cream-100 transition-colors motion-reduce:transition-none hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-50"
+        >
+          {busy ? t('planner.savingPlan', 'Saving…') : t('common.save', 'Save')}
+        </button>
+        {onClear && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => submit(true)}
+            data-testid="non-cooking-clear"
+            className="min-h-12 w-full rounded-2xl border border-chrome-line bg-white px-4 py-3 text-sm font-bold text-ink-body transition-colors hover:bg-charcoal-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-50"
+          >
+            {t('planner.clearDay', 'Remove supper plan')}
+          </button>
+        )}
+      </div>
+    </PivotSheetShell>
   );
 }

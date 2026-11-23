@@ -999,6 +999,10 @@ components:
           type: [string, 'null']
           enum: [order_in, null]
           description: Tomorrow only. Leave a recipe-free Order In source in the same commit as movement.
+        sourceNonCooking:
+          nullable: true
+          description: Tomorrow only. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) in the same commit as movement. Preferred over legacy sourceDisposition when supplied.
+          allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
 
     MoveScheduleResultDto:
       type: object
@@ -1020,6 +1024,10 @@ components:
       properties:
         sourceDate: { type: string, format: date }
         recipeId: { type: string, format: uuid }
+        sourceNonCooking:
+          nullable: true
+          description: Optional. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) on sourceDate in the same commit as deferral.
+          allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
 
     DeferScheduleResultDto:
       type: object
@@ -1248,8 +1256,12 @@ components:
         status: { type: integer, description: '1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus' }
         nonCooking:
           nullable: true
-          description: Only valid with status 3. Cannot overwrite a persisted recipe; legacy status-only requests remain supported.
+          description: Only valid with status 3. Cannot overwrite a persisted recipe unless replaceRecipe is true; legacy status-only requests remain supported.
           allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
+        replaceRecipe:
+          type: boolean
+          nullable: true
+          description: Optional opt-in for status 3 with nonCooking. Atomically clears a planned/locked recipe on the date and saves the recipe-free non-cooking plan without a separate delete; rejects cooked, prepared, or awaiting-consensus days with 409.
         recipeId:
           type: string
           format: uuid
@@ -4029,7 +4041,7 @@ paths:
         calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the
         contiguous occupied supper chain through all required weeks, stopping at the first empty
         supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation.
-        Source disposition order_in is allowed only for tomorrow and commits atomically with shifts.
+        Source disposition order_in or sourceNonCooking (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery rejected with 400) is allowed only for tomorrow and commits atomically with shifts.
         A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes
         committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
       parameters:
@@ -4057,6 +4069,14 @@ paths:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '400':
           description: Invalid reference, index, date, destination or disposition; no mutation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, message]
+                properties:
+                  status: { type: integer }
+                  message: { type: string }
         '409':
           description: Tomorrow source changed, cooked or awaiting-consensus entry blocks movement, or concurrent conflict; no mutation.
         '200':

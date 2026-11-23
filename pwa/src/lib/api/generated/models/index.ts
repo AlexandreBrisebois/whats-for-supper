@@ -1835,6 +1835,10 @@ export interface DeferScheduleDto extends AdditionalDataHolder, Parsable {
    * The sourceDate property
    */
   sourceDate?: DateOnly | null;
+  /**
+   * Optional. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) on sourceDate in the same commit as deferral.
+   */
+  sourceNonCooking?: NonCookingPlanDto | null;
 }
 export interface DeferScheduleResultDto extends AdditionalDataHolder, Parsable {
   /**
@@ -2148,6 +2152,11 @@ export function deserializeIntoDeferScheduleDto(
     },
     sourceDate: (n) => {
       deferScheduleDto.sourceDate = n.getDateOnlyValue();
+    },
+    sourceNonCooking: (n) => {
+      deferScheduleDto.sourceNonCooking = n.getObjectValue<NonCookingPlanDto>(
+        createNonCookingPlanDtoFromDiscriminatorValue
+      );
     },
   };
 }
@@ -3597,6 +3606,11 @@ export function deserializeIntoMoveScheduleDto(
     sourceDisposition: (n) => {
       moveScheduleDto.sourceDisposition = n.getEnumValue<MoveScheduleDto_sourceDisposition>(
         MoveScheduleDto_sourceDispositionObject
+      );
+    },
+    sourceNonCooking: (n) => {
+      moveScheduleDto.sourceNonCooking = n.getObjectValue<NonCookingPlanDto>(
+        createNonCookingPlanDtoFromDiscriminatorValue
       );
     },
     targetWeekOffset: (n) => {
@@ -5738,6 +5752,9 @@ export function deserializeIntoValidationDto(
     recipeId: (n) => {
       validationDto.recipeId = n.getGuidValue();
     },
+    replaceRecipe: (n) => {
+      validationDto.replaceRecipe = n.getBooleanValue();
+    },
     status: (n) => {
       validationDto.status = n.getNumberValue();
     },
@@ -6987,6 +7004,10 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
    * Tomorrow only. Leave a recipe-free Order In source in the same commit as movement.
    */
   sourceDisposition?: MoveScheduleDto_sourceDisposition | null;
+  /**
+   * Tomorrow only. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) in the same commit as movement. Preferred over legacy sourceDisposition when supplied.
+   */
+  sourceNonCooking?: NonCookingPlanDto | null;
   /**
    * The targetWeekOffset property
    */
@@ -8407,6 +8428,11 @@ export function serializeDeferScheduleDto(
   }
   writer.writeGuidValue('recipeId', deferScheduleDto.recipeId);
   writer.writeDateOnlyValue('sourceDate', deferScheduleDto.sourceDate);
+  writer.writeObjectValue<NonCookingPlanDto>(
+    'sourceNonCooking',
+    deferScheduleDto.sourceNonCooking,
+    serializeNonCookingPlanDto
+  );
   writer.writeAdditionalData(deferScheduleDto.additionalData);
 }
 /**
@@ -9708,6 +9734,11 @@ export function serializeMoveScheduleDto(
   writer.writeEnumValue<MoveScheduleDto_sourceDisposition>(
     'sourceDisposition',
     moveScheduleDto.sourceDisposition
+  );
+  writer.writeObjectValue<NonCookingPlanDto>(
+    'sourceNonCooking',
+    moveScheduleDto.sourceNonCooking,
+    serializeNonCookingPlanDto
   );
   writer.writeNumberValue('targetWeekOffset', moveScheduleDto.targetWeekOffset);
   writer.writeNumberValue('toIndex', moveScheduleDto.toIndex);
@@ -11694,6 +11725,7 @@ export function serializeValidationDto(
     serializeNonCookingPlanDto
   );
   writer.writeGuidValue('recipeId', validationDto.recipeId);
+  writer.writeBooleanValue('replaceRecipe', validationDto.replaceRecipe);
   writer.writeNumberValue('status', validationDto.status);
   writer.writeAdditionalData(validationDto.additionalData);
 }
@@ -12266,13 +12298,17 @@ export type UpdateRecipeDto_mealTypes =
   (typeof UpdateRecipeDto_mealTypesObject)[keyof typeof UpdateRecipeDto_mealTypesObject];
 export interface ValidationDto extends AdditionalDataHolder, Parsable {
   /**
-   * Only valid with status 3. Cannot overwrite a persisted recipe; legacy status-only requests remain supported.
+   * Only valid with status 3. Cannot overwrite a persisted recipe unless replaceRecipe is true; legacy status-only requests remain supported.
    */
   nonCooking?: NonCookingPlanDto | null;
   /**
    * For status 2, record cooking for this recipe. Only mark the scheduled day cooked when its recipe matches. Omit for legacy day-only validation.
    */
   recipeId?: Guid | null;
+  /**
+   * Optional opt-in for status 3 with nonCooking. Atomically clears a planned/locked recipe on the date and saves the recipe-free non-cooking plan without a separate delete; rejects cooked, prepared, or awaiting-consensus days with 409.
+   */
+  replaceRecipe?: boolean | null;
   /**
    * 1: Planned, 2: Cooked, 3: Skipped, 4: AwaitingConsensus
    */

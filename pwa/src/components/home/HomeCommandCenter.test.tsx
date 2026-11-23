@@ -121,21 +121,28 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
   SkipRecoveryDialog: ({
     step,
     onAction,
+    onCustomPlan,
     onClose,
     replacement,
     onRetryReplacement,
     searchError,
     onRetrySearch,
+    backupIntent,
   }: {
     step: 1 | 2;
     onAction: (action: any) => void;
+    onCustomPlan?: (label: string) => void;
     onClose: () => void;
     replacement?: any;
     onRetryReplacement?: () => void;
     searchError?: string | null;
     onRetrySearch?: () => void;
+    backupIntent?: any;
   }) => (
     <div>
+      {backupIntent && (
+        <span data-testid="recovery-backup-intent">{JSON.stringify(backupIntent)}</span>
+      )}
       {replacement && <p>{replacement.message}</p>}
       {replacement && (
         <button data-testid="retry-replacement" onClick={onRetryReplacement}>
@@ -154,6 +161,15 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
         <>
           <button data-testid="recovery-action-order-in" onClick={() => onAction('order_in')}>
             Take Out
+          </button>
+          <button data-testid="recovery-action-eating-out" onClick={() => onAction('eating_out')}>
+            Eating out
+          </button>
+          <button
+            data-testid="recovery-action-made-plans"
+            onClick={() => onCustomPlan?.("Supper at Grandma's")}
+          >
+            Made plans
           </button>
           <button data-testid="recovery-action-pick-else" onClick={() => onAction('pick_else')}>
             Pick Else
@@ -755,11 +771,13 @@ describe('HomeCommandCenter', () => {
       date: mocks.todayString,
       recipe: null,
       status: 3,
+      nonCooking: { kind: 'order_in', customLabel: null },
     });
     expect(mocks.applySlotUpdate).toHaveBeenCalledWith({
       date: '2026-05-07',
       recipe: null,
       status: 3,
+      nonCooking: { kind: 'order_in', customLabel: null },
     });
     expect(mocks.validatePost).not.toHaveBeenCalled();
     expect(mocks.movePost).toHaveBeenCalledTimes(1);
@@ -796,7 +814,7 @@ describe('HomeCommandCenter', () => {
         toIndex: 0,
         targetWeekOffset: 1,
         intent: 'tomorrow',
-        sourceDisposition: 'order_in',
+        sourceNonCooking: { kind: 'order_in', customLabel: null },
         recipeId: 'recipe-1',
       },
       {
@@ -955,7 +973,11 @@ describe('HomeCommandCenter', () => {
     });
 
     await waitFor(() => {
-      expect(mocks.validatePost).toHaveBeenCalledWith({ status: 3 });
+      expect(mocks.validatePost).toHaveBeenCalledWith({
+        status: 3,
+        nonCooking: { kind: 'order_in', customLabel: null },
+        replaceRecipe: true,
+      });
       expect(mocks.removeDelete).not.toHaveBeenCalled();
       expect(mocks.push).toHaveBeenCalledWith(
         '/planner?weekOffset=0&referenceWeekStartDate=2026-05-04'
@@ -1014,13 +1036,92 @@ describe('atomic Tomorrow disposition', () => {
     expect(mocks.validatePost).not.toHaveBeenCalled();
     expect(mocks.applyServerUpdate).not.toHaveBeenCalled();
     expect(mocks.movePost).toHaveBeenCalledWith(
-      expect.objectContaining({ intent: 'tomorrow', sourceDisposition: 'order_in' }),
+      expect.objectContaining({
+        intent: 'tomorrow',
+        sourceNonCooking: { kind: 'order_in', customLabel: null },
+      }),
       expect.anything()
     );
     expect(mocks.assignRecipe).not.toHaveBeenCalled();
     expect(screen.getByTestId('recovery-action-tomorrow')).toBeVisible();
     expect(mocks.addToast).toHaveBeenCalled();
   });
+
+  it.each([
+    ['eating-out', { kind: 'eating_out', customLabel: null }],
+    ['made-plans', { kind: 'custom', customLabel: "Supper at Grandma's" }],
+  ] as const)(
+    'persists %s through tomorrow, next_week, and drop without partial failure',
+    async (triggerId, expectedPlan) => {
+      mocks.currentRecipe = { id: 'recipe-1', name: 'Pasta', image: '/img/pasta' };
+
+      // 1. Tomorrow (atomic move with sourceNonCooking)
+      const view = render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+      fireEvent.click(screen.getByTestId('skip-btn'));
+      fireEvent.click(screen.getByTestId(`recovery-action-${triggerId}`));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+      });
+      expect(mocks.movePost).toHaveBeenLastCalledWith(
+        expect.objectContaining({ intent: 'tomorrow', sourceNonCooking: expectedPlan }),
+        expect.anything()
+      );
+      expect(mocks.applyServerUpdate).toHaveBeenCalledWith({
+        date: mocks.todayString,
+        recipe: null,
+        status: 3,
+        nonCooking: expectedPlan,
+      });
+      view.unmount();
+      vi.clearAllMocks();
+
+      // 2. Save for Next Week (atomic defer with sourceNonCooking)
+      const view2 = render(
+        <HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />
+      );
+      fireEvent.click(screen.getByTestId('skip-btn'));
+      fireEvent.click(screen.getByTestId(`recovery-action-${triggerId}`));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('recovery-action-next-week'));
+      });
+      expect(mocks.validatePost).not.toHaveBeenCalled();
+      expect(mocks.deferPost).toHaveBeenLastCalledWith(
+        expect.objectContaining({ recipeId: 'recipe-1', sourceNonCooking: expectedPlan }),
+        expect.anything()
+      );
+      expect(mocks.applyServerUpdate).toHaveBeenCalledWith({
+        date: mocks.todayString,
+        recipe: null,
+        status: 3,
+        nonCooking: expectedPlan,
+      });
+      view2.unmount();
+      vi.clearAllMocks();
+
+      // 3. Drop (atomic replaceRecipe validate without DELETE)
+      const view3 = render(
+        <HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />
+      );
+      fireEvent.click(screen.getByTestId('skip-btn'));
+      fireEvent.click(screen.getByTestId(`recovery-action-${triggerId}`));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('recovery-action-drop'));
+      });
+      expect(mocks.removeDelete).not.toHaveBeenCalled();
+      expect(mocks.validatePost).toHaveBeenLastCalledWith({
+        status: 3,
+        nonCooking: expectedPlan,
+        replaceRecipe: true,
+      });
+      expect(mocks.applyServerUpdate).toHaveBeenCalledWith({
+        date: mocks.todayString,
+        recipe: null,
+        status: 3,
+        nonCooking: expectedPlan,
+      });
+      view3.unmount();
+    }
+  );
 });
 
 it('keeps recovery open until the replacement save is acknowledged', async () => {

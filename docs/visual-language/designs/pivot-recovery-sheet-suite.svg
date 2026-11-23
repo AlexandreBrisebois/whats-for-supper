@@ -1,0 +1,556 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1760" viewBox="0 0 1440 1760" role="img" aria-labelledby="suite-title suite-desc">
+  <title id="suite-title">Unified Compact Pivot &amp; Recovery Sheet Suite (Family Cookbook Era 3)</title>
+  <desc id="suite-desc">Complete Era 3 visual design specification for SkipRecoveryDialog (Plan B Step 1 with zero-extra-menu Not Cooking options, inline Made Plans note, and Step 2 disposition with terracotta editorial bar and Hearth-highlighted Move to tomorrow), sibling PlanningPivotSheet and NonCookingDaySheet, French expansion proof, and High Contrast AAA adaptation for zero-scroll Pixel 10 usability.</desc>
+
+  <defs>
+    <filter id="sheetShadow" x="-12%" y="-10%" width="124%" height="126%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#28231F" flood-opacity="0.22"/>
+    </filter>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#28231F" flood-opacity="0.06"/>
+    </filter>
+    <linearGradient id="scrimBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6F655B"/>
+      <stop offset="100%" stop-color="#4A433C"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="1760" fill="#FDFCF0"/>
+
+  <!-- ====================================================================== -->
+  <!-- HEADER                                                                 -->
+  <!-- ====================================================================== -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · Pivot &amp; Recovery Sheets</text>
+  <rect x="1086" y="24" width="314" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1243" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Pixel 10 Zero-Scroll · Standard AA &amp; AAA</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Unified Compact Pivot &amp; Recovery Sheet Suite</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">Rock-steady locked headers, zero-extra-menu Plan B resolution (Take Out, Eating out, Made plans), non-clickable editorial meal context, and concise action dates.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 1 · PLAN B RECOVERY FLOW (SkipRecoveryDialog.tsx)              -->
+  <!-- ====================================================================== -->
+  <text x="40" y="170" font-size="18" font-weight="700" fill="#28231F" class="heading">Plan B Recovery Flow (SkipRecoveryDialog · Locked Header, 0px Title Shift, Zero Scroll on Pixel 10)</text>
+
+  <!-- ==================== COL 1 · STEP 1 OF 2 (ALL 5 PATHS) ==================== -->
+  <g transform="translate(40, 188)">
+    <rect x="0" y="0" width="436" height="740" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="182" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="111" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Plan B · Step 1 of 2</text>
+    <text x="416" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">496px · Zero extra menu</text>
+
+    <!-- Scrim viewport well -->
+    <rect x="20" y="54" width="396" height="548" rx="24" fill="url(#scrimBg)"/>
+    <!-- Subtle top terracotta PWA status cue -->
+    <path d="M 44 54 H 392 Q 416 54 416 74 V 74 H 20 V 74 Q 20 54 44 54 Z" fill="#B85542" opacity="0.9"/>
+    <text x="38" y="68" font-size="11" font-weight="600" fill="#FFFFFF" opacity="0.9">5:18</text>
+    <text x="218" y="68" font-size="11" font-weight="500" fill="#FDFCF0" text-anchor="middle" opacity="0.9">Pixel 10 Viewport · 333px headroom</text>
+
+    <!-- Sheet (364 x 486 inside 396 well, y=104..590) -->
+    <g transform="translate(36, 104)">
+      <rect x="0" y="0" width="364" height="486" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1" filter="url(#sheetShadow)"/>
+
+      <!-- Locked Left Header + Right Close -->
+      <text x="20" y="32" font-size="14" font-weight="700" fill="#A44A37" class="heading">Plan B</text>
+      <text x="20" y="49" font-size="12" font-weight="500" fill="#6E645B">Step 1 of 2</text>
+      <rect x="300" y="14" width="46" height="46" rx="23" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <path d="M317 31 L329 43 M329 31 L317 43" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- 2-Step Progress Strip -->
+      <rect x="20" y="70" width="158" height="4" rx="2" fill="#B85542"/>
+      <rect x="186" y="70" width="158" height="4" rx="2" fill="#E5DFD7"/>
+
+      <!-- Heading + Subtitle -->
+      <text x="20" y="109" font-size="21" font-weight="800" fill="#28231F" class="heading">What’s the backup plan?</text>
+      <text x="20" y="130" font-size="12.5" font-weight="500" fill="#6E645B">Plans changed. What are we doing instead?</text>
+      <line x1="20" y1="146" x2="344" y2="146" stroke="#E5DFD7" stroke-width="1"/>
+
+      <!-- Lane 1: Not cooking tonight (3-up 1-tap tiles) -->
+      <text x="20" y="166" font-size="12" font-weight="600" fill="#6E645B">Not cooking tonight</text>
+
+      <!-- Tile 1: Take Out -->
+      <rect x="20" y="176" width="102" height="82" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="52" y="187" width="38" height="38" rx="11" fill="#F9ECE9"/>
+      <g fill="none" stroke="#A44A37" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M64 203 h14 l-0.9 10 a1.6 1.6 0 0 1 -1.6 1.6 h-9 a1.6 1.6 0 0 1 -1.6 -1.6 z"/>
+        <path d="M67.5 203 v-2 a3.5 3.5 0 0 1 7 0 v2"/>
+      </g>
+      <text x="71" y="246" font-size="13" font-weight="700" fill="#28231F" text-anchor="middle" class="heading">Take Out</text>
+
+      <!-- Tile 2: Eating out -->
+      <rect x="131" y="176" width="102" height="82" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="163" y="187" width="38" height="38" rx="11" fill="#F1F3EB"/>
+      <g fill="none" stroke="#4E6E52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M177 199 v4.5 a2.3 2.3 0 0 0 4.6 0 v-4.5 M179.3 199 v14"/>
+        <path d="M186.5 199 v14 M186.5 199 c2 0 2.8 1.6 2.8 4 v2 h-2.8"/>
+      </g>
+      <text x="182" y="246" font-size="13" font-weight="700" fill="#28231F" text-anchor="middle" class="heading">Eating out</text>
+
+      <!-- Tile 3: Made plans -->
+      <rect x="242" y="176" width="102" height="82" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="274" y="187" width="38" height="38" rx="11" fill="#F1F3EB"/>
+      <g fill="none" stroke="#4E6E52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="286" y="200" width="14" height="12.5" rx="2.3"/>
+        <path d="M289.5 198 v3.5 M296.5 198 v3.5 M286 204.5 h14"/>
+      </g>
+      <text x="293" y="246" font-size="13" font-weight="700" fill="#28231F" text-anchor="middle" class="heading">Made plans</text>
+
+      <!-- Lane 2: Cook something else -->
+      <text x="20" y="284" font-size="12" font-weight="600" fill="#6E645B">Cook something else</text>
+
+      <rect x="20" y="295" width="324" height="72" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="32" y="309" width="44" height="44" rx="14" fill="#FFF7CC"/>
+      <path d="M54 322 L56 328 L62 330 L56 332 L54 338 L52 332 L46 330 L52 328 Z" fill="none" stroke="#856400" stroke-width="1.8" stroke-linejoin="round"/>
+      <text x="88" y="327" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Suggestions</text>
+      <text x="88" y="346" font-size="12" font-weight="500" fill="#6E645B">Browse up to 5 recipe suggestions</text>
+      <path d="M324 325 L330 331 L324 337" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <rect x="20" y="377" width="324" height="72" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="32" y="391" width="44" height="44" rx="14" fill="#F9ECE9"/>
+      <g fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="53" cy="411" r="6.5"/>
+        <path d="M58 416 L62.5 420.5"/>
+      </g>
+      <text x="88" y="409" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Search</text>
+      <text x="88" y="428" font-size="12" font-weight="500" fill="#6E645B">Find a recipe in your library</text>
+      <path d="M324 407 L330 413 L324 419" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Design notes -->
+    <g transform="translate(24, 622)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#A44A37">CLOSES THE PLAN B DEAD END (ZERO EXTRA MENU)</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Take Out &amp; Eating out advance in 1 tap straight to Step 2.</text>
+      <text x="0" y="55" font-size="12.5" fill="#28231F">• Suggestions &amp; Search keep existing Quick Find / Library flows.</text>
+      <text x="0" y="74" font-size="12.5" fill="#6E645B">• All 5 tiles/rows exceed 48x48px; wraps cleanly at 320px.</text>
+      <text x="0" y="94" font-size="12.5" fill="#6E645B">FR: À emporter · Au resto · On a des plans</text>
+    </g>
+  </g>
+
+  <!-- ==================== COL 2 · STEP 1 WITH "MADE PLANS" INLINE ==================== -->
+  <g transform="translate(502, 188)">
+    <rect x="0" y="0" width="436" height="740" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="194" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="117" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Step 1 · Made Plans Inline</text>
+    <text x="416" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">566px · No sub-menu</text>
+
+    <!-- Scrim viewport well -->
+    <rect x="20" y="54" width="396" height="548" rx="24" fill="url(#scrimBg)"/>
+    <path d="M 44 54 H 392 Q 416 54 416 74 V 74 H 20 V 74 Q 20 54 44 54 Z" fill="#B85542" opacity="0.9"/>
+    <text x="38" y="68" font-size="11" font-weight="600" fill="#FFFFFF" opacity="0.9">5:18</text>
+    <text x="218" y="68" font-size="11" font-weight="500" fill="#FDFCF0" text-anchor="middle" opacity="0.9">Inline custom input · stays on Step 1</text>
+
+    <!-- Sheet (364 x 510 inside well, y=80..590) -->
+    <g transform="translate(36, 80)">
+      <rect x="0" y="0" width="364" height="510" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1" filter="url(#sheetShadow)"/>
+
+      <text x="20" y="32" font-size="14" font-weight="700" fill="#A44A37" class="heading">Plan B</text>
+      <text x="20" y="49" font-size="12" font-weight="500" fill="#6E645B">Step 1 of 2</text>
+      <rect x="300" y="14" width="46" height="46" rx="23" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <path d="M317 31 L329 43 M329 31 L317 43" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round"/>
+
+      <rect x="20" y="68" width="158" height="4" rx="2" fill="#B85542"/>
+      <rect x="186" y="68" width="158" height="4" rx="2" fill="#E5DFD7"/>
+
+      <text x="20" y="102" font-size="20" font-weight="800" fill="#28231F" class="heading">What’s the backup plan?</text>
+      <line x1="20" y1="116" x2="344" y2="116" stroke="#E5DFD7" stroke-width="1"/>
+
+      <!-- 3-up tiles with Made plans selected (Garden tonal aria-pressed) -->
+      <text x="20" y="134" font-size="12" font-weight="600" fill="#6E645B">Not cooking tonight</text>
+
+      <rect x="20" y="143" width="102" height="74" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="53" y="152" width="36" height="36" rx="10" fill="#F9ECE9"/>
+      <g fill="none" stroke="#A44A37" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M64.5 167 h13 l-0.8 9.5 a1.5 1.5 0 0 1 -1.5 1.5 h-8.4 a1.5 1.5 0 0 1 -1.5 -1.5 z"/>
+        <path d="M67.8 167 v-1.8 a3.2 3.2 0 0 1 6.4 0 v1.8"/>
+      </g>
+      <text x="71" y="207" font-size="12.5" font-weight="700" fill="#28231F" text-anchor="middle" class="heading">Take Out</text>
+
+      <rect x="131" y="143" width="102" height="74" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="164" y="152" width="36" height="36" rx="10" fill="#F1F3EB"/>
+      <g fill="none" stroke="#4E6E52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M177.5 163 v4 a2.2 2.2 0 0 0 4.4 0 v-4 M179.7 163 v13"/>
+        <path d="M186.5 163 v13 M186.5 163 c1.8 0 2.6 1.5 2.6 3.8 v2 h-2.6"/>
+      </g>
+      <text x="182" y="207" font-size="12.5" font-weight="700" fill="#28231F" text-anchor="middle" class="heading">Eating out</text>
+
+      <!-- Selected Made plans tile -->
+      <rect x="242" y="143" width="102" height="74" rx="18" fill="#F1F3EB" stroke="#4E6E52" stroke-width="1.8"/>
+      <rect x="275" y="152" width="36" height="36" rx="10" fill="#FFFFFF"/>
+      <g fill="none" stroke="#4E6E52" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="286.5" y="164" width="13" height="12" rx="2.2"/>
+        <path d="M289.8 162 v3.2 M296.2 162 v3.2 M286.5 168.5 h13"/>
+      </g>
+      <circle cx="332" cy="155" r="7.5" fill="#4E6E52"/>
+      <path d="M328.8 155 L331.2 157.4 L335.2 152.8" fill="none" stroke="#FFFFFF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="293" y="207" font-size="12.5" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">Made plans</text>
+
+      <!-- Inline Custom Input Panel -->
+      <rect x="20" y="227" width="324" height="94" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4"/>
+      <text x="32" y="247" font-size="12" font-weight="700" fill="#28231F">Tell the family the plan</text>
+      <rect x="32" y="256" width="214" height="46" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2"/>
+      <text x="44" y="284" font-size="13.5" fill="#28231F">Supper at Grandma’s</text>
+      <rect x="254" y="256" width="78" height="46" rx="14" fill="#B85542"/>
+      <text x="293" y="284" font-size="13.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">Next →</text>
+
+      <!-- Lane 2 remains visible below -->
+      <text x="20" y="344" font-size="12" font-weight="600" fill="#6E645B">Cook something else</text>
+
+      <rect x="20" y="354" width="324" height="66" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="32" y="367" width="40" height="40" rx="12" fill="#FFF7CC"/>
+      <path d="M52 379 L53.8 384.5 L59.5 386.5 L53.8 388.5 L52 394 L50.2 388.5 L44.5 386.5 L50.2 384.5 Z" fill="none" stroke="#856400" stroke-width="1.7" stroke-linejoin="round"/>
+      <text x="84" y="384" font-size="15" font-weight="800" fill="#28231F" class="heading">Suggestions</text>
+      <text x="84" y="402" font-size="12" font-weight="500" fill="#6E645B">Browse up to 5 recipe suggestions</text>
+      <path d="M324 381 L330 387 L324 393" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <rect x="20" y="428" width="324" height="66" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="32" y="441" width="40" height="40" rx="12" fill="#F9ECE9"/>
+      <g fill="none" stroke="#A44A37" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="51" cy="460" r="6"/>
+        <path d="M55.5 464.5 L59.5 468.5"/>
+      </g>
+      <text x="84" y="458" font-size="15" font-weight="800" fill="#28231F" class="heading">Search</text>
+      <text x="84" y="476" font-size="12" font-weight="500" fill="#6E645B">Find a recipe in your library</text>
+      <path d="M324 455 L330 461 L324 467" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Design notes -->
+    <g transform="translate(24, 622)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">INLINE CUSTOM PLAN VALIDATION</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Satisfies non-cooking-plans 1–80 char custom label rule</text>
+      <text x="10" y="53" font-size="12.5" fill="#6E645B">directly inside Step 1 without opening a second dialog.</text>
+      <text x="0" y="74" font-size="12.5" fill="#28231F">• Uses Garden aria-pressed role (sage-50 + garden-line + Check).</text>
+      <text x="0" y="94" font-size="12.5" fill="#6E645B">• Switching back to Take Out / Eating out advances immediately.</text>
+    </g>
+  </g>
+
+  <!-- ==================== COL 3 · STEP 2 OF 2 (CONVERGED DISPOSITION) ==================== -->
+  <g transform="translate(964, 188)">
+    <rect x="0" y="0" width="436" height="740" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="182" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="111" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Plan B · Step 2 of 2</text>
+    <text x="416" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">496px · Locked header</text>
+
+    <!-- Scrim viewport well -->
+    <rect x="20" y="54" width="396" height="548" rx="24" fill="url(#scrimBg)"/>
+    <path d="M 44 54 H 392 Q 416 54 416 74 V 74 H 20 V 74 Q 20 54 44 54 Z" fill="#B85542" opacity="0.9"/>
+    <text x="38" y="68" font-size="11" font-weight="600" fill="#FFFFFF" opacity="0.9">5:18</text>
+    <text x="218" y="68" font-size="11" font-weight="500" fill="#FDFCF0" text-anchor="middle" opacity="0.9">0px X/Y title shift from Step 1</text>
+
+    <!-- Sheet (exact same 364 x 486 at y=104..590 as Col 1!) -->
+    <g transform="translate(36, 104)">
+      <rect x="0" y="0" width="364" height="486" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1" filter="url(#sheetShadow)"/>
+
+      <!-- Locked Left Title + Right [Back] [X] Cluster -->
+      <text x="20" y="32" font-size="14" font-weight="700" fill="#A44A37" class="heading">Plan B</text>
+      <text x="20" y="49" font-size="12" font-weight="500" fill="#6E645B">Step 2 of 2</text>
+
+      <rect x="206" y="14" width="86" height="46" rx="23" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <path d="M227 37 H217 M217 37 L222 32 M217 37 L222 42" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="236" y="42" font-size="13.5" font-weight="600" fill="#A44A37">Back</text>
+
+      <rect x="300" y="14" width="46" height="46" rx="23" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <path d="M317 31 L329 43 M329 31 L317 43" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- 2-Step Progress Strip (Step 2 active) -->
+      <rect x="20" y="70" width="158" height="4" rx="2" fill="#E6B3A9"/>
+      <rect x="186" y="70" width="158" height="4" rx="2" fill="#B85542"/>
+
+      <!-- NON-CLICKABLE MEAL HEADLINE ON CREAM + TERRACOTTA SIDE BAR -->
+      <rect x="20" y="89" width="3.5" height="60" rx="1.75" fill="#B85542"/>
+      <text x="33" y="101" font-size="12" font-weight="600" fill="#A44A37">Original meal · Saturday, November 21</text>
+      <text x="33" y="123" font-size="18" font-weight="800" fill="#28231F" class="heading">Grilled Cilantro Lime Chicken</text>
+      <text x="33" y="144" font-size="18" font-weight="800" fill="#28231F" class="heading">with Mango Avocado Salsa</text>
+      <text x="20" y="168" font-size="12.5" font-weight="500" fill="#6E645B">Keep or move it before saving “Supper at Grandma’s”.</text>
+
+      <line x1="20" y1="183" x2="344" y2="183" stroke="#E5DFD7" stroke-width="1"/>
+
+      <!-- Option 1: Suggested Next Action (Hearth Blush + Concise Date!) -->
+      <rect x="20" y="198" width="324" height="74" rx="20" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.5"/>
+      <rect x="32" y="213" width="44" height="44" rx="14" fill="#B85542"/>
+      <path d="M47 235 H61 M61 235 L55 229 M61 235 L55 241" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="88" y="230" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Move to Sun, Nov 22</text>
+      <text x="88" y="250" font-size="12" font-weight="500" fill="#524A43">Moves following meals forward as needed</text>
+
+      <!-- Option 2: Save for Next Week -->
+      <rect x="20" y="282" width="324" height="82" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="32" y="301" width="44" height="44" rx="14" fill="#F1F3EB"/>
+      <g fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M61 320 a7.5 7.5 0 0 0 -13 -3 l-2 2"/>
+        <path d="M46 314 v5 h5"/>
+        <path d="M47 326 a7.5 7.5 0 0 0 13 3 l2 -2"/>
+        <path d="M62 332 v-5 h-5"/>
+      </g>
+      <text x="88" y="311" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Save for Next Week</text>
+      <text x="88" y="330" font-size="12" font-weight="500" fill="#6E645B">First open day from the following week;</text>
+      <text x="88" y="346" font-size="12" font-weight="500" fill="#6E645B">later if full</text>
+
+      <!-- Option 3: Remove (Concise Date!) -->
+      <rect x="20" y="374" width="324" height="72" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="32" y="388" width="44" height="44" rx="14" fill="#F3EFEA"/>
+      <g fill="none" stroke="#6E645B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M46 405 h16"/>
+        <path d="M51 405 v-2.5 a1.5 1.5 0 0 1 1.5 -1.5 h3 a1.5 1.5 0 0 1 1.5 1.5 v2.5"/>
+        <path d="M48 405 l1 12 a2 2 0 0 0 2 2 h6 a2 2 0 0 0 2 -2 l1 -12"/>
+        <path d="M52 409 v6 M56 409 v6"/>
+      </g>
+      <text x="88" y="406" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Remove from Sat, Nov 21</text>
+      <text x="88" y="426" font-size="12" font-weight="500" fill="#6E645B">Keeps the recipe in your library</text>
+    </g>
+
+    <!-- Design notes -->
+    <g transform="translate(24, 622)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#A44A37">ZERO FALSE AFFORDANCE &amp; CRISP FIT</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Full date + recipe sit directly on cream beside a 3.5px</text>
+      <text x="10" y="53" font-size="12.5" fill="#6E645B">terracotta bar — never boxed like a clickable card.</text>
+      <text x="0" y="74" font-size="12.5" fill="#28231F">• Concise button dates ("Sun, Nov 22", "Sat, Nov 21")</text>
+      <text x="10" y="91" font-size="12.5" fill="#6E645B">fit cleanly on 1 line even for "Wed, Sep 23".</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 2 · MATCHING SIBLING SHEETS + FR & HIGH CONTRAST AAA PROOFS    -->
+  <!-- ====================================================================== -->
+  <text x="40" y="968" font-size="18" font-weight="700" fill="#28231F" class="heading">Matching Sibling Sheets (Planner Options &amp; Other Plans) · French &amp; High Contrast AAA Proofs</text>
+
+  <!-- ==================== LEFT HALF · SIBLING SHEETS ==================== -->
+  <g transform="translate(40, 986)">
+    <rect x="0" y="0" width="664" height="564" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="234" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="137" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Unified Sibling Sheets · Era 3</text>
+    <text x="644" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">Same locked header &amp; p-5 density</text>
+
+    <!-- Sub-panel 1: PlanningPivotSheet (5 actions, 564px real -> scaled 0.80 = 304 x 451) -->
+    <g transform="translate(20, 56)">
+      <rect x="0" y="0" width="304" height="486" rx="22" fill="url(#scrimBg)"/>
+      <text x="152" y="21" font-size="12" font-weight="600" fill="#FDFCF0" text-anchor="middle">PlanningPivotSheet (5 actions · 564px)</text>
+      <g transform="translate(12, 32) scale(0.77)">
+        <rect x="0" y="0" width="364" height="564" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1" filter="url(#sheetShadow)"/>
+        <text x="20" y="34" font-size="14" font-weight="700" fill="#A44A37" class="heading">Planner options</text>
+        <text x="20" y="51" font-size="12" font-weight="500" fill="#6E645B">Saturday, November 21</text>
+        <rect x="300" y="16" width="46" height="46" rx="23" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <path d="M317 33 L329 45 M329 33 L317 45" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round"/>
+
+        <!-- Terracotta editorial bar + recipe headline -->
+        <rect x="20" y="76" width="3.5" height="44" rx="1.75" fill="#B85542"/>
+        <text x="33" y="93" font-size="18" font-weight="800" fill="#28231F" class="heading">Grilled Cilantro Lime Chicken</text>
+        <text x="33" y="114" font-size="18" font-weight="800" fill="#28231F" class="heading">with Mango Avocado Salsa</text>
+        <text x="20" y="138" font-size="12.5" font-weight="500" fill="#6E645B">Choose how to replace or remove this recipe.</text>
+        <line x1="20" y1="152" x2="344" y2="152" stroke="#E5DFD7" stroke-width="1"/>
+
+        <!-- 5 compact rows -->
+        <rect x="20" y="166" width="324" height="64" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="32" y="178" width="40" height="40" rx="12" fill="#F1F3EB"/>
+        <text x="84" y="195" font-size="15" font-weight="800" fill="#28231F" class="heading">Save for Next Week</text>
+        <text x="84" y="213" font-size="12" fill="#6E645B">Moves to the first open slot</text>
+        <path d="M324 192 L330 198 L324 204" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round"/>
+
+        <rect x="20" y="238" width="324" height="64" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="32" y="250" width="40" height="40" rx="12" fill="#FFF7CC"/>
+        <text x="84" y="267" font-size="15" font-weight="800" fill="#28231F" class="heading">Suggestions</text>
+        <text x="84" y="285" font-size="12" fill="#6E645B">Browse up to 5 recipe suggestions</text>
+        <path d="M324 264 L330 270 L324 276" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round"/>
+
+        <rect x="20" y="310" width="324" height="64" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="32" y="322" width="40" height="40" rx="12" fill="#F9ECE9"/>
+        <text x="84" y="339" font-size="15" font-weight="800" fill="#28231F" class="heading">Search library</text>
+        <text x="84" y="357" font-size="12" fill="#6E645B">Browse your collection</text>
+        <path d="M324 336 L330 342 L324 348" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round"/>
+
+        <rect x="20" y="382" width="324" height="64" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="32" y="394" width="40" height="40" rx="12" fill="#F1F3EB"/>
+        <text x="84" y="411" font-size="15" font-weight="800" fill="#28231F" class="heading">Other plans</text>
+        <text x="84" y="429" font-size="12" fill="#6E645B">Take out, eat out, or add your own</text>
+        <path d="M324 408 L330 414 L324 420" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round"/>
+
+        <rect x="20" y="454" width="324" height="64" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="32" y="466" width="40" height="40" rx="12" fill="#F3EFEA"/>
+        <text x="84" y="483" font-size="15" font-weight="800" fill="#28231F" class="heading">Remove recipe</text>
+        <text x="84" y="501" font-size="12" fill="#6E645B">Clear this slot</text>
+      </g>
+    </g>
+
+    <!-- Sub-panel 2: NonCookingDaySheet (Era 3 opaque upgrade + Back beside X) -->
+    <g transform="translate(340, 56)">
+      <rect x="0" y="0" width="304" height="486" rx="22" fill="url(#scrimBg)"/>
+      <text x="152" y="21" font-size="12" font-weight="600" fill="#FDFCF0" text-anchor="middle">NonCookingDaySheet (Era 3 · 564px)</text>
+      <g transform="translate(12, 32) scale(0.77)">
+        <rect x="0" y="0" width="364" height="564" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1" filter="url(#sheetShadow)"/>
+        <text x="20" y="34" font-size="14" font-weight="700" fill="#A44A37" class="heading">Other plans</text>
+        <text x="20" y="51" font-size="12" font-weight="500" fill="#6E645B">Saturday, November 21</text>
+
+        <rect x="206" y="16" width="86" height="46" rx="23" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <path d="M227 39 H217 M217 39 L222 34 M217 39 L222 44" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round"/>
+        <text x="236" y="44" font-size="13.5" font-weight="600" fill="#A44A37">Back</text>
+
+        <rect x="300" y="16" width="46" height="46" rx="23" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <path d="M317 33 L329 45 M329 33 L317 45" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round"/>
+
+        <text x="20" y="94" font-size="21" font-weight="800" fill="#28231F" class="heading">What’s the plan?</text>
+
+        <!-- 4 tonal choices -->
+        <rect x="20" y="110" width="324" height="54" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="30" y="118" width="38" height="38" rx="11" fill="#F1F3EB"/>
+        <text x="80" y="142" font-size="15" font-weight="700" fill="#28231F" class="heading">Mystery night</text>
+
+        <rect x="20" y="172" width="324" height="54" rx="16" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1.5"/>
+        <rect x="30" y="180" width="38" height="38" rx="11" fill="#FFFFFF"/>
+        <text x="80" y="204" font-size="15" font-weight="800" fill="#28231F" class="heading">Take Out</text>
+        <path d="M318 199 L323 204 L332 194" fill="none" stroke="#4E6E52" stroke-width="2.2" stroke-linecap="round"/>
+
+        <rect x="20" y="234" width="324" height="54" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="30" y="242" width="38" height="38" rx="11" fill="#F1F3EB"/>
+        <text x="80" y="266" font-size="15" font-weight="700" fill="#28231F" class="heading">Eating out</text>
+
+        <rect x="20" y="296" width="324" height="54" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="30" y="304" width="38" height="38" rx="11" fill="#F1F3EB"/>
+        <text x="80" y="328" font-size="15" font-weight="700" fill="#28231F" class="heading">We made plans</text>
+
+        <!-- Note input -->
+        <text x="20" y="376" font-size="13" font-weight="700" fill="#28231F">Tell the family the plan</text>
+        <rect x="20" y="386" width="324" height="52" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.5"/>
+        <text x="34" y="416" font-size="14" fill="#6E645B">Pizza from Mario’s…</text>
+        <text x="20" y="456" font-size="12" fill="#6E645B">Supper at Grandma’s · Emma’s birthday supper</text>
+
+        <!-- Primary Save CTA -->
+        <rect x="20" y="476" width="324" height="52" rx="18" fill="#B85542"/>
+        <text x="182" y="507" font-size="15.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">Save</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== RIGHT HALF · FRENCH & HIGH CONTRAST AAA PROOFS ==================== -->
+  <g transform="translate(736, 986)">
+    <!-- Top box: French Bilingual Expansion Proof -->
+    <rect x="0" y="0" width="664" height="274" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="24" y="32" font-size="14" font-weight="700" fill="#28231F" class="heading">French Bilingual Proof (Plan B · Étape 2 sur 2 · Zero Clipping)</text>
+
+    <!-- French Step 2 Miniature Sheet -->
+    <g transform="translate(24, 46)">
+      <rect x="0" y="0" width="350" height="208" rx="20" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1" filter="url(#softShadow)"/>
+      <text x="16" y="24" font-size="12.5" font-weight="700" fill="#A44A37" class="heading">Plan B · Étape 2 sur 2</text>
+      <rect x="218" y="8" width="76" height="30" rx="15" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="256" y="27" font-size="12" font-weight="600" fill="#A44A37" text-anchor="middle">← Retour</text>
+      <rect x="302" y="8" width="30" height="30" rx="15" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="317" y="27.5" font-size="13" font-weight="600" fill="#6E645B" text-anchor="middle">×</text>
+
+      <rect x="16" y="44" width="154" height="3" rx="1.5" fill="#E6B3A9"/>
+      <rect x="178" y="44" width="154" height="3" rx="1.5" fill="#B85542"/>
+
+      <rect x="16" y="56" width="3" height="34" rx="1.5" fill="#B85542"/>
+      <text x="26" y="67" font-size="12" font-weight="600" fill="#A44A37">Repas initial · samedi 21 novembre</text>
+      <text x="26" y="85" font-size="13.5" font-weight="800" fill="#28231F" class="heading">Poulet grillé coriandre et lime…</text>
+
+      <rect x="16" y="102" width="318" height="44" rx="14" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.2"/>
+      <rect x="24" y="110" width="28" height="28" rx="9" fill="#B85542"/>
+      <text x="38" y="129" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">→</text>
+      <text x="62" y="121" font-size="13.5" font-weight="800" fill="#28231F" class="heading">Déplacer au dim. 22 nov.</text>
+      <text x="62" y="137" font-size="12" fill="#524A43">Décale les repas suivants au besoin</text>
+
+      <rect x="16" y="154" width="318" height="42" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="24" y="161" width="28" height="28" rx="9" fill="#F3EFEA"/>
+      <text x="62" y="173" font-size="13.5" font-weight="800" fill="#28231F" class="heading">Retirer du sam. 21 nov.</text>
+      <text x="62" y="189" font-size="12" fill="#6E645B">La recette reste dans votre bibliothèque</text>
+    </g>
+
+    <!-- French notes -->
+    <g transform="translate(394, 52)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#A44A37">FR EXPANSION VERIFIED</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• "Retour" pill fits cleanly beside ×</text>
+      <text x="10" y="53" font-size="12.5" fill="#6E645B">with 182px left for Plan B / Étape.</text>
+      <text x="0" y="75" font-size="12.5" fill="#28231F">• Concise dates ("dim. 22 nov.",</text>
+      <text x="10" y="92" font-size="12.5" fill="#6E645B">"sam. 21 nov.") never clip or wrap.</text>
+      <text x="0" y="114" font-size="12.5" fill="#28231F">• Step 1 3-up tiles stack or wrap</text>
+      <text x="10" y="131" font-size="12.5" fill="#6E645B">gracefully at 320px / 200% zoom.</text>
+      <text x="0" y="155" font-size="12.5" fill="#4E6E52">• Total height: 508px (321px spare)</text>
+    </g>
+
+    <!-- Bottom box: High Contrast AAA Adaptation -->
+    <rect x="0" y="294" width="664" height="270" rx="28" fill="#FAF8F5" stroke="#6E645B" stroke-width="1.5"/>
+    <text x="24" y="326" font-size="14" font-weight="700" fill="#191512" class="heading">High Contrast AAA (:root[data-contrast="high"]) · Dual-Mode Tokens</text>
+
+    <!-- AAA Step 2 Preview -->
+    <g transform="translate(24, 342)">
+      <rect x="0" y="0" width="350" height="202" rx="20" fill="#FDFCF0" stroke="#6E645B" stroke-width="1.5"/>
+      <text x="16" y="24" font-size="12.5" font-weight="700" fill="#7B3829" class="heading">Plan B · Step 2 of 2</text>
+      <rect x="228" y="8" width="66" height="30" rx="15" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.5"/>
+      <text x="261" y="27" font-size="12" font-weight="700" fill="#7B3829" text-anchor="middle">← Back</text>
+      <rect x="302" y="8" width="30" height="30" rx="15" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.5"/>
+      <text x="317" y="27.5" font-size="13" font-weight="700" fill="#191512" text-anchor="middle">×</text>
+
+      <rect x="16" y="44" width="154" height="4" rx="2" fill="#A44A37"/>
+      <rect x="178" y="44" width="154" height="4" rx="2" fill="#7B3829"/>
+
+      <rect x="16" y="56" width="4" height="34" rx="2" fill="#7B3829"/>
+      <text x="28" y="67" font-size="12" font-weight="700" fill="#7B3829">Original meal · Saturday, Nov 21</text>
+      <text x="28" y="85" font-size="13.5" font-weight="800" fill="#191512" class="heading">Grilled Cilantro Lime Chicken…</text>
+
+      <!-- Focused Suggested Card with crisp AAA outline-ink-body -->
+      <rect x="14" y="99" width="322" height="48" rx="16" fill="none" stroke="#191512" stroke-width="2"/>
+      <rect x="18" y="103" width="314" height="40" rx="13" fill="#F9ECE9" stroke="#A44A37" stroke-width="1.5"/>
+      <rect x="26" y="109" width="28" height="28" rx="8" fill="#7B3829"/>
+      <text x="40" y="128" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">→</text>
+      <text x="64" y="120" font-size="13.5" font-weight="800" fill="#191512" class="heading">Move to Sun, Nov 22</text>
+      <text x="64" y="136" font-size="12" font-weight="500" fill="#524A43">Moves following meals forward</text>
+
+      <rect x="18" y="155" width="314" height="36" rx="13" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.5"/>
+      <rect x="26" y="160" width="26" height="26" rx="7" fill="#F1F3EB" stroke="#324D36" stroke-width="1.2"/>
+      <text x="62" y="178" font-size="13.5" font-weight="800" fill="#191512" class="heading">Save for Next Week</text>
+    </g>
+
+    <!-- AAA Token Notes -->
+    <g transform="translate(394, 348)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#191512">ZERO-JS DUAL-MODE TOKENS</text>
+      <text x="0" y="38" font-size="12.5" fill="#191512">• Ink AAA: #191512 (17.59:1)</text>
+      <text x="0" y="57" font-size="12.5" fill="#524A43">• Muted AAA: #524A43 (8.42:1)</text>
+      <text x="0" y="76" font-size="12.5" fill="#7B3829">• Hearth AAA: #7B3829 (8.61:1)</text>
+      <text x="0" y="95" font-size="12.5" fill="#324D36">• Garden AAA: #324D36 (8.34:1)</text>
+      <text x="0" y="114" font-size="12.5" fill="#191512">• Chrome border: #6E645B crisp</text>
+      <text x="0" y="137" font-size="12.5" fill="#191512">• Focus: 2px outline-ink-body</text>
+      <text x="10" y="154" font-size="12.5" fill="#524A43">with 4px offset on all buttons.</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- BOTTOM IMPLEMENTATION & CONTRACT ARCHITECTURE STRIP                    -->
+  <!-- ====================================================================== -->
+  <rect x="40" y="1574" width="1360" height="148" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="64" y="1604" font-size="16" font-weight="700" fill="#28231F" class="heading">Component, Contract &amp; Verification Architecture Summary</text>
+
+  <g transform="translate(64, 1624)">
+    <text x="0" y="14" font-size="12" font-weight="700" fill="#A44A37">1 · SHARED SHEET SHELL PRIMITIVE</text>
+    <text x="0" y="34" font-size="12.5" fill="#28231F">Extract a shared Era 3 compact sheet shell</text>
+    <text x="0" y="51" font-size="12.5" fill="#6E645B">(opaque bg-cream, p-5, locked left title, top-</text>
+    <text x="0" y="68" font-size="12.5" fill="#6E645B">right [Back][Close], optional 2-step strip) used</text>
+    <text x="0" y="85" font-size="12.5" fill="#6E645B">by SkipRecovery, PlanningPivot &amp; NonCooking.</text>
+  </g>
+
+  <line x1="484" y1="1622" x2="484" y2="1708" stroke="#E5DFD7" stroke-width="1"/>
+
+  <g transform="translate(508, 1624)">
+    <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">2 · ATOMIC NON-COOKING MOVE SEAM</text>
+    <text x="0" y="34" font-size="12.5" fill="#28231F">Extend MoveScheduleDto with optional</text>
+    <text x="0" y="51" font-size="12.5" fill="#6E645B">sourceNonCooking (NonCookingPlanDto) so</text>
+    <text x="0" y="68" font-size="12.5" fill="#6E645B">Move to Tomorrow + Eating out / Made plans</text>
+    <text x="0" y="85" font-size="12.5" fill="#6E645B">commits atomically alongside order_in.</text>
+  </g>
+
+  <line x1="932" y1="1622" x2="932" y2="1708" stroke="#E5DFD7" stroke-width="1"/>
+
+  <g transform="translate(956, 1624)">
+    <text x="0" y="14" font-size="12" font-weight="700" fill="#A44A37">3 · PROTECTED TEST IDS &amp; VERIFICATION</text>
+    <text x="0" y="34" font-size="12.5" fill="#28231F">Preserve recovery-*, pivot-*, non-cooking-*</text>
+    <text x="0" y="51" font-size="12.5" fill="#6E645B">test IDs. Verify Pixel 10 zero-scroll geometry,</text>
+    <text x="0" y="68" font-size="12.5" fill="#6E645B">320px/200% reflow, and assertCookbookVisualA11y</text>
+    <text x="0" y="85" font-size="12.5" fill="#6E645B">across Standard AA &amp; High Contrast AAA.</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="40" y="1744" font-size="12.5" fill="#6E645B">Unified Pivot &amp; Recovery Sheet Suite · Visual design reference for OpenSpec change unify-compact-pivot-and-recovery-sheets.</text>
+</svg>

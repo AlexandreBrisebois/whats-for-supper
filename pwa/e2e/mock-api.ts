@@ -1843,12 +1843,25 @@ export async function setupCommonRoutes(
     if (!reference)
       return fulfill(route, { status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
     const body = route.request().postDataJSON();
+    const normalizeSourceNonCooking = (plan: any) => {
+      if (plan == null) return { ok: true as const, value: null };
+      const kind = plan?.kind;
+      if (kind !== 'order_in' && kind !== 'eating_out' && kind !== 'custom')
+        return { ok: false as const };
+      const raw = plan?.customLabel;
+      if (raw != null && typeof raw !== 'string') return { ok: false as const };
+      const trimmed = typeof raw === 'string' ? raw.trim() : null;
+      if (kind === 'custom' && !trimmed) return { ok: false as const };
+      if (trimmed && [...trimmed].length > 80) return { ok: false as const };
+      return { ok: true as const, value: { kind, customLabel: trimmed || null } };
+    };
     if (body.intent === 'tomorrow') {
       const sourceDate = addDays(reference, body.weekOffset * 7 + body.fromIndex);
       const destination = addDays(
         reference,
         (body.targetWeekOffset ?? body.weekOffset) * 7 + body.toIndex
       );
+      const normalizedNonCooking = normalizeSourceNonCooking(body.sourceNonCooking);
       if (
         !Number.isInteger(body.fromIndex) ||
         body.fromIndex < 0 ||
@@ -1857,11 +1870,17 @@ export async function setupCommonRoutes(
         body.toIndex < 0 ||
         body.toIndex > 6 ||
         destination !== addDays(sourceDate, 1) ||
-        (body.sourceDisposition != null && body.sourceDisposition !== 'order_in')
+        (body.sourceDisposition != null && body.sourceDisposition !== 'order_in') ||
+        !normalizedNonCooking.ok
       )
         return fulfill(route, {
           status: 400,
-          json: { message: 'Choose a valid source and its next day.' },
+          json: {
+            status: 400,
+            message: !normalizedNonCooking.ok
+              ? 'Choose a valid non-cooking plan; messages must contain at most 80 characters and custom messages are required.'
+              : 'Choose a valid source and its next day.',
+          },
         });
       const source = scheduleEntries.get(sourceDate);
       const chain: string[] = [];
@@ -1891,14 +1910,15 @@ export async function setupCommonRoutes(
         scheduleEntries.set(addDays(date, 1), scheduleEntries.get(date)!);
         scheduleEntries.delete(date);
       }
-      if (body.sourceDisposition === 'order_in' || source.status === 3) {
+      const resolvedNonCooking =
+        normalizedNonCooking.value ??
+        (body.sourceDisposition === 'order_in' ? { kind: 'order_in', customLabel: null } : null);
+      if (resolvedNonCooking || source.status === 3) {
         scheduleEntries.set(sourceDate, {
           ...source,
           recipe: null,
           status: 3,
-          ...(body.sourceDisposition
-            ? { nonCooking: { kind: 'order_in', customLabel: null } }
-            : {}),
+          ...(resolvedNonCooking ? { nonCooking: resolvedNonCooking } : {}),
         });
         scheduleEntries.set(destination, { recipe: source.recipe, status: 0 });
       } else {
@@ -1946,10 +1966,10 @@ export async function setupCommonRoutes(
       }
       return;
     }
-    if (body.sourceDisposition != null)
+    if (body.sourceDisposition != null || body.sourceNonCooking != null)
       return fulfill(route, {
         status: 400,
-        json: { message: 'Source disposition requires Tomorrow.' },
+        json: { status: 400, message: 'Source disposition requires Tomorrow.' },
       });
     const monday = addDays(reference, body.weekOffset * 7);
     const targetOffset = body.targetWeekOffset ?? body.weekOffset;
@@ -2068,6 +2088,27 @@ export async function setupCommonRoutes(
       return fulfill(route, { status: 400, json: { message: 'Invalid targetWeekOffset.' } });
     const start = toDateStr(new Date(destinationTime));
     const body = route.request().postDataJSON();
+    let normalizedDeferNonCooking: { kind: string; customLabel: string | null } | null = null;
+    if (body.sourceNonCooking != null) {
+      const kind = body.sourceNonCooking?.kind;
+      const raw = body.sourceNonCooking?.customLabel;
+      const trimmed = typeof raw === 'string' ? raw.trim() : null;
+      if (
+        (kind !== 'order_in' && kind !== 'eating_out' && kind !== 'custom') ||
+        (raw != null && typeof raw !== 'string') ||
+        (kind === 'custom' && !trimmed) ||
+        (trimmed && [...trimmed].length > 80)
+      )
+        return fulfill(route, {
+          status: 400,
+          json: {
+            status: 400,
+            message:
+              'Choose a valid non-cooking plan; messages must contain at most 80 characters and custom messages are required.',
+          },
+        });
+      normalizedDeferNonCooking = { kind, customLabel: trimmed || null };
+    }
     const source = scheduleEntries.get(body.sourceDate);
     if (!source || !source.recipe || source.recipe.id !== body.recipeId)
       return fulfill(route, { status: 404, json: { message: 'Scheduled recipe not found.' } });
@@ -2078,10 +2119,17 @@ export async function setupCommonRoutes(
       });
     let destination = start;
     while (scheduleEntries.has(destination)) destination = addDays(destination, 1);
-    if (source.status === 3) scheduleEntries.set(body.sourceDate, { ...source, recipe: null });
+    if (normalizedDeferNonCooking || source.status === 3)
+      scheduleEntries.set(body.sourceDate, {
+        ...source,
+        recipe: null,
+        status: 3,
+        ...(normalizedDeferNonCooking ? { nonCooking: normalizedDeferNonCooking } : {}),
+      });
     else scheduleEntries.delete(body.sourceDate);
     const deferred = { recipe: source.recipe, status: 0 };
-    if (source.status !== 3 && entryIds.has(source)) entryIds.set(deferred, entryIds.get(source)!);
+    if (!normalizedDeferNonCooking && source.status !== 3 && entryIds.has(source))
+      entryIds.set(deferred, entryIds.get(source)!);
     scheduleEntries.set(destination, deferred);
     servingMock.calendarChanged([body.sourceDate, destination], reference);
     const destinationOffset = Math.floor(
@@ -2265,7 +2313,27 @@ export async function setupCommonRoutes(
       const date = new URL(route.request().url()).pathname.split('/')[4];
       const body = route.request().postDataJSON();
       const previous = scheduleEntries.get(date);
-      if (body.nonCooking && previous && (previous.recipe || previous.status !== 3))
+      if (body.replaceRecipe === true) {
+        const kind = body.nonCooking?.kind;
+        const raw = body.nonCooking?.customLabel;
+        const trimmed = typeof raw === 'string' ? raw.trim() : null;
+        if (
+          body.status !== 3 ||
+          (kind !== 'order_in' && kind !== 'eating_out' && kind !== 'custom') ||
+          (raw != null && typeof raw !== 'string') ||
+          (kind === 'custom' && !trimmed) ||
+          (trimmed && [...trimmed].length > 80)
+        )
+          return fulfill(route, {
+            status: 400,
+            json: {
+              status: 400,
+              message: 'Replacing a recipe requires status 3 and a valid non-cooking plan.',
+            },
+          });
+        if (previous && (previous.preparation || previous.status === 2 || previous.status === 4))
+          return fulfill(route, { status: 409, json: { status: 409, message: 'Day occupied' } });
+      } else if (body.nonCooking && previous && (previous.recipe || previous.status !== 3))
         return fulfill(route, { status: 409, json: { status: 409, message: 'Day occupied' } });
       const viewedId = body.recipeId ?? previous?.recipe?.id;
       if (body.status === 2) {
@@ -2281,13 +2349,26 @@ export async function setupCommonRoutes(
           json: { data: { message: 'Cooking status updated', mealMarkedCooked: true } },
         });
       if (body.status !== 2 || mealMarkedCooked) {
+        const replacingWithNonCooking = body.replaceRecipe === true && body.nonCooking;
+        const normalizedNonCooking = body.nonCooking
+          ? {
+              kind: body.nonCooking.kind,
+              customLabel:
+                typeof body.nonCooking.customLabel === 'string'
+                  ? body.nonCooking.customLabel.trim() || null
+                  : null,
+            }
+          : null;
         const entry = {
-          ...(previous?.preparation ? { preparation: previous.preparation } : {}),
-          recipe: previous?.recipe ?? null,
+          ...(previous?.preparation && !replacingWithNonCooking
+            ? { preparation: previous.preparation }
+            : {}),
+          recipe: replacingWithNonCooking ? null : (previous?.recipe ?? null),
           status: body.status,
           nonCooking:
-            body.status === 3 && !previous?.recipe
-              ? (body.nonCooking ?? previous?.nonCooking ?? { kind: 'order_in', customLabel: null })
+            body.status === 3 && (replacingWithNonCooking || !previous?.recipe)
+              ? (normalizedNonCooking ??
+                previous?.nonCooking ?? { kind: 'order_in', customLabel: null })
               : null,
         };
         if (previous && entryIds.has(previous)) entryIds.set(entry, entryIds.get(previous)!);

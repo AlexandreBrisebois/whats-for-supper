@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nonCookingLabel, nonCookingNote } from './nonCooking';
+import { formatShortSupperPlanDate, nonCookingLabel, nonCookingNote } from './nonCooking';
 
 describe('Mystery night display', () => {
   it('shows the localized preset instead of falling back to Ordering In', () => {
@@ -26,4 +26,18 @@ it('localizes Take Out and the legacy fallback without rewriting a user note', (
   } finally {
     localStorage.removeItem('locale');
   }
+});
+
+describe('formatShortSupperPlanDate', () => {
+  it('formats concise localized action dates in English and French', () => {
+    expect(formatShortSupperPlanDate('2026-11-22')).toBe('Sun, Nov 22');
+    expect(formatShortSupperPlanDate('2026-09-23')).toBe('Wed, Sep 23');
+    localStorage.setItem('locale', 'fr');
+    try {
+      expect(formatShortSupperPlanDate('2026-11-22')).toBe('dim. 22 nov.');
+      expect(formatShortSupperPlanDate('2026-09-23')).toBe('mer. 23 sept.');
+    } finally {
+      localStorage.removeItem('locale');
+    }
+  });
 });

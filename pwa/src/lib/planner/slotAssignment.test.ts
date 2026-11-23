@@ -715,3 +715,124 @@ describe('automatic deployment date lower bound', () => {
     expect(getSchedule).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('moveTomorrow sourceNonCooking', () => {
+  it('sends sourceNonCooking for full non-cooking plans while staying compatible with legacy order_in', async () => {
+    const { moveTomorrow } = await import('./slotAssignment');
+    const baseSlot = () => ({
+      weekOffset: 0,
+      dayIndex: 5,
+      date: '2026-11-21',
+      referenceWeekStartDate: '2026-11-16',
+      recipe: { id: '550e8400-e29b-41d4-a716-446655440000' } as any,
+    });
+
+    await moveTomorrow(baseSlot(), { kind: 'eating_out', customLabel: null });
+    expect(mocks.movePost).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        intent: 'tomorrow',
+        sourceNonCooking: { kind: 'eating_out', customLabel: null },
+      }),
+      expect.anything()
+    );
+    expect(mocks.movePost.mock.calls.at(-1)?.[0]).not.toHaveProperty('sourceDisposition');
+
+    await moveTomorrow(baseSlot(), { kind: 'custom', customLabel: "Supper at Grandma's" });
+    expect(mocks.movePost).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        intent: 'tomorrow',
+        sourceNonCooking: { kind: 'custom', customLabel: "Supper at Grandma's" },
+      }),
+      expect.anything()
+    );
+
+    await moveTomorrow(baseSlot(), 'order_in');
+    expect(mocks.movePost).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        intent: 'tomorrow',
+        sourceDisposition: 'order_in',
+      }),
+      expect.anything()
+    );
+  });
+
+  it('persists and validates sourceNonCooking in the mock API move handler', async () => {
+    const { builders, MOCK_IDS, setupCommonRoutes } = await import('../../../e2e/mock-api');
+    const handlers = new Map<any, (route: any) => Promise<unknown>>();
+    const page = {
+      route: vi.fn(async (key, handler) => handlers.set(key, handler)),
+      evaluate: vi.fn().mockResolvedValue(undefined),
+    };
+    await setupCommonRoutes(page as any, builders.deploymentCalendar({ today: '2026-11-21' }));
+    const call = async (key: any, method: string, path: string, body?: any) => {
+      const fulfill = vi.fn();
+      await handlers.get(key)!({
+        request: () => ({
+          method: () => method,
+          url: () => 'http://localhost' + path,
+          postDataJSON: () => body,
+        }),
+        fulfill,
+        fallback: vi.fn(),
+      });
+      return fulfill.mock.calls[0][0];
+    };
+    const scheduleKey = [...handlers.keys()].find(
+      (key) => typeof key === 'function' && key(new URL('http://localhost/api/schedule'))
+    );
+    await call(
+      '**/api/schedule/assign**',
+      'POST',
+      '/api/schedule/assign?referenceWeekStartDate=2026-11-16',
+      { weekOffset: 0, dayIndex: 5, recipeId: MOCK_IDS.RECIPE_CHICKEN }
+    );
+
+    for (const invalid of [
+      { kind: 'mystery' },
+      { kind: 'custom', customLabel: '   ' },
+      { kind: 'custom', customLabel: 'x'.repeat(81) },
+    ]) {
+      const res = await call(
+        '**/api/schedule/move**',
+        'POST',
+        '/api/schedule/move?referenceWeekStartDate=2026-11-16',
+        {
+          weekOffset: 0,
+          fromIndex: 5,
+          toIndex: 6,
+          targetWeekOffset: 0,
+          recipeId: MOCK_IDS.RECIPE_CHICKEN,
+          intent: 'tomorrow',
+          sourceNonCooking: invalid,
+        }
+      );
+      expect(res.status).toBe(400);
+      expect(res.json).toMatchObject({ status: 400, message: expect.any(String) });
+    }
+
+    const ok = await call(
+      '**/api/schedule/move**',
+      'POST',
+      '/api/schedule/move?referenceWeekStartDate=2026-11-16',
+      {
+        weekOffset: 0,
+        fromIndex: 5,
+        toIndex: 6,
+        targetWeekOffset: 0,
+        recipeId: MOCK_IDS.RECIPE_CHICKEN,
+        intent: 'tomorrow',
+        sourceNonCooking: { kind: 'custom', customLabel: "  Supper at Grandma's  " },
+      }
+    );
+    expect(ok.status ?? 200).toBe(200);
+    const schedule = (
+      await call(scheduleKey, 'GET', '/api/schedule?referenceWeekStartDate=2026-11-16')
+    ).json.data;
+    expect(schedule.days[5]).toMatchObject({
+      status: 3,
+      recipe: null,
+      nonCooking: { kind: 'custom', customLabel: "Supper at Grandma's" },
+    });
+    expect(schedule.days[6].recipe.id).toBe(MOCK_IDS.RECIPE_CHICKEN);
+  });
+});

@@ -134,6 +134,7 @@ export default function PlannerPage() {
     referenceWeekStartDate?: string;
     plan?: NonCookingPlanDto | null;
     existing: boolean;
+    fromPivotDayIndex?: number;
   } | null>(null);
   const activeNonCookingDate = useRef<string | null>(null);
   useEffect(() => {
@@ -1173,6 +1174,15 @@ export default function PlannerPage() {
           key={`${nonCookingTarget.weekOffset}:${nonCookingTarget.date}`}
           date={nonCookingTarget.date}
           plan={nonCookingTarget.plan}
+          onBack={
+            nonCookingTarget.fromPivotDayIndex !== undefined
+              ? () => {
+                  const dayIndex = nonCookingTarget.fromPivotDayIndex!;
+                  setNonCookingTarget(null);
+                  setShowPivot({ dayIndex });
+                }
+              : undefined
+          }
           onClose={() => setNonCookingTarget(null)}
           onSave={async (plan) => {
             const target = nonCookingTarget;
@@ -1219,13 +1229,19 @@ export default function PlannerPage() {
       )}
       <PlanningPivotSheet
         date={showPivot !== null ? (schedule[showPivot.dayIndex]?.date ?? undefined) : undefined}
+        recipeName={
+          showPivot !== null && schedule[showPivot.dayIndex]?.status !== 3
+            ? (schedule[showPivot.dayIndex]?.recipe?.name ?? null)
+            : null
+        }
         isNonCooking={showPivot !== null && schedule[showPivot.dayIndex]?.status === 3}
         onNoCooking={
           showPivot !== null &&
           currentWeekOffset >= 0 &&
           (!schedule[showPivot.dayIndex]?.recipe?.id || schedule[showPivot.dayIndex]?._isPending)
             ? () => {
-                const day = schedule[showPivot.dayIndex];
+                const pivotDayIndex = showPivot.dayIndex;
+                const day = schedule[pivotDayIndex];
                 if (!day?.date) return;
                 setNonCookingTarget({
                   date: day.date,
@@ -1233,6 +1249,7 @@ export default function PlannerPage() {
                   referenceWeekStartDate: useWeekStore.getState().calendar?.referenceWeekStartDate,
                   plan: day.nonCooking,
                   existing: day.status === 3,
+                  fromPivotDayIndex: pivotDayIndex,
                 });
                 setShowPivot(null);
               }
@@ -1373,6 +1390,7 @@ export default function PlannerPage() {
             pending={recovery.pending}
             isOpen={true}
             step={2}
+            canGoBack={false}
             source={pendingRecovery.slot}
             replacement={recovery.feedback}
             confirmAbandon={recovery.confirmAbandon}

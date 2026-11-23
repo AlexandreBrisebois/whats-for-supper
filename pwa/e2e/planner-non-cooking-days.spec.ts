@@ -433,6 +433,118 @@ test('Other plans stays readable and reachable on a phone', async ({ page }, tes
   await page.screenshot({ path: testInfo.outputPath('other-plans-home.png') });
 });
 
+test('PlanningPivotSheet and NonCookingDaySheet use opaque Era 3 shell, Back navigation, zero scroll on Pixel 10, AA/AAA, and 320px/200% reflow', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await setupCommonRoutes(page);
+  const state = emptyWeek();
+  state.days![0].recipe = builders.scheduleRecipe({
+    id: MOCK_IDS.RECIPE_CHICKEN,
+    name: 'Grilled Cilantro Lime Chicken with Mango Avocado Salsa',
+  });
+  await mockNonCookingSchedule(page, state);
+  const mutations: string[] = [];
+  page.on('request', (request) => {
+    if (['POST', 'DELETE'].includes(request.method()) && /api\/schedule\//.test(request.url()))
+      mutations.push(request.url());
+  });
+
+  await page.goto('/planner');
+
+  // 1. PlanningPivotSheet on planned recipe day (terracotta-bar context + compact actions + zero scroll)
+  await page.getByTestId('day-card-0').getByTestId('change-recipe-button').click();
+  const pivotSheet = page.getByTestId('pivot-sheet');
+  await expect(pivotSheet).toBeVisible();
+  await expect(page.getByTestId('pivot-meal-context')).toContainText(
+    'Grilled Cilantro Lime Chicken'
+  );
+  const pivotMetrics = await pivotSheet.evaluate((el) => {
+    const body = el.lastElementChild as HTMLElement | null;
+    return {
+      panelScroll: el.scrollHeight <= el.clientHeight + 1,
+      bodyScroll: body ? body.scrollHeight <= body.clientHeight + 1 : true,
+      backdropFilter: getComputedStyle(el).backdropFilter,
+    };
+  });
+  expect(pivotMetrics.panelScroll).toBe(true);
+  expect(pivotMetrics.bodyScroll).toBe(true);
+  expect(pivotMetrics.backdropFilter).toBe('none');
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="pivot-sheet"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await expect(pivotSheet.getByRole('heading').first()).toHaveCSS('color', 'rgb(123, 56, 41)');
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="pivot-sheet"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+  });
+  await pivotSheet.getByRole('button', { name: 'Close' }).click();
+
+  // 2. Open NonCookingDaySheet from PlanningPivotSheet -> verify opaque Era 3, 48px Back & Close, zero scroll with note input, Back returns without mutating
+  await page.getByTestId('day-card-1').getByTestId('plan-meal-button').click();
+  await page.getByTestId('pivot-no-cooking').click();
+  const nonCookingSheet = page.getByTestId('non-cooking-sheet');
+  await expect(nonCookingSheet).toBeVisible();
+  await page.getByTestId('non-cooking-other-plans').click();
+  await expect(page.getByTestId('non-cooking-custom-label')).toBeVisible();
+
+  const ncMetrics = await nonCookingSheet.evaluate((el) => {
+    const body = el.lastElementChild as HTMLElement | null;
+    return {
+      panelScroll: el.scrollHeight <= el.clientHeight + 1,
+      bodyScroll: body ? body.scrollHeight <= body.clientHeight + 1 : true,
+      backdropFilter: getComputedStyle(el).backdropFilter,
+    };
+  });
+  expect(ncMetrics.panelScroll).toBe(true);
+  expect(ncMetrics.bodyScroll).toBe(true);
+  expect(ncMetrics.backdropFilter).toBe('none');
+
+  const ncBackBox = await page.getByTestId('non-cooking-back').boundingBox();
+  const ncCloseBox = await page.getByTestId('non-cooking-close').boundingBox();
+  expect(ncBackBox!.height).toBeGreaterThanOrEqual(48);
+  expect(ncCloseBox!.height).toBeGreaterThanOrEqual(48);
+  expect(ncCloseBox!.width).toBeGreaterThanOrEqual(48);
+
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="non-cooking-sheet"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await expect(page.getByTestId('non-cooking-back')).toHaveCSS('color', 'rgb(123, 56, 41)');
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="non-cooking-sheet"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+  });
+
+  // Back returns cleanly to PlanningPivotSheet with zero mutations
+  await page.getByTestId('non-cooking-back').click();
+  await expect(nonCookingSheet).toBeHidden();
+  await expect(pivotSheet).toBeVisible();
+  expect(mutations).toEqual([]);
+
+  // 320px / 200% text scaling reflow check
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+  expect(await pivotSheet.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await page.getByTestId('pivot-no-cooking').click();
+  await expect(nonCookingSheet).toBeVisible();
+  expect(await nonCookingSheet.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+});
+
 test.describe('Home local calendar day', () => {
   test.use({ timezoneId: 'America/Toronto' });
 
