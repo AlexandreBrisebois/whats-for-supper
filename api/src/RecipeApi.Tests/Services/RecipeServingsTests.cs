@@ -100,10 +100,6 @@ public class RecipeServingsTests
         db.Recipes.Add(new Recipe { Id = id });
         await db.SaveChangesAsync();
         var task = await ProducerTask(db, repository, id);
-        var owner = PublicationStore(db, repository);
-        await owner.PublishAsync(await owner.CaptureAsync(id), new RecipePublicationCandidate(
-            JsonSerializer.Serialize(new { recipeYield = yield, recipeIngredient = new[] { "340 g pasta" } }),
-            new RecipeInfo { Id = id }), task.TaskId);
         for (var attempt = 0; attempt < 2; attempt++) {
             await Sync(db, repository, task);
             var wire = JsonSerializer.SerializeToElement(RecipeService.MapToDto((await db.Recipes.FindAsync(id))!));
@@ -128,7 +124,7 @@ public class RecipeServingsTests
         var prompts = new Mock<IPromptRepository>();
         prompts.Setup(p => p.GetPrompt(It.IsAny<PromptType>())).Returns("Extract the supplied recipe.");
         var agent = new RecipeAgent(chat.Object, prompts.Object, new ConfigurationManager(), NullLogger<RecipeAgent>.Instance,
-            new RecipeFilePublicationStore(db, repository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, repository.StorageProvider, new SystemClock())), "ExtractRecipe");
+            "ExtractRecipe", db, recipeRepository: repository, vocabulary: TestPublicationStore.Vocabulary(db, repository.StorageProvider, new SystemClock()));
         db.Recipes.Add(new Recipe { Id = id, Name = "Pending", IsReady = true });
         await db.SaveChangesAsync();
         var task = await ProducerTask(db, repository, id);
@@ -148,28 +144,8 @@ public class RecipeServingsTests
         return id;
     }
 
-    internal static async Task<RecipeReadyProcessor> ReadyProcessor(RecipeDbContext db, WorkflowTask task, IScheduleEventPublisher publisher)
-    {
-        var repository = new RecipeRepository(new InMemoryStorageProvider());
-        using var payload = JsonDocument.Parse(task.Payload!);
-        var id = payload.RootElement.GetProperty("recipeId").GetGuid();
-        var recipe = await db.Recipes.FindAsync(id);
-        var owner = PublicationStore(db, repository);
-        if (recipe is not null)
-        {
-            await repository.SaveInfoAsync(new RecipeInfo { Id = id, Name = recipe.Name, ImageCount = recipe.ImageCount }, default);
-            var instance = new WorkflowInstance { Id = task.InstanceId, WorkflowId = "ready-test",
-                Parameters = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = id.ToString() }) };
-            instance.Tasks.Add(task);
-            await owner.CaptureLaunchAsync(instance);
-            db.WorkflowInstances.Add(instance);
-            await db.SaveChangesAsync();
-        }
-        return new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance, publisher, owner);
-    }
-
-    internal static RecipeFilePublicationStore PublicationStore(RecipeDbContext db, RecipeRepository repository) =>
-        new(db, repository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(), new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, repository.StorageProvider, new SystemClock()));
+    internal static Task<RecipeReadyProcessor> ReadyProcessor(RecipeDbContext db, WorkflowTask task, IScheduleEventPublisher publisher) =>
+        Task.FromResult(new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance, publisher));
 
     internal static async Task<WorkflowTask> ProducerTask(RecipeDbContext db, RecipeRepository repository, Guid recipeId)
     {
@@ -178,7 +154,6 @@ public class RecipeServingsTests
             ProcessorName = "ExtractRecipe", TaskName = "extract_recipe", Payload = JsonSerializer.Serialize(new { recipeId }) };
         instance.Parameters = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipeId.ToString() });
         instance.Tasks.Add(task);
-        await PublicationStore(db, repository).CaptureLaunchAsync(instance);
         db.WorkflowInstances.Add(instance);
         await db.SaveChangesAsync();
         return task;

@@ -47,7 +47,8 @@ test.describe('PDF import', () => {
     await expect(page.getByTestId('import-recipe-file-input')).toHaveAttribute('accept', /pdf/);
     await page.getByTestId('import-recipe-file-input').setInputFiles(pdf);
     await expect(page.getByTestId('pdf-confirmation')).toBeVisible();
-    await expect(page.getByTestId('capture-cancel-btn')).toHaveCount(0);
+    await expect(page.getByTestId('capture-cancel-btn')).toBeVisible();
+    await expect(page.getByTestId('capture-cancel-btn')).toBeEnabled();
     await page.getByTestId('pdf-rating-3').click();
     await page.getByTestId('pdf-notes').fill('  less salt  ');
     await page.getByTestId('pdf-save').click();
@@ -61,7 +62,9 @@ test.describe('PDF import', () => {
     await page.goto('/capture');
     await expect(page.getByTestId('import-recipe-file-input')).toHaveAttribute('accept', /pdf/);
     await page.getByTestId('import-recipe-file-input').setInputFiles(pdf);
-    await page.goto('/home');
+    await expect(page.getByTestId('pdf-confirmation')).toBeVisible();
+    await page.getByTestId('capture-cancel-btn').click();
+    await expect(page).toHaveURL(/\/home/);
     await page.goto('/capture');
     await expect(page.getByTestId('pdf-confirmation')).toHaveCount(0);
     await page

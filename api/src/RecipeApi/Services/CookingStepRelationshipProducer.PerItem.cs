@@ -50,20 +50,20 @@ public static partial class CookingStepRelationshipProducer
             new(new(doseSpan.Index, doseSpan.Index + doseSpan.Length, doseSpan.Value), doseAmount, "perItem"), doseUnit);
     }
 
-    private static bool PerItemNamedRow(CanonicalRecipeContent content, RecipeIngredientLineDto row) =>
+    private static bool PerItemNamedRow(StructuredRecipeContent content, RecipeIngredientLineDto row) =>
         row.Id != Guid.Empty && content.IngredientLines.Count(other => other.Id == row.Id) == 1 &&
         !string.IsNullOrWhiteSpace(row.Description) && row.Description.IndexOfAny(['\r', '\n', '.', ';', ':', '!', '?']) < 0 &&
         !PartialOrConditional.IsMatch(row.Description) &&
         content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1;
 
-    private static PerItemClause[] PerItemCandidates(CanonicalRecipeContent content, string text) =>
+    private static PerItemClause[] PerItemCandidates(StructuredRecipeContent content, string text) =>
         content.IngredientLines.Where(row => PerItemNamedRow(content, row) && row.Unit?.Text is "pieces" or "morceaux")
             .SelectMany(count => content.IngredientLines.Where(row => row.Id != count.Id && PerItemNamedRow(content, row))
                 .Select(row => ParsePerItem(text, count, row)))
             .Where(clause => clause is not null).Cast<PerItemClause>().ToArray();
 
-    private static bool IndependentPerItemStep(CanonicalRecipeContent content, RecipeIngredientLineDto selected,
-        string text, CanonicalRecipeContent? previous = null)
+    private static bool IndependentPerItemStep(StructuredRecipeContent content, RecipeIngredientLineDto selected,
+        string text, StructuredRecipeContent? previous = null)
     {
         var clauses = PerItemCandidates(content, text);
         if (clauses.Length == 1 && clauses[0].Count.Id != selected.Id && clauses[0].Ingredient.Id != selected.Id) return true;
@@ -80,7 +80,7 @@ public static partial class CookingStepRelationshipProducer
     // An unresolved former dose subject cannot authorize a new exhaustive
     // allocation merely because its current name no longer occurs in the clause.
     // This fallback preserves already-proved unrelated steps, not fresh graphs.
-    private static bool PreservesIndependentPerItemRow(CanonicalRecipeContent previous, CanonicalRecipeContent content,
+    private static bool PreservesIndependentPerItemRow(StructuredRecipeContent previous, StructuredRecipeContent content,
         RecipeIngredientLineDto selected)
     {
         var oldRows = previous.IngredientLines.Where(row => row.Id == selected.Id).ToArray();
@@ -107,7 +107,7 @@ public static partial class CookingStepRelationshipProducer
     // The dose depends on its upstream whole count, never the reverse. Once a
     // guarded Save removes/renames the dose row, the exact retained count proof
     // can cross later saves without reconstructing a missing row or dose edge.
-    private static Binding? CarryIndependentPerItemCount(CanonicalRecipeContent? previous, CanonicalRecipeContent content,
+    private static Binding? CarryIndependentPerItemCount(StructuredRecipeContent? previous, StructuredRecipeContent content,
         RecipeInstructionStepDto[] steps, RecipeInstructionStepDto step)
     {
         if (previous is null || previous.SourceRevision != content.SourceRevision || step.Id == Guid.Empty ||
@@ -153,7 +153,7 @@ public static partial class CookingStepRelationshipProducer
         return matches.Count == 1 ? matches[0] : null;
     }
 
-    private static Binding PerItemBinding(CanonicalRecipeContent content, RecipeInstructionStepDto step,
+    private static Binding PerItemBinding(StructuredRecipeContent content, RecipeInstructionStepDto step,
         PerItemClause clause, bool count, Guid id, Guid countId) => new(id,
             count ? clause.Count.Id : clause.Ingredient.Id, step.Id, content.ContentRevision, step.TextRevision,
             count ? clause.CountClause.Span : clause.DoseClause.Span, count ? "whole" : "perItem",
@@ -164,7 +164,7 @@ public static partial class CookingStepRelationshipProducer
         before.Id == after.Id && before.Description == after.Description && before.Unit == after.Unit &&
         before.Scaling == after.Scaling && before.Package == after.Package && before.Shopping == after.Shopping;
 
-    private static Binding? PerItemExisting(CanonicalRecipeContent content, RecipeInstructionStepDto step,
+    private static Binding? PerItemExisting(StructuredRecipeContent content, RecipeInstructionStepDto step,
         PerItemClause clause, bool count, Guid countId)
     {
         var matches = step.Bindings.Select(raw => (Raw: raw, Binding: Read(raw)))
@@ -176,7 +176,7 @@ public static partial class CookingStepRelationshipProducer
         return matches.Length == 1 ? matches[0].Binding : null;
     }
 
-    private static Binding? CarryPerItem(CanonicalRecipeContent? previous, CanonicalRecipeContent content,
+    private static Binding? CarryPerItem(StructuredRecipeContent? previous, StructuredRecipeContent content,
         RecipeInstructionStepDto step, PerItemClause clause, bool count, Guid countId)
     {
         if (previous is null || previous.SourceRevision != content.SourceRevision) return null;
@@ -194,7 +194,7 @@ public static partial class CookingStepRelationshipProducer
         return prior is not null && current?.Id == prior.Id ? current : null;
     }
 
-    private static JsonElement[]? DiscoverPerItem(CanonicalRecipeContent content, CanonicalRecipeContent? previous,
+    private static JsonElement[]? DiscoverPerItem(StructuredRecipeContent content, StructuredRecipeContent? previous,
         RecipeInstructionStepDto[] steps, RecipeInstructionStepDto step, Func<CreationKey, Guid> createIdentity)
     {
         var clauses = PerItemCandidates(content, step.Text);

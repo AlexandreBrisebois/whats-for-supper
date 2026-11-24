@@ -8,7 +8,7 @@ namespace RecipeApi.Tests.Services;
 
 public sealed partial class CookingStepRelationshipProducerTests
 {
-    private static CanonicalRecipeContent Content(string text, string description = "pasta", string quantity = "200", params string[] otherSteps) => new(2, "content", "source", 4,
+    private static StructuredRecipeContent Content(string text, string description = "pasta", string quantity = "200", params string[] otherSteps) => new(2, "content", "source", 4,
         [new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = description, Amount = QuantityMath.Parse(quantity),
             AmountText = quantity, Unit = new("g", null), Scaling = "proportional", Package = null, Shopping = new(description, null, null), Provenance = new("source", "source", []) }],
         [new(Guid.NewGuid(), null, new[] { text }.Concat(otherSteps).Select(t => new RecipeInstructionStepDto(Guid.NewGuid(), t, Guid.NewGuid().ToString(), [])).ToArray())]);
@@ -152,7 +152,7 @@ public sealed partial class CookingStepRelationshipProducerTests
         Assert.Equal(projectedSauce, CookingStepProjection.Read(saved, 6).Sections[0].Steps[1].Text);
     }
 
-    private static CanonicalRecipeContent MultipleUses(string first = "Add 1 tbsp oil.", string second = "Use 1 tbsp oil.")
+    private static StructuredRecipeContent MultipleUses(string first = "Add 1 tbsp oil.", string second = "Use 1 tbsp oil.")
     {
         var content = Content(first, "oil", "2", second);
         return content with { IngredientLines = [content.IngredientLines[0] with { Unit = new("tbsp", null) }] };

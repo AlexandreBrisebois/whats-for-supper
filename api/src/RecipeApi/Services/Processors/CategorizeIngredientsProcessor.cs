@@ -120,7 +120,7 @@ public class CategorizeIngredientsProcessor(
             return;
         }
 
-        var current = CanonicalRecipeContentStore.Read(recipe);
+        var current = StructuredRecipeContentStore.Read(recipe);
         if (current is null && string.IsNullOrWhiteSpace(recipe.RawMetadata))
         {
             logger.LogDebug("CategorizeIngredients: recipe {RecipeId} has no raw_metadata — skipping", recipeId);

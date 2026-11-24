@@ -117,11 +117,14 @@ describe('RecipeImportIssueSheet', () => {
     );
 
     expect(screen.getByRole('dialog', { name: 'Report issue' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Close report issue' })).toHaveFocus();
-    expect(screen.getByRole('button', { name: 'Ingredients' })).toHaveAttribute(
-      'aria-pressed',
-      'false'
-    );
+    const dialog = screen.getByRole('dialog', { name: 'Report issue' });
+    expect(dialog).toHaveClass('bg-cream', 'border-chrome-line');
+    const closeBtn = screen.getByRole('button', { name: 'Close report issue' });
+    expect(closeBtn).toHaveFocus();
+    expect(closeBtn).toHaveClass('h-12', 'w-12', 'rounded-full', 'bg-white', 'border-chrome-line');
+    const ingredientsBtn = screen.getByRole('button', { name: 'Ingredients' });
+    expect(ingredientsBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(ingredientsBtn).toHaveClass('border-chrome-line', 'bg-white');
     expect(screen.getByRole('button', { name: 'Steps' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Duplicate' })).toHaveAttribute(
       'aria-pressed',
@@ -133,7 +136,12 @@ describe('RecipeImportIssueSheet', () => {
     fireEvent.click(screen.getByText('Add a note'));
     const note = screen.getByLabelText('Optional note');
     expect(note).toHaveAttribute('maxLength', '500');
-    expect(note).toHaveClass('px-4', 'py-3', 'resize-none');
+    expect(note).toHaveClass('px-4', 'py-3', 'border-icon-affordance');
+
+    fireEvent.click(ingredientsBtn);
+    expect(ingredientsBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(ingredientsBtn).toHaveClass('bg-terracotta-50', 'border-hearth-line', 'text-hearth-ink');
+    expect(ingredientsBtn.querySelector('svg')).toBeNull();
   });
 
   it('makes duplicate manual-review-only and clears content reasons without moving focus', async () => {

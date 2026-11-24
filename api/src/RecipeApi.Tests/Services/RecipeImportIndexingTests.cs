@@ -31,7 +31,7 @@ public sealed class RecipeImportIndexingTests
             await db.SaveChangesAsync();
             await new RecipeRepository(storage).SaveInfoAsync(new RecipeInfo { Id = id }, default);
         }
-        return new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(db, storage, new RecipeApi.Services.SystemClock()));
+        return new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(storage), db);
     }
 
     private static async Task SaveParentAsync(RecipeDbContext db, WorkflowTask task)
@@ -42,7 +42,6 @@ public sealed class RecipeImportIndexingTests
         task.ProcessorName = "QueueRecipeSearchIndex";
         task.Status = TaskStatus.Processing;
         var parent = new WorkflowInstance { Id = task.InstanceId, WorkflowId = "parent", Parameters = "{}", Tasks = [task] };
-        await TestPublicationStore.Create(db, new InMemoryStorageProvider(), new SystemClock()).CaptureLaunchAsync(parent);
         db.WorkflowInstances.Add(parent);
         await db.SaveChangesAsync();
     }

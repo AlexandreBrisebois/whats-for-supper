@@ -102,13 +102,13 @@ public sealed class FoodVocabularyTests
         var reference = new FoodVocabularyReference("fixture-three-anchor-v1", FoodVocabularyDefinitions.Sha256(bytes));
         var authority = new FoodVocabularyAuthority(reference, [new(reference, 1, bytes)]);
         var id = Guid.NewGuid();
-        var prepare = typeof(CanonicalRecipeContentStore).GetMethod("PrepareFreshSource", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
-        var original = (CanonicalRecipeExport)prepare.Invoke(null, [id,
+        var prepare = typeof(StructuredRecipeContentStore).GetMethod("PrepareFreshSource", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        var original = (StructuredRecipeExport)prepare.Invoke(null, [id,
             """{"name":"Source","recipeYield":"4 servings","recipeIngredient":["25 g onion"],"supply":[{"name":"onion","requiredQuantity":{"value":25,"unitText":"g"}}],"recipeInstructions":[{"text":"Mix."}]}""", "https://example.test/source"])!;
         var mapped = FoodMappingQualification.Prepare(original, authority, Guid.NewGuid());
         Assert.Equal(original.Content.IngredientLines[0].Description, mapped.Export.Content.IngredientLines[0].Description);
         Assert.Equal(original.Content.IngredientLines[0].Provenance, mapped.Export.Content.IngredientLines[0].Provenance);
-        Assert.Equal("25 g onion", CanonicalRecipeContentStore.Render(mapped.Export.Content.IngredientLines[0]));
+        Assert.Equal("25 g onion", StructuredRecipeContentStore.Render(mapped.Export.Content.IngredientLines[0]));
         Assert.NotNull(mapped.Export.Content.IngredientLines[0].Shopping.FoodId);
         var row = mapped.Export.Content.IngredientLines[0];
         var next = mapped.Export with { Content = mapped.Export.Content with
@@ -133,8 +133,8 @@ public sealed class FoodVocabularyTests
         var bytes = Fixture();
         var reference = new FoodVocabularyReference("fixture-three-anchor-v1", FoodVocabularyDefinitions.Sha256(bytes));
         var authority = new FoodVocabularyAuthority(reference, [new(reference, 1, bytes)]);
-        var prepare = typeof(CanonicalRecipeContentStore).GetMethod("PrepareFreshSource", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
-        var source = (CanonicalRecipeExport)prepare.Invoke(null, [Guid.NewGuid(),
+        var prepare = typeof(StructuredRecipeContentStore).GetMethod("PrepareFreshSource", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        var source = (StructuredRecipeExport)prepare.Invoke(null, [Guid.NewGuid(),
             """{"name":"Source","recipeYield":"4 servings","recipeIngredient":["25 g onion"],"supply":[{"name":"onion","requiredQuantity":{"value":25,"unitText":"g"}}],"recipeInstructions":[{"text":"Mix."}]}""", "https://example.test/source"])!;
         var mapped = FoodMappingQualification.Prepare(source, authority, Guid.NewGuid());
         var original = clear ? mapped.Export : source;
@@ -169,26 +169,15 @@ public sealed class FoodVocabularyTests
         Assert.Equal("ed94bb7c6d31232b24c7e9a0004b02f8ebf86892bb8618709c7795816cdc37c0", FoodVocabularyDefinitions.Sha256(bytes));
         using var document = JsonDocument.Parse(bytes);
         var operations = document.RootElement.GetProperty("proofs")[0].GetProperty("operations");
-        var validateOperation = typeof(CanonicalRecipeContentStore).GetMethod("ValidateOriginalOperation",
+        var validateOperation = typeof(StructuredRecipeContentStore).GetMethod("ValidateOriginalOperation",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
         Assert.Equal(2, operations.GetArrayLength());
         foreach (var value in operations.EnumerateArray())
         {
-            var operation = value.Deserialize<CanonicalRecipeOperation>()!;
+            var operation = value.Deserialize<StructuredRecipeOperation>()!;
             var before = operation.OriginalRequest + "\n" + operation.Result + "\n" + operation.InputHash;
             Assert.True((bool)validateOperation.Invoke(null, [operation])!);
             Assert.Equal(before, operation.OriginalRequest + "\n" + operation.Result + "\n" + operation.InputHash);
-        }
-        var publications = document.RootElement.GetProperty("proofs")[1].GetProperty("publications");
-        var validatePublication = typeof(RecipeFilePublicationStore).GetMethod("ValidateRecoveryJournal",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
-        Assert.NotEmpty(publications.EnumerateArray());
-        foreach (var value in publications.EnumerateArray())
-        {
-            var publication = value.Deserialize<RecipeFilePublication>()!;
-            var before = publication.Payload + "\n" + publication.InputHash + "\n" + publication.ResultHash;
-            validatePublication.Invoke(null, [publication]);
-            Assert.Equal(before, publication.Payload + "\n" + publication.InputHash + "\n" + publication.ResultHash);
         }
         // This consumes actual old-producer records for pure validation. It does
         // not claim a fresh old binary execution, row installation or DV replay.
@@ -214,11 +203,11 @@ public sealed class FoodVocabularyTests
     [Fact]
     public void RecipeApiAssembly_DoesNotExposeRetiredV1AuthorityTypes_AndRejectsInconsistentV1Operations()
     {
-        var assembly = typeof(CanonicalRecipeContentStore).Assembly;
+        var assembly = typeof(StructuredRecipeContentStore).Assembly;
         const BindingFlags AnyMember = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
 
         Assert.DoesNotContain(
-            typeof(CanonicalRecipeContentStore).GetMethods(AnyMember),
+            typeof(StructuredRecipeContentStore).GetMethods(AnyMember),
             method => method.Name == "ValidateAttestedV1");
 
         Assert.Null(assembly.GetType("RecipeApi.Services.V1ExactSourceAdmission", throwOnError: false));
@@ -229,8 +218,8 @@ public sealed class FoodVocabularyTests
             "api/src/RecipeApi.Tests/Fixtures/canonical-old-authority-v1-v3.json"));
         using var document = JsonDocument.Parse(bytes);
         var inconsistentV1 = document.RootElement.GetProperty("proofs")[0].GetProperty("operations")[0]
-            .Deserialize<CanonicalRecipeOperation>()!;
+            .Deserialize<StructuredRecipeOperation>()!;
         inconsistentV1.InputHash = new string('0', 64);
-        Assert.Throws<InvalidDataException>(() => CanonicalRecipeContentStore.VocabularyReferences(inconsistentV1));
+        Assert.Throws<InvalidDataException>(() => StructuredRecipeContentStore.VocabularyReferences(inconsistentV1));
     }
 }

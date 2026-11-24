@@ -36,9 +36,9 @@ public partial class GroceryRecomputeServiceTests
         var line = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = name, AmountText = amount,
             Amount = QuantityMath.Parse(amount), Unit = new(unit, null), Scaling = "proportional", Package = package,
             Shopping = new(name, null, null), Provenance = new("source", revision, []) };
-        source = JsonSerializer.Serialize(new { recipeIngredient = new[] { CanonicalRecipeContentStore.Render(line) },
+        source = JsonSerializer.Serialize(new { recipeIngredient = new[] { StructuredRecipeContentStore.Render(line) },
             supply = new[] { new { name, requiredQuantity = new { value = double.Parse(amount, System.Globalization.CultureInfo.InvariantCulture), unitText = unit } } } });
-        var content = new CanonicalRecipeContent(2, "content-" + id.ToString("N"), revision, 4, [line], []);
+        var content = new StructuredRecipeContent(2, "content-" + id.ToString("N"), revision, 4, [line], []);
         var authority = await _scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>().CaptureAuthorityAsync(null);
         var mapped = FoodMappingQualification.Prepare(new(id, content, source), authority, Guid.NewGuid());
         var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
@@ -216,9 +216,9 @@ public partial class GroceryRecomputeServiceTests
         var before = await _db.WeeklyPlans.AsNoTracking().SingleAsync();
         var baseline = JsonDocument.Parse(before.GroceryCheckedDemandBaselines).RootElement.GetProperty(large.RowId).GetRawText();
         var recipe = await _db.Recipes.AsNoTracking().SingleAsync(x => x.Id == smallId);
-        var current = CanonicalRecipeContentStore.Read(recipe)!;
+        var current = StructuredRecipeContentStore.Read(recipe)!;
         var line = current.IngredientLines[0];
-        await _scope.ServiceProvider.GetRequiredService<CanonicalRecipeContentStore>().EditAsync(smallId, current.SourceRevision, Guid.NewGuid(), new()
+        await _scope.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>().EditAsync(smallId, current.SourceRevision, Guid.NewGuid(), new()
         {
             ExpectedContentRevision = current.ContentRevision,
             IngredientLines = JsonSerializer.SerializeToElement(new[] { new { id = line.Id, description = line.Description, amount = line.Amount,
@@ -249,9 +249,9 @@ public partial class GroceryRecomputeServiceTests
         await _scope.ServiceProvider.GetRequiredService<ScheduleService>().MutateGroceryItemAsync(0,
             new(Guid.Parse(before.RowId), TestMonday, before.RowVersion, true, Guid.NewGuid(), await BilingualMutationEpoch()), reference: TestMonday);
         var recipe = await _db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-        var content = CanonicalRecipeContentStore.Read(recipe)!;
+        var content = StructuredRecipeContentStore.Read(recipe)!;
         var line = content.IngredientLines[0];
-        await _scope.ServiceProvider.GetRequiredService<CanonicalRecipeContentStore>().EditAsync(id, content.SourceRevision, Guid.NewGuid(), new()
+        await _scope.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>().EditAsync(id, content.SourceRevision, Guid.NewGuid(), new()
         {
             ExpectedContentRevision = content.ContentRevision,
             IngredientLines = JsonSerializer.SerializeToElement(new[] { new { id = line.Id, description = line.Description, amount = line.Amount,
@@ -280,9 +280,9 @@ public partial class GroceryRecomputeServiceTests
         await _service.RecomputeForWeekAsync(future, default);
         var before = await _db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == future);
         var recipe = await _db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-        var current = CanonicalRecipeContentStore.Read(recipe)!;
+        var current = StructuredRecipeContentStore.Read(recipe)!;
         var line = current.IngredientLines[0];
-        var saved = await _scope.ServiceProvider.GetRequiredService<CanonicalRecipeContentStore>().EditAsync(id, current.SourceRevision, Guid.NewGuid(), new()
+        var saved = await _scope.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>().EditAsync(id, current.SourceRevision, Guid.NewGuid(), new()
         {
             ExpectedContentRevision = current.ContentRevision,
             IngredientLines = JsonSerializer.SerializeToElement(new[] { new { id = line.Id, description = line.Description, amount = line.Amount,
@@ -360,12 +360,12 @@ public partial class GroceryRecomputeServiceTests
     {
         await InstallBilingualConsumerVocabulary();
         var id = await SeedQualifiedFood(TestMonday, "onion");
-        async Task<CanonicalRecipeContent> EditShopping(string name, bool clear)
+        async Task<StructuredRecipeContent> EditShopping(string name, bool clear)
         {
             var recipe = await _db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-            var current = CanonicalRecipeContentStore.Read(recipe)!;
+            var current = StructuredRecipeContentStore.Read(recipe)!;
             var line = current.IngredientLines[0];
-            return (await _scope.ServiceProvider.GetRequiredService<CanonicalRecipeContentStore>().EditAsync(id, current.SourceRevision, Guid.NewGuid(), new()
+            return (await _scope.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>().EditAsync(id, current.SourceRevision, Guid.NewGuid(), new()
             { ExpectedContentRevision = current.ContentRevision, IngredientLines = JsonSerializer.SerializeToElement(new[] { new
                 { id = line.Id, description = line.Description, amount = line.Amount, amountText = line.AmountText, unit = line.Unit, scaling = line.Scaling, package = line.Package,
                     shopping = new RecipeShoppingAssociationDto(name, clear ? null : line.Shopping.FoodId, clear ? null : line.Shopping.MappingRevision) } }, PackageJson) })).Content;

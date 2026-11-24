@@ -2,7 +2,7 @@ import { RetryHandlerOptions } from '@microsoft/kiota-http-fetchlibrary';
 import { DateOnly, createUntypedNodeFromDiscriminatorValue } from '@microsoft/kiota-abstractions';
 import { JsonParseNode } from '@microsoft/kiota-serialization-json';
 import { normalizeGroceryQuantity } from './grocery-quantities';
-import { canonicalIngredientLinesForTransport } from './canonical-edit-wire';
+import { structuredIngredientLinesForTransport } from './structured-edit-wire';
 import { normalizeSupperPreparation } from './supper-servings';
 import { civilDate } from '@/lib/deployment-calendar';
 import { demoFetch } from './demo-session';
@@ -19,6 +19,7 @@ import type {
   IngredientProjection,
   IngredientPreview,
   ImportedRecipeDto,
+  ImportedRecipeDto_mealTypes,
   RecipeDto,
   RecipeIngredientLine,
   RecipeInstructionSection,
@@ -74,6 +75,7 @@ export interface RecipeImportIssue {
   isReimporting?: boolean;
   reimportFailureMessage?: string | null;
   reimportFailureImportId?: string | null;
+  suspectedDuplicateRecipeId?: string | null;
 }
 export interface RecipeImportIssueDraft {
   reasons: RecipeImportIssueReason[];
@@ -90,6 +92,9 @@ function mapImportIssue(issue: RecipeImportIssueDto | null | undefined): RecipeI
     reimportFailureMessage: issue.reimportFailureMessage ?? null,
     reimportFailureImportId: issue.reimportFailureImportId
       ? String(issue.reimportFailureImportId)
+      : null,
+    suspectedDuplicateRecipeId: issue.suspectedDuplicateRecipeId
+      ? String(issue.suspectedDuplicateRecipeId)
       : null,
   };
 }
@@ -631,11 +636,11 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
   try {
     parsed = JSON.parse(rawText);
   } catch {
-    throw new Error('This .recipe file could not be read.');
+    throw new Error('This recipe file could not be read.');
   }
 
   if (!parsed || typeof parsed !== 'object') {
-    throw new Error('This .recipe file is not valid.');
+    throw new Error('This recipe file is not valid.');
   }
 
   const bundle = parsed as Record<string, unknown>;
@@ -660,7 +665,7 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
     !originals.every(isPortableSharedImage) ||
     (hero !== null && hero !== undefined && hero.base64 !== null && !isPortableSharedImage(hero))
   ) {
-    throw new Error('This .recipe file is not valid.');
+    throw new Error('This recipe file is not valid.');
   }
 
   // Validate structured instructions
@@ -676,7 +681,7 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
         )
     )
   ) {
-    throw new Error('This .recipe file is not valid.');
+    throw new Error('This recipe file is not valid.');
   }
 
   const structuredInstructions = recipe.instructions.map((section: any) => ({
@@ -703,6 +708,12 @@ export async function parseRecipeBundleFile(file: File): Promise<RecipeShareBund
       sourceUrl: typeof recipe.sourceUrl === 'string' ? recipe.sourceUrl : null,
       sourceName: typeof recipe.sourceName === 'string' ? recipe.sourceName : null,
       category: typeof recipe.category === 'string' ? recipe.category : null,
+      cuisineType: typeof recipe.cuisineType === 'string' ? recipe.cuisineType : null,
+      mealTypes: Array.isArray(recipe.mealTypes)
+        ? (recipe.mealTypes.filter(
+            (item): item is string => typeof item === 'string'
+          ) as ImportedRecipeDto_mealTypes[])
+        : null,
       isSynthesized: recipe.isSynthesized,
     } satisfies ImportedRecipeDto,
     info: {
@@ -730,6 +741,8 @@ export function createRecipeBundleFile(recipeName: string, bundle: RecipeShareBu
       sourceUrl: bundle.recipe?.sourceUrl ?? null,
       sourceName: bundle.recipe?.sourceName ?? null,
       category: bundle.recipe?.category ?? null,
+      cuisineType: bundle.recipe?.cuisineType ?? null,
+      mealTypes: bundle.recipe?.mealTypes ?? null,
       notes: bundle.recipe?.notes ?? null,
       rating: bundle.recipe?.rating ?? null,
       isSynthesized: bundle.recipe?.isSynthesized ?? false,
@@ -820,7 +833,7 @@ export async function updateRecipe(
 ): Promise<Recipe | void> {
   const result = await apiClient.api.recipes.byId(id as any).patch({
     expectedContentRevision: updates.expectedContentRevision,
-    ingredientLines: canonicalIngredientLinesForTransport(updates.ingredientLines),
+    ingredientLines: structuredIngredientLinesForTransport(updates.ingredientLines),
     instructionSections: updates.instructionSections,
     servings: updates.servings,
     name: updates.name,

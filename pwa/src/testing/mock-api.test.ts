@@ -191,7 +191,7 @@ it.each([4, null, 'omitted'] as const)(
     ).json.data;
     expect(exported.recipe.ingredients).toEqual(bundle.recipe!.ingredients);
     expect(exported.recipe.instructions).toEqual(bundle.recipe!.instructions);
-    expect(exported.recipe.servings).toBeNull();
+    expect(exported.recipe.servings).toBe(basis === 'omitted' ? null : basis);
     expect(exported.recipe.notes).toBeNull();
     expect(exported.recipe.rating).toBeNull();
     expect(exported.hero).toEqual(bundle.hero);
@@ -316,7 +316,7 @@ it('workflow reset mock returns the existing recovery-busy contract and preserve
   });
 });
 
-it('share mock refuses pending media delivery before returning a bundle', async () => {
+it('share mock returns 200 bundle without retired pending-publication conflict', async () => {
   const handlers = new Map<Parameters<Page['route']>[0], (route: Route) => Promise<unknown>>();
   const page = {
     route: vi.fn(
@@ -325,10 +325,7 @@ it('share mock refuses pending media delivery before returning a bundle', async 
     ),
     evaluate: vi.fn().mockResolvedValue(undefined),
   };
-  let pending = true;
-  await setupCommonRoutes(page as unknown as Page, undefined, {
-    recipePublicationPending: () => pending,
-  });
+  await setupCommonRoutes(page as unknown as Page);
   const fulfill = vi.fn();
   const request = {
     request: () => ({
@@ -337,11 +334,6 @@ it('share mock refuses pending media delivery before returning a bundle', async 
     }),
     fulfill,
   } as unknown as Route;
-  await handlers.get('**/api/recipes/*/share')!(request);
-  expect(fulfill.mock.calls[0][0].status).toBe(409);
-  expect(fulfill.mock.calls[0][0].json.code).toBe('recipe_content_conflict');
-  pending = false;
-  fulfill.mockClear();
   await handlers.get('**/api/recipes/*/share')!(request);
   expect(fulfill.mock.calls[0][0].status).toBe(200);
 });
@@ -390,7 +382,7 @@ it('share mock exports current saved text and scrubs household fields after edit
   expect(bundle.recipe.instructions[0].itemListElement[0].text).toBe('Current corrected step');
   expect(bundle.recipe.notes).toBeNull();
   expect(bundle.recipe.rating).toBeNull();
-  expect(bundle.recipe.servings).toBeNull();
+  expect(bundle.recipe.servings).toBe(3);
   expect(JSON.stringify(bundle)).not.toContain('Private note');
 });
 
@@ -895,17 +887,12 @@ it.each([false, true])(
       fulfill,
     } as unknown as Route);
     const response = fulfill.mock.calls[0][0];
-    expect(response.status).toBe(pending ? 409 : 201);
+    expect(response.status).toBe(201);
     const after = await read();
-    if (pending) {
-      expect(response.json.code).toBe('recipe_content_conflict');
-      expect(after).toEqual(before);
-    } else {
-      expect(JSON.parse(response.body).data.id).toBe(before.imageCount ?? 0);
-      expect(after.imageCount).toBe((before.imageCount ?? 0) + 1);
-      expect(after.images).toEqual([...(before.images ?? []), before.imageCount ?? 0]);
-      expect(after.finishedDishIndex).toBe(before.finishedDishIndex);
-    }
+    expect(JSON.parse(response.body).data.id).toBe(before.imageCount ?? 0);
+    expect(after.imageCount).toBe((before.imageCount ?? 0) + 1);
+    expect(after.images).toEqual([...(before.images ?? []), before.imageCount ?? 0]);
+    expect(after.finishedDishIndex).toBe(before.finishedDishIndex);
   }
 );
 

@@ -81,7 +81,7 @@ public class GroceryItemsIntegrationTests : IAsyncLifetime
                 });
             }
         }
-        return JsonSerializer.Serialize(new CanonicalRecipeContent(
+        return JsonSerializer.Serialize(new StructuredRecipeContent(
             2, Guid.NewGuid().ToString("N"), "source", null, lines, []), CanonicalJson);
     }
 

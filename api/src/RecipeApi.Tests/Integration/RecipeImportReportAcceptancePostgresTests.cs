@@ -48,8 +48,7 @@ public sealed class RecipeImportReportAcceptancePostgresTests(ITestOutputHelper 
                       recipeId: "{{recipeId}}"
                 """);
             var clock = new SystemClock();
-            var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-                TestPublicationStore.Create(db, storage, clock));
+            var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
             var response = await new RecipeImportReportService(clock, db, orchestrator).SubmitAsync(recipe.Id, member.Id,
                 new() { Reasons = ["ingredients"], Note = "Original feedback" });
 
@@ -78,7 +77,6 @@ public sealed class RecipeImportReportAcceptancePostgresTests(ITestOutputHelper 
                 Assert.Equal(response.ImportId, report.LastWorkflowInstanceId);
                 var workflow = await readback.WorkflowInstances.Include(x => x.Tasks).SingleAsync();
                 Assert.Equal(response.ImportId, workflow.Id);
-                Assert.NotNull(workflow.RecipePublicationCapture);
                 Assert.Single(workflow.Tasks);
                 Assert.Equal(RecipeImportReportStatus.Reimporting, report.Status);
                 Assert.NotNull(report.LastAttemptAt);

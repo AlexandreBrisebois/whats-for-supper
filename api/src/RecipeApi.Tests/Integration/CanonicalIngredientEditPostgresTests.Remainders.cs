@@ -13,7 +13,7 @@ namespace RecipeApi.Tests.Integration;
 
 public sealed partial class CanonicalIngredientEditPostgresTests
 {
-    private static async Task<CanonicalRecipeContent> SeedCookingRemainder(TestWebApplicationFactory factory, CanonicalRecipeContent before)
+    private static async Task<StructuredRecipeContent> SeedCookingRemainder(TestWebApplicationFactory factory, StructuredRecipeContent before)
     {
         before = await SeedCookingAllocation(factory, before, true);
         var revision = Guid.NewGuid().ToString("N");
@@ -58,7 +58,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 }
                 using var scope = factory.Services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                current = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+                current = StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
                 var projection = await client.GetFromJsonAsync<JsonElement>($"/api/recipes/{Id}/ingredient-preview?targetServings=6");
                 var instructions = projection.GetProperty("instructionProjection");
                 Assert.Equal(total == "1/2" ? 0 : 2, instructions.GetProperty("validatedUses").GetInt32());

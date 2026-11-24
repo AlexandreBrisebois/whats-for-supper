@@ -45,7 +45,7 @@ public class RecipeImportReportService(
             if (report is not null && !materiallyChanged && !active &&
                 (report.Status == RecipeImportReportStatus.ReadyToReview && report.RepairIntentId is null
                     || !IsEligible(recipe, reasons, note)))
-                return ToSubmissionResponse(recipe, report, false, null, false);
+                return await ToSubmissionResponseAsync(recipe, report, false, null, false);
 
             RecipeRepairIntent? intent = null;
             if (IsEligible(recipe, reasons, note) && !active && !matchingPriorFeedback)
@@ -80,13 +80,13 @@ public class RecipeImportReportService(
             report = await db.RecipeImportReports.SingleAsync(entry => entry.RecipeId == recipeId);
 
             if (!IsEligible(recipe, reasons, note))
-                return ToSubmissionResponse(recipe, report, false, null, false);
+                return await ToSubmissionResponseAsync(recipe, report, false, null, false);
 
             if (active && matchingPriorFeedback)
-                return ToSubmissionResponse(recipe, report, true, priorWorkflow!.Id, false);
+                return await ToSubmissionResponseAsync(recipe, report, true, priorWorkflow!.Id, false);
 
             if (matchingPriorFeedback)
-                return ToSubmissionResponse(recipe, report, false, null, false);
+                return await ToSubmissionResponseAsync(recipe, report, false, null, false);
 
             return await LaunchSavedAsync(recipe, report, intent ?? throw new InvalidDataException("Original repair intent is missing."), reasons, note);
         }
@@ -107,7 +107,7 @@ public class RecipeImportReportService(
         {
             var created = await (orchestrator ?? throw new InvalidOperationException("Workflow orchestration is unavailable."))
                 .TriggerReportAsync(instanceId, recipe.Id, command.WorkflowId, command.Parameters);
-            return ToSubmissionResponse(recipe, report, true, created.Id, false);
+            return await ToSubmissionResponseAsync(recipe, report, true, created.Id, false);
         }
         catch (Exception)
         {
@@ -121,7 +121,7 @@ public class RecipeImportReportService(
                     || !MatchesSnapshot(committed, reasons, note))
                     throw new InvalidDataException("Report acceptance has an inconsistent committed association.");
                 RecipeReportRepairIntent.ValidateAccepted(intent, committed);
-                return ToSubmissionResponse(recipe, committedReport, true, instanceId, false);
+                return await ToSubmissionResponseAsync(recipe, committedReport, true, instanceId, false);
             }
 
             // Rollback can leave the request context tracking the attempted
@@ -133,7 +133,7 @@ public class RecipeImportReportService(
             await db.Entry(report).ReloadAsync();
             // Association and launch roll back together. There is nothing
             // to clear, and a different accepted attempt must stay intact.
-            return ToSubmissionResponse(recipe, report, false, null, true);
+            return await ToSubmissionResponseAsync(recipe, report, false, null, true);
         }
     }
 
@@ -202,7 +202,69 @@ public class RecipeImportReportService(
         }
     }
 
-    public static RecipeImportIssueDto? ToPublicDto(RecipeImportReport? report) =>
+    public async Task<bool> FlagSuspectedDuplicateIfNoneAsync(Guid recipeId, CancellationToken ct = default)
+    {
+        var recipeLock = RecipeLocks.GetOrAdd(recipeId, _ => new SemaphoreSlim(1, 1));
+        await recipeLock.WaitAsync(ct);
+        try
+        {
+            var existingReport = await db.RecipeImportReports.AsNoTracking()
+                .SingleOrDefaultAsync(r => r.RecipeId == recipeId, ct);
+            if (existingReport is not null)
+                return existingReport.Reasons.Contains("duplicate");
+
+            var recipe = await db.Recipes.AsNoTracking()
+                .SingleOrDefaultAsync(r => r.Id == recipeId && r.DeletedAt == null && r.IsReady, ct);
+            if (recipe is null)
+                return false;
+
+            var match = await DuplicateRecipeDetector.FindBestMatchAsync(db, recipe, ct);
+            if (match is null)
+                return false;
+
+            var now = clock.UtcNow;
+            var report = new RecipeImportReport
+            {
+                RecipeId = recipeId,
+                Reasons = ["duplicate"],
+                Note = null,
+                Status = RecipeImportReportStatus.Reported,
+                ReportedBy = null,
+                UpdatedBy = null,
+                LastWorkflowInstanceId = null,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            db.RecipeImportReports.Add(report);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                logger?.LogInformation(
+                    "Flagged recipe {RecipeId} as suspected duplicate of {CandidateRecipeId} via {MatchKind}",
+                    recipeId,
+                    match.RecipeId,
+                    match.MatchKind);
+                return true;
+            }
+            catch (DbUpdateException ex)
+            {
+                db.Entry(report).State = EntityState.Detached;
+                logger?.LogWarning(
+                    ex,
+                    "Concurrent import report already exists for recipe {RecipeId}; preserving existing report",
+                    recipeId);
+                var raced = await db.RecipeImportReports.AsNoTracking()
+                    .SingleOrDefaultAsync(r => r.RecipeId == recipeId, ct);
+                return raced?.Reasons.Contains("duplicate") ?? false;
+            }
+        }
+        finally
+        {
+            recipeLock.Release();
+        }
+    }
+
+    public static RecipeImportIssueDto? ToPublicDto(RecipeImportReport? report, Guid? suspectedDuplicateRecipeId = null) =>
         report is null
             ? null
             : new RecipeImportIssueDto
@@ -218,7 +280,8 @@ public class RecipeImportReportService(
                     : null,
                 ReimportFailureImportId = report.Status == RecipeImportReportStatus.ReimportFailed
                     ? report.LastWorkflowInstanceId
-                    : null
+                    : null,
+                SuspectedDuplicateRecipeId = suspectedDuplicateRecipeId
             };
 
     public async Task MarkAttemptStartedAsync(Guid recipeId, Guid workflowInstanceId)
@@ -521,6 +584,23 @@ public class RecipeImportReportService(
             && string.Equals(snapshotNote, note, StringComparison.Ordinal);
     }
 
+    private async Task<RecipeDetailResponseDto> ToDetailResponseAsync(Recipe recipe, RecipeImportReport? report)
+    {
+        var dto = RecipeService.MapToDto(recipe);
+        Guid? suspectedDuplicateId = null;
+        if (report is not null && report.Reasons.Contains("duplicate"))
+        {
+            var match = await DuplicateRecipeDetector.FindBestMatchAsync(db, recipe);
+            suspectedDuplicateId = match?.RecipeId;
+        }
+        dto.ImportIssue = ToPublicDto(report, suspectedDuplicateId);
+        return new RecipeDetailResponseDto
+        {
+            UpdatedAt = clock.UtcNow,
+            Recipe = dto
+        };
+    }
+
     private RecipeDetailResponseDto ToDetailResponse(Recipe recipe, RecipeImportReport? report)
     {
         var dto = RecipeService.MapToDto(recipe);
@@ -532,14 +612,14 @@ public class RecipeImportReportService(
         };
     }
 
-    private RecipeImportReportSubmissionResponseDto ToSubmissionResponse(
+    private async Task<RecipeImportReportSubmissionResponseDto> ToSubmissionResponseAsync(
         Recipe recipe,
         RecipeImportReport report,
         bool reimportStarted,
         Guid? importId,
         bool reimportLaunchFailed)
     {
-        var detail = ToDetailResponse(recipe, report);
+        var detail = await ToDetailResponseAsync(recipe, report);
         return new RecipeImportReportSubmissionResponseDto
         {
             UpdatedAt = detail.UpdatedAt,

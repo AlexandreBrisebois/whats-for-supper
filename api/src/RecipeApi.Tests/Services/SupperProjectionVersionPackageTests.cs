@@ -21,7 +21,7 @@ public sealed class SupperProjectionVersionPackageTests
         var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes", Amount = QuantityMath.Parse("2"),
             AmountText = "2", Unit = new("cans", null), Scaling = "proportional", Package = package,
             Shopping = new("tomatoes", null, null), Provenance = new("human", "source", []) };
-        recipe.CanonicalContent = JsonSerializer.Serialize(new CanonicalRecipeContent(2, "content", "source", 4, [row], []), Json);
+        recipe.CanonicalContent = JsonSerializer.Serialize(new StructuredRecipeContent(2, "content", "source", 4, [row], []), Json);
         return recipe;
     }
     private static RecipePackageDto Package() => new(new("cans", "saved-count-definition"),

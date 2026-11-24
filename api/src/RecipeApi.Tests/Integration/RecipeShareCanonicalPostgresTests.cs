@@ -11,18 +11,6 @@ public sealed class RecipeShareCanonicalPostgresTests(ITestOutputHelper output)
         WithPostgres(RecipeShareCanonicalTests.QualifySharedLifecycleAsync);
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task SharedPublication_DuplicatePreservesNewerHumanFieldsAndMedia() =>
-        WithPostgres(factory => RecipeShareCanonicalTests.QualifySharedReplayAsync(factory, interrupt: false, rejectNewerPending: false));
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task SharedPublication_InterruptedDeliveryResumesOriginalFactsAndMedia() =>
-        WithPostgres(factory => RecipeShareCanonicalTests.QualifySharedReplayAsync(factory, interrupt: true, rejectNewerPending: false));
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task SharedPublication_PendingDeliveryRejectsNewerHumanFieldsWithoutReplacingFiles() =>
-        WithPostgres(factory => RecipeShareCanonicalTests.QualifySharedReplayAsync(factory, interrupt: true, rejectNewerPending: true));
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public Task SharedRecipe_PreservesExplicitPositiveBasisWithoutGuessingQuantities() =>
         WithPostgres(RecipeShareDeclaredBasisTests.QualifyDeclaredBasisAsync);
 

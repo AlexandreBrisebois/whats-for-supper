@@ -11,7 +11,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<MaintenanceCommandLifecycleRecord> MaintenanceCommandLifecycleRecords => Set<MaintenanceCommandLifecycleRecord>();
     public DbSet<WorkflowLifecycleRecord> WorkflowLifecycleRecords => Set<WorkflowLifecycleRecord>();
     public DbSet<RecipeFilePublication> RecipeFilePublications => Set<RecipeFilePublication>();
-    public DbSet<CanonicalRecipeOperation> CanonicalRecipeOperations => Set<CanonicalRecipeOperation>();
+    public DbSet<StructuredRecipeOperation> CanonicalRecipeOperations => Set<StructuredRecipeOperation>();
     public DbSet<RecoveryPublication> RecoveryPublications => Set<RecoveryPublication>();
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
@@ -77,8 +77,8 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
             table.HasCheckConstraint("workflow_lifecycle_records_disposition_check", "disposition IN ('cleared', 'pruned')"));
         modelBuilder.Entity<RecipeFilePublication>().HasKey(x => new { x.RecipeId, x.OperationId });
         modelBuilder.Entity<RecipeFilePublication>().HasOne<Recipe>().WithMany().HasForeignKey(x => x.RecipeId).OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<CanonicalRecipeOperation>().HasKey(x => new { x.RecipeId, x.OperationId });
-        modelBuilder.Entity<CanonicalRecipeOperation>().HasOne<Recipe>().WithMany().HasForeignKey(x => x.RecipeId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StructuredRecipeOperation>().HasKey(x => new { x.RecipeId, x.OperationId });
+        modelBuilder.Entity<StructuredRecipeOperation>().HasOne<Recipe>().WithMany().HasForeignKey(x => x.RecipeId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<RecoveryPublication>().ToTable("recovery_publication", t => t.HasCheckConstraint("recovery_publication_singleton", "id = 1"));
         modelBuilder.Entity<VotingRoundState>().HasKey(x => x.Id);
         modelBuilder.Entity<WeeklyHouseholdInterest>(entity =>

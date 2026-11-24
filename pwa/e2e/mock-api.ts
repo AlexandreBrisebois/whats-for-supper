@@ -1097,15 +1097,6 @@ export async function setupCommonRoutes(
     if (route.request().method() === 'POST') {
       const id = new URL(route.request().url()).pathname.split('/')[3];
       const recipe = builders.recipe({ id, ...recipeUpdates.get(id) });
-      if (recoveryOptions.recipePublicationPending?.() || recipe.contentSchemaVersion === 2)
-        return fulfill(route, {
-          status: 409,
-          json: {
-            code: 'recipe_content_conflict',
-            currentContentRevision: recipe.contentRevision ?? 'legacy.mock-media',
-            upgradeRequired: false,
-          },
-        });
       const index = recipe.imageCount ?? 0;
       if (index >= 20)
         return fulfill(route, {
@@ -1149,15 +1140,6 @@ export async function setupCommonRoutes(
           .url()
           .match(/\/recipes\/([0-9a-f-]+)\/share/)?.[1] ?? MOCK_IDS.RECIPE_LASAGNA;
       const recipe = builders.recipe({ id, ...recipeUpdates.get(id) });
-      if (recoveryOptions.recipePublicationPending?.())
-        return fulfill(route, {
-          status: 409,
-          json: {
-            code: 'recipe_content_conflict',
-            currentContentRevision: recipe.contentRevision ?? 'legacy.mock-media',
-            upgradeRequired: false,
-          },
-        });
       // Share only text from the same current DTO returned by detail. Explicitly
       // project section/step fields so private IDs and provenance cannot escape.
       const instructions: { name: string | null; itemListElement: { text: string }[] }[] = [];
@@ -1213,7 +1195,7 @@ export async function setupCommonRoutes(
               isSynthesized:
                 importedShares.get(id)?.recipe?.isSynthesized ??
                 recipe.sourceType === RecipeDto_sourceTypeObject.Synthesized,
-              servings: null,
+              servings: recipe.servings ?? null,
               notes: null,
               rating: null,
             },
@@ -1484,6 +1466,11 @@ export async function setupCommonRoutes(
         note,
         isReimporting: reimportStarted,
         status: RecipeImportIssueStatusObject.Reported,
+        reimportFailureMessage: null,
+        reimportFailureImportId: null,
+        suspectedDuplicateRecipeId: reasons.includes(RecipeImportIssueReasonObject.Duplicate)
+          ? (recipeUpdates.get(id)?.importIssue?.suspectedDuplicateRecipeId ?? null)
+          : null,
       };
       activeImportId = reimportStarted ? MOCK_IDS.PHOTO_NEW : null;
       importStatusReads = 0;
@@ -3612,7 +3599,8 @@ export async function mockSseWithRecipeReadyEnriched(
   page: Page,
   recipeId: string,
   name: string,
-  imageUrl?: string
+  imageUrl?: string,
+  isSuspectedDuplicate = false
 ): Promise<void> {
   await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
     await route.fulfill({
@@ -3630,6 +3618,7 @@ export async function mockSseWithRecipeReadyEnriched(
           recipeId,
           name,
           imageUrl: imageUrl ?? null,
+          isSuspectedDuplicate,
         }),
       ]),
     });

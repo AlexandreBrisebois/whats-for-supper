@@ -13,7 +13,7 @@ public sealed class CookingStepProjectionTests
         JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), ingredientLineId = RowId, stepId = StepId,
             validatedContentRevision = revision, validatedTextRevision = "text", span = new { start, end, expectedText = expected },
             role = "whole", payload, status = "validated" });
-    private static CanonicalRecipeContent Content(string text, params JsonElement[] uses) => new(2, "content", "source", 4,
+    private static StructuredRecipeContent Content(string text, params JsonElement[] uses) => new(2, "content", "source", 4,
         [new RecipeIngredientLineDto { Id = RowId, Description = "pasta", Amount = QuantityMath.Parse("200"),
             AmountText = "200", Unit = new("g", null), Scaling = "proportional", Package = null,
             Shopping = new("pasta", null, null), Provenance = new("human", null, []) }],

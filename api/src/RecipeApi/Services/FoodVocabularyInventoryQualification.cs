@@ -20,7 +20,7 @@ public sealed record FoodVocabularyHistoryFacts(IReadOnlyList<WorkflowInstance> 
     IReadOnlyList<MaintenanceCommandLifecycleRecord> MaintenanceRetirements, IReadOnlyList<FoodVocabularyStagedJournalObservation> StagedJournals,
     IReadOnlyList<MaintenanceCommandObservation> Commands);
 public sealed record FoodVocabularyInventoryFacts(FoodVocabularyMembershipObservation Membership,
-    IReadOnlyList<FoodVocabularyRecipeObservation> Recipes, IReadOnlyList<CanonicalRecipeOperation> CanonicalOperations,
+    IReadOnlyList<FoodVocabularyRecipeObservation> Recipes, IReadOnlyList<StructuredRecipeOperation> CanonicalOperations,
     IReadOnlyList<RecipeFilePublication> Publications, FoodVocabularyHistoryFacts History, FoodVocabularyOverrideFeed Overrides);
 public sealed record FoodVocabularyReferenceOrigin(FoodVocabularyReference Reference, string OwnerKind, string OwnerKey);
 
@@ -73,16 +73,8 @@ public static partial class FoodVocabularyInventoryQualification
             Add(FoodVocabularyStore.MembershipReferences(membership), "membership", "food_vocabulary_publication");
         foreach (var recipe in facts.Recipes) Add(RecipeReferences(recipe), "recipe", recipe.RecipeId.ToString("D"));
         foreach (var operation in facts.CanonicalOperations)
-            Add(CanonicalRecipeContentStore.VocabularyReferences(operation),
+            Add(StructuredRecipeContentStore.VocabularyReferences(operation),
                 "canonical-operation", $"{operation.RecipeId:D}/{operation.OperationId:D}");
-        foreach (var publication in facts.Publications)
-            Add(RecipeFilePublicationStore.VocabularyReferences(publication), "publication", $"{publication.RecipeId:D}/{publication.OperationId:D}");
-        var observedTaskIds = history.Children.Select(x => x.ParentTaskId).Concat(history.Resets.Select(x => x.TaskId))
-            .Concat(history.Attempts.Select(x => x.TaskId)).Concat(facts.Publications.Select(x => x.OperationId))
-            .Concat(history.StagedJournals.Select(x => x.OperationId)).Concat(facts.CanonicalOperations.Select(x => x.OperationId))
-            .Concat(history.Retirements.SelectMany(WorkflowLifecycle.RetainedTasks).Select(x => x.TaskId)).ToHashSet();
-        foreach (var workflow in history.Instances)
-            Add(RecipeFilePublicationStore.VocabularyReferencesForInventory(workflow, observedTaskIds, prospectiveDemoInvalidation), "workflow", workflow.Id.ToString("D"));
         foreach (var launch in history.Launches)
             Add(WorkflowOrchestrator.VocabularyReferences(launch), "launch", launch.Id.ToString("D"));
         var parents = history.Instances.SelectMany(x => x.Tasks).Concat(history.Resets.Select(WorkflowReset.RetainedTask))
@@ -103,19 +95,17 @@ public static partial class FoodVocabularyInventoryQualification
         foreach (var command in history.Commands)
         {
             MaintenanceCommandLifecycle.ValidateCurrentReferences(command, history.Retirements, history.PhysicalRetirements);
-            if (command.CommandType == CanonicalRecipeMigrationReceipt.CommandType)
-                Add(CanonicalRecipeMigrationReceipt.VocabularyReferences(command), "migration-receipt", command.Id.ToString("D"));
+            if (command.CommandType == StructuredRecipeMigrationReceipt.CommandType)
+                Add(StructuredRecipeMigrationReceipt.VocabularyReferences(command), "migration-receipt", command.Id.ToString("D"));
         }
         foreach (var maintenance in history.MaintenanceRetirements)
         {
             var command = MaintenanceCommandLifecycle.ReadValidatedRetainedCommand(maintenance, history.Retirements, history.PhysicalRetirements);
-            if (command.CommandType == CanonicalRecipeMigrationReceipt.CommandType)
-                Add(CanonicalRecipeMigrationReceipt.VocabularyReferences(command), "retained-migration-receipt", command.Id.ToString("D"));
+            if (command.CommandType == StructuredRecipeMigrationReceipt.CommandType)
+                Add(StructuredRecipeMigrationReceipt.VocabularyReferences(command), "retained-migration-receipt", command.Id.ToString("D"));
         }
         foreach (var physical in history.PhysicalRetirements)
             RecipePhysicalLifecycle.ValidateRetainedWorkflowReferences(physical, history.Retirements);
-        foreach (var stage in history.StagedJournals)
-            Add(RecipeFilePublicationStore.VocabularyReferences(stage, facts.Publications), "staged-journal", $"{stage.RecipeId:D}/{stage.OperationId:D}/{stage.InputHash}");
         if (facts.Overrides.Coverage == FoodVocabularyOverrideCoverage.LiveOwnerNotImplemented)
             FoodVocabularyDefinitions.Require(facts.Overrides.Rows is null);
         else
@@ -143,7 +133,7 @@ public static partial class FoodVocabularyInventoryQualification
     internal static FoodVocabularyReference[] RecipeReferences(FoodVocabularyRecipeObservation recipe)
     {
         FoodVocabularyDefinitions.Require(recipe.RecipeId != Guid.Empty);
-        var content = CanonicalRecipeContentStore.Read(new Recipe { Id = recipe.RecipeId, CanonicalContent = recipe.CanonicalContent });
+        var content = StructuredRecipeContentStore.Read(new Recipe { Id = recipe.RecipeId, CanonicalContent = recipe.CanonicalContent });
         if (content is null)
         {
             FoodVocabularyDefinitions.Require(recipe.FoodMappingEvidence is null);

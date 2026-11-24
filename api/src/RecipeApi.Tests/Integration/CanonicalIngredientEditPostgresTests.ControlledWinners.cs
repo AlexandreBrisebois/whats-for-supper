@@ -50,7 +50,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
-            var current = CanonicalRecipeContentStore.Read(saved)!;
+            var current = StructuredRecipeContentStore.Read(saved)!;
             Assert.Equal(instructionWins ? "Instruction winner" : "Ingredient winner", saved.Name);
             Assert.Equal(instructionWins ? "200" : "250", current.IngredientLines[0].AmountText);
             Assert.Equal(instructionWins ? "Stir gently." : section.Steps[0].Text, current.InstructionSections[0].Steps[0].Text);

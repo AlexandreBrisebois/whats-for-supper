@@ -6,6 +6,7 @@ export interface LibraryNotification {
   name: string;
   imageUrl?: string;
   type: 'ready' | 'failed';
+  isSuspectedDuplicate?: boolean;
   errorMessage?: string;
   failedStep?: string;
   partialData?: object;

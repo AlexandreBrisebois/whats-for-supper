@@ -15,8 +15,7 @@ public class CategorizeRecipeProcessor(
     IChatClient chatClient,
     ILogger<CategorizeRecipeProcessor> logger,
     VegetarianClassificationPolicy? vegetarianPolicy = null,
-    DemoModeOptions? demoMode = null,
-    RecipeFilePublicationStore? publications = null) : IWorkflowProcessor
+    DemoModeOptions? demoMode = null) : IWorkflowProcessor
 {
     public string ProcessorName => "CategorizeRecipe";
 
@@ -52,24 +51,6 @@ public class CategorizeRecipeProcessor(
         {
             logger.LogWarning("CategorizeRecipe: recipe {RecipeId} not found — skipping", recipeId);
             return new { Message = MissingMessage(recipeId) };
-        }
-
-        var capturedWorkflow = task.InstanceId != Guid.Empty && await db.WorkflowInstances.AsNoTracking()
-            .AnyAsync(x => x.Id == task.InstanceId && (x.WorkflowId == "url-import" || x.WorkflowId == "recipe-import"), ct);
-        if (capturedWorkflow)
-        {
-            var publisher = publications ?? throw new InvalidOperationException("Captured categorization requires its publication store.");
-            var input = ProcessorName + "\n" + CanonicalRecipeContentStore.NormalizeJson(task.Payload);
-            if (await publisher.TryResumeAsync(recipeId, task.TaskId, input, ct))
-                return new { Message = CompletionMessage(recipeId) };
-            var capture = await publisher.CaptureForTaskAsync(task, recipeId, ct);
-            // Classification observes captured originals, never mutates the tracked row
-            // before the publication lock rechecks the complete launch chain.
-            var candidate = RecipeFilePublicationStore.RestoreObservation(capture.Fields
-                ?? throw new InvalidDataException("Categorization needs captured field observations."));
-            await CategorizeAsync(candidate, ct, persist: false);
-            await publisher.PublishCategorizationAsync(task, capture, candidate, ct);
-            return new { Message = CompletionMessage(recipeId) };
         }
 
         try

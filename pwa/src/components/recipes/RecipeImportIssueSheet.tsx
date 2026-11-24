@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import type {
   RecipeImportIssue,
   RecipeImportIssueDraft,
@@ -9,6 +9,7 @@ import type {
 } from '@/lib/api/recipes';
 import { RecipeImportIssueReasonObject } from '@/lib/api/generated/models/index';
 import { t } from '@/locales';
+import { useLocale } from '@/components/common/LocaleProvider';
 import { useDemoMode } from '@/components/demo/DemoModeProvider';
 import { DemoAiActionGate } from '@/components/demo/DemoAiActionGate';
 
@@ -50,6 +51,7 @@ function RecipeImportIssueEditor({
   onSave,
   onResolve,
 }: RecipeImportIssueSheetProps) {
+  const { locale } = useLocale();
   const { mode } = useDemoMode();
   const aiUnavailable = mode !== false;
   const reimportingDescriptionId = 'import-issue-reimporting-description';
@@ -64,7 +66,9 @@ function RecipeImportIssueEditor({
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const existing = issue !== null;
-  const title = existing ? 'Review issue' : 'Report issue';
+  const title = existing
+    ? t('recipes.importIssue.reviewTitle', 'Review issue', locale)
+    : t('recipes.importIssue.reportTitle', 'Report issue', locale);
 
   const copyId = async (kind: 'recipe' | 'import', value: string) => {
     await navigator.clipboard.writeText(value);
@@ -91,11 +95,17 @@ function RecipeImportIssueEditor({
       if (selected) return current.filter((item) => item !== reason);
       if (reason === RecipeImportIssueReasonObject.Duplicate) {
         const cleared = current.filter((item) => item === RecipeImportIssueReasonObject.Duplicate);
-        if (current.length !== cleared.length) setReasonAnnouncement('Ingredients cleared');
+        if (current.length !== cleared.length)
+          setReasonAnnouncement(
+            t('recipes.importIssue.ingredientsCleared', 'Ingredients cleared', locale)
+          );
         return [RecipeImportIssueReasonObject.Duplicate];
       }
       const cleared = current.filter((item) => item !== RecipeImportIssueReasonObject.Duplicate);
-      if (current.length !== cleared.length) setReasonAnnouncement('Duplicate cleared');
+      if (current.length !== cleared.length)
+        setReasonAnnouncement(
+          t('recipes.importIssue.duplicateCleared', 'Duplicate cleared', locale)
+        );
       return [...cleared, reason];
     });
   };
@@ -129,8 +139,12 @@ function RecipeImportIssueEditor({
     } catch (saveError) {
       setError(
         saveError instanceof Error && saveError.message === 'Re-import launch failed'
-          ? 'We saved your report, but couldn’t start re-import. Try again later.'
-          : 'Could not save changes. Try again.'
+          ? t(
+              'recipes.importIssue.launchFailed',
+              'We saved your report, but couldn’t start re-import. Try again later.',
+              locale
+            )
+          : t('recipes.importIssue.saveFailed', 'Could not save changes. Try again.', locale)
       );
     } finally {
       setBusy(false);
@@ -144,7 +158,9 @@ function RecipeImportIssueEditor({
     try {
       await onResolve();
     } catch {
-      setError('Could not mark as resolved. Try again.');
+      setError(
+        t('recipes.importIssue.resolveFailed', 'Could not mark as resolved. Try again.', locale)
+      );
       setBusy(false);
     }
   };
@@ -159,7 +175,7 @@ function RecipeImportIssueEditor({
         aria-hidden="true"
         tabIndex={-1}
         onClick={onClose}
-        className="absolute inset-0 bg-charcoal/45 backdrop-blur-sm"
+        className="absolute inset-0 bg-charcoal-900/50"
       />
       <div
         ref={dialogRef}
@@ -167,21 +183,27 @@ function RecipeImportIssueEditor({
         aria-modal="true"
         aria-labelledby="import-issue-title"
         onKeyDown={handleKeyDown}
-        className="relative z-10 w-full max-w-md rounded-t-[2rem] border border-white/40 bg-cream p-6 shadow-2xl sm:rounded-[2rem]"
+        className="relative z-10 w-full max-w-md rounded-t-[2rem] border border-chrome-line bg-cream p-6 shadow-2xl sm:rounded-[2rem]"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id="import-issue-title" className="font-heading text-2xl font-bold text-ink-body">
               {title}
             </h2>
-            <p className="mt-1 text-sm text-ink-muted">What needs a closer look?</p>
+            <p className="mt-1 text-sm text-ink-muted">
+              {t('recipes.importIssue.subtitle', 'What needs a closer look?', locale)}
+            </p>
           </div>
           <button
             ref={closeRef}
             type="button"
-            aria-label={`Close ${title.toLowerCase()}`}
+            aria-label={
+              existing
+                ? t('recipes.importIssue.closeReview', 'Close review issue', locale)
+                : t('recipes.importIssue.closeReport', 'Close report issue', locale)
+            }
             onClick={onClose}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-charcoal/5 text-ink-body"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-chrome-line bg-white text-ink-muted transition-colors hover:bg-charcoal-100 hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
           >
             <X size={20} aria-hidden="true" />
           </button>
@@ -193,7 +215,9 @@ function RecipeImportIssueEditor({
           </div>
         )}
         <fieldset className="mt-6 grid grid-cols-3 gap-2">
-          <legend className="sr-only">Issue reasons</legend>
+          <legend className="sr-only">
+            {t('recipes.importIssue.reasonsLegend', 'Issue reasons', locale)}
+          </legend>
           {[
             RecipeImportIssueReasonObject.Ingredients,
             RecipeImportIssueReasonObject.Steps,
@@ -211,18 +235,17 @@ function RecipeImportIssueEditor({
                 aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
                 disabled={disabled || isReimporting || aiUnavailable}
                 onClick={() => toggleReason(reason)}
-                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
+                className={`inline-flex min-h-12 items-center justify-center rounded-full border px-3 py-2 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body ${
                   selected
-                    ? 'border-hearth-fill bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-white'
-                    : 'border-charcoal/10 bg-white text-ink-body disabled:cursor-not-allowed disabled:opacity-45'
+                    ? 'border-hearth-line bg-terracotta-50 text-hearth-ink'
+                    : 'border-chrome-line bg-white text-ink-body hover:bg-charcoal-50 disabled:cursor-not-allowed disabled:opacity-45'
                 }`}
               >
-                {selected && <Check size={16} strokeWidth={3} aria-hidden="true" />}
                 {reason === RecipeImportIssueReasonObject.Ingredients
-                  ? 'Ingredients'
+                  ? t('recipes.importIssue.reasonIngredients', 'Ingredients', locale)
                   : reason === RecipeImportIssueReasonObject.Steps
-                    ? 'Steps'
-                    : 'Duplicate'}
+                    ? t('recipes.importIssue.reasonSteps', 'Steps', locale)
+                    : t('recipes.importIssue.reasonDuplicate', 'Duplicate', locale)}
               </button>
             );
           })}
@@ -232,12 +255,18 @@ function RecipeImportIssueEditor({
         </p>
         {!canReportContentIssues && (
           <p data-testid="import-issue-content-ineligible" className="mt-3 text-sm text-ink-muted">
-            Ingredients and steps can only be reported for recipes that can be re-imported.
+            {t(
+              'recipes.importIssue.contentIneligible',
+              'Ingredients and steps can only be reported for recipes that can be re-imported.',
+              locale
+            )}
           </p>
         )}
 
         {duplicateSelected && (
-          <p className="mt-3 text-sm text-ink-muted">This will be saved for review.</p>
+          <p className="mt-3 text-sm text-ink-muted">
+            {t('recipes.importIssue.duplicateNotice', 'This will be saved for review.', locale)}
+          </p>
         )}
         {isReimporting && (
           <p
@@ -245,13 +274,17 @@ function RecipeImportIssueEditor({
             role="status"
             className="mt-3 text-sm font-bold text-ink-muted"
           >
-            Reimporting recipe… You can update this after it finishes.
+            {t(
+              'recipes.importIssue.reimportingNotice',
+              'Reimporting recipe… You can update this after it finishes.',
+              locale
+            )}
           </p>
         )}
         {reimportFailureMessage && (
           <div
             role="status"
-            className="mt-3 rounded-2xl bg-terracotta-50 p-3 text-sm text-hearth-ink"
+            className="mt-3 rounded-2xl border border-hearth-line bg-terracotta-50 p-3 text-sm text-hearth-ink"
           >
             <p className="font-bold">{reimportFailureMessage}</p>
             {reimportFailureImportId && (
@@ -261,18 +294,22 @@ function RecipeImportIssueEditor({
                     type="button"
                     data-testid="copy-recipe-id"
                     onClick={() => void copyId('recipe', recipeId)}
-                    className="min-h-11 rounded-full border border-hearth-line bg-white px-3 text-sm font-bold"
+                    className="min-h-12 rounded-full border border-hearth-line bg-white px-3 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                   >
-                    {copiedId === 'recipe' ? 'Copied' : 'Copy recipe ID'}
+                    {copiedId === 'recipe'
+                      ? t('recipes.importIssue.copied', 'Copied', locale)
+                      : t('recipes.importIssue.copyRecipeId', 'Copy recipe ID', locale)}
                   </button>
                 )}
                 <button
                   type="button"
                   data-testid="copy-import-id"
                   onClick={() => void copyId('import', reimportFailureImportId)}
-                  className="min-h-11 rounded-full border border-hearth-line bg-white px-3 text-sm font-bold"
+                  className="min-h-12 rounded-full border border-hearth-line bg-white px-3 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                 >
-                  {copiedId === 'import' ? 'Copied' : 'Copy import ID'}
+                  {copiedId === 'import'
+                    ? t('recipes.importIssue.copied', 'Copied', locale)
+                    : t('recipes.importIssue.copyImportId', 'Copy import ID', locale)}
                 </button>
               </div>
             )}
@@ -282,7 +319,8 @@ function RecipeImportIssueEditor({
           <p className="mt-3 text-sm text-ink-muted">
             {t(
               'recipes.importIssueReadyGuidance',
-              'Ready for review. Check the ingredients and steps, then mark this resolved when it looks right.'
+              'Ready for review. Check the ingredients and steps, then mark this resolved when it looks right.',
+              locale
             )}
           </p>
         )}
@@ -293,23 +331,28 @@ function RecipeImportIssueEditor({
           aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
           disabled={isReimporting || aiUnavailable}
           onClick={() => setNoteOpen((open) => !open)}
-          className="mt-4 flex min-h-11 items-center gap-2 text-sm font-bold text-ink-muted disabled:cursor-not-allowed disabled:opacity-45"
+          className="mt-4 flex min-h-12 items-center gap-2 rounded-xl px-1 text-sm font-bold text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:cursor-not-allowed disabled:opacity-45"
         >
           <ChevronDown size={16} className={noteOpen ? 'rotate-180' : ''} aria-hidden="true" />
-          {noteEligible ? 'What should we check?' : 'Add a note'}
+          {noteEligible
+            ? t('recipes.importIssue.whatToCheck', 'What should we check?', locale)
+            : t('recipes.importIssue.addNote', 'Add a note', locale)}
         </button>
         {noteEligible && !aiUnavailable && (
           <p className="mt-1 text-sm text-ink-muted">
             {t(
               'recipes.importIssueCorrectionGuidance',
-              'Add or change the note to request automatic correction.'
+              'Add or change the note to request automatic correction.',
+              locale
             )}
           </p>
         )}
         {noteOpen && (
           <div className="mt-2">
             <label htmlFor="import-issue-note" className="text-sm font-bold text-ink-muted">
-              {noteEligible ? 'What should we check?' : 'Optional note'}
+              {noteEligible
+                ? t('recipes.importIssue.whatToCheck', 'What should we check?', locale)
+                : t('recipes.importIssue.optionalNote', 'Optional note', locale)}
             </label>
             <textarea
               id="import-issue-note"
@@ -319,7 +362,7 @@ function RecipeImportIssueEditor({
               aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
               disabled={isReimporting || aiUnavailable}
               onChange={(event) => setNote(event.target.value)}
-              className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-charcoal/15 bg-white px-4 py-3 text-ink-body outline-none transition focus:border-hearth-line focus:ring-4 focus:ring-terracotta/10"
+              className="mt-2 min-h-28 w-full resize-y rounded-2xl border border-icon-affordance bg-white px-4 py-3 text-ink-body transition focus:border-hearth-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             />
           </div>
         )}
@@ -332,8 +375,12 @@ function RecipeImportIssueEditor({
         {reasons.length === 0 && (
           <p className="mt-3 text-sm text-ink-muted">
             {canReportContentIssues
-              ? 'Choose Ingredients, Steps, Duplicate, or any combination.'
-              : 'Choose Duplicate.'}
+              ? t(
+                  'recipes.importIssue.chooseAny',
+                  'Choose Ingredients, Steps, Duplicate, or any combination.',
+                  locale
+                )
+              : t('recipes.importIssue.chooseDuplicate', 'Choose Duplicate.', locale)}
           </p>
         )}
         {!aiUnavailable && (
@@ -343,25 +390,31 @@ function RecipeImportIssueEditor({
             aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
             disabled={reasons.length === 0 || busy || isReimporting}
             onClick={() => void save()}
-            className="mt-5 min-h-12 w-full rounded-2xl bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
+            className="mt-5 min-h-12 w-full rounded-2xl bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active px-4 font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:cursor-not-allowed disabled:opacity-45"
           >
-            Save
+            {t('common.save', 'Save', locale)}
           </button>
         )}
 
         {existing && (
-          <div className="mt-4 border-t border-charcoal/10 pt-4 text-center">
+          <div className="mt-4 border-t border-chrome-line pt-4 text-center">
             <button
               type="button"
               data-testid="import-issue-resolve"
               aria-describedby={isReimporting ? reimportingDescriptionId : undefined}
               disabled={busy || isReimporting}
               onClick={() => void resolve()}
-              className={`min-h-11 rounded-2xl border px-5 font-bold text-garden-ink ${issue.status === 'readyToReview' ? 'border-garden-line bg-sage-100' : 'border-garden-line bg-transparent'}`}
+              className={`min-h-12 rounded-2xl border px-5 font-bold text-garden-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body ${issue.status === 'readyToReview' ? 'border-garden-line bg-sage-100' : 'border-garden-line bg-transparent'}`}
             >
-              Mark as resolved
+              {t('recipes.importIssue.markResolved', 'Mark as resolved', locale)}
             </button>
-            <p className="mt-2 text-xs text-ink-muted">Removes this recipe from Needs review.</p>
+            <p className="mt-2 text-xs text-ink-muted">
+              {t(
+                'recipes.importIssue.removesFromReview',
+                'Removes this recipe from Needs review.',
+                locale
+              )}
+            </p>
           </div>
         )}
       </div>

@@ -130,9 +130,7 @@ test.describe('Recipe Share And Capture', () => {
 
     await page.getByTestId('accept-bundle-btn').click();
 
-    await expect(page.getByTestId('bundle-import-success')).toBeVisible({ timeout: 10_000 });
-    await page.getByTestId('bundle-import-done-btn').click();
-
-    await expect(page).toHaveURL(/\/home/);
+    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    await expect(page.getByTestId('bundle-import-success')).toHaveCount(0);
   });
 });

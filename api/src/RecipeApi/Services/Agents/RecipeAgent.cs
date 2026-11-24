@@ -1,7 +1,8 @@
-using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Agents.AI;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Utils;
@@ -10,7 +11,7 @@ using RecipeApi.Workflow;
 namespace RecipeApi.Services.Agents;
 
 /// <summary>
-/// A unified Recipe Intelligence Agent that handles both extraction and description generation.
+/// A unified Recipe Intelligence Agent that handles extraction, description generation, and synthesis.
 /// Implements IWorkflowProcessor to be used in YAML workflows.
 /// </summary>
 public class RecipeAgent(
@@ -18,9 +19,14 @@ public class RecipeAgent(
     IPromptRepository promptRepository,
     IConfiguration configuration,
     ILogger<RecipeAgent> logger,
-    RecipeFilePublicationStore publications,
-    string processorName = "RecipeIntelligence") : IWorkflowProcessor
+    string processorName = "RecipeIntelligence",
+    RecipeDbContext? db = null,
+    IRecipeStore? recipeStore = null,
+    RecipeRepository? recipeRepository = null,
+    FoodVocabularyStore? vocabulary = null,
+    IClock? clock = null) : IWorkflowProcessor
 {
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
     public string ProcessorName => processorName;
 
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
@@ -37,122 +43,36 @@ public class RecipeAgent(
         }
 
         var recipeId = idProp.GetGuid();
-
         var operation = task.TaskId == Guid.Empty ? Guid.NewGuid() : task.TaskId;
-        var producerInput = ProcessorName + "\n" + CanonicalRecipeContentStore.NormalizeJson(task.Payload);
-        if (await publications.TryResumeAsync(recipeId, operation, producerInput, ct))
-            return new { Message = RecoveredMessage(recipeId) };
-        var capture = await publications.CaptureForTaskAsync(task, recipeId, ct);
+
         switch (ProcessorName)
         {
+            case "SynthesizeRecipe":
+                await DoSynthesizeRecipeAsync(recipeId, GetDescription(doc), ct, operation);
+                break;
             case "ExtractRecipe":
-                await DoExtractRecipeAsync(recipeId, ct, GetOptionalString(doc, "repairReasons"), GetOptionalString(doc, "repairNote"), operation, producerInput, capture);
+                await DoExtractRecipeAsync(recipeId, ct, GetOptionalString(doc, "repairReasons"), GetOptionalString(doc, "repairNote"), operation);
                 break;
             case "GenerateDescription":
-                await DoGenerateDescriptionAsync(recipeId, ct, operation, producerInput, capture);
+                await DoGenerateDescriptionAsync(recipeId, ct);
                 break;
-            case "SynthesizeRecipe":
-                await DoSynthesizeRecipeAsync(recipeId, GetDescription(doc), ct, operation, producerInput, capture);
-                break;
-            default: throw new NotSupportedException($"Processor {ProcessorName} is not supported by RecipeAgent.");
+            default:
+                throw new NotSupportedException($"Processor {ProcessorName} is not supported by RecipeAgent.");
         }
         return new { Message = PublishedMessage(recipeId) };
     }
 
-    private static string RecoveredMessage(Guid recipeId) => $"Recovered recipe publication for {recipeId}";
     private static string PublishedMessage(Guid recipeId) => $"Published recipe candidate for {recipeId}";
 
-    // Retained normalized output is not an immutable provider response. This
-    // qualifies the processor's selected publication/receipt and preserved fields,
-    // never the truth of extracted/generated facts or historical dictionary links.
-    internal static Guid ValidateOriginalHistory(string processor, string? payload, string? returned, RecipeFilePublication[] publications)
+    internal static Guid ValidateOriginalHistory(string processor, string? payload, string? returned)
     {
-        static void Require(bool valid)
-        {
-            if (!valid) throw new InvalidDataException("Original recipe processor differs from its publication.");
-        }
-        static void UniqueObject(JsonElement value)
-        {
-            Require(value.ValueKind == JsonValueKind.Object);
-            var names = value.EnumerateObject().Select(x => x.Name).ToArray();
-            Require(names.Distinct(StringComparer.Ordinal).Count() == names.Length);
-        }
         using var input = JsonDocument.Parse(payload ?? "null");
-        UniqueObject(input.RootElement);
+        if (input.RootElement.ValueKind != JsonValueKind.Object)
+            throw new InvalidDataException("Original recipe processor payload is invalid.");
         var hasId = input.RootElement.TryGetProperty("recipeId", out var id)
             || input.RootElement.TryGetProperty("RecipeId", out id);
-        Guid recipeId = default;
-        Require(hasId && id.ValueKind == JsonValueKind.String && id.TryGetGuid(out recipeId) && recipeId != Guid.Empty);
-        using var receipt = JsonDocument.Parse(returned ?? "null");
-        UniqueObject(receipt.RootElement);
-        Require(receipt.RootElement.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String);
-        var recovered = message.GetString() == RecoveredMessage(recipeId);
-        Require(recovered || message.GetString() == PublishedMessage(recipeId));
-        if (publications.Length == 0)
-        {
-            Require(processor == "ExtractRecipe" && !recovered);
-            // No invocation capture was retained for this no-artifact return.
-            // Launch/current files cannot independently prove why it skipped.
-            return recipeId;
-        }
-        Require(publications.Length == 1 && publications[0].RecipeId == recipeId);
-        var (capture, candidate) = RecipeFilePublicationStore.ReadOriginalPublication(publications[0]);
-        Require(candidate.RecipeJson is not null && candidate.SourceFiles is null && (candidate.SourceContext is null || candidate.SourceKind == "canonical-content-repair")
-            && (candidate.SourceKind is null || processor == "ExtractRecipe"
-                && (candidate.SourceKind == "fresh-canonical" || candidate.SourceKind == "review-canonical" || candidate.SourceKind is "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")
-                || processor == "SynthesizeRecipe" && candidate.SourceKind == "synthesized-canonical"));
-        var info = CapturedInfo(capture);
-        switch (processor)
-        {
-            case "ExtractRecipe":
-                Require(capture.Files.GetValueOrDefault("original/content.html") is not null || CapturedImages(capture, info).Count > 0);
-                var extractedJson = candidate.RecipeJson!;
-                if (candidate.SourceKind is "fresh-canonical" or "review-canonical" or "photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")
-                {
-                    using var document = JsonDocument.Parse(extractedJson);
-                    extractedJson = RecipeExportContent.ReadCurrent(document.RootElement, recipeId).RawMetadata
-                        ?? throw new InvalidDataException("Fresh extraction has no selected source.");
-                }
-                if (candidate.SourceKind == "canonical-content-repair")
-                    extractedJson = RecipeFilePublicationStore.ContentRepairGeneratedMetadata(candidate);
-                var extraction = RecipeExtractionParser.ParseAndNormalize(extractedJson);
-                Require(extraction.IsSemanticallyComplete && extraction.Recipe is not null);
-                if (candidate.SourceKind is not ("photo-ingredient-repair" or "canonical-ingredient-repair" or "canonical-content-repair")) info.Name = extraction.Recipe!.Name;
-                break;
-            case "GenerateDescription":
-                Require(capture.Files.GetValueOrDefault("recipe.json") is { } bytes
-                    && System.Text.Encoding.UTF8.GetString(bytes) == candidate.RecipeJson);
-                break;
-            case "SynthesizeRecipe":
-                // A recovered publication returns before reading description;
-                // missing old input cannot be reconstructed from generated text.
-                var hasDescription = input.RootElement.TryGetProperty("description", out var description)
-                    || input.RootElement.TryGetProperty("Description", out description);
-                if (!recovered) Require(hasDescription && description.ValueKind is JsonValueKind.String or JsonValueKind.Null);
-                var synthesizedJson = candidate.RecipeJson!;
-                if (candidate.SourceKind == "synthesized-canonical")
-                {
-                    using var document = JsonDocument.Parse(synthesizedJson);
-                    synthesizedJson = RecipeExportContent.ReadCurrent(document.RootElement, recipeId).RawMetadata
-                        ?? throw new InvalidDataException("Canonical synthesis has no retained generated text.");
-                }
-                var recipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(synthesizedJson, JsonDefaults.CaseInsensitive);
-                Require(recipe is not null);
-                if (string.IsNullOrWhiteSpace(recipe!.Name) && hasDescription
-                    && description.ValueKind is JsonValueKind.String or JsonValueKind.Null)
-                    Require(CanonicalRecipeContentStore.NormalizeJson(synthesizedJson)
-                        == CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(SynthesisFallback(description.GetString() ?? ""), JsonDefaults.CamelCase)));
-                info.Name = recipe!.Name;
-                info.IsSynthesized = true;
-                if (!string.IsNullOrWhiteSpace(recipe.TotalTime)) info.TotalTime = recipe.TotalTime;
-                break;
-            default: throw new InvalidDataException("Unsupported original recipe processor.");
-        }
-        // Generation may leave the old description or return a new one; there is
-        // no retained raw provider receipt proving its text. Other fields survive.
-        info.Description = candidate.Info.Description;
-        Require(CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(info, JsonDefaults.CamelCase))
-            == CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(candidate.Info, JsonDefaults.CamelCase)));
+        if (!hasId || id.ValueKind != JsonValueKind.String || !id.TryGetGuid(out var recipeId) || recipeId == Guid.Empty)
+            throw new InvalidDataException("Original recipe processor recipeId is invalid.");
         return recipeId;
     }
 
@@ -174,13 +94,6 @@ public class RecipeAgent(
 
     #region Extraction Logic
 
-    private string GetExtractionPrompt(bool debug)
-    {
-        var prompt = promptRepository.GetPrompt(PromptType.RecipeExtraction);
-        if (debug) prompt += "\nDEBUG: Include a \"_thoughtProcess\" string explaining the logic.";
-        return prompt;
-    }
-
     private string GetRefinementPrompt() => @"
 Role: High-Fidelity JSON Verifier.
 Task: Fix errors or omissions (like missing pantry items) in the previous response.
@@ -197,31 +110,37 @@ RULES:
         CancellationToken ct,
         string? repairReasons = null,
         string? repairNote = null,
-        Guid? operationId = null,
-        string? producerInput = null, RecipePublicationCapture? captured = null)
+        Guid? operationId = null)
     {
-        var capture = captured ?? await publications.CaptureAsync(recipeId, ct);
-        var info = CapturedInfo(capture);
-        var contentHtml = capture.Files["original/content.html"] is { } html ? System.Text.Encoding.UTF8.GetString(html) : null;
-        var imageFiles = CapturedImages(capture, info);
+        if (db is not null)
+        {
+            var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
+            if (existing is { CanonicalContent: not null })
+            {
+                var report = await db.RecipeImportReports.AsNoTracking().SingleOrDefaultAsync(x => x.RecipeId == recipeId, ct);
+                var isGuidedRepair = report is { Status: RecipeImportReportStatus.Reimporting }
+                    && report.Reasons.Any(r => r is "ingredients" or "steps");
+                if (!isGuidedRepair)
+                {
+                    logger.LogInformation("Skipping ExtractRecipe replay for already-structured recipe {RecipeId}.", recipeId);
+                    return;
+                }
+            }
+        }
 
-        if (contentHtml == null && imageFiles.Count == 0)
+        var info = await ReadInfoRequiredAsync(recipeId, ct);
+        var contentHtml = recipeRepository is not null
+            ? await recipeRepository.GetContentHtmlAsync(recipeId, ct)
+            : null;
+        var imageBytesList = await ReadOriginalImagesAsync(recipeId, info.ImageCount, ct);
+
+        if (contentHtml == null && imageBytesList.Count == 0)
         {
             logger.LogWarning("No artifacts found for recipe {RecipeId}", recipeId);
             return;
         }
 
-        if (operationId is { } recoveryOperation && producerInput is not null
-            && await publications.CanRecoverReviewedSourceAsync(capture, recoveryOperation, ct))
-        {
-            var reviewed = publications.PrepareMappedSource(capture, CanonicalRecipeContentStore.PrepareReviewedSource(capture.Fields!), recoveryOperation);
-            await publications.PublishAsync(capture,
-                new(RecipeExportContent.WriteCurrent(reviewed.Export), info, producerInput, SourceKind: "review-canonical", MappingEvidence: reviewed.Evidence),
-                recoveryOperation, ct);
-            return;
-        }
-
-        logger.LogInformation("Extracting recipe {RecipeId} (Images: {ImgCount}, HTML: {HasHtml}).", recipeId, imageFiles.Count, contentHtml != null);
+        logger.LogInformation("Extracting recipe {RecipeId} (Images: {ImgCount}, HTML: {HasHtml}).", recipeId, imageBytesList.Count, contentHtml != null);
 
         var promptType = contentHtml != null ? PromptType.WebRecipeExtraction : PromptType.RecipeExtraction;
         var instructions = promptRepository.GetPrompt(promptType);
@@ -234,19 +153,18 @@ RULES:
         var agent = chatClient.AsAIAgent(name: "RecipeExtractor", instructions: instructions);
 
         var userPrompt = "Please extract the recipe as instructed.";
-        if (imageFiles.Count > 0) userPrompt += " Context from images is provided.";
+        if (imageBytesList.Count > 0) userPrompt += " Context from images is provided.";
         if (contentHtml != null) userPrompt += " Context from the source webpage HTML is also provided.";
         userPrompt += BuildUserReportedFocus(repairReasons, repairNote);
 
         var userMessage = new ChatMessage(ChatRole.User, userPrompt);
-        if (imageFiles.Count > 0)
+        if (imageBytesList.Count > 0)
         {
-            AddImagesToMessage(userMessage, capture, imageFiles);
+            AddImagesToMessage(userMessage, imageBytesList);
         }
 
         if (contentHtml != null)
         {
-            // Truncate HTML to stay within safe token limits (approx 50k chars)
             var htmlContent = contentHtml.Length > 50000 ? contentHtml[..50000] : contentHtml;
             userMessage.Contents.Add(new TextContent($"SOURCE HTML:\n\n{htmlContent}"));
         }
@@ -257,7 +175,6 @@ RULES:
         var extractionJson = response.Text;
         var sanitizedExtraction = JsonUtils.SanitizeJson(extractionJson ?? string.Empty);
 
-        // Validation & Refinement
         RecipeExtractionParseResult? initialExtraction = null;
         try
         {
@@ -277,7 +194,6 @@ RULES:
             finalJson = await RefineExtractionAsync(recipeId, messages, ct) ?? sanitizedExtraction;
         }
 
-        // Normalize and validate every candidate immediately before persistence.
         var finalExtraction = RecipeExtractionParser.ParseAndNormalize(finalJson);
         if (!finalExtraction.IsSemanticallyComplete || finalExtraction.Recipe is null)
         {
@@ -288,20 +204,13 @@ RULES:
             var message = $"Extraction failed for {recipeId}: Final JSON is missing a name, ingredient, or usable instruction step.";
             if (reasons.Count > 0)
             {
-                // Only a witnessed fresh URL or original photo owner may retain
-                // partial wording; the store checks its bootstrap and launch.
-                if (operationId is not null && producerInput is not null &&
+                if (operationId is not null &&
                     finalExtraction.Recipe is { } partial &&
                     (partial.RecipeIngredient?.Any(value => !string.IsNullOrWhiteSpace(value)) == true ||
                      partial.RecipeInstructions?.SelectMany(section => section.ItemListElement ?? [])
-                         .Any(step => !string.IsNullOrWhiteSpace(step.Text)) == true) &&
-                    await publications.CanRetainFreshReviewMaterialAsync(capture, operationId.Value, ct))
+                         .Any(step => !string.IsNullOrWhiteSpace(step.Text)) == true))
                 {
-                    var reviewJson = JsonSerializer.Serialize(partial, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
-                    info.Name = partial.Name ?? info.Name;
-                    await publications.PublishAsync(capture,
-                        new(reviewJson, info, producerInput, SourceKind: "review-material", ReviewReasons: reasons.ToArray()),
-                        operationId.Value, ct);
+                    await PersistPartialReviewMaterialAsync(recipeId, partial, info, ct);
                 }
                 throw new RecipeContentReviewException(message, reasons);
             }
@@ -309,38 +218,156 @@ RULES:
         }
 
         var finalRecipe = finalExtraction.Recipe;
-
-        // Re-serialize to ensure we save in our standard format, not the model's hallucinated schema
+        finalRecipe.Context = "https://schema.org/";
+        finalRecipe.Type = "Recipe";
+        if (finalRecipe.AdditionalProperties is not null)
+        {
+            foreach (var key in finalRecipe.AdditionalProperties.Keys
+                .Where(k => string.Equals(k, "rawHtml", StringComparison.OrdinalIgnoreCase))
+                .ToArray())
+            {
+                finalRecipe.AdditionalProperties.Remove(key);
+            }
+        }
         var normalizedJson = JsonSerializer.Serialize(finalRecipe, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
 
-        if (operationId is { } repairOperation && producerInput is not null
-            && await publications.CanRepairCanonicalSourceAsync(capture, repairOperation, ct))
+        var operation = operationId ?? Guid.NewGuid();
+        var authority = vocabulary is not null ? await vocabulary.CaptureAuthorityAsync(null, ct) : null;
+        var effectiveClock = clock ?? new SystemClock();
+
+        // Check for guided import-report repair on an already-structured recipe so human-protected fields survive.
+        if (db is not null)
         {
-            var repaired = await publications.PrepareAcceptedRepairAsync(capture, normalizedJson, info, producerInput, repairOperation, ct);
-            await publications.PublishAsync(capture, repaired, repairOperation, ct);
-            return;
-        }
-        info.Name = finalRecipe.Name;
-        await GenerateCandidateDescriptionAsync(recipeId, normalizedJson, info, capture, ct);
-        if (operationId is { } freshOperation && producerInput is not null &&
-            await publications.CanRetainFreshReviewMaterialAsync(capture, freshOperation, ct))
-        {
-            CanonicalRecipeExport? prepared = null;
-            try { prepared = CanonicalRecipeContentStore.PrepareFreshSource(recipeId, normalizedJson, info.SourceUrl); }
-            catch (InvalidDataException)
+            var existingSnapshot = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
+            var report = await db.RecipeImportReports.AsNoTracking().SingleOrDefaultAsync(x => x.RecipeId == recipeId, ct);
+            if (existingSnapshot is { CanonicalContent: not null }
+                && report is { Status: RecipeImportReportStatus.Reimporting }
+                && report.Reasons.Any(r => r is "ingredients" or "steps"))
             {
-                await publications.PublishAsync(capture,
-                    new(normalizedJson, info, producerInput, SourceKind: "review-material", ReviewReasons: ["ingredients"]),
-                    freshOperation, ct);
-                throw new RecipeContentReviewException($"Extraction needs ingredient review for {recipeId}.", ["ingredients"]);
+                await PersistGuidedRepairAsync(recipeId, existingSnapshot, report, normalizedJson, authority, operation, effectiveClock, ct);
+                return;
             }
-            prepared = prepared with { Content = CookingStepRelationshipProducer.Discover(prepared.Content) };
-            var mapped = publications.PrepareMappedSource(capture, prepared, freshOperation);
-            await publications.PublishAsync(capture,
-                new(RecipeExportContent.WriteCurrent(mapped.Export), info, producerInput, SourceKind: "fresh-canonical", MappingEvidence: mapped.Evidence), freshOperation, ct);
         }
-        else await publications.PublishAsync(capture, new(normalizedJson, info, producerInput), operationId ?? Guid.NewGuid(), ct);
-        logger.LogInformation("Published extracted recipe for {RecipeId}", recipeId);
+
+        info.Name = finalRecipe.Name;
+        await GenerateCandidateDescriptionAsync(recipeId, normalizedJson, info, imageBytesList, ct);
+
+        var (content, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+            recipeId, normalizedJson, info.SourceUrl, authority, operation, origin: "source");
+        var schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(content, normalizedJson, finalRecipe.Name, info.Description);
+
+        await WriteRecipeJsonAsync(recipeId, schemaOrgJson, ct);
+        await WriteInfoAsync(info, ct);
+
+        if (db is not null)
+        {
+            await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true);
+            var entity = await db.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, ct);
+            if (entity is not null)
+            {
+                entity.Name = finalRecipe.Name;
+                if (!string.IsNullOrWhiteSpace(info.Description)) entity.Description = info.Description;
+                entity.RawMetadata = schemaOrgJson;
+                entity.CanonicalContent = JsonSerializer.Serialize(content, WebJson);
+                entity.FoodMappingEvidence = evidence;
+                entity.Servings = content.Servings;
+                entity.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render), WebJson);
+                entity.UpdatedAt = effectiveClock.UtcNow;
+                await db.SaveChangesAsync(ct);
+            }
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
+
+        logger.LogInformation("Saved extracted Schema.org recipe for {RecipeId}", recipeId);
+    }
+
+    private async Task PersistPartialReviewMaterialAsync(Guid recipeId, SchemaOrgRecipe partial, RecipeInfo info, CancellationToken ct)
+    {
+        if (db is null) return;
+        var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
+        if (existing is null || existing.IsReady || existing.CanonicalContent is not null) return;
+
+        partial.Context = "https://schema.org/";
+        partial.Type = "Recipe";
+        var reviewJson = JsonSerializer.Serialize(partial, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
+        if (!string.IsNullOrWhiteSpace(partial.Name)) info.Name = partial.Name;
+        await WriteRecipeJsonAsync(recipeId, reviewJson, ct);
+        await WriteInfoAsync(info, ct);
+
+        await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct);
+        var entity = await db.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, ct);
+        if (entity is not null && !entity.IsReady && entity.CanonicalContent is null)
+        {
+            if (!string.IsNullOrWhiteSpace(partial.Name)) entity.Name = partial.Name;
+            entity.RawMetadata = reviewJson;
+            if (partial.RecipeIngredient is { Count: > 0 })
+                entity.Ingredients = JsonSerializer.Serialize(partial.RecipeIngredient, WebJson);
+            entity.UpdatedAt = (clock ?? new SystemClock()).UtcNow;
+            await db.SaveChangesAsync(ct);
+        }
+        if (transaction is not null) await transaction.CommitAsync(ct);
+    }
+
+    private async Task PersistGuidedRepairAsync(
+        Guid recipeId,
+        Recipe existingSnapshot,
+        RecipeImportReport report,
+        string normalizedJson,
+        FoodVocabularyAuthority? authority,
+        Guid operation,
+        IClock effectiveClock,
+        CancellationToken ct)
+    {
+        var observed = StructuredRecipeContentStore.Observe(existingSnapshot);
+        var current = StructuredRecipeContentStore.Read(existingSnapshot)
+            ?? throw new InvalidDataException("Guided repair requires existing structured content.");
+
+        StructuredRecipeExport prepared;
+        if (!report.Reasons.Contains("steps"))
+        {
+            prepared = StructuredRecipeContentStore.PreparePhotoIngredientRepair(observed, normalizedJson, Guid.NewGuid().ToString("N"));
+        }
+        else
+        {
+            var hasHumanEdits = await db!.CanonicalRecipeOperations.AsNoTracking()
+                .AnyAsync(x => x.RecipeId == recipeId && x.OriginalRequest != null && x.OriginalRequest.Contains("\"kind\":\"edit\""), ct);
+            prepared = StructuredRecipeContentStore.PrepareContentRepair(
+                observed, normalizedJson, report.Reasons, hasHumanEdits ? null : current, Guid.NewGuid().ToString("N"));
+        }
+
+        StructuredRecipeContent finalContent;
+        string? finalEvidence;
+        if (authority is not null)
+        {
+            var mapped = report.Reasons.Contains("ingredients")
+                ? FoodMappingQualification.PrepareCapturedPhotoRepair(prepared, authority, operation, current, existingSnapshot.FoodMappingEvidence, existingSnapshot.SourceUrl)
+                : FoodMappingQualification.Prepare(prepared, authority, operation, current, existingSnapshot.FoodMappingEvidence);
+            finalContent = mapped.Export.Content;
+            finalEvidence = mapped.Evidence;
+        }
+        else
+        {
+            finalContent = prepared.Content;
+            finalEvidence = existingSnapshot.FoodMappingEvidence;
+        }
+
+        var schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(finalContent, normalizedJson, existingSnapshot.Name, existingSnapshot.Description);
+        await WriteRecipeJsonAsync(recipeId, schemaOrgJson, ct);
+
+        await using var transaction = await RecipeRotation.LockAsync(db!, recipeId, ct, lockSupperInputs: true);
+        var entity = await db!.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, ct);
+        if (entity is not null)
+        {
+            entity.RawMetadata = schemaOrgJson;
+            entity.CanonicalContent = JsonSerializer.Serialize(finalContent, WebJson);
+            entity.FoodMappingEvidence = finalEvidence;
+            entity.Servings = finalContent.Servings;
+            entity.Ingredients = JsonSerializer.Serialize(finalContent.IngredientLines.Select(StructuredRecipeContentStore.Render), WebJson);
+            entity.UpdatedAt = effectiveClock.UtcNow;
+            await db.SaveChangesAsync(ct);
+        }
+        if (transaction is not null) await transaction.CommitAsync(ct);
+        logger.LogInformation("Saved guided repair Schema.org recipe for {RecipeId}", recipeId);
     }
 
     private static string BuildUserReportedFocus(string? repairReasons, string? repairNote)
@@ -397,7 +424,6 @@ Please re-examine the images and refine the JSON according to these rules:
 
         if (responseText.Contains("NO CHANGES", StringComparison.OrdinalIgnoreCase))
         {
-            // We return the previous text (which is the last assistant message before the refinement turn)
             return messages.Count >= 2 ? messages[^2].Text : string.Empty;
         }
 
@@ -410,23 +436,39 @@ Please re-examine the images and refine the JSON according to these rules:
         catch { return messages.Count >= 2 ? messages[^2].Text : string.Empty; }
     }
 
-
     #endregion
 
     #region Description Logic
 
-    public async Task DoGenerateDescriptionAsync(Guid recipeId, CancellationToken ct, Guid? operationId = null, string? producerInput = null, RecipePublicationCapture? captured = null)
+    public async Task DoGenerateDescriptionAsync(Guid recipeId, CancellationToken ct)
     {
-        var capture = captured ?? await publications.CaptureAsync(recipeId, ct);
-        var info = CapturedInfo(capture);
-        var json = capture.Files["recipe.json"] is { } bytes ? System.Text.Encoding.UTF8.GetString(bytes)
-            : throw new FileNotFoundException("Recipe content is missing.");
-        await GenerateCandidateDescriptionAsync(recipeId, json, info, capture, ct);
-        await publications.PublishAsync(capture, new(json, info, producerInput), operationId ?? Guid.NewGuid(), ct);
+        var info = await ReadInfoRequiredAsync(recipeId, ct);
+        var json = await ReadRecipeJsonRequiredAsync(recipeId, ct);
+        var images = await ReadOriginalImagesAsync(recipeId, info.ImageCount, ct);
+
+        await GenerateCandidateDescriptionAsync(recipeId, json, info, images, ct);
+        await WriteInfoAsync(info, ct);
+
+        if (db is not null && !string.IsNullOrWhiteSpace(info.Description))
+        {
+            await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct);
+            var entity = await db.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, ct);
+            if (entity is not null)
+            {
+                entity.Description = info.Description;
+                entity.UpdatedAt = (clock ?? new SystemClock()).UtcNow;
+                await db.SaveChangesAsync(ct);
+            }
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
     }
 
-    private async Task GenerateCandidateDescriptionAsync(Guid recipeId, string recipeJson, RecipeInfo info,
-        RecipePublicationCapture capture, CancellationToken ct)
+    private async Task GenerateCandidateDescriptionAsync(
+        Guid recipeId,
+        string recipeJson,
+        RecipeInfo info,
+        IReadOnlyList<byte[]> images,
+        CancellationToken ct)
     {
         try
         {
@@ -440,15 +482,11 @@ Please re-examine the images and refine the JSON according to these rules:
             var message = new ChatMessage(ChatRole.User, prompt);
             message.Contents.Add(new TextContent($"Recipe Data (JSON):\n{recipeJson}"));
 
-            if (info.FinishedDishImageIndex >= 0)
+            if (info.FinishedDishImageIndex >= 0 && info.FinishedDishImageIndex < images.Count)
             {
-                var imageFiles = CapturedImages(capture, info);
-                if (info.FinishedDishImageIndex < imageFiles.Count)
-                {
-                    var imageBytes = CapturedImage(capture, info.FinishedDishImageIndex);
-                    message.Contents.Add(new DataContent(imageBytes, "image/jpeg"));
-                    logger.LogInformation("Including finished dish image (index {Index}) in description generation for {RecipeId}.", info.FinishedDishImageIndex, recipeId);
-                }
+                var imageBytes = images[info.FinishedDishImageIndex];
+                message.Contents.Add(new DataContent(imageBytes, DetectImageMediaType(imageBytes)));
+                logger.LogInformation("Including finished dish image (index {Index}) in description generation for {RecipeId}.", info.FinishedDishImageIndex, recipeId);
             }
 
             var agent = chatClient.AsAIAgent(name: "RecipeDescriber", instructions: "You are an objective food writer.");
@@ -461,7 +499,7 @@ Please re-examine the images and refine the JSON according to these rules:
             if (!string.IsNullOrEmpty(description))
             {
                 info.Description = description;
-                logger.LogInformation("Staged generated description for {RecipeId}", recipeId);
+                logger.LogInformation("Generated description for {RecipeId}", recipeId);
             }
         }
         catch (Exception ex)
@@ -475,45 +513,18 @@ Please re-examine the images and refine the JSON according to these rules:
 
     #region Synthesis Logic
 
-    private string GetSynthesisSystemPrompt() => @"
-Role: Recipe Synthesis Expert.
-Task: Given a short description of a family recipe, generate a complete Schema.org/Recipe JSON object.
-
-RULES:
-1. Infer realistic ingredients and steps from the description. Be practical and home-cook friendly.
-2. Use the language of the description (French or English).
-3. recipeIngredient: Array of strings in format ""[Quantity] [Unit] [Ingredient]"" (e.g., ""250 ml tomato sauce"").
-4. recipeInstructions: Array of HowToSection objects with itemListElement HowToStep arrays.
-5. totalTime: ISO 8601 duration (e.g., ""PT45M"").
-6. recipeYield: Reasonable serving size (e.g., ""4 portions"").
-7. Do NOT add nutrition data unless explicitly mentioned.
-
-SCHEMA TEMPLATE (MUST FOLLOW EXACTLY):
-{
-  ""@context"": ""https://schema.org/"",
-  ""@type"": ""Recipe"",
-  ""name"": ""Recipe Name"",
-  ""recipeYield"": ""4 portions"",
-  ""totalTime"": ""PT45M"",
-  ""recipeIngredient"": [""250 ml tomato sauce"", ""400 g spaghetti""],
-  ""recipeInstructions"": [
+    public async Task DoSynthesizeRecipeAsync(Guid recipeId, string description, CancellationToken ct, Guid? operationId = null)
     {
-      ""@type"": ""HowToSection"",
-      ""name"": ""Preparation"",
-      ""itemListElement"": [
-        { ""@type"": ""HowToStep"", ""text"": ""Boil salted water and cook pasta al dente."" }
-      ]
-    }
-  ]
-}
+        if (db is not null)
+        {
+            var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
+            if (existing is { IsSynthesized: true, CanonicalContent: not null })
+            {
+                logger.LogInformation("Synthesized recipe {RecipeId} already persisted; skipping replay.", recipeId);
+                return;
+            }
+        }
 
-STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
-";
-
-    public async Task DoSynthesizeRecipeAsync(Guid recipeId, string description, CancellationToken ct,
-        Guid? operationId = null, string? producerInput = null, RecipePublicationCapture? captured = null)
-    {
-        var capture = captured ?? await publications.CaptureAsync(recipeId, ct);
         logger.LogInformation("Synthesizing recipe {RecipeId} from description: {Description}", recipeId, description);
 
         var instructions = promptRepository.GetPrompt(PromptType.RecipeSynthesis);
@@ -524,7 +535,6 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
         }
 
         var agent = chatClient.AsAIAgent(name: "RecipeSynthesizer", instructions: instructions);
-
         var userMessage = new ChatMessage(ChatRole.User, $"Description: {description}");
 
         var response = await agent.RunAsync(messages: new[] { userMessage }, options: GetChatOptions(), cancellationToken: ct);
@@ -542,24 +552,81 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
                 recipeId, sanitized.Length > 500 ? sanitized[..500] : sanitized);
         }
 
-        // Fallback: if AI response is unusable, write a minimal stub
         if (string.IsNullOrWhiteSpace(recipe?.Name))
         {
             logger.LogWarning("Synthesis produced no usable name for {RecipeId}. Falling back to description as name.", recipeId);
             recipe = SynthesisFallback(description);
         }
 
+        recipe.Context = "https://schema.org/";
+        recipe.Type = "Recipe";
         var normalizedJson = JsonSerializer.Serialize(recipe, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
-        var info = CapturedInfo(capture);
-        info.Name = recipe.Name;
-        info.IsSynthesized = true;
-        if (!string.IsNullOrWhiteSpace(recipe.TotalTime)) info.TotalTime = recipe.TotalTime;
-        await GenerateCandidateDescriptionAsync(recipeId, normalizedJson, info, capture, ct);
+
+        var generatedDescription = recipe.Description;
+        if (string.IsNullOrWhiteSpace(generatedDescription))
+        {
+            try
+            {
+                var descInstructions = promptRepository.GetPrompt(PromptType.DescriptionGeneration);
+                if (translationInstruction != null) descInstructions += translationInstruction;
+                var descAgent = chatClient.AsAIAgent(name: "RecipeDescriptor", instructions: descInstructions);
+                var descResponse = await descAgent.RunAsync(
+                    messages: new[] { new ChatMessage(ChatRole.User, $"Recipe JSON:\n{normalizedJson}") },
+                    options: GetChatOptions(),
+                    cancellationToken: ct);
+                if (!string.IsNullOrWhiteSpace(descResponse.Text))
+                {
+                    generatedDescription = descResponse.Text.Trim();
+                    recipe.Description = generatedDescription;
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Optional synthesis description generation failed for {RecipeId}", recipeId);
+            }
+        }
+
+        var authority = vocabulary is not null ? await vocabulary.CaptureAuthorityAsync(null, ct) : null;
         var operation = operationId ?? Guid.NewGuid();
-        var canonical = producerInput is null ? null
-            : await publications.PrepareSynthesizedIntakeAsync(capture, normalizedJson, info, operation, producerInput, ct);
-        await publications.PublishAsync(capture, canonical ?? new(normalizedJson, info, producerInput), operation, ct);
-        logger.LogInformation("Published synthesized recipe for {RecipeId}", recipeId);
+        var (content, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+            recipeId, normalizedJson, sourceUrl: null, authority: authority, operationId: operation, origin: "source");
+        var schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(content, normalizedJson, recipe.Name, generatedDescription);
+
+        var effectiveClock = clock ?? new SystemClock();
+        if (db is not null)
+        {
+            await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true);
+            var entity = await db.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, ct)
+                ?? throw new KeyNotFoundException($"Recipe {recipeId} not found.");
+            if (entity.IsSynthesized && entity.CanonicalContent is not null)
+            {
+                if (transaction is not null) await transaction.CommitAsync(ct);
+                return;
+            }
+
+            entity.Name = recipe.Name;
+            if (!string.IsNullOrWhiteSpace(generatedDescription)) entity.Description = generatedDescription;
+            if (!string.IsNullOrWhiteSpace(recipe.TotalTime)) entity.TotalTime = recipe.TotalTime;
+            entity.IsSynthesized = true;
+            entity.RawMetadata = schemaOrgJson;
+            entity.CanonicalContent = JsonSerializer.Serialize(content, WebJson);
+            entity.FoodMappingEvidence = evidence;
+            entity.Servings = content.Servings;
+            entity.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render), WebJson);
+            entity.UpdatedAt = effectiveClock.UtcNow;
+            await db.SaveChangesAsync(ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
+
+        await WriteRecipeJsonAsync(recipeId, schemaOrgJson, ct);
+        var info = await ReadInfoOrDefaultAsync(recipeId, ct) ?? new RecipeInfo { Id = recipeId };
+        info.Name = recipe.Name;
+        if (!string.IsNullOrWhiteSpace(generatedDescription)) info.Description = generatedDescription;
+        if (!string.IsNullOrWhiteSpace(recipe.TotalTime)) info.TotalTime = recipe.TotalTime;
+        info.IsSynthesized = true;
+        await WriteInfoAsync(info, ct);
+
+        logger.LogInformation("Saved synthesized Schema.org recipe for {RecipeId}", recipeId);
     }
 
     #endregion
@@ -574,27 +641,88 @@ STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.
         TotalTime = null
     };
 
-    private static RecipeInfo CapturedInfo(RecipePublicationCapture capture) =>
-        JsonSerializer.Deserialize<RecipeInfo>(capture.Files["recipe.info"]!, JsonDefaults.CamelCase)
-        ?? throw new InvalidDataException("Captured recipe metadata is invalid.");
-
-    private static List<int> CapturedImages(RecipePublicationCapture capture, RecipeInfo info) =>
-        Enumerable.Range(0, info.ImageCount).Where(index => new[] { ".jpg", ".jpeg", ".png", ".webp" }
-            .Any(extension => capture.Files.GetValueOrDefault($"original/{index}{extension}") is not null)).ToList();
-
-    private static byte[] CapturedImage(RecipePublicationCapture capture, int index) =>
-        new[] { ".jpg", ".jpeg", ".png", ".webp" }.Select(extension => capture.Files.GetValueOrDefault($"original/{index}{extension}"))
-            .FirstOrDefault(bytes => bytes is not null) ?? throw new FileNotFoundException("Captured image is missing.");
-
-    private static void AddImagesToMessage(ChatMessage message, RecipePublicationCapture capture, List<int> imageIndices)
+    private async Task<RecipeInfo> ReadInfoRequiredAsync(Guid recipeId, CancellationToken ct)
     {
-        foreach (var index in imageIndices)
+        if (recipeStore is not null)
+            return await recipeStore.ReadInfoAsync(recipeId, ct)
+                ?? throw new FileNotFoundException($"Recipe info file not found for recipe {recipeId}");
+        if (recipeRepository is not null)
+            return await recipeRepository.GetInfoAsync(recipeId, ct);
+        throw new InvalidOperationException("Recipe storage is not configured.");
+    }
+
+    private async Task<RecipeInfo?> ReadInfoOrDefaultAsync(Guid recipeId, CancellationToken ct)
+    {
+        if (recipeStore is not null)
+            return await recipeStore.ReadInfoAsync(recipeId, ct);
+        if (recipeRepository is not null)
         {
-            var bytes = CapturedImage(capture, index);
-            var mediaType = bytes.AsSpan().StartsWith(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) ? "image/png"
-                : bytes.Length >= 12 && bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) && bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8) ? "image/webp"
-                : "image/jpeg";
-            message.Contents.Add(new DataContent(bytes, mediaType));
+            try { return await recipeRepository.GetInfoAsync(recipeId, ct); }
+            catch (FileNotFoundException) { return null; }
+        }
+        return null;
+    }
+
+    private async Task<string> ReadRecipeJsonRequiredAsync(Guid recipeId, CancellationToken ct)
+    {
+        if (recipeStore is not null)
+            return await recipeStore.ReadRecipeJsonAsync(recipeId, ct)
+                ?? throw new FileNotFoundException($"Recipe JSON file not found for recipe {recipeId}");
+        if (recipeRepository is not null)
+            return await recipeRepository.GetRecipeJsonAsync(recipeId, ct);
+        throw new InvalidOperationException("Recipe storage is not configured.");
+    }
+
+    private async Task WriteRecipeJsonAsync(Guid recipeId, string json, CancellationToken ct)
+    {
+        if (recipeStore is not null) await recipeStore.WriteRecipeJsonAsync(recipeId, json, ct);
+        else if (recipeRepository is not null) await recipeRepository.SaveRecipeJsonAsync(recipeId, json, ct);
+    }
+
+    private async Task WriteInfoAsync(RecipeInfo info, CancellationToken ct)
+    {
+        if (recipeStore is not null) await recipeStore.WriteInfoAsync(info, ct);
+        else if (recipeRepository is not null) await recipeRepository.SaveInfoAsync(info, ct);
+    }
+
+    private async Task<List<byte[]>> ReadOriginalImagesAsync(Guid recipeId, int imageCount, CancellationToken ct)
+    {
+        var result = new List<byte[]>();
+        for (var index = 0; index < imageCount; index++)
+        {
+            if (recipeStore is not null)
+            {
+                var image = await recipeStore.ReadOriginalImageAsync(recipeId, index, ct);
+                if (image is not null)
+                {
+                    await using var stream = image.Value.Stream;
+                    using var ms = new MemoryStream();
+                    await stream.CopyToAsync(ms, ct);
+                    result.Add(ms.ToArray());
+                }
+            }
+            else if (recipeRepository is not null)
+            {
+                try
+                {
+                    result.Add(await recipeRepository.GetOriginalImageAsync(recipeId, index, ct));
+                }
+                catch (FileNotFoundException) { }
+            }
+        }
+        return result;
+    }
+
+    private static string DetectImageMediaType(byte[] bytes) =>
+        bytes.AsSpan().StartsWith(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) ? "image/png"
+        : bytes.Length >= 12 && bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) && bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8) ? "image/webp"
+        : "image/jpeg";
+
+    private static void AddImagesToMessage(ChatMessage message, IReadOnlyList<byte[]> images)
+    {
+        foreach (var bytes in images)
+        {
+            message.Contents.Add(new DataContent(bytes, DetectImageMediaType(bytes)));
         }
     }
 

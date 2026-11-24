@@ -102,9 +102,19 @@ test.describe('High-Fidelity Sharing Round-trip', () => {
     await page.goto('/capture');
     await page.getByTestId('import-recipe-file-input').setInputFiles(downloadPath);
 
-    // 5. Verify Preview Fidelity (AC 4.2)
+    // 5. Verify Preview Fidelity (AC 4.2): steps collapsed by default, expand via Preview steps
     await expect(page.getByTestId('bundle-preview-card')).toBeVisible();
     await expect(page.getByTestId('bundle-preview-name')).toContainText(recipeName);
+    await expect(page.getByTestId('bundle-preview-synthesis-badge')).toHaveCount(0);
+    await expect(page.getByTestId('bundle-preview-steps-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    await page.getByTestId('bundle-preview-steps-toggle').click();
+    await expect(page.getByTestId('bundle-preview-steps-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    );
 
     // Verify sections and steps
     await expect(page.getByTestId('bundle-preview-section-title').nth(0)).toContainText('The Base');
@@ -118,18 +128,16 @@ test.describe('High-Fidelity Sharing Round-trip', () => {
       'Add ricotta and spinach.'
     );
 
-    // Verify restored metadata (AC 3.2)
-    await expect(page.getByTestId('bundle-preview-notes')).toContainText(
+    // Verify restored metadata in editable importer controls (AC 3.2)
+    await expect(page.getByTestId('bundle-notes-input')).toHaveValue(
       'These are secret backup notes.'
     );
-    await expect(page.getByTestId('bundle-preview-rating')).toBeVisible();
+    await expect(page.getByTestId('bundle-rating-3')).toHaveAttribute('aria-pressed', 'true');
 
-    // 6. Complete Import
+    // 6. Complete Import -> direct navigation to /home
     await page.getByTestId('accept-bundle-btn').click();
-    await expect(page.getByTestId('bundle-import-success')).toBeVisible();
-    await page.getByTestId('bundle-import-done-btn').click();
-
-    await expect(page).toHaveURL(/\/home/);
+    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    await expect(page.getByTestId('bundle-import-success')).toHaveCount(0);
   });
 
   test('Privacy scrubbing: Share bundle excludes personal metadata', async ({ page }) => {
@@ -173,11 +181,13 @@ test.describe('High-Fidelity Sharing Round-trip', () => {
     expect(bundleContent.recipe.notes).toBeNull();
     expect(bundleContent.recipe.rating).toBeNull();
 
-    // 4. Verify preview reflects scrubbed state
+    // 4. Verify preview reflects scrubbed state (editable notes empty, rating unrated)
     await page.goto('/capture');
     await page.getByTestId('import-recipe-file-input').setInputFiles(downloadPath);
 
-    await expect(page.getByTestId('bundle-preview-notes')).not.toBeVisible();
-    await expect(page.getByTestId('bundle-preview-rating')).not.toBeVisible();
+    await expect(page.getByTestId('bundle-notes-input')).toHaveValue('');
+    await expect(page.getByTestId('bundle-rating-1')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('bundle-rating-2')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('bundle-rating-3')).toHaveAttribute('aria-pressed', 'false');
   });
 });

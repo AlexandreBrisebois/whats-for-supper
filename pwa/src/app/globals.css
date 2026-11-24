@@ -380,3 +380,7 @@
 :root[data-contrast='high'] .cookbook-vignette-decor {
   display: none;
 }
+
+:root[data-contrast='high'] .rating-option-selected {
+  border: 1.5px solid var(--role-ink-body);
+}

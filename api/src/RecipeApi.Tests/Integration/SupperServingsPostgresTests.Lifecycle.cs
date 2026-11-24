@@ -45,7 +45,7 @@ public partial class SupperServingsPostgresTests
             var artifact = Path.Combine(root,"data","supper-servings.json"); Assert.True(File.Exists(artifact));
             using (var json = JsonDocument.Parse(await File.ReadAllTextAsync(artifact))) { Assert.Equal(1,json.RootElement.GetProperty("version").GetInt32()); Assert.Equal(4,json.RootElement.GetProperty("defaultServings").GetInt32()); Assert.Equal(2,json.RootElement.GetProperty("days").GetArrayLength()); }
             var original = await scope.ServiceProvider.GetRequiredService<IRecipeStore>().ReadRecipeJsonAsync(recipe.Id);
-            Assert.Contains("200 g pasta", original); Assert.Equal(2,JsonDocument.Parse(original!).RootElement.GetProperty("servings").GetInt32());
+            Assert.Contains("200 g pasta", original); Assert.Equal(2, RecipeServings.Parse(JsonDocument.Parse(original!).RootElement.GetProperty("recipeYield").GetString()));
             saved.OverrideServings=9; inherited.InheritedServings=9; db.FamilySettings.Single(x=>x.Key==SupperServingsService.DefaultKey).Value=Usual(9).Value;
             var destination=Serving(new(2026,10,18),8); db.SupperServings.Add(destination); await db.SaveChangesAsync();
             for(var attempt=0;attempt<2;attempt++) { Assert.Equal(0,(await management.RestoreAsync()).Errors); db.ChangeTracker.Clear(); }

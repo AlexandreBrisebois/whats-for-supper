@@ -321,19 +321,92 @@ public partial class RecoverySnapshotService
     }
     private async Task WriteRecipeMetadataAsync(JsonElement row, string folder, CancellationToken ct)
     {
-        var content = new JsonObject();
-        foreach (var property in db.Model.FindEntityType(typeof(Recipe))!.GetProperties())
+        var id = row.GetProperty("id").GetGuid();
+        string? Str(string col) => row.TryGetProperty(col, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        int Int(string col, int fallback = 0) => row.TryGetProperty(col, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : fallback;
+        bool Bool(string col, bool fallback = false) => row.TryGetProperty(col, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False ? v.GetBoolean() : fallback;
+        bool? NullableBool(string col) => row.TryGetProperty(col, out var v) && v.ValueKind is JsonValueKind.True or JsonValueKind.False ? v.GetBoolean() : null;
+        Guid? NullableGuid(string col) => row.TryGetProperty(col, out var v) && v.ValueKind == JsonValueKind.String && v.TryGetGuid(out var g) ? g : null;
+        DateTimeOffset? NullableDto(string col) => row.TryGetProperty(col, out var v) && v.ValueKind == JsonValueKind.String && DateTimeOffset.TryParse(v.GetString(), out var d) ? d : null;
+        string[]? StrArray(string col) => row.TryGetProperty(col, out var v) && v.ValueKind == JsonValueKind.Array
+            ? v.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToArray() : null;
+        string? JsonCol(string col) => row.TryGetProperty(col, out var v) && v.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined)
+            ? (v.ValueKind == JsonValueKind.String ? v.GetString() : v.GetRawText()) : null;
+
+        var info = new RecipeInfo
         {
-            if (!row.TryGetProperty(property.GetColumnName(), out var value)) continue;
-            var name = JsonNamingPolicy.CamelCase.ConvertName(property.Name);
-            content[name] = JsonNode.Parse(value.GetRawText());
+            Id = id,
+            Name = Str("name"),
+            Description = Str("description"),
+            Notes = Str("notes"),
+            Rating = (RecipeRating)Int("rating"),
+            AddedBy = NullableGuid("added_by"),
+            SourceUrl = Str("source_url"),
+            Category = Str("category"),
+            CuisineType = Str("cuisine_type"),
+            MealTypes = StrArray("meal_types"),
+            TotalTime = Str("total_time"),
+            ImageCount = Int("image_count"),
+            FinishedDishImageIndex = Int("finished_dish_index", -1),
+            IsSynthesized = Bool("is_synthesized"),
+            IsReady = Bool("is_ready"),
+            IsDiscoverable = Bool("is_discoverable"),
+            RotationVersion = 1,
+            RotationHumanOff = Bool("rotation_human_off"),
+            RotationSource = Str("rotation_source") ?? "Unknown",
+            CookedSuppressed = Bool("cooked_suppressed"),
+            SupperSuitable = NullableBool("supper_suitable"),
+            IsVegetarian = NullableBool("is_vegetarian"),
+            DeletedAt = NullableDto("deleted_at"),
+            LastCookedDate = NullableDto("last_cooked_date"),
+            CreatedAt = NullableDto("created_at") ?? default
+        };
+        await File.WriteAllTextAsync(Path.Combine(folder, "recipe.info"),
+            JsonSerializer.Serialize(info, JsonDefaults.CamelCase), ct);
+
+        var canonicalJson = JsonCol("canonical_content");
+        var rawMetadata = JsonCol("raw_metadata");
+        var servings = row.TryGetProperty("servings", out var sv) && sv.ValueKind == JsonValueKind.Number ? (int?)sv.GetInt32() : null;
+        string recipeJson;
+        if (!string.IsNullOrWhiteSpace(canonicalJson) &&
+            StructuredRecipeContentStore.Read(new Recipe { Id = id, CanonicalContent = canonicalJson }) is { } structured)
+        {
+            recipeJson = StructuredRecipeContentStore.ToSchemaOrgJson(structured, rawMetadata, info.Name, info.Description);
         }
-        content["finishedDishImageIndex"] = row.GetProperty("finished_dish_index").GetInt32();
-        await File.WriteAllTextAsync(Path.Combine(folder, "recipe.info"), content.ToJsonString(), ct);
-        content["backupContentVersion"] = 1;
-        foreach (var name in new[] { "rawMetadata", "ingredients" })
-            if (content[name] is { } value) content[name] = value.ToJsonString();
-        await File.WriteAllTextAsync(Path.Combine(folder, "recipe.json"), content.ToJsonString(), ct);
+        else if (!string.IsNullOrWhiteSpace(rawMetadata))
+        {
+            var node = JsonNode.Parse(rawMetadata)?.AsObject();
+            if (node is not null)
+            {
+                node["@context"] ??= "https://schema.org/";
+                node["@type"] ??= "Recipe";
+                if (!string.IsNullOrWhiteSpace(info.Name) && node["name"] is null) node["name"] = info.Name;
+                if (!string.IsNullOrWhiteSpace(info.Description) && node["description"] is null) node["description"] = info.Description;
+                if (servings is > 0) node["recipeYield"] = $"{servings} portions";
+                if (node["recipeIngredient"] is null)
+                {
+                    var list = RecipeService.DeserializeIngredients(JsonCol("ingredients"));
+                    if (list.Count > 0) node["recipeIngredient"] = JsonSerializer.SerializeToNode(list);
+                }
+                recipeJson = node.ToJsonString(new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
+            }
+            else recipeJson = rawMetadata;
+        }
+        else
+        {
+            var fallback = new SchemaOrgRecipe
+            {
+                Context = "https://schema.org/",
+                Type = "Recipe",
+                Name = info.Name ?? string.Empty,
+                Description = info.Description,
+                RecipeYield = servings is > 0 ? $"{servings} portions" : null,
+                TotalTime = info.TotalTime,
+                RecipeIngredient = RecipeService.DeserializeIngredients(JsonCol("ingredients"))
+            };
+            recipeJson = JsonSerializer.Serialize(fallback, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
+        }
+        await File.WriteAllTextAsync(Path.Combine(folder, "recipe.json"), recipeJson, ct);
     }
 
     private async Task QueueDerivedRepairAsync(NpgsqlConnection connection, CancellationToken ct)

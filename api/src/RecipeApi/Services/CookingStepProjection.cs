@@ -22,7 +22,7 @@ public static class CookingStepProjection
     private static bool Boundary(string text, int offset) => offset >= 0 && offset <= text.Length &&
         !(offset > 0 && offset < text.Length && char.IsHighSurrogate(text[offset - 1]) && char.IsLowSurrogate(text[offset]));
 
-    private static bool Valid(CanonicalRecipeContent content, RecipeInstructionStepDto step, Binding? binding)
+    private static bool Valid(StructuredRecipeContent content, RecipeInstructionStepDto step, Binding? binding)
     {
         if (binding is not { Span: { } span, Status: "validated" } || binding.Id == Guid.Empty ||
             binding.Payload.ValueKind != JsonValueKind.Object || binding.StepId != step.Id || binding.ValidatedContentRevision != content.ContentRevision ||
@@ -63,7 +63,7 @@ public static class CookingStepProjection
 
     // The explicit link proves item-count meaning. Do not infer it from a number,
     // unit label or nearby prose. Restrict this edge to a whole count: no cycles.
-    private static (RecipeInstructionStepDto Step, Binding Use, RecipeIngredientLineDto Row)? CountProof(CanonicalRecipeContent content, Binding dose)
+    private static (RecipeInstructionStepDto Step, Binding Use, RecipeIngredientLineDto Row)? CountProof(StructuredRecipeContent content, Binding dose)
     {
         if (!dose.Payload.TryGetProperty("countBindingId", out var raw) || raw.ValueKind != JsonValueKind.String ||
             !raw.TryGetGuid(out var id) || id == Guid.Empty) return null;
@@ -82,7 +82,7 @@ public static class CookingStepProjection
         before.Description == after.Description && before.Unit == after.Unit && before.Scaling == after.Scaling &&
         before.Package == after.Package && before.Shopping == after.Shopping;
 
-    private static bool CountCanCarry(CanonicalRecipeContent before, CanonicalRecipeContent after, Binding binding)
+    private static bool CountCanCarry(StructuredRecipeContent before, StructuredRecipeContent after, Binding binding)
     {
         if (binding.Role != "perItem") return true;
         if (CountProof(before, binding) is not { } proof) return false;
@@ -164,7 +164,7 @@ public static class CookingStepProjection
             annotation is not null && otherAnnotation is not null && SpanOverlap(annotation, otherAnnotation);
     }
 
-    private static bool Eligible(CanonicalRecipeContent content, RecipeInstructionStepDto step, Binding? binding, Binding?[] bindings) =>
+    private static bool Eligible(StructuredRecipeContent content, RecipeInstructionStepDto step, Binding? binding, Binding?[] bindings) =>
         Valid(content, step, binding) && bindings.Count(x => x?.Id == binding!.Id) == 1 &&
         !bindings.Any(x => x?.Id != binding!.Id && Overlap(binding!, x));
 
@@ -182,7 +182,7 @@ public static class CookingStepProjection
 
     // Membership is explicit and closed. A terminal remainder is total minus its
     // exact ordered predecessors, never a sum inferred from ingredient mentions.
-    private static Dictionary<Guid, GroceryQuantity>? ResolveGroup(CanonicalRecipeContent content, Binding binding)
+    private static Dictionary<Guid, GroceryQuantity>? ResolveGroup(StructuredRecipeContent content, Binding binding)
     {
         var group = Group(binding);
         if (group is not { Id: var id, Exhaustive: true, BindingIds: { Length: > 0 } ids } ||
@@ -247,10 +247,10 @@ public static class CookingStepProjection
         return row.Amount is { Kind: "scalar" } && sum == row.Amount ? amounts : null;
     }
 
-    private static bool GroupValid(CanonicalRecipeContent content, Binding binding) =>
+    private static bool GroupValid(StructuredRecipeContent content, Binding binding) =>
         binding.Payload.TryGetProperty("allocationGroup", out _) ? binding.Role != "perItem" && ResolveGroup(content, binding) is not null : binding.Role != "remainder";
 
-    public static InstructionProjectionDto Read(CanonicalRecipeContent content, int? target)
+    public static InstructionProjectionDto Read(StructuredRecipeContent content, int? target)
     {
         var valid = 0;
         var uncertain = 0;
@@ -285,13 +285,13 @@ public static class CookingStepProjection
                     {
                         if (Annotation(binding) is { } annotation)
                         {
-                            var annotated = CanonicalRecipeContentStore.Render(row with { Amount = scaled, AmountText = AnnotationAmount(scaled), Description = "" }).TrimEnd();
+                            var annotated = StructuredRecipeContentStore.Render(row with { Amount = scaled, AmountText = AnnotationAmount(scaled), Description = "" }).TrimEnd();
                             replacements.Add((annotation.Start, annotation.End, annotated));
                         }
                         valid++;
                         continue;
                     }
-                    var rendered = CanonicalRecipeContentStore.Render(row with { Amount = scaled, AmountText = null, Description = "" }).TrimEnd();
+                    var rendered = StructuredRecipeContentStore.Render(row with { Amount = scaled, AmountText = null, Description = "" }).TrimEnd();
                     replacements.Add((binding.Span.Start, binding.Span.End, binding.Role == "remainder" ? $"{binding.Span.ExpectedText} ({rendered})" : rendered));
                     valid++;
                 }
@@ -304,7 +304,7 @@ public static class CookingStepProjection
 
     // Only a previously proved use may cross an ingredient-total edit. Changing its
     // identity, unit, policy, package, source or wording leaves the old proof stale.
-    public static CanonicalRecipeContent Revalidate(CanonicalRecipeContent before, CanonicalRecipeContent after) => after with
+    public static StructuredRecipeContent Revalidate(StructuredRecipeContent before, StructuredRecipeContent after) => after with
     {
         InstructionSections = after.InstructionSections.Select(section => section with
         {

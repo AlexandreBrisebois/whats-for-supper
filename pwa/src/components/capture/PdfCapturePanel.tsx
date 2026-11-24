@@ -133,6 +133,10 @@ export function PdfCapturePanel({
       key={selection.generation}
       file={selection.file}
       enabled
+      onCancel={() => {
+        reset();
+        router.push('/home');
+      }}
       onSave={async (rating, notes) => {
         const submitted = selection;
         const id = await createPdfRecipe(submitted.file, rating, notes, submitted.memberId);

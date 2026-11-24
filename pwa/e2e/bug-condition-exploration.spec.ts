@@ -153,13 +153,9 @@ test.describe('Bug Condition A — Glob/Predicate LIFO Bypass', () => {
 
     await page.getByRole('button', { name: /save & build recipe/i }).click();
 
-    // Wait for the GOTO PUT to complete
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible();
-
-    // EXPECTED (correct): per-test handler stored the value, success screen is visible
-    // ACTUAL (buggy): glob handler intercepted, per-test handler never fired,
-    //   success screen may not render or useEffect navigates away immediately
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
+    // Immediate Save-and-Return-Home routes to /home with the non-blocking in-flight ribbon
+    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible({ timeout: 10_000 });
     expect(membershipWrites).toEqual([]);
   });
 });
@@ -349,16 +345,12 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
 
     await describeRequest;
 
-    // EXPECTED (correct): success screen is visible — useEffect does NOT auto-navigate for isGoto=true
-    // ACTUAL (buggy): useEffect calls router.push(ROUTES.PROFILE_SETTINGS) immediately,
-    //   unmounting the success screen before this assertion can find the element
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
+    // Immediate Save-and-Return-Home routes to /home with the in-flight ribbon instead of /profile/settings
+    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible({ timeout: 10_000 });
     expect(membershipWrites).toEqual([]);
 
-    // Also assert the "Back to GOTOs" button is present (user must click explicitly)
-    await expect(page.getByTestId('capture-success-cta')).toHaveCount(0);
-
-    // Assert we have NOT been auto-navigated away
+    // Assert we have NOT been auto-navigated to settings
     await expect(page).not.toHaveURL(/\/profile\/settings/);
   });
 
@@ -386,14 +378,12 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
 
     await page.getByRole('button', { name: /save recipe/i }).click();
 
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible();
-
-    // EXPECTED (correct): success screen is visible
-    // ACTUAL (buggy): useEffect navigates away immediately
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
+    // Immediate Save-and-Return-Home routes to /home with the in-flight ribbon instead of /profile/settings
+    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible({ timeout: 10_000 });
     expect(membershipWrites).toEqual([]);
 
-    // Assert we have NOT been auto-navigated away
+    // Assert we have NOT been auto-navigated to settings
     await expect(page).not.toHaveURL(/\/profile\/settings/);
   });
 });

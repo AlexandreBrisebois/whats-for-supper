@@ -90,7 +90,7 @@ public partial class PreparedSupperPostgresTests
             var final = await Projection(client, recipeId, occurrenceId);
             Assert.Contains("Stir gently.", final.GetProperty("instructionProjection").GetProperty("sections")[0].GetProperty("steps")[0].GetProperty("text").GetString());
             db.ChangeTracker.Clear();
-            var saved = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipeId))!;
+            var saved = StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipeId))!;
             Assert.Equal(section.Id, saved.InstructionSections[0].Id); Assert.Equal(step.Id, saved.InstructionSections[0].Steps[0].Id);
             Assert.Equal("250", saved.IngredientLines[0].AmountText); Assert.Equal(amended, saved.InstructionSections[0].Steps[0].Text);
             Assert.Equal(content.SourceRevision, saved.SourceRevision);

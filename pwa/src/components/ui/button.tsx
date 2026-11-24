@@ -23,6 +23,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
+  hideSpinner?: boolean;
   loadingText?: string;
   fullWidth?: boolean;
 }
@@ -31,6 +32,7 @@ export function Button({
   variant = 'primary',
   size = 'md',
   isLoading = false,
+  hideSpinner = false,
   loadingText,
   fullWidth = false,
   className = '',
@@ -57,7 +59,9 @@ export function Button({
     >
       {isLoading ? (
         <span className="inline-flex items-center gap-2">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          {!hideSpinner && (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          )}
           {loadingText ? <span>{loadingText}</span> : null}
         </span>
       ) : (

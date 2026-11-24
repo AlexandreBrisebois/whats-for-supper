@@ -265,7 +265,7 @@ public sealed partial class WorkflowWorkerAuthorityTests
             if (recipeId is { } storedId)
                 await storage.SaveAsync("recipes", $"{storedId}/recipe.info",
                     JsonSerializer.Serialize(new RecipeInfo { Id = storedId }, JsonDefaults.CamelCase));
-            await TestPublicationStore.Create(db, storage, Clock).CaptureLaunchAsync(instance);
+            // No publication launch capture required.
             return task;
         }
 

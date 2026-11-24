@@ -1,12 +1,18 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Workflow;
 
 namespace RecipeApi.Services.Processors;
 
-/// <summary>Stages rendered pages against the workflow's launch evidence.</summary>
-public sealed class PdfConversionProcessor(RecipeFilePublicationStore publications, IPdfPageRenderer renderer) : IWorkflowProcessor
+/// <summary>Renders PDF pages into original recipe images before extraction.</summary>
+public sealed class PdfConversionProcessor(
+    IRecipeStore recipeStore,
+    IPdfPageRenderer renderer,
+    RecipeDbContext? db = null,
+    IClock? clock = null) : IWorkflowProcessor
 {
     public string ProcessorName => "ConvertPdf";
 
@@ -14,93 +20,71 @@ public sealed class PdfConversionProcessor(RecipeFilePublicationStore publicatio
     {
         using var payload = JsonDocument.Parse(task.Payload ?? throw new ArgumentException("Task payload is empty."));
         var id = payload.RootElement.GetProperty("recipeId").GetGuid();
-        var operation = task.TaskId == Guid.Empty ? Guid.NewGuid() : task.TaskId;
-        var input = ProcessorName + "\n" + CanonicalRecipeContentStore.NormalizeJson(task.Payload);
-        if (await publications.TryResumeAsync(id, operation, input, ct)) return new { recipeId = id, recovered = true };
-        var capture = await publications.CaptureForTaskAsync(task, id, ct);
-        if (capture.Fields?.CanonicalContent is not null) return new { skipped = true };
-        if (capture.Files["original/source.pdf"] is not { } pdf) return new { skipped = true };
-        var info = JsonSerializer.Deserialize<RecipeInfo>(capture.Files["recipe.info"]!, JsonDefaults.CamelCase)
-            ?? throw new InvalidDataException("PDF metadata is missing.");
-        var reusable = HasReusablePages(capture, info);
-        if (reusable)
+
+        if (db is not null)
         {
-            await publications.PublishAsync(capture, new(null, info, input, new Dictionary<string, byte[]?>(), SourceKind: "pdf"), operation, ct);
+            var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+            if (existing?.CanonicalContent is not null) return new { skipped = true };
+        }
+
+        await using var sourcePdf = await recipeStore.ReadSourcePdfAsync(id, ct);
+        if (sourcePdf is null) return new { skipped = true };
+
+        var info = await recipeStore.ReadInfoAsync(id, ct)
+            ?? throw new InvalidDataException("PDF metadata is missing.");
+
+        if (await HasReusablePagesAsync(id, info, ct))
+        {
             return new { recipeId = id, imageCount = info.ImageCount };
         }
-        using var source = new MemoryStream(pdf, writable: false);
-        var pages = await renderer.RenderAsync(source, ct);
+
+        var pages = await renderer.RenderAsync(sourcePdf, ct);
         if (pages.Count is < 1 or > 10)
             throw new InvalidDataException("Choose a PDF containing one recipe in up to 10 pages.");
-        // Selected page membership replaces only the bounded PDF image slots;
-        // every replaced byte remains retained in the publication evidence.
-        var files = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
-        for (var index = 0; index < 10; index++)
-            foreach (var extension in new[] { ".jpg", ".jpeg", ".png", ".webp" })
-                files[$"original/{index}{extension}"] = extension == ".png" && index < pages.Count ? pages[index] : null;
+
+        await recipeStore.ReplacePdfPagesAsync(id, pages, ct);
         info.ImageCount = pages.Count;
         info.FinishedDishImageIndex = -1;
-        await publications.PublishAsync(capture, new(null, info, input, files, SourceKind: "pdf"), operation, ct);
+        await recipeStore.WriteInfoAsync(info, ct);
+
+        if (db is not null)
+        {
+            await using var transaction = await RecipeRotation.LockAsync(db, id, ct);
+            var recipe = await db.Recipes.SingleOrDefaultAsync(x => x.Id == id, ct);
+            if (recipe is not null)
+            {
+                recipe.ImageCount = pages.Count;
+                recipe.FinishedDishIndex = -1;
+                recipe.UpdatedAt = (clock ?? new SystemClock()).UtcNow;
+                await db.SaveChangesAsync(ct);
+            }
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
+
         return new { recipeId = id, imageCount = info.ImageCount };
     }
 
-    private static bool HasReusablePages(RecipePublicationCapture capture, RecipeInfo info) =>
-        info.ImageCount is > 0 and <= 10 && Enumerable.Range(0, info.ImageCount)
-            .All(index => new[] { ".jpg", ".jpeg", ".png", ".webp" }
-                .Any(extension => capture.Files.GetValueOrDefault($"original/{index}{extension}") is not null));
-
-    // Qualifies this processor's returned receipt against its retained publication,
-    // never against current files/recipe or an earlier task.Result. A skipped
-    // receipt asserts no publication, and does not certify missing source truth.
-    internal static Guid ValidateOriginalHistory(string? payload, string? returned, RecipeFilePublication[] publications)
+    private async Task<bool> HasReusablePagesAsync(Guid id, RecipeInfo info, CancellationToken ct)
     {
-        static void Require(bool valid)
+        if (info.ImageCount is <= 0 or > 10) return false;
+        for (var index = 0; index < info.ImageCount; index++)
         {
-            if (!valid) throw new InvalidDataException("Original PDF processor result differs from its publication.");
+            var image = await recipeStore.ReadOriginalImageAsync(id, index, ct);
+            if (image is null) return false;
+            await image.Value.Stream.DisposeAsync();
         }
+        return true;
+    }
+
+    internal static Guid ValidateOriginalHistory(string? payload, string? returned)
+    {
         using var input = JsonDocument.Parse(payload ?? "null");
-        Guid recipeId = default;
-        Require(input.RootElement.ValueKind == JsonValueKind.Object
-            && input.RootElement.TryGetProperty("recipeId", out var inputRecipe)
-            && inputRecipe.ValueKind == JsonValueKind.String && inputRecipe.TryGetGuid(out recipeId) && recipeId != Guid.Empty);
-        using var document = JsonDocument.Parse(returned ?? "null");
-        var result = document.RootElement;
-        Require(result.ValueKind == JsonValueKind.Object);
-        var names = result.EnumerateObject().Select(x => x.Name).ToArray();
-        Require(names.Distinct(StringComparer.Ordinal).Count() == names.Length);
-        if (result.TryGetProperty("skipped", out var skipped))
-        {
-            Require(skipped.ValueKind == JsonValueKind.True && publications.Length == 0
-                && !result.TryGetProperty("recipeId", out _) && !result.TryGetProperty("imageCount", out _)
-                && !result.TryGetProperty("recovered", out _));
-            return recipeId;
-        }
-        Require(result.TryGetProperty("recipeId", out var resultRecipe) && resultRecipe.ValueKind == JsonValueKind.String
-            && resultRecipe.TryGetGuid(out var observedRecipe) && observedRecipe == recipeId
-            && publications.Length == 1 && publications[0].RecipeId == recipeId);
-        var (capture, candidate) = RecipeFilePublicationStore.ReadOriginalPublication(publications[0]);
-        Require(candidate.SourceKind == "pdf" && candidate.RecipeJson is null && candidate.SourceFiles is not null
-            && capture.Files.GetValueOrDefault("original/source.pdf") is not null);
-        var info = JsonSerializer.Deserialize<RecipeInfo>(capture.Files["recipe.info"]!, JsonDefaults.CamelCase)
-            ?? throw new InvalidDataException("Original PDF metadata is missing.");
-        Require(candidate.Info.ImageCount is > 0 and <= 10);
-        if (HasReusablePages(capture, info))
-            Require(candidate.SourceFiles!.Count == 0 && candidate.Info.ImageCount == info.ImageCount
-                && candidate.Info.FinishedDishImageIndex == info.FinishedDishImageIndex);
-        else
-        {
-            Require(candidate.SourceFiles!.Count == 40 && candidate.Info.FinishedDishImageIndex == -1);
-            for (var index = 0; index < 10; index++)
-                foreach (var extension in new[] { ".jpg", ".jpeg", ".png", ".webp" })
-                {
-                    Require(candidate.SourceFiles.TryGetValue($"original/{index}{extension}", out var bytes));
-                    Require(extension == ".png" && index < candidate.Info.ImageCount ? bytes is { Length: > 0 } : bytes is null);
-                }
-        }
-        if (result.TryGetProperty("recovered", out var recovered))
-            Require(recovered.ValueKind == JsonValueKind.True && !result.TryGetProperty("imageCount", out _));
-        else Require(result.TryGetProperty("imageCount", out var count) && count.ValueKind == JsonValueKind.Number
-            && count.TryGetInt32(out var imageCount) && imageCount == candidate.Info.ImageCount);
+        if (input.RootElement.ValueKind != JsonValueKind.Object
+            || !input.RootElement.TryGetProperty("recipeId", out var inputRecipe)
+            || inputRecipe.ValueKind != JsonValueKind.String
+            || !inputRecipe.TryGetGuid(out var recipeId)
+            || recipeId == Guid.Empty)
+            throw new InvalidDataException("Original PDF processor payload is invalid.");
         return recipeId;
     }
 }

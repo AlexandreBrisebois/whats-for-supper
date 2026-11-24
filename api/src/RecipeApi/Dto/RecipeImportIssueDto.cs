@@ -33,6 +33,9 @@ public class RecipeImportIssueDto
 
     [JsonPropertyName("reimportFailureImportId")]
     public required Guid? ReimportFailureImportId { get; set; }
+
+    [JsonPropertyName("suspectedDuplicateRecipeId")]
+    public Guid? SuspectedDuplicateRecipeId { get; set; }
 }
 
 public class RecipeImportReportSubmissionResponseDto

@@ -101,11 +101,11 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     id = imported.Id;
                     var db = services.GetRequiredService<RecipeDbContext>();
                     var recipe = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-                    var content = CanonicalRecipeContentStore.Read(recipe)!;
-                    var saved = await services.GetRequiredService<CanonicalRecipeContentStore>()
+                    var content = StructuredRecipeContentStore.Read(recipe)!;
+                    var saved = await services.GetRequiredService<StructuredRecipeContentStore>()
                         .EditAsync(id, content.SourceRevision, Guid.NewGuid(), Edit(content, "50",
                             content.IngredientLines[0].Shopping with { Name = "onion, diced" }));
-                    saved = await services.GetRequiredService<CanonicalRecipeContentStore>().EditAsync(id, content.SourceRevision,
+                    saved = await services.GetRequiredService<StructuredRecipeContentStore>().EditAsync(id, content.SourceRevision,
                         Guid.NewGuid(), new UpdateRecipeDto
                         {
                             ExpectedContentRevision = saved.Content.ContentRevision,
@@ -132,7 +132,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     evidence = recipe.FoodMappingEvidence!;
                     files = VocabularyFiles(services);
                     membership = (await db.FamilySettings.AsNoTracking().SingleAsync(x => x.Key == "food_vocabulary_publication")).Value.GetRawText();
-                    Assert.Equal(saved.Content.ContentRevision, CanonicalRecipeContentStore.Read(recipe)!.ContentRevision);
+                    Assert.Equal(saved.Content.ContentRevision, StructuredRecipeContentStore.Read(recipe)!.ContentRevision);
                 }
                 var provider = new Mock<IChatClient>(MockBehavior.Strict);
                 var network = new Mock<IHttpClientFactory>(MockBehavior.Strict);

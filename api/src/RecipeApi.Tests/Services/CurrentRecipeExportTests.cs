@@ -12,7 +12,7 @@ public sealed class CurrentRecipeExportTests
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly Guid RecipeId = Guid.Parse("10000000-0000-0000-0000-000000000001");
 
-    public static CanonicalRecipeExport Example() => new(RecipeId, new(2, "revision-opaque", "source-opaque", null,
+    public static StructuredRecipeExport Example() => new(RecipeId, new(2, "revision-opaque", "source-opaque", null,
         [Line("flour", "⅓", "cup"), Line("garlic", "2–3", "cloves"), Line("salt", null, null), Line("salt", "0", "tsp")],
         [new(Guid.NewGuid(), null, [new(Guid.NewGuid(), "Mix 🥣, puis cuire.", "text-opaque", [])])]),
         """{ "recipeYield": "4 portions", "recipeIngredient": ["stale source"], "privateEvidence": "retain exactly" }""");
@@ -26,7 +26,7 @@ public sealed class CurrentRecipeExportTests
     };
 
     // Build the input independently of the writer, so decoder failures cannot hide behind it.
-    private static JsonObject Envelope(CanonicalRecipeExport? input = null)
+    private static JsonObject Envelope(StructuredRecipeExport? input = null)
     {
         var export = input ?? Example();
         return new()
@@ -37,7 +37,7 @@ public sealed class CurrentRecipeExportTests
         };
     }
 
-    private static CanonicalRecipeExport Read(JsonNode node) =>
+    private static StructuredRecipeExport Read(JsonNode node) =>
         RecipeExportContent.ReadCurrent(JsonSerializer.SerializeToElement(node), RecipeId);
 
     [Fact]

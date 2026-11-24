@@ -3953,6 +3953,9 @@ export function deserializeIntoRecipeImportIssueDto(
         RecipeImportIssueStatusObject
       );
     },
+    suspectedDuplicateRecipeId: (n) => {
+      recipeImportIssueDto.suspectedDuplicateRecipeId = n.getGuidValue();
+    },
   };
 }
 /**
@@ -7297,6 +7300,10 @@ export interface RecipeImportIssueDto extends AdditionalDataHolder, Parsable {
    * readyToReview means human attention is needed, including a system-flagged content validation issue; it does not by itself certify re-import completion. System flags carry an explanatory note without launching repair on creation or unchanged Save; eligible changed human comments retain automatic correction semantics.
    */
   status?: RecipeImportIssueStatus | null;
+  /**
+   * The suspectedDuplicateRecipeId property
+   */
+  suspectedDuplicateRecipeId?: Guid | null;
 }
 export type RecipeImportIssueReason =
   (typeof RecipeImportIssueReasonObject)[keyof typeof RecipeImportIssueReasonObject];
@@ -9981,6 +9988,10 @@ export function serializeRecipeImportIssueDto(
   writer.writeGuidValue('reimportFailureImportId', recipeImportIssueDto.reimportFailureImportId);
   writer.writeStringValue('reimportFailureMessage', recipeImportIssueDto.reimportFailureMessage);
   writer.writeEnumValue<RecipeImportIssueStatus>('status', recipeImportIssueDto.status);
+  writer.writeGuidValue(
+    'suspectedDuplicateRecipeId',
+    recipeImportIssueDto.suspectedDuplicateRecipeId
+  );
   writer.writeAdditionalData(recipeImportIssueDto.additionalData);
 }
 /**

@@ -290,8 +290,7 @@ public class RecipeImportLifecycleTests
                   recipeId: "{{recipeId}}"
             """);
         var clock = new SystemClock();
-        return new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-            TestPublicationStore.Create(db, storage, clock));
+        return new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
     }
 
     private static WorkflowDefinition ReadWorkflow(string workflowId)

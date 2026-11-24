@@ -17,14 +17,14 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         ? $"Pour tous les {count} morceaux de tofu, utilisez exactement {dose} c. à thé d’huile sur chaque morceau."
         : $"For all {count} pieces of tofu, use exactly {dose} tsp of oil on each piece.";
 
-    private static async Task<CanonicalRecipeContent> ReadPerItemEditor(TestWebApplicationFactory factory)
+    private static async Task<StructuredRecipeContent> ReadPerItemEditor(TestWebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope();
-        return CanonicalRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
+        return StructuredRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
             .Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id))!;
     }
 
-    private static object PerItemEditorSteps(CanonicalRecipeContent current, string text) => new
+    private static object PerItemEditorSteps(StructuredRecipeContent current, string text) => new
     {
         expectedContentRevision = current.ContentRevision,
         instructionSections = new[] { new { id = current.InstructionSections[0].Id,
@@ -33,8 +33,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 { id = step.Id, text = index == 0 ? text : step.Text }).ToArray() } }
     };
 
-    private static async Task<CanonicalRecipeContent> CreateOrdinaryPerItemEdit(TestWebApplicationFactory factory,
-        CanonicalRecipeContent before, bool french)
+    private static async Task<StructuredRecipeContent> CreateOrdinaryPerItemEdit(TestWebApplicationFactory factory,
+        StructuredRecipeContent before, bool french)
     {
         using var client = factory.CreateAuthenticatedClient();
         var tofu = Row(before.IngredientLines[0], "4") with
@@ -62,7 +62,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         return current;
     }
 
-    private static void AssertEditorPerItemGraph(CanonicalRecipeContent content, string dose)
+    private static void AssertEditorPerItemGraph(StructuredRecipeContent content, string dose)
     {
         var step = content.InstructionSections[0].Steps[0];
         Assert.Equal(2, step.Bindings.Count);

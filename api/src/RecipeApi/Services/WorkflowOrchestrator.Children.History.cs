@@ -31,7 +31,7 @@ public partial class WorkflowOrchestrator
             return null;
         }
         var prepared = WorkflowProcessorHistory.ReadObservation<ChildPrepared>(intent.Prepared, ChildHistoryJson);
-        if (prepared.CreatedAt == default || string.IsNullOrWhiteSpace(prepared.Capture)
+        if (prepared.CreatedAt == default
             || prepared.Tasks is null || prepared.Tasks.Length == 0
             || prepared.Tasks.Any(x => x is null || x.Id == Guid.Empty || x.DependsOn is null)
             || prepared.Tasks.Select(x => x.Id).Distinct().Count() != prepared.Tasks.Length)
@@ -45,10 +45,10 @@ public partial class WorkflowOrchestrator
         var parent = parentObservations.FirstOrDefault(x => x.TaskId == intent.ParentTaskId
             && x.TaskId == request.TaskId && x.InstanceId == request.ParentId && x.ProcessorName == request.Processor
             && x.ResetIntentId == request.ResetIntentId
-            && CanonicalRecipeContentStore.NormalizeJson(x.Payload) == request.Payload)
+            && StructuredRecipeContentStore.NormalizeJson(x.Payload) == request.Payload)
             ?? throw new InvalidDataException("Retained child requires its independently observed parent generation.");
-        var original = ValidateOriginalChildCommand(intent, parent);
-        return original is null ? [] : RecipeFilePublicationStore.VocabularyReferences(original);
+        _ = ValidateOriginalChildCommand(intent, parent);
+        return [];
     }
 
 }

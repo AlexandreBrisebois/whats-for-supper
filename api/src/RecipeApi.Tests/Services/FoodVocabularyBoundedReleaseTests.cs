@@ -57,7 +57,7 @@ public sealed class FoodVocabularyBoundedReleaseTests
         operation["request"]!["operationId"] = id;
         operation["request"]!["expectedHead"] = original.DeepClone();
         operation["request"]!["newFile"] = different.DeepClone();
-        var normalize = typeof(CanonicalRecipeContentStore).GetMethod("NormalizeJson",
+        var normalize = typeof(StructuredRecipeContentStore).GetMethod("NormalizeJson",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
         operation["inputHash"] = FoodVocabularyDefinitions.Sha256(Encoding.UTF8.GetBytes(
             (string)normalize.Invoke(null, [operation["request"]!.ToJsonString()])!));

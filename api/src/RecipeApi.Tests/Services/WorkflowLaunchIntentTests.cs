@@ -31,8 +31,7 @@ public sealed class WorkflowLaunchIntentTests
         await storage.SaveAsync("workflows", "url-import.yaml", Definition);
         await new RecipeRepository(storage).SaveInfoAsync(new RecipeInfo { Id = recipe.Id, SourceUrl = recipe.SourceUrl }, default);
         var clock = new SystemClock();
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-            TestPublicationStore.Create(db, storage, clock));
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
 
         await Assert.ThrowsAsync<InvalidDataException>(() => new RecipeImportService(db, orchestrator).TriggerImport(recipe.Id));
 
@@ -80,8 +79,7 @@ public sealed class WorkflowLaunchIntentTests
             """);
         await using (var rejected = new RejectAcceptanceContext(options))
         {
-            var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), rejected,
-                TestPublicationStore.Create(rejected, storage, clock));
+            var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), rejected);
             await Assert.ThrowsAsync<IOException>(() => orchestrator.TriggerAsync("generic", new() { ["original"] = "retained" }, clock.UtcNow.AddMinutes(-1)));
         }
         await storage.SaveAsync("workflows", "generic.yaml", "invalid: [");
@@ -105,7 +103,7 @@ public sealed class WorkflowLaunchIntentTests
         services.AddScoped<IWorkflowOrchestrator>(sp =>
         {
             var db = sp.GetRequiredService<RecipeDbContext>();
-            return new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db, TestPublicationStore.Create(db, storage, clock));
+            return new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
         });
         await using var provider = services.BuildServiceProvider();
         using var worker = new WorkflowWorker(clock, provider.GetRequiredService<IServiceScopeFactory>(),
@@ -142,8 +140,7 @@ public sealed class WorkflowLaunchIntentTests
             await db.SaveChangesAsync();
             await storage.SaveAsync("workflows", "url-import.yaml", Definition);
             await new RecipeRepository(storage).SaveInfoAsync(new RecipeInfo { Id = recipe.Id, SourceUrl = recipe.SourceUrl }, default);
-            var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-                TestPublicationStore.Create(db, storage, clock));
+            var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
             await Assert.ThrowsAsync<IOException>(() => orchestrator.TriggerImportAsync(id, recipe.Id, "url-import",
                 new() { ["recipeId"] = recipe.Id.ToString(), ["url"] = recipe.SourceUrl }));
             var intent = await db.WorkflowLaunchIntents.AsNoTracking().SingleAsync();
@@ -161,8 +158,7 @@ public sealed class WorkflowLaunchIntentTests
             restarted.RecoveryPublications.Add(new RecoveryPublication { OperationId = Guid.NewGuid(), SnapshotId = Guid.NewGuid() });
             await restarted.SaveChangesAsync();
         }
-        IWorkflowOrchestrator recovery = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), restarted,
-            TestPublicationStore.Create(restarted, storage, clock));
+        IWorkflowOrchestrator recovery = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), restarted);
 
         Assert.Equal(recoveredHousehold ? 0 : 1, await recovery.ReconcileLaunchesAsync());
         Assert.Equal(0, await recovery.ReconcileLaunchesAsync());
@@ -200,8 +196,7 @@ public sealed class WorkflowLaunchIntentTests
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
         var clock = new SystemClock();
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-            TestPublicationStore.Create(db, storage, clock));
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
         var id = Guid.NewGuid();
         var parameters = new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["url"] = recipe.SourceUrl };
 
@@ -238,8 +233,7 @@ public sealed class WorkflowLaunchIntentTests
         await storage.SaveAsync("workflows", "url-import.yaml", Definition);
         await new RecipeRepository(storage).SaveInfoAsync(new RecipeInfo { Id = recipe.Id, SourceUrl = recipe.SourceUrl }, default);
         var clock = new SystemClock();
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-            TestPublicationStore.Create(db, storage, clock));
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
         var id = Guid.NewGuid();
         var parameters = new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["url"] = recipe.SourceUrl };
         var accepted = await orchestrator.TriggerImportAsync(id, recipe.Id, "url-import", parameters);

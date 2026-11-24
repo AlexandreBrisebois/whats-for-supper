@@ -21,7 +21,7 @@ public static partial class FoodVocabularyInventoryQualification
 
     private static void ValidateObservationCompatibility(IReadOnlyList<FoodVocabularyContextFacts> contexts)
     {
-        static string? JsonValue(string? raw) => raw is null ? null : CanonicalRecipeContentStore.NormalizeJson(raw);
+        static string? JsonValue(string? raw) => raw is null ? null : StructuredRecipeContentStore.NormalizeJson(raw);
         static string Shape(object value) => JsonSerializer.Serialize(value, HistoryJson);
         static void Consistent<T, TKey>(IEnumerable<T> rows, Func<T, TKey> identity, Func<T, object> immutable,
             params Func<T, string?>[] progression)

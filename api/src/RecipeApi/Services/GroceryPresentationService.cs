@@ -20,10 +20,10 @@ public sealed class GroceryPresentationService(RecipeDbContext db, FoodVocabular
         var inputs = await SupperProjectionInputs.ReadWeekAsync(db, response.WeekStartDate, calendar.Capture(clock.UtcNow).Today, ct);
         var recipes = inputs.Select(x => x.Event.Recipe!).DistinctBy(x => x.Id).ToArray();
         var capture = await vocabulary.CapturePresentationAsync(recipes.Select(x => x.FoodMappingEvidence), ct);
-        var contents = new Dictionary<Guid, CanonicalRecipeContent>();
+        var contents = new Dictionary<Guid, StructuredRecipeContent>();
         foreach (var recipe in recipes)
         {
-            if (CanonicalRecipeContentStore.Read(recipe) is not { } content) continue;
+            if (StructuredRecipeContentStore.Read(recipe) is not { } content) continue;
             FoodMappingQualification.Validate(content, recipe.FoodMappingEvidence, capture.Authority, recipe.Id);
             contents.Add(recipe.Id, content);
         }

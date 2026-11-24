@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Utensils, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -12,12 +12,9 @@ import { useLocale } from '@/components/common/LocaleProvider';
 const TOAST_DURATION_MS = 5000;
 
 /**
- * LibraryToast — auto-dismissing success notification for recipe_ready events.
- *
- * Shows ONE toast at a time (most recent). If >1 pending: shows "+N more" count badge.
- * Tapping the notification opens the completed recipe. The explicit X dismisses without navigation.
- *
- * Mounted at layout level (`pwa/src/app/(app)/layout.tsx`).
+ * LibraryToast auto-dismissing completion notification for recipe_ready events.
+ * Shows the most recent ready notification in an opaque white Garden-bordered card.
+ * Tapping opens the recipe (or paired duplicate review when flagged as a suspected duplicate).
  */
 export function LibraryToast() {
   const { locale } = useLocale();
@@ -26,42 +23,20 @@ export function LibraryToast() {
   const dismissNotification = useLibraryStore((s) => s.dismissNotification);
   const router = useRouter();
 
-  const [progress, setProgress] = useState(100);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef<number | null>(null);
 
-  // Only show 'ready' notifications
   const readyNotifications = notifications.filter((n) => n.type === 'ready');
-  // Most recent is last in the array (pushNotification appends)
   const current = readyNotifications[readyNotifications.length - 1] ?? null;
-  const extraCount = readyNotifications.length - 1;
 
-  // Reset and start auto-dismiss timer whenever the current toast changes
   useEffect(() => {
     if (!current) return;
 
-    // Reset progress — intentional synchronous state set to reset the bar
-    // before the interval starts. This is not a cascading render issue.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setProgress(100);
-    startTimeRef.current = Date.now();
-
-    // Progress bar interval — updates every 50ms
-    intervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - (startTimeRef.current ?? Date.now());
-      const remaining = Math.max(0, 100 - (elapsed / TOAST_DURATION_MS) * 100);
-      setProgress(remaining);
-    }, 50);
-
-    // Auto-dismiss after 5s
     timerRef.current = setTimeout(() => {
       dismissNotification(current.recipeId);
     }, TOAST_DURATION_MS);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (intervalRef.current) clearInterval(intervalRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.recipeId]);
@@ -75,7 +50,10 @@ export function LibraryToast() {
     if (!current) return;
 
     dismissNotification(current.recipeId);
-    router.push(`/recipes?open=${current.recipeId}` as any);
+    const target = current.isSuspectedDuplicate
+      ? `/recipes?open=${current.recipeId}&reviewDuplicate=1`
+      : `/recipes?open=${current.recipeId}`;
+    router.push(target as any);
   };
 
   return (
@@ -85,11 +63,11 @@ export function LibraryToast() {
           key={current.recipeId}
           initial={reducedMotion ? false : { y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={reducedMotion ? { opacity: 0 } : { opacity: 0 }}
+          exit={{ opacity: 0 }}
           transition={
             reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }
           }
-          className="flex flex-col items-stretch gap-1.5 w-full max-w-sm pointer-events-auto"
+          className="flex flex-col items-stretch w-full max-w-sm pointer-events-auto"
           role="status"
           aria-live="polite"
           aria-label={tWithVars(
@@ -101,7 +79,7 @@ export function LibraryToast() {
         >
           <div
             data-testid="library-toast-card"
-            className="glass-toast relative w-full overflow-hidden rounded-2xl border border-garden-line border-l-4 border-l-garden-fill"
+            className="relative w-full overflow-hidden rounded-2xl border border-garden-line bg-white shadow-sm"
           >
             <button
               type="button"
@@ -112,9 +90,8 @@ export function LibraryToast() {
                 { name: current.name },
                 locale
               )}
-              className="flex min-h-12 w-full items-center gap-3 rounded-2xl pr-12 text-left active:scale-[0.98] transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
+              className="flex min-h-12 w-full items-center gap-3 rounded-2xl pr-14 text-left active:scale-[0.98] transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
             >
-              {/* Thumbnail */}
               <div className="flex-shrink-0 ml-3 my-3">
                 {current.imageUrl ? (
                   <div className="relative h-10 w-10 rounded-xl overflow-hidden">
@@ -132,7 +109,6 @@ export function LibraryToast() {
                 )}
               </div>
 
-              {/* Text */}
               <div className="flex-1 min-w-0 py-3">
                 <p className="text-sm text-ink-body leading-snug">
                   <span className="text-garden-ink mr-1 font-semibold" aria-hidden="true">
@@ -141,8 +117,20 @@ export function LibraryToast() {
                   <span className="font-bold">{current.name}</span>
                   {t('capture.toast.readySuffix', ' is ready!', locale)}
                 </p>
-                <p className="text-xs text-ink-muted font-medium mt-0.5">
-                  {t('capture.toast.tapToView', 'Tap to view recipe', locale)}
+                <p
+                  className={
+                    current.isSuspectedDuplicate
+                      ? 'text-xs text-sunlight-ink font-semibold mt-0.5'
+                      : 'text-xs text-ink-muted font-medium mt-0.5'
+                  }
+                >
+                  {current.isSuspectedDuplicate
+                    ? t(
+                        'capture.toast.possibleDuplicate',
+                        'Possible duplicate · Tap to review',
+                        locale
+                      )
+                    : t('capture.toast.tapToView', 'Tap to view recipe', locale)}
                 </p>
               </div>
             </button>
@@ -155,30 +143,7 @@ export function LibraryToast() {
             >
               <X size={16} aria-hidden="true" />
             </button>
-
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sage-100">
-              <motion.div
-                className="h-full bg-garden-fill transition-none"
-                animate={{ scaleX: progress / 100 }}
-                transition={reducedMotion ? { duration: 0 } : undefined}
-                style={{ transformOrigin: 'left center' }}
-              />
-            </div>
           </div>
-
-          {/* "+N more" badge */}
-          {extraCount > 0 && (
-            <div className="self-center">
-              <span className="text-xs font-semibold text-garden-ink bg-sage-50 border border-garden-line px-3 py-1 rounded-full">
-                {tWithVars(
-                  'capture.toast.moreCount',
-                  '+{{count}} more',
-                  { count: extraCount },
-                  locale
-                )}
-              </span>
-            </div>
-          )}
         </motion.div>
       )}
     </AnimatePresence>

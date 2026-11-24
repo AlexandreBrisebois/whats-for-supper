@@ -156,7 +156,7 @@ public sealed class UrlCaptureRecoveryPostgresTests
                 .UseNpgsql(settings.ConnectionString).AddInterceptors(fault).Options))
             {
                 var orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(),
-                    new WorkflowRepository(scope.ServiceProvider.GetRequiredService<IStorageProvider>()), uncertainDb, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(uncertainDb, scope.ServiceProvider.GetRequiredService<IStorageProvider>(), new RecipeApi.Services.SystemClock()));
+                    new WorkflowRepository(scope.ServiceProvider.GetRequiredService<IStorageProvider>()), uncertainDb);
                 await Assert.ThrowsAsync<IOException>(() => orchestrator.InitializeUrlCaptureAsync(workflowId));
                 var reconciled = await orchestrator.InitializeUrlCaptureAsync(workflowId);
                 Assert.Equal(workflowId, reconciled!.Id);

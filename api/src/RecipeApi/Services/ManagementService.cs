@@ -33,7 +33,8 @@ public partial class ManagementService(
     DemoModeOptions demoMode,
     RecoverySnapshotService recovery,
     DeploymentCalendar calendar,
-    IScheduleEventPublisher? publisher = null)
+    IScheduleEventPublisher? publisher = null,
+    FoodVocabularyStore? vocabulary = null)
 {
     private static readonly HashSet<string> RetiredRecipeBackupFields = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -68,8 +69,6 @@ public partial class ManagementService(
             await db.Database.ExecuteSqlRawAsync("LOCK TABLE recipes IN EXCLUSIVE MODE");
         if (await db.RecipePhysicalDeletions.AsNoTracking().AnyAsync(x => x.CompletedAt == null))
             throw new RecoveryBusyException("Complete or reconcile pending recipe physical retirement before backing up live recipe files.");
-        if (await db.RecipeFilePublications.AsNoTracking().AnyAsync(x => !x.Delivered))
-            throw new RecoveryBusyException("Complete or reconcile pending recipe file publication before backing up live recipe files.");
         // 1. Refresh current member values and membership, including an empty household.
         var dbMembers = await db.FamilyMembers.AsNoTracking().ToListAsync();
         await WriteJsonAsync(Path.Combine(DataRoot, "family-members.json"), dbMembers, CancellationToken.None);
@@ -78,7 +77,6 @@ public partial class ManagementService(
         var historyRecipeIds = await db.WeeklyHouseholdInterests.Select(h => h.RecipeId).Distinct().ToArrayAsync();
         var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking().Where(r => r.DeletedAt == null || historyRecipeIds.Contains(r.Id)).ToListAsync();
         int backedUpCount = 0;
-        var canonicalBackupIds = new List<Guid>();
         foreach (var recipe in recipes)
         {
             await using var pdfSource = await recipeStore.ReadSourcePdfAsync(recipe.Id);
@@ -166,7 +164,6 @@ public partial class ManagementService(
             // Refresh supported content, including cleared values, without touching media.
             await recipeStore.WriteRecipeJsonAsync(recipe.Id, SerializeRecipeBackup(recipe));
 
-            if (recipe.CanonicalContent is not null) canonicalBackupIds.Add(recipe.Id);
             backedUpCount++;
         }
 
@@ -286,7 +283,6 @@ public partial class ManagementService(
 
         await ExportSupperServingsAsync(CancellationToken.None);
         await ExportInterestAsync(Path.Combine(DataRoot, "weekly-household-interest.json"), CancellationToken.None, boundaryHeld: true);
-        await WriteCanonicalBackupInventoryAsync(canonicalBackupIds, CancellationToken.None);
         if (snapshotTransaction is not null) await snapshotTransaction.CommitAsync();
         logger.LogInformation("Backed up {Count} recipes", backedUpCount);
         return new { Message = $"Updated/Created {backedUpCount} metadata files. Weekly plans and calendar events also backed up.", FilesProcessed = backedUpCount };
@@ -808,13 +804,45 @@ public partial class ManagementService(
 
     private static string SerializeRecipeBackup(Recipe recipe)
     {
-        if (CanonicalRecipeContentStore.Read(recipe) is { } content)
-            return RecipeExportContent.WriteCurrent(new(recipe.Id, content, recipe.RawMetadata));
-        var root = JsonSerializer.SerializeToNode(recipe, _cycleIgnoreOptions)?.AsObject()
-            ?? throw new InvalidOperationException("Recipe backup serialization did not produce an object.");
-        RemoveRetiredRecipeFields(root);
-        root["backupContentVersion"] = 1;
-        return root.ToJsonString(_cycleIgnoreOptions);
+        if (StructuredRecipeContentStore.Read(recipe) is { } content)
+            return StructuredRecipeContentStore.ToSchemaOrgJson(content, recipe.RawMetadata, recipe.Name, recipe.Description);
+
+        if (!string.IsNullOrWhiteSpace(recipe.RawMetadata))
+        {
+            var cleaned = RemoveRetiredRecipeFields(recipe.RawMetadata);
+            try
+            {
+                using var doc = JsonDocument.Parse(cleaned);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    var node = JsonNode.Parse(cleaned)!.AsObject();
+                    node["@context"] ??= "https://schema.org/";
+                    node["@type"] ??= "Recipe";
+                    if (!string.IsNullOrWhiteSpace(recipe.Name) && node["name"] is null) node["name"] = recipe.Name;
+                    if (!string.IsNullOrWhiteSpace(recipe.Description) && node["description"] is null) node["description"] = recipe.Description;
+                    if (recipe.Servings is > 0) node["recipeYield"] = $"{recipe.Servings} portions";
+                    if (node["recipeIngredient"] is null && !string.IsNullOrWhiteSpace(recipe.Ingredients))
+                    {
+                        var list = RecipeService.DeserializeIngredients(recipe.Ingredients);
+                        if (list.Count > 0) node["recipeIngredient"] = JsonSerializer.SerializeToNode(list);
+                    }
+                    return node.ToJsonString(new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
+                }
+            }
+            catch (JsonException) { }
+        }
+
+        var fallback = new SchemaOrgRecipe
+        {
+            Context = "https://schema.org/",
+            Type = "Recipe",
+            Name = recipe.Name ?? string.Empty,
+            Description = recipe.Description,
+            RecipeYield = recipe.Servings is > 0 ? $"{recipe.Servings} portions" : null,
+            TotalTime = recipe.TotalTime,
+            RecipeIngredient = RecipeService.DeserializeIngredients(recipe.Ingredients)
+        };
+        return JsonSerializer.Serialize(fallback, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
     }
 
     private static string SerializeRecipeBackups(IEnumerable<Recipe> recipes)
@@ -868,8 +896,13 @@ public partial class ManagementService(
     public async Task<SeedResult> RestoreAsync(CancellationToken ct = default)
     {
         demoMode.EnsureManagementAvailable();
-        var canonicalInputs = await PreflightCanonicalSeedAsync(ct);
         var result = new SeedResult();
+        FoodVocabularyAuthority? vocabularyAuthority = null;
+        if (vocabulary is not null)
+        {
+            try { vocabularyAuthority = await vocabulary.CaptureAuthorityAsync(null, ct); }
+            catch (Exception ex) { logger.LogWarning(ex, "Food vocabulary unavailable during restore; restoring without food IDs."); }
+        }
         SupperServingsBackup? servingBackup = null;
         try { servingBackup = await ReadSupperServingsAsync(ct); }
         catch (Exception ex) when (ex is JsonException or InvalidDataException or IOException or UnauthorizedAccessException or FormatException)
@@ -955,9 +988,7 @@ public partial class ManagementService(
 
                 if (hasInfo)
                 {
-                    var info = canonicalInputs.TryGetValue(recipeId, out var canonicalInfo)
-                        ? JsonSerializer.Deserialize<RecipeInfo>(canonicalInfo.Info, JsonDefaults.CamelCase)
-                        : await recipeStore.ReadInfoAsync(recipeId, ct);
+                    var info = await recipeStore.ReadInfoAsync(recipeId, ct);
                     if (info != null)
                     {
                         if (info.RotationVersion is < 0 or > 1 ||
@@ -1009,12 +1040,8 @@ public partial class ManagementService(
 
                 if (hasJson)
                 {
-                    var json5 = canonicalInputs.TryGetValue(recipeId, out var canonicalJson)
-                        ? canonicalJson.Json : await recipeStore.ReadRecipeJsonAsync(recipeId, ct);
+                    var json5 = await recipeStore.ReadRecipeJsonAsync(recipeId, ct);
 
-                    // We avoid deserializing directly into the 'Recipe' model because properties like 'Ingredients'
-                    // in local files are often arrays/objects, whereas in the EF model they are raw JSON strings (mapped to JSONB).
-                    // This mismatch causes JsonException.
                     if (json5 != null)
                     {
                         var currentJson = RemoveRetiredRecipeFields(json5);
@@ -1025,9 +1052,13 @@ public partial class ManagementService(
 
                         logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeId);
 
-                        if (canonicalInputs.TryGetValue(recipeId, out var canonical))
+                        if (RecipeExportContent.IsCurrent(rootElement))
                         {
-                            SetCanonicalSeedContent(recipe, canonical.Content);
+                            var exported = RecipeExportContent.ReadCurrent(rootElement, recipeId);
+                            recipe.CanonicalContent = JsonSerializer.Serialize(exported.Content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                            recipe.Ingredients = JsonSerializer.Serialize(exported.Content.IngredientLines.Select(StructuredRecipeContentStore.Render), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                            recipe.RawMetadata = exported.RawMetadata is null ? null : RemoveRetiredRecipeFields(exported.RawMetadata);
+                            recipe.Servings = exported.Content.Servings;
                         }
                         else
                         {
@@ -1040,13 +1071,35 @@ public partial class ManagementService(
 
                             if (exportedContent is not null) recipe.Ingredients = exportedContent.Ingredients;
                             else if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
-                                recipe.Ingredients = ingProp.GetRawText();
+                                recipe.Ingredients = ingProp.GetRawText().Contains('\n') ? JsonSerializer.Serialize(ingProp) : ingProp.GetRawText();
                             else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
                                 recipe.Ingredients = legacyIngProp.GetRawText();
                             else if (rootElement.TryGetProperty("ingredients", out var serializedIngredients)
                                 && serializedIngredients.ValueKind == JsonValueKind.String
                                 && IsJsonArray(serializedIngredients.GetString()))
                                 recipe.Ingredients = serializedIngredients.GetString();
+
+                            if (!string.IsNullOrWhiteSpace(recipe.RawMetadata))
+                            {
+                                try
+                                {
+                                    var (derived, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+                                        recipeId, recipe.RawMetadata, recipe.SourceUrl, vocabularyAuthority, Guid.NewGuid(), "source");
+                                    if (exportedContent is not null)
+                                        derived = derived with { Servings = exportedContent.Servings };
+                                    else if (recipe.Servings is > 0 && derived.Servings is null)
+                                        derived = derived with { Servings = recipe.Servings };
+                                    recipe.CanonicalContent = JsonSerializer.Serialize(derived, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                                    recipe.FoodMappingEvidence = evidence;
+                                    recipe.Servings = derived.Servings;
+                                    if (string.IsNullOrWhiteSpace(recipe.Ingredients) && derived.IngredientLines.Count > 0)
+                                        recipe.Ingredients = JsonSerializer.Serialize(derived.IngredientLines.Select(StructuredRecipeContentStore.Render), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                                }
+                                catch (Exception ex) when (ex is JsonException or InvalidDataException)
+                                {
+                                    logger.LogWarning(ex, "Could not derive structured content during restore for {RecipeId}", recipeId);
+                                }
+                            }
                         }
 
                         if (string.IsNullOrEmpty(recipe.Category) && rootElement.TryGetProperty("category", out var catProp))
@@ -1124,20 +1177,7 @@ public partial class ManagementService(
                     logger.LogDebug("Updating existing recipe: {Id} ({Name}) (deleted={IsDeleted})",
                         recipe.Id, recipe.Name ?? "unknown", existing.DeletedAt.HasValue);
 
-                    // Current content has no implicit disk-over-live authority. An
-                    // identical seed is a no-write replay; any divergence needs the
-                    // captured publication owner rather than this household operation.
-                    if (recipe.CanonicalContent is not null || existing.CanonicalContent is not null)
-                    {
-                        if (!IdenticalCanonicalSeed(recipe, existing))
-                        {
-                            result.Errors++;
-                            canonicalSeedConflicts.Add(existing.Id);
-                        }
-                        if (rotationTransaction is not null) await rotationTransaction.CommitAsync(ct);
-                        continue;
-                    }
-                    // Update metadata
+                    // Update metadata and structured content cleanly (respecting guard_canonical_recipe_content trigger).
                     existing.Rating = recipe.Rating;
                     existing.Notes = recipe.Notes;
                     existing.Description = recipe.Description;
@@ -1145,8 +1185,11 @@ public partial class ManagementService(
                     existing.TotalTime = recipe.TotalTime;
                     existing.Ingredients = recipe.Ingredients;
                     existing.RawMetadata = recipe.RawMetadata;
+                    existing.CanonicalContent = recipe.CanonicalContent ?? existing.CanonicalContent;
+                    existing.FoodMappingEvidence = recipe.FoodMappingEvidence ?? existing.FoodMappingEvidence;
                     existing.Servings = recipe.Servings;
                     existing.ImageCount = recipe.ImageCount;
+                    existing.FinishedDishIndex = recipe.FinishedDishIndex;
                     existing.IsSynthesized = recipe.IsSynthesized;
                     existing.Category = recipe.Category;
                     existing.IsDiscoverable = recipe.IsDiscoverable;
@@ -1636,16 +1679,21 @@ public partial class ManagementService(
         {
             Guid? addedBy = null;
 
-            var recipeJson = await recipeStore.ReadRecipeJsonAsync(recipeId);
-            if (recipeJson != null)
+            var info = await recipeStore.ReadInfoAsync(recipeId);
+            addedBy = info?.AddedBy;
+
+            if (!addedBy.HasValue)
             {
-                var recipe = JsonSerializer.Deserialize<Recipe>(recipeJson, JsonDefaults.CamelCase);
-                addedBy = recipe?.AddedBy;
-            }
-            else
-            {
-                var info = await recipeStore.ReadInfoAsync(recipeId);
-                addedBy = info?.AddedBy;
+                var recipeJson = await recipeStore.ReadRecipeJsonAsync(recipeId);
+                if (recipeJson != null)
+                {
+                    try
+                    {
+                        var recipe = JsonSerializer.Deserialize<Recipe>(recipeJson, JsonDefaults.CamelCase);
+                        addedBy = recipe?.AddedBy;
+                    }
+                    catch (JsonException) { }
+                }
             }
 
             if (addedBy.HasValue && !existingMembers.Any(m => m.Id == addedBy.Value))

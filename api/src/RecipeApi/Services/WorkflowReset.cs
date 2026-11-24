@@ -26,7 +26,7 @@ internal static class WorkflowReset
         Guid? RecoveryOperationId, DateTimeOffset ScheduledAt);
 
     private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(
-        Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(value))));
+        Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(value))));
     private static TaskBefore Observe(WorkflowTask task) => new(task.TaskId, task.InstanceId, task.TaskName,
         task.ProcessorName, task.Payload, task.Status, task.DependsOn, task.RetryCount, task.ScheduledAt,
         task.ErrorMessage, task.StackTrace, task.Result, task.ChildLaunchIntentId, task.ResetIntentId, task.CreatedAt, task.UpdatedAt);
@@ -183,9 +183,8 @@ internal static class WorkflowReset
 
     internal static FoodVocabularyReference[] VocabularyReferences(WorkflowResetIntent intent)
     {
-        var request = Read(intent);
-        return RecipeFilePublicationStore.RetainedLaunchVocabularyReferences(intent.InstanceId,
-            request.WorkflowId, request.Parameters, request.Capture, RetainedTask(intent));
+        _ = Read(intent);
+        return [];
     }
 
 }

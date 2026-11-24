@@ -47,9 +47,10 @@ public class ExtractRecipeProcessorTests : IDisposable
             promptRepositoryMock.Object,
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
-            new RecipeFilePublicationStore(db, _recipeRepository, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(),
-                new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, _recipeRepository.StorageProvider, new SystemClock())),
-            "ExtractRecipe");
+            "ExtractRecipe",
+            db,
+            recipeRepository: _recipeRepository,
+            vocabulary: TestPublicationStore.Vocabulary(db, _recipeRepository.StorageProvider, new SystemClock()));
     }
 
     public void Dispose()
@@ -95,6 +96,12 @@ public class ExtractRecipeProcessorTests : IDisposable
         Assert.NotNull(exists);
         var savedJson = System.Text.Encoding.UTF8.GetString(exists);
         Assert.Contains("Test Recipe", savedJson);
+        using var doc = System.Text.Json.JsonDocument.Parse(savedJson);
+        Assert.Equal("https://schema.org/", doc.RootElement.GetProperty("@context").GetString());
+        Assert.Equal("Recipe", doc.RootElement.GetProperty("@type").GetString());
+        Assert.False(doc.RootElement.TryGetProperty("format", out _));
+        var publicationEntries = await _storage.FindAsync("recipes", ".publications");
+        Assert.Empty(publicationEntries);
     }
 
     [Fact]

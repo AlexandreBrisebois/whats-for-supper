@@ -3,8 +3,6 @@
 import { Layout } from '@/components/common/Layout';
 import { usePathname } from 'next/navigation';
 import { ROUTES } from '@/lib/constants/routes';
-import Link from 'next/link';
-import { X } from 'lucide-react';
 import { t } from '@/locales';
 import { useLocale } from '@/components/common/LocaleProvider';
 import { useScheduleStream } from '@/hooks/useScheduleStream';
@@ -17,7 +15,6 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useCaptureStore } from '@/store/captureStore';
 import { ToastContainer } from '@/components/ui';
 import { LanguageSwitchProposal } from '@/components/common/LanguageSwitchProposal';
-import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
 import { FeatureFlagProvider } from '@/components/featureFlags/FeatureFlagProvider';
 import { DemoResetBoundary } from '@/components/demo/DemoResetBoundary';
 import { DemoModeProvider } from '@/components/demo/DemoModeProvider';
@@ -26,7 +23,6 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const { locale } = useLocale();
   const visualViewportOffset = useVisualViewportOffset();
-  const pdfActive = usePdfCaptureStore((state) => Boolean(state.selection));
 
   // Mount SSE stream once at layout level — survives page navigation within the app shell
   useScheduleStream();
@@ -37,7 +33,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     (window as any).__captureStore = useCaptureStore;
   }, []);
 
-  // Capture owns a separate modal shell.
+  // Capture owns its open-cream Era 3 header and universal cancel control.
   const isCapture = pathname.startsWith(ROUTES.CAPTURE);
 
   // Map pathnames to titles
@@ -47,27 +43,12 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     if (path === ROUTES.PLANNER) return { title: t('navigation.planner', 'Planner', locale) };
     if (path === ROUTES.DISCOVERY) return { title: t('navigation.discover', 'Discovery', locale) };
     if (path === ROUTES.PROFILE) return { title: t('navigation.profile', 'Profile', locale) };
-    if (path.startsWith(ROUTES.CAPTURE)) {
-      return {
-        title: t('capture.addRecipe', 'Add a Recipe', locale),
-        rightAction: pdfActive ? undefined : (
-          <Link
-            href={ROUTES.HOME}
-            data-testid="capture-cancel-btn"
-            aria-label={t('capture.cancelCapture', 'Cancel capture', locale)}
-            className="flex h-12 w-12 items-center justify-center rounded-full text-ink-muted hover:bg-terracotta-50 hover:text-hearth-ink active:scale-95 transition-transform focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
-          >
-            <X size={20} aria-hidden="true" />
-          </Link>
-        ),
-      };
-    }
     return {};
   };
 
   const headerProps = getHeaderProps(pathname);
 
-  // Hide header for main app routes, keep for Capture (modal)
+  // Hide legacy glass header for main app routes and Capture (each owns its Era 3 header)
   const mainAppRoutes = [
     ROUTES.HOME,
     '/recipes',
@@ -76,7 +57,7 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
     ROUTES.PROFILE,
     '/profile/settings',
   ];
-  const hideHeader = mainAppRoutes.includes(pathname as any);
+  const hideHeader = isCapture || mainAppRoutes.includes(pathname as any);
 
   const isDiscovery = pathname === ROUTES.DISCOVERY;
   const isHome = pathname === ROUTES.HOME;

@@ -64,12 +64,11 @@ public sealed partial class RecipeSynthesisCanonicalTests
             });
         var prompts = new Mock<IPromptRepository>();
         prompts.Setup(x => x.GetPrompt(It.IsAny<PromptType>())).Returns("Generate the selected recipe response.");
-        var agent = new RecipeAgent(chat.Object, prompts.Object, new ConfigurationManager(), NullLogger<RecipeAgent>.Instance,
-            services.GetRequiredService<RecipeFilePublicationStore>(), "SynthesizeRecipe");
+        var agent = ActivatorUtilities.CreateInstance<RecipeAgent>(services, chat.Object, prompts.Object, "SynthesizeRecipe");
         var returned = await agent.ExecuteAsync(task, default);
         db.ChangeTracker.Clear();
         var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-        var canonical = CanonicalRecipeContentStore.Read(saved);
+        var canonical = StructuredRecipeContentStore.Read(saved);
         Assert.NotNull(canonical);
         Assert.True(saved.IsSynthesized);
         Assert.False(saved.IsReady);
@@ -79,12 +78,11 @@ public sealed partial class RecipeSynthesisCanonicalTests
             Assert.Equal(4, canonical.Servings);
             Assert.Equal("200", canonical.IngredientLines[0].Amount!.Value!.N);
             Assert.Equal("g", canonical.IngredientLines[0].Unit!.Text);
-            Assert.Equal(new[] { "200 g pasta", "salt to taste" }, canonical.IngredientLines.Select(CanonicalRecipeContentStore.Render));
+            Assert.Equal(new[] { "200 g pasta", "salt to taste" }, canonical.IngredientLines.Select(StructuredRecipeContentStore.Render));
             Assert.All(canonical.IngredientLines, line =>
             {
-                Assert.Equal("unknown", line.Provenance.Origin);
-                Assert.Null(line.Provenance.SourceRef);
-                Assert.Contains("amount", line.Provenance.ProtectedFields);
+                Assert.Equal("source", line.Provenance.Origin);
+                Assert.Equal(canonical.SourceRevision, line.Provenance.SourceRef);
             });
         }
         else
@@ -97,34 +95,33 @@ public sealed partial class RecipeSynthesisCanonicalTests
         var beforeReplay = calls;
         await agent.ExecuteAsync(task, default);
         Assert.Equal(beforeReplay, calls);
-        var publication = Assert.Single(await db.RecipeFilePublications.Where(x => x.OperationId == task.TaskId).ToListAsync());
-        var validate = typeof(RecipeAgent).GetMethod("ValidateOriginalHistory", BindingFlags.Static | BindingFlags.NonPublic)!;
-        Assert.Equal(id, validate.Invoke(null, ["SynthesizeRecipe", task.Payload,
-            JsonSerializer.Serialize(returned, JsonDefaults.CamelCase), new[] { publication }]));
-        var publisher = services.GetRequiredService<RecipeFilePublicationStore>();
-        var hero = Assert.Single(workflow.Tasks, x => x.ProcessorName == "GenerateHero");
-        var heroCapture = await publisher.CaptureForTaskAsync(hero, id);
-        var heroInfo = JsonSerializer.Deserialize<RecipeInfo>(heroCapture.Files["recipe.info"]!, JsonDefaults.CaseInsensitive)!;
-        await publisher.PublishAsync(heroCapture, new(null, heroInfo,
-            "GenerateHero\n" + JsonSerializer.Serialize(JsonSerializer.Deserialize<JsonElement>(hero.Payload)),
-            new Dictionary<string, byte[]?> { ["hero.webp"] = [1, 2, 3] }, SourceKind: "hero"), hero.TaskId);
+
+        var recipeStore = services.GetRequiredService<IRecipeStore>();
+        await using (var heroStream = new MemoryStream([1, 2, 3]))
+            await recipeStore.SaveHeroImageAsync(id, heroStream, default);
+
         var sync = Assert.Single(workflow.Tasks, x => x.ProcessorName == "SyncRecipe");
         var syncProcessor = ActivatorUtilities.CreateInstance<SyncRecipeProcessor>(services);
         var syncReturned = await syncProcessor.ExecuteAsync(sync, default);
         var validateSync = typeof(SyncRecipeProcessor).GetMethod("ValidateOriginalHistory", BindingFlags.Static | BindingFlags.NonPublic)!;
         Assert.Equal(id, validateSync.Invoke(null, [sync.Payload, JsonSerializer.Serialize(syncReturned, JsonDefaults.CamelCase),
-            workflow, sync.TaskId, true]));
+            workflow, sync.TaskId, false]));
+
         var categorization = Assert.Single(workflow.Tasks, x => x.ProcessorName == "CategorizeRecipe");
-        var categoryCapture = await publisher.CaptureForTaskAsync(categorization, id);
-        await publisher.PublishCategorizationAsync(categorization, categoryCapture,
-            new Recipe { Id = id, Name = saved.Name, Category = "Pasta" });
+        var catChat = new Mock<IChatClient>();
+        catChat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, """{"cuisineType":"Italian","mealTypes":["Supper"],"primaryMealType":"Supper","isVegetarian":true}""")));
+        var categorizeProcessor = ActivatorUtilities.CreateInstance<CategorizeRecipeProcessor>(services, catChat.Object);
+        await categorizeProcessor.ExecuteAsync(categorization, default);
         db.ChangeTracker.Clear();
         var completed = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-        Assert.Equal("Pasta", completed.Category);
+        Assert.Equal("Supper", completed.Category);
         Assert.Equal(saved.CanonicalContent, completed.CanonicalContent);
+
         var ready = Assert.Single(workflow.Tasks, x => x.ProcessorName == "RecipeReady");
-        Assert.True(await publisher.CompleteReadinessAsync(ready, id));
-        Assert.True(await publisher.CompleteReadinessAsync(ready, id));
+        var readyProcessor = ActivatorUtilities.CreateInstance<RecipeReadyProcessor>(services);
+        await readyProcessor.ExecuteAsync(ready, default);
+        await readyProcessor.ExecuteAsync(ready, default);
         db.ChangeTracker.Clear();
         var finalized = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
         Assert.True(finalized.IsReady);
@@ -164,7 +161,7 @@ public sealed partial class RecipeSynthesisCanonicalTests
             Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
             db.ChangeTracker.Clear();
             var human = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-            var protectedContent = CanonicalRecipeContentStore.Read(human)!;
+            var protectedContent = StructuredRecipeContentStore.Read(human)!;
             Assert.Null(protectedContent.IngredientLines[0].Amount);
             Assert.Contains("amount", protectedContent.IngredientLines[0].Provenance.ProtectedFields);
             var callsBeforeLateReplay = calls;
@@ -176,5 +173,111 @@ public sealed partial class RecipeSynthesisCanonicalTests
             Assert.Equal(human.RawMetadata, afterReplay.RawMetadata);
             Assert.Equal([1, 2, 3], await services.GetRequiredService<RecipeRepository>().StorageProvider.LoadAsync("recipes", $"{id}/hero.webp"));
         }
+    }
+
+    [Fact]
+    public async Task SynthesizeRecipe_TolerantSchemaOrgPayload_WritesSchemaOrgWithoutPublicationsAndResolvesBilingualFoodIds()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(
+            new Integration.DeploymentCalendarIntegrationTests.CalendarClock { UtcNow = DateTimeOffset.Parse("2026-10-12T16:00:00Z") }, new()
+            {
+                ["Calendar:TimeZone"] = "America/Toronto",
+                ["Tests:LocalRecipeStore"] = "true",
+                ["Tests:RealWorkflowOrchestrator"] = "true"
+            });
+        using var scope = factory.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var storage = services.GetRequiredService<IStorageProvider>();
+        await storage.SaveAsync("workflows", "goto-synthesis.yaml", await File.ReadAllTextAsync(Path.Combine(
+            Integration.DeploymentCalendarPostgresTests.RepositoryRoot(), "api/src/RecipeApi/Workflows/goto-synthesis.yaml")));
+        await services.GetRequiredService<FoodVocabularySeeder>().EnsureSeededAsync(default);
+
+        using var client = factory.CreateAuthenticatedClient();
+        client.DefaultRequestHeaders.Add("X-Family-Member-Id", factory.DefaultFamilyMemberId.ToString());
+        using var response = await client.PostAsJsonAsync("/api/recipes/describe", new { name = "Bilingual Beef Skillet", description = "Savory beef skillet" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data").GetProperty("id").GetGuid();
+
+        var db = services.GetRequiredService<RecipeDbContext>();
+        var workflow = await db.WorkflowInstances.Include(x => x.Tasks).SingleAsync(x => x.WorkflowId == "goto-synthesis");
+        var synthTask = Assert.Single(workflow.Tasks, x => x.ProcessorName == "SynthesizeRecipe");
+
+        const string tolerantSchemaOrg = """
+            {
+              "@context": "https://schema.org/",
+              "@type": "Recipe",
+              "name": "Bilingual Beef Skillet",
+              "recipeYield": "4 portions",
+              "recipeIngredient": [
+                "500 g ground beef",
+                "30 ml of All-Purpose Flour",
+                "2 c. à soupe d'huile d'olive",
+                "1 onion, diced",
+                "Salt"
+              ],
+              "supply": [
+                { "@type": "HowToSupply", "name": "Ground beef", "requiredQuantity": { "@type": "QuantitativeValue", "value": 500, "unitText": "g" } },
+                { "@type": "HowToSupply", "name": "All-purpose flour", "requiredQuantity": { "@type": "QuantitativeValue", "value": 30, "unitText": "ml" } },
+                { "@type": "HowToSupply", "name": "Olive oil", "requiredQuantity": { "@type": "QuantitativeValue", "value": 2, "unitText": "tablespoon" } },
+                { "@type": "HowToSupply", "name": "Onion", "requiredQuantity": { "@type": "QuantitativeValue", "value": 1 } },
+                { "@type": "HowToSupply", "name": "Salt" }
+              ],
+              "recipeInstructions": [
+                { "@type": "HowToSection", "name": "Cook", "itemListElement": [{ "@type": "HowToStep", "text": "Brown 500 g ground beef with 1 onion, diced." }] }
+              ]
+            }
+            """;
+
+        var chat = new Mock<IChatClient>();
+        chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<ChatMessage> messages, ChatOptions _, CancellationToken _) =>
+            {
+                var text = messages.Any(x => x.Text.StartsWith("Description: ", StringComparison.Ordinal))
+                    ? tolerantSchemaOrg
+                    : """{"cuisineType":"Canadian","mealTypes":["Supper"],"primaryMealType":"Supper","isVegetarian":false}""";
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant, text));
+            });
+        var prompts = new Mock<IPromptRepository>();
+        prompts.Setup(x => x.GetPrompt(It.IsAny<PromptType>())).Returns("Prompt");
+
+        var agent = ActivatorUtilities.CreateInstance<RecipeAgent>(services, chat.Object, prompts.Object, "SynthesizeRecipe");
+        await agent.ExecuteAsync(synthTask, default);
+
+        var recipeRepo = services.GetRequiredService<RecipeRepository>();
+        var rawDiskJson = await recipeRepo.GetRecipeJsonAsync(id, default);
+        using var diskDoc = JsonDocument.Parse(rawDiskJson);
+        Assert.Equal("https://schema.org/", diskDoc.RootElement.GetProperty("@context").GetString());
+        Assert.Equal("Recipe", diskDoc.RootElement.GetProperty("@type").GetString());
+        Assert.False(diskDoc.RootElement.TryGetProperty("format", out _));
+        Assert.False(diskDoc.RootElement.TryGetProperty("backupContentVersion", out _));
+
+        var root = services.GetRequiredService<RecipesRootResolver>().Root;
+        Assert.False(Directory.Exists(Path.Combine(root, id.ToString(), ".publications")));
+
+        db.ChangeTracker.Clear();
+        var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
+        var structured = StructuredRecipeContentStore.Read(saved);
+        Assert.NotNull(structured);
+        Assert.Equal(4, structured.Servings);
+        Assert.Equal(5, structured.IngredientLines.Count);
+        Assert.Equal("500", structured.IngredientLines[0].Amount?.Value?.N);
+        Assert.Equal("30", structured.IngredientLines[1].Amount?.Value?.N);
+        Assert.Equal("2", structured.IngredientLines[2].Amount?.Value?.N);
+        Assert.Equal("1", structured.IngredientLines[3].Amount?.Value?.N);
+        Assert.Null(structured.IngredientLines[4].Amount);
+        Assert.Contains(structured.IngredientLines, l => l.Shopping.FoodId is not null);
+
+        var categorizeTask = Assert.Single(workflow.Tasks, x => x.ProcessorName == "CategorizeRecipe");
+        var categorizeProcessor = ActivatorUtilities.CreateInstance<CategorizeRecipeProcessor>(services, chat.Object);
+        await categorizeProcessor.ExecuteAsync(categorizeTask, default);
+
+        var readyTask = Assert.Single(workflow.Tasks, x => x.ProcessorName == "RecipeReady");
+        var readyProcessor = ActivatorUtilities.CreateInstance<RecipeReadyProcessor>(services);
+        await readyProcessor.ExecuteAsync(readyTask, default);
+
+        db.ChangeTracker.Clear();
+        var finalized = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
+        Assert.True(finalized.IsReady);
+        Assert.Equal("Canadian", finalized.CuisineType);
     }
 }

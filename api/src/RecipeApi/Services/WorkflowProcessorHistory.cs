@@ -45,7 +45,7 @@ internal static class WorkflowProcessorHistory
     }
     private sealed record Outcome(int Version, Guid Id, string RequestHash, string Disposition,
         bool ProcessorReturned, string? ReturnedResult, TaskFacts Task, Guid? SelectedChildLaunchIntentId,
-        RecipeFilePublication[] Publications, CanonicalRecipeOperation[] CanonicalOperations,
+        RecipeFilePublication[] Publications, StructuredRecipeOperation[] CanonicalOperations,
         ChildFacts? ChildCommand = null);
 
     private static TaskFacts Observe(WorkflowTask task) => new(task.TaskId, task.InstanceId, task.TaskName,
@@ -54,7 +54,7 @@ internal static class WorkflowProcessorHistory
     private static ChildFacts Observe(WorkflowChildIntent child) => new(child.Id, child.ParentTaskId,
         child.Request, child.RequestHash, child.Prepared, child.PreparedHash, child.AcceptedAt, child.CreatedAt);
     private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(
-        Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(value))));
+        Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(value))));
 
     // Enlists with the Pending -> Processing save. No processor runs until that
     // save is acknowledged. Unacknowledged admission remains an unresolved fact.
@@ -180,24 +180,19 @@ internal static class WorkflowProcessorHistory
                 && publication.RecipeId != Guid.Empty && publications.Add(publication.RecipeId)
                 && publication.CreatedAt != default);
             ValidateRecipeAssociation(request, publication.RecipeId);
-            var producer = RecipeFilePublicationStore.ValidateRecoveryJournal(publication);
-            // Older journals without this observation stay unqualified; a present
-            // original producer must agree with the invocation, not today's task.
-            Require(producer is null || producer == request.Task.ProcessorName + "\n"
-                + CanonicalRecipeContentStore.NormalizeJson(request.Task.Payload));
         }
         if (outcome.ProcessorReturned && request.Task.ProcessorName == "ConvertPdf")
             ValidateRecipeAssociation(request, Processors.PdfConversionProcessor.ValidateOriginalHistory(
-                request.Task.Payload, outcome.ReturnedResult, outcome.Publications));
+                request.Task.Payload, outcome.ReturnedResult));
         if (outcome.ProcessorReturned && request.Task.ProcessorName == "RecipeReady")
             ValidateRecipeAssociation(request, Processors.RecipeReadyProcessor.ValidateOriginalHistory(
                 request.Task.Payload, outcome.ReturnedResult, outcome.Publications));
         if (outcome.ProcessorReturned && request.Task.ProcessorName == "FetchUrlContent")
             ValidateRecipeAssociation(request, Agents.WebAcquisitionAgent.ValidateOriginalHistory(
-                request.Task.Payload, outcome.ReturnedResult, outcome.Publications));
+                request.Task.Payload, outcome.ReturnedResult));
         if (outcome.ProcessorReturned && request.Task.ProcessorName is "ExtractRecipe" or "GenerateDescription" or "SynthesizeRecipe")
             ValidateRecipeAssociation(request, Agents.RecipeAgent.ValidateOriginalHistory(
-                request.Task.ProcessorName, request.Task.Payload, outcome.ReturnedResult, outcome.Publications));
+                request.Task.ProcessorName, request.Task.Payload, outcome.ReturnedResult));
         if (outcome.ProcessorReturned && request.Task.ProcessorName == "GenerateHero")
             ValidateRecipeAssociation(request, Agents.RecipeHeroAgent.ValidateOriginalHistory(
                 request.Task.Payload, outcome.ReturnedResult, outcome.Publications));
@@ -234,7 +229,7 @@ internal static class WorkflowProcessorHistory
                 && operation.CreatedAt != default && operation.InputHash is { Length: 64 }
                 && operation.InputHash.All(Uri.IsHexDigit));
             ValidateRecipeAssociation(request, operation.RecipeId);
-            var result = CanonicalRecipeContentStore.ReadValidatedRetainedResult(operation);
+            var result = StructuredRecipeContentStore.ReadValidatedRetainedResult(operation);
             Require(result.Content is not null && result.CreatedIds is not null);
             // Validate retained content without comparing it to a current recipe.
             // This does not supply missing original request/evidence/dictionary
@@ -297,14 +292,11 @@ internal static class WorkflowProcessorHistory
     internal static FoodVocabularyReference[] VocabularyReferences(WorkflowProcessorAttempt attempt)
     {
         Validate(attempt);
-        var request = ReadObservation<Request>(attempt.Request);
-        var references = RecipeFilePublicationStore.RetainedLaunchVocabularyReferences(attempt.InstanceId,
-            request.WorkflowId, request.Parameters, request.Capture, RetainedTask(attempt)).ToList();
+        var references = new List<FoodVocabularyReference>();
         if (attempt.Outcome is { } raw)
         {
             var outcome = ReadObservation<Outcome>(raw);
-            references.AddRange(outcome.Publications.SelectMany(RecipeFilePublicationStore.VocabularyReferences));
-            references.AddRange(outcome.CanonicalOperations.SelectMany(CanonicalRecipeContentStore.VocabularyReferences));
+            references.AddRange(outcome.CanonicalOperations.SelectMany(StructuredRecipeContentStore.VocabularyReferences));
             if (outcome.ChildCommand is { } child)
                 references.AddRange(WorkflowOrchestrator.VocabularyReferences(child.Restore(), [RetainedTask(attempt)]));
         }

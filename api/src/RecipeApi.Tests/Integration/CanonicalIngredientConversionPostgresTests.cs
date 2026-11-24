@@ -89,7 +89,7 @@ public class CanonicalIngredientConversionPostgresTests(ITestOutputHelper output
             await using var factory = await TomorrowPushPostgresTests.CreateFactory(settings);
             await TomorrowPushPostgresTests.Seed(factory);
             var id = TomorrowPushPostgresTests.Selected;
-            CanonicalRecipeContent converted;
+            StructuredRecipeContent converted;
             using (var scope = factory.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;
@@ -98,9 +98,9 @@ public class CanonicalIngredientConversionPostgresTests(ITestOutputHelper output
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == id);
                 // Explicit forward conversion sets up saved IDs; neither GET nor
                 // the ordinary edit request may silently convert legacy content.
-                var store = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, services.GetRequiredService<IStorageProvider>(), services.GetRequiredService<IClock>(), services));
-                converted = (await store.ConvertAsync(id, CanonicalRecipeContentStore.InspectContentRevision(recipe),
-                    CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid())).Content;
+                var store = new StructuredRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, services.GetRequiredService<IStorageProvider>(), services.GetRequiredService<IClock>(), services));
+                converted = (await store.ConvertAsync(id, StructuredRecipeContentStore.InspectContentRevision(recipe),
+                    StructuredRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid())).Content;
             }
             using var client = factory.CreateAuthenticatedClient();
             var old = Assert.Single(converted.IngredientLines);
@@ -115,7 +115,7 @@ public class CanonicalIngredientConversionPostgresTests(ITestOutputHelper output
             {
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-                var current = CanonicalRecipeContentStore.Read(saved)!;
+                var current = StructuredRecipeContentStore.Read(saved)!;
                 Assert.Equal(old.Id, Assert.Single(current.IngredientLines).Id);
                 Assert.Equal("2", current.IngredientLines[0].AmountText);
                 Assert.NotEqual(converted.ContentRevision, current.ContentRevision);

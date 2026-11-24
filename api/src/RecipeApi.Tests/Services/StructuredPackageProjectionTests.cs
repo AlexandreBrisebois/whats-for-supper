@@ -17,7 +17,7 @@ public sealed class StructuredPackageProjectionTests
             Unit = unit is null ? null : new(unit, null), Scaling = scaling,
             Package = package ? new(new("cans", null), new(QuantityMath.Parse(capacity)!, new("g", null)), "net") : null,
             Shopping = new("tomatoes", null, null), Provenance = new("human", "retained-source", ["package"]) };
-        var content = new CanonicalRecipeContent(2, "content", "source", basis, [row], []);
+        var content = new StructuredRecipeContent(2, "content", "source", basis, [row], []);
         return (new Recipe { Servings = basis, CanonicalContent = JsonSerializer.Serialize(content, Json),
             Ingredients = "[\"original source tomatoes\"]", RawMetadata = "{\"recipeIngredient\":[\"original source tomatoes\"]}" }, row);
     }
@@ -30,7 +30,7 @@ public sealed class StructuredPackageProjectionTests
         var line = Assert.Single(SupperIngredientProjection.Read(recipe, 8));
         Assert.Equal($"2 cans tomatoes ({capacity} g / cans; net)", line.OriginalText);
         Assert.Equal($"4 cans tomatoes ({capacity} g / cans; net)", line.DisplayText);
-        Assert.Equal(line.OriginalText, CanonicalRecipeContentStore.Render(row));
+        Assert.Equal(line.OriginalText, StructuredRecipeContentStore.Render(row));
         Assert.Equal(QuantityMath.Parse("4"), line.GroceryObservation.Quantity);
         Assert.Equal(row.Package, line.GroceryPackage);
         Assert.Equal("tomatoes", line.Name);
@@ -79,7 +79,7 @@ public sealed class StructuredPackageProjectionTests
     {
         var (recipe, row) = Source(package: false);
         var line = Assert.Single(SupperIngredientProjection.Read(recipe, 8));
-        Assert.Equal("2 cans tomatoes", CanonicalRecipeContentStore.Render(row));
+        Assert.Equal("2 cans tomatoes", StructuredRecipeContentStore.Render(row));
         Assert.Equal("2 cans tomatoes", line.OriginalText);
         Assert.Equal("4 cans tomatoes", line.DisplayText);
         Assert.Null(line.GroceryPackage);
@@ -88,7 +88,7 @@ public sealed class StructuredPackageProjectionTests
     public void ExistingValidatedPackageCountSpanRemainsQuantityOnlyWithoutInjectingCapacityCaption()
     {
         var (recipe, row) = Source();
-        var content = CanonicalRecipeContentStore.Read(recipe)!;
+        var content = StructuredRecipeContentStore.Read(recipe)!;
         var stepId = Guid.NewGuid();
         const string text = "Add all 2 cans tomatoes from 400 g cans.";
         var binding = JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), ingredientLineId = row.Id, stepId,

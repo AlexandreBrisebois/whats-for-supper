@@ -9,7 +9,7 @@ internal static class RecipeReportRepairIntent
 {
     internal sealed record Command(int Version, Guid Id, Guid RecipeId, string WorkflowId,
         Dictionary<string, string> Parameters, Prepared? Prepared);
-    internal sealed record Prepared(string Capture, DateTimeOffset CreatedAt, TaskInput[] Tasks);
+    internal sealed record Prepared(string? Capture, DateTimeOffset CreatedAt, TaskInput[] Tasks);
     internal sealed record TaskInput(Guid Id, string Name, string Processor, string? Payload, string[] DependsOn);
 
     internal static RecipeRepairIntent Create(Guid id, Guid recipeId, string workflowId,
@@ -18,10 +18,9 @@ internal static class RecipeReportRepairIntent
         Prepared? snapshot = null;
         if (prepared is not null)
         {
-            RecipeFilePublicationStore.ValidateExecutionLaunch(prepared);
             if (prepared.Id != id || prepared.WorkflowId != workflowId || !SameParameters(prepared.Parameters, parameters))
                 throw new InvalidDataException("Prepared repair differs from the requested command.");
-            snapshot = new(prepared.RecipePublicationCapture!, prepared.CreatedAt, prepared.Tasks.Select(x =>
+            snapshot = new(prepared.RecipePublicationCapture, prepared.CreatedAt, prepared.Tasks.Select(x =>
                 new TaskInput(x.TaskId, x.TaskName, x.ProcessorName, x.Payload, x.DependsOn)).ToArray());
         }
         var payload = JsonSerializer.Serialize(new Command(1, id, recipeId, workflowId, parameters, snapshot));
@@ -68,7 +67,6 @@ internal static class RecipeReportRepairIntent
                 UpdatedAt = prepared.CreatedAt
             }).ToList()
         };
-        RecipeFilePublicationStore.ValidateExecutionLaunch(instance);
         return instance;
     }
 
@@ -76,17 +74,14 @@ internal static class RecipeReportRepairIntent
     {
         var command = Read(intent);
         var original = Initialize(intent, command.WorkflowId, command.Parameters);
-        RecipeFilePublicationStore.ValidateExecutionLaunch(accepted);
         if (accepted.Id != original.Id || accepted.WorkflowId != original.WorkflowId
-            || !SameParameters(accepted.Parameters, command.Parameters)
-            || CanonicalRecipeContentStore.NormalizeJson(accepted.RecipePublicationCapture)
-                != CanonicalRecipeContentStore.NormalizeJson(original.RecipePublicationCapture))
+            || !SameParameters(accepted.Parameters, command.Parameters))
             throw new InvalidDataException("Accepted repair differs from its original saved command.");
     }
 
     internal static bool SameParameters(string? json, Dictionary<string, string> parameters) =>
-        CanonicalRecipeContentStore.NormalizeJson(json) == CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(parameters));
-    private static string Hash(string payload) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(payload))));
+        StructuredRecipeContentStore.NormalizeJson(json) == StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(parameters));
+    private static string Hash(string payload) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(payload))));
     internal static FoodVocabularyReference[] VocabularyReferences(RecipeRepairIntent intent)
     {
         var json = new JsonSerializerOptions
@@ -94,11 +89,10 @@ internal static class RecipeReportRepairIntent
             RespectRequiredConstructorParameters = true,
             UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
         };
-        var command = WorkflowProcessorHistory.ReadObservation<Command>(intent.Payload, json);
+        _ = WorkflowProcessorHistory.ReadObservation<Command>(intent.Payload, json);
         Read(intent);
         if (intent.CreatedAt == default) throw new InvalidDataException("Retained repair time is absent.");
-        return command.Prepared is null ? [] : RecipeFilePublicationStore.VocabularyReferences(
-            Initialize(intent, command.WorkflowId, command.Parameters));
+        return [];
     }
 
 }

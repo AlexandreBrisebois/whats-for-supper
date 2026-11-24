@@ -18,7 +18,7 @@ public class WorkflowProcessorTests : IDisposable
 
     public WorkflowProcessorTests()
     {
-        _orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(_db, _storage, new RecipeApi.Services.SystemClock()));
+        _orchestrator = new WorkflowOrchestrator(new RecipeApi.Services.SystemClock(), new WorkflowRepository(_storage), _db);
     }
 
     public void Dispose()
@@ -124,7 +124,6 @@ public class WorkflowProcessorTests : IDisposable
         task.ProcessorName = "StartWorkflow";
         task.Status = RecipeApi.Models.TaskStatus.Processing;
         var parent = new WorkflowInstance { Id = task.InstanceId, WorkflowId = "parent", Parameters = "{}", Tasks = [task] };
-        await TestPublicationStore.Create(_db, _storage, new SystemClock()).CaptureLaunchAsync(parent);
         _db.WorkflowInstances.Add(parent);
         await _db.SaveChangesAsync();
     }

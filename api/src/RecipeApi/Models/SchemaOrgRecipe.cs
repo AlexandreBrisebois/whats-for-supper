@@ -1,11 +1,10 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace RecipeApi.Models;
 
 /// <summary>
 /// Represents a Schema.org/Recipe object.
-/// Note: This structure may be handled/stored as a raw JSON string in the future
-/// (e.g., if migrated from disk-based files to database JSONB columns).
 /// </summary>
 public class SchemaOrgRecipe
 {
@@ -17,6 +16,9 @@ public class SchemaOrgRecipe
 
     [JsonPropertyName("name")]
     public string? Name { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
 
     [JsonPropertyName("recipeYield")]
     public string? RecipeYield { get; set; }
@@ -38,6 +40,9 @@ public class SchemaOrgRecipe
 
     [JsonPropertyName("suggestedPairing")]
     public string? SuggestedPairing { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? AdditionalProperties { get; set; }
 }
 
 public class HowToSection

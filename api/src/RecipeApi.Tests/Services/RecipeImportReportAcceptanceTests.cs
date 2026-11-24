@@ -77,8 +77,7 @@ public sealed class RecipeImportReportAcceptanceTests
                   recipeId: "{{recipeId}}"
             """);
         var clock = new SystemClock();
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-            TestPublicationStore.Create(db, storage, clock));
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
         Guid? associatedAtLaunchSave = null;
         db.AfterLaunchSave = async () =>
         {

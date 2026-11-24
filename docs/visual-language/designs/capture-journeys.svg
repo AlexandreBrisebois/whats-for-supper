@@ -30,8 +30,8 @@
   <rect x="1096" y="24" width="304" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
   <text x="1248" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">4 Capture Journeys · Save &amp; Back to Life</text>
 
-  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Capture &amp; Import Journeys — From Source to Trusted Library</text>
-  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">Save-and-forget async capture with immediate return to Home, paired human duplicate review, and recoverable failures — zero dead ends.</text>
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Capture &amp; Import Journeys: From Source to Trusted Library</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">Save-and-forget async capture with immediate return to Home, paired human duplicate review, and recoverable failures with zero dead ends.</text>
   <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
 
   <!-- ====================================================================== -->
@@ -205,10 +205,10 @@
       <rect x="16" y="14" width="114" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
       <text x="73" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">1-TAP CLEANUP</text>
       <text x="16" y="54" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Human decides</text>
-      <text x="16" y="74" font-size="12" fill="#A44A37" font-weight="600">• Keep existing · discard new</text>
-      <text x="16" y="92" font-size="12" fill="#28231F">• Keep both (clears flag)</text>
-      <text x="16" y="110" font-size="12" fill="#28231F">• Keep new · archive existing</text>
-      <text x="16" y="129" font-size="11.5" fill="#6E645B">Discarded copy → Recycle Bin.</text>
+      <text x="16" y="74" font-size="12" fill="#28231F" font-weight="600">• Keep both (clears flag)</text>
+      <text x="16" y="92" font-size="12" fill="#A44A37" font-weight="600">• Keep existing · move new to Bin</text>
+      <text x="16" y="110" font-size="12" fill="#A44A37" font-weight="600">• Keep new · move existing to Bin</text>
+      <text x="16" y="129" font-size="11.5" fill="#6E645B">Moved copy → Recycle Bin.</text>
     </g>
   </g>
 
@@ -258,7 +258,7 @@
       <text x="20" y="94" font-size="12.5" fill="#6E645B">reassures the household and offers 1-tap “+ Add another” without a 10s timer lock.</text>
 
       <text x="20" y="124" font-size="13.5" font-weight="800" fill="#28231F" class="heading">2. One Exit Grammar (Locked × · Zero Dead Ends)</text>
-      <text x="20" y="143" font-size="12.5" fill="#6E645B">Every capture state — including PDF Confirmation — keeps the locked top-right 48px ×</text>
+      <text x="20" y="143" font-size="12.5" fill="#6E645B">Every capture state, including PDF Confirmation, keeps the locked top-right 48px ×</text>
       <text x="20" y="160" font-size="12.5" fill="#6E645B">cancel control. No giant bottom Cancel buttons or trapped standalone-PWA screens.</text>
 
       <text x="20" y="190" font-size="13.5" font-weight="800" fill="#28231F" class="heading">3. Honest Provenance &amp; Human-in-the-Loop Duplicates</text>
@@ -271,5 +271,5 @@
   </g>
 
   <!-- Footer -->
-  <text x="40" y="1258" font-size="12.5" fill="#6E645B">Capture &amp; Import Journeys · Exploration &amp; design board — does not authorize code changes until approved via OpenSpec.</text>
+  <text x="40" y="1258" font-size="12.5" fill="#6E645B">Capture &amp; Import Journeys · Exploration &amp; design board (does not authorize code changes until approved via OpenSpec).</text>
 </svg>

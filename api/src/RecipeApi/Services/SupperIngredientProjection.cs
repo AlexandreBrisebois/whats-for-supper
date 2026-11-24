@@ -8,7 +8,7 @@ public static class SupperIngredientProjection
 {
     public static List<IngredientProjectionLineDto> Read(Recipe recipe, int? target)
     {
-        if (CanonicalRecipeContentStore.Read(recipe) is { } canonical)
+        if (StructuredRecipeContentStore.Read(recipe) is { } canonical)
         {
             if (canonical.ContentSchemaVersion != 2)
                 throw new InvalidDataException("Unsupported canonical recipe content schema version.");
@@ -19,7 +19,7 @@ public static class SupperIngredientProjection
         throw new InvalidDataException("Recipe requires structured v2 canonical content.");
     }
 
-    private static List<IngredientProjectionLineDto> ReadCanonical(CanonicalRecipeContent content, int? target)
+    private static List<IngredientProjectionLineDto> ReadCanonical(StructuredRecipeContent content, int? target)
     {
         return content.IngredientLines.Select(row =>
         {
@@ -40,13 +40,13 @@ public static class SupperIngredientProjection
                 }),
                 GroceryPackage = row.Package,
                 GroceryFoodId = row.Shopping.FoodId,
-                OriginalText = CanonicalRecipeContentStore.Render(row),
+                OriginalText = StructuredRecipeContentStore.Render(row),
                 DisplayText = row.Package is null
                     ? target is not null && quantity is not null
-                        ? string.Join(" ", new[] { CanonicalRecipeContentStore.Format(quantity), row.Unit?.Text, row.Shopping.Name }.Where(x => x is not null))
+                        ? string.Join(" ", new[] { StructuredRecipeContentStore.Format(quantity), row.Unit?.Text, row.Shopping.Name }.Where(x => x is not null))
                         : null
-                    : quantity is null ? CanonicalRecipeContentStore.Render(row)
-                    : CanonicalRecipeContentStore.Render(row with { Amount = quantity, AmountText = null }),
+                    : quantity is null ? StructuredRecipeContentStore.Render(row)
+                    : StructuredRecipeContentStore.Render(row with { Amount = quantity, AmountText = null }),
                 Name = row.Shopping.Name,
                 UnitText = row.Unit?.Text,
                 Quantity = number,

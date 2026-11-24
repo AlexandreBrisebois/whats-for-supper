@@ -179,14 +179,11 @@ public partial class SupperServingsPostgresTests
             db.FamilySettings.Add(new FamilySetting {Key=SupperServingsService.DefaultKey,Value=JsonSerializer.SerializeToElement(new {servings=4})});await db.SaveChangesAsync();
             await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12),default);
             var storage=new RecipeApi.Infrastructure.InMemoryStorageProvider();var repository=new RecipeRepository(storage);
-            var export=new RecipeApi.Infrastructure.CanonicalRecipeExport(recipe.Id,CanonicalRecipeContentStore.Read(recipe)!,recipe.RawMetadata);
+            var export=new RecipeApi.Infrastructure.StructuredRecipeExport(recipe.Id,StructuredRecipeContentStore.Read(recipe)!,recipe.RawMetadata);
             await storage.SaveAsync("recipes",$"{recipe.Id}/recipe.info",JsonSerializer.Serialize(new RecipeInfo {Id=recipe.Id,Name=recipe.Name,ImageCount=0},RecipeApi.Infrastructure.JsonDefaults.CamelCase));
             await storage.SaveAsync("recipes",$"{recipe.Id}/recipe.json",RecipeApi.Infrastructure.RecipeExportContent.WriteCurrent(export));
             var sync=new RecipeApi.Services.Processors.SyncRecipeProcessor(scope.ServiceProvider.GetRequiredService<IClock>(),db,repository,scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(),scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),Microsoft.Extensions.Logging.Abstractions.NullLogger<RecipeApi.Services.Processors.SyncRecipeProcessor>.Instance, RecipeApi.Tests.Infrastructure.TestPublicationStore.Vocabulary(db, storage, scope.ServiceProvider.GetRequiredService<IClock>(), scope.ServiceProvider));
             var task=await RecipeApi.Tests.Services.RecipeServingsTests.ProducerTask(db,repository,recipe.Id);
-            var owner=RecipeApi.Tests.Services.RecipeServingsTests.PublicationStore(db,repository);
-            await owner.PublishAsync(await owner.CaptureAsync(recipe.Id),new RecipePublicationCandidate(
-                RecipeApi.Infrastructure.RecipeExportContent.WriteCurrent(export),new RecipeInfo {Id=recipe.Id,Name=recipe.Name,ImageCount=0},SourceKind:"canonical-export"),task.TaskId);
             recipe.Servings=4;recipe.CanonicalContent=BuildCanonicalContent([("pasta","200","g")],4,recipe.CanonicalContent);await db.SaveChangesAsync();
             await sync.ExecuteAsync(task,default);
             db.ChangeTracker.Clear();Assert.Equal(4,(await db.Recipes.SingleAsync()).Servings);var plan=await db.WeeklyPlans.SingleAsync();Assert.Equal("updating",plan.ServingRefreshStatus);Assert.Contains("400",plan.GroceryItems);Assert.Single(await db.WorkflowTasks.Where(x=>x.ProcessorName=="RefreshSupperGroceries").ToListAsync());

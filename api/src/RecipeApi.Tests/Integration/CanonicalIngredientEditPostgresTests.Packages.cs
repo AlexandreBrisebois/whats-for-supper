@@ -78,7 +78,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             using var savedScope = factory.Services.CreateScope();
             var savedDb = savedScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var savedRecipe = await savedDb.Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id);
-            var content = CanonicalRecipeContentStore.Read(savedRecipe)!;
+            var content = StructuredRecipeContentStore.Read(savedRecipe)!;
             Assert.NotEqual(before.ContentRevision, content.ContentRevision);
             Assert.Equal(before.SourceRevision, content.SourceRevision);
             Assert.Equal(before.Servings, content.Servings);
@@ -108,10 +108,10 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         Shopping = new("tomatoes", null, null)
     };
 
-    private static async Task<CanonicalRecipeContent> ReadDeclaredPackageContent(TestWebApplicationFactory factory)
+    private static async Task<StructuredRecipeContent> ReadDeclaredPackageContent(TestWebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope();
-        return CanonicalRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
+        return StructuredRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
             .Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id))!;
     }
 
@@ -123,8 +123,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             await db.CanonicalRecipeOperations.CountAsync());
     }
 
-    private static async Task<CanonicalRecipeContent> SaveDeclaredPackageRows(TestWebApplicationFactory factory,
-        CanonicalRecipeContent current, params RecipeIngredientLineInput[] rows)
+    private static async Task<StructuredRecipeContent> SaveDeclaredPackageRows(TestWebApplicationFactory factory,
+        StructuredRecipeContent current, params RecipeIngredientLineInput[] rows)
     {
         using var client = factory.CreateAuthenticatedClient();
         using var response = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
@@ -136,7 +136,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         return await ReadDeclaredPackageContent(factory);
     }
 
-    private static void AssertDeclaredPackageUnrelatedFacts(CanonicalRecipeContent before, CanonicalRecipeContent current)
+    private static void AssertDeclaredPackageUnrelatedFacts(StructuredRecipeContent before, StructuredRecipeContent current)
     {
         Assert.Equal(before.SourceRevision, current.SourceRevision);
         Assert.Equal(before.Servings, current.Servings);
@@ -251,7 +251,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 var recipe = await db.Recipes.SingleAsync(recipe => recipe.Id == Id);
                 recipe.CanonicalContent = JsonSerializer.Serialize(seeded, Json);
-                recipe.Ingredients = JsonSerializer.Serialize(seeded.IngredientLines.Select(CanonicalRecipeContentStore.Render), Json);
+                recipe.Ingredients = JsonSerializer.Serialize(seeded.IngredientLines.Select(StructuredRecipeContentStore.Render), Json);
                 await db.SaveChangesAsync();
             }
             var current = await SaveDeclaredPackageRows(factory, seeded,
@@ -499,7 +499,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 metadataBefore = recipe.RawMetadata;
                 sourceUrlBefore = recipe.SourceUrl;
                 recipe.CanonicalContent = JsonSerializer.Serialize(baseline, Json);
-                recipe.Ingredients = JsonSerializer.Serialize(baseline.IngredientLines.Select(CanonicalRecipeContentStore.Render), Json);
+                recipe.Ingredients = JsonSerializer.Serialize(baseline.IngredientLines.Select(StructuredRecipeContentStore.Render), Json);
                 db.SupperServings.Add(new RecipeApi.Models.SupperServing { Date = monday.AddDays(3), OverrideServings = 8 });
                 await db.SaveChangesAsync();
                 await services.GetRequiredService<SupperProjectionInvalidation>().EnlistRecipeAsync(Id, default);

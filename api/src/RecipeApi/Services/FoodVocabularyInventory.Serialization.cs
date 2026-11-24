@@ -166,7 +166,7 @@ public static partial class FoodVocabularyInventoryQualification
                 }).ToArray();
             }
             var recipes = Read<FoodVocabularyRecipeObservation>("recipe", ["recipeId", "canonicalContent", "foodMappingEvidence"], x => x.RecipeId.ToString("D"));
-            var operations = Read<CanonicalRecipeOperation>("canonical-operation", ["recipeId", "operationId", "inputHash", "originalRequest", "result", "createdAt"], x => $"{x.RecipeId:D}/{x.OperationId:D}");
+            var operations = Read<StructuredRecipeOperation>("canonical-operation", ["recipeId", "operationId", "inputHash", "originalRequest", "result", "createdAt"], x => $"{x.RecipeId:D}/{x.OperationId:D}");
             var publications = Read<RecipeFilePublication>("publication", ["recipeId", "operationId", "inputHash", "payload", "resultHash", "delivered", "createdAt"], x => $"{x.RecipeId:D}/{x.OperationId:D}");
             var workflows = Read<WorkflowObservation>("workflow", ["id", "workflowId", "status", "parameters", "recipePublicationCapture", "createdAt", "updatedAt", "tasks"], x => x.Id.ToString("D")).Select(x => x.Restore()).ToArray();
             var launches = Read<WorkflowLaunchIntent>("launch", ["id", "request", "requestHash", "prepared", "preparedHash", "acceptedAt", "createdAt"], x => x.Id.ToString("D"));

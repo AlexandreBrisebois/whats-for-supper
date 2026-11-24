@@ -71,7 +71,7 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests(ITestOutputHelp
     {
         var existing = string.IsNullOrWhiteSpace(existingCanonicalContent)
             ? null
-            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, CanonicalJson);
+            : JsonSerializer.Deserialize<StructuredRecipeContent>(existingCanonicalContent, CanonicalJson);
         var existingLines = existing?.IngredientLines ?? [];
         var mapped = lines.Select((line, index) => new RecipeIngredientLineDto
         {
@@ -85,7 +85,7 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests(ITestOutputHelp
             Shopping = new(line.name, null, null),
             Provenance = new("human", "source", [])
         }).ToList();
-        return JsonSerializer.Serialize(new CanonicalRecipeContent(
+        return JsonSerializer.Serialize(new StructuredRecipeContent(
             2, Guid.NewGuid().ToString("N"), "source", basis, mapped, []), CanonicalJson);
     }
 

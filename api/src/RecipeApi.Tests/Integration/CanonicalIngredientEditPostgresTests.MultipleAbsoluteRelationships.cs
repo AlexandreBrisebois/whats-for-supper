@@ -18,15 +18,15 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         await WithEditor(async (factory, before) =>
         {
             using var client = factory.CreateAuthenticatedClient();
-            async Task<CanonicalRecipeContent> Read()
+            async Task<StructuredRecipeContent> Read()
             {
                 using var scope = factory.Services.CreateScope();
-                return CanonicalRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
+                return StructuredRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
                     .Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             }
             var firstStep = before.InstructionSections[0].Steps[0].Id;
             var secondStep = Guid.Empty;
-            object Steps(CanonicalRecipeContent current, string first = "Add 1 tbsp oil.", string second = "Use 1 tbsp oil.") => new
+            object Steps(StructuredRecipeContent current, string first = "Add 1 tbsp oil.", string second = "Use 1 tbsp oil.") => new
             {
                 expectedContentRevision = current.ContentRevision,
                 instructionSections = new[] { new { id = current.InstructionSections[0].Id,

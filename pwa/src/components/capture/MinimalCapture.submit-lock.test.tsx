@@ -117,14 +117,18 @@ describe('MinimalCapture photo submit locking', () => {
 
     expect(submitRecipeMock).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: /uploading photos/i })).toBeDisabled();
-    expect(screen.getByText(/large photos can take a few seconds/i)).toBeTruthy();
+    expect(screen.queryByTestId('capture-photo-upload-helper')).toBeNull();
     expect(screen.queryByTestId('capture-photo-upload-overlay')).toBeNull();
 
     await act(async () => {
       vi.advanceTimersByTime(800);
     });
 
-    expect(screen.getByTestId('capture-photo-upload-overlay')).toBeTruthy();
+    const overlay = screen.getByTestId('capture-photo-upload-overlay');
+    expect(overlay).toBeTruthy();
+    expect(overlay).toHaveTextContent('Saving your photos…');
+    expect(overlay).toHaveTextContent('We’ll take you home as soon as they’re saved.');
+    expect(screen.queryByTestId('cookbook-loader')).toBeNull();
 
     await act(async () => {
       resolveSubmit?.(null);

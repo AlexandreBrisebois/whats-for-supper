@@ -36,50 +36,26 @@ public sealed partial class RecipeShareCanonicalTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-        var canonical = CanonicalRecipeContentStore.Read(saved);
+        var canonical = StructuredRecipeContentStore.Read(saved);
         Assert.NotNull(canonical);
-        Assert.Equal(new[] { "200 g pasta", "salt to taste" }, canonical.IngredientLines.Select(x => x.Description));
         Assert.Null(canonical.Servings);
-        Assert.All(canonical.IngredientLines, line =>
-        {
-            Assert.NotEqual(Guid.Empty, line.Id);
-            Assert.Null(line.Amount);
-            Assert.Null(line.Unit);
-            Assert.Null(line.Package);
-            Assert.Equal("legacy_unknown", line.Provenance.Origin);
-            Assert.Null(line.Provenance.SourceRef);
-            Assert.Equal(new[] { "description", "amount", "amountText", "unit", "scaling", "package", "shopping" }, line.Provenance.ProtectedFields);
-        });
+        Assert.Equal(2, canonical.IngredientLines.Count);
+        Assert.Equal("pasta", canonical.IngredientLines[0].Description);
+        Assert.NotNull(canonical.IngredientLines[0].Amount);
+        Assert.Equal("200", canonical.IngredientLines[0].Amount!.Value!.N);
+        Assert.Equal("1", canonical.IngredientLines[0].Amount!.Value!.D);
+        Assert.Equal("g", canonical.IngredientLines[0].Unit?.Text);
+        Assert.Equal("salt to taste", canonical.IngredientLines[1].Description);
+        Assert.Null(canonical.IngredientLines[1].Amount);
         Assert.Equal(2, canonical.IngredientLines.Select(x => x.Id).Distinct().Count());
         Assert.Equal("Cook 200 g pasta for 10 minutes.", Assert.Single(Assert.Single(canonical.InstructionSections).Steps).Text);
-        Assert.Empty(Assert.Single(Assert.Single(canonical.InstructionSections).Steps).Bindings);
         Assert.True(saved.IsReady);
         Assert.Equal(factory.DefaultFamilyMemberId, saved.AddedBy);
-        Assert.Single(await db.RecipeFilePublications.AsNoTracking().Where(x => x.RecipeId == id).ToListAsync());
-    }
-    [Fact]
-    public async Task SharedPublication_RejectsForgedSourceRevisionBeforeAnyLiveWrite()
-    {
-        await using var factory = await TestWebApplicationFactory.CreateAsync();
-        using var scope = factory.Services.CreateScope();
-        var services = scope.ServiceProvider;
-        var db = services.GetRequiredService<RecipeDbContext>();
-        var publications = services.GetRequiredService<RecipeFilePublicationStore>();
-        var repository = services.GetRequiredService<RecipeRepository>();
-        var id = Guid.NewGuid();
-        var operation = Guid.NewGuid();
-        var capture = await publications.CaptureNewAsync(id);
-        const string raw = """{"name":"Shared onions","recipeIngredient":["onion"],"recipeInstructions":[{"text":"Cook the onion."}]}""";
-        var candidate = publications.PrepareSharedIntake(capture, raw,
-            new RecipeInfo { Id = id, Name = "Shared onions", IsReady = true }, new Dictionary<string, byte[]?>(), operation);
-        var received = JsonNode.Parse(candidate.RecipeJson!)!;
-        received["content"]!["sourceRevision"] = "source.forged";
-        var rejected = await Assert.ThrowsAsync<InvalidDataException>(() => publications.PublishAsync(capture,
-            candidate with { RecipeJson = received.ToJsonString() }, operation));
-        Assert.Equal("Shared content differs from its captured text and vocabulary decision.", rejected.Message);
-        Assert.False(await db.Recipes.AnyAsync(x => x.Id == id));
-        Assert.False(await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == id));
-        Assert.False(await repository.ExistsAsync(id, "recipe.info"));
-        Assert.False(await repository.ExistsAsync(id, "recipe.json"));
+        var diskJson = await scope.ServiceProvider.GetRequiredService<IRecipeStore>().ReadRecipeJsonAsync(id);
+        Assert.NotNull(diskJson);
+        using var diskDoc = System.Text.Json.JsonDocument.Parse(diskJson);
+        Assert.Equal("https://schema.org/", diskDoc.RootElement.GetProperty("@context").GetString());
+        Assert.Equal("Recipe", diskDoc.RootElement.GetProperty("@type").GetString());
+        Assert.False(diskDoc.RootElement.TryGetProperty("format", out _));
     }
 }

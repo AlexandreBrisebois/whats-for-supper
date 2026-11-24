@@ -50,6 +50,7 @@ public class RecipeShareIntegrationTests : IAsyncLifetime
                 RawMetadata = """{"recipeInstructions":["Boil pasta","Finish in sauce"]}""",
                 SourceUrl = "https://example.com/shareable-pasta",
                 Category = "Dinner",
+                Servings = 4,
                 AddedBy = _factory.DefaultFamilyMemberId,
                 Notes = "Family note that must not leak",
                 Rating = RecipeRating.Love,
@@ -89,6 +90,7 @@ public class RecipeShareIntegrationTests : IAsyncLifetime
         Assert.Equal("Tomato pasta for weeknights.", exportedRecipe.GetProperty("description").GetString());
         Assert.Equal("https://example.com/shareable-pasta", exportedRecipe.GetProperty("sourceUrl").GetString());
         Assert.Equal("Dinner", exportedRecipe.GetProperty("category").GetString());
+        Assert.Equal(4, exportedRecipe.GetProperty("servings").GetInt32());
         Assert.False(exportedRecipe.GetProperty("isSynthesized").GetBoolean());
         Assert.Equal(1, exportedRecipe.GetProperty("instructions").GetArrayLength());
         var section = exportedRecipe.GetProperty("instructions")[0];

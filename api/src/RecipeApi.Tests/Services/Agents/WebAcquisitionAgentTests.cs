@@ -45,7 +45,6 @@ public class WebAcquisitionAgentTests
         var storage = new InMemoryStorageProvider();
         var repo = new RecipeRepository(storage);
         var db = RecipeApi.Tests.Infrastructure.TestDbContextFactory.Create();
-        var publications = RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(db, storage, new SystemClock());
         db.Recipes.Add(new Recipe { Id = recipeId });
         db.SaveChanges();
         repo.SaveInfoAsync(new RecipeInfo { Id = recipeId }, default).GetAwaiter().GetResult();
@@ -82,10 +81,12 @@ public class WebAcquisitionAgentTests
 
         var agent = new WebAcquisitionAgent(
             chatClientMock.Object,
-            publications,
+            repo,
             promptRepoMock.Object,
             httpClient,
-            new Mock<ILogger<WebAcquisitionAgent>>().Object);
+            new Mock<ILogger<WebAcquisitionAgent>>().Object,
+            db,
+            new SystemClock());
 
         return (agent, storage, repo);
     }

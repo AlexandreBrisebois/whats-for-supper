@@ -299,4 +299,20 @@ public class SseEventPublisherTests
         Assert.Equal("No Image Recipe", data.GetProperty("name").GetString());
         Assert.Equal(JsonValueKind.Null, data.GetProperty("imageUrl").ValueKind);
     }
+
+    [Fact]
+    public async Task PublishRecipeReadyAsync_WithSuspectedDuplicate_SerializesFlagInPayload()
+    {
+        var (manager, body) = MakeManager();
+        var publisher = new SseEventPublisher(manager);
+
+        var recipeId = Guid.NewGuid();
+
+        await publisher.PublishRecipeReadyAsync(recipeId, "Duplicate Pasta", null, isSuspectedDuplicate: true);
+
+        var (eventType, data) = ParseSseFrame(ReadBody(body));
+
+        Assert.Equal("recipe_ready", eventType);
+        Assert.True(data.TryGetProperty("isSuspectedDuplicate", out var flag) && flag.GetBoolean());
+    }
 }

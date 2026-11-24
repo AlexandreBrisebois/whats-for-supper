@@ -22,18 +22,18 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var store = scope.ServiceProvider.GetRequiredService<CanonicalRecipeContentStore>();
+        var store = scope.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>();
         var recipe = new Recipe { Name = "Literal tracer", Servings = 2,
             Ingredients = "[\"1/4 cup milk\",\"broccoli\"]",
             RawMetadata = "{\"recipeInstructions\":[{\"name\":\"Prepare\",\"itemListElement\":[{\"text\":\"Warm the milk.\"}]},{\"name\":\"Finish\",\"itemListElement\":[{\"text\":\"Add broccoli.\"}]}]}" };
         db.Recipes.Add(recipe); await db.SaveChangesAsync();
         var operationId = Guid.NewGuid();
         var item = new CanonicalMigrationRecipe(recipe.Id, operationId, "requires-forward-assessment", null,
-            CanonicalRecipeContentStore.InspectContentRevision(recipe), CanonicalRecipeContentStore.InspectSourceRevision(recipe),
+            StructuredRecipeContentStore.InspectContentRevision(recipe), StructuredRecipeContentStore.InspectSourceRevision(recipe),
             "not-an-inventory-authority", 2, 2, 0, []);
         var at = DateTimeOffset.Parse("2026-11-15T16:00:00.123456Z");
         var before = JsonSerializer.Serialize(recipe);
-        var prepared = await InvokeStore<CanonicalRecipeOperation>(store, "PrepareMigrationConversionAsync", item, at, CancellationToken.None);
+        var prepared = await InvokeStore<StructuredRecipeOperation>(store, "PrepareMigrationConversionAsync", item, at, CancellationToken.None);
         Assert.Equal(before, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id)));
         Assert.False(await db.CanonicalRecipeOperations.AnyAsync(x => x.OperationId == operationId));
         Assert.False(await db.MaintenanceCommands.AnyAsync());
@@ -42,14 +42,14 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         {
             recipe.Name = "Later human title"; await db.SaveChangesAsync();
             var changed = JsonSerializer.Serialize(recipe);
-            await Assert.ThrowsAsync<InvalidDataException>(() => InvokeStore<CanonicalRecipeWriteResult>(store, "ConvertCoreAsync",
+            await Assert.ThrowsAsync<InvalidDataException>(() => InvokeStore<StructuredRecipeWriteResult>(store, "ConvertCoreAsync",
                 recipe.Id, item.ContentRevision!, item.SourceRevision!, operationId, CancellationToken.None, null!, prepared));
             Assert.Equal(changed, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id)));
             Assert.False(await db.CanonicalRecipeOperations.AnyAsync(x => x.OperationId == operationId));
         }
         else
         {
-            var result = await InvokeStore<CanonicalRecipeWriteResult>(store, "ConvertCoreAsync", recipe.Id,
+            var result = await InvokeStore<StructuredRecipeWriteResult>(store, "ConvertCoreAsync", recipe.Id,
                 item.ContentRevision!, item.SourceRevision!, operationId, CancellationToken.None, null!, prepared);
             var committed = await db.CanonicalRecipeOperations.AsNoTracking().SingleAsync(x => x.OperationId == operationId);
             Assert.Equal(retainedBytes, JsonSerializer.Serialize(committed));
@@ -64,9 +64,9 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         Assert.Equal(retainedBytes, JsonSerializer.Serialize(prepared));
     }
 
-    private static async Task<T> InvokeStore<T>(CanonicalRecipeContentStore store, string method, params object[] args)
+    private static async Task<T> InvokeStore<T>(StructuredRecipeContentStore store, string method, params object[] args)
     {
-        try { return await (Task<T>)typeof(CanonicalRecipeContentStore).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(store, args)!; }
+        try { return await (Task<T>)typeof(StructuredRecipeContentStore).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(store, args)!; }
         catch (TargetInvocationException error) when (error.InnerException is not null)
         { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
     }
@@ -98,7 +98,7 @@ public sealed class CanonicalRecipeMigrationExecutionTests
                 await db.SaveChangesAsync();
             }
         }
-        Task<MaintenanceCommandObservation?> Find() => Invoke<Task<MaintenanceCommandObservation?>>(typeof(CanonicalRecipeMigrationReceipt), "FindAsync", db, command.Id, CancellationToken.None);
+        Task<MaintenanceCommandObservation?> Find() => Invoke<Task<MaintenanceCommandObservation?>>(typeof(StructuredRecipeMigrationReceipt), "FindAsync", db, command.Id, CancellationToken.None);
         if (scenario == "missing-link") await Assert.ThrowsAsync<InvalidDataException>(Find);
         else
         {
@@ -126,7 +126,7 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         var manifest = Manifest(); var command = ReceiptPlan(manifest, new('b', 40), DateTimeOffset.UtcNow);
         Assert.Equal("completed", command.Status); Assert.Equal(1, command.Attempts);
         Assert.Equal(manifest.Request.OperationId, command.Id);
-        Assert.Equal(manifest.RequiredReferences, CanonicalRecipeMigrationReceipt.VocabularyReferences(Observe(command)));
+        Assert.Equal(manifest.RequiredReferences, StructuredRecipeMigrationReceipt.VocabularyReferences(Observe(command)));
         RequireBinding(Observe(command), command);
         using var payload = JsonDocument.Parse(command.Payload);
         Assert.Equal(manifest.Weeks.Count, payload.RootElement.GetProperty("weeks").GetArrayLength());
@@ -145,7 +145,7 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         else if (kind == "week-receipt") payload["weeks"]![0]!["receiptId"] = Guid.Parse(payload["weeks"]![0]!["receiptId"]!.GetValue<string>()).ToString("N");
         else payload["weeks"]![0]!["storedPlanIds"]![0] = Guid.Parse(payload["weeks"]![0]!["storedPlanIds"]![0]!.GetValue<string>()).ToString("N");
         command.Payload = payload.ToJsonString();
-        Assert.Throws<InvalidDataException>(() => CanonicalRecipeMigrationReceipt.VocabularyReferences(Observe(command)));
+        Assert.Throws<InvalidDataException>(() => StructuredRecipeMigrationReceipt.VocabularyReferences(Observe(command)));
     }
 
     [Theory]
@@ -192,7 +192,7 @@ public sealed class CanonicalRecipeMigrationExecutionTests
             payload["requestSha256"] = ManifestHash(payload.ToJsonString());
         }
         command.Payload = payload.ToJsonString();
-        Assert.Throws<InvalidDataException>(() => CanonicalRecipeMigrationReceipt.VocabularyReferences(Observe(command)));
+        Assert.Throws<InvalidDataException>(() => StructuredRecipeMigrationReceipt.VocabularyReferences(Observe(command)));
     }
 
     [Theory]
@@ -241,14 +241,97 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         catch (TargetInvocationException error) when (error.InnerException is not null)
         { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
     }
-    private static Guid WeekReceiptId(Guid operation, DateOnly week) => Invoke<Guid>(typeof(CanonicalRecipeMigrationReceipt), "WeekReceiptId", operation, week);
+    private static Guid WeekReceiptId(Guid operation, DateOnly week) => Invoke<Guid>(typeof(StructuredRecipeMigrationReceipt), "WeekReceiptId", operation, week);
     private static MaintenanceCommand ReceiptPlan(CanonicalMigrationInventory manifest, string candidate, DateTimeOffset at) =>
-        Invoke<MaintenanceCommand>(typeof(CanonicalRecipeMigrationReceipt), "Plan", manifest, candidate, at);
+        Invoke<MaintenanceCommand>(typeof(StructuredRecipeMigrationReceipt), "Plan", manifest, candidate, at);
     private static void RequireBinding(MaintenanceCommandObservation observation, MaintenanceCommand expected) =>
-        Invoke<object?>(typeof(CanonicalRecipeMigrationReceipt), "RequireBinding", observation, expected);
-    private static string ManifestHash(string raw) => Invoke<string>(typeof(CanonicalRecipeMigrationManifest), "Hash", raw);
+        Invoke<object?>(typeof(StructuredRecipeMigrationReceipt), "RequireBinding", observation, expected);
+    private static string ManifestHash(string raw) => Invoke<string>(typeof(StructuredRecipeMigrationManifest), "Hash", raw);
     private static MaintenanceCommandObservation Observe(MaintenanceCommand command) => new(command.Id, command.CommandType,
         command.Status, command.Payload, command.Result, command.Attempts, command.RequestedBy, command.CreatedAt,
         command.ScheduledFor, command.StartedAt, command.CompletedAt, command.LastError);
 
+    [Fact]
+    public async Task StartupMigrator_UnwrapsWrappedRecipeFilesAndDeletesPublicationsIndependentlyOfDbVersion()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateAsync(
+            configurationOverrides: new() { ["Tests:LocalRecipeStore"] = "true" });
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var store = scope.ServiceProvider.GetRequiredService<RecipeApi.Infrastructure.IRecipeStore>();
+        var recipesRoot = scope.ServiceProvider.GetRequiredService<RecipeApi.Infrastructure.RecipesRootResolver>();
+        var migrator = scope.ServiceProvider.GetRequiredService<RecipeStartupMigrator>();
+
+        // (a) Offline v0.1.40 recipe: CanonicalContent == null, Servings == null, backupContentVersion: 1 on disk
+        var legacyId = Guid.NewGuid();
+        const string legacyInnerRaw = """{"@context":"https://schema.org/","@type":"Recipe","name":"Legacy Chili","recipeYield":"4 portions","recipeIngredient":["500 g ground beef","2 cups beans"],"recipeInstructions":[{"@type":"HowToSection","itemListElement":[{"@type":"HowToStep","text":"Simmer the beef and beans."}]}]}""";
+        var legacyWrapped = JsonSerializer.Serialize(new
+        {
+            id = legacyId,
+            name = "Legacy Chili",
+            backupContentVersion = 1,
+            rawMetadata = legacyInnerRaw,
+            ingredients = """["500 g ground beef","2 cups beans"]"""
+        });
+        db.Recipes.Add(new Recipe
+        {
+            Id = legacyId,
+            Name = "Legacy Chili",
+            IsReady = true,
+            RawMetadata = legacyInnerRaw,
+            Ingredients = """["500 g ground beef","2 cups beans"]""",
+            Servings = null,
+            CanonicalContent = null
+        });
+        await store.WriteInfoAsync(new RecipeInfo { Id = legacyId, Name = "Legacy Chili", IsReady = true });
+        await store.WriteRecipeJsonAsync(legacyId, legacyWrapped);
+
+        // (b) Already-migrated DB v2 recipe with wfs-recipe v2 wrapper on disk + .publications residue
+        var v2Id = Guid.NewGuid();
+        const string v2Raw = """{"@context":"https://schema.org/","@type":"Recipe","name":"V2 Curry","recipeYield":"4 portions","recipeIngredient":["400 g chicken"],"recipeInstructions":[{"@type":"HowToSection","itemListElement":[{"@type":"HowToStep","text":"Cook chicken."}]}]}""";
+        var (v2Content, v2Evidence) = StructuredRecipeContentStore.FromSchemaOrg(v2Id, v2Raw, null, null, Guid.NewGuid(), "source");
+        var webJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        db.Recipes.Add(new Recipe
+        {
+            Id = v2Id,
+            Name = "V2 Curry",
+            IsReady = true,
+            Servings = 4,
+            RawMetadata = v2Raw,
+            CanonicalContent = JsonSerializer.Serialize(v2Content, webJson),
+            FoodMappingEvidence = v2Evidence,
+            Ingredients = """["400 g chicken"]"""
+        });
+        await store.WriteInfoAsync(new RecipeInfo { Id = v2Id, Name = "V2 Curry", IsReady = true });
+        await store.WriteRecipeJsonAsync(v2Id, RecipeApi.Infrastructure.RecipeExportContent.WriteCurrent(new(v2Id, v2Content, v2Raw)));
+        var pubDir = Path.Combine(recipesRoot.Root, v2Id.ToString(), ".publications", "stale");
+        Directory.CreateDirectory(pubDir);
+        await File.WriteAllTextAsync(Path.Combine(pubDir, "journal.json"), "{}");
+
+        await db.SaveChangesAsync();
+
+        var first = await migrator.MigrateAsync();
+        Assert.Equal(1, first.MigratedRecipes);
+
+        db.ChangeTracker.Clear();
+        var upgraded = await db.Recipes.AsNoTracking().SingleAsync(r => r.Id == legacyId);
+        Assert.NotNull(upgraded.CanonicalContent);
+        Assert.Equal(4, upgraded.Servings);
+
+        foreach (var id in new[] { legacyId, v2Id })
+        {
+            var disk = await store.ReadRecipeJsonAsync(id);
+            Assert.NotNull(disk);
+            using var doc = JsonDocument.Parse(disk);
+            Assert.Equal("https://schema.org/", doc.RootElement.GetProperty("@context").GetString());
+            Assert.Equal("Recipe", doc.RootElement.GetProperty("@type").GetString());
+            Assert.False(doc.RootElement.TryGetProperty("format", out _));
+            Assert.False(doc.RootElement.TryGetProperty("backupContentVersion", out _));
+        }
+        Assert.False(Directory.Exists(Path.Combine(recipesRoot.Root, v2Id.ToString(), ".publications")));
+
+        // (c) Idempotent second startup run
+        var second = await migrator.MigrateAsync();
+        Assert.Equal(0, second.MigratedRecipes);
+    }
 }

@@ -8,7 +8,7 @@ Capture recipes from photos, web links, descriptions and PDFs into the household
 
 ### Requirement: Enter and review a recipe link at capture entry
 
-The capture screen at `/capture` SHALL offer a web link entry mode and prefill it when opened with a `url` query parameter or text containing an HTTP/HTTPS URL. The review view SHALL display the link URL, appreciation rating options (1–3), and an optional note input.
+The capture screen at `/capture` SHALL offer a web link entry mode and prefill it when opened with a `url` query parameter or text containing an HTTP/HTTPS URL. The review view SHALL display the link URL, appreciation rating options (1–3), an optional note input, and the top-right Cancel (`×`) control without a separate Back button.
 
 #### Scenario: Open capture with shared URL parameter
 
@@ -27,17 +27,17 @@ The capture screen at `/capture` SHALL offer a web link entry mode and prefill i
 
 #### Scenario: Return to capture controls
 
-- **WHEN** a person activates Back from the link review form
-- **THEN** the screen returns to the primary capture controls and clears the URL review draft
+- **WHEN** a person activates the top-right Cancel (`×`) control from the link review form
+- **THEN** the URL review draft is discarded and navigation returns to `/home`
 
 ### Requirement: Advisory duplicate warning for existing recipe link
 
-When a link URL is entered in the review form, the client SHALL check for existing household recipes with a matching source URL. If an existing recipe matches, the client SHALL display an advisory banner identifying the recipe by name without blocking saving.
+When a link URL is entered in the review form, the client SHALL check for existing household recipes with a matching source URL. If an existing recipe matches, the client SHALL display an advisory banner directly below the link URL input (and above appreciation rating and notes) identifying the recipe by name without blocking saving or shifting the URL input while typing.
 
 #### Scenario: Existing recipe matching link URL
 
 - **WHEN** the link review form has a trimmed URL that matches an existing non-deleted household recipe's source URL
-- **THEN** the form displays an advisory warning banner showing the existing recipe's name and a button to view that recipe
+- **THEN** the form displays an advisory warning banner directly below the link URL input showing the existing recipe's name and a button to view that recipe
 
 #### Scenario: Unique link URL
 
@@ -107,12 +107,12 @@ When acquisition executes, the system SHALL attempt to fetch source HTML and obt
 
 ### Requirement: Finalize recipe readiness and broadcast completion
 
-When finalization executes for an existing recipe that is not already ready and discoverable, the system SHALL set those database facts and update its timestamp before attempting household ready-event publication. Ordinary finalization SHALL NOT require writing readiness into a non-PDF metadata file.
+When finalization executes for an existing recipe that is not already ready and discoverable, the system SHALL set those database facts, update its timestamp, evaluate suspected library duplicates under `recipe-quality` rules before publishing completion, and then attempt household ready-event publication including whether the finalized recipe is flagged as a suspected duplicate. Ordinary finalization SHALL NOT require writing readiness into a non-PDF metadata file.
 
 #### Scenario: State transition to ready
 
 - **WHEN** the recipe ready step successfully finalizes an existing recipe not already ready and discoverable
-- **THEN** it persists database readiness and discoverability and then attempts publication of recipe identity, name and optional hero path
+- **THEN** it persists database readiness and discoverability, records a `duplicate` import report if an active library recipe matches and no report exists yet, and attempts publication of recipe identity, name, optional hero path, and suspected-duplicate status
 - **AND** delivery follows the household-live-updates rules rather than being certified by the database save
 
 #### Scenario: Missing or already finalized recipe
@@ -121,35 +121,56 @@ When finalization executes for an existing recipe that is not already ready and 
 - **THEN** it does not publish a new ready event
 - **AND** the existing retained-PDF readiness behavior still applies to an already finalized PDF
 
-### Requirement: Track background capture progress and auto-redirect
+### Requirement: Return directly to Home after accepted capture intake
 
-Upon successful submission, the client SHALL display a queued progress screen and add the recipe ID to pending tracking. The queued screen SHALL display an auto-redirect countdown to Home unless a ready notification arrives.
+When photo, web link, or description capture returns a valid recipe identity (`202` or `201`), the client SHALL add that recipe to active-session pending tracking and navigate directly to `/home` without displaying an intermediate queued countdown or inline ready screen on `/capture`. In Family GOTO capture, the client SHALL persist the pending GOTO entry before navigating to `/home`.
 
-#### Scenario: Display queued progress screen
+#### Scenario: Accepted photo, link, or description intake navigates immediately to Home
 
-- **WHEN** URL capture submission succeeds with a returned recipe ID
-- **THEN** the screen displays "Recipe queued" with subtext explaining that the link is being fetched
-- **AND** it begins a 10-second countdown to redirect to `/home`
+- **WHEN** photo, link, or description submission succeeds and returns a valid recipe ID
+- **THEN** the client records the recipe ID in active-session pending tracking and navigates directly to `/home`
+- **AND** no ten-second countdown or intermediate Done screen is displayed on `/capture`
 
-#### Scenario: Complete countdown redirects to Home
+#### Scenario: Family GOTO intake records pending GOTO item before returning Home
 
-- **WHEN** 10 seconds elapse on the queued screen without user intervention or ready event
-- **THEN** the client navigates to `/home`
+- **WHEN** photo, link, or description submission succeeds with Family GOTO intent and returns a valid recipe ID
+- **THEN** the client saves the pending GOTO item referencing that recipe ID, records pending tracking, and navigates directly to `/home`
 
-#### Scenario: Done button manual dismissal
+### Requirement: Present ambient in-flight capture status on Home
 
-- **WHEN** a person activates the Done button on the queued screen
-- **THEN** the client immediately navigates to `/home`
+While one or more background captures submitted in the active session remain pending completion or failure, Home SHALL display a non-blocking status ribbon stating the pending count, reassuring the person that they will be notified when ready, and offering a secondary action to start another capture. The ribbon SHALL use a Hearth pulsing indicator rather than voting-ochre or settled-garden fills and SHALL honor reduced motion.
 
-### Requirement: Inline transition to ready status upon completion
+#### Scenario: Pending background capture displays ambient Home ribbon
 
-If the recipe ready notification is received while the user is still on the capture screen, the client SHALL replace the queued progress screen with an inline ready presentation showing the recipe name, an Add to this week action, and a Done action.
+- **WHEN** a person views `/home` while one or more active-session captures have not yet emitted a ready or failed event
+- **THEN** Home renders an opaque neutral card with a Hearth pulsing indicator, localized pending-count copy, and a `>= 48 CSS px` secondary action linking to `/capture`
+- **AND** the Hearth pulse disables animation when `prefers-reduced-motion: reduce` is active
 
-#### Scenario: Ready notification received during active session
+#### Scenario: Ribbon disappears once pending captures settle
 
-- **WHEN** a `recipe_ready` event matching the pending recipe ID is received while on the capture screen
-- **THEN** the screen transitions to "{Name} is ready!" with options to add to planner or finish
-- **AND** the auto-redirect countdown is cancelled
+- **WHEN** the last pending capture in the active session transitions to ready or failed
+- **THEN** the ambient in-flight status ribbon is removed from `/home`
+
+### Requirement: Present completion toast with duplicate-review prompt
+
+When a `recipe_ready` event arrives for an active-session pending recipe, the client SHALL display a `5000 ms` opaque Garden-bordered toast with a `>= 48 × 48 CSS px` dismiss control and no left-border stripe or `+N more` pill. Suspected duplicates SHALL prompt review and open paired comparison on tap.
+
+#### Scenario: Ordinary completion toast opens completed recipe
+
+- **WHEN** a `recipe_ready` event without a suspected-duplicate flag arrives for an active-session pending recipe
+- **THEN** the client renders an opaque white toast with a Garden border, localized ready copy, and `Tap to view recipe`
+- **AND** activating the toast body dismisses the toast and navigates to `/recipes?open=<recipeId>`
+
+#### Scenario: Suspected-duplicate completion toast opens paired review
+
+- **WHEN** a `recipe_ready` event flagged as a suspected duplicate arrives for an active-session pending recipe
+- **THEN** the toast subtitle displays localized `Possible duplicate · Tap to review` copy
+- **AND** activating the toast body dismisses the toast and navigates to `/recipes?open=<recipeId>&reviewDuplicate=1`
+
+#### Scenario: Explicit toast dismissal does not navigate
+
+- **WHEN** a person activates the `48 × 48 CSS px` dismiss button on the completion toast
+- **THEN** the notification is removed without navigating away from the current view
 
 ### Requirement: Display error feedback on capture failure
 
@@ -239,13 +260,13 @@ The client SHALL allow designating at most one staged photo as the finished dish
 
 ### Requirement: Capture appreciation rating and preparation notes
 
-Capture review screens SHALL present localized appreciation options (1–3: Dislike / Not for me, Like / It was OK, Love / Loved it!) and an associated optional multi-line notes input with `>= 48 × 48 CSS px` targets, semantic role polarity, a non-colour pressed cue (`aria-pressed`), and visible keyboard focus in Standard and High Contrast modes.
+Capture review screens (photo, URL, PDF, and `.txt` bundle) SHALL present the shared localized appreciation options (`👎 Dislike`, `👍 Like`, `❤️ Love`) and optional multi-line notes with `>= 48 × 48 CSS px` targets, borderless-on-cream unselected choices, a raised white (`shadow-md`) selected surface without corner checkmarks (plus a `1.5px` ink border in High Contrast mode), `aria-pressed`, and visible keyboard focus.
 
 #### Scenario: Select appreciation rating
 
-- **WHEN** a person selects a rating option during photo, URL, or PDF capture review
-- **THEN** the client records the chosen appreciation level (`1`, `2`, or `3`)
-- **AND** the selected option exposes `aria-pressed="true"`, semantic Hearth/Garden/Ink contrast, a non-colour check cue, and a `>= 48 × 48 CSS px` button surface
+- **WHEN** a person selects a rating option during photo, URL, PDF, or shared `.txt` capture review
+- **THEN** the client records the chosen appreciation level (`1`, `2`, or `3`), or clears it to `0` when activated again
+- **AND** the selected option exposes `aria-pressed="true"`, semantic Hearth/Garden/Ink text polarity, a raised white surface without a checkmark icon (with a `1.5px` high-contrast border when High Contrast is active), and a `>= 48 × 48 CSS px` button surface
 
 #### Scenario: Enter optional preparation notes
 
@@ -275,17 +296,17 @@ When Save Recipe is activated with staged photos, the client SHALL submit POST `
 
 ### Requirement: Client-side photo upload progress feedback and submission lock
 
-While photo upload is in progress, the client SHALL lock submission controls to prevent duplicate uploads. If uploading exceeds 800 milliseconds, the client SHALL display a photo upload overlay prompting the user to keep the screen open.
+While photo upload is in progress, the client SHALL lock submission controls to prevent duplicate uploads without rendering idle upload-duration hints prior to submission. If uploading exceeds 800 milliseconds, the client SHALL display a photo upload overlay with a Hearth pulsing ring around the photo icon and calm localized copy (`Saving your photos…` and `We’ll take you home as soon as they’re saved.`), without multi-dot progress indicators or em-dashes.
 
 #### Scenario: Submission lock prevents duplicate photo uploads
 
 - **WHEN** photo upload is initiated by activating Save Recipe
-- **THEN** the save button is disabled with loading status and subsequent activation attempts are ignored
+- **THEN** the save button is disabled while awaiting intake and subsequent activation attempts are ignored
 
 #### Scenario: Delayed upload overlay appears on long transfers
 
 - **WHEN** photo upload takes longer than 800 milliseconds
-- **THEN** the client displays an upload overlay stating that photos are being uploaded and requesting the screen remain open
+- **THEN** the client displays an upload overlay with a Hearth pulsing ring (respecting reduced motion), `Saving your photos…`, and `We’ll take you home as soon as they’re saved.`
 
 ### Requirement: Initial recipe persistence and photo workflow dispatch
 
@@ -318,12 +339,12 @@ The background `recipe-import` workflow SHALL execute recipe extraction using mu
 
 ### Requirement: Finalize photo recipe readiness and broadcast completion
 
-When finalization executes for an existing recipe that is not already ready and discoverable, the system SHALL set those database facts and update its timestamp before attempting household ready-event publication. Ordinary finalization SHALL NOT require writing readiness into a non-PDF metadata file.
+When finalization executes for an existing recipe that is not already ready and discoverable, the system SHALL set those database facts, update its timestamp, evaluate suspected library duplicates under `recipe-quality` rules before publishing completion, and then attempt household ready-event publication including whether the finalized recipe is flagged as a suspected duplicate. Ordinary finalization SHALL NOT require writing readiness into a non-PDF metadata file.
 
 #### Scenario: Transition photo recipe state to ready
 
 - **WHEN** the recipe ready step successfully finalizes an existing recipe not already ready and discoverable
-- **THEN** it persists database readiness and discoverability and then attempts publication of recipe identity, name and optional hero path
+- **THEN** it persists database readiness and discoverability, records a `duplicate` import report if an active library recipe matches and no report exists yet, and attempts publication of recipe identity, name, optional hero path, and suspected-duplicate status
 - **AND** delivery follows the household-live-updates rules rather than being certified by the database save
 
 #### Scenario: Missing or already finalized recipe
@@ -334,12 +355,12 @@ When finalization executes for an existing recipe that is not already ready and 
 
 ### Requirement: Persistent failure banner on workflow failure
 
-If the background import workflow fails all retry attempts, the API SHALL publish a `recipe_failed` SSE event. When received for a pending recipe submitted in the current session, the client SHALL display a localized, high-contrast persistent recovery banner with `>= 48 × 48 CSS px` Retry and Dismiss actions, visible keyboard focus, and reduced-motion respect.
+If the background import workflow fails all retry attempts, the API SHALL publish a `recipe_failed` SSE event. When received for a pending active-session recipe, the client SHALL render a persistent Hearth recovery banner (`bg-terracotta-50 border-hearth-line`, no `border-l-4` stripe or duplicate close icon) with an alert icon, em-dash-free localized title, and `>= 48 × 48 CSS px` primary Retry and single secondary Dismiss controls.
 
 #### Scenario: Display persistent failure banner on failed capture
 
 - **WHEN** a `recipe_failed` event is received matching a recipe pending from the active session
-- **THEN** the client removes the recipe from pending tracking and renders a persistent failure banner with localized EN/FR copy, opaque High Contrast surface borders, the recipe name, and `>= 48 × 48 CSS px` Retry and Dismiss buttons
+- **THEN** the client removes the recipe from pending tracking and renders a persistent Hearth recovery card with localized EN/FR copy (without em-dashes), opaque High Contrast borders, the recipe name, and `>= 48 × 48 CSS px` Retry and single Dismiss buttons
 
 #### Scenario: Retry failed capture from banner
 
@@ -348,12 +369,12 @@ If the background import workflow fails all retry attempts, the API SHALL publis
 
 ### Requirement: Enter and cancel a description capture draft
 
-The capture screen SHALL offer Describe a recipe with a required recipe name and optional free-text description. Opening `/capture?mode=describe` SHALL show this form directly. Cancel SHALL return to capture controls and clear the description draft and its local errors.
+The capture screen SHALL offer Describe a recipe with a top subtitle disclosing AI drafting, a required recipe name input (with any duplicate advisory directly beneath it), an optional free-text description input, a single primary `Save & build recipe` button, and the universal top-right Cancel (`×`) control without a secondary bottom Cancel button. Opening `/capture?mode=describe` SHALL show this form directly.
 
 #### Scenario: Open description from capture controls
 
 - **WHEN** a person activates Describe a recipe on `/capture`
-- **THEN** the description form replaces the capture controls with name and optional description inputs
+- **THEN** the description form replaces the capture controls with the AI-drafting subtitle, required recipe name input, optional description input, and primary `Save & build recipe` CTA
 
 #### Scenario: Open description mode directly
 
@@ -362,8 +383,8 @@ The capture screen SHALL offer Describe a recipe with a required recipe name and
 
 #### Scenario: Cancel a draft
 
-- **WHEN** a person activates Cancel after entering name and description
-- **THEN** capture controls return and the name, description, duplicate warning and submission error are cleared
+- **WHEN** a person activates the top-right Cancel (`×`) control after entering a name or description
+- **THEN** the draft is discarded and navigation returns to `/home`
 
 ### Requirement: Advise about an existing recipe name during description entry
 
@@ -426,33 +447,37 @@ Description intake SHALL create a recipe carrying the supplied name, optional de
 
 ### Requirement: Generate recipe content from the submitted description
 
-When description synthesis executes, the system SHALL request recipe content from the submitted description and persist the resulting recipe content and synthesized identity. If the response cannot be parsed or has no usable recipe name, synthesis SHALL retain a minimal recipe named from the submitted description with empty ingredients and instructions.
+When description synthesis executes, the system SHALL request `https://schema.org/Recipe` content from the submitted description, persist the resulting `https://schema.org/Recipe` document to `{id}/recipe.json`, derive structured portion-scaling facts, and mark the recipe as synthesized. If the response cannot be parsed or has no usable recipe name, synthesis SHALL retain a minimal `https://schema.org/Recipe` document named from the submitted description with empty ingredients and instructions.
 
 #### Scenario: Persist generated recipe content
 
-- **WHEN** synthesis receives parseable recipe content with a usable name
-- **THEN** it persists that content and identifies the recipe as synthesized for subsequent processing
+- **WHEN** synthesis receives parseable `https://schema.org/Recipe` content with a usable name
+- **THEN** it persists top-level `https://schema.org/Recipe` JSON to `{id}/recipe.json`, derives structured portion lines and step bindings in the database, and identifies the recipe as synthesized for subsequent processing
 
 #### Scenario: Unusable synthesis response
 
 - **WHEN** synthesis receives malformed recipe JSON or content with no usable name
-- **THEN** it persists a minimal recipe named from the submitted description with empty ingredients and instructions
+- **THEN** it persists a minimal `https://schema.org/Recipe` document named from the submitted description with empty ingredients and instructions
 - **AND** this fallback alone does not establish a complete cookable recipe
 
-### Requirement: Show description synthesis waiting state
+### Requirement: Persist extracted and synthesized recipe content as Schema.org Recipe
 
-After receiving a recipe ID for ordinary description capture, the client SHALL track it as pending and show localized progress copy (`Building your recipe…` / `Préparation de votre recette…`) with non-repetitive subtext confirming notification when ready. While description intake is in flight, the submission control SHALL also display localized progress copy rather than `Synthesizing…`. Existing countdown and inline completion behavior SHALL apply.
+Background extraction, guided re-import repair, and description synthesis SHALL persist valid recipe content to `{id}/recipe.json` as a top-level `https://schema.org/Recipe` JSON document without `.publications` staging directories, and SHALL derive structured portion lines and bilingual grocery mappings tolerantly from `recipeIngredient` and optional `supply` entries without failing on casing, preposition, unit-alias, preparation-note, or unquantified-line differences.
 
-#### Scenario: Intake returns a recipe ID
+#### Scenario: Tolerant portion derivation from Schema.org ingredient and supply differences
 
-- **WHEN** description submission returns an identified recipe
-- **THEN** the client displays the localized `Building your recipe…` heading and localized readiness-notification subtext instead of `Synthesizing…` and begins the existing ten-second Home countdown with a Done action
-- **AND** the recipe is tracked for session completion notifications
+- **WHEN** photo, PDF, URL extraction, guided repair, or description synthesis returns valid `https://schema.org/Recipe` JSON whose `recipeIngredient` entries differ from `supply` in capitalization, `of`/`de`/`d'` prepositions, EN/FR unit aliases, or trailing preparation notes (such as `"500 g ground beef"` with `supply.name` `"Ground beef"`, `"30 ml of All-Purpose Flour"`, `"2 c. à soupe d'huile"`, or `"1 onion, diced"`)
+- **THEN** the system persists top-level `https://schema.org/Recipe` JSON to `{id}/recipe.json` without creating a `.publications` directory and derives structured portion lines with exact rational quantities, units, shopping names, and bilingual grocery food mappings rather than deferring conversion or dropping mappings
 
-#### Scenario: Ready event resolves description waiting state
+#### Scenario: Unquantified ingredients remain readable without failing synthesis or extraction
 
-- **WHEN** a ready notification for that pending recipe reaches the active capture screen
-- **THEN** the existing inline ready presentation replaces the waiting state and cancels its countdown
+- **WHEN** `https://schema.org/Recipe` output includes unquantified directions or prose ingredients (such as `"Salt"`, `"Pepper"`, or `"Juice of 1 lemon"`) alongside quantified ingredients
+- **THEN** the unquantified lines are persisted with null numeric amounts and original text intact, quantified sibling lines remain scalable, and the workflow task succeeds
+
+#### Scenario: Description synthesis advances through categorization to ready
+
+- **WHEN** `goto-synthesis` completes synthesis, hero generation, sync, ingredient categorization, and recipe categorization for a described recipe
+- **THEN** recipe categorization persists category, cuisine, meal types, and vegetarian classification without conflicting with finalization, and the readiness step marks the recipe ready and broadcasts `recipe_ready`
 
 ### Requirement: Retain a description draft after submission failure
 
@@ -508,13 +533,18 @@ The ordinary picker SHALL accept a nonempty file of at most 20 MiB (20,971,520 b
 
 ### Requirement: Review PDF identity and optional metadata before saving
 
-PDF confirmation SHALL show the filename and guidance to choose one recipe in up to ten pages and 20 MiB. It SHALL offer the existing appreciation options and optional notes, initially unrated, and require explicit Save Recipe. It SHALL omit finished-dish photo selection and a Cancel action.
+PDF confirmation SHALL display the open-cream capture header with the top-right `48 × 48 CSS px` white circular Cancel (`×`) control, render the selected filename and one-recipe/ten-page/`20 MiB` guidance beside a `3.5px` terracotta context bar, offer the shared appreciation rating choices and optional notes (initially unrated), and require explicit `Save recipe`. It SHALL omit finished-dish photo selection and idle upload-interruption text before Save is activated.
 
 #### Scenario: Review selected PDF
 
 - **WHEN** a PDF selection reaches enabled confirmation
-- **THEN** the person sees the filename, guidance, appreciation choices and optional notes before any intake submission
-- **AND** no finished-dish photo selector or Cancel button is presented
+- **THEN** the person sees the top-right Cancel (`×`) control, filename and page/size context beside a terracotta bar, shared appreciation rating choices, and optional notes before any intake submission
+- **AND** no finished-dish photo selector or idle upload-wait warning is presented
+
+#### Scenario: Cancel selected PDF via top-right close control
+
+- **WHEN** a person activates the top-right Cancel (`×`) control during enabled PDF confirmation
+- **THEN** the unsaved PDF selection (and any staged shared PDF token) is discarded without submitting an import and navigation returns to `/home`
 
 #### Scenario: Save metadata
 
@@ -558,22 +588,22 @@ Save SHALL submit one PDF to POST /api/recipes/capture-pdf with the submitting m
 
 ### Requirement: Lock PDF upload and retain foreground retry feedback
 
-While Save is awaiting PDF intake, the client SHALL prevent repeated submission, disable metadata controls and show Preparing your PDF with interruption guidance. A rejection, network failure or unusable response identity SHALL display an error and release the lock, retaining the foreground selection and metadata unless its lifecycle has discarded them. Unrecognized HTTP failures or a missing or invalid response identity SHALL warn that resubmission can create a duplicate.
+While Save awaits PDF intake, the client SHALL prevent repeat submission, disable metadata and Cancel controls, and show plain `Preparing your PDF…` text (no button spinner circle) plus a `role="status"` reassurance line. A failure or unusable response identity SHALL show an inline Hearth error alert and release the lock while retaining the draft. Unrecognized HTTP failures or missing/invalid IDs SHALL warn (without em-dashes) that resubmission can create a duplicate.
 
 #### Scenario: Repeated Save during upload
 
 - **WHEN** Save is activated repeatedly before its intake attempt finishes
-- **THEN** only one request is sent and metadata controls remain disabled during that attempt
+- **THEN** only one request is sent, `Preparing your PDF…` and `We’ll take you home as soon as your PDF is saved.` are shown without a spinner circle, and metadata controls remain disabled during that attempt
 
 #### Scenario: Intake rejection permits another attempt
 
 - **WHEN** intake fails while the same foreground draft remains active
-- **THEN** the error is displayed and the selected file, rating and notes remain available for another Save
+- **THEN** the inline Hearth error alert is displayed and the selected file, rating and notes remain available for another Save
 
 #### Scenario: Response identity cannot be trusted
 
 - **WHEN** a successful HTTP response lacks a usable recipe UUID
-- **THEN** the client displays uncertain-upload feedback including the duplicate warning and does not navigate as a confirmed intake
+- **THEN** the client displays uncertain-upload feedback including the duplicate warning (without em-dashes) and does not navigate as a confirmed intake
 
 ### Requirement: Persist a pending PDF before acknowledging intake
 
@@ -687,42 +717,6 @@ Photo intake SHALL validate the submitting member exists, one to twenty nonempty
 - **WHEN** a bound member ID no longer identifies an existing member
 - **THEN** photo intake rejects it before saving images or creating a recipe
 
-### Requirement: Offer inline advice for another ready recipe with the completed name
-
-After an ordinary capture reaches its inline ready presentation, the client SHALL look up the completed name through the existing library lookup. A returned recipe with a different identity SHALL produce advisory name feedback and a View existing recipe action. The captured recipe SHALL remain available unless the person explicitly requests its removal.
-
-#### Scenario: Another identity returned for the completed name
-
-- **WHEN** inline completion has a name and pending recipe identity and the name lookup returns another recipe identity
-- **THEN** capture displays the matching recipe name, View existing recipe and Discard duplicate actions
-- **AND** View existing recipe opens that returned recipe for reading
-
-#### Scenario: Lookup returns only the newly captured identity
-
-- **WHEN** the completed-name lookup returns only the current pending recipe or no recipes
-- **THEN** the inline ready presentation shows no name-duplicate advice
-
-#### Scenario: Keep the captured recipe
-
-- **WHEN** the person chooses Done or Add to this week instead of Discard duplicate
-- **THEN** capture navigates to Home or the planner respectively without sending a delete request
-- **AND** navigation alone does not assign the recipe to a planner day
-
-### Requirement: Request discard of the newly captured duplicate from inline completion
-
-Discard duplicate SHALL request deletion of the newly captured pending identity using the existing recipe-library deletion operation. While the request is pending, repeated discard activation SHALL be disabled. On success the client SHALL navigate directly to the root entry without a redundant discard toast. A rejected request SHALL release the control without success feedback or navigation.
-
-#### Scenario: Discard request succeeds
-
-- **WHEN** the person activates Discard duplicate and the deletion operation succeeds
-- **THEN** the request targets the newly captured identity rather than the matching existing recipe
-- **AND** the client navigates directly to `/` without displaying a `Duplicate recipe discarded.` toast
-
-#### Scenario: Discard request rejects
-
-- **WHEN** the deletion operation rejects the discard request
-- **THEN** the control becomes available again and the client does not show success feedback or navigate away
-
 ### Requirement: Request the configured processing language without certifying output language
 
 When IMPORT_TARGET_LANGUAGE contains a nonblank value other than case-insensitive NONE, capture processing SHALL request that language for recipe extraction, description synthesis and generated recipe descriptions. Missing, whitespace-only or NONE values SHALL add no target-language override. This request SHALL NOT certify the language or accuracy of persisted provider output.
@@ -799,22 +793,22 @@ Missing or unreadable serving evidence SHALL produce null recipeYield without in
 
 ### Requirement: Present Capture surfaces using Family Cookbook identity and dual-mode contrast
 
-All `/capture` screens, header chrome, overlays, and `LibraryToast` completion notices SHALL use Family Cookbook typography and dual-mode semantic colors (`>= 4.5:1` text / `>= 3.0:1` icons in Standard AA; `>= 7.0:1` text and icons with opaque chrome and crisp borders in High Contrast AAA), EN/FR copy, `>= 48 × 48 CSS px` targets, accessible alerts, and reduced motion.
+All `/capture` screens, headers, demo gates, overlays, and `LibraryToast` notices SHALL use Family Cookbook typography, dual-mode AA/AAA semantic roles, EN/FR copy without em-dashes, `>= 48 × 48 CSS px` targets, accessible alerts, and reduced motion. Every `/capture` state SHALL use an open-cream heading with a top-right `48 × 48 CSS px` circular Cancel (`×`) and no header divider; the camera card SHALL omit drop-hint copy; and the demo gate SHALL use a `>= 48 CSS px` secondary link.
 
 #### Scenario: Capture entry, staging, URL, describe, and PDF views under Standard and High Contrast modes
 
-- **WHEN** a household member views `/capture` (entry, photo staging, URL review, description capture, PDF confirmation, queued/ready completion, or `LibraryToast`) in `standard` or `high` contrast
-- **THEN** rendered text, buttons (including primary Save/Synthesize and Capture shutter actions), borders, and sticky header/toast surfaces satisfy AA thresholds in Standard mode and AAA opaque thresholds in High Contrast mode without horizontal overflow at `320 CSS px` or `200%` text scaling
+- **WHEN** a household member views `/capture` (entry hub, photo staging, URL review, description capture, PDF confirmation, shared `.txt` review, demo gate, or `LibraryToast`) in `standard` or `high` contrast
+- **THEN** every view presents the open-cream left-aligned header + `48 × 48 CSS px` circular Cancel (`×`) with no header divider line, and rendered text, buttons, borders, and toast surfaces satisfy AA thresholds in Standard mode and AAA opaque thresholds in High Contrast mode without horizontal overflow at `320 CSS px` or `200%` text scaling
 
 #### Scenario: Interactive targets, keyboard focus, alerts, and photo thumbnail accessibility
 
-- **WHEN** a person navigates `/capture` by keyboard or touch across gallery selection, staged photo thumbnails, remove photo, duplicate recipe links, header cancel, form fields, and form validation errors
+- **WHEN** a person navigates `/capture` by keyboard or touch across gallery selection, staged photo thumbnails, remove photo, duplicate recipe links, header cancel, demo prepared-recipes link, form fields, and form validation errors
 - **THEN** every interactive control is at least `48 × 48 CSS px`, photo thumbnails act as native buttons with keyboard activation, validation errors use `role="alert"`, inputs associate with their labels, and focused controls display visible `focus-visible` outlines
 
 #### Scenario: Managed preview URLs, locale reactivity, and reduced motion
 
 - **WHEN** photos are staged or removed, the active member switches language between EN and FR, or `prefers-reduced-motion: reduce` is enabled
-- **THEN** staged photo object URLs are revoked cleanly on removal or unmount, Capture UI strings update immediately to EN/FR sentence-case copy, and continuous pulse/ping or spring animations respect reduced motion
+- **THEN** staged photo object URLs are revoked cleanly on removal or unmount, Capture UI strings update immediately to EN/FR sentence-case copy without em-dashes, and continuous pulse/ping or spring animations respect reduced motion
 
 ### Requirement: Retire unused legacy Capture stub route and components
 

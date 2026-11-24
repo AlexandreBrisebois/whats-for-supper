@@ -110,7 +110,7 @@ public partial class DemoShowcaseLoopPostgresTests : IAsyncLifetime
         var store = scope.ServiceProvider.GetRequiredService<IRecipeStore>();
         await store.SaveSourcePdfAsync(recipe.Id, new MemoryStream([1, 2, 3]));
         await store.SaveHeroImageAsync(recipe.Id, new MemoryStream([4, 5, 6]));
-        var repairOwner = typeof(RecipeFilePublicationStore).Assembly.GetType("RecipeApi.Services.RecipeReportRepairIntent")!
+        var repairOwner = typeof(RecipeService).Assembly.GetType("RecipeApi.Services.RecipeReportRepairIntent")!
             .GetMethod("Create", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!;
         var repair = (RecipeRepairIntent)repairOwner.Invoke(null, [Guid.NewGuid(), recipe.Id, "url-import",
             new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString("D"), ["privateFeedback"] = "Synthetic feedback" },

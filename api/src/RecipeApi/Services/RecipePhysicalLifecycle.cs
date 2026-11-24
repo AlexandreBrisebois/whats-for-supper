@@ -148,7 +148,7 @@ internal static class RecipePhysicalLifecycle
     private static SortedDictionary<string, object?> RecipeFacts(RecipeDbContext db, Recipe recipe) =>
         new(db.Entry(recipe).Properties.ToDictionary(x => JsonNamingPolicy.CamelCase.ConvertName(x.Metadata.Name), x => x.CurrentValue), StringComparer.Ordinal);
 
-    private static string Hash(string payload) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(payload))));
+    private static string Hash(string payload) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(payload))));
 
     private static void Validate(RecipePhysicalDeletion intent, string kind, MaintenanceCommand? command)
     {
@@ -166,8 +166,8 @@ internal static class RecipePhysicalLifecycle
         {
             var captured = document.RootElement.GetProperty("originalMaintenanceCommand");
             if (captured.ValueKind != JsonValueKind.Object || captured.GetProperty("commandType").GetString() != command.CommandType
-                || CanonicalRecipeContentStore.NormalizeJson(captured.GetProperty("payload").GetString())
-                    != CanonicalRecipeContentStore.NormalizeJson(command.Payload))
+                || StructuredRecipeContentStore.NormalizeJson(captured.GetProperty("payload").GetString())
+                    != StructuredRecipeContentStore.NormalizeJson(command.Payload))
                 throw new InvalidDataException("Original physical command payload changed.");
         }
     }
@@ -180,7 +180,7 @@ internal static class RecipePhysicalLifecycle
         return new("deleted", intent.FilesRemoved);
     }
 
-    private sealed record PhysicalHistory(RecipeFilePublication[] Publications, CanonicalRecipeOperation[] CanonicalOperations,
+    private sealed record PhysicalHistory(RecipeFilePublication[] Publications, StructuredRecipeOperation[] CanonicalOperations,
         RecipeRepairIntent[] RepairCommands, SortedDictionary<string, object?>[] Reports);
 
     private static async Task<PhysicalHistory> ReadHistoryAsync(RecipeDbContext db, Guid id, CancellationToken ct)
@@ -309,7 +309,7 @@ internal static class RecipePhysicalLifecycle
     private sealed record RetainedWorkflowLink(Guid Id, string Disposition, string PayloadHash);
     private sealed record RetainedPayload(int Version, RetainedIntent PhysicalIntent, PhysicalCapture PhysicalCapture,
         string HistoryDisposition, RetainedRecipe Recipe, string HistoryHash, RecipeFilePublication[] Publications,
-        CanonicalRecipeOperation[] CanonicalOperations, RecipeRepairIntent[] RepairCommands, RetainedReport[] Reports,
+        StructuredRecipeOperation[] CanonicalOperations, RecipeRepairIntent[] RepairCommands, RetainedReport[] Reports,
         MaintenanceCommand? OriginalMaintenanceCommand, RetainedWorkflowLink[] WorkflowRetirements);
 
     internal static FoodVocabularyReference[] VocabularyReferences(RecipePhysicalDeletion intent)
@@ -358,8 +358,7 @@ internal static class RecipePhysicalLifecycle
             || payload.RepairCommands.Any(x => x.RecipeId != intent.RecipeId)
             || payload.Reports.Any(x => x.RecipeId != intent.RecipeId))
             throw new InvalidDataException("Retained physical history targets another recipe.");
-        references.AddRange(payload.Publications.SelectMany(RecipeFilePublicationStore.VocabularyReferences));
-        references.AddRange(payload.CanonicalOperations.SelectMany(CanonicalRecipeContentStore.VocabularyReferences));
+        references.AddRange(payload.CanonicalOperations.SelectMany(StructuredRecipeContentStore.VocabularyReferences));
         references.AddRange(payload.RepairCommands.SelectMany(RecipeReportRepairIntent.VocabularyReferences));
         foreach (var stage in payload.PhysicalCapture.StagedJournals)
         {
@@ -368,8 +367,6 @@ internal static class RecipePhysicalLifecycle
             if (!payload.PhysicalCapture.Files.TryGetValue(stage.Key, out var hash)
                 || hash != Convert.ToHexString(SHA256.HashData(stage.Value)))
                 throw new InvalidDataException("Retained staged journal bytes differ from their captured file hash.");
-            references.AddRange(RecipeFilePublicationStore.VocabularyReferences(new(intent.RecipeId,
-                publication.OperationId, publication.InputHash, stage.Value), payload.Publications));
         }
         // V1 predates the evidence column. Its exact omission is historical
         // only when all original canonical/publication/repair facts are unmapped.

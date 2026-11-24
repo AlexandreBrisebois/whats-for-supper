@@ -127,17 +127,17 @@ For an eligible failed acquisition task, successful retry persistence SHALL queu
 
 ### Requirement: Confirm and lock failed-capture clearing
 
-Clear SHALL ask for confirmation before sending DELETE `/api/captures/failures/{id}` using the loaded failure ID. Cancelling SHALL send no clear request. After confirmation, Clear SHALL be disabled for that row until the request settles. This per-row lock SHALL NOT imply locking Retry or coordinating concurrent retry and clear requests.
+Activating a row's Clear icon SHALL reveal an inline confirmation (`bg-white border-hearth-line`, never `window.confirm`) with localized consequence copy, `Keep` (`secondary`, left), and `Clear capture` (`danger` blush with trash icon, right) before sending `DELETE /api/captures/failures/{id}`. Activating `Keep` SHALL dismiss without sending a request. Accepting `Clear capture` SHALL disable Clear for that row until settled, without locking Retry or coordinating concurrent requests.
 
 #### Scenario: Cancel clear confirmation
 
-- **WHEN** the person dismisses the clear confirmation without accepting
-- **THEN** the row remains and no DELETE is sent
+- **WHEN** a person activates a row's Clear trigger and then activates `Keep`
+- **THEN** the row returns to its normal `Retry` and Clear controls without invoking `window.confirm` and no `DELETE` request is sent
 
 #### Scenario: Confirm clear and wait
 
-- **WHEN** the person accepts clear confirmation
-- **THEN** DELETE targets the failure ID and that row's Clear control is disabled while awaiting its result
+- **WHEN** a person activates `Clear capture` in the inline confirmation row
+- **THEN** `DELETE` targets the failure ID and that row's Clear confirmation controls are disabled while awaiting its result
 
 ### Requirement: Apply clear acknowledgement to the loaded list
 
@@ -306,18 +306,18 @@ Retry of saved-but-not-started URL capture SHALL initialize acquisition on the e
 
 ### Requirement: Keep failed-capture controls readable and touch-accessible
 
-Failed-capture rows in Settings SHALL use sentence-case headings and source preview text of at least `12 CSS px`, accessible Family Cookbook contrast, and `>= 48 CSS px` touch targets on both Retry and Clear failed capture actions.
+Failed-capture rows in Settings SHALL use sentence-case headings and preview text of at least `12 CSS px`, Family Cookbook contrast, and `>= 48 CSS px` touch targets. Each row SHALL place `Retry` (`flex-1` primary Hearth) on the left and the `48 × 48 CSS px` blush-danger Clear trash button on the trailing right; inline confirmation SHALL place `Keep` on the left and danger-blush `Clear capture` on the right.
 
 #### Scenario: Household member reviews or clears a failed capture on mobile
 
-- **WHEN** Settings displays one or more paused capture failures
-- **THEN** section labels, friendly reasons, and preview snippets render at `>= 12 CSS px` and Retry and Clear controls each provide at least `48 × 48 CSS px` hit areas
+- **WHEN** Settings displays one or more paused capture failures on viewports down to `320 CSS px`
+- **THEN** section labels, friendly reasons, and preview snippets render at `>= 12 CSS px`, `Retry` fills the primary left span separated from the trailing `48 × 48 CSS px` Clear button, and activating Clear reveals `>= 48 CSS px` `Keep` (left) and `Clear capture` (right) controls without horizontal overflow
 
 ### Requirement: Present active session failure banners with dual-mode contrast and localization
 
-Active session capture-failure banners (`RecipeFailureBanner`) SHALL adapt automatically to Standard AA and High Contrast AAA semantic roles, display localized EN/FR copy matching the active member locale, keep Retry and Dismiss hit areas at least `48 × 48 CSS px` with visible focus indicators, and honor reduced motion.
+Active session capture-failure banners (`RecipeFailureBanner`) SHALL render as Era 3 Hearth recovery cards (`bg-terracotta-50 border-hearth-line`, no `border-l-4` stripe or duplicate close icon), adapt to Standard AA and High Contrast AAA roles, show localized EN/FR copy without em-dashes, keep `Retry` (primary) and single `Dismiss` (secondary) targets at `>= 48 × 48 CSS px` with visible focus, and honor reduced motion.
 
 #### Scenario: Active session failure banner renders in Standard and High Contrast modes
 
 - **WHEN** an active session `recipe_failed` banner is displayed under French or English locale in either `standard` or `high` contrast mode
-- **THEN** its copy renders in the active locale, its text, borders, and Retry/Dismiss controls meet AA (`standard`) or AAA (`high`) contrast ratios, all buttons are at least `48 × 48 CSS px` with visible `focus-visible` outlines, and entry/exit motion honors `prefers-reduced-motion: reduce`
+- **THEN** it renders as a single-dismiss Hearth recovery card without a left-border stripe or duplicate `X` button, its localized copy contains no em-dashes, its text, borders, and `Retry` / `Dismiss` controls meet AA (`standard`) or AAA (`high`) contrast ratios with `>= 48 × 48 CSS px` targets and visible `focus-visible` outlines, and entry/exit motion honors `prefers-reduced-motion: reduce`

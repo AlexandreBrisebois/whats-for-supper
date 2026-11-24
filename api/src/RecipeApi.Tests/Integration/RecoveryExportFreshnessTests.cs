@@ -36,26 +36,23 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
     [Theory]
     [InlineData(4)]
     [InlineData(3)]
-    [InlineData(null)]
-    public async Task ServingsExportRestore_RetainsAuthoritativeCountAndRawYieldAndRefusesUnlinkedSync(int? count)
+    public async Task ServingsExportRestore_RetainsAuthoritativeCountAndSchemaOrgYield(int count)
     {
         var recipe = new Recipe { Name = "Radiatore", IsSynthesized = true, IsReady = true, Servings = count, Ingredients = "[\"510 g beef\",\"340 g pasta\"]", RawMetadata = "{\"recipeYield\":\"4 portions\"}" };
         Db.Recipes.Add(recipe); await Db.SaveChangesAsync();
         for (var attempt = 0; attempt < 2; attempt++) {
             await Service.BackupAsync();
             var json = JsonDocument.Parse((await Store.ReadRecipeJsonAsync(recipe.Id))!).RootElement;
-            Assert.True(json.TryGetProperty("servings", out var exported)); Assert.Equal(count, exported.ValueKind == JsonValueKind.Null ? (int?)null : exported.GetInt32());
+            Assert.Equal("https://schema.org/", json.GetProperty("@context").GetString());
+            Assert.Equal("Recipe", json.GetProperty("@type").GetString());
+            Assert.Equal($"{count} portions", json.GetProperty("recipeYield").GetString());
             var infoPath = Path.Combine(_scope.ServiceProvider.GetRequiredService<RecipesRootResolver>().Root, recipe.Id.ToString(), "recipe.info");
             var info = JsonDocument.Parse(await File.ReadAllTextAsync(infoPath)).RootElement;
             Assert.False(info.TryGetProperty("servings", out _)); Assert.False(info.TryGetProperty("recipeYield", out _));
             recipe.Servings = 7; await Db.SaveChangesAsync();
             await Service.RestoreAsync();
             Assert.Equal(count, recipe.Servings);
-            await Assert.ThrowsAsync<InvalidDataException>(() => new SyncRecipeProcessor(_scope.ServiceProvider.GetRequiredService<IClock>(), Db,
-                new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()), _scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(), _scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(Db, (new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>())).StorageProvider, _scope.ServiceProvider.GetRequiredService<IClock>(), _scope.ServiceProvider))
-                .ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None));
-            Assert.Equal(count, recipe.Servings); Assert.Contains("4 portions", recipe.RawMetadata); Assert.Equal(new[] { "510 g beef", "340 g pasta" }, RecipeService.DeserializeIngredients(recipe.Ingredients));
+            Assert.Equal(new[] { "510 g beef", "340 g pasta" }, RecipeService.DeserializeIngredients(recipe.Ingredients));
         }
     }
 
@@ -97,16 +94,19 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
         await Service.BackupAsync();
         using (var json = JsonDocument.Parse((await Store.ReadRecipeJsonAsync(recipe.Id))!))
         {
-            Assert.Equal(recipe.Ingredients, json.RootElement.GetProperty("ingredients").GetString());
-            Assert.Equal(recipe.RawMetadata, json.RootElement.GetProperty("rawMetadata").GetString());
+            Assert.Equal("https://schema.org/", json.RootElement.GetProperty("@context").GetString());
+            Assert.Equal("Recipe", json.RootElement.GetProperty("@type").GetString());
+            Assert.Equal("New", json.RootElement.GetProperty("name").GetString());
+            Assert.Equal("new", json.RootElement.GetProperty("recipeIngredient")[0].GetString());
         }
         recipe.Ingredients = null;
         recipe.RawMetadata = null;
         await Db.SaveChangesAsync();
         await Service.BackupAsync();
         using var cleared = JsonDocument.Parse((await Store.ReadRecipeJsonAsync(recipe.Id))!);
-        Assert.Equal(JsonValueKind.Null, cleared.RootElement.GetProperty("ingredients").ValueKind);
-        Assert.Equal(JsonValueKind.Null, cleared.RootElement.GetProperty("rawMetadata").ValueKind);
+        Assert.Equal("https://schema.org/", cleared.RootElement.GetProperty("@context").GetString());
+        Assert.Equal("Recipe", cleared.RootElement.GetProperty("@type").GetString());
+        Assert.Empty(cleared.RootElement.GetProperty("recipeIngredient").EnumerateArray());
         var hero = await Store.ReadHeroImageAsync(recipe.Id);
         await using var stream = hero!.Value.Stream;
         using var bytes = new MemoryStream();
@@ -171,25 +171,13 @@ public class RecoveryExportFreshnessTests : IAsyncLifetime
         {
             await Service.BackupAsync();
             await Service.RestoreAsync();
-            Assert.Equal(metadata, (await Db.Recipes.SingleAsync(r => r.Id == recipe.Id)).RawMetadata);
+            var saved = await Db.Recipes.SingleAsync(r => r.Id == recipe.Id);
+            using var doc = JsonDocument.Parse(saved.RawMetadata!);
+            Assert.Equal("https://schema.org/", doc.RootElement.GetProperty("@context").GetString());
+            Assert.Equal("Recipe", doc.RootElement.GetProperty("@type").GetString());
+            Assert.False(doc.RootElement.TryGetProperty("rawMetadata", out _));
+            Assert.False(doc.RootElement.TryGetProperty("backupContentVersion", out _));
         }
-    }
-
-    [Fact]
-    public async Task LegacyExportedContent_IsRefusedByUnlinkedDiskSyncWithoutChangingSavedFacts()
-    {
-        const string metadata = "{\"recipeInstructions\":[\"Simmer gently\"]}";
-        var recipe = new Recipe { Name = "Soup", IsSynthesized = true, IsReady = true, RawMetadata = metadata, Ingredients = "[\"water\"]" };
-        Db.Recipes.Add(recipe);
-        await Db.SaveChangesAsync();
-        await Service.BackupAsync();
-        var processor = new SyncRecipeProcessor(_scope.ServiceProvider.GetRequiredService<IClock>(), Db,
-            new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>()),
-            _scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(), _scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(Db, (new RecipeRepository(_scope.ServiceProvider.GetRequiredService<IStorageProvider>())).StorageProvider, _scope.ServiceProvider.GetRequiredService<IClock>(), _scope.ServiceProvider));
-        await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) }, CancellationToken.None));
-        Assert.Equal(metadata, recipe.RawMetadata);
-        Assert.Equal("[\"water\"]", recipe.Ingredients);
     }
 
     [Theory]

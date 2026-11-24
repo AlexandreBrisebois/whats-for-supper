@@ -18,13 +18,13 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         await WithEditor(async (factory, before) =>
         {
             using var client = factory.CreateAuthenticatedClient();
-            async Task<CanonicalRecipeContent> Read()
+            async Task<StructuredRecipeContent> Read()
             {
                 using var scope = factory.Services.CreateScope();
-                return CanonicalRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
+                return StructuredRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
                     .Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             }
-            object Instructions(CanonicalRecipeContent content, string text) => new
+            object Instructions(StructuredRecipeContent content, string text) => new
             {
                 expectedContentRevision = content.ContentRevision,
                 instructionSections = new[] { new { id = content.InstructionSections[0].Id,
@@ -141,7 +141,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
                 using var scope = factory.Services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                current = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+                current = StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
                 Assert.Empty(current.InstructionSections[0].Steps[0].Bindings);
                 Assert.Equal(text, CookingStepProjection.Read(current, 6).Sections[0].Steps[0].Text);
                 Assert.Equal("200", current.IngredientLines[0].AmountText);

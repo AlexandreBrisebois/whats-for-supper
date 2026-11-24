@@ -9,7 +9,7 @@ public sealed record RecipeFoodNameDecision(Guid IngredientLineId, string Conten
     string Name, string Kind, string? MappingRevision);
 public sealed record RecipeFoodMappingEvidence(int Version, Guid RecipeId, RecipeFoodMapping[] Mappings,
     RecipeFoodNameDecision[] NameDecisions);
-public sealed record FoodMappingPreparation(CanonicalRecipeExport Export, string? Evidence, RecipeFoodNameDecision[] Decisions);
+public sealed record FoodMappingPreparation(StructuredRecipeExport Export, string? Evidence, RecipeFoodNameDecision[] Decisions);
 
 // One pure qualification owner. No file, settings, provider or today's-head
 // lookup is possible while validating an accepted operation's captured inputs.
@@ -30,7 +30,7 @@ public static class FoodMappingQualification
     }
     private static RecipeFoodMappingEvidence Read(string raw) => FoodVocabularyDefinitions.ReadStrict<RecipeFoodMappingEvidence>(raw);
 
-    public static void Validate(CanonicalRecipeContent content, string? evidence, FoodVocabularyAuthority authority, Guid recipeId)
+    public static void Validate(StructuredRecipeContent content, string? evidence, FoodVocabularyAuthority authority, Guid recipeId)
     {
         authority.Validate();
         if (evidence is null)
@@ -75,19 +75,19 @@ public static class FoodMappingQualification
                 : saved.Mappings.Count(x => x.Facts.IngredientLineId == line.Id) == 1);
     }
 
-    public static FoodMappingPreparation Prepare(CanonicalRecipeExport export, FoodVocabularyAuthority authority,
-        Guid operationId, CanonicalRecipeContent? priorContent = null, string? priorEvidence = null)
+    public static FoodMappingPreparation Prepare(StructuredRecipeExport export, FoodVocabularyAuthority authority,
+        Guid operationId, StructuredRecipeContent? priorContent = null, string? priorEvidence = null)
         => PrepareCore(export, authority, operationId, priorContent, priorEvidence, requalifyCapturedRepair: false);
 
     // The guarded photo repair owner independently reconstructs source rows and
     // the complete protected merge. This entrypoint requalifies only an existing
     // unchanged shopping decision against its captured dictionary proof; it
     // never reruns matching for a private name, identity clear or override.
-    internal static FoodMappingPreparation PrepareCapturedPhotoRepair(CanonicalRecipeExport export, FoodVocabularyAuthority authority,
-        Guid operationId, CanonicalRecipeContent priorContent, string? priorEvidence, string? sourceUrl = null)
+    internal static FoodMappingPreparation PrepareCapturedPhotoRepair(StructuredRecipeExport export, FoodVocabularyAuthority authority,
+        Guid operationId, StructuredRecipeContent priorContent, string? priorEvidence, string? sourceUrl = null)
     {
         FoodVocabularyDefinitions.Require(export.RawMetadata is not null
-            && export.Content.SourceRevision == CanonicalRecipeContentStore.InspectSourceRevision(new Models.Recipe
+            && export.Content.SourceRevision == StructuredRecipeContentStore.InspectSourceRevision(new Models.Recipe
             { Id = export.RecipeId, RawMetadata = export.RawMetadata, SourceUrl = sourceUrl })
             && priorContent.IngredientLines.Select(x => x.Id).SequenceEqual(export.Content.IngredientLines.Select(x => x.Id)));
         foreach (var line in export.Content.IngredientLines)
@@ -104,8 +104,8 @@ public static class FoodMappingQualification
         return PrepareCore(export, authority, operationId, priorContent, priorEvidence, requalifyCapturedRepair: true);
     }
 
-    private static FoodMappingPreparation PrepareCore(CanonicalRecipeExport export, FoodVocabularyAuthority authority,
-        Guid operationId, CanonicalRecipeContent? priorContent, string? priorEvidence, bool requalifyCapturedRepair)
+    private static FoodMappingPreparation PrepareCore(StructuredRecipeExport export, FoodVocabularyAuthority authority,
+        Guid operationId, StructuredRecipeContent? priorContent, string? priorEvidence, bool requalifyCapturedRepair)
     {
         FoodVocabularyDefinitions.Require(operationId != Guid.Empty);
         var active = authority.ActiveDefinitions();
@@ -170,21 +170,11 @@ public static class FoodMappingQualification
         return new(result, evidence, decisions.ToArray());
     }
 
-    private static bool SourceAligned(CanonicalRecipeExport export, RecipeIngredientLineDto line)
+    private static bool SourceAligned(StructuredRecipeExport export, RecipeIngredientLineDto line)
     {
-        if (export.RawMetadata is null || line.Provenance.SourceRef != export.Content.SourceRevision
-            || line.Provenance.ProtectedFields.Contains("shopping")) return false;
-        using var document = JsonDocument.Parse(export.RawMetadata);
-        if (!document.RootElement.TryGetProperty("recipeIngredient", out var originals) || originals.ValueKind != JsonValueKind.Array
-            || originals.GetArrayLength() != export.Content.IngredientLines.Count) return false;
-        var index = export.Content.IngredientLines.Select((value, i) => (value.Id, i)).Single(x => x.Id == line.Id).i;
-        // Complete source phrase, not a provider-shortened purchase name.
-        if (originals[index].GetString() != CanonicalRecipeContentStore.Render(line) || line.Description != line.Shopping.Name) return false;
-        if (document.RootElement.TryGetProperty("supply", out var supply) && supply.ValueKind == JsonValueKind.Array)
-        {
-            if (supply.GetArrayLength() != originals.GetArrayLength() || !supply[index].TryGetProperty("name", out var name)
-                || name.GetString() != line.Shopping.Name) return false;
-        }
-        return true;
+        return export.RawMetadata is not null
+            && line.Provenance.Origin == "source"
+            && line.Provenance.SourceRef == export.Content.SourceRevision
+            && !line.Provenance.ProtectedFields.Contains("shopping");
     }
 }

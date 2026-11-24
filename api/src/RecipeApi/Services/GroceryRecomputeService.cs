@@ -93,7 +93,7 @@ public partial class GroceryRecomputeService(
         var presentation = vocabulary is null ? null : await vocabulary.CapturePresentationAsync(savedRecipes.Select(recipe => recipe.FoodMappingEvidence), ct);
         foreach (var recipe in savedRecipes)
         {
-            if (CanonicalRecipeContentStore.Read(recipe) is not { } content) continue;
+            if (StructuredRecipeContentStore.Read(recipe) is not { } content) continue;
             var hasMapping = content.IngredientLines.Any(line => line.Shopping.FoodId is not null);
             var authority = hasMapping
                 ? presentation?.Authority ?? throw new InvalidDataException("Mapped groceries require retained vocabulary authority.")
@@ -457,7 +457,7 @@ public partial class GroceryRecomputeService(
     public async Task RecomputeForFoodAsync(Guid foodId, CancellationToken ct)
     {
         var recipes = await db.Recipes.AsNoTracking().Where(recipe => recipe.CanonicalContent != null).ToArrayAsync(ct);
-        var ids = recipes.Where(recipe => CanonicalRecipeContentStore.Read(recipe)!.IngredientLines.Any(line => line.Shopping.FoodId == foodId))
+        var ids = recipes.Where(recipe => StructuredRecipeContentStore.Read(recipe)!.IngredientLines.Any(line => line.Shopping.FoodId == foodId))
             .Select(recipe => recipe.Id).ToArray();
         var dates = await db.CalendarEvents.AsNoTracking().Where(occurrence => occurrence.RecipeId != null && ids.Contains(occurrence.RecipeId.Value))
             .Select(occurrence => occurrence.Date).ToArrayAsync(ct);

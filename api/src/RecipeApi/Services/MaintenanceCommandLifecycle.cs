@@ -27,7 +27,7 @@ internal static partial class MaintenanceCommandLifecycle
             OperationId = operationId,
             Disposition = disposition,
             Payload = payload,
-            PayloadHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(payload)))),
+            PayloadHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(payload)))),
             CreatedAt = now
         });
     }
@@ -76,7 +76,7 @@ internal static partial class MaintenanceCommandLifecycle
         var payload = WorkflowProcessorHistory.ReadObservation<RetainedPayload>(record.Payload, json);
         if (record.Id == Guid.Empty || record.OperationId == Guid.Empty || record.CreatedAt == default
             || record.Disposition is not ("retention-started" or "pruned") || record.PayloadHash != Convert.ToHexString(SHA256.HashData(
-                Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(record.Payload))))
+                Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(record.Payload))))
             || payload.Version != 1 || payload.ExecutionDisposition != "inert" || payload.Command is null
             || payload.Command.Id != record.Id || payload.Command.Status is not ("completed" or "skipped")
             || payload.WorkflowRetirements is null || payload.PhysicalRetirements is null

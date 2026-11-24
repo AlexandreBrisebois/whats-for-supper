@@ -42,17 +42,14 @@ describe('LibraryToast', () => {
     ];
   });
 
-  it('renders cooled herb garden semantic tokens, glass-toast surface, and 48px dismiss target', () => {
+  it('renders opaque white Garden-bordered toast without glass-toast, left stripe, or +N more badge', () => {
     render(<LibraryToast />);
 
     const card = screen.getByTestId('library-toast-card');
-    expect(card).toHaveClass('glass-toast', 'border-garden-line', 'border-l-garden-fill');
+    expect(card).toHaveClass('bg-white', 'border-garden-line');
+    expect(card).not.toHaveClass('glass-toast', 'border-l-4', 'border-l-garden-fill');
     expect(screen.getByText('Tap to view recipe')).toHaveClass('text-ink-muted');
-    expect(screen.getByText('+1 more')).toHaveClass(
-      'bg-sage-50',
-      'text-garden-ink',
-      'border-garden-line'
-    );
+    expect(screen.queryByText('+1 more')).not.toBeInTheDocument();
 
     const viewBtn = screen.getByRole('button', { name: 'View Tomato Soup' });
     expect(viewBtn).toHaveClass('focus-visible:outline-ink-body');
@@ -72,9 +69,27 @@ describe('LibraryToast', () => {
 
     expect(screen.getByText(/est prête !/)).toBeInTheDocument();
     expect(screen.getByText('Touchez pour voir la recette')).toBeInTheDocument();
-    expect(screen.getByText('+1 de plus')).toBeInTheDocument();
+    expect(screen.queryByText('+1 de plus')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Voir Tomato Soup' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ignorer la notification' })).toBeInTheDocument();
+  });
+
+  it('opens paired duplicate review when notification is flagged as suspected duplicate', () => {
+    mockNotifications = [
+      {
+        recipeId: 'recipe-dup-1',
+        name: 'Tomato Soup',
+        type: 'ready',
+        isSuspectedDuplicate: true,
+      },
+    ];
+    render(<LibraryToast />);
+
+    expect(screen.getByText('Possible duplicate · Tap to review')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'View Tomato Soup' }));
+    expect(mockDismissNotification).toHaveBeenCalledWith('recipe-dup-1');
+    expect(mockPush).toHaveBeenCalledWith('/recipes?open=recipe-dup-1&reviewDuplicate=1');
   });
 
   it('opens the recipe on click and dismisses without navigation on dismiss click', () => {

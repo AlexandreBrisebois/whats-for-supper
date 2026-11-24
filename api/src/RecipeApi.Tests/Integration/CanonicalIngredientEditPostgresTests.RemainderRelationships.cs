@@ -18,13 +18,13 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         await WithEditor(async (factory, before) =>
         {
             using var client = factory.CreateAuthenticatedClient();
-            async Task<CanonicalRecipeContent> Read()
+            async Task<StructuredRecipeContent> Read()
             {
                 using var scope = factory.Services.CreateScope();
-                return CanonicalRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
+                return StructuredRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
                     .Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             }
-            object Steps(CanonicalRecipeContent current, string final = "Finally, use all the remaining oil.") => new
+            object Steps(StructuredRecipeContent current, string final = "Finally, use all the remaining oil.") => new
             {
                 expectedContentRevision = current.ContentRevision,
                 instructionSections = new[] { new { id = current.InstructionSections[0].Id,
@@ -147,9 +147,9 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                         new { id = before.InstructionSections[0].Steps[0].Id, text = "Utilisez 1 tbsp d’huile." },
                         new { clientId = "huile-finale", text = "Enfin, utilisez tout le reste d’huile." } } } }
             })).StatusCode);
-            CanonicalRecipeContent current;
+            StructuredRecipeContent current;
             using (var scope = factory.Services.CreateScope())
-                current = CanonicalRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
+                current = StructuredRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
                     .Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             Assert.Equal(2, CookingStepProjection.Read(current, 8).ValidatedUses);
             Assert.Equal("Enfin, utilisez tout le reste (2 tbsp) d’huile.", CookingStepProjection.Read(current, 8).Sections[0].Steps[1].Text);
@@ -174,7 +174,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             using var readScope = factory.Services.CreateScope();
             var db = readScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
-            var content = CanonicalRecipeContentStore.Read(saved)!;
+            var content = StructuredRecipeContentStore.Read(saved)!;
             Assert.Equal(winner == 0 ? "Ingredient winner" : "Instruction winner", saved.Name);
             Assert.Equal(winner == 0 ? "3" : "2", content.IngredientLines[0].AmountText);
             Assert.Equal(winner == 0 ? "Utilisez 1 tbsp d’huile." : "Utilisez 0.5 tbsp d’huile.", content.InstructionSections[0].Steps[0].Text);

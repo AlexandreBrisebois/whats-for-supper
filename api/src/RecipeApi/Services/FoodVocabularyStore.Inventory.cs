@@ -45,37 +45,9 @@ public sealed partial class FoodVocabularyStore
             new(FoodVocabularyOverrideCoverage.CapturedV1, overrideFacts));
     }
 
-    private async Task<IReadOnlyList<FoodVocabularyStagedJournalObservation>> ObserveStagedJournalsAsync(CancellationToken ct)
+    private static Task<IReadOnlyList<FoodVocabularyStagedJournalObservation>> ObserveStagedJournalsAsync(CancellationToken ct)
     {
-        var root = recipes.Root;
-        if (new DirectoryInfo(root).LinkTarget is not null) throw new InvalidDataException("Vocabulary reference inventory cannot follow a recipe root link.");
-        if (!Directory.Exists(root)) return [];
-        var stages = new List<FoodVocabularyStagedJournalObservation>();
-        foreach (var recipeDirectory in Directory.GetDirectories(root).Order(StringComparer.Ordinal))
-        {
-            ct.ThrowIfCancellationRequested();
-            if (!Guid.TryParseExact(Path.GetFileName(recipeDirectory), "D", out var recipeId)) continue;
-            var stageRoot = Path.Combine(recipeDirectory, ".publications");
-            if (new DirectoryInfo(recipeDirectory).LinkTarget is not null || new DirectoryInfo(stageRoot).LinkTarget is not null)
-                throw new InvalidDataException("Vocabulary reference inventory cannot follow recipe links.");
-            if (File.Exists(stageRoot)) throw new InvalidDataException("Publication staging root is a file.");
-            if (!Directory.Exists(stageRoot)) continue;
-            if (Directory.GetFiles(stageRoot).Length != 0) throw new InvalidDataException("Unmatched publication stage requires reconciliation.");
-            foreach (var operationDirectory in Directory.GetDirectories(stageRoot).Order(StringComparer.Ordinal))
-            {
-                if (new DirectoryInfo(operationDirectory).LinkTarget is not null
-                    || !Guid.TryParseExact(Path.GetFileName(operationDirectory), "N", out var operationId)
-                    || Directory.GetDirectories(operationDirectory).Length != 0)
-                    throw new InvalidDataException("Publication stage operation is invalid.");
-                foreach (var file in Directory.GetFiles(operationDirectory).Order(StringComparer.Ordinal))
-                {
-                    ct.ThrowIfCancellationRequested();
-                    if (new FileInfo(file).LinkTarget is not null || !Regex.IsMatch(Path.GetFileName(file), "^[A-F0-9]{64}\\.json$", RegexOptions.CultureInvariant))
-                        throw new InvalidDataException("Publication stage file is invalid.");
-                    stages.Add(new(recipeId, operationId, Path.GetFileNameWithoutExtension(file), await File.ReadAllBytesAsync(file, ct)));
-                }
-            }
-        }
-        return stages;
+        ct.ThrowIfCancellationRequested();
+        return Task.FromResult<IReadOnlyList<FoodVocabularyStagedJournalObservation>>([]);
     }
 }

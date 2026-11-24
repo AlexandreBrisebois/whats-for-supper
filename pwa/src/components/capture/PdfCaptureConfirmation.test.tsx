@@ -20,7 +20,7 @@ describe('PDF confirmation', () => {
     mockLocale = 'en';
   });
 
-  it('shows filename, guidance and metadata; locks Save synchronously without Cancel or dish selection', async () => {
+  it('shows terracotta-bar filename, cancel button, shared rating, and plain saving copy without spinner', async () => {
     let done!: () => void;
     const save = vi.fn(
       () =>
@@ -28,11 +28,22 @@ describe('PDF confirmation', () => {
           done = resolve;
         })
     );
-    render(<PdfCaptureConfirmation file={new File(['pdf'], 'supper.pdf')} enabled onSave={save} />);
-    expect(screen.getByText('supper.pdf')).toBeTruthy();
-    expect(screen.getByText(/one recipe/i)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /cancel/i })).toBeNull();
+    const onCancel = vi.fn();
+    render(
+      <PdfCaptureConfirmation
+        file={new File(['pdf'], 'supper.pdf')}
+        enabled
+        onSave={save}
+        onCancel={onCancel}
+      />
+    );
+    expect(screen.getByTestId('pdf-file-context')).toHaveTextContent('supper.pdf');
+    expect(screen.getByText(/10 pages · 20 MiB/i)).toBeTruthy();
+    const cancelBtn = screen.getByTestId('capture-cancel-btn');
+    expect(cancelBtn).toBeEnabled();
     expect(screen.queryByText(/main dish/i)).toBeNull();
+    expect(screen.queryByText(/We’ll take you home as soon as your PDF is saved/i)).toBeNull();
+
     fireEvent.click(screen.getByTestId('pdf-rating-3'));
     fireEvent.change(screen.getByTestId('pdf-notes'), { target: { value: ' less salt ' } });
     await act(async () => {
@@ -41,7 +52,14 @@ describe('PDF confirmation', () => {
     });
     expect(save).toHaveBeenCalledTimes(1);
     expect(save).toHaveBeenCalledWith(3, 'less salt');
-    expect(screen.getByTestId('pdf-save')).toBeDisabled();
+    const saveBtn = screen.getByTestId('pdf-save');
+    expect(saveBtn).toBeDisabled();
+    expect(saveBtn).toHaveTextContent('Preparing your PDF…');
+    expect(saveBtn.querySelector('.animate-spin')).toBeNull();
+    expect(screen.getByTestId('capture-cancel-btn')).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'We’ll take you home as soon as your PDF is saved.'
+    );
     await act(async () => done());
   });
 
@@ -51,21 +69,27 @@ describe('PDF confirmation', () => {
         file={new File(['pdf'], 'supper.pdf')}
         enabled={false}
         onSave={vi.fn()}
+        onCancel={vi.fn()}
       />
     );
     expect(screen.getByTestId('pdf-save')).toBeDisabled();
   });
 
-  it('uses dual-mode semantic role tokens, associated label, 48px rating buttons, and active locale', () => {
+  it('uses dual-mode semantic role tokens, associated label, 48px shared rating buttons, and active locale', () => {
     mockLocale = 'fr';
     render(
-      <PdfCaptureConfirmation file={new File(['pdf'], 'supper.pdf')} enabled onSave={vi.fn()} />
+      <PdfCaptureConfirmation
+        file={new File(['pdf'], 'supper.pdf')}
+        enabled
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />
     );
 
-    const heading = screen.getByRole('heading', { level: 2 });
+    const heading = screen.getByRole('heading', { level: 1 });
     expect(heading).toHaveClass('text-ink-body', 'font-bold');
     expect(heading).not.toHaveClass('font-black');
-    expect(heading).toHaveTextContent('fr:capture.pdf.title');
+    expect(heading).toHaveTextContent('fr:capture.pdf.importHeading');
 
     const notesInput = screen.getByLabelText('fr:capture.notes:Notes (Optional)');
     expect(notesInput).toHaveAttribute('data-testid', 'pdf-notes');
@@ -79,12 +103,13 @@ describe('PDF confirmation', () => {
     const dislikeBtn = screen.getByTestId('pdf-rating-1');
     const likeBtn = screen.getByTestId('pdf-rating-2');
     const loveBtn = screen.getByTestId('pdf-rating-3');
-    expect(dislikeBtn).toHaveClass('min-h-12', 'min-w-12');
+    expect(dislikeBtn).toHaveClass('min-h-12');
     fireEvent.click(dislikeBtn);
-    expect(dislikeBtn).toHaveClass('border-hearth-line', 'text-hearth-ink');
+    expect(dislikeBtn).toHaveClass('bg-white', 'text-hearth-ink');
+    expect(dislikeBtn.querySelector('svg')).toBeNull();
     fireEvent.click(likeBtn);
-    expect(likeBtn).toHaveClass('border-garden-line', 'text-garden-ink');
+    expect(likeBtn).toHaveClass('bg-white', 'text-garden-ink');
     fireEvent.click(loveBtn);
-    expect(loveBtn).toHaveClass('border-ink-body', 'text-ink-body');
+    expect(loveBtn).toHaveClass('bg-white', 'text-ink-body');
   });
 });

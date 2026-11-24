@@ -178,7 +178,7 @@ public sealed partial class FoodVocabularyStore(RecipeDbContext db, IStorageProv
         member.UpdatedAt = clock.UtcNow;
     }
     private static string RequestHash(FoodVocabularyPublicationRequest request) => FoodVocabularyDefinitions.Sha256(
-        Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(request, Json))));
+        Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(request, Json))));
 
     private static FoodVocabularyMembership ReadMembership(string raw)
     {

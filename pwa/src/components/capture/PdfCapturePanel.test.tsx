@@ -1,18 +1,19 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PdfCapturePanel } from './PdfCapturePanel';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
 import { useFamilyStore } from '@/store/familyStore';
-import { claimSharedPdf } from '@/lib/pdfShare';
+import { claimSharedPdf, discardSharedPdf } from '@/lib/pdfShare';
 
 let mockLocale: 'en' | 'fr' = 'en';
 vi.mock('@/components/common/LocaleProvider', () => ({
   useLocale: () => ({ locale: mockLocale, setCurrentLocale: vi.fn() }),
 }));
 
+const mockPush = vi.fn();
 const navigation = vi.hoisted(() => ({ query: '' }));
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: mockPush, replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(navigation.query),
 }));
 vi.mock('@/lib/api/recipes', () => ({ createPdfRecipe: vi.fn() }));
@@ -81,5 +82,17 @@ describe('PDF capture draft ownership', () => {
     expect(errorEl.className).toContain('text-hearth-ink');
     expect(errorEl.className).not.toContain('text-terracotta-700');
     expect(errorEl).toHaveTextContent(/partagez le pdf|choisissez/i);
+  });
+
+  it('discards staged shared PDF token, resets draft, and navigates to /home when cancel is clicked', async () => {
+    usePdfCaptureStore.getState().select(file, member, 'share-token-123');
+    render(<PdfCapturePanel isGoto={false} resetPhotos={resetPhotos} />);
+
+    const cancelBtn = screen.getByTestId('capture-cancel-btn');
+    fireEvent.click(cancelBtn);
+
+    expect(discardSharedPdf).toHaveBeenCalledWith('share-token-123');
+    expect(usePdfCaptureStore.getState().selection).toBeNull();
+    expect(mockPush).toHaveBeenCalledWith('/home');
   });
 });

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Check } from 'lucide-react';
 import { NonCookingVignette } from './NonCookingVignette';
 import { QuickCaptureTrigger, CookedSuccessCard } from './HomeSections';
+import { CaptureInFlightRibbon } from './CaptureInFlightRibbon';
 import { TonightMenuCard, TonightCardBase } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
@@ -734,6 +735,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
         </div>
       )}
       <QuickCaptureTrigger />
+      <CaptureInFlightRibbon />
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20" data-testid="home-loader">
           <SolarLoader label={t('home.aligningDay', 'Aligning your day...')} />

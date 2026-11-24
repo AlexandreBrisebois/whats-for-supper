@@ -1,3 +1,4 @@
+using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
@@ -6,7 +7,9 @@ namespace RecipeApi.Services;
 /// <summary>Acceptance only. PDF validity and page rendering belong to recipe-import.</summary>
 public sealed class PdfCaptureService(
     IClock clock,
-    RecipeFilePublicationStore publications, IWorkflowOrchestrator orchestrator,
+    RecipeDbContext db,
+    IRecipeStore recipeStore,
+    IWorkflowOrchestrator orchestrator,
     ILogger<PdfCaptureService> logger)
 {
     public const long MaxFileBytes = 20 * 1024 * 1024;
@@ -30,9 +33,9 @@ public sealed class PdfCaptureService(
         var id = Guid.NewGuid();
         var now = clock.UtcNow;
         notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
-        var capture = await publications.CaptureNewAsync(id, ct);
-        var followup = publications.CaptureFollowup("recipe-import", new() { ["recipeId"] = id.ToString() });
-        await publications.PublishAsync(capture, new(null, new RecipeInfo
+
+        await recipeStore.SaveSourcePdfAsync(id, buffer, ct);
+        await recipeStore.WriteInfoAsync(new RecipeInfo
         {
             Id = id,
             AddedBy = memberId,
@@ -42,13 +45,30 @@ public sealed class PdfCaptureService(
             ImageCount = 0,
             CreatedAt = now,
             IsReady = false
-        }, SourceFiles: new Dictionary<string, byte[]?> { ["original/source.pdf"] = buffer.ToArray() },
-            SourceKind: "bootstrap", FollowupIntent: followup.RecipePublicationCapture), followup.Id, ct);
+        }, ct);
+
+        db.Recipes.Add(new Recipe
+        {
+            Id = id,
+            AddedBy = memberId,
+            Rating = (RecipeRating)rating,
+            Notes = notes,
+            FinishedDishIndex = -1,
+            ImageCount = 0,
+            IsReady = false,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        db.RecipeSearchDocuments.Add(new RecipeSearchDocument { RecipeId = id });
+        await db.SaveChangesAsync(ct);
 
         // Preserve the existing acceptance/enqueue boundary: persisted ID is not a delivery guarantee.
         try
         {
-            await orchestrator.InitializeRecipeFollowupAsync(followup.Id, ct);
+            await orchestrator.TriggerAsync("recipe-import", new Dictionary<string, string>
+            {
+                ["recipeId"] = id.ToString()
+            });
         }
         catch (Exception ex)
         {

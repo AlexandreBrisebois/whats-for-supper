@@ -8,7 +8,7 @@ namespace RecipeApi.Tests.Services;
 
 public sealed partial class CookingStepAllocationTests
 {
-    private static CanonicalRecipeContent FixedContent()
+    private static StructuredRecipeContent FixedContent()
     {
         var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "oil", Amount = QuantityMath.Parse("2"),
             AmountText = "2", Unit = new("tbsp", null), Scaling = "proportional", Package = null,
@@ -86,7 +86,7 @@ public sealed partial class CookingStepAllocationTests
             Assert.Equal((fixedValid ? 1 : 0) + (otherValid ? 1 : 0), result.ValidatedUses);
             Assert.Equal(steps[0].Text, result.Sections[0].Steps[0].Text);
             Assert.Equal(steps[0].Text, result.Sections[0].Steps[0].OriginalText);
-            if (otherValid) Assert.Equal($"Finish with {(target is null || fault == "fixedRow" ? "1" : CanonicalRecipeContentStore.Render(before.IngredientLines[0] with { Amount = QuantityMath.Scale(QuantityMath.Parse("1"), target.Value, 4), AmountText = null, Unit = null, Description = "" }).TrimEnd())} tbsp oil.", result.Sections[0].Steps[1].Text);
+            if (otherValid) Assert.Equal($"Finish with {(target is null || fault == "fixedRow" ? "1" : StructuredRecipeContentStore.Render(before.IngredientLines[0] with { Amount = QuantityMath.Scale(QuantityMath.Parse("1"), target.Value, 4), AmountText = null, Unit = null, Description = "" }).TrimEnd())} tbsp oil.", result.Sections[0].Steps[1].Text);
         }
         Assert.Equal(before.InstructionSections[0].Steps[0].Bindings[0].GetProperty("payload").GetRawText(), after.InstructionSections[0].Steps[0].Bindings[0].GetProperty("payload").GetRawText());
         if (fault == "corrected") Assert.Equal("after", after.InstructionSections[0].Steps[0].Bindings[0].GetProperty("validatedContentRevision").GetString());

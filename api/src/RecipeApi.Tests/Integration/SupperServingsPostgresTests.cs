@@ -31,7 +31,7 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
     {
         var existing = string.IsNullOrWhiteSpace(existingCanonicalContent)
             ? null
-            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, CanonicalJson);
+            : JsonSerializer.Deserialize<StructuredRecipeContent>(existingCanonicalContent, CanonicalJson);
         var existingLines = existing?.IngredientLines ?? [];
         var mapped = lines.Select((line, index) => new RecipeIngredientLineDto
         {
@@ -46,7 +46,7 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
             Provenance = new("human", "source", [])
         }).ToList();
         var sections = instructionSections ?? existing?.InstructionSections ?? [];
-        var content = new CanonicalRecipeContent(
+        var content = new StructuredRecipeContent(
             2, Guid.NewGuid().ToString("N"), "source", basis, mapped, sections);
         return JsonSerializer.Serialize(
             sections.Count > 0 ? CookingStepRelationshipProducer.Discover(content, existing) : content,

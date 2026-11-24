@@ -205,9 +205,8 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddScoped<RecipeStartupMigrator>();
         builder.Services.AddScoped<GroceryPresentationService>();
     builder.Services.AddScoped<HouseholdFoodOverrideStore>();
-        builder.Services.AddScoped<CanonicalRecipeContentStore>();
+        builder.Services.AddScoped<StructuredRecipeContentStore>();
         builder.Services.AddScoped<RecipeRepository>();
-        builder.Services.AddScoped<RecipeFilePublicationStore>();
         builder.Services.AddScoped<PdfCaptureService>();
         builder.Services.AddSingleton<FeatureFlagRegistry>();
         builder.Services.AddScoped<FeatureFlagService>();

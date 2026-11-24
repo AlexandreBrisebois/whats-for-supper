@@ -8,7 +8,7 @@ namespace RecipeApi.Tests.Services;
 
 public sealed partial class CookingStepRelationshipProducerTests
 {
-    private static CanonicalRecipeContent FixedUse(string text = "For any number of portions, use exactly 1 tbsp oil.",
+    private static StructuredRecipeContent FixedUse(string text = "For any number of portions, use exactly 1 tbsp oil.",
         string description = "oil", string unit = "tbsp", string total = "2")
     {
         var content = Content(text, description, total);

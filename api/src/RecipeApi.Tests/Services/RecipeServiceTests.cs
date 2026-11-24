@@ -538,4 +538,71 @@ public class RecipeServiceTests : IAsyncLifetime
             Assert.Equal("Imported Recipe Duplicate", importedRecipe.Name);
         }
     }
+
+    [Fact]
+    public async Task ImportRecipeShareBundle_PersistsImporterRatingNotesAndFlagsSuspectedDuplicate()
+    {
+        var existingId = Guid.NewGuid();
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.Recipes.Add(new RecipeApi.Models.Recipe
+            {
+                Id = existingId,
+                Name = "Family Chili",
+                SourceUrl = "https://example.com/family-chili",
+                AddedBy = _factory.DefaultFamilyMemberId,
+                IsReady = true,
+                IsDiscoverable = true,
+                CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
+                UpdatedAt = DateTimeOffset.UtcNow.AddDays(-1)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var bundle = new
+        {
+            version = "1.0",
+            recipe = new
+            {
+                name = "Shared Chili",
+                description = "Warm spiced chili",
+                ingredients = new[] { "1 lb beef", "2 cans beans" },
+                instructions = new[]
+                {
+                    new { name = "Simmer", itemListElement = new[] { new { text = "Simmer 30 minutes." } } }
+                },
+                totalTimeMinutes = 40,
+                sourceUrl = "https://example.com/family-chili?utm_source=share",
+                rating = 3,
+                notes = "Extra cumin next time",
+                isSynthesized = false
+            },
+            info = new
+            {
+                exportedAtUtc = DateTimeOffset.UtcNow.ToString("o"),
+                bundleSource = "wfs-share"
+            },
+            originals = new object[] { }
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/recipes/import-bundle")
+        {
+            Content = JsonContent.Create(bundle)
+        };
+        request.Headers.Add("X-Family-Member-Id", _factory.DefaultFamilyMemberId.ToString());
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var data = doc.RootElement.GetProperty("data");
+        Assert.Equal(3, data.GetProperty("rating").GetInt32());
+        Assert.Equal("Extra cumin next time", data.GetProperty("notes").GetString());
+        var issue = data.GetProperty("importIssue");
+        Assert.Equal(JsonValueKind.Object, issue.ValueKind);
+        Assert.Equal("duplicate", issue.GetProperty("reasons")[0].GetString());
+        Assert.Equal(existingId, issue.GetProperty("suspectedDuplicateRecipeId").GetGuid());
+    }
 }

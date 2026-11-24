@@ -59,7 +59,7 @@ public static partial class FoodVocabularyInventoryQualification
             vocabularyAuthority.Validate();
             foreach (var recipe in facts.Recipes)
             {
-                var content = CanonicalRecipeContentStore.Read(new RecipeApi.Models.Recipe { Id = recipe.RecipeId, CanonicalContent = recipe.CanonicalContent });
+                var content = StructuredRecipeContentStore.Read(new RecipeApi.Models.Recipe { Id = recipe.RecipeId, CanonicalContent = recipe.CanonicalContent });
                 if (content is not null) FoodMappingQualification.Validate(content, recipe.FoodMappingEvidence, vocabularyAuthority, recipe.RecipeId);
             }
             var overrides = facts.Overrides.Rows.Select(x => new HouseholdFoodOverrideSnapshot(x.Id, x.Revision, x.FoodId,

@@ -93,6 +93,8 @@ import { getImageUrl } from '@/lib/imageUtils';
 import { ActionGearMenu } from './ActionGearMenu';
 import { RecipeImportIssueBadge } from './RecipeImportIssueBadge';
 import { RecipeImportIssueSheet } from './RecipeImportIssueSheet';
+import { PairedDuplicateReviewSheet } from './PairedDuplicateReviewSheet';
+import { RecipeRatingControl } from './RecipeRatingControl';
 import { DiscoveryToggleCard } from './DiscoveryToggleCard';
 import { OriginalPhotosViewer } from './OriginalPhotosViewer';
 import { subscribeIngredientProjectionInvalidation } from '@/lib/ingredient-projection-invalidation';
@@ -141,6 +143,7 @@ function resolveMealTypes(source: Recipe): UpdateRecipeDto_mealTypes[] {
 
 interface RecipeDetailSheetProps {
   recipeId: string;
+  initialReviewDuplicate?: boolean;
   plannerDayLabel: string | null;
   ingredientContext?: IngredientContext;
   planningNeedsCheck?: boolean;
@@ -163,6 +166,7 @@ interface RecipeDetailSheetProps {
 
 export function RecipeDetailSheet({
   recipeId,
+  initialReviewDuplicate = false,
   plannerDayLabel,
   ingredientContext,
   planningNeedsCheck = false,
@@ -481,6 +485,33 @@ export function RecipeDetailSheet({
   const [shareError, setShareError] = useState<string | null>(null);
   const [showCooksMode, setShowCooksMode] = useState(false);
   const [showImportIssueSheet, setShowImportIssueSheet] = useState(false);
+  const [showPairedDuplicateSheet, setShowPairedDuplicateSheet] = useState(false);
+  const autoOpenedDuplicateForRef = useRef<string | null>(null);
+  const suspectedDuplicateId =
+    recipe?.importIssue?.reasons.includes('duplicate') &&
+    recipe.importIssue.suspectedDuplicateRecipeId
+      ? recipe.importIssue.suspectedDuplicateRecipeId
+      : null;
+
+  useEffect(() => {
+    if (
+      initialReviewDuplicate &&
+      recipe &&
+      suspectedDuplicateId &&
+      autoOpenedDuplicateForRef.current !== recipe.id
+    ) {
+      autoOpenedDuplicateForRef.current = recipe.id;
+      setShowPairedDuplicateSheet(true);
+    }
+  }, [initialReviewDuplicate, recipe, suspectedDuplicateId]);
+
+  const openIssueReview = () => {
+    if (suspectedDuplicateId) {
+      setShowPairedDuplicateSheet(true);
+      return;
+    }
+    setShowImportIssueSheet(true);
+  };
   const actionPendingRef = useRef(false);
   const closeDetail = () => {
     if (!actionPendingRef.current) onClose();
@@ -1105,7 +1136,14 @@ export function RecipeDetailSheet({
             )}
             <p className="sr-only">{t('recipes.detailTitle', 'Recipe detail')}</p>
             {recipe?.importIssue && (
-              <RecipeImportIssueBadge status={recipe.importIssue.status} variant="compact" />
+              <button
+                type="button"
+                data-testid="detail-import-issue-trigger"
+                onClick={openIssueReview}
+                className="inline-flex min-h-[48px] items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
+              >
+                <RecipeImportIssueBadge status={recipe.importIssue.status} variant="compact" />
+              </button>
             )}
           </div>
           <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-[8px]">
@@ -1190,7 +1228,7 @@ export function RecipeDetailSheet({
                       : undefined
                   }
                   onMoveToBin={() => void handleMoveToBin()}
-                  onReportImportIssue={() => setShowImportIssueSheet(true)}
+                  onReportImportIssue={openIssueReview}
                 />
               </fieldset>
             )}
@@ -2318,46 +2356,14 @@ export function RecipeDetailSheet({
               <h3 id="recipe-rating-heading" className="mb-3 text-xl font-semibold text-ink-body">
                 {t('recipes.rating', 'Rating')}
               </h3>
-              <div
-                data-testid="recipe-rating-selector"
-                className="flex flex-wrap items-start justify-around gap-2"
-              >
-                {RATING_OPTIONS.map(({ value, emoji, label }) => {
-                  const isSelected = rating === value;
-                  const ratingInk =
-                    value === 1
-                      ? 'text-hearth-ink'
-                      : value === 2
-                        ? 'text-garden-ink'
-                        : 'text-ink-body';
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-label={t(`recipes.rating${label}`, label)}
-                      disabled={isEditing}
-                      aria-pressed={isSelected}
-                      onClick={() => void handleRatingChange(value)}
-                      className={[
-                        'relative inline-flex min-h-[48px] min-w-[48px] flex-1 flex-col items-center justify-center gap-1 rounded-[1.5rem] px-2 py-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body',
-                        ratingInk,
-                        isSelected ? 'bg-white shadow-md' : 'hover:bg-white/60',
-                      ].join(' ')}
-                    >
-                      <span className="text-3xl" aria-hidden>
-                        {emoji}
-                      </span>
-                      <span
-                        className={['max-w-full break-words text-sm font-semibold', ratingInk].join(
-                          ' '
-                        )}
-                      >
-                        {t(`recipes.rating${label}`, label)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <RecipeRatingControl
+                value={rating}
+                onChange={(next) => void handleRatingChange(next)}
+                disabled={isEditing}
+                testIdPrefix="recipe-rating"
+                selectorTestId="recipe-rating-selector"
+                allowClear={false}
+              />
             </section>
             <section
               ref={notesSectionRef}
@@ -2791,6 +2797,31 @@ export function RecipeDetailSheet({
           onClose={closeImportIssue}
           onSave={handleSaveImportIssue}
           onResolve={handleResolveImportIssue}
+        />
+      )}
+      {showPairedDuplicateSheet && recipe && suspectedDuplicateId && (
+        <PairedDuplicateReviewSheet
+          open
+          newRecipe={recipe}
+          existingRecipeId={suspectedDuplicateId}
+          onClose={() => setShowPairedDuplicateSheet(false)}
+          onKeepBothComplete={(updated) => {
+            setRecipe(updated);
+            setShowPairedDuplicateSheet(false);
+          }}
+          onNewMovedToBin={() => {
+            setShowPairedDuplicateSheet(false);
+            onDeleted?.();
+            onClose();
+          }}
+          onExistingMovedToBin={(updated) => {
+            setRecipe(updated);
+            setShowPairedDuplicateSheet(false);
+          }}
+          onOpenStandardIssueEditor={() => {
+            setShowPairedDuplicateSheet(false);
+            setShowImportIssueSheet(true);
+          }}
         />
       )}
     </div>

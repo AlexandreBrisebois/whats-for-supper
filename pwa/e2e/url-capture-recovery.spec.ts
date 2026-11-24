@@ -145,7 +145,8 @@ test.describe('URL capture & recovery Family Cookbook dual-mode visual & a11y co
       await assertCookbookVisualA11y(page, { contrastLevel });
 
       await page.getByTestId('capture-url-save-btn').click();
-      await expect(page.getByTestId('capture-success-heading')).toBeVisible();
+      await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+      await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
       await assertCookbookVisualA11y(page, { contrastLevel });
 
       await page.goto('/profile/settings');
@@ -156,7 +157,7 @@ test.describe('URL capture & recovery Family Cookbook dual-mode visual & a11y co
     });
   }
 
-  test('OS prefers-contrast: more enforces High Contrast AAA on URL capture review & queued views', async ({
+  test('OS prefers-contrast: more enforces High Contrast AAA on URL capture review & home in-flight views', async ({
     page,
   }) => {
     await page.emulateMedia({ contrast: 'more' });
@@ -166,7 +167,8 @@ test.describe('URL capture & recovery Family Cookbook dual-mode visual & a11y co
     await assertCookbookVisualA11y(page, { contrastLevel: 'aaa' });
 
     await page.getByTestId('capture-url-save-btn').click();
-    await expect(page.getByTestId('capture-success-heading')).toBeVisible();
+    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
     await assertCookbookVisualA11y(page, { contrastLevel: 'aaa' });
   });
 });

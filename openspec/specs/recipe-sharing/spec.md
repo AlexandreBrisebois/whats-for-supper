@@ -32,12 +32,17 @@ The loaded recipe detail sheet SHALL offer a visible Share control (`recipe-shar
 
 ### Requirement: Generate privacy-scrubbed portable export bundle
 
-Authorized GET `/api/recipes/{id}/share` with household access and member context SHALL return a version 1.0 portable bundle with source `wfs-share`. The bundle SHALL preserve core recipe content, structured instructions, and original images (capped at five). The bundle SHALL scrub personal ratings and notes by setting them to null, and SHALL omit internal entity identifiers and member attribution.
+Authorized GET `/api/recipes/{id}/share` with household access and member context SHALL return a version 1.0 portable bundle with source `wfs-share`. The bundle SHALL preserve core recipe content, the saved positive `servings` basis (or null when unset), structured `HowToSection` / `HowToStep` instructions, and original images (capped at five). The bundle SHALL scrub personal ratings and notes by setting them to null, and SHALL omit internal entity identifiers and member attribution.
 
 #### Scenario: Scrub personal notes and rating
 
 - **WHEN** an authorized export request succeeds for a recipe containing household notes and a rating
 - **THEN** the returned bundle sets both `notes` and `rating` to null in the exported recipe payload
+
+#### Scenario: Preserve saved servings basis on export
+
+- **WHEN** an authorized export request succeeds for a recipe with saved `servings` of 4
+- **THEN** the returned bundle sets `recipe.servings` to 4 so receiving households retain its portion basis
 
 #### Scenario: Preserve structured instructions and original images up to five
 
@@ -90,25 +95,25 @@ Activating the Share control SHALL display a persistent loading notice and reque
 
 ### Requirement: Offer recipe bundle intake on capture entry
 
-The recipe capture view (`/capture`) SHALL offer an "Import recipe file" action (`import-recipe-file-btn`) among its intake options. Activating the control SHALL open a file picker accepting plain text files (`.txt,text/plain`) containing a serialized recipe bundle.
+The recipe capture view (`/capture`) SHALL offer a file import action (`import-recipe-file-btn`) advertising `.txt` shared recipe files (paired with PDF outside demo mode and Family GOTO, and labeled for `.txt` shared recipes in demo mode) without referencing `.recipe` extensions in user-facing copy. Activating the control SHALL open a file picker accepting plain text files (`.txt,text/plain`) containing a serialized recipe bundle.
 
 #### Scenario: Import recipe file action available on capture view
 
 - **WHEN** a person visits the recipe capture view (`/capture`)
-- **THEN** the secondary action list displays the "Import recipe file" button alongside other capture options
+- **THEN** the secondary action list displays the file import option naming `.txt` without mentioning `.recipe`
 
 #### Scenario: File picker accepts text plain files
 
 - **WHEN** a person inspects or activates the import recipe file input
-- **THEN** the input accepts plain text files with `.txt` extensions and `text/plain` MIME types
+- **THEN** the input accepts plain text files with `.txt` extensions and `text/plain` MIME types (plus `.pdf,application/pdf` when PDF intake is eligible)
 
 ### Requirement: Parse and validate imported bundle file payload
 
-Selecting a bundle file SHALL read and parse its JSON content. If the file cannot be parsed as JSON, intake SHALL fail with unreadable file feedback. If the payload is missing required schema fields, contains an invalid source, or has malformed instruction structures or image payloads, intake SHALL fail with invalid bundle feedback.
+Selecting a bundle file SHALL read and parse its JSON content. If the file cannot be parsed as JSON, intake SHALL fail with unreadable file feedback. If the payload is missing required schema fields, contains an invalid source, or has malformed instruction structures or image payloads, intake SHALL fail with localized invalid recipe file feedback that does not reference `.recipe` files.
 
 #### Scenario: Successfully parse valid bundle payload
 
-- **WHEN** a person selects a valid JSON recipe bundle file conforming to the required schema
+- **WHEN** a person selects a valid JSON recipe bundle `.txt` file conforming to the required schema
 - **THEN** the client parses the file and transitions to the bundle review state
 
 #### Scenario: Reject unreadable non-JSON file
@@ -119,98 +124,99 @@ Selecting a bundle file SHALL read and parse its JSON content. If the file canno
 #### Scenario: Reject bundle with malformed schema or invalid image payloads
 
 - **WHEN** a person selects a JSON file missing required recipe fields, having an unsupported bundle source, or containing invalid image payloads
-- **THEN** the capture view displays an error message indicating the recipe file is not valid and clears any parsed bundle state
+- **THEN** the capture view displays an error message indicating the recipe file is not valid (without naming `.recipe`) and clears any parsed bundle state
 
 ### Requirement: Present bundle review card and cancellation
 
-Upon successful client parsing, the capture view SHALL display a bundle review card (`bundle-preview-card`). The card SHALL present the recipe name, source attribution, synthesis badge, original image count, structured instructions, hero image, and restored notes and ratings if present in the bundle. The view SHALL offer a Cancel action (`reject-bundle-btn`) that discards the bundle and returns to capture without persistence.
+Upon parsing, capture SHALL show a hero-led `bundle-preview-card` with hero image, title, filename, original count, and a collapsed `>= 48 CSS px` `Preview steps` / `Hide preview` disclosure for ingredients and Garden-styled steps, omitting `Original`/`Synthesized` badges. Below the card (and any duplicate advisory), it SHALL show editable rating and notes, a single primary `Import recipe` CTA, and the top-right `48 × 48 CSS px` Cancel (`×`) without a bottom Cancel button.
 
 #### Scenario: Present preview card with bundle metadata and structured content
 
 - **WHEN** a valid bundle is parsed
-- **THEN** the review card displays the recipe name, source URL, source name, synthesis badge, instruction sections and steps, and hero image
+- **THEN** `bundle-preview-card` displays the hero image, recipe name, filename and original photo count, and a collapsed `Preview steps` disclosure (`aria-expanded="false"`) without rendering an `Original` or `Synthesized` badge
+- **AND** activating `Preview steps` updates the control to `Hide preview` (`aria-expanded="true"`) and reveals the bundle's ingredients and instruction sections styled with Garden (`text-garden-ink`) section headings and numbered sage step badges (`bg-sage-50 border-garden-line`)
 
 #### Scenario: Render restored notes and star rating when present in bundle
 
-- **WHEN** a parsed bundle contains non-empty notes and a numeric rating
-- **THEN** the review card displays the notes block and the corresponding star rating count
+- **WHEN** a person reviews a privacy-scrubbed shared `.txt` bundle (or a bundle carrying prefilled rating and notes)
+- **THEN** editable shared appreciation rating controls (`Dislike` / `Like` / `Love`, replacing read-only star icons) and an optional notes textarea initialize from any bundle-supplied values (or unrated/empty when scrubbed) so the importing member can set or adjust them before activating `Import recipe`
 
 #### Scenario: Cancel bundle preview and return to default capture view
 
-- **WHEN** a person activates the Cancel button (`reject-bundle-btn`) on the bundle review screen
-- **THEN** the parsed bundle is discarded, duplicate warnings are cleared, and the view returns to the default capture interface without creating a recipe
+- **WHEN** a person activates the top-right Cancel (`×`) control on the bundle review screen
+- **THEN** the parsed bundle and importer metadata draft are discarded, duplicate warnings are cleared, and navigation returns to `/home` without creating a recipe
 
 ### Requirement: Display advisory warning for existing library duplicates
 
-During bundle preview preparation, the client SHALL query the library for existing recipes matching the bundle's recorded source recipe ID or name. If a match is found, the view SHALL display an advisory warning banner (`duplicate-recipe-warning`) indicating the recipe already exists, with a control to view the existing recipe. The warning SHALL NOT prevent the user from proceeding with import acceptance.
+During bundle preview preparation, the client SHALL query the library for existing recipes matching the bundle's recorded source recipe ID or name. If a match is found, the view SHALL display an advisory warning banner (`duplicate-recipe-warning`) directly below `bundle-preview-card` and above the importer's Rating and Notes controls, with a control to view the existing recipe without blocking import acceptance.
 
 #### Scenario: Display duplicate warning when recorded recipe ID matches existing recipe
 
 - **WHEN** the bundle's recorded recipe ID matches an existing non-deleted recipe in the household library
-- **THEN** the review screen displays an advisory warning banner stating the recipe already exists in the library
+- **THEN** `duplicate-recipe-warning` renders directly below `bundle-preview-card` and above the Rating and Notes inputs
 
 #### Scenario: Display duplicate warning when recipe name matches existing recipe
 
 - **WHEN** the bundle lacks a matching recipe ID but its recipe name matches an existing library recipe
-- **THEN** the review screen displays the advisory duplicate warning banner
+- **THEN** `duplicate-recipe-warning` renders directly below `bundle-preview-card` and above the Rating and Notes inputs
 
 #### Scenario: View existing recipe opens recipe detail overlay
 
-- **WHEN** a person activates "View existing recipe" from the duplicate warning banner
+- **WHEN** a person activates `View existing recipe` from the duplicate warning banner
 - **THEN** the application opens the recipe detail sheet for the existing matching recipe
 
 #### Scenario: Duplicate warning permits import acceptance
 
-- **WHEN** the duplicate warning banner is visible and the person activates "Import recipe"
+- **WHEN** the duplicate warning banner is visible and the person activates `Import recipe`
 - **THEN** the client proceeds with submitting the bundle to the import endpoint without blocking
 
 ### Requirement: Accept and persist imported recipe bundle into library
 
-Activating "Import recipe" (`accept-bundle-btn`) SHALL submit the bundle to POST `/api/recipes/import-bundle`. The API SHALL validate bundle version 1.0, source `wfs-share`, non-empty required content, max 5 original images, and base64 payloads. The API SHALL assign a new identifier upon collision, persist the entity with stored readiness true and importing member attribution, save hero and original images, and return 201 Created.
+Activating "Import recipe" (`accept-bundle-btn`) SHALL submit the bundle with optional importer rating and trimmed notes to POST `/api/recipes/import-bundle`. The API SHALL validate version `1.0`, source `wfs-share`, required content, positive `servings`, max 5 originals, and base64 payloads, reassign colliding IDs, persist `https://schema.org/Recipe` JSON to `{id}/recipe.json`, derive structured portions, flag suspected duplicates under `recipe-quality`, and return `201 Created`.
 
 #### Scenario: Accept valid bundle and persist ready recipe with importing member attribution
 
-- **WHEN** an authorized import request with a valid bundle payload succeeds
-- **THEN** the API persists a new ready recipe entity attributed to the requesting family member, saves hero and original images, and returns 201 Created with the created recipe DTO
+- **WHEN** an authorized import request with a valid bundle payload and optional importer rating and notes succeeds
+- **THEN** the API persists a new ready recipe entity attributed to the requesting family member with those rating and notes values, writes top-level `https://schema.org/Recipe` JSON to `{id}/recipe.json` without `.publications` staging, saves hero and original images, records a `duplicate` import report if an active library recipe matches, and returns `201 Created` with the created recipe DTO
+
+#### Scenario: Derive scalable portion facts when importing a bundle with servings and quantified ingredients
+
+- **WHEN** an authorized import request supplies `servings: 4` and quantified ingredient lines such as `"200 g pasta"` and `"Salt"`
+- **THEN** the persisted recipe stores `servings = 4` (`recipeYield: "4 portions"` in `{id}/recipe.json`), derives structured rational portion amounts for quantified lines while retaining `"Salt"` as unquantified text, and scales immediately in recipe previews and weekly groceries
 
 #### Scenario: Reassign recipe identifier when bundle identifier collides with existing entity
 
 - **WHEN** the bundle's recipe identifier already exists in the database
-- **THEN** the API generates a new unique identifier for the imported recipe and persists it without overwriting the existing entity
+- **THEN** the API generates a new unique identifier for the imported recipe, persists it without overwriting the existing entity, and flags the new recipe with a `duplicate` import report when the existing entity is ready and non-deleted
 
 #### Scenario: Restore optional notes and rating into newly persisted entity
 
-- **WHEN** a valid bundle contains notes and a rating
+- **WHEN** a valid bundle request supplies notes and a rating (either entered by the importer or preserved in the bundle)
 - **THEN** the newly created recipe entity persists those notes and rating values in the database and metadata store
 
 #### Scenario: Reject bundle with unsupported version
 
-- **WHEN** an import request supplies a version string other than 1.0
-- **THEN** the API returns 400 Bad Request indicating the bundle version is unsupported
+- **WHEN** an import request supplies a version string other than `1.0`
+- **THEN** the API returns `400 Bad Request` indicating the bundle version is unsupported
 
 #### Scenario: Reject bundle with malformed payload or invalid image base64
 
-- **WHEN** an import request supplies empty ingredients, empty instructions, more than five original images, or non-base64 image strings
-- **THEN** the API returns 400 Bad Request with an error message describing the violation
+- **WHEN** an import request supplies empty ingredients, empty instructions, non-positive servings, more than five original images, or non-base64 image strings
+- **THEN** the API returns `400 Bad Request` with an error message describing the violation
 
-### Requirement: Present import success screen and navigate home
+### Requirement: Navigate directly to Home and notify upon bundle import acceptance
 
-Upon successful import acceptance, the capture view SHALL transition to a success screen (`bundle-import-success`). The screen SHALL display the imported recipe name and readiness confirmation, and offer a "Done" action (`bundle-import-done-btn`). Activating "Done" SHALL navigate to Home (`/`). If the import API request fails, the view SHALL display inline error feedback and retain the preview card.
+When `POST /api/recipes/import-bundle` succeeds (`201 Created`), the client SHALL clear the staged bundle draft, push a completion toast notification (displaying `Possible duplicate · Tap to review` when the returned recipe carries a `duplicate` import issue), and navigate directly to `/home` without displaying an intermediate `Done` confirmation screen. If the import request fails, the client SHALL display an inline Hearth error alert and retain the review card and importer metadata.
 
-#### Scenario: Present success screen upon import acceptance
+#### Scenario: Accepted bundle import navigates directly to Home with completion toast
 
-- **WHEN** the bundle import API returns a successful 201 response
-- **THEN** the capture view displays the success screen with the imported recipe name and confirmation message
-
-#### Scenario: Done action navigates to Home
-
-- **WHEN** a person activates the Done button on the import success screen
-- **THEN** the application navigates to Home (`/`)
+- **WHEN** the bundle import API returns `201 Created` with the imported recipe DTO
+- **THEN** the client clears the staged bundle draft, queues a completion toast for the imported recipe (with duplicate-review copy when `importIssue.reasons` contains `duplicate`), and navigates directly to `/home`
 
 #### Scenario: Present inline error feedback upon import API failure
 
 - **WHEN** the bundle import API request fails
-- **THEN** the view displays an inline import error banner and keeps the review card active for retry or cancellation
+- **THEN** the view displays an inline Hearth error alert (`role="alert"`) and retains the preview card, selected rating, and entered notes for retry or cancellation
 
 ### Requirement: Disable Share while a share operation is pending
 

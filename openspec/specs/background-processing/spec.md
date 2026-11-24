@@ -90,12 +90,17 @@ A supplied initial schedule SHALL apply to every root Pending task and leave dep
 
 ### Requirement: Select due pending tasks for processor dispatch
 
-Worker selection SHALL consider Pending tasks whose schedule is absent or due, select at most ten per batch ordered by scheduled time, and dispatch selected work subject to its processor throttle. A task rescheduled into the future while awaiting its slot SHALL be skipped on reload. Selection SHALL NOT promise immediate execution or exclusive delivery.
+Worker selection SHALL admit due or unscheduled Pending tasks whose parent is not Paused (up to ten per batch by scheduled time) and dispatch them subject to processor throttle and recovery write boundaries without requiring a launch-authority payload on the parent. A task rescheduled into the future while awaiting its slot SHALL be skipped on reload. Selection SHALL NOT promise immediate execution or exclusive delivery.
 
 #### Scenario: Due and future work coexist
 
 - **WHEN** Pending tasks have absent, past and future scheduled times
 - **THEN** selection admits absent or due schedules and excludes future schedules
+
+#### Scenario: Pre-existing or restore-queued pending task without launch capture
+
+- **WHEN** a due Pending task belongs to a non-Paused workflow instance whose `recipe_publication_capture` is null (such as a pre-upgrade task or a restore-queued search reconciliation workflow)
+- **THEN** worker selection admits and dispatches the task instead of refusing it for missing launch authority
 
 #### Scenario: Throttle wait changes eligibility
 

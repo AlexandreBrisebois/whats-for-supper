@@ -16,7 +16,7 @@ export function DemoAiActionGate({
   if (mode === false) return <>{children}</>;
   return (
     <section
-      className={`rounded-2xl border border-charcoal/15 bg-cream p-4 text-ink-body ${className}`}
+      className={`rounded-2xl border border-chrome-line bg-cream p-4 text-ink-body ${className}`}
       data-testid="demo-ai-unavailable"
       aria-busy={loading}
     >
@@ -38,14 +38,14 @@ export function DemoAiActionGate({
           <button
             type="button"
             onClick={retry}
-            className="min-h-11 rounded-xl border border-charcoal/30 px-4 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="min-h-12 rounded-xl border border-chrome-line bg-white px-4 text-sm font-semibold text-ink-body transition-colors hover:bg-charcoal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
           >
             {t('common.retry', 'Retry')}
           </button>
         )}
         <Link
           href="/recipes"
-          className="inline-flex min-h-11 items-center rounded-xl px-2 font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="inline-flex min-h-12 items-center justify-center rounded-xl border border-chrome-line bg-white px-4 text-sm font-semibold text-ink-body transition-colors hover:bg-charcoal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
         >
           {t('demoContext.browse', 'Explore prepared recipes')}
         </Link>

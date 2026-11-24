@@ -74,7 +74,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             using var readback = factory.Services.CreateScope();
             var readDb = readback.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var saved = await readDb.Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id);
-            var content = CanonicalRecipeContentStore.Read(saved)!;
+            var content = StructuredRecipeContentStore.Read(saved)!;
             Assert.Equal(before.IngredientLines.Select(line => line.Id), content.IngredientLines.Select(line => line.Id));
             Assert.Equal("250", content.IngredientLines[0].AmountText);
             Assert.Equal(JsonSerializer.Serialize(before.IngredientLines[1], Json), JsonSerializer.Serialize(content.IngredientLines[1], Json));
@@ -106,7 +106,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Equal(existingWork.Length + 1, await readDb.WorkflowInstances.CountAsync());
             Assert.NotEqual(workflowId, repair.Id);
             Assert.Contains("Please check the original steps.", repair.Parameters);
-            var retained = CanonicalRecipeContentStore.Read(await readDb.Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id))!;
+            var retained = StructuredRecipeContentStore.Read(await readDb.Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id))!;
             Assert.Equal(content.ContentRevision, retained.ContentRevision);
         }, sourceUrl: "https://example.com/incomplete", realWorkflow: true);
     }

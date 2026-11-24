@@ -126,7 +126,7 @@ public class CategorizeIngredientsProcessorTests : IDisposable
     [Fact]
     public async Task CanonicalRecipe_UsesCurrentShoppingNamesInsteadOfOldSupply()
     {
-        var current = new CanonicalRecipeContent(2, "content.current", "source.current", 4,
+        var current = new StructuredRecipeContent(2, "content.current", "source.current", 4,
             [new RecipeIngredientLineDto
             {
                 Id = Guid.NewGuid(), Description = "fresh", Amount = null, AmountText = null,

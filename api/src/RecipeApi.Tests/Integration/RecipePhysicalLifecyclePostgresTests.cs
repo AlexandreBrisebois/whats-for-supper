@@ -33,7 +33,7 @@ public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper outpu
                 Rating = RecipeRating.Love, DeletedAt = DateTimeOffset.UtcNow, CreatedAt = DateTimeOffset.UtcNow };
             var publication = new RecipeFilePublication { RecipeId = recipe.Id, OperationId = Guid.NewGuid(),
                 Payload = "{\"original\":\"pending, not a receipt\"}", InputHash = "original-input", ResultHash = "original-result", Delivered = false };
-            var canonical = new CanonicalRecipeOperation { RecipeId = recipe.Id, OperationId = Guid.NewGuid(),
+            var canonical = new StructuredRecipeOperation { RecipeId = recipe.Id, OperationId = Guid.NewGuid(),
                 InputHash = "original-canonical", Result = "{\"humanClear\":null}" };
             db.Recipes.Add(recipe); db.RecipeFilePublications.Add(publication); db.CanonicalRecipeOperations.Add(canonical);
             await db.SaveChangesAsync();
@@ -102,7 +102,6 @@ public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper outpu
             await db.SaveChangesAsync();
             Assert.True(await db.Recipes.AsNoTracking().AnyAsync(x => x.Id == recipe.Id));
             Assert.Null((await db.RecipePhysicalDeletions.AsNoTracking().SingleAsync()).CompletedAt);
-            await Assert.ThrowsAsync<RecoveryBusyException>(() => scope.ServiceProvider.GetRequiredService<RecipeFilePublicationStore>().CaptureAsync(recipe.Id));
             await Assert.ThrowsAsync<RecoveryBusyException>(() => scope.ServiceProvider.GetRequiredService<ManagementService>().BackupAsync());
             await db.Database.ExecuteSqlRawAsync("DROP TRIGGER fail_physical_removal ON recipes");
             Directory.CreateDirectory(directory);
@@ -118,7 +117,6 @@ public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper outpu
             Assert.Equal(pending.OperationId, receipt.OperationId); Assert.Equal(pending.PayloadHash, receipt.PayloadHash);
             Assert.NotNull(receipt.CompletedAt);
             Assert.False(await db.Recipes.IgnoreQueryFilters().AnyAsync(x => x.Id == recipe.Id));
-            await Assert.ThrowsAsync<RecoveryBusyException>(() => scope.ServiceProvider.GetRequiredService<RecipeFilePublicationStore>().CaptureNewAsync(recipe.Id));
             Assert.False(Directory.Exists(directory));
         });
 
@@ -300,64 +298,6 @@ public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper outpu
             if (++commits == FailAt) throw new IOException("Synthetic lost physical commit acknowledgement");
             return Task.CompletedTask;
         }
-    }
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PublicationStage_DrainsBeforeRetirementAndLateCandidatesCannotRecreateFiles() =>
-        new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
-        {
-            await using var factory = await RecipeApi.Tests.Infrastructure.TestWebApplicationFactory.CreateWithAuthAsync(configurationOverrides: new()
-            {
-                ["Tests:PostgresConnectionString"] = settings.ConnectionString, ["Tests:LocalRecipeStore"] = "true"
-            });
-            using var publishing = factory.Services.CreateScope(); using var deleting = factory.Services.CreateScope();
-            var db = publishing.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Original" };
-            db.Recipes.Add(recipe); await db.SaveChangesAsync();
-            var storage = new StageBarrier(publishing.ServiceProvider.GetRequiredService<IStorageProvider>());
-            var repository = new RecipeRepository(storage);
-            await repository.SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = "Original" }, default);
-            var store = new RecipeFilePublicationStore(db, repository, publishing.ServiceProvider.GetRequiredService<IClock>(), publishing.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, repository.StorageProvider, publishing.ServiceProvider.GetRequiredService<IClock>(), publishing.ServiceProvider));
-            var capture = await store.CaptureAsync(recipe.Id);
-            var operation = Guid.NewGuid();
-            var candidate = new RecipePublicationCandidate("{\"name\":\"Published\",\"recipeIngredient\":[\"salt\"]}", new RecipeInfo { Id = recipe.Id, Name = "Published" });
-            var publish = store.PublishAsync(capture, candidate, operation);
-            await storage.Reached.Task.WaitAsync(TimeSpan.FromSeconds(10));
-            var remove = deleting.ServiceProvider.GetRequiredService<RecipeService>().DeleteRecipe(recipe.Id);
-            try { Assert.NotSame(remove, await Task.WhenAny(remove, Task.Delay(150))); }
-            finally
-            {
-                storage.Release.TrySetResult();
-                try { await publish.WaitAsync(TimeSpan.FromSeconds(15)); }
-                catch (RecoveryBusyException) { /* Retirement may win the subsequent delivery lock. */ }
-                await remove.WaitAsync(TimeSpan.FromSeconds(15));
-            }
-            var root = factory.Services.GetRequiredService<RecipesRootResolver>();
-            var directory = Path.Combine(root.Root, recipe.Id.ToString());
-            Assert.False(Directory.Exists(directory));
-            var receipt = await db.RecipePhysicalDeletions.AsNoTracking().SingleAsync();
-            using var saved = JsonDocument.Parse(receipt.Payload);
-            Assert.Equal(operation, Assert.Single(saved.RootElement.GetProperty("publications").EnumerateArray()).GetProperty("operationId").GetGuid());
-            Assert.NotEmpty(saved.RootElement.GetProperty("physicalCapture").GetProperty("stagedJournals").EnumerateObject());
-            await Assert.ThrowsAsync<RecoveryBusyException>(() => store.PublishAsync(capture, candidate, Guid.NewGuid()));
-            Assert.False(Directory.Exists(directory));
-        });
-
-    private sealed class StageBarrier(IStorageProvider inner) : IStorageProvider
-    {
-        internal readonly TaskCompletionSource Reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        internal readonly TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public async Task SaveAtomicallyAsync(string partition, string key, byte[] value)
-        {
-            await inner.SaveAtomicallyAsync(partition, key, value);
-            if (key.Contains("/.publications/", StringComparison.Ordinal)) { Reached.TrySetResult(); await Release.Task; }
-        }
-        public Task SaveAsync(string partition, string key, string value) => inner.SaveAsync(partition, key, value);
-        public Task SaveAsync(string partition, string key, byte[] value) => inner.SaveAsync(partition, key, value);
-        public Task<byte[]?> LoadAsync(string partition, string key) => inner.LoadAsync(partition, key);
-        public Task DeleteAtomicallyAsync(string partition, string key) => inner.DeleteAtomicallyAsync(partition, key);
-        public Task<List<KeyValuePair<string, string>>> FindAsync(string partition, string key) => inner.FindAsync(partition, key);
-        public List<string> List(string partition) => inner.List(partition);
     }
 
     private static void JsonEqual(string expected, string actual)

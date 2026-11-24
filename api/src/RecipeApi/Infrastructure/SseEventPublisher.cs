@@ -55,8 +55,8 @@ public class SseEventPublisher : IScheduleEventPublisher
     public Task PublishAllSuggestionsInvalidatedAsync()
         => PublishAndRefreshAsync("fill_the_gap_invalidated", new { allWeeks = true });
 
-    public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null)
-        => PublishAndRefreshAsync("recipe_ready", new { recipeId, name, imageUrl }, excludeConnectionId);
+    public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null, bool isSuspectedDuplicate = false)
+        => PublishAndRefreshAsync("recipe_ready", new { recipeId, name, imageUrl, isSuspectedDuplicate }, excludeConnectionId);
 
     public Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
         => PublishAndRefreshAsync("recipe_failed", new

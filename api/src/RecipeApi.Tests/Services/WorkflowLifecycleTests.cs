@@ -102,7 +102,7 @@ public sealed class WorkflowLifecycleTests
                 processor: NoOp
             """);
         var clock = new SystemClock();
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db, TestPublicationStore.Create(db, storage, clock));
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
         await Assert.ThrowsAsync<InvalidDataException>(() => orchestrator.TriggerImportAsync(id, recipeId, "url-import", new() { ["recipeId"] = recipeId.ToString() }));
         Assert.Empty(await db.WorkflowInstances.ToArrayAsync());
         Assert.Single(await db.WorkflowLifecycleRecords.ToArrayAsync());

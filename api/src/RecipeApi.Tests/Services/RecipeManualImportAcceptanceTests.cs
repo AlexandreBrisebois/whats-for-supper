@@ -44,8 +44,7 @@ public sealed class RecipeManualImportAcceptanceTests
                   recipeId: "{{recipeId}}"
             """);
         var clock = new SystemClock();
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-            TestPublicationStore.Create(db, storage, clock));
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
         Guid? associationAtChildSave = null;
         db.AfterLaunchSave = async () =>
         {
@@ -69,10 +68,6 @@ public sealed class RecipeManualImportAcceptanceTests
         var committedReport = await readback.RecipeImportReports.AsNoTracking().SingleAsync();
         var committedChild = await readback.WorkflowInstances.Include(x => x.Tasks).SingleAsync();
         Assert.Equal(accepted, committedChild.Id);
-        Assert.NotNull(committedChild.RecipePublicationCapture);
-        using var originalLaunch = JsonDocument.Parse(committedChild.RecipePublicationCapture);
-        Assert.Equal(2, originalLaunch.RootElement.GetProperty("version").GetInt32());
-        Assert.Equal("https://example.invalid/original", originalLaunch.RootElement.GetProperty("parameters").GetProperty("url").GetString());
         Assert.Single(committedChild.Tasks);
         Assert.Equal(accepted, committedReport.LastWorkflowInstanceId);
         Assert.Equal(advanceReport ? RecipeImportReportStatus.ReadyToReview : RecipeImportReportStatus.Reimporting, committedReport.Status);
@@ -115,8 +110,7 @@ public sealed class RecipeManualImportAcceptanceTests
                   recipeId: "{{recipeId}}"
             """);
         var clock = new SystemClock();
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-            TestPublicationStore.Create(db, storage, clock));
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
         var service = new RecipeImportService(db, orchestrator);
 
         var first = await service.TriggerImport(recipe.Id);
@@ -145,7 +139,6 @@ public sealed class RecipeManualImportAcceptanceTests
     [Theory]
     [InlineData("workflow")]
     [InlineData("parameters")]
-    [InlineData("capture")]
     public async Task LostAcknowledgement_DoesNotCertifyOrDeleteInconsistentSavedWork(string divergence)
     {
         await using var db = TestDbContextFactory.Create();

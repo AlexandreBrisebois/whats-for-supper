@@ -41,16 +41,18 @@ describe('RecipeFailureBanner', () => {
     ];
   });
 
-  it('renders a dual-mode semantic failure banner with accessible retry and dismiss controls', () => {
+  it('renders an Era 3 Hearth recovery card without border-l-4, duplicate close icon, or em-dashes', () => {
     render(<RecipeFailureBanner />);
 
     const banner = screen.getByTestId('recipe-failure-banner-recipe-fail');
     expect(banner).toBeInTheDocument();
-    expect(banner).toHaveClass('border-hearth-line', 'border-l-hearth-fill', 'bg-white');
+    expect(banner).toHaveClass('border-hearth-line', 'bg-terracotta-50');
+    expect(banner).not.toHaveClass('border-l-4', 'border-l-hearth-fill');
+    expect(banner.textContent).not.toContain('—');
 
     const retryBtn = screen.getByTestId('recipe-failure-retry-recipe-fail');
     const dismissBtn = screen.getByTestId('recipe-failure-dismiss-recipe-fail');
-    const closeBtn = screen.getByTestId('recipe-failure-dismiss-icon-recipe-fail');
+    expect(screen.queryByTestId('recipe-failure-dismiss-icon-recipe-fail')).toBeNull();
 
     expect(retryBtn).toHaveClass(
       'min-h-12',
@@ -64,31 +66,22 @@ describe('RecipeFailureBanner', () => {
       'min-h-12',
       'min-w-12',
       'border-chrome-line',
-      'text-ink-muted',
       'focus-visible:outline-ink-body'
     );
-    expect(closeBtn).toHaveClass(
-      'h-12',
-      'w-12',
-      'text-ink-muted',
-      'focus-visible:outline-ink-body'
-    );
-    expect(closeBtn).not.toHaveClass('text-charcoal/40');
     expect(screen.getByText('Tap to try again.')).toHaveClass('text-hearth-ink');
   });
 
-  it('renders localized French copy when the active locale is fr', () => {
+  it('renders localized French copy without em-dashes when the active locale is fr', () => {
     mockLocale = 'fr';
     render(<RecipeFailureBanner />);
 
+    const banner = screen.getByTestId('recipe-failure-banner-recipe-fail');
+    expect(banner.textContent).not.toContain('—');
     expect(screen.getByText(/La recette n.a pas pu être enregistrée/)).toBeInTheDocument();
     expect(screen.getByText('Touchez pour réessayer.')).toHaveClass('text-hearth-ink');
     expect(screen.getByTestId('recipe-failure-retry-recipe-fail')).toHaveTextContent('Réessayer');
     expect(screen.getByTestId('recipe-failure-dismiss-recipe-fail')).toHaveTextContent('Ignorer');
-    expect(screen.getByTestId('recipe-failure-dismiss-icon-recipe-fail')).toHaveAttribute(
-      'aria-label',
-      'Ignorer la notification d’échec'
-    );
+    expect(screen.queryByTestId('recipe-failure-dismiss-icon-recipe-fail')).toBeNull();
   });
 
   it('retry calls failed capture API with workflow instance id and dismisses the toast', async () => {

@@ -34,15 +34,21 @@ public sealed class RecipeShareDeclaredBasisTests
         using var scope = factory.Services.CreateScope();
         var saved = await scope.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
         Assert.Equal(4, saved.Servings);
-        var canonical = CanonicalRecipeContentStore.Read(saved);
+        var canonical = StructuredRecipeContentStore.Read(saved);
         Assert.NotNull(canonical);
         Assert.Equal(4, canonical.Servings);
         var line = Assert.Single(canonical.IngredientLines);
-        Assert.Equal("200 g pasta", line.Description);
-        Assert.Null(line.Amount);
-        Assert.Null(line.Unit);
-        Assert.Equal("legacy_unknown", line.Provenance.Origin);
-        Assert.Null(line.Provenance.SourceRef);
+        Assert.Equal("pasta", line.Description);
+        Assert.NotNull(line.Amount);
+        Assert.Equal("200", line.Amount!.Value!.N);
+        Assert.Equal("1", line.Amount!.Value!.D);
+        Assert.Equal("g", line.Unit?.Text);
+        var diskJson = await scope.ServiceProvider.GetRequiredService<RecipeApi.Infrastructure.IRecipeStore>().ReadRecipeJsonAsync(id);
+        Assert.NotNull(diskJson);
+        using var diskDoc = System.Text.Json.JsonDocument.Parse(diskJson);
+        Assert.Equal("https://schema.org/", diskDoc.RootElement.GetProperty("@context").GetString());
+        Assert.Equal("Recipe", diskDoc.RootElement.GetProperty("@type").GetString());
+        Assert.Equal("4 portions", diskDoc.RootElement.GetProperty("recipeYield").GetString());
     }
     [Theory]
     [InlineData(0)]

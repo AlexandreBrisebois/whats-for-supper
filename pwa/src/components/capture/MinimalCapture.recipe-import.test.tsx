@@ -84,7 +84,12 @@ vi.mock('@/store/captureStore', () => ({
   },
 }));
 
-const libraryStoreState = { notifications: [] as any[], dismissNotification: vi.fn() };
+const mockPushNotification = vi.fn();
+const libraryStoreState = {
+  notifications: [] as any[],
+  dismissNotification: vi.fn(),
+  pushNotification: mockPushNotification,
+};
 const librarySubscribers = new Set<any>();
 
 vi.mock('@/store/libraryStore', () => ({
@@ -324,23 +329,51 @@ describe('MinimalCapture recipe import', () => {
 
       fireEvent.change(input, { target: { files: [file] } });
       expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
+      expect(screen.queryByTestId('bundle-preview-synthesis-badge')).toBeNull();
+
+      // Steps are collapsed behind Preview steps disclosure by default
+      const toggle = screen.getByTestId('bundle-preview-steps-toggle');
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByTestId('bundle-preview-section-title')).toBeNull();
+
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
       const sections = screen.getAllByTestId('bundle-preview-section-title');
       expect(sections[0]).toHaveTextContent('Main Steps');
+      expect(sections[0].className).toContain('text-garden-ink');
 
       const steps = screen.getAllByTestId('bundle-preview-step-text');
       expect(steps[0]).toHaveTextContent('Simmer');
       expect(steps[1]).toHaveTextContent('Serve');
 
       expect(screen.getByTestId('accept-bundle-btn')).toBeVisible();
-      expect(screen.getByTestId('reject-bundle-btn')).toBeVisible();
+      expect(screen.queryByTestId('reject-bundle-btn')).toBeNull();
       expect(mockImportBundle).not.toHaveBeenCalled();
+
+      // Importer can set rating and notes before importing
+      fireEvent.click(screen.getByTestId('bundle-rating-3'));
+      fireEvent.change(screen.getByTestId('bundle-notes-input'), {
+        target: { value: 'Serve with crusty bread' },
+      });
+
       fireEvent.click(screen.getByTestId('accept-bundle-btn'));
-      expect(await screen.findByTestId('bundle-import-success')).toBeVisible();
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/home'));
+      expect(screen.queryByTestId('bundle-import-success')).toBeNull();
+      expect(mockPushNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'ready',
+          name: 'Imported Shared Recipe',
+        })
+      );
       expect(mockImportBundle).toHaveBeenCalledWith(
         expect.objectContaining({
           version: '1.0',
-          recipe: expect.objectContaining({ name: 'Imported Shared Recipe' }),
+          recipe: expect.objectContaining({
+            name: 'Imported Shared Recipe',
+            rating: 3,
+            notes: 'Serve with crusty bread',
+          }),
         }),
         expect.objectContaining({
           options: [expect.objectContaining({ maxRetries: 0 })],
@@ -351,7 +384,7 @@ describe('MinimalCapture recipe import', () => {
     }
   );
 
-  it('renders optional notes in the bundle preview if present', async () => {
+  it('initializes editable importer notes from bundle if present', async () => {
     render(<MinimalCapture />);
 
     const input = screen.getByTestId('import-recipe-file-input') as HTMLInputElement;
@@ -380,32 +413,32 @@ describe('MinimalCapture recipe import', () => {
           originals: [],
         }),
       ],
-      'backup.recipe',
-      { type: 'application/json' }
+      'backup.txt',
+      { type: 'text/plain' }
     );
 
     fireEvent.change(input, { target: { files: [file] } });
 
     expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
-    expect(screen.getByTestId('bundle-preview-notes')).toHaveTextContent(
-      'This is a personal note.'
-    );
+    expect(screen.getByTestId('bundle-notes-input')).toHaveValue('This is a personal note.');
   });
 
-  it('shows bundle-import-error for invalid bundle files', async () => {
+  it('shows bundle-import-error without .recipe reference for invalid bundle files', async () => {
     render(<MinimalCapture />);
 
     const input = screen.getByTestId('import-recipe-file-input') as HTMLInputElement;
-    const file = new File(['not-json'], 'broken.recipe', { type: 'application/json' });
+    const file = new File(['not-json'], 'broken.txt', { type: 'text/plain' });
 
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(screen.getByTestId('bundle-import-error')).toBeVisible();
+      const err = screen.getByTestId('bundle-import-error');
+      expect(err).toBeVisible();
+      expect(err.textContent).not.toContain('.recipe');
     });
   });
 
-  it('returns to the default capture view after rejecting a parsed bundle', async () => {
+  it('cancels a parsed bundle via top-right cancel button and navigates to /home', async () => {
     render(<MinimalCapture />);
 
     const input = screen.getByTestId('import-recipe-file-input') as HTMLInputElement;
@@ -433,19 +466,16 @@ describe('MinimalCapture recipe import', () => {
           originals: [],
         }),
       ],
-      'shared.recipe',
-      { type: 'application/json' }
+      'shared.txt',
+      { type: 'text/plain' }
     );
 
     fireEvent.change(input, { target: { files: [file] } });
+    expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
 
-    fireEvent.click(await screen.findByTestId('reject-bundle-btn'));
+    fireEvent.click(screen.getByTestId('capture-cancel-btn'));
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('bundle-preview-card')).toBeNull();
-    });
-
-    expect(screen.getByTestId('import-recipe-file-btn')).toBeVisible();
+    expect(mockPush).toHaveBeenCalledWith('/home');
   });
 
   it('File Import Duplicate: shows warning banner and lets the user view the existing recipe', async () => {
@@ -594,67 +624,7 @@ describe('MinimalCapture recipe import', () => {
     expect(detailSheet).toHaveAttribute('data-recipe-id', '550e8400-e29b-41d4-a716-446655440001');
   });
 
-  it('Photo Success Duplicate & Discard action: shows warning, keeping anyway works, and discarding deletes the recipe', async () => {
-    const newRecipeId = '550e8400-e29b-41d4-a716-446655440002';
-    const duplicateRecipe = {
-      id: '550e8400-e29b-41d4-a716-446655440001',
-      name: 'Tacos',
-      isReady: true,
-    };
-
-    // Default resolve for initial load
-    mockGetRecipes.mockResolvedValue({ recipes: [] });
-    mockSubmitRecipe.mockResolvedValue(newRecipeId);
-
-    const file = new File(['hello'], 'hello.png', { type: 'image/png' });
-    mockImages = [file];
-
-    render(<MinimalCapture />);
-
-    // Click Save
-    const saveBtn = screen.getByTestId('capture-save-btn');
-    fireEvent.click(saveBtn);
-
-    // At this point we are in onSuccess = true, waiting for SSE.
-    // Let's set up the API mock to return the duplicate recipe when searched by name 'Tacos'
-    mockGetRecipes.mockImplementation(async (config: any) => {
-      if (config?.query?.name === 'Tacos') {
-        return { recipes: [duplicateRecipe] };
-      }
-      return { recipes: [] };
-    });
-
-    // Simulate SSE notification saying recipe is ready with name 'Tacos'
-    libraryStoreState.notifications = [{ recipeId: newRecipeId, name: 'Tacos', type: 'ready' }];
-    librarySubscribers.forEach((cb) => cb(libraryStoreState));
-
-    // Success screen should be visible
-    const successScreen = await screen.findByTestId('capture-success-screen');
-    expect(successScreen).toBeVisible();
-
-    // Verify duplicate warning banner is rendered
-    const banner = await screen.findByTestId('duplicate-recipe-warning');
-    expect(banner).toBeVisible();
-    expect(banner.textContent).toContain('A recipe with this name already exists: Tacos');
-
-    // Verify "Discard duplicate" button is present
-    const discardBtn = screen.getByTestId('discard-duplicate-btn');
-    expect(discardBtn).toBeVisible();
-
-    // Test "Discard duplicate" click deletes duplicate and redirects
-    fireEvent.click(discardBtn);
-
-    // Verify API delete call is made for the newly created recipe ID (newRecipeId)
-    expect(mockById).toHaveBeenCalledWith(newRecipeId);
-    expect(mockDeleteRecipe).toHaveBeenCalled();
-
-    // Verify redirect to home happens without a redundant discard toast
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/');
-    });
-    expect(mockAddToast).not.toHaveBeenCalled();
-  });
-  it('observes bundle review/reject/reopen and the actual ready panel without picker or import-result facts', async () => {
+  it('observes bundle review, error retry, and direct /home return', async () => {
     const view = render(<MinimalCapture preparedOnly />);
     try {
       const picker = screen.getByTestId('import-prepared-file-input');
@@ -663,80 +633,12 @@ describe('MinimalCapture recipe import', () => {
       fireEvent.change(picker, { target: { files: [privateBundleFile()] } });
       expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
 
-      fireEvent.click(screen.getByTestId('reject-bundle-btn'));
-      await act(async () => {});
-
-      expect(mockImportBundle).not.toHaveBeenCalled();
-      fireEvent.change(screen.getByTestId('import-prepared-file-input'), {
-        target: { files: [privateBundleFile()] },
-      });
-      expect(await screen.findByTestId('bundle-preview-card')).toBeVisible();
-
       mockImportBundle.mockRejectedValueOnce(new Error('private-error-sentinel'));
       fireEvent.click(screen.getByTestId('accept-bundle-btn'));
       expect(await screen.findByTestId('bundle-import-error')).toBeVisible();
 
       fireEvent.click(screen.getByTestId('accept-bundle-btn'));
-      expect(await screen.findByTestId('bundle-import-success')).toBeVisible();
-    } finally {
-      view.unmount();
-      await act(async () => {});
-    }
-  });
-
-  it('observes actual URL overlay, retry, queued and ready panels without implying a captured recipe', async () => {
-    let reject: ((error: Error) => void) | undefined;
-    let resolve: ((id: string) => void) | undefined;
-    mockSubmitUrl.mockImplementationOnce(
-      () =>
-        new Promise((_resolve, failure) => {
-          reject = failure;
-        })
-    );
-    const view = render(
-      <MinimalCapture initialUrl="https://private-url-sentinel.invalid/recipe" />
-    );
-    try {
-      fireEvent.click(screen.getByTestId('capture-url-save-btn'));
-      expect(screen.getByText('Capturing link...')).toBeVisible();
-
-      await act(async () => {
-        reject?.(new Error('private-error-sentinel'));
-      });
-      expect(screen.getByTestId('capture-url-error')).toBeVisible();
-
-      mockSubmitUrl.mockImplementationOnce(
-        () =>
-          new Promise((success) => {
-            resolve = success;
-          })
-      );
-      fireEvent.click(screen.getByTestId('capture-url-save-btn'));
-
-      await act(async () => {
-        resolve?.(memberId);
-      });
-      expect(screen.getByTestId('capture-success-heading')).toHaveTextContent('Recipe queued');
-
-      await act(async () => {
-        libraryStoreState.notifications = [
-          { recipeId: 'other-private-id', name: 'private-unrelated-sentinel', type: 'ready' },
-        ];
-        librarySubscribers.forEach((callback) => callback(libraryStoreState));
-      });
-
-      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
-      await act(async () => {
-        libraryStoreState.notifications = [
-          { recipeId: memberId, name: 'private-ready-sentinel', type: 'ready' },
-        ];
-        librarySubscribers.forEach((callback) => callback(libraryStoreState));
-      });
-      expect(screen.getByTestId('capture-success-heading')).toHaveTextContent(
-        'private-ready-sentinel is ready!'
-      );
-
-      vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/home'));
     } finally {
       view.unmount();
       await act(async () => {});

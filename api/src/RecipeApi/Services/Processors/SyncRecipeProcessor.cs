@@ -18,25 +18,6 @@ public class SyncRecipeProcessor(
 {
     public string ProcessorName => "SyncRecipe";
 
-    // Captured by this invocation before delivery, never reconstructed by the
-    // Worker's later post-read. Delivered is only the observed delivery state.
-    private sealed record PublicationFacts(Guid RecipeId, Guid OperationId, string InputHash,
-        string Payload, string ResultHash, bool Delivered, DateTimeOffset CreatedAt)
-    {
-        public RecipeFilePublication Restore() => new()
-        {
-            RecipeId = RecipeId,
-            OperationId = OperationId,
-            InputHash = InputHash,
-            Payload = Payload,
-            ResultHash = ResultHash,
-            Delivered = Delivered,
-            CreatedAt = CreatedAt
-        };
-        public static PublicationFacts Observe(RecipeFilePublication value) => new(value.RecipeId, value.OperationId,
-            value.InputHash, value.Payload, value.ResultHash, value.Delivered, value.CreatedAt);
-    }
-    private sealed record Confirmation(int Version, PublicationFacts[] Publications);
     private static string ConfirmationMessage(Guid id) => $"Confirmed committed recipe publication for {id}.";
     private static string ReplayMessage(Guid id) => $"Verified identical current recipe content for {id}.";
 
@@ -60,22 +41,6 @@ public class SyncRecipeProcessor(
             || !result.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.String
             || message.GetString() != (replay ? ReplayMessage(recipeId) : ConfirmationMessage(recipeId)))
             throw new InvalidDataException("Original recipe sync receipt differs from its invocation.");
-        if (result.TryGetProperty("publicationConfirmation", out var observed))
-        {
-            if (replay || observed.ValueKind != JsonValueKind.Object)
-                throw new InvalidDataException("Recipe replay cannot claim publication confirmation.");
-            var confirmation = WorkflowProcessorHistory.ReadObservation<Confirmation>(observed.GetRawText());
-            if (confirmation.Version != 1 || confirmation.Publications is not { Length: > 0 }
-                || confirmation.Publications.Any(x => x is null || string.IsNullOrWhiteSpace(x.Payload)
-                    || string.IsNullOrWhiteSpace(x.InputHash) || string.IsNullOrWhiteSpace(x.ResultHash)))
-                throw new InvalidDataException("Original recipe publication confirmation is incomplete.");
-            RecipeFilePublicationStore.ValidateOriginalSyncPublications(original, taskId, payload,
-                recipeId, confirmation.Publications.Select(x => x.Restore()).ToArray());
-        }
-        else if (!replay && requireConfirmation)
-            throw new InvalidDataException("Original recipe publication confirmation is absent.");
-        // Older receipts contain no original sibling association. Replay text
-        // binds the invocation only, not historical file/content equality.
         return recipeId;
     }
 
@@ -84,55 +49,84 @@ public class SyncRecipeProcessor(
         var (recipeId, replay) = ReadInput(task.Payload);
         if (replay)
             return await VerifyCurrentReplayAsync(recipeId, ct);
-        if (task.InstanceId != Guid.Empty)
+
+        var recipe = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
+        if (recipe is null)
+            throw new InvalidDataException($"Recipe {recipeId} not found for sync.");
+
+        if (recipe.CanonicalContent is null)
         {
-            var producers = db.WorkflowTasks.Where(x => x.InstanceId == task.InstanceId).Select(x => x.TaskId);
-            var publications = await db.RecipeFilePublications.AsNoTracking()
-                .Where(x => x.RecipeId == recipeId && producers.Contains(x.OperationId))
-                .ToListAsync(ct);
-            if (publications.Count > 0)
+            string? rawJson = null;
+            try
             {
-                // The producer already committed the facts and durable obligations.
-                // Deliver its pending files, but never re-import a historical candidate
-                // over a human edit made between generation and this workflow step.
-                var confirmation = new Confirmation(1, publications.Select(PublicationFacts.Observe).ToArray());
-                foreach (var publication in publications)
-                    await new RecipeFilePublicationStore(db, recipeRepository, clock, projectionInvalidation, vocabulary)
-                        .ResumeAsync(recipeId, publication.OperationId, ct);
-                IReadOnlyList<DateOnly> weeks;
-                await using (var transaction = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true))
+                rawJson = await recipeRepository.GetRecipeJsonAsync(recipeId, ct);
+            }
+            catch (FileNotFoundException)
+            {
+                rawJson = null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(rawJson))
+            {
+                using var parsedDoc = JsonDocument.Parse(rawJson);
+                var envelope = RecipeExportContent.Read(parsedDoc.RootElement);
+                var schemaJson = envelope?.RawMetadata ?? rawJson;
+                var explicitServings = envelope is not null ? envelope.Servings : recipe.Servings;
+                var authority = await vocabulary.CaptureAuthorityAsync(recipe.FoodMappingEvidence, ct);
+                var (content, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+                    recipeId, schemaJson, recipe.SourceUrl, authority,
+                    explicitServings: explicitServings);
+
+                await using var syncTx = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true);
+                var tracked = await db.Recipes.SingleAsync(x => x.Id == recipeId, ct);
+                if (tracked.CanonicalContent is null)
                 {
-                    weeks = await projectionInvalidation.EnlistRecipeAsync(recipeId, ct);
-                    if (transaction is not null) await transaction.CommitAsync(ct);
+                    tracked.RawMetadata = StructuredRecipeContentStore.ToSchemaOrgJson(content, schemaJson, tracked.Name, tracked.Description);
+                    tracked.CanonicalContent = JsonSerializer.Serialize(content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    tracked.FoodMappingEvidence = evidence;
+                    tracked.Servings = content.Servings;
+                    tracked.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render));
+                    tracked.UpdatedAt = clock.UtcNow;
+                    await db.SaveChangesAsync(ct);
                 }
-                await projectionPublisher.PublishAsync(weeks);
-                return new { Message = ConfirmationMessage(recipeId), PublicationConfirmation = confirmation };
+                if (syncTx is not null) await syncTx.CommitAsync(ct);
             }
         }
-        // Old/bare tasks have no captured destination baseline or field selection.
-        // Reading files now cannot grant authority to replace current human facts.
-        // Current-format merge/exact restore belong to their explicit recovery owners.
-        logger.LogWarning("Refused unlinked recipe sync for {RecipeId}; no committed producer publication.", recipeId);
-        throw new InvalidDataException("Recipe sync requires a linked committed producer publication; use explicit current-format recovery for disk content.");
+
+        IReadOnlyList<DateOnly> weeks;
+        await using (var transaction = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true))
+        {
+            weeks = await projectionInvalidation.EnlistRecipeAsync(recipeId, ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
+        await projectionPublisher.PublishAsync(weeks);
+
+        logger.LogInformation("SyncRecipe completed for recipe {RecipeId}", recipeId);
+        return new { Message = ConfirmationMessage(recipeId) };
     }
 
     private async Task<object> VerifyCurrentReplayAsync(Guid recipeId, CancellationToken ct)
     {
-        // Explicit current-format verification is a read-only operation. Cooperating
-        // publishers/delivery cannot change either side while equality is checked.
         await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
         if (transaction is not null)
             await db.Database.ExecuteSqlAsync($"SELECT id FROM recipes WHERE id = {recipeId} FOR SHARE", ct);
         var recipe = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct)
-            ?? throw new InvalidDataException("Current recipe replay requires an existing canonical destination.");
-        var content = CanonicalRecipeContentStore.Read(recipe)
-            ?? throw new InvalidDataException("Current recipe replay requires an existing canonical destination.");
-        if (await db.RecipeFilePublications.AsNoTracking().AnyAsync(x => x.RecipeId == recipeId && !x.Delivered, ct))
-            throw new InvalidDataException("Current recipe replay cannot verify pending file publication.");
-        using var document = JsonDocument.Parse(await recipeRepository.GetRecipeJsonAsync(recipeId, ct));
-        var incoming = RecipeExportContent.ReadCurrent(document.RootElement, recipeId);
-        if (!RecipeExportContent.IsIdenticalCurrent(incoming, new(recipeId, content, recipe.RawMetadata)))
-            throw new InvalidDataException("Divergent recipe content requires reviewed current-format recovery with captured destination authority.");
+            ?? throw new InvalidDataException("Current recipe replay requires an existing structured destination.");
+        var content = StructuredRecipeContentStore.Read(recipe)
+            ?? throw new InvalidDataException("Current recipe replay requires an existing structured destination.");
+        var diskText = await recipeRepository.GetRecipeJsonAsync(recipeId, ct);
+        using var document = JsonDocument.Parse(diskText);
+        if (document.RootElement.TryGetProperty("format", out var format) && format.ValueKind == JsonValueKind.String
+            && format.GetString() == "wfs-recipe")
+        {
+            var incoming = RecipeExportContent.ReadCurrent(document.RootElement, recipeId);
+            if (!RecipeExportContent.IsIdenticalCurrent(incoming, new(recipeId, content, recipe.RawMetadata)))
+                throw new InvalidDataException("Divergent recipe content requires reviewed recovery.");
+        }
+        else if (StructuredRecipeContentStore.NormalizeJson(diskText) != StructuredRecipeContentStore.NormalizeJson(recipe.RawMetadata))
+        {
+            throw new InvalidDataException("Divergent recipe content requires reviewed recovery.");
+        }
         return new { Message = ReplayMessage(recipeId) };
     }
 }

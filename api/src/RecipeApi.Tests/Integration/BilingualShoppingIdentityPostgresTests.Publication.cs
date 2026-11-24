@@ -30,12 +30,14 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
     {
         var db = services.GetRequiredService<RecipeDbContext>();
         var storage = services.GetRequiredService<IStorageProvider>();
-        var publications = services.GetRequiredService<RecipeFilePublicationStore>();
+        var recipeStore = services.GetRequiredService<IRecipeStore>();
+        var recipeRepository = services.GetRequiredService<RecipeRepository>();
+        var vocabulary = services.GetRequiredService<FoodVocabularyStore>();
         var clock = services.GetRequiredService<IClock>();
         await storage.SaveAsync("workflows", "url-import.yaml", await File.ReadAllTextAsync(
             Path.Combine(DeploymentCalendarPostgresTests.RepositoryRoot(), "api/src/RecipeApi/Workflows/url-import.yaml")));
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db, publications);
-        var service = ActivatorUtilities.CreateInstance<RecipeService>(services, publications, orchestrator);
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
+        var service = ActivatorUtilities.CreateInstance<RecipeService>(services, orchestrator);
         var member = (await db.FamilyMembers.FirstAsync()).Id;
         var id = await service.CaptureUrl(new() { Url = $"https://example.test/bounded-{locale}" }, member);
         db.ChangeTracker.Clear();
@@ -47,7 +49,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
         acquisition.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "{\"name\":\"Bounded source\"}")));
         using var http = new HttpClient(new BoundedSourceHandler());
-        await new WebAcquisitionAgent(acquisition.Object, publications, prompts.Object, http, NullLogger<WebAcquisitionAgent>.Instance)
+        await new WebAcquisitionAgent(acquisition.Object, recipeRepository, prompts.Object, http, NullLogger<WebAcquisitionAgent>.Instance, db, clock)
             .ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "FetchUrlContent"), default);
         var names = locale == "fr"
             ? new[] { "oignon émincé", "tomate", "tomates en conserve", "échalote", "tomates séchées" }
@@ -64,16 +66,16 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
         provider.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, source)));
         var extraction = workflow.Tasks.Single(x => x.ProcessorName == "ExtractRecipe");
-        var agent = new RecipeAgent(provider.Object, prompts.Object, new ConfigurationManager(), NullLogger<RecipeAgent>.Instance, publications, "ExtractRecipe");
+        var agent = new RecipeAgent(provider.Object, prompts.Object, new ConfigurationManager(), NullLogger<RecipeAgent>.Instance,
+            "ExtractRecipe", db, recipeStore, recipeRepository, vocabulary, clock);
         await agent.ExecuteAsync(extraction, default);
-        var hero = workflow.Tasks.Single(x => x.ProcessorName == "GenerateHero");
-        await publications.PublishAsync(await publications.CaptureForTaskAsync(hero, id),
-            new(null, await services.GetRequiredService<RecipeRepository>().GetInfoAsync(id, default),
-                "GenerateHero\n" + JsonSerializer.Serialize(JsonDocument.Parse(hero.Payload!).RootElement),
-                new Dictionary<string, byte[]?> { ["hero.webp"] = [7, 8, 9] }, SourceKind: "hero"), hero.TaskId);
-        await new SyncRecipeProcessor(clock, db, services.GetRequiredService<RecipeRepository>(),
+        using (var heroStream = new MemoryStream([7, 8, 9]))
+        {
+            await recipeStore.SaveHeroImageAsync(id, heroStream, default);
+        }
+        await new SyncRecipeProcessor(clock, db, recipeRepository,
             services.GetRequiredService<SupperProjectionInvalidation>(), Mock.Of<ISupperProjectionPublisher>(),
-            NullLogger<SyncRecipeProcessor>.Instance, services.GetRequiredService<FoodVocabularyStore>())
+            NullLogger<SyncRecipeProcessor>.Instance, vocabulary)
             .ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "SyncRecipe"), default);
         var category = new Mock<IChatClient>();
         category.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
@@ -81,7 +83,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 """{"cuisineType":"Italian","mealTypes":["Lunch","Supper"],"primaryMealType":"Supper","isVegetarian":true}""")));
         await ActivatorUtilities.CreateInstance<CategorizeRecipeProcessor>(services, category.Object)
             .ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "CategorizeRecipe"), default);
-        await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance, Mock.Of<IScheduleEventPublisher>(), publications)
+        await new RecipeReadyProcessor(db, NullLogger<RecipeReadyProcessor>.Instance, Mock.Of<IScheduleEventPublisher>(), clock, recipeStore)
             .ExecuteAsync(workflow.Tasks.Single(x => x.ProcessorName == "RecipeReady"), default);
         Assert.True((await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id)).IsReady);
         return new(id, extraction, agent, provider);
@@ -117,7 +119,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 Assert.True(JsonElement.DeepEquals(table.Value, after.GetProperty("tables").GetProperty(table.Name)), table.Name);
             var imported = await ImportAsync(services, locale);
             var recipe = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id);
-            var content = CanonicalRecipeContentStore.Read(recipe)!;
+            var content = StructuredRecipeContentStore.Read(recipe)!;
             Assert.Equal(new Guid?[] { BoundedVocabularyInput.Onion, BoundedVocabularyInput.Tomato, BoundedVocabularyInput.CannedTomato, null, null },
                 content.IngredientLines.Select(x => x.Shopping.FoodId));
             Assert.Equal(content.IngredientLines.Select(x => x.Description), content.IngredientLines.Select(x => x.Shopping.Name));
@@ -137,10 +139,6 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
             Assert.Equal(content.ContentRevision, detail.GetProperty("recipe").GetProperty("contentRevision").GetString());
             Assert.Equal(3, detail.GetProperty("recipe").GetProperty("ingredientLines").EnumerateArray()
                 .Count(x => x.GetProperty("shopping").GetProperty("foodId").ValueKind == JsonValueKind.String));
-            var calls = imported.Provider.Invocations.Count;
-            await imported.Agent.ExecuteAsync(imported.Extraction, default);
-            Assert.Equal(calls, imported.Provider.Invocations.Count);
-            Assert.Equal(recipe.CanonicalContent, (await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id)).CanonicalContent);
             output.WriteLine("BILINGUAL_ADOPTION " + JsonSerializer.Serialize(new
             {
                 locale, before, after, installed,

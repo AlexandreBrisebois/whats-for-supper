@@ -146,7 +146,8 @@ describe('FailedCapturesSection', () => {
     expect(screen.queryByTestId('failed-captures-section')).toBeNull();
   });
 
-  it('action-clear-<id> tap calls clearCaptureFailure and removes the row', async () => {
+  it('uses inline confirmation (never window.confirm) with Keep left and Clear capture right, and resets on rejection', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
     const failure = buildFailure();
     mockGetCaptureFailures.mockResolvedValue([failure]);
 
@@ -158,17 +159,45 @@ describe('FailedCapturesSection', () => {
       expect(screen.getByTestId(`failed-capture-${failure.id}`)).toBeInTheDocument();
     });
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId(`action-clear-${failure.id}`));
+    // Clicking Clear reveals inline confirm without invoking window.confirm
+    fireEvent.click(screen.getByTestId(`action-clear-${failure.id}`));
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(mockClearCaptureFailure).not.toHaveBeenCalled();
+
+    const confirmBox = screen.getByTestId(`clear-confirm-${failure.id}`);
+    expect(confirmBox).toHaveClass('bg-white', 'border-hearth-line');
+
+    // Keep dismisses confirmation without deleting
+    const keepBtn = screen.getByTestId(`action-clear-keep-${failure.id}`);
+    const confirmClearBtn = screen.getByTestId(`action-clear-confirm-${failure.id}`);
+    expect(
+      keepBtn.compareDocumentPosition(confirmClearBtn) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    fireEvent.click(keepBtn);
+    expect(screen.queryByTestId(`clear-confirm-${failure.id}`)).toBeNull();
+    expect(mockClearCaptureFailure).not.toHaveBeenCalled();
+
+    // Rejection resets confirmation state
+    mockClearCaptureFailure.mockRejectedValueOnce(new Error('network error'));
+    fireEvent.click(screen.getByTestId(`action-clear-${failure.id}`));
+    fireEvent.click(screen.getByTestId(`action-clear-confirm-${failure.id}`));
+    await waitFor(() => {
+      expect(screen.queryByTestId(`clear-confirm-${failure.id}`)).toBeNull();
+      expect(screen.getByTestId(`action-retry-error-${failure.id}`)).toBeInTheDocument();
     });
 
-    expect(mockClearCaptureFailure).toHaveBeenCalledWith(failure.id);
+    // Confirming Clear capture removes the row
+    fireEvent.click(screen.getByTestId(`action-clear-${failure.id}`));
+    fireEvent.click(screen.getByTestId(`action-clear-confirm-${failure.id}`));
+
     await waitFor(() => {
+      expect(mockClearCaptureFailure).toHaveBeenCalledWith(failure.id);
       expect(screen.queryByTestId(`failed-capture-${failure.id}`)).not.toBeInTheDocument();
     });
   });
 
-  it('uses Family Cookbook >= 48px controls, >= 12px copy, and terracotta destructive styling', async () => {
+  it('uses Family Cookbook >= 48px controls, flex-1 Retry left, trailing 48x48 Clear right, and >= 12px copy', async () => {
     const failure = buildFailure({ previewText: 'https://example.com/recipe' });
     mockGetCaptureFailures.mockResolvedValue([failure]);
 
@@ -176,7 +205,7 @@ describe('FailedCapturesSection', () => {
     const retry = await screen.findByTestId(`action-retry-${failure.id}`);
     const clear = screen.getByTestId(`action-clear-${failure.id}`);
 
-    expect(retry).toHaveClass('min-h-12', 'text-xs');
+    expect(retry).toHaveClass('min-h-12', 'flex-1', 'text-xs');
     expect(retry).not.toHaveClass('text-[10px]', 'h-10');
     expect(clear).toHaveClass(
       'h-12',

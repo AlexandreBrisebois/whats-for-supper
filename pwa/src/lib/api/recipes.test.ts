@@ -384,9 +384,9 @@ describe('parseRecipeBundleFile', () => {
   });
 
   it('throws error for invalid files', async () => {
-    const file = new File(['not-json'], 'broken.recipe', { type: 'application/json' });
+    const file = new File(['not-json'], 'broken.txt', { type: 'text/plain' });
     await expect(parseRecipeBundleFile(file)).rejects.toThrow(
-      'This .recipe file could not be read.'
+      'This recipe file could not be read.'
     );
   });
 
@@ -412,10 +412,10 @@ describe('parseRecipeBundleFile', () => {
       originals: [],
     };
 
-    const file = new File([JSON.stringify(invalidBundle)], 'invalid.recipe', {
-      type: 'application/json',
+    const file = new File([JSON.stringify(invalidBundle)], 'invalid.txt', {
+      type: 'text/plain',
     });
-    await expect(parseRecipeBundleFile(file)).rejects.toThrow('This .recipe file is not valid.');
+    await expect(parseRecipeBundleFile(file)).rejects.toThrow('This recipe file is not valid.');
   });
 
   it('handles @type field in structured instructions', async () => {

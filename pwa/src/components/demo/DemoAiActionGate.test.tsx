@@ -30,10 +30,11 @@ describe('honest AI entry', () => {
     expect(screen.queryByLabelText('Private PDF')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import shared text bundle' })).toBeVisible();
     expect(screen.getByText(/AI capture and generation are turned off/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /prepared recipes/i })).toHaveAttribute(
-      'href',
-      '/recipes'
-    );
+    const card = screen.getByTestId('demo-ai-unavailable');
+    expect(card).toHaveClass('border-chrome-line');
+    const browseLink = screen.getByRole('link', { name: /prepared recipes/i });
+    expect(browseLink).toHaveAttribute('href', '/recipes');
+    expect(browseLink).toHaveClass('min-h-12', 'border-chrome-line', 'bg-white');
   });
   it('withholds AI actions while permission is unknown and offers retry on failure', () => {
     Object.assign(mode, { mode: null, error: true });

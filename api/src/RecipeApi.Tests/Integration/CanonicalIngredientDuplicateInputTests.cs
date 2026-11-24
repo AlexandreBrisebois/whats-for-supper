@@ -40,8 +40,8 @@ public sealed class CanonicalIngredientDuplicateInputTests
             RawMetadata = """{"recipeIngredient":["200 g tomatoes"],"supply":[{"name":"tomatoes","quantity":200,"unitText":"g"}]}""" };
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
-        var converted = await scope.ServiceProvider.GetRequiredService<CanonicalRecipeContentStore>().ConvertAsync(recipe.Id,
-            CanonicalRecipeContentStore.InspectContentRevision(recipe), CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
+        var converted = await scope.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>().ConvertAsync(recipe.Id,
+            StructuredRecipeContentStore.InspectContentRevision(recipe), StructuredRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
         var beforeRecipe = await RecipeState(db, recipe.Id);
         var beforeOperations = await OperationState(db);
         var beforeOperationCount = await db.CanonicalRecipeOperations.CountAsync();

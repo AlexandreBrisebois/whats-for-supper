@@ -21,10 +21,10 @@ public class RecipeService(
     ILogger<RecipeService> logger,
     SupperProjectionInvalidation projectionInvalidation,
     ISupperProjectionPublisher projectionPublisher,
-    RecipeFilePublicationStore publications,
     RecipesRootResolver recipesRoot,
     IScheduleEventPublisher? publisher = null,
-    CanonicalRecipeContentStore? canonicalEditor = null)
+    StructuredRecipeContentStore? canonicalEditor = null,
+    FoodVocabularyStore? vocabulary = null)
 {
     private const string RecipeShareBundleVersion = "1.0";
 
@@ -54,8 +54,6 @@ public class RecipeService(
         var recipeId = Guid.NewGuid();
         var now = clock.UtcNow;
 
-        var capture = await publications.CaptureNewAsync(recipeId);
-        var sourceFiles = new Dictionary<string, byte[]?>();
         for (var index = 0; index < files.Count; index++)
         {
             var file = files[index];
@@ -69,11 +67,11 @@ public class RecipeService(
                 await buffer.WriteAsync(chunk.AsMemory(0, read));
             }
             if (buffer.Length == 0) throw new ArgumentException("Image file must not be empty.");
-            var extension = file.ContentType.ToLowerInvariant() switch { "image/png" => "png", "image/webp" => "webp", _ => "jpg" };
-            sourceFiles.Add($"original/{index}.{extension}", buffer.ToArray());
+            buffer.Position = 0;
+            await recipeStore.SaveOriginalImageAsync(recipeId, index, file.ContentType, buffer);
         }
-        var followup = publications.CaptureFollowup("recipe-import", new() { ["recipeId"] = recipeId.ToString() });
-        await publications.PublishAsync(capture, new(null, new RecipeInfo
+
+        var info = new RecipeInfo
         {
             Id = recipeId,
             FinishedDishImageIndex = request.FinishedDishImageIndex,
@@ -82,13 +80,32 @@ public class RecipeService(
             Notes = request.Notes,
             AddedBy = familyMemberId,
             CreatedAt = now
-        }, SourceFiles: sourceFiles, SourceKind: "bootstrap", FollowupIntent: followup.RecipePublicationCapture), followup.Id);
+        };
+        await recipeStore.WriteInfoAsync(info);
+
+        db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            FinishedDishIndex = request.FinishedDishImageIndex,
+            ImageCount = files.Count,
+            Rating = (RecipeRating)request.Rating,
+            Notes = request.Notes,
+            AddedBy = familyMemberId,
+            IsReady = false,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        db.RecipeSearchDocuments.Add(new RecipeSearchDocument { RecipeId = recipeId });
+        await db.SaveChangesAsync();
 
         // Trigger the recipe-import workflow asynchronously.
         // This queues the background extraction (OCR/AI) of the recipe content from photos.
         try
         {
-            await orchestrator.InitializeRecipeFollowupAsync(followup.Id);
+            await orchestrator.TriggerAsync("recipe-import", new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeId.ToString()
+            });
             logger.LogInformation("Triggered recipe-import workflow for recipe {RecipeId}", recipeId);
         }
         catch (Exception ex)
@@ -240,8 +257,14 @@ public class RecipeService(
     {
         var report = await db.RecipeImportReports.AsNoTracking()
             .SingleOrDefaultAsync(item => item.RecipeId == recipe.Id);
+        Guid? suspectedDuplicateId = null;
+        if (report is not null && report.Reasons.Contains("duplicate"))
+        {
+            var match = await DuplicateRecipeDetector.FindBestMatchAsync(db, recipe);
+            suspectedDuplicateId = match?.RecipeId;
+        }
         var dto = MapToDto(recipe);
-        dto.ImportIssue = RecipeImportReportService.ToPublicDto(report);
+        dto.ImportIssue = RecipeImportReportService.ToPublicDto(report, suspectedDuplicateId);
         return dto;
     }
 
@@ -255,9 +278,7 @@ public class RecipeService(
             await db.Database.ExecuteSqlAsync($"SELECT id FROM recipes WHERE id = {id} FOR SHARE");
         var recipe = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id)
             ?? throw new KeyNotFoundException($"Recipe {id} not found.");
-        if (await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == id && !x.Delivered))
-            throw new RecipeContentConflictException(CanonicalRecipeContentStore.InspectContentRevision(recipe), false);
-        var content = CanonicalRecipeContentStore.Read(recipe);
+        var content = StructuredRecipeContentStore.Read(recipe);
         var hero = await ReadSharedImageOrNull(async () => await images.GetHeroImage(id))
             ?? throw new InvalidOperationException("Recipe must have a hero image before it can be shared.");
 
@@ -269,7 +290,7 @@ public class RecipeService(
                 Name = recipe.Name ?? string.Empty,
                 Description = recipe.Description,
                 Ingredients = content is null ? DeserializeIngredients(recipe.Ingredients)
-                    : content.IngredientLines.Select(CanonicalRecipeContentStore.Render).ToList(),
+                    : content.IngredientLines.Select(StructuredRecipeContentStore.Render).ToList(),
                 Instructions = content is null ? MapInstructionsToHowToSections(recipe.RawMetadata)
                     : content.InstructionSections.Select(section => new HowToSectionDto
                     {
@@ -277,7 +298,7 @@ public class RecipeService(
                         ItemListElement = section.Steps.Select(step => new HowToStepDto { Text = step.Text }).ToList()
                     }).ToList(),
                 TotalTimeMinutes = ParseTotalTimeMinutes(recipe.TotalTime),
-                Servings = null,
+                Servings = recipe.Servings,
                 SourceUrl = recipe.SourceUrl,
                 SourceName = ExtractSourceName(recipe.RawMetadata),
                 Category = recipe.Category,
@@ -333,35 +354,65 @@ public class RecipeService(
             Notes = bundle.Recipe.Notes,
             Rating = (RecipeRating)(bundle.Recipe.Rating ?? 0)
         };
-        var files = new Dictionary<string, byte[]?>();
-        if (bundle.Hero is not null) files.Add("hero.webp", Convert.FromBase64String(bundle.Hero.Base64));
+        if (bundle.Hero is not null)
+        {
+            using var heroStream = new MemoryStream(Convert.FromBase64String(bundle.Hero.Base64));
+            await recipeStore.SaveHeroImageAsync(recipeId, heroStream);
+        }
         for (var index = 0; index < originalCount; index++)
         {
             var original = bundle.Originals[index];
-            var extension = original.MimeType.ToLowerInvariant() switch { "image/png" => "png", "image/webp" => "webp", _ => "jpg" };
-            files.Add($"original/{index}.{extension}", Convert.FromBase64String(original.Base64));
+            using var origStream = new MemoryStream(Convert.FromBase64String(original.Base64));
+            await recipeStore.SaveOriginalImageAsync(recipeId, index, original.MimeType, origStream);
         }
-        while (true)
+
+        var operation = Guid.NewGuid();
+        var rawMetadata = BuildImportedRawMetadata(bundle.Recipe);
+        var authority = vocabulary is not null ? await vocabulary.CaptureAuthorityAsync(null) : null;
+        var (content, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+            recipeId, rawMetadata, info.SourceUrl, authority, operation, origin: "source");
+        if (bundle.Recipe.Servings is > 0 && content.Servings is null)
         {
-            var operation = Guid.NewGuid();
-            info.Id = recipeId;
-            try
-            {
-                var capture = await publications.CaptureNewAsync(recipeId);
-                var candidate = publications.PrepareSharedIntake(capture, BuildImportedRawMetadata(bundle.Recipe), info, files, operation);
-                await publications.PublishAsync(capture, candidate, operation);
-                return MapToDto(await db.Recipes.SingleAsync(x => x.Id == recipeId));
-            }
-            catch (RecipeContentConflictException)
-            {
-                // Sharing always creates a new aggregate. Retry only an identity
-                // collision before our commit; a committed uncertain delivery is
-                // recovered through its journal, never duplicated under another ID.
-                if (await db.RecipeFilePublications.AnyAsync(x => x.RecipeId == recipeId && x.OperationId == operation)
-                    || !await db.Recipes.AnyAsync(x => x.Id == recipeId)) throw;
-                recipeId = Guid.NewGuid();
-            }
+            content = content with { Servings = bundle.Recipe.Servings };
         }
+        var schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(content, rawMetadata, info.Name, info.Description);
+
+        await recipeStore.WriteRecipeJsonAsync(recipeId, schemaOrgJson);
+        await recipeStore.WriteInfoAsync(info);
+
+        var entity = new Recipe
+        {
+            Id = recipeId,
+            Name = info.Name,
+            Description = info.Description,
+            SourceUrl = info.SourceUrl,
+            Category = info.Category,
+            CuisineType = info.CuisineType,
+            MealTypes = info.MealTypes,
+            IsVegetarian = info.IsVegetarian,
+            TotalTime = info.TotalTime,
+            FinishedDishIndex = info.FinishedDishImageIndex,
+            ImageCount = info.ImageCount,
+            IsSynthesized = info.IsSynthesized,
+            IsReady = info.IsReady ?? true,
+            AddedBy = info.AddedBy,
+            Notes = info.Notes,
+            Rating = info.Rating,
+            RawMetadata = schemaOrgJson,
+            CanonicalContent = JsonSerializer.Serialize(content, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            FoodMappingEvidence = evidence,
+            Servings = content.Servings,
+            Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render), new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.Recipes.Add(entity);
+        db.RecipeSearchDocuments.Add(new RecipeSearchDocument { RecipeId = recipeId });
+        await db.SaveChangesAsync();
+
+        var reports = new RecipeImportReportService(clock, db);
+        await reports.FlagSuspectedDuplicateIfNoneAsync(recipeId);
+        return await MapDetailDto(entity);
     }
 
     /// <summary>
@@ -382,7 +433,7 @@ public class RecipeService(
             if (baseline.CanonicalContent is not null)
             {
                 var result = await canonicalEditor.EditAsync(id,
-                    CanonicalRecipeContentStore.InspectSourceRevision(baseline), Guid.NewGuid(), dto);
+                    StructuredRecipeContentStore.InspectSourceRevision(baseline), Guid.NewGuid(), dto);
                 var saved = await db.Recipes.SingleAsync(x => x.Id == id);
                 if (dto.HasServings || dto.IngredientLines.ValueKind != JsonValueKind.Undefined)
                     await projectionPublisher.PublishAsync(await projectionInvalidation.AffectedWeeksAsync(id));
@@ -407,7 +458,7 @@ public class RecipeService(
         RecipeContentInput.Validate(dto);
         if (dto.HasCanonicalContent || recipe.CanonicalContent is not null &&
             (dto.HasServings || dto.Ingredients is not null || dto.RecipeInstructions is not null))
-            throw new RecipeContentConflictException(CanonicalRecipeContentStore.InspectContentRevision(recipe), upgradeRequired: true);
+            throw new RecipeContentConflictException(StructuredRecipeContentStore.InspectContentRevision(recipe), upgradeRequired: true);
 
         if (dto.HasServings) recipe.Servings = dto.Servings;
         ApplyEditableDetailFields(recipe, dto, validation);
@@ -567,6 +618,14 @@ public class RecipeService(
             info.Category = recipe.Category;
             await recipeStore.WriteInfoAsync(info);
         }
+        if (recipe.CanonicalContent is not null && StructuredRecipeContentStore.Read(recipe) is { } structuredContent)
+        {
+            var existingDiskJson = await recipeStore.ReadRecipeJsonAsync(id) ?? recipe.RawMetadata;
+            var schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(
+                structuredContent, existingDiskJson, recipe.Name, recipe.Description);
+            await recipeStore.WriteRecipeJsonAsync(id, schemaOrgJson);
+        }
+
         if (metadataTransaction is not null) await metadataTransaction.CommitAsync();
         if (publisher is not null && (dto.IsDiscoverable.HasValue || dto.MealTypes is not null))
             await publisher.PublishAllSuggestionsInvalidatedAsync();
@@ -583,28 +642,43 @@ public class RecipeService(
         var recipeId = Guid.NewGuid();
         var now = clock.UtcNow;
 
-        var capture = await publications.CaptureNewAsync(recipeId);
-        var followup = publications.CaptureFollowup("goto-synthesis", new()
-        {
-            ["recipeId"] = recipeId.ToString(),
-            ["description"] = dto.Description ?? string.Empty
-        });
-        await publications.PublishAsync(capture, new(null, new RecipeInfo
+        var recipe = new Recipe
         {
             Id = recipeId,
             Name = dto.Name,
             Description = dto.Description,
             ImageCount = 0,
+            FinishedDishIndex = -1,
+            IsSynthesized = false,
+            IsReady = false,
+            IsDiscoverable = false,
+            AddedBy = familyMemberId,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.Recipes.Add(recipe);
+        await db.SaveChangesAsync();
+
+        await recipeStore.WriteInfoAsync(new RecipeInfo
+        {
+            Id = recipeId,
+            Name = dto.Name,
+            Description = dto.Description,
+            ImageCount = 0,
+            FinishedDishImageIndex = -1,
             AddedBy = familyMemberId,
             CreatedAt = now
-        }, SourceFiles: new Dictionary<string, byte[]?>(), SourceKind: "bootstrap", FollowupIntent: followup.RecipePublicationCapture), followup.Id);
-        var recipe = await db.Recipes.SingleAsync(x => x.Id == recipeId);
+        });
 
         // Trigger the goto-synthesis workflow asynchronously.
         // Failure to trigger is non-fatal — the recipe row exists and status stays "pending".
         try
         {
-            await orchestrator.InitializeRecipeFollowupAsync(followup.Id);
+            await orchestrator.TriggerAsync("goto-synthesis", new Dictionary<string, string>
+            {
+                ["recipeId"] = recipeId.ToString(),
+                ["description"] = dto.Description ?? string.Empty
+            });
         }
         catch (Exception ex)
         {
@@ -623,12 +697,7 @@ public class RecipeService(
         var recipeId = Guid.NewGuid();
         var now = clock.UtcNow;
 
-        var capture = await publications.CaptureNewAsync(recipeId);
-        // Keep retryable URL initialization in the same database commit as new membership.
-        var initialization = UrlCaptureInitialization.Create(recipeId, dto.Url, now);
-        await publications.CaptureLaunchAsync(initialization);
-        db.WorkflowInstances.Add(initialization);
-        await publications.PublishAsync(capture, new(null, new RecipeInfo
+        var info = new RecipeInfo
         {
             Id = recipeId,
             Name = "Captured Recipe",
@@ -638,7 +707,26 @@ public class RecipeService(
             ImageCount = 0,
             AddedBy = familyMemberId,
             CreatedAt = now
-        }, SourceFiles: new Dictionary<string, byte[]?>(), SourceKind: "bootstrap", BootstrapIntent: initialization.RecipePublicationCapture), initialization.Id);
+        };
+        await recipeStore.WriteInfoAsync(info);
+
+        var initialization = UrlCaptureInitialization.Create(recipeId, dto.Url, now);
+        db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Captured Recipe",
+            Notes = dto.Notes,
+            SourceUrl = dto.Url,
+            Rating = (RecipeRating)(dto.Rating ?? 0),
+            ImageCount = 0,
+            AddedBy = familyMemberId,
+            IsReady = false,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        db.WorkflowInstances.Add(initialization);
+        db.RecipeSearchDocuments.Add(new RecipeSearchDocument { RecipeId = recipeId });
+        await db.SaveChangesAsync();
 
         // Trigger the url-import workflow
         try
@@ -775,7 +863,7 @@ public class RecipeService(
     {
         var sourceType = !string.IsNullOrEmpty(r.SourceUrl) ? "url" : (r.ImageCount > 0 ? "photos" : "synthesized");
 
-        var content = CanonicalRecipeContentStore.Read(r);
+        var content = StructuredRecipeContentStore.Read(r);
         return new RecipeDto
         {
             ContentSchemaVersion = content?.ContentSchemaVersion,
@@ -795,7 +883,7 @@ public class RecipeService(
             MealTypes = r.MealTypes,
             ImageUrl = $"/api/recipes/{r.Id}/hero",
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
-            Ingredients = content is null ? DeserializeIngredients(r.Ingredients) : content.IngredientLines.Select(CanonicalRecipeContentStore.Render).ToList(),
+            Ingredients = content is null ? DeserializeIngredients(r.Ingredients) : content.IngredientLines.Select(StructuredRecipeContentStore.Render).ToList(),
             Servings = r.Servings,
             RecipeInstructions = content is null ? ExtractRecipeInstructions(r.RawMetadata) : RenderCanonicalInstructions(content),
             IsVegetarian = r.IsVegetarian ?? false,
@@ -810,7 +898,7 @@ public class RecipeService(
         };
     }
 
-    private static object RenderCanonicalInstructions(CanonicalRecipeContent content) =>
+    private static object RenderCanonicalInstructions(StructuredRecipeContent content) =>
         content.InstructionSections.Select(section => new Dictionary<string, object?>
         {
             ["@type"] = "HowToSection",
@@ -1020,14 +1108,17 @@ public class RecipeService(
         => totalTimeMinutes is > 0 ? $"PT{totalTimeMinutes}M" : null;
 
     private static string BuildImportedRawMetadata(ImportedRecipeDto recipe)
-        => JsonSerializer.Serialize(new
+        => JsonSerializer.Serialize(new Dictionary<string, object?>
         {
-            name = recipe.Name,
-            servings = recipe.Servings,
-            sourceName = recipe.SourceName,
-            recipeIngredient = recipe.Ingredients,
-            recipeInstructions = recipe.Instructions,
-        });
+            ["@context"] = "https://schema.org/",
+            ["@type"] = "Recipe",
+            ["name"] = recipe.Name,
+            ["description"] = recipe.Description,
+            ["recipeYield"] = recipe.Servings is > 0 ? $"{recipe.Servings} portions" : null,
+            ["sourceName"] = recipe.SourceName,
+            ["recipeIngredient"] = recipe.Ingredients,
+            ["recipeInstructions"] = recipe.Instructions,
+        }, JsonDefaults.CamelCase);
 
     private static void ValidateBundle(RecipeShareBundleDto bundle)
     {
@@ -1114,12 +1205,6 @@ public class RecipeService(
     public async Task<int> AddOriginalImageAsync(Guid recipeId, IFormFile file)
     {
         validation.ValidateImage(file);
-        // Capture before consuming a possibly slow upload, never after it. The
-        // publication owner rechecks this entire baseline before saving anything live.
-        var capture = await publications.CaptureAsync(recipeId);
-        var info = JsonSerializer.Deserialize<RecipeInfo>(capture.Files["recipe.info"]!, JsonDefaults.CamelCase)!;
-        var newIndex = info.ImageCount;
-        validation.ValidateImageCount(newIndex + 1);
         await using var source = file.OpenReadStream();
         using var buffer = new MemoryStream();
         var chunk = new byte[81920];
@@ -1131,21 +1216,29 @@ public class RecipeService(
             await buffer.WriteAsync(chunk.AsMemory(0, read));
         }
         if (buffer.Length == 0) throw new ArgumentException("Image file must not be empty.");
-        var extension = file.ContentType.ToLowerInvariant() switch
+
+        int newIndex;
+        await using (var transaction = await RecipeRotation.LockAsync(db, recipeId))
         {
-            "image/png" => ".png",
-            "image/webp" => ".webp",
-            _ => ".jpg"
-        };
-        info.ImageCount++;
-        var followup = publications.CaptureFollowup("recipe-hero-regeneration", new() { ["recipeId"] = recipeId.ToString() });
-        await publications.PublishAsync(capture, new RecipePublicationCandidate(null, info,
-            SourceFiles: new Dictionary<string, byte[]?> { [$"original/{newIndex}{extension}"] = buffer.ToArray() },
-            SourceKind: "human-original", FollowupIntent: followup.RecipePublicationCapture), followup.Id);
+            var recipe = await db.Recipes.SingleOrDefaultAsync(r => r.Id == recipeId)
+                ?? throw new KeyNotFoundException($"Recipe {recipeId} not found.");
+            newIndex = recipe.ImageCount;
+            validation.ValidateImageCount(newIndex + 1);
 
-        // Start derived work only after the committed image has been delivered.
-        await orchestrator.InitializeRecipeFollowupAsync(followup.Id);
+            buffer.Position = 0;
+            await recipeStore.SaveOriginalImageAsync(recipeId, newIndex, file.ContentType, buffer);
 
+            var info = await recipeStore.ReadInfoAsync(recipeId) ?? new RecipeInfo { Id = recipeId };
+            info.ImageCount = newIndex + 1;
+            await recipeStore.WriteInfoAsync(info);
+
+            recipe.ImageCount = newIndex + 1;
+            recipe.UpdatedAt = clock.UtcNow;
+            await db.SaveChangesAsync();
+            if (transaction is not null) await transaction.CommitAsync();
+        }
+
+        await TriggerHeroRegenerationAsync(recipeId);
         return newIndex;
     }
 

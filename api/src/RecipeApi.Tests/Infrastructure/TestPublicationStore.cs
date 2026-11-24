@@ -8,15 +8,16 @@ namespace RecipeApi.Tests.Infrastructure;
 
 internal static class TestPublicationStore
 {
-    internal static RecipeFilePublicationStore Create(RecipeDbContext db, IStorageProvider storage, IClock clock) =>
-        new(db, new RecipeRepository(storage), clock,
-            new SupperProjectionInvalidation(db, clock, new DeploymentCalendar(new ConfigurationManager())), Vocabulary(db, storage, clock));
-
-    internal static FoodVocabularyStore Vocabulary(RecipeDbContext db, IStorageProvider storage, IClock clock, IServiceProvider? services = null)
+    internal static FoodVocabularyStore Vocabulary(RecipeDbContext db, IStorageProvider storage, IClock clock, string? recipesRoot = null)
     {
-        var configuration = services?.GetRequiredService<IConfiguration>() ?? new ConfigurationManager
-        { ["DataRoot"] = Path.Combine(Path.GetTempPath(), "wfs-vocabulary-test-" + Guid.NewGuid().ToString("N")) };
-        var roots = services?.GetRequiredService<RecipesRootResolver>() ?? new RecipesRootResolver(new DataRootResolver(configuration), configuration);
-        return new(db, storage, roots, new RecoveryBoundary(db, configuration, roots), clock);
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(recipesRoot is null ? [] : new Dictionary<string, string?> { ["RECIPES_ROOT"] = recipesRoot })
+            .Build();
+        var data = new DataRootResolver(config);
+        var recipes = new RecipesRootResolver(data, config);
+        return new(db, storage, recipes, new RecoveryBoundary(db, config, recipes), clock);
     }
+
+    internal static FoodVocabularyStore Vocabulary(RecipeDbContext db, IStorageProvider storage, IClock clock, IServiceProvider services) =>
+        services.GetRequiredService<FoodVocabularyStore>();
 }

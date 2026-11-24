@@ -91,7 +91,7 @@ With positive recipe basis B and target T, each proportional exact scalar or ran
 
 ### Requirement: Report incomplete scaling without invented quantities
 
-Authoritative projections SHALL read structured canonical ingredient lines exclusively, keeping missing basis and unreliable amounts truthful without invented quantities or complete partial totals, and failing closed when populated recipes lack canonical content. Recipe detail SHALL retain original text and missing-basis correction without generic review warnings. Intentional unquantified directions remain normal text; reads SHALL NOT call AI.
+Authoritative projections SHALL read structured recipe ingredient lines exclusively, keeping missing basis and unreliable amounts truthful without invented quantities or complete partial totals, and failing closed when populated recipes lack structured v2 ingredient content. Recipe detail SHALL retain original text and missing-basis correction without generic review warnings. Intentional unquantified directions remain normal text; reads SHALL NOT call AI.
 
 #### Scenario: Salt to taste is normal recipe content
 
@@ -105,13 +105,13 @@ Authoritative projections SHALL read structured canonical ingredient lines exclu
 
 #### Scenario: Ingredient text was edited independently
 
-- **WHEN** saved canonical ingredient lines were edited independently of retained raw metadata supply
-- **THEN** projections read only the saved canonical ingredient lines without consulting retained supply or deriving a `stale_source` fallback, and recipe detail retains current canonical text without a generic review warning or replacement cue
+- **WHEN** saved structured ingredient lines were edited independently of retained Schema.org supply metadata
+- **THEN** projections read only the saved structured ingredient lines without consulting retained supply or deriving a `stale_source` fallback, and recipe detail retains current structured text without a generic review warning or replacement cue
 
 #### Scenario: Populated recipe without structured canonical content fails closed
 
-- **WHEN** a projection or weekly grocery derivation reads an unready empty capture placeholder with no canonical or legacy ingredient content, or reads a populated recipe lacking structured v2 canonical content
-- **THEN** the empty capture placeholder projects zero lines without error, whereas the populated non-canonical recipe fails closed instead of scraping legacy `ingredients` strings, binding `rawMetadata.supply`, or silently returning an empty list
+- **WHEN** a projection or weekly grocery derivation reads an unready empty capture placeholder with no structured or legacy ingredient content, or reads a populated recipe lacking structured v2 content
+- **THEN** the empty capture placeholder projects zero lines without error, whereas the populated unstructured recipe fails closed instead of scraping legacy `ingredients` strings, binding `rawMetadata.supply`, or silently returning an empty list
 
 #### Scenario: Remove generic detail review without changing completeness
 

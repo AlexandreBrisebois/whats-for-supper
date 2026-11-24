@@ -93,12 +93,12 @@ vi.mock('@/hooks/useCapture', () => ({
   }),
 }));
 
-// Mock familyStore — saveSetting was replaced by saveGoTo
+const mockSaveGoTo = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/store/familyStore', () => ({
   useFamilyStore: (selector?: (state: any) => any) => {
     const state = {
       loadGoTo: vi.fn().mockResolvedValue({ items: [] }),
-      saveGoTo: vi.fn().mockResolvedValue(undefined),
+      saveGoTo: mockSaveGoTo,
       familySettings: {
         family_goto: { items: [] },
       },
@@ -219,145 +219,66 @@ beforeEach(() => {
 // Unit Tests — Example-Based
 // ---------------------------------------------------------------------------
 
-describe('MinimalCapture — preservation unit tests', () => {
-  /**
-   * Validates: Requirement 3.5
-   * ¬isBugConditionC: isGoto = false
-   *
-   * When onSuccess = true and isGoto = false, MinimalCapture shows the
-   * "Done" CTA and auto-navigates to /home after 10 seconds.
-   */
-  it('shows Done button and auto-navigates to /home after 10 seconds (non-GOTO path)', async () => {
-    vi.useFakeTimers();
-    await renderAndTriggerSuccess(undefined); // no intent → isGoto = false
-
-    // Should NOT have navigated immediately
-    expect(mockPush).not.toHaveBeenCalled();
-    expect(screen.getByTestId('capture-success-heading')).toHaveTextContent(
-      'Building your recipe…'
-    );
-    expect(screen.getByText("Hang tight — we'll notify you when it's ready.")).toBeInTheDocument();
-
-    // "Done" button is present
-    const doneBtn = screen.getByTestId('capture-done-btn');
-    expect(doneBtn).toBeTruthy();
-
-    // Verify countdown text appears (tWithVars is mocked to return default value)
-    expect(screen.getByText(/redirecting home in 10s/i)).toBeTruthy();
-
-    // Fast-forward 10 seconds
-    await act(async () => {
-      vi.advanceTimersByTime(10000);
-    });
+describe('MinimalCapture — immediate Save-and-Return-Home and unified header', () => {
+  it('navigates immediately to /home on describe intake without showing capture-success-screen', async () => {
+    await renderAndTriggerSuccess(undefined);
 
     expect(mockPush).toHaveBeenCalledWith('/home');
-    expect(mockPush).not.toHaveBeenCalledWith('/profile/settings');
-    vi.useRealTimers();
+    expect(screen.queryByTestId('capture-success-screen')).not.toBeInTheDocument();
   });
 
-  /**
-   * Validates: Requirement 2.5
-   * isBugConditionC: isGoto = true, onSuccess = true
-   *
-   * When onSuccess = true and isGoto = true, MinimalCapture MUST NOT call
-   * router.push automatically. The success heading must be visible.
-   *
-   * -----------------------------------------------------------------------
-   * EXPECTED FAILURE ON UNFIXED CODE (this is correct — it proves Bug C exists)
-   * -----------------------------------------------------------------------
-   * AssertionError: expected "spy" to not be called at all, but actually been
-   * called 1 times. Received: 1st spy call: ["/profile/settings"]
-   *
-   * Root cause: MinimalCapture's useEffect fires when onSuccess=true && isGoto=true
-   * and calls router.push(ROUTES.PROFILE_SETTINGS) immediately, before the test
-   * assertion can verify the success screen is stable.
-   *
-   * This test will PASS after Fix C is applied in Task 3.4:
-   *   useEffect(() => { if (onSuccess && !isGoto) { router.push(ROUTES.HOME) } }, ...)
-   * -----------------------------------------------------------------------
-   */
-  it('does NOT auto-navigate when onSuccess=true and isGoto=true (GOTO path)', async () => {
-    await renderAndTriggerSuccess('goto'); // intent='goto' → isGoto = true
-
-    // After fix: router.push must NOT have been called automatically
-    expect(mockPush).not.toHaveBeenCalled();
-
-    // The success heading must be visible
-    expect(screen.getByTestId('capture-success-heading').textContent).toMatch(
-      /your goto is being prepared/i
-    );
-  });
-
-  /**
-   * Validates: Requirement 2.5
-   *
-   * The success screen for isGoto=true must show the correct heading.
-   * The heading is rendered in the same React commit as onSuccess=true.
-   * On unfixed code the useEffect fires after paint and navigates away,
-   * but the heading text itself is correct when rendered.
-   *
-   * MUST PASS on unfixed code (structural assertion on heading text).
-   */
-  it('renders "Your GOTO is being prepared" heading for isGoto=true on success screen', async () => {
+  it('saves pending GOTO item before navigating immediately to /home when intent=goto', async () => {
     await renderAndTriggerSuccess('goto');
 
-    // On unfixed code: heading may be briefly rendered then unmounted.
-    // On fixed code: heading is always visible.
-    // We assert the heading text is correct when it appears.
-    const heading = screen.queryByTestId('capture-success-heading');
-    if (heading) {
-      expect(heading.tagName.toLowerCase()).toBe('h2');
-      expect(heading.textContent).toMatch(/your goto is being prepared/i);
-    }
-    // The structural invariant: if the heading renders, it must say the right thing.
-    // This passes on both unfixed and fixed code.
+    expect(mockSaveGoTo).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith('/home');
+    expect(screen.queryByTestId('capture-success-screen')).not.toBeInTheDocument();
   });
 
-  /**
-   * Validates: Requirement 3.5
-   *
-   * The success screen for isGoto=false shows "Done" CTA and a countdown.
-   * "Add Another" button has been removed.
-   */
-  it('shows Done CTA and no Add Another button for isGoto=false success screen', async () => {
-    await renderAndTriggerSuccess(undefined); // isGoto = false
+  it('navigates immediately to /home on accepted photo intake', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-photo');
+    mockCaptureImages = [new File(['img'], 'pasta.jpg', { type: 'image/jpeg' })];
+    mockSubmitRecipe.mockResolvedValueOnce('new-photo-id');
 
-    // Add Another button should NOT be present
-    expect(screen.queryByTestId('capture-add-another-btn')).toBeNull();
-    expect(screen.getByTestId('capture-done-btn')).toBeTruthy();
-    expect(screen.getByText(/redirecting home in 10s/i)).toBeTruthy();
+    render(<MinimalCapture />);
+    fireEvent.click(screen.getByTestId('capture-save-btn'));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/home'));
+    expect(screen.queryByTestId('capture-success-screen')).not.toBeInTheDocument();
   });
 
-  /**
-   * Validates: Requirement 2.5
-   *
-   * The "Done" button must be present on the GOTO success screen.
-   * On unfixed code the component navigates away immediately, but the button
-   * is part of the success screen JSX rendered in the same commit.
-   *
-   * MUST PASS on unfixed code (structural assertion).
-   */
-  it('keeps GOTO capture waiting until explicit Done', async () => {
-    await renderAndTriggerSuccess('goto');
-    expect(screen.getByTestId('capture-success-screen')).toBeVisible();
-    expect(mockPush).not.toHaveBeenCalled();
-    const button = screen.getByRole('button', { name: 'Done' });
-    fireEvent.click(button);
+  it('navigates immediately to /home on accepted URL intake', async () => {
+    mockSubmitUrl.mockResolvedValueOnce('new-url-id');
+    render(<MinimalCapture initialUrl="https://example.com/recipe" />);
+
+    fireEvent.click(screen.getByTestId('capture-url-save-btn'));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/home'));
+    expect(screen.queryByTestId('capture-success-screen')).not.toBeInTheDocument();
+  });
+
+  it('renders open-cream header with 48x48 white circular cancel button and no Back button', async () => {
+    render(<MinimalCapture initialUrl="https://example.com/recipe" />);
+
+    const cancelBtn = screen.getByTestId('capture-cancel-btn');
+    expect(cancelBtn).toHaveClass('h-12', 'w-12', 'rounded-full', 'bg-white', 'border-chrome-line');
+    expect(screen.queryByTestId('capture-url-back-btn')).not.toBeInTheDocument();
+
+    fireEvent.click(cancelBtn);
     expect(mockPush).toHaveBeenCalledWith('/home');
   });
 
-  /**
-   * Validates: Requirement 3.5
-   */
-  it('Done button navigates to /home immediately for non-GOTO success', async () => {
-    await renderAndTriggerSuccess(undefined); // isGoto = false
-
-    // "Done" button navigates to /home when clicked
-    const doneBtn = screen.getByTestId('capture-done-btn');
-    await act(async () => {
-      doneBtn.click();
+  it('renders URL duplicate advisory directly below capture-url-input', async () => {
+    mockRecipesGet.mockResolvedValue({
+      recipes: [{ id: 'existing-1', name: 'Existing Soup' }],
     });
-    expect(mockPush).toHaveBeenCalledWith('/home');
+    render(<MinimalCapture initialUrl="https://example.com/soup" />);
+
+    const warning = await screen.findByTestId('duplicate-recipe-warning');
+    const urlInput = screen.getByTestId('capture-url-input');
+    expect(
+      urlInput.compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it('calls addImage and provides visual feedback when files are dropped on the capture area', async () => {
@@ -365,7 +286,6 @@ describe('MinimalCapture — preservation unit tests', () => {
 
     const captureArea = screen.getByTestId('capture-area');
 
-    // Verify DragOver provides visual feedback
     await act(async () => {
       fireEvent.dragOver(captureArea);
     });
@@ -383,7 +303,6 @@ describe('MinimalCapture — preservation unit tests', () => {
     });
 
     expect(mockAddImage).toHaveBeenCalledWith(file);
-    // Verify visual feedback is cleared
     expect(captureArea.className).not.toContain('border-hearth-fill');
   });
 });
@@ -550,22 +469,21 @@ describe('MinimalCapture — initial state rendering', () => {
     expect(screen.getByTestId('capture-url-save-btn')).toBeInTheDocument();
   });
 
-  it('clicking Back from URL review form returns to capture controls', async () => {
+  it('clicking Cancel (x) from URL review form discards draft and navigates to /home', async () => {
     render(<MinimalCapture />);
 
     await act(async () => {
       screen.getByTestId('capture-secondary-action-link').click();
     });
 
-    expect(screen.getByTestId('capture-url-review-heading')).toBeInTheDocument();
+    expect(screen.getByTestId('capture-url-input')).toBeInTheDocument();
+    expect(screen.queryByTestId('capture-url-back-btn')).not.toBeInTheDocument();
 
     await act(async () => {
-      screen.getByTestId('capture-url-back-btn').click();
+      screen.getByTestId('capture-cancel-btn').click();
     });
 
-    expect(screen.queryByTestId('capture-url-review-heading')).not.toBeInTheDocument();
-    expect(screen.getByTestId('capture-take-photo-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('capture-secondary-action-link')).toBeInTheDocument();
+    expect(mockPush).toHaveBeenCalledWith('/home');
   });
 
   it('clicking Describe link reveals the form and hides the describe link', async () => {
@@ -596,26 +514,7 @@ describe('MinimalCapture — describe form validation', () => {
 
     const synthesizeBtn = screen.getByTestId('capture-synthesize-btn');
     expect(synthesizeBtn).toBeDisabled();
-  });
-
-  it('discards a duplicate photo capture and navigates home without showing a toast', async () => {
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-photo');
-    mockCaptureImages = [new File(['img'], 'pasta.jpg', { type: 'image/jpeg' })];
-    mockSubmitRecipe.mockResolvedValueOnce('new-recipe-id');
-    mockNotifications = [{ recipeId: 'new-recipe-id', type: 'ready', name: 'Pasta' }];
-    mockRecipesGet.mockResolvedValueOnce({
-      recipes: [{ id: 'existing-recipe-id', name: 'Pasta' }],
-    });
-
-    render(<MinimalCapture />);
-    fireEvent.click(screen.getByTestId('capture-save-btn'));
-
-    const discardBtn = await screen.findByTestId('discard-duplicate-btn');
-    fireEvent.click(discardBtn);
-
-    await waitFor(() => expect(mockRecipeDelete).toHaveBeenCalledWith('new-recipe-id'));
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/'));
-    expect(useUiStore.getState().toasts).toHaveLength(0);
+    expect(screen.queryByTestId('describe-cancel-btn')).not.toBeInTheDocument();
   });
 });
 
@@ -712,8 +611,10 @@ describe('MinimalCapture — Family Cookbook dual-mode contrast & accessibility'
 
       const rating2 = screen.getByTestId('capture-rating-2');
       expect(rating2).toHaveAttribute('aria-pressed', 'true');
+      expect(rating2).toHaveTextContent('Like');
       expect(rating2.className).toContain('text-garden-ink');
-      expect(rating2.className).toContain('border-garden-line');
+      expect(rating2.className).toContain('bg-white');
+      expect(rating2.querySelector('svg')).toBeNull();
 
       const photoNotes = screen.getByLabelText(/notes/i);
       expect(photoNotes.className).toContain('resize-y');

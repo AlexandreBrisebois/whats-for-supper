@@ -5,15 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Camera,
   Image as ImageIcon,
-  Check,
-  CheckCircle2,
+  ChevronDown,
   X,
   Star,
   PenLine,
   Globe,
   ArrowLeft,
 } from 'lucide-react';
-import { useCapture } from '@/hooks/useCapture';
+import { useCapture, type CaptureRating } from '@/hooks/useCapture';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
 import { validatePdfSelection } from '@/lib/pdfCapture';
 import { useFamilyStore } from '@/store/familyStore';
@@ -22,8 +21,9 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { apiClient } from '@/lib/api/api-client';
 import { importRecipeShareBundle, parseRecipeBundleFile } from '@/lib/api/recipes';
 import { Button } from '@/components/ui/button';
-import { CookbookLoader } from '@/components/ui/SolarLoader';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { RecipeRatingControl } from '@/components/recipes/RecipeRatingControl';
+import { CaptureHeader } from './CaptureHeader';
 import { useLocale } from '@/components/common/LocaleProvider';
 
 import { ROUTES } from '@/lib/constants/routes';
@@ -74,6 +74,7 @@ export default function MinimalCapture({
   const urlNotesId = useId();
   const describeNameId = useId();
   const describeNotesId = useId();
+  const bundleNotesId = useId();
   const router = useRouter();
   const searchParams = useSearchParams();
   const familySettings = useFamilyStore((state) => state.familySettings);
@@ -115,9 +116,6 @@ export default function MinimalCapture({
   // URL-capture specific state
   const [isUrlCapturing, setIsUrlCapturing] = useState(false);
   const [urlCaptureError, setUrlCaptureError] = useState<string | null>(null);
-  const [wasUrlCaptured, setWasUrlCaptured] = useState(false);
-  const [wasPhotoCaptured, setWasPhotoCaptured] = useState(false);
-  const [wasDescribeCaptured, setWasDescribeCaptured] = useState(false);
 
   // Describe-it form state
   const [describeName, setDescribeName] = useState('');
@@ -128,7 +126,6 @@ export default function MinimalCapture({
   const [isPhotoSubmitPending, setIsPhotoSubmitPending] = useState(false);
   const [showPhotoUploadOverlay, setShowPhotoUploadOverlay] = useState(false);
 
-  const [onSuccess, setOnSuccess] = useState(false);
   const [showDescribe, setShowDescribe] = useState(mode === 'describe');
   const [showUrlReview, setShowUrlReview] = useState(!!extractedUrl);
   const [isDragging, setIsDragging] = useState(false);
@@ -136,22 +133,14 @@ export default function MinimalCapture({
   const [selectedBundleFileName, setSelectedBundleFileName] = useState<string | null>(null);
   const [bundleImportError, setBundleImportError] = useState<string | null>(null);
   const [isBundleSubmitting, setIsBundleSubmitting] = useState(false);
-  const [bundleImportSucceeded, setBundleImportSucceeded] = useState(false);
-  const [bundleImportRecipeName, setBundleImportRecipeName] = useState<string | null>(null);
-
-  // Track the pending recipe ID so we can detect when SSE recipe_ready fires
-  const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
-  // When SSE recipe_ready fires while user is still on this screen, transition to ready state
-  const [readyRecipeName, setReadyRecipeName] = useState<string | null>(null);
-
-  const [countdown, setCountdown] = useState<number | null>(null);
+  const [bundleRating, setBundleRating] = useState<CaptureRating>(0);
+  const [bundleNotes, setBundleNotes] = useState('');
+  const [bundleStepsExpanded, setBundleStepsExpanded] = useState(false);
 
   const [duplicateRecipeId, setDuplicateRecipeId] = useState<string | null>(null);
   const [fileDuplicate, setFileDuplicate] = useState<RecipeDto | null>(null);
   const [urlDuplicate, setUrlDuplicate] = useState<RecipeDto | null>(null);
   const [describeDuplicate, setDescribeDuplicate] = useState<RecipeDto | null>(null);
-  const [photoDuplicate, setPhotoDuplicate] = useState<RecipeDto | null>(null);
-  const [isDiscardingDuplicate, setIsDiscardingDuplicate] = useState(false);
 
   const isGoto = intent === 'goto';
   const memberId = useFamilyStore((state) => state.selectedFamilyMemberId);
@@ -226,26 +215,6 @@ export default function MinimalCapture({
     }
   }, [isGoto, loadGoTo]);
 
-  // Subscribe to libraryStore notifications — detect when our pending recipe becomes ready
-  useEffect(() => {
-    if (!pendingRecipeId) return;
-
-    // We use a manual subscription here to avoid the "set-state-in-effect" lint error.
-    // This allows us to react to store changes and update local state outside the render cycle.
-    const unsubscribe = useLibraryStore.subscribe((state) => {
-      const notification = state.notifications.find(
-        (n) => n.recipeId === pendingRecipeId && n.type === 'ready'
-      );
-      if (notification) {
-        setReadyRecipeName(notification.name);
-        // Dismiss from the global queue — we're handling it inline on this screen
-        useLibraryStore.getState().dismissNotification(pendingRecipeId);
-      }
-    });
-
-    return unsubscribe;
-  }, [pendingRecipeId]);
-
   // URL Capture duplicate check (debounced 500ms)
   useEffect(() => {
     const trimmed = urlInput.trim();
@@ -304,32 +273,6 @@ export default function MinimalCapture({
     };
   }, [describeName]);
 
-  // Photo capture duplicate check once readyRecipeName is set
-  useEffect(() => {
-    if (!readyRecipeName || !pendingRecipeId) {
-      if (photoDuplicate !== null) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPhotoDuplicate(null);
-      }
-      return;
-    }
-    const checkPhotoDuplicate = async () => {
-      try {
-        const res = await apiClient.api.recipes.get({
-          query: { name: readyRecipeName },
-          queryParameters: { name: readyRecipeName },
-        } as any);
-        const matches = res?.recipes || [];
-        const duplicateMatch = matches.find((r) => r.id !== pendingRecipeId) || null;
-        setPhotoDuplicate(duplicateMatch);
-      } catch (err) {
-        console.error('Error checking duplicate photo recipe name:', err);
-      }
-    };
-    checkPhotoDuplicate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readyRecipeName, pendingRecipeId]);
-
   useEffect(() => {
     if (images.length > 0) {
       const timer = setTimeout(() => {
@@ -361,24 +304,6 @@ export default function MinimalCapture({
     };
   }, [isPhotoSubmitPending]);
 
-  // Auto-redirect home after 10 seconds on success screen (Queued state)
-  useEffect(() => {
-    if (onSuccess && !readyRecipeName && countdown !== null) {
-      const interval = setInterval(() => {
-        setCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
-      }, 1000);
-
-      const timeout = setTimeout(() => {
-        router.push(ROUTES.HOME as any);
-      }, countdown * 1000);
-
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
-    }
-  }, [onSuccess, readyRecipeName, countdown, router]);
-
   const handleUrlCapture = useCallback(
     async (url: string) => {
       setIsUrlCapturing(true);
@@ -398,20 +323,8 @@ export default function MinimalCapture({
         }
         if (id) {
           useCaptureStore.getState().addPending({ recipeId: id });
-          setPendingRecipeId(id);
-
-          // Check immediately in case it's already ready (SSE fired early)
-          const existing = useLibraryStore
-            .getState()
-            .notifications.find((n) => n.recipeId === id && n.type === 'ready');
-          if (existing) {
-            setReadyRecipeName(existing.name);
-            useLibraryStore.getState().dismissNotification(id);
-          }
         }
-        setWasUrlCaptured(true);
-        setCountdown(10);
-        setOnSuccess(true);
+        router.push(ROUTES.HOME as any);
       } catch (err) {
         setUrlCaptureError(
           err instanceof Error
@@ -422,7 +335,7 @@ export default function MinimalCapture({
         setIsUrlCapturing(false);
       }
     },
-    [submitUrl, isGoto, saveGoTo, familySettings, locale]
+    [submitUrl, isGoto, saveGoTo, familySettings, locale, router]
   );
 
   const capturedUrlRef = useRef<string | null>(null);
@@ -501,6 +414,12 @@ export default function MinimalCapture({
       const parsed = await parseRecipeBundleFile(file);
       setParsedBundle(parsed);
       setSelectedBundleFileName(file.name);
+      const initialRating = parsed.recipe?.rating;
+      setBundleRating(
+        initialRating === 1 || initialRating === 2 || initialRating === 3 ? initialRating : 0
+      );
+      setBundleNotes(parsed.recipe?.notes ?? '');
+      setBundleStepsExpanded(false);
       setShowDescribe(false);
       setShowUrlReview(false);
 
@@ -537,7 +456,9 @@ export default function MinimalCapture({
       setSelectedBundleFileName(null);
       setFileDuplicate(null);
       setBundleImportError(
-        error instanceof Error ? error.message : 'This .recipe file is not valid.'
+        error instanceof Error
+          ? error.message
+          : t('capture.invalidRecipeFile', 'This recipe file is not valid.', locale)
       );
     }
   };
@@ -581,10 +502,7 @@ export default function MinimalCapture({
     try {
       const id = await submitRecipe();
       if (id) {
-        setWasPhotoCaptured(true);
         if (isGoto) {
-          // Use the first image's implied recipe name (we don't have a name from the photo path,
-          // so we use a placeholder that MarkGotoReadyProcessor will overwrite once synthesis completes)
           const currentGotos = (familySettings['family_goto'] as GoToListDto)?.items ?? [];
           const newItem: GoToItem = {
             description: 'Your captured recipe',
@@ -596,45 +514,12 @@ export default function MinimalCapture({
           });
         }
         useCaptureStore.getState().addPending({ recipeId: id });
-        setPendingRecipeId(id);
-
-        // Check immediately in case it's already ready (SSE fired early)
-        const existing = useLibraryStore
-          .getState()
-          .notifications.find((n) => n.recipeId === id && n.type === 'ready');
-        if (existing) {
-          setReadyRecipeName(existing.name);
-          useLibraryStore.getState().dismissNotification(id);
-        }
-
-        setCountdown(10);
-        setOnSuccess(true);
+        router.push(ROUTES.HOME as any);
       }
     } finally {
       photoSubmitLockRef.current = false;
       setShowPhotoUploadOverlay(false);
       setIsPhotoSubmitPending(false);
-    }
-  };
-
-  const handleRejectBundle = () => {
-    setParsedBundle(null);
-    setSelectedBundleFileName(null);
-    setBundleImportError(null);
-    setIsBundleSubmitting(false);
-    setFileDuplicate(null);
-  };
-
-  const handleDiscardDuplicate = async () => {
-    if (!pendingRecipeId || isDiscardingDuplicate) return;
-    setIsDiscardingDuplicate(true);
-    try {
-      await apiClient.api.recipes.byId(pendingRecipeId).delete();
-      router.push('/' as any);
-    } catch (err) {
-      console.error('Error discarding duplicate recipe:', err);
-    } finally {
-      setIsDiscardingDuplicate(false);
     }
   };
 
@@ -645,14 +530,39 @@ export default function MinimalCapture({
     setBundleImportError(null);
 
     try {
-      const importedRecipe = await importRecipeShareBundle(parsedBundle);
-      setBundleImportRecipeName(importedRecipe.name);
-      setBundleImportSucceeded(true);
+      const payload: RecipeShareBundleDto = {
+        ...parsedBundle,
+        recipe: {
+          ...parsedBundle.recipe,
+          rating: bundleRating > 0 ? bundleRating : null,
+          notes: bundleNotes.trim() || null,
+        },
+      };
+      const importedRecipe = await importRecipeShareBundle(payload);
+      useLibraryStore.getState().pushNotification({
+        recipeId: importedRecipe.id,
+        name:
+          importedRecipe.name ||
+          parsedBundle.recipe?.name ||
+          t('capture.recipeImported', 'Recipe imported', locale),
+        imageUrl: importedRecipe.imageUrl || undefined,
+        type: 'ready',
+        ...(importedRecipe.importIssue?.reasons?.includes('duplicate')
+          ? { isSuspectedDuplicate: true }
+          : {}),
+      });
       setParsedBundle(null);
       setSelectedBundleFileName(null);
+      setFileDuplicate(null);
+      setBundleRating(0);
+      setBundleNotes('');
+      setBundleStepsExpanded(false);
+      router.push(ROUTES.HOME as any);
     } catch (error) {
       setBundleImportError(
-        error instanceof Error ? error.message : 'Could not import this recipe right now.'
+        error instanceof Error
+          ? error.message
+          : t('capture.importBundleFailed', 'Could not import this recipe right now.', locale)
       );
     } finally {
       setIsBundleSubmitting(false);
@@ -676,7 +586,6 @@ export default function MinimalCapture({
       if (!id) throw new Error(t('capture.noRecipeIdReturned', 'No recipe ID returned.', locale));
 
       if (id) {
-        setWasDescribeCaptured(true);
         if (isGoto) {
           const currentGotos = (familySettings['family_goto'] as GoToListDto)?.items ?? [];
           const newItem: GoToItem = {
@@ -691,19 +600,7 @@ export default function MinimalCapture({
         useCaptureStore
           .getState()
           .addPending({ recipeId: id, name: describeName.trim() || undefined });
-        setPendingRecipeId(id);
-
-        // Check immediately in case it's already ready (SSE fired early)
-        const existing = useLibraryStore
-          .getState()
-          .notifications.find((n) => n.recipeId === id && n.type === 'ready');
-        if (existing) {
-          setReadyRecipeName(existing.name);
-          useLibraryStore.getState().dismissNotification(id);
-        }
-
-        setCountdown(10);
-        setOnSuccess(true);
+        router.push(ROUTES.HOME as any);
       }
     } catch (err) {
       const message =
@@ -716,23 +613,26 @@ export default function MinimalCapture({
     }
   };
 
-  const PHOTO_RATING_OPTIONS = [
-    { value: 1 as const, label: 'Not for me', icon: '👎' },
-    { value: 2 as const, label: 'It was OK', icon: '👍' },
-    { value: 3 as const, label: 'Loved it!', icon: '💚' },
-  ];
+  const isAnySubmitting =
+    isSubmitting || isPhotoSubmitPending || isUrlCapturing || isDescribing || isBundleSubmitting;
 
-  const getRatingCardClass = (value: 1 | 2 | 3, selected: boolean) => {
-    if (!selected) {
-      return 'border-chrome-line bg-white text-ink-muted hover:bg-cream-100 scale-[0.98] motion-reduce:scale-100';
-    }
-    if (value === 1) {
-      return 'border-hearth-line bg-terracotta-50 text-hearth-ink scale-100 shadow-sm';
-    }
-    if (value === 2) {
-      return 'border-garden-line bg-sage-50 text-garden-ink scale-100 shadow-sm';
-    }
-    return 'border-ink-body bg-white text-ink-body scale-100 shadow-sm';
+  const handleCancelCapture = () => {
+    if (isAnySubmitting) return;
+    resetCapture?.();
+    setShowDescribe(false);
+    setShowUrlReview(false);
+    setUrlInput('');
+    setUrlCaptureError(null);
+    setUrlDuplicate(null);
+    setDescribeName('');
+    setDescribeText('');
+    setDescribeError(null);
+    setDescribeDuplicate(null);
+    setParsedBundle(null);
+    setSelectedBundleFileName(null);
+    setBundleImportError(null);
+    setFileDuplicate(null);
+    router.push(ROUTES.HOME as any);
   };
 
   const fieldInputBase =
@@ -746,252 +646,147 @@ export default function MinimalCapture({
   const secondaryActionBtnClass =
     'flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-chrome-line bg-white px-4 py-3 text-sm font-semibold text-ink-body transition-colors hover:bg-charcoal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body';
 
-  // ── Success screen ──────────────────────────────────────────────────────────
-  if (bundleImportSucceeded) {
-    return (
-      <div
-        data-testid="bundle-import-success"
-        className="flex flex-col items-center justify-center gap-8 py-20 text-center"
-      >
-        <div className="flex h-24 w-24 items-center justify-center rounded-full border border-garden-line bg-sage-50 text-garden-ink ring-8 ring-sage-50 animate-in zoom-in duration-300 motion-reduce:animate-none">
-          <CheckCircle2 size={48} aria-hidden="true" />
-        </div>
-        <div className="flex flex-col gap-2">
-          <h2 className="font-heading text-3xl font-bold tracking-tight text-ink-body">
-            {bundleImportRecipeName || t('capture.recipeImported', 'Recipe imported', locale)}
-          </h2>
-          <p className="px-4 text-sm text-ink-muted">
-            {t(
-              'capture.recipeImportedSubtext',
-              'Your shared recipe is ready to use in the library.',
-              locale
-            )}
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          data-testid="bundle-import-done-btn"
-          onClick={() => router.push(ROUTES.HOME as any)}
-          className="rounded-2xl px-8"
-        >
-          {t('capture.done', 'Done', locale)}
-        </Button>
-      </div>
-    );
-  }
-
-  if (onSuccess) {
-    // ── Ready state: SSE recipe_ready fired while user is still on this screen ──
-    if (readyRecipeName) {
-      return (
-        <div
-          data-testid="capture-success-screen"
-          className="flex flex-col items-center justify-center gap-8 py-20 text-center"
-        >
-          <div className="flex h-24 w-24 items-center justify-center rounded-full border border-garden-line bg-sage-50 text-garden-ink ring-8 ring-sage-50 animate-in zoom-in duration-300 motion-reduce:animate-none">
-            <CheckCircle2 size={48} aria-hidden="true" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <h2
-              data-testid="capture-success-heading"
-              className="font-heading text-3xl font-bold tracking-tight text-ink-body"
-            >
-              {tWithVars(
-                'capture.readyTitle',
-                '{{name}} is ready!',
-                { name: readyRecipeName },
-                locale
-              )}
-            </h2>
-            <p className="px-4 max-w-sm text-ink-muted">
-              {t('capture.inYourLibrary', "It's in your library.", locale)}
-            </p>
-          </div>
-
-          {photoDuplicate && (
-            <div
-              data-testid="duplicate-recipe-warning"
-              className={`max-w-sm ${duplicateCardClass}`}
-            >
-              <span>
-                {tWithVars(
-                  'capture.duplicatePhoto',
-                  'A recipe with this name already exists: {{name}}',
-                  { name: photoDuplicate.name || '' },
-                  locale
-                )}
-              </span>
-              <button
-                type="button"
-                data-testid="view-existing-recipe-btn"
-                onClick={() => setDuplicateRecipeId(photoDuplicate.id || null)}
-                className={`${viewExistingBtnClass} animate-in fade-in motion-reduce:animate-none`}
-              >
-                {t('capture.viewExistingRecipe', 'View existing recipe', locale)}
-              </button>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-3 w-full max-w-xs">
-            <Button
-              variant="primary"
-              data-testid="capture-add-to-week-btn"
-              onClick={() => router.push(ROUTES.PLANNER as any)}
-              className="rounded-2xl px-8"
-            >
-              {t('capture.addToThisWeek', 'Add to this week', locale)}
-            </Button>
-            <Button
-              variant="ghost"
-              data-testid="capture-done-btn"
-              onClick={() => router.push(ROUTES.HOME as any)}
-              className="rounded-2xl px-8 text-ink-muted hover:bg-cream-100 hover:text-ink-body"
-            >
-              {t('capture.done', 'Done', locale)}
-            </Button>
-            {photoDuplicate && (
-              <Button
-                variant="ghost"
-                data-testid="discard-duplicate-btn"
-                onClick={handleDiscardDuplicate}
-                isLoading={isDiscardingDuplicate}
-                disabled={isDiscardingDuplicate}
-                className="rounded-2xl px-8 font-bold"
-              >
-                {t('capture.discardDuplicate', 'Discard duplicate', locale)}
-              </Button>
-            )}
-          </div>
-          {duplicateRecipeId && (
-            <RecipeDetailSheet
-              recipeId={duplicateRecipeId}
-              plannerDayLabel={null}
-              onClose={() => setDuplicateRecipeId(null)}
-              onUseForDay={async () => {}}
-            />
-          )}
-        </div>
-      );
-    }
-
-    // ── Queued state: recipe submitted, waiting for SSE recipe_ready ──────────
-    const heading = isGoto
-      ? t('capture.gotoBeingPrepared', 'Your GOTO is being prepared', locale)
-      : wasDescribeCaptured
-        ? t('capture.buildingRecipe', 'Building your recipe\u2026', locale)
-        : t('capture.recipeQueued', 'Recipe queued', locale);
-
-    const subtext = isGoto
-      ? t(
-          'capture.gotoNotifySubtext',
-          "We'll notify you when it's ready on the home screen.",
-          locale
-        )
-      : wasPhotoCaptured
-        ? t(
-            'capture.photoProcessingSubtext',
-            "We're processing your photo. You'll get a notification when it's ready.",
-            locale
-          )
-        : wasUrlCaptured
-          ? t(
-              'capture.urlFetchingSubtext',
-              "We're fetching the recipe from that link. You'll get a notification when it's ready.",
-              locale
-            )
-          : t(
-              'capture.buildingRecipeSubtext',
-              "Hang tight \u2014 we'll notify you when it's ready.",
-              locale
-            );
-
-    // GOTO uses a different destination after success
-    const gotoDest = ROUTES.HOME;
-
-    return (
-      <div
-        data-testid="capture-success-screen"
-        className="flex flex-col items-center justify-center gap-8 py-20 text-center"
-      >
-        <div
-          className={
-            isGoto
-              ? 'flex h-24 w-24 items-center justify-center rounded-full border border-sunlight-line bg-ochre-100 text-sunlight-ink ring-8 ring-ochre-50'
-              : 'flex h-24 w-24 items-center justify-center'
-          }
-        >
-          {isGoto ? (
-            <CheckCircle2 size={48} aria-hidden="true" />
-          ) : (
-            <CookbookLoader size="md" label={heading} />
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
-          <h2
-            data-testid="capture-success-heading"
-            className="font-heading text-3xl font-bold tracking-tight text-ink-body"
-          >
-            {heading}
-          </h2>
-          <p className="text-ink-muted px-4 max-w-sm">{subtext}</p>
-        </div>
-        {isGoto ? (
-          <Button
-            variant="primary"
-            data-testid="capture-success-cta"
-            onClick={() => router.push(gotoDest as any)}
-            className="rounded-2xl px-8"
-          >
-            {t('capture.done', 'Done', locale)}
-          </Button>
-        ) : (
-          <div className="flex flex-col gap-3 w-full max-w-xs">
-            <Button
-              variant="primary"
-              data-testid="capture-done-btn"
-              onClick={() => router.push(ROUTES.HOME as any)}
-              className="rounded-2xl px-8"
-            >
-              {t('capture.done', 'Done', locale)}
-            </Button>
-            {countdown !== null && (
-              <p className="text-xs text-ink-muted mt-4 animate-in fade-in duration-500 motion-reduce:animate-none">
-                {tWithVars(
-                  'capture.redirecting',
-                  'Redirecting home in {{seconds}}s...',
-                  { seconds: countdown },
-                  locale
-                )}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   if (parsedBundle) {
     const hero = (parsedBundle.hero as SharedImageDto | null | undefined) ?? null;
     const originalCount = parsedBundle.originals?.length ?? 0;
+    const ingredients = parsedBundle.recipe?.ingredients ?? [];
+    const instructions = parsedBundle.recipe?.instructions ?? [];
+    const hasPreviewContent = ingredients.length > 0 || instructions.length > 0;
 
     return (
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h2 className="font-heading text-2xl font-bold text-ink-body tracking-tight">
-            {t('capture.reviewRecipeFile', 'Review recipe file', locale)}
-          </h2>
-          <p className="text-sm text-ink-muted">
-            {tWithVars(
-              'capture.readyToImport',
-              '{{name}} is ready to import.',
-              {
-                name:
-                  selectedBundleFileName ||
-                  t('capture.sharedRecipeFileFallback', 'Shared recipe file', locale),
-              },
-              locale
+        <CaptureHeader
+          title={t('capture.importRecipeFile', 'Import recipe file', locale)}
+          subtitle={tWithVars(
+            'capture.readyToImport',
+            '{{name}} is ready to import.',
+            {
+              name:
+                selectedBundleFileName ||
+                t('capture.sharedRecipeFileFallback', 'Shared recipe file', locale),
+            },
+            locale
+          )}
+          onCancel={handleCancelCapture}
+          cancelDisabled={isAnySubmitting}
+        />
+
+        <div
+          data-testid="bundle-preview-card"
+          className="overflow-hidden rounded-[2rem] border border-chrome-line bg-white shadow-sm"
+        >
+          {hero?.base64 && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`data:${hero.mimeType};base64,${hero.base64}`}
+              alt={
+                parsedBundle.recipe?.name ||
+                t('capture.sharedRecipeFileFallback', 'Shared recipe file', locale)
+              }
+              className="h-52 w-full object-cover"
+            />
+          )}
+          <div className="flex flex-col gap-3 p-5">
+            <h2
+              data-testid="bundle-preview-name"
+              className="font-heading text-xl font-bold text-ink-body"
+            >
+              {parsedBundle.recipe?.name}
+            </h2>
+            {parsedBundle.recipe?.sourceUrl && (
+              <p data-testid="bundle-preview-source-url" className="text-sm text-ink-muted">
+                {parsedBundle.recipe.sourceUrl}
+              </p>
             )}
-          </p>
+            {parsedBundle.recipe?.sourceName && (
+              <p data-testid="bundle-preview-source-name" className="text-sm text-ink-muted">
+                {parsedBundle.recipe.sourceName}
+              </p>
+            )}
+            {originalCount > 0 && (
+              <p data-testid="bundle-preview-original-count" className="text-sm text-ink-muted">
+                {originalCount === 1
+                  ? t('capture.originalPhotosOne', '1 original photo', locale)
+                  : tWithVars(
+                      'capture.originalPhotosMany',
+                      '{{count}} original photos',
+                      { count: originalCount },
+                      locale
+                    )}
+              </p>
+            )}
+
+            {hasPreviewContent && (
+              <div className="mt-1">
+                <button
+                  type="button"
+                  data-testid="bundle-preview-steps-toggle"
+                  aria-expanded={bundleStepsExpanded}
+                  onClick={() => setBundleStepsExpanded((prev) => !prev)}
+                  className="inline-flex min-h-12 items-center gap-2 rounded-xl px-2 text-sm font-semibold text-garden-ink transition-colors hover:bg-sage-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
+                >
+                  <ChevronDown
+                    size={16}
+                    aria-hidden="true"
+                    className={`transition-transform ${bundleStepsExpanded ? 'rotate-180' : ''}`}
+                  />
+                  <span>
+                    {bundleStepsExpanded
+                      ? t('capture.hidePreview', 'Hide preview', locale)
+                      : t('capture.previewSteps', 'Preview steps', locale)}
+                  </span>
+                </button>
+
+                {bundleStepsExpanded && (
+                  <div className="mt-3 flex flex-col gap-4 border-t border-chrome-line pt-4">
+                    {ingredients.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-garden-ink">
+                          {t('recipes.ingredients', 'Ingredients', locale)}
+                        </h3>
+                        <ul className="flex flex-col gap-1.5">
+                          {ingredients.map((ingredient, iIdx) => (
+                            <li key={iIdx} className="text-sm text-ink-body leading-relaxed">
+                              {ingredient}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {instructions.map((section, sIdx) => (
+                      <div key={sIdx} className="flex flex-col gap-2">
+                        {section.name && (
+                          <h3
+                            data-testid="bundle-preview-section-title"
+                            className="text-xs font-bold uppercase tracking-[0.06em] text-garden-ink"
+                          >
+                            {section.name}
+                          </h3>
+                        )}
+                        <ol className="flex flex-col gap-2.5">
+                          {section.itemListElement?.map((step, tIdx) => (
+                            <li
+                              key={tIdx}
+                              className="flex items-start gap-2.5 text-sm text-ink-body leading-relaxed"
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-garden-line bg-sage-50 text-xs font-bold text-garden-ink"
+                              >
+                                {tIdx + 1}
+                              </span>
+                              <span data-testid="bundle-preview-step-text">{step.text}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {fileDuplicate && (
@@ -1010,123 +805,31 @@ export default function MinimalCapture({
           </div>
         )}
 
-        <div
-          data-testid="bundle-preview-card"
-          className="overflow-hidden rounded-[2rem] border border-chrome-line bg-white shadow-sm"
-        >
-          {hero?.base64 && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={`data:${hero.mimeType};base64,${hero.base64}`}
-              alt={
-                parsedBundle.recipe?.name ||
-                t('capture.sharedRecipeFileFallback', 'Shared recipe file', locale)
-              }
-              className="h-52 w-full object-cover"
-            />
-          )}
-          <div className="flex flex-col gap-3 p-5">
-            <h3
-              data-testid="bundle-preview-name"
-              className="font-heading text-xl font-bold text-ink-body"
-            >
-              {parsedBundle.recipe?.name}
-            </h3>
-            {parsedBundle.recipe?.sourceUrl && (
-              <p data-testid="bundle-preview-source-url" className="text-sm text-ink-muted">
-                {parsedBundle.recipe.sourceUrl}
-              </p>
-            )}
-            {parsedBundle.recipe?.sourceName && (
-              <p data-testid="bundle-preview-source-name" className="text-sm text-ink-muted">
-                {parsedBundle.recipe.sourceName}
-              </p>
-            )}
-            <span
-              data-testid="bundle-preview-synthesis-badge"
-              className="inline-flex w-fit rounded-full border border-sunlight-line bg-ochre-100 px-3 py-1 text-xs font-semibold text-sunlight-ink"
-            >
-              {parsedBundle.recipe?.isSynthesized
-                ? t('capture.synthesizedBadge', 'Synthesized', locale)
-                : t('capture.originalBadge', 'Original', locale)}
-            </span>
-            {originalCount > 0 && (
-              <p data-testid="bundle-preview-original-count" className="text-sm text-ink-muted">
-                {originalCount === 1
-                  ? t('capture.originalPhotosOne', '1 original photo', locale)
-                  : tWithVars(
-                      'capture.originalPhotosMany',
-                      '{{count}} original photos',
-                      { count: originalCount },
-                      locale
-                    )}
-              </p>
-            )}
+        <fieldset className="flex flex-col gap-3 px-2">
+          <legend className="mb-3 text-sm font-bold text-ink-body">
+            {t('recipes.rating', 'Rating', locale)}
+          </legend>
+          <RecipeRatingControl
+            value={bundleRating}
+            onChange={setBundleRating}
+            disabled={isBundleSubmitting}
+            testIdPrefix="bundle-rating"
+          />
+        </fieldset>
 
-            {parsedBundle.recipe?.instructions && (
-              <div className="flex flex-col gap-4 mt-2">
-                {parsedBundle.recipe.instructions.map((section, sIdx) => (
-                  <div key={sIdx} className="flex flex-col gap-2">
-                    {section.name && (
-                      <h4
-                        data-testid="bundle-preview-section-title"
-                        className="text-xs font-semibold text-ink-muted"
-                      >
-                        {section.name}
-                      </h4>
-                    )}
-                    <ul className="flex flex-col gap-2">
-                      {section.itemListElement?.map((step, tIdx) => (
-                        <li
-                          key={tIdx}
-                          data-testid="bundle-preview-step-text"
-                          className="text-sm text-ink-body leading-relaxed"
-                        >
-                          {step.text}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {parsedBundle.recipe?.notes && (
-              <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-chrome-line bg-cream-50 p-4">
-                <h4 className="text-xs font-semibold text-ink-muted">
-                  {t('capture.notesHeading', 'Notes', locale)}
-                </h4>
-                <p
-                  data-testid="bundle-preview-notes"
-                  className="text-sm italic text-ink-body leading-relaxed"
-                >
-                  {parsedBundle.recipe.notes}
-                </p>
-              </div>
-            )}
-
-            {parsedBundle.recipe?.rating && parsedBundle.recipe.rating > 0 && (
-              <div className="mt-4 flex flex-col gap-2">
-                <h4 className="text-xs font-semibold text-ink-muted">
-                  {t('capture.ratingHeading', 'Rating', locale)}
-                </h4>
-                <div data-testid="bundle-preview-rating" className="flex gap-1">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      size={16}
-                      aria-hidden="true"
-                      className={
-                        i < (parsedBundle.recipe?.rating || 0)
-                          ? 'fill-sunlight-ink text-sunlight-ink'
-                          : 'text-icon-affordance'
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+        <div className="flex flex-col gap-3 px-2">
+          <label htmlFor={bundleNotesId} className="text-sm font-bold text-ink-body">
+            {t('capture.notes', 'Notes (Optional)', locale)}
+          </label>
+          <textarea
+            id={bundleNotesId}
+            data-testid="bundle-notes-input"
+            value={bundleNotes}
+            disabled={isBundleSubmitting}
+            onChange={(e) => setBundleNotes(e.target.value)}
+            placeholder={t('capture.notesPlaceholder', 'Any tweaks for next time?', locale)}
+            className={`${fieldInputBase} min-h-[120px] resize-y rounded-3xl p-5`}
+          />
         </div>
 
         {bundleImportError && (
@@ -1135,26 +838,19 @@ export default function MinimalCapture({
           </p>
         )}
 
-        <div className="flex flex-col gap-3">
-          <Button
-            variant="primary"
-            data-testid="accept-bundle-btn"
-            onClick={handleAcceptBundle}
-            disabled={isBundleSubmitting}
-            isLoading={isBundleSubmitting}
-            className="rounded-[2rem] py-6 text-lg font-bold"
-          >
-            {t('capture.importRecipeBtn', 'Import recipe', locale)}
-          </Button>
-          <Button
-            variant="ghost"
-            data-testid="reject-bundle-btn"
-            onClick={handleRejectBundle}
-            className="rounded-[2rem] py-6 text-lg font-bold text-ink-muted hover:bg-cream-100 hover:text-ink-body"
-          >
-            {t('common.cancel', 'Cancel', locale)}
-          </Button>
-        </div>
+        <Button
+          variant="primary"
+          fullWidth
+          size="lg"
+          data-testid="accept-bundle-btn"
+          onClick={handleAcceptBundle}
+          disabled={isBundleSubmitting}
+          isLoading={isBundleSubmitting}
+          className="rounded-[2rem] py-6 text-lg font-bold"
+        >
+          {t('capture.importRecipeBtn', 'Import recipe', locale)}
+        </Button>
+
         {duplicateRecipeId && (
           <RecipeDetailSheet
             recipeId={duplicateRecipeId}
@@ -1167,38 +863,17 @@ export default function MinimalCapture({
     );
   }
 
-  const renderAppreciationFieldset = () => (
+  const renderAppreciationFieldset = (disabled = false) => (
     <fieldset className="flex flex-col gap-3 px-2">
       <legend className="mb-3 text-sm font-bold text-ink-body">
-        {t('capture.appreciation', 'Appreciation', locale)}
+        {t('recipes.rating', 'Rating', locale)}
       </legend>
-      <div className="flex gap-2">
-        {PHOTO_RATING_OPTIONS.map((opt) => {
-          const isSelected = rating === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              data-testid={`capture-rating-${opt.value}`}
-              aria-pressed={isSelected}
-              onClick={() => setRating(opt.value)}
-              className={`relative min-h-12 min-w-12 flex-1 flex flex-col items-center justify-center gap-2 rounded-2xl p-4 border-2 transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body ${getRatingCardClass(opt.value, isSelected)}`}
-            >
-              {isSelected && (
-                <span className="absolute right-2 top-2" aria-hidden="true">
-                  <Check size={14} />
-                </span>
-              )}
-              <span aria-hidden="true" className="text-2xl leading-none">
-                {opt.icon}
-              </span>
-              <span className="text-xs font-semibold">
-                {t(`capture.rating.${opt.value}`, opt.label, locale)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <RecipeRatingControl
+        value={rating}
+        onChange={setRating}
+        disabled={disabled}
+        testIdPrefix="capture-rating"
+      />
     </fieldset>
   );
 
@@ -1272,7 +947,6 @@ export default function MinimalCapture({
               {t('capture.fetchingRecipeHint', 'One moment while we fetch the recipe.', locale)}
             </p>
           </div>
-          <CookbookLoader size="sm" />
         </div>
       )}
 
@@ -1293,23 +967,29 @@ export default function MinimalCapture({
           </div>
           <div className="flex flex-col gap-1 px-6 text-center">
             <h3 className="font-heading text-xl font-bold text-ink-body">
-              {t('capture.uploadingPhotosOverlay', 'Uploading your photos...', locale)}
+              {t('capture.savingPhotosOverlay', 'Saving your photos…', locale)}
             </h3>
             <p data-testid="capture-upload-keep-open" className="text-sm text-ink-muted">
               {t(
-                'capture.keepScreenOpen',
-                'Please keep this screen open while we send them.',
+                'capture.takeYouHomePhotos',
+                'We’ll take you home as soon as they’re saved.',
                 locale
               )}
             </p>
           </div>
-          <CookbookLoader size="sm" />
         </div>
       )}
 
       {/* ── Camera / Gallery — hidden when describe or url review is active ───────────── */}
       {(preparedOnly || (!showDescribe && !showUrlReview)) && !parsedBundle && (
-        <div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-8">
+          {(preparedOnly || !pdfSelection) && (
+            <CaptureHeader
+              title={t('capture.addRecipe', 'Add a recipe', locale)}
+              onCancel={handleCancelCapture}
+              cancelDisabled={isAnySubmitting}
+            />
+          )}
           {/* Capture Area */}
           {!preparedOnly && (
             <div
@@ -1531,14 +1211,6 @@ export default function MinimalCapture({
                 >
                   {t('capture.saveRecipe', 'Save Recipe', locale)}
                 </Button>
-                {isPhotoSubmitPending && (
-                  <p
-                    data-testid="capture-photo-upload-helper"
-                    className="mt-3 px-3 text-center text-sm font-medium text-ink-muted"
-                  >
-                    {t('capture.largePhotosHint', 'Large photos can take a few seconds.', locale)}
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -1555,59 +1227,15 @@ export default function MinimalCapture({
       )}
 
       {/* ── URL Review Form ─────────────────────────────────────────────────── */}
-      {!preparedOnly && showUrlReview && !onSuccess && (
+      {!preparedOnly && showUrlReview && (
         <div className="flex flex-col gap-8">
-          <div className="flex flex-col gap-4">
-            <button
-              type="button"
-              data-testid="capture-url-back-btn"
-              onClick={() => {
-                setShowUrlReview(false);
-                setUrlCaptureError(null);
-                setUrlDuplicate(null);
-                setUrlInput('');
-              }}
-              className="flex min-h-12 min-w-12 w-fit items-center gap-1 rounded-xl px-2 text-sm font-semibold text-ink-muted transition-colors hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
-            >
-              <ArrowLeft size={14} aria-hidden="true" />
-              {t('capture.back', 'Back', locale)}
-            </button>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-hearth-line bg-terracotta-50 text-hearth-ink">
-              <Globe size={24} aria-hidden="true" />
-            </div>
-            <div className="flex flex-col gap-2">
-              <h2
-                data-testid="capture-url-review-heading"
-                className="font-heading text-2xl font-bold text-ink-body tracking-tight"
-              >
-                {t('capture.reviewYourLink', 'Review your link', locale)}
-              </h2>
-              <p className="text-sm text-ink-muted">
-                {t('capture.fetchOnceSaved', "We'll fetch the details once you save.", locale)}
-              </p>
-            </div>
-          </div>
-
-          {urlDuplicate && (
-            <div data-testid="duplicate-recipe-warning" className={duplicateCardClass}>
-              <span>
-                {tWithVars(
-                  'capture.duplicateUrl',
-                  'You already have a recipe from this link: {{name}}',
-                  { name: urlDuplicate.name || '' },
-                  locale
-                )}
-              </span>
-              <button
-                type="button"
-                data-testid="view-existing-recipe-btn"
-                onClick={() => setDuplicateRecipeId(urlDuplicate.id || null)}
-                className={viewExistingBtnClass}
-              >
-                {t('capture.viewExistingRecipe', 'View existing recipe', locale)}
-              </button>
-            </div>
-          )}
+          <CaptureHeader
+            title={t('capture.pasteRecipeLink', 'Paste recipe link', locale)}
+            subtitle={t('capture.fetchOnceSaved', "We'll fetch the details once you save.", locale)}
+            headingTestId="capture-url-review-heading"
+            onCancel={handleCancelCapture}
+            cancelDisabled={isAnySubmitting}
+          />
 
           <div className="flex flex-col gap-6">
             {/* URL Display - Multi-line Textbox */}
@@ -1627,11 +1255,31 @@ export default function MinimalCapture({
                 )}
                 className={`${fieldInputBase} min-h-[100px] resize-y rounded-3xl p-5 font-mono leading-relaxed`}
               />
+              {urlDuplicate && (
+                <div data-testid="duplicate-recipe-warning" className={duplicateCardClass}>
+                  <span>
+                    {tWithVars(
+                      'capture.duplicateUrl',
+                      'You already have a recipe from this link: {{name}}',
+                      { name: urlDuplicate.name || '' },
+                      locale
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="view-existing-recipe-btn"
+                    onClick={() => setDuplicateRecipeId(urlDuplicate.id || null)}
+                    className={viewExistingBtnClass}
+                  >
+                    {t('capture.viewExistingRecipe', 'View existing recipe', locale)}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Appreciation & Notes (Same as Photo Path) */}
             <div className="flex flex-col gap-6">
-              {renderAppreciationFieldset()}
+              {renderAppreciationFieldset(isUrlCapturing)}
 
               <div className="flex flex-col gap-3 px-2">
                 <label htmlFor={urlNotesId} className="text-sm font-bold text-ink-body">
@@ -1676,18 +1324,16 @@ export default function MinimalCapture({
       {/* ── Describe form ────────────────────────────────────────────────────── */}
       {!preparedOnly && showDescribe && (
         <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <h2 className="font-heading text-2xl font-bold text-ink-body tracking-tight">
-              {t('capture.describeYourRecipe', 'Describe your recipe', locale)}
-            </h2>
-            <p className="text-sm text-ink-muted">
-              {t(
-                'capture.describeSubtext',
-                "Give it a name and we'll synthesize the full recipe for you.",
-                locale
-              )}
-            </p>
-          </div>
+          <CaptureHeader
+            title={t('capture.describeRecipe', 'Describe a recipe', locale)}
+            subtitle={t(
+              'capture.describeSubtext',
+              "Give it a name and we'll draft the full recipe with AI.",
+              locale
+            )}
+            onCancel={handleCancelCapture}
+            cancelDisabled={isAnySubmitting}
+          />
 
           <div className="flex flex-col gap-4">
             {/* Name — required */}
@@ -1746,7 +1392,7 @@ export default function MinimalCapture({
                 onChange={(e) => setDescribeText(e.target.value)}
                 placeholder={t(
                   'capture.descriptionPlaceholder',
-                  'Any details — key ingredients, cooking style, family notes…',
+                  'Any details: key ingredients, cooking style, family notes…',
                   locale
                 )}
                 className={`${fieldInputBase} min-h-[120px] resize-y rounded-2xl px-5 py-4`}
@@ -1772,22 +1418,6 @@ export default function MinimalCapture({
             className="rounded-[2rem] py-6 text-lg font-bold shadow-sm"
           >
             {t('capture.saveAndBuild', 'Save & build recipe', locale)}
-          </Button>
-
-          <Button
-            variant="ghost"
-            fullWidth
-            data-testid="describe-cancel-btn"
-            onClick={() => {
-              setShowDescribe(false);
-              setDescribeName('');
-              setDescribeText('');
-              setDescribeDuplicate(null);
-              setDescribeError(null);
-            }}
-            className="rounded-[2rem] py-6 text-lg font-bold text-ink-muted hover:bg-cream-100 hover:text-ink-body"
-          >
-            {t('common.cancel', 'Cancel', locale)}
           </Button>
         </div>
       )}

@@ -30,7 +30,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
         using var client = factory.CreateAuthenticatedClient();
         async Task<RecipeApi.Models.Recipe> Read() => await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id);
         var before = await Read();
-        var content = CanonicalRecipeContentStore.Read(before)!;
+        var content = StructuredRecipeContentStore.Read(before)!;
         async Task Reject(object input, HttpStatusCode status)
         {
             using var response = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", input, Json);
@@ -47,7 +47,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
         using (var correction = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", WireEdit(Edit(content, "25", shopping with { Name = name })), Json))
             Assert.True(correction.StatusCode == HttpStatusCode.OK, await correction.Content.ReadAsStringAsync());
         var corrected = await Read();
-        var current = CanonicalRecipeContentStore.Read(corrected)!;
+        var current = StructuredRecipeContentStore.Read(corrected)!;
         var line = current.IngredientLines[0];
         Assert.Equal(name, line.Shopping.Name);
         Assert.Equal(retained ? shopping.FoodId : null, line.Shopping.FoodId);
@@ -73,7 +73,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
         Assert.Equal(BoundedVocabularyInput.Bytes(), (await vocabulary.CaptureActiveAsync())!.RawBytes);
     });
 
-    private static UpdateRecipeDto Edit(CanonicalRecipeContent content, string amount,
+    private static UpdateRecipeDto Edit(StructuredRecipeContent content, string amount,
         RecipeShoppingAssociationDto? shopping = null) => new()
     {
         ExpectedContentRevision = content.ContentRevision,
@@ -104,13 +104,13 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 BoundedVocabularyInput.Bytes(), null, Guid.NewGuid(), BoundedVocabularyInput.ReviewIdentity);
             var imported = await ImportAsync(services, clear ? "fr" : "en");
             var before = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id);
-            var original = CanonicalRecipeContentStore.Read(before)!;
+            var original = StructuredRecipeContentStore.Read(before)!;
             using var client = factory.CreateAuthenticatedClient();
-            async Task<CanonicalRecipeContent> Save(UpdateRecipeDto input)
+            async Task<StructuredRecipeContent> Save(UpdateRecipeDto input)
             {
                 using var response = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", WireEdit(input), Json);
                 Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
-                return CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id))!;
+                return StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id))!;
             }
             var quantity = await Save(Edit(original, "50"));
             Assert.Equal(original.IngredientLines.Select(x => x.Shopping), quantity.IngredientLines.Select(x => x.Shopping));

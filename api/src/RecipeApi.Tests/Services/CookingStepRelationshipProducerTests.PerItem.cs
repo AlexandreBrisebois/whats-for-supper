@@ -12,7 +12,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     private const string PerItemFrench = "Pour tous les 4 morceaux de tofu, utilisez exactement 1/2 c. à thé d’huile sur chaque morceau.";
     private static readonly JsonSerializerOptions PerItemJson = new(JsonSerializerDefaults.Web);
 
-    private static CanonicalRecipeContent PerItemContent(string text = PerItemEnglish, string countName = "tofu",
+    private static StructuredRecipeContent PerItemContent(string text = PerItemEnglish, string countName = "tofu",
         string doseName = "oil", string countUnit = "pieces", string doseUnit = "tsp")
     {
         var content = Content(text, countName, "4");
@@ -22,8 +22,8 @@ public sealed partial class CookingStepRelationshipProducerTests
         return content with { IngredientLines = [count, dose] };
     }
 
-    private static RecipeInstructionStepDto PerItemStep(CanonicalRecipeContent content) => content.InstructionSections[0].Steps[0];
-    private static CanonicalRecipeContent PerItemWithBindings(CanonicalRecipeContent content, params JsonElement[] bindings) =>
+    private static RecipeInstructionStepDto PerItemStep(StructuredRecipeContent content) => content.InstructionSections[0].Steps[0];
+    private static StructuredRecipeContent PerItemWithBindings(StructuredRecipeContent content, params JsonElement[] bindings) =>
         content with { InstructionSections = [content.InstructionSections[0] with { Steps = [PerItemStep(content) with { Bindings = bindings }] }] };
     private static JsonElement PerItemMutate(JsonElement binding, Action<JsonObject> change)
     {
@@ -34,7 +34,7 @@ public sealed partial class CookingStepRelationshipProducerTests
 
     // Deliberately hand-supplied graph for validating hostile submissions. Producer
     // acceptance below always starts with empty bindings, never with this helper.
-    private static CanonicalRecipeContent PerItemSubmission(CanonicalRecipeContent content)
+    private static StructuredRecipeContent PerItemSubmission(StructuredRecipeContent content)
     {
         var step = PerItemStep(content);
         var count = content.IngredientLines[0]; var dose = content.IngredientLines[1];
@@ -318,7 +318,7 @@ public sealed partial class CookingStepRelationshipProducerTests
                 new(Guid.NewGuid(), "Finally, use all the remaining sauce.", "sauce-final", []),
                 new(Guid.NewGuid(), "For any number of portions, use exactly 1 tbsp butter.", "butter-fixed", []),
                 new(Guid.NewGuid(), "Add all 200 g pasta.", "pasta-whole", [])] }] };
-        CanonicalRecipeContent Save(CanonicalRecipeContent before, CanonicalRecipeContent next) =>
+        StructuredRecipeContent Save(StructuredRecipeContent before, StructuredRecipeContent next) =>
             CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, next), before);
         var before = CookingStepRelationshipProducer.Discover(original);
         Assert.Equal(new[] { 2, 1, 1, 1, 1 }, before.InstructionSections[0].Steps.Select(step => step.Bindings.Count));
@@ -366,7 +366,7 @@ public sealed partial class CookingStepRelationshipProducerTests
                 new(Guid.NewGuid(), "Finally, use all the remaining sauce.", "sauce-final", []),
                 new(Guid.NewGuid(), "For any number of portions, use exactly 1 tbsp butter.", "butter-fixed", []),
                 new(Guid.NewGuid(), "Add all 200 g pasta.", "pasta-whole", [])] }] };
-        CanonicalRecipeContent Save(CanonicalRecipeContent before, CanonicalRecipeContent next) =>
+        StructuredRecipeContent Save(StructuredRecipeContent before, StructuredRecipeContent next) =>
             CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, next), before);
         var before = CookingStepRelationshipProducer.Discover(original);
         Assert.Equal(new[] { 2, 1, 1, 1, 1 }, before.InstructionSections[0].Steps.Select(step => step.Bindings.Count));
@@ -402,7 +402,7 @@ public sealed partial class CookingStepRelationshipProducerTests
     [InlineData("same-save")][InlineData("later-save")]
     public void PerItemProducerCountCarryDoesNotLicenseFreshExhaustiveGroupForRenamedDose(string timing)
     {
-        CanonicalRecipeContent Save(CanonicalRecipeContent before, CanonicalRecipeContent next) =>
+        StructuredRecipeContent Save(StructuredRecipeContent before, StructuredRecipeContent next) =>
             CookingStepRelationshipProducer.Discover(CookingStepProjection.Revalidate(before, next), before);
         var before = CookingStepRelationshipProducer.Discover(PerItemContent());
         var countId = PerItemStep(before).Bindings[0].GetProperty("id").GetGuid();

@@ -41,8 +41,8 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
             Assert.Null((await vocabulary.CaptureActiveAsync())!.Definitions().Resolve("onion"));
             Assert.Equal(BoundedVocabularyInput.Bytes(), (await vocabulary.LoadCapturedAsync(adopted.NewHead)).RawBytes);
             var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id);
-            var content = CanonicalRecipeContentStore.Read(saved)!;
-            var following = await services.GetRequiredService<CanonicalRecipeContentStore>()
+            var content = StructuredRecipeContentStore.Read(saved)!;
+            var following = await services.GetRequiredService<StructuredRecipeContentStore>()
                 .EditAsync(imported.Id, content.SourceRevision, Guid.NewGuid(), Edit(content, "50"));
             Assert.Equal(content.IngredientLines.Select(x => x.Shopping), following.Content.IngredientLines.Select(x => x.Shopping));
             Assert.Equal(outcome, await vocabulary.PublishReviewedAsync(reversalBytes, adopted.NewHead, operation, "local-bounded-reversal-review"));

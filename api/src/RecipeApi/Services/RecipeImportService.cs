@@ -48,10 +48,9 @@ public class RecipeImportService(
             if (committed is not null)
             {
                 if (committed.WorkflowId != workflowId
-                    || CanonicalRecipeContentStore.NormalizeJson(committed.Parameters)
-                        != CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(parameters)))
+                    || StructuredRecipeContentStore.NormalizeJson(committed.Parameters)
+                        != StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(parameters)))
                     throw new InvalidDataException("Import acceptance differs from the original command.");
-                RecipeFilePublicationStore.ValidateExecutionLaunch(committed);
                 if (await db.WorkflowLaunchIntents.AsNoTracking().AnyAsync(x => x.Id == instanceId))
                 {
                     // Reuse the original acceptance owner to check its independent

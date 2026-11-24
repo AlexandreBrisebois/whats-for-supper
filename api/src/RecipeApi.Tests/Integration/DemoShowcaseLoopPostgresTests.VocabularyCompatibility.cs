@@ -36,8 +36,8 @@ public partial class DemoShowcaseLoopPostgresTests
         }
         if (owner == "canonical-v2")
         {
-            await services.GetRequiredService<CanonicalRecipeContentStore>().ConvertAsync(recipe.Id,
-                CanonicalRecipeContentStore.InspectContentRevision(recipe), CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
+            await services.GetRequiredService<StructuredRecipeContentStore>().ConvertAsync(recipe.Id,
+                StructuredRecipeContentStore.InspectContentRevision(recipe), StructuredRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
             Assert.NotEmpty(await db.CanonicalRecipeOperations.ToArrayAsync());
         }
         var before = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id);

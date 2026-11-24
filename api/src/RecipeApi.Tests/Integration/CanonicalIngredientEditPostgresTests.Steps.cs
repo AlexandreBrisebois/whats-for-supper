@@ -11,7 +11,7 @@ namespace RecipeApi.Tests.Integration;
 
 public sealed partial class CanonicalIngredientEditPostgresTests
 {
-    internal static async Task<CanonicalRecipeContent> SeedCookingWholeUse(RecipeApi.Tests.Infrastructure.TestWebApplicationFactory factory, CanonicalRecipeContent before, bool preparedReading = false)
+    internal static async Task<StructuredRecipeContent> SeedCookingWholeUse(RecipeApi.Tests.Infrastructure.TestWebApplicationFactory factory, StructuredRecipeContent before, bool preparedReading = false)
     {
             before = before with { ContentRevision = Guid.NewGuid().ToString("N") };
             var source = "Add 200 g pasta from a 400 g package; cook 20 minutes at 180 °C.";
@@ -48,7 +48,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
             using var scope2 = factory.Services.CreateScope();
             var services = scope2.ServiceProvider;
-            var current = CanonicalRecipeContentStore.Read(await services.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+            var current = StructuredRecipeContentStore.Read(await services.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             Assert.Equal(source, current.InstructionSections[0].Steps[0].Text);
             var date = new DateOnly(2026, 10, 13);
             // Test projection at eight through the existing dated serving configuration.
@@ -100,7 +100,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
-            var content = CanonicalRecipeContentStore.Read(saved)!;
+            var content = StructuredRecipeContentStore.Read(saved)!;
             Assert.Equal(returned.GetProperty("contentRevision").GetString(), content.ContentRevision);
             Assert.NotEqual(before.ContentRevision, content.ContentRevision);
             Assert.Equal(winner == 0 ? "Ingredient winner" : "Instruction winner", saved.Name);

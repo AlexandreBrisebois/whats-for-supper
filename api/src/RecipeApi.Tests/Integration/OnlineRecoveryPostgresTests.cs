@@ -476,9 +476,6 @@ public partial class OnlineRecoveryPostgresTests : IAsyncLifetime
         var instance = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "capture", Parameters = "{}", CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
         var task = new WorkflowTask { TaskId = Guid.NewGuid(), Instance = instance, TaskName = "stale", ProcessorName = "MustNeverExecute", Status = RecipeApi.Models.TaskStatus.Pending, CreatedAt = instance.CreatedAt, UpdatedAt = instance.UpdatedAt };
         db.WorkflowTasks.Add(task);
-        // Accept the synthetic command before testing recovery-time invalidation.
-        // Uncaptured historical work is correctly refused before acquiring a lease.
-        await services.GetRequiredService<RecipeFilePublicationStore>().CaptureLaunchAsync(instance);
         await db.SaveChangesAsync();
         var lease = await services.GetRequiredService<RecoveryBoundary>().EnterAsync(RecoveryAccess.Publish, CancellationToken.None);
         using var worker = new WorkflowWorker(services.GetRequiredService<IClock>(), app.Services.GetRequiredService<IServiceScopeFactory>(),

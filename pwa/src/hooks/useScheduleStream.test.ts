@@ -536,6 +536,30 @@ describe('recipe_ready event', () => {
       expect.objectContaining({ name: 'Pending Name' })
     );
   });
+
+  it('forwards isSuspectedDuplicate flag from recipe_ready payload into libraryStore', () => {
+    mockGetPending.mockReturnValueOnce({
+      recipeId: 'recipe-dup',
+      name: 'Pending Pasta',
+      submittedAt: Date.now(),
+    });
+    const { source } = setupHook();
+
+    source.emit('recipe_ready', {
+      recipeId: 'recipe-dup',
+      name: 'Pasta Bake',
+      imageUrl: '/api/recipes/recipe-dup/hero',
+      isSuspectedDuplicate: true,
+    });
+
+    expect(mockPushNotification).toHaveBeenCalledWith({
+      recipeId: 'recipe-dup',
+      name: 'Pasta Bake',
+      imageUrl: '/api/recipes/recipe-dup/hero',
+      type: 'ready',
+      isSuspectedDuplicate: true,
+    });
+  });
 });
 
 // ── recipe_failed event ──────────────────────────────────────────────────────

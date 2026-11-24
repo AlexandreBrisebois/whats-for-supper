@@ -13,7 +13,7 @@ namespace RecipeApi.Tests.Integration;
 
 public sealed partial class CanonicalIngredientEditPostgresTests
 {
-    private static async Task<CanonicalRecipeContent> SeedCookingAllocation(TestWebApplicationFactory factory, CanonicalRecipeContent before, bool splitOil, bool exhaustive = false)
+    private static async Task<StructuredRecipeContent> SeedCookingAllocation(TestWebApplicationFactory factory, StructuredRecipeContent before, bool splitOil, bool exhaustive = false)
     {
         var row = before.IngredientLines[0] with
         {
@@ -53,7 +53,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
         recipe.CanonicalContent = JsonSerializer.Serialize(seeded, Json);
-        recipe.Ingredients = JsonSerializer.Serialize(seeded.IngredientLines.Select(CanonicalRecipeContentStore.Render));
+        recipe.Ingredients = JsonSerializer.Serialize(seeded.IngredientLines.Select(StructuredRecipeContentStore.Render));
         await db.SaveChangesAsync();
         return seeded;
     }
@@ -83,7 +83,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Equal("Heat 1 tbsp oil.", instructions.GetProperty("sections")[0].GetProperty("steps")[0].GetProperty("text").GetString());
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var current = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+            var current = StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             Assert.Equal(before.InstructionSections[0].Steps.Select(x => x.Text), current.InstructionSections[0].Steps.Select(x => x.Text));
             Assert.All(current.InstructionSections[0].Steps, step => Assert.Equal("1", step.Bindings[0].GetProperty("payload").GetProperty("amount").GetProperty("value").GetProperty("n").GetString()));
         });
@@ -101,7 +101,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             using var scope = factory.Services.CreateScope();
             var services = scope.ServiceProvider;
             var db = services.GetRequiredService<RecipeDbContext>();
-            var current = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+            var current = StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             Assert.Equal(before.InstructionSections[0].Steps.Select(x => x.Text), current.InstructionSections[0].Steps.Select(x => x.Text));
             db.FamilySettings.Add(new RecipeApi.Models.FamilySetting { Key = SupperServingsService.DefaultKey,
                 Value = JsonSerializer.SerializeToElement(new { servings = splitOil ? 8 : 6, version = Guid.NewGuid() }) });

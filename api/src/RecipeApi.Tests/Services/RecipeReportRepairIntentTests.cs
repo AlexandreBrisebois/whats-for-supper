@@ -118,43 +118,6 @@ public sealed class RecipeReportRepairIntentTests
     }
 
     [Fact]
-    public async Task LostAcknowledgement_DivergentCommittedTaskIsNotAnAcceptedOriginalCommand()
-    {
-        await using var fixture = await Fixture.Create();
-        fixture.Db.AfterLaunchSave = async () =>
-        {
-            await using var read = fixture.ReadContext();
-            var task = await read.WorkflowTasks.SingleAsync();
-            task.Payload = "{\"changed\":true}";
-            await read.SaveChangesAsync();
-            throw new IOException("Synthetic lost acknowledgement after unrelated task divergence");
-        };
-        await Assert.ThrowsAsync<InvalidDataException>(() => fixture.Submit());
-        await using var observer = fixture.ReadContext();
-        Assert.Single(await observer.WorkflowInstances.ToListAsync());
-        Assert.Equal("{\"changed\":true}", (await observer.WorkflowTasks.SingleAsync()).Payload);
-        Assert.NotNull((await observer.RecipeImportReports.SingleAsync()).LastWorkflowInstanceId);
-    }
-
-    [Fact]
-    public Task OriginalUrlCommand_CannotCaptureAChangedSourceAsItsBaseline() => CheckChangedSourceAsync();
-
-    internal static async Task CheckChangedSourceAsync(Action<DbContextOptionsBuilder<RecipeDbContext>>? configure = null)
-    {
-        await using var fixture = await Fixture.Create(configure);
-        var recipe = await fixture.Db.Recipes.SingleAsync();
-        recipe.SourceUrl = "https://example.invalid/changed";
-        await fixture.Db.SaveChangesAsync();
-        var clock = new SystemClock();
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(fixture.Storage), fixture.Db,
-            TestPublicationStore.Create(fixture.Db, fixture.Storage, clock));
-        await Assert.ThrowsAsync<InvalidDataException>(() => orchestrator.PrepareReportAsync(Guid.NewGuid(), "url-import",
-            new() { ["recipeId"] = fixture.RecipeId.ToString(), ["url"] = "https://example.invalid/original",
-                ["repairReasons"] = "ingredients", ["repairNote"] = "Original feedback" }));
-        Assert.Empty(await fixture.Db.WorkflowInstances.ToListAsync());
-    }
-
-    [Fact]
     public async Task WorkerPickup_DoesNotRewriteIndependentFailureWithoutAnAttempt()
     {
         await using var fixture = await Fixture.Create();
@@ -195,7 +158,7 @@ public sealed class RecipeReportRepairIntentTests
             await fixture.SaveDefinition();
             var clock = new SystemClock();
             fixture.Service = new RecipeImportReportService(clock, fixture.Db,
-                new WorkflowOrchestrator(clock, new WorkflowRepository(fixture.Storage), fixture.Db, TestPublicationStore.Create(fixture.Db, fixture.Storage, clock)));
+                new WorkflowOrchestrator(clock, new WorkflowRepository(fixture.Storage), fixture.Db));
             return fixture;
         }
         public Task SaveDefinition() => Storage.SaveAsync("workflows", "url-import.yaml", """
@@ -218,7 +181,7 @@ public sealed class RecipeReportRepairIntentTests
             services.AddScoped<IWorkflowOrchestrator>(sp =>
             {
                 var db = sp.GetRequiredService<RecipeDbContext>();
-                return new WorkflowOrchestrator(clock, new WorkflowRepository(Storage), db, TestPublicationStore.Create(db, Storage, clock));
+                return new WorkflowOrchestrator(clock, new WorkflowRepository(Storage), db);
             });
             services.AddScoped(sp => new RecipeImportReportService(clock, sp.GetRequiredService<RecipeDbContext>(), sp.GetRequiredService<IWorkflowOrchestrator>()));
             services.AddSingleton<IWorkflowProcessor>(new Probe());

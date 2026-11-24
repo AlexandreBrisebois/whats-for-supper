@@ -12,7 +12,7 @@ public interface IScheduleEventPublisher
     Task PublishFillTheGapInvalidatedAsync(int weekOffset, DateOnly weekStartDate, string? excludeConnectionId = null);
     Task PublishAllSuggestionsInvalidatedAsync();
     Task PublishDemoResetAsync(Guid generation) => Task.CompletedTask;
-    Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null);
+    Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null, bool isSuspectedDuplicate = false);
 
     /// <summary>
     /// Published when a workflow instance reaches <see cref="RecipeApi.Models.WorkflowStatus.Failed"/>

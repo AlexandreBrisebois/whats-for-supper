@@ -17,11 +17,6 @@ namespace RecipeApi.Tests.Services;
 public sealed class FoodVocabularyReferenceInventoryTests
 {
     [Theory]
-    [InlineData("reset")]
-    [InlineData("attempt")]
-    [InlineData("retirement")]
-    [InlineData("repair")]
-    [InlineData("child")]
     [InlineData("physical")]
     public Task AbsentMembership_RejectsEveryIndependentRetainedOwner(string owner) => CheckAbsentMembership(owner);
 
@@ -101,23 +96,10 @@ public sealed class FoodVocabularyReferenceInventoryTests
     }
 
     [Fact]
-    public Task MaintenanceHistory_PreservesResolvedRetirementLink() => CheckAbsentMembership("maintenance-linked");
-
-    [Fact]
     public Task MaintenanceHistory_RejectsUnresolvedRetirementLink() => CheckAbsentMembership("maintenance");
 
     [Theory]
-    [InlineData("reset", false)]
-    [InlineData("attempt", false)]
-    [InlineData("retirement", false)]
-    [InlineData("repair", false)]
-    [InlineData("child", false)]
     [InlineData("physical", false)]
-    [InlineData("reset", true)]
-    [InlineData("attempt", true)]
-    [InlineData("retirement", true)]
-    [InlineData("repair", true)]
-    [InlineData("child", true)]
     [InlineData("physical", true)]
     public Task MalformedRetainedOwner_CannotBeTreatedAsUnreferenced(string owner, bool missingObservation) =>
         CheckAbsentMembership(owner, missingObservation: missingObservation);
@@ -150,8 +132,7 @@ public sealed class FoodVocabularyReferenceInventoryTests
                 payload:
                   recipeId: "{{recipeId}}"
             """);
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db,
-            TestPublicationStore.Create(db, storage, clock));
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
         var parameters = new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString(), ["url"] = recipe.SourceUrl };
         var workflow = await orchestrator.TriggerAsync("url-import", parameters);
         var task = Assert.Single(workflow.Tasks);
@@ -197,10 +178,10 @@ public sealed class FoodVocabularyReferenceInventoryTests
                 await orchestrator.TriggerChildAsync(Assert.Single(parent.Tasks), "url-import", parameters);
                 break;
             case "physical":
-                var canonical = new CanonicalRecipeContentStore(db, clock,
+                var canonical = new StructuredRecipeContentStore(db, clock,
                     new SupperProjectionInvalidation(db, clock, new DeploymentCalendar(new ConfigurationManager())), vocabulary);
-                await canonical.ConvertAsync(recipe.Id, CanonicalRecipeContentStore.InspectContentRevision(recipe),
-                    CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
+                await canonical.ConvertAsync(recipe.Id, StructuredRecipeContentStore.InspectContentRevision(recipe),
+                    StructuredRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
                 var configuration = new ConfigurationManager { ["DataRoot"] = Path.Combine(Path.GetTempPath(), "wfs-inventory-" + Guid.NewGuid().ToString("N")) };
                 var roots = new RecipesRootResolver(new DataRootResolver(configuration), configuration);
                 await (Task)Method("RecipePhysicalLifecycle", "DeleteAsync").Invoke(null,
@@ -254,56 +235,6 @@ public sealed class FoodVocabularyReferenceInventoryTests
         Assert.False(await db.FamilySettings.AnyAsync(x => x.Key == "food_vocabulary_publication"));
     }
 
-    [Fact]
-    public async Task StagedJournal_RequiresItsExactCommittedOwnerBeforeFirstInstall()
-    {
-        var directory = Path.Combine(Path.GetTempPath(), "wfs-inventory-stage-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            var configuration = new ConfigurationManager { ["DataRoot"] = directory };
-            var data = new DataRootResolver(configuration);
-            var roots = new RecipesRootResolver(data, configuration);
-            var storage = new LocalStorageProvider(data, roots);
-            var options = new DbContextOptionsBuilder<RecipeDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning)).Options;
-            await using var db = new RecipeDbContext(options);
-            var clock = new SystemClock();
-            var vocabulary = new FoodVocabularyStore(db, storage, roots, new RecoveryBoundary(db, configuration, roots), clock);
-            var bytes = await File.ReadAllBytesAsync(Path.Combine(Integration.DeploymentCalendarPostgresTests.RepositoryRoot(),
-                "api/src/RecipeApi.Tests/Fixtures/food-vocabulary-three-anchor-v1.json"));
-            var installed = await vocabulary.PublishReviewedAsync(bytes, null, Guid.NewGuid(), "staged-journal-review");
-            var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Original" };
-            db.Recipes.Add(recipe);
-            await db.SaveChangesAsync();
-            var repository = new RecipeRepository(storage);
-            await repository.SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = recipe.Name }, default);
-            var publicationStore = new RecipeFilePublicationStore(db, repository, clock,
-                new SupperProjectionInvalidation(db, clock, new DeploymentCalendar(configuration)), vocabulary);
-            var operationId = Guid.NewGuid();
-            await publicationStore.PublishAsync(await publicationStore.CaptureAsync(recipe.Id),
-                new("""{"name":"Observed publication","recipeIngredient":["salt"],"recipeInstructions":[{"text":"Mix."}]}""",
-                    new RecipeInfo { Id = recipe.Id, Name = "Observed publication" }), operationId);
-            var publication = await db.RecipeFilePublications.SingleAsync();
-            Assert.True(publication.Delivered);
-            var file = Path.Combine(roots.Root, recipe.Id.ToString("D"), ".publications", operationId.ToString("N"), publication.InputHash + ".json");
-            var retained = await File.ReadAllBytesAsync(file);
-            Assert.Contains(installed.NewHead.Sha256, Encoding.UTF8.GetString(retained));
-            var observed = await Observe(vocabulary);
-            Assert.Single(observed.History.StagedJournals);
-            Assert.Contains(FoodVocabularyInventoryQualification.RequiredReferences(observed),
-                x => x.OwnerKind == "staged-journal" && x.Reference == installed.NewHead);
-            db.RecipeFilePublications.Remove(publication);
-            db.FamilySettings.Remove(await db.FamilySettings.SingleAsync(x => x.Key == "food_vocabulary_publication"));
-            await db.SaveChangesAsync();
-            await Assert.ThrowsAsync<InvalidDataException>(() => vocabulary.CaptureActiveAsync());
-            await Assert.ThrowsAsync<InvalidDataException>(() => vocabulary.PublishReviewedAsync(bytes, null,
-                Guid.NewGuid(), "must-not-reseed-staged-authority"));
-            Assert.False(await db.FamilySettings.AnyAsync(x => x.Key == "food_vocabulary_publication"));
-            Assert.Equal(retained, await File.ReadAllBytesAsync(file));
-        }
-        finally { if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true); }
-    }
-
     private static Task<FoodVocabularyInventoryFacts> Observe(FoodVocabularyStore vocabulary) =>
         (Task<FoodVocabularyInventoryFacts>)typeof(FoodVocabularyStore)
             .GetMethod("ObserveInventoryFactsAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
@@ -317,7 +248,7 @@ public sealed class FoodVocabularyReferenceInventoryTests
             remove(node);
             return node.ToJsonString();
         }
-        string Hash(string raw) => FoodVocabularyDefinitions.Sha256(Encoding.UTF8.GetBytes((string)typeof(CanonicalRecipeContentStore)
+        string Hash(string raw) => FoodVocabularyDefinitions.Sha256(Encoding.UTF8.GetBytes((string)typeof(StructuredRecipeContentStore)
             .GetMethod("NormalizeJson", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, [raw])!));
         switch (owner)
         {

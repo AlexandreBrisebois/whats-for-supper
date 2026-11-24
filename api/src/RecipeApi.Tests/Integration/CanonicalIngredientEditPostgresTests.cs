@@ -19,7 +19,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
     private static readonly Guid Id = TomorrowPushPostgresTests.Selected;
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    internal async Task WithEditor(Func<TestWebApplicationFactory, CanonicalRecipeContent, Task> check,
+    internal async Task WithEditor(Func<TestWebApplicationFactory, StructuredRecipeContent, Task> check,
         Action<WebApplication>? configureApplication = null, string? sourceUrl = null, bool realWorkflow = false)
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
@@ -33,7 +33,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
                     ["Tests:RealWorkflowOrchestrator"] = realWorkflow ? "true" : null
                 }, configureApplication: configureApplication);
             await TomorrowPushPostgresTests.Seed(factory);
-            CanonicalRecipeContent content;
+            StructuredRecipeContent content;
             using (var scope = factory.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;
@@ -46,9 +46,9 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
                     r.RawMetadata = """{"recipeIngredient":["200 g pasta","100 ml sauce"],"supply":[{"name":"pasta","quantity":200,"unitText":"g"},{"name":"sauce","quantity":100,"unitText":"ml"}],"recipeInstructions":[{"@type":"HowToStep","text":"Mix pasta and sauce."}]}""";
                 });
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-                content = (await services.GetRequiredService<CanonicalRecipeContentStore>().ConvertAsync(Id,
-                    CanonicalRecipeContentStore.InspectContentRevision(recipe),
-                    CanonicalRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid())).Content;
+                content = (await services.GetRequiredService<StructuredRecipeContentStore>().ConvertAsync(Id,
+                    StructuredRecipeContentStore.InspectContentRevision(recipe),
+                    StructuredRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid())).Content;
             }
             await check(factory, content);
         });
@@ -90,7 +90,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             Assert.False(saved.RotationHumanOff);
             Assert.False(saved.CookedSuppressed);
             Assert.Equal("Human", saved.RotationSource);
-            var content = CanonicalRecipeContentStore.Read(saved)!;
+            var content = StructuredRecipeContentStore.Read(saved)!;
             Assert.Equal("250", content.IngredientLines[0].AmountText);
             var baseline = JsonSerializer.Serialize(saved);
             var operations = await db.CanonicalRecipeOperations.CountAsync();
@@ -125,7 +125,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
-            var content = CanonicalRecipeContentStore.Read(saved)!;
+            var content = StructuredRecipeContentStore.Read(saved)!;
             Assert.Equal(5, content.Servings);
             Assert.Equal(5, saved.Servings);
             Assert.NotEqual(before.ContentRevision, content.ContentRevision);
@@ -166,7 +166,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             var pastaId = await GroceryTestRows.CheckAsync(client, monday, "pasta");
             var sauceId = await GroceryTestRows.CheckAsync(client, monday, "sauce");
             string acknowledged;
-            CanonicalRecipeContent current;
+            StructuredRecipeContent current;
             using (var scope = factory.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
@@ -174,7 +174,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
                 using var baselines = JsonDocument.Parse(plan.GroceryCheckedDemandBaselines);
                 acknowledged = baselines.RootElement.GetProperty(pastaId).GetRawText();
                 Assert.False(baselines.RootElement.GetProperty(pastaId).GetProperty("QuantityComplete").GetBoolean());
-                current = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+                current = StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             }
             var completed = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
             {
@@ -231,7 +231,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
-            var content = CanonicalRecipeContentStore.Read(saved)!;
+            var content = StructuredRecipeContentStore.Read(saved)!;
             Assert.Equal(before.SourceRevision, content.SourceRevision);
             Assert.Equal(before.IngredientLines.Select(x => x.Id), content.IngredientLines.Select(x => x.Id));
             Assert.Equal(JsonSerializer.Serialize(before.IngredientLines[1]), JsonSerializer.Serialize(content.IngredientLines[1]));
@@ -277,7 +277,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             Assert.Equal(HttpStatusCode.Conflict, oldFull.StatusCode);
             using var scope = factory.Services.CreateScope();
             var saved = await scope.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
-            Assert.Equal(JsonSerializer.Serialize(before), JsonSerializer.Serialize(CanonicalRecipeContentStore.Read(saved)));
+            Assert.Equal(JsonSerializer.Serialize(before), JsonSerializer.Serialize(StructuredRecipeContentStore.Read(saved)));
             Assert.NotEqual("Must not save", saved.Name);
             Assert.NotEqual("Must not save", saved.Description);
         });
@@ -316,7 +316,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             Assert.Equal(baseline, saved.GroceryCheckedDemandBaselines);
 
             // Accent-stripped fallback text is not proof of unchanged purchase meaning.
-            var beforeLabel = CanonicalRecipeContentStore.Read(await after.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+            var beforeLabel = StructuredRecipeContentStore.Read(await after.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             var relabel = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
             {
                 expectedContentRevision = beforeLabel.ContentRevision,
@@ -336,7 +336,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
 
             // A new second bucket creates a structural split: neither successor
             // inherits the prior purchase acknowledgement, even with shared names.
-            var current = CanonicalRecipeContentStore.Read(await after.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+            var current = StructuredRecipeContentStore.Read(await after.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             var split = new RecipeIngredientLineInput
             {
                 ClientId = "split-row",
@@ -363,7 +363,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             Assert.All(successors, row => Assert.NotEqual(beforeSplitId, row.RowId));
             var checks = JsonSerializer.Deserialize<Dictionary<string, bool>>(splitPlan.GroceryState)!;
             Assert.All(successors, row => Assert.False(checks[row.RowId]));
-            var splitContent = CanonicalRecipeContentStore.Read(await splitScope.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+            var splitContent = StructuredRecipeContentStore.Read(await splitScope.ServiceProvider.GetRequiredService<RecipeDbContext>().Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             var mergeResponse = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new
             {
                 expectedContentRevision = splitContent.ContentRevision,
@@ -421,8 +421,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
             Assert.Equal("", saved.Description); Assert.Equal("", saved.CuisineType); Assert.Empty(saved.MealTypes!);
             Assert.Equal("Supper", saved.Category); Assert.Equal(4, saved.Servings);
-            var store = scope.ServiceProvider.GetRequiredService<CanonicalRecipeContentStore>();
-            var content = CanonicalRecipeContentStore.Read(saved)!;
+            var store = scope.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>();
+            var content = StructuredRecipeContentStore.Read(saved)!;
             await Assert.ThrowsAsync<RecipeContentConflictException>(() => store.EditAsync(Id, "stale-source", Guid.NewGuid(),
                 new UpdateRecipeDto { ExpectedContentRevision = content.ContentRevision, Name = "Must not save", IngredientLines = JsonSerializer.SerializeToElement(Array.Empty<object>()) }));
             db.ChangeTracker.Clear();

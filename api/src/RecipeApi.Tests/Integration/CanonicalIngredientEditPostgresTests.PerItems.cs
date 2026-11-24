@@ -13,7 +13,7 @@ namespace RecipeApi.Tests.Integration;
 
 public sealed partial class CanonicalIngredientEditPostgresTests
 {
-    private static async Task<CanonicalRecipeContent> SeedCookingPerItem(TestWebApplicationFactory factory, CanonicalRecipeContent before)
+    private static async Task<StructuredRecipeContent> SeedCookingPerItem(TestWebApplicationFactory factory, StructuredRecipeContent before)
     {
         var revision = Guid.NewGuid().ToString("N"); var countId = Guid.NewGuid();
         var count = before.IngredientLines[0] with { Description = "pieces", Amount = QuantityMath.Parse("4"), AmountText = "4",
@@ -34,7 +34,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
         recipe.CanonicalContent = JsonSerializer.Serialize(seeded, Json);
-        recipe.Ingredients = JsonSerializer.Serialize(seeded.IngredientLines.Select(CanonicalRecipeContentStore.Render));
+        recipe.Ingredients = JsonSerializer.Serialize(seeded.IngredientLines.Select(StructuredRecipeContentStore.Render));
         await db.SaveChangesAsync(); return seeded;
     }
 
@@ -49,13 +49,13 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     expectedContentRevision = current.ContentRevision, ingredientLines = new[] { Row(current.IngredientLines[0], count), Row(current.IngredientLines[1], "3") }
                 })).StatusCode);
                 using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                current = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+                current = StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
                 foreach (var target in new[] { 6, 4, 2 }) {
                     var preview = await client.GetFromJsonAsync<JsonElement>($"/api/recipes/{Id}/ingredient-preview?targetServings={target}");
                     var projection = preview.GetProperty("instructionProjection");
                     Assert.Equal(2, projection.GetProperty("validatedUses").GetInt32());
                     Assert.Equal(0, projection.GetProperty("uncertainUses").GetInt32());
-                    var expectedCount = CanonicalRecipeContentStore.Render(current.IngredientLines[0] with { Amount = QuantityMath.Scale(current.IngredientLines[0].Amount, target, 4), Description = "", AmountText = null }).TrimEnd();
+                    var expectedCount = StructuredRecipeContentStore.Render(current.IngredientLines[0] with { Amount = QuantityMath.Scale(current.IngredientLines[0].Amount, target, 4), Description = "", AmountText = null }).TrimEnd();
                     Assert.Equal(before.InstructionSections[0].Steps[0].Text.Replace("4 pieces", expectedCount), projection.GetProperty("sections")[0].GetProperty("steps")[0].GetProperty("text").GetString());
                 }
                 Assert.Equal(before.InstructionSections[0].Steps[0].Text, current.InstructionSections[0].Steps[0].Text);

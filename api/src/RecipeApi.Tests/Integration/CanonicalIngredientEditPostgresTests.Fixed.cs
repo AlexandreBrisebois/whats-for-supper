@@ -14,7 +14,7 @@ namespace RecipeApi.Tests.Integration;
 
 public sealed partial class CanonicalIngredientEditPostgresTests
 {
-    private static async Task<CanonicalRecipeContent> SeedCookingFixed(TestWebApplicationFactory factory, CanonicalRecipeContent before)
+    private static async Task<StructuredRecipeContent> SeedCookingFixed(TestWebApplicationFactory factory, StructuredRecipeContent before)
     {
         before = await SeedCookingAllocation(factory, before, true);
         var steps = before.InstructionSections[0].Steps.ToArray();
@@ -31,7 +31,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
         recipe.CanonicalContent = JsonSerializer.Serialize(content, Json);
-        recipe.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(CanonicalRecipeContentStore.Render));
+        recipe.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render));
         await db.SaveChangesAsync(); return content;
     }
 
@@ -50,7 +50,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     });
                     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
                     using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                    current = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+                    current = StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
                     Assert.Equal(HttpStatusCode.Conflict, (await client.PatchAsJsonAsync($"/api/recipes/{Id}", new {
                         expectedContentRevision = before.ContentRevision, ingredientLines = new[] { Row(before.IngredientLines[0], "9") }
                     })).StatusCode);

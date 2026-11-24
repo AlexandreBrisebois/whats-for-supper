@@ -241,7 +241,7 @@ export function useScheduleStream() {
     // pending to ready without polling.
     source.addEventListener('recipe_ready', (e: MessageEvent) => {
       console.log('[SSE] Received "recipe_ready" event');
-      const { recipeId, name, imageUrl } = JSON.parse(e.data);
+      const { recipeId, name, imageUrl, isSuspectedDuplicate } = JSON.parse(e.data);
       const captureStore = useCaptureStore.getState();
       const pending = captureStore.getPending(recipeId);
       if (pending) {
@@ -251,6 +251,7 @@ export function useScheduleStream() {
           name: name ?? pending.name ?? recipeId,
           imageUrl,
           type: 'ready',
+          ...(isSuspectedDuplicate === true ? { isSuspectedDuplicate: true } : {}),
         });
       }
       useGotoStore.getState().markReady(recipeId);

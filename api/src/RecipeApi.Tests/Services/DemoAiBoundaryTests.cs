@@ -107,9 +107,7 @@ public class DemoAiBoundaryTests
         await File.WriteAllBytesAsync(hero, [1, 2, 3]);
         try
         {
-            using var db = TestDbContextFactory.Create();
-            var publication = TestPublicationStore.Create(db, new LocalStorageProvider(new DataRootResolver(config), recipes), new SystemClock());
-            var agent = new RecipeHeroAgent(publication, config, NullLogger<RecipeHeroAgent>.Instance);
+            var agent = new RecipeHeroAgent(new LocalRecipeStore(recipes, NullLogger<LocalRecipeStore>.Instance), config, NullLogger<RecipeHeroAgent>.Instance);
             await Assert.ThrowsAnyAsync<InvalidOperationException>(() => agent.CreateHeroImageAsync(id, force: true));
             var retained = await File.ReadAllBytesAsync(hero);
             Assert.Equal(new byte[] { 1, 2, 3 }, retained);
@@ -136,8 +134,7 @@ public class DemoAiBoundaryTests
         using var handler = new SyntheticHandler("""{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/webp","data":"BAUG"}}]}}]}""", forbidden: demo);
         using var db = TestDbContextFactory.Create();
         db.Recipes.Add(new Recipe { Id = id }); await db.SaveChangesAsync();
-        var publication = TestPublicationStore.Create(db, new LocalStorageProvider(new DataRootResolver(config), recipes), new SystemClock());
-        var agent = new RecipeHeroAgent(publication, config, NullLogger<RecipeHeroAgent>.Instance, new ClientFactory(handler));
+        var agent = new RecipeHeroAgent(new LocalRecipeStore(recipes, NullLogger<LocalRecipeStore>.Instance), config, NullLogger<RecipeHeroAgent>.Instance, new ClientFactory(handler));
         try
         {
             if (demo)

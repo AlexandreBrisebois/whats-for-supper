@@ -84,9 +84,10 @@ public class RecipeAgentPromptSelectionTests
             promptRepoMock.Object,
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
-            new RecipeFilePublicationStore(db, repo, new SystemClock(), new SupperProjectionInvalidation(db, new SystemClock(),
-                new DeploymentCalendar(new ConfigurationManager())), TestPublicationStore.Vocabulary(db, repo.StorageProvider, new SystemClock())),
-            "ExtractRecipe");
+            "ExtractRecipe",
+            db,
+            recipeRepository: repo,
+            vocabulary: TestPublicationStore.Vocabulary(db, repo.StorageProvider, new SystemClock()));
 
         return (agent, storage, repo, promptRepoMock, chatClientMock, capturedMessages);
     }

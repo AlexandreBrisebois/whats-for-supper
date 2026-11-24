@@ -170,7 +170,7 @@ public class ApplicationClockTests
         await using var db = TestDbContextFactory.Create();
         var storage = new InMemoryStorageProvider();
         await storage.SaveAsync("workflows", "clock.yaml", "name: clock\ntasks:\n  - name: work\n    processor: Clock\n");
-        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db, RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(db, storage, clock));
+        var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), db);
         var due = clock.UtcNow.AddHours(1);
         var instance = await orchestrator.TriggerAsync("clock", new(), due);
         Assert.Equal(clock.UtcNow, instance.CreatedAt);

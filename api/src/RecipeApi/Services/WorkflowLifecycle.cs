@@ -128,7 +128,7 @@ internal static class WorkflowLifecycle
             OperationId = operationId,
             Disposition = disposition,
             Payload = payload,
-            PayloadHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(payload)))),
+            PayloadHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(payload)))),
             CreatedAt = now
         });
     }
@@ -162,7 +162,7 @@ internal static class WorkflowLifecycle
     private sealed record RetainedReport(Guid RecipeId, Guid? LastWorkflowInstanceId, Guid? RepairIntentId);
     private sealed record RetainedPayload(int Version, string ExecutionDisposition, RetainedWorkflow Workflow,
         WorkflowChildIntent[] ChildCommands, WorkflowResetIntent[] ResetCommands, WorkflowProcessorAttempt[] ProcessorAttempts,
-        RecipeRepairIntent[] RepairCommands, RecipeFilePublication[] Publications, CanonicalRecipeOperation[] CanonicalOperations,
+        RecipeRepairIntent[] RepairCommands, RecipeFilePublication[] Publications, StructuredRecipeOperation[] CanonicalOperations,
         RetainedReport[] Reports, MaintenanceCommand? MaintenanceCommand);
     private static readonly JsonSerializerOptions RetainedJson = new(JsonDefaults.CamelCase)
     {
@@ -190,7 +190,7 @@ internal static class WorkflowLifecycle
         var payload = WorkflowProcessorHistory.ReadObservation<RetainedPayload>(record.Payload, RetainedJson);
         if (record.Id == Guid.Empty || record.OperationId == Guid.Empty || record.CreatedAt == default
             || record.Disposition is not ("cleared" or "pruned") || record.PayloadHash != Convert.ToHexString(SHA256.HashData(
-                Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(record.Payload))))
+                Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(record.Payload))))
             || payload.Version != 1 || payload.ExecutionDisposition != "inert" || payload.Workflow is not { } workflow
             || workflow.Id != record.Id || workflow.Tasks is null || payload.ChildCommands is null || payload.ResetCommands is null
             || payload.ProcessorAttempts is null || payload.RepairCommands is null || payload.Publications is null
@@ -211,23 +211,12 @@ internal static class WorkflowLifecycle
         var tasks = workflow.Tasks.Select(x => x.Restore()).ToArray();
         var parentObservations = tasks.Concat(payload.ResetCommands.Select(WorkflowReset.RetainedTask))
             .Concat(payload.ProcessorAttempts.Select(WorkflowProcessorHistory.RetainedTask)).ToArray();
-        var references = RecipeFilePublicationStore.VocabularyReferences(new WorkflowInstance
-        {
-            Id = workflow.Id,
-            WorkflowId = workflow.WorkflowId,
-            Status = workflow.Status,
-            Parameters = workflow.Parameters,
-            RecipePublicationCapture = workflow.RecipePublicationCapture,
-            CreatedAt = workflow.CreatedAt,
-            UpdatedAt = workflow.UpdatedAt,
-            Tasks = tasks
-        }).ToList();
+        var references = new List<FoodVocabularyReference>();
         references.AddRange(payload.ChildCommands.SelectMany(x => WorkflowOrchestrator.VocabularyReferences(x, parentObservations)));
         references.AddRange(payload.ResetCommands.SelectMany(WorkflowReset.VocabularyReferences));
         references.AddRange(payload.ProcessorAttempts.SelectMany(WorkflowProcessorHistory.VocabularyReferences));
         references.AddRange(payload.RepairCommands.SelectMany(RecipeReportRepairIntent.VocabularyReferences));
-        references.AddRange(payload.Publications.SelectMany(RecipeFilePublicationStore.VocabularyReferences));
-        references.AddRange(payload.CanonicalOperations.SelectMany(CanonicalRecipeContentStore.VocabularyReferences));
+        references.AddRange(payload.CanonicalOperations.SelectMany(StructuredRecipeContentStore.VocabularyReferences));
         return references.Distinct().ToArray();
     }
 

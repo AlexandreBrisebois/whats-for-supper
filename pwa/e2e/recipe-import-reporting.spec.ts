@@ -696,4 +696,182 @@ test.describe('Recipe import issue reporting', () => {
     await expect(page.getByTestId('recipe-import-issue-status-reported')).toHaveCount(0);
     expect(synthesized.importIssue).toBeNull();
   });
+
+  test('Paired Duplicate Review opens from duplicate toast, detail badge, and Review issue and resolves all three outcomes', async ({
+    page,
+  }) => {
+    await authenticate(page);
+    await setupCommonRoutes(page);
+
+    const newRecipeId = MOCK_IDS.RECIPE_LASAGNA;
+    const existingRecipeId = MOCK_IDS.RECIPE_CARBONARA;
+    let deletedIds: string[] = [];
+    let resolvedReportIds: string[] = [];
+    let currentNewRecipe: RecipeDto = builders.recipe({
+      id: newRecipeId,
+      name: 'Weeknight Carbonara',
+      description: 'Newly captured copy.',
+      ingredients: ['Spaghetti', 'Eggs', 'Pancetta'],
+      isReady: true,
+      importIssue: {
+        reasons: [RecipeImportIssueReasonObject.Duplicate],
+        note: null,
+        status: RecipeImportIssueStatusObject.Reported,
+        isReimporting: false,
+        reimportFailureMessage: null,
+        reimportFailureImportId: null,
+        suspectedDuplicateRecipeId: existingRecipeId,
+      },
+    });
+    const existingRecipe: RecipeDto = builders.recipe({
+      id: existingRecipeId,
+      name: 'Family Carbonara',
+      description: 'Existing cookbook copy.',
+      ingredients: ['Spaghetti', 'Eggs', 'Pancetta'],
+      isReady: true,
+      importIssue: null,
+    });
+
+    await page.route('**/api/recipes/search', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            topPick: null,
+            results: [searchResult(currentNewRecipe, currentNewRecipe.importIssue?.status ?? null)],
+            appliedFilters: {},
+            searchMode: 'explicit',
+            resultPath: 'lexical-only',
+          },
+        }),
+      });
+    });
+
+    await page.route(`**/api/recipes/${existingRecipeId}`, async (route) => {
+      if (route.request().method() === 'DELETE') {
+        deletedIds.push(existingRecipeId);
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ recipe: existingRecipe }),
+      });
+    });
+
+    await page.route(`**/api/recipes/${newRecipeId}**`, async (route) => {
+      const pathname = new URL(route.request().url()).pathname;
+      const method = route.request().method();
+      if (pathname === `/api/recipes/${newRecipeId}/import-report` && method === 'DELETE') {
+        resolvedReportIds.push(newRecipeId);
+        currentNewRecipe = { ...currentNewRecipe, importIssue: null };
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: currentNewRecipe }),
+        });
+        return;
+      }
+      if (pathname === `/api/recipes/${newRecipeId}` && method === 'DELETE') {
+        deletedIds.push(newRecipeId);
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+        return;
+      }
+      if (pathname === `/api/recipes/${newRecipeId}` && method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: currentNewRecipe }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+
+    let releaseSse!: () => void;
+    const sseGate = new Promise<void>((resolve) => {
+      releaseSse = resolve;
+    });
+    await page.route(/\/(?:backend\/)?api\/stream/, async (route) => {
+      await sseGate;
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/event-stream',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        },
+        body:
+          `event: connected\ndata: ${JSON.stringify({ schedule: { weekOffset: 0, days: [] } })}\n\n` +
+          `event: recipe_ready\ndata: ${JSON.stringify({
+            type: 'recipe_ready',
+            recipeId: newRecipeId,
+            name: 'Weeknight Carbonara',
+            imageUrl: null,
+            isSuspectedDuplicate: true,
+          })}\n\n`,
+      });
+    });
+
+    // 1. Entry via duplicate completion toast -> Keep both recipes
+    await page.goto('/home');
+    await page.waitForFunction(() => Boolean((window as any).__captureStore));
+    await page.evaluate((id) => {
+      (window as any).__captureStore.getState().addPending({
+        recipeId: id,
+        name: 'Weeknight Carbonara',
+      });
+    }, newRecipeId);
+    releaseSse();
+    await expect(page.getByText('Possible duplicate · Tap to review')).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByRole('button', { name: 'View Weeknight Carbonara' }).click();
+    await expect(page.getByTestId('paired-duplicate-review-sheet')).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByTestId('duplicate-card-new')).toContainText('Weeknight Carbonara');
+    await expect(page.getByTestId('duplicate-card-existing')).toContainText('Family Carbonara');
+
+    await page.getByTestId('duplicate-keep-both-btn').click();
+    await expect(page.getByTestId('paired-duplicate-review-sheet')).toHaveCount(0);
+    expect(resolvedReportIds).toEqual([newRecipeId]);
+
+    // Restore duplicate issue for entry path 2: detail header badge -> Keep existing · move new to Bin
+    currentNewRecipe = {
+      ...currentNewRecipe,
+      importIssue: {
+        reasons: [RecipeImportIssueReasonObject.Duplicate],
+        note: null,
+        status: RecipeImportIssueStatusObject.Reported,
+        isReimporting: false,
+        reimportFailureMessage: null,
+        reimportFailureImportId: null,
+        suspectedDuplicateRecipeId: existingRecipeId,
+      },
+    };
+    await page.goto(`/recipes?open=${newRecipeId}`);
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await page.getByTestId('detail-import-issue-trigger').click();
+    await expect(page.getByTestId('paired-duplicate-review-sheet')).toBeVisible();
+    await page.getByTestId('duplicate-keep-existing-btn').click();
+    await expect(page.getByTestId('paired-duplicate-review-sheet')).toHaveCount(0);
+    expect(deletedIds).toEqual([newRecipeId]);
+
+    // Entry path 3: Review issue in gear menu -> Keep new · move existing to Bin
+    deletedIds = [];
+    resolvedReportIds = [];
+    await page.goto(`/recipes?open=${newRecipeId}`);
+    await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+    await page.getByTestId('action-gear-menu').click();
+    await page.getByTestId('action-report-import-issue').click();
+    await expect(page.getByTestId('paired-duplicate-review-sheet')).toBeVisible();
+    await page.getByTestId('duplicate-keep-new-btn').click();
+    await expect(page.getByTestId('paired-duplicate-review-sheet')).toHaveCount(0);
+    expect(deletedIds).toEqual([existingRecipeId]);
+    expect(resolvedReportIds).toEqual([newRecipeId]);
+  });
 });

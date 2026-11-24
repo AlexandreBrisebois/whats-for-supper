@@ -19,7 +19,7 @@ internal static class RecipeContentRevision
 
     private static string? Stable(string? value)
     {
-        try { return value is null ? null : CanonicalRecipeContentStore.NormalizeJson(value); }
+        try { return value is null ? null : StructuredRecipeContentStore.NormalizeJson(value); }
         catch (JsonException) { return value; }
     }
 }

@@ -250,6 +250,7 @@ components:
         isReimporting: { type: boolean }
         reimportFailureMessage: { type: [string, 'null'] }
         reimportFailureImportId: { type: [string, 'null'], format: uuid }
+        suspectedDuplicateRecipeId: { type: [string, 'null'], format: uuid }
       examples:
         - reasons: [duplicate]
           note: 'This is the same recipe as our family lasagna.'

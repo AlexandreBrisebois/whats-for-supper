@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { AlertCircle, RotateCcw, X } from 'lucide-react';
+import { AlertCircle, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { retryCaptureFailure } from '@/lib/api/captures';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -11,14 +11,8 @@ import { useLocale } from '@/components/common/LocaleProvider';
 const MAX_VISIBLE_BANNERS = 2;
 
 /**
- * RecipeFailureBanner — persistent recovery banner for recipe_failed events.
- *
- * - Does NOT auto-dismiss. Toasts from the top so it does not fight bottom navigation.
- * - Max 2 banners visible simultaneously (oldest dismissed first if 3+ failures).
- * - Retry → resumes the failed workflow instance.
- * - Dismiss → hides without retry.
- *
- * Mounted at layout level (`pwa/src/app/(app)/layout.tsx`).
+ * RecipeFailureBanner persistent recovery card for recipe_failed events.
+ * Uses Era 3 Hearth recovery styling without left-border stripes or duplicate close icons.
  */
 export function RecipeFailureBanner() {
   const { locale } = useLocale();
@@ -27,11 +21,7 @@ export function RecipeFailureBanner() {
   const dismissNotification = useLibraryStore((s) => s.dismissNotification);
   const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
 
-  // Only show 'failed' notifications
   const failedNotifications = notifications.filter((n) => n.type === 'failed');
-
-  // Cap at MAX_VISIBLE_BANNERS — show the most recent ones (last in array = newest)
-  // If there are more than the cap, the oldest are not shown (they were dismissed first)
   const visible = failedNotifications.slice(-MAX_VISIBLE_BANNERS);
 
   if (visible.length === 0) return null;
@@ -83,24 +73,24 @@ export function RecipeFailureBanner() {
             >
               <div
                 data-testid={`recipe-failure-banner-${notification.recipeId}`}
-                className="w-full overflow-hidden rounded-2xl border border-hearth-line border-l-4 border-l-hearth-fill bg-white shadow-card"
+                className="w-full overflow-hidden rounded-2xl border border-hearth-line bg-terracotta-50 shadow-card"
               >
-                <div className="flex items-start gap-3 p-3">
+                <div className="flex items-start gap-3 p-3.5">
                   <div className="mt-0.5 flex-shrink-0">
-                    <div className="h-8 w-8 rounded-full bg-terracotta-50 flex items-center justify-center text-hearth-ink">
+                    <div className="h-8 w-8 rounded-full bg-white border border-hearth-line flex items-center justify-center text-hearth-ink">
                       <AlertCircle size={16} aria-hidden="true" />
                     </div>
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-ink-body leading-snug">
-                      {t('capture.failure.prefix', "Recipe couldn't be saved —", locale)}{' '}
+                      {t('capture.failure.prefix', "Recipe couldn't be saved:", locale)}{' '}
                       <span className="font-bold">{recipeName}</span>.{' '}
                       <span className="text-hearth-ink font-medium">
                         {t('capture.failure.tapRetry', 'Tap to try again.', locale)}
                       </span>
                     </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={handleRetry}
@@ -117,26 +107,12 @@ export function RecipeFailureBanner() {
                         type="button"
                         onClick={handleDismiss}
                         data-testid={`recipe-failure-dismiss-${notification.recipeId}`}
-                        className="min-h-12 min-w-12 rounded-xl border border-chrome-line bg-white px-4 py-2 text-xs font-semibold text-ink-muted transition-colors hover:bg-charcoal-50 hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
+                        className="min-h-12 min-w-12 rounded-xl border border-chrome-line bg-white px-4 py-2 text-xs font-semibold text-ink-body transition-colors hover:bg-charcoal-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
                       >
                         {t('capture.failure.dismiss', 'Dismiss', locale)}
                       </button>
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={handleDismiss}
-                    aria-label={t(
-                      'capture.failure.dismissAria',
-                      'Dismiss failure notification',
-                      locale
-                    )}
-                    data-testid={`recipe-failure-dismiss-icon-${notification.recipeId}`}
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-charcoal-100 hover:text-ink-body focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
-                  >
-                    <X size={16} aria-hidden="true" />
-                  </button>
                 </div>
               </div>
             </motion.div>

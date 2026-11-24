@@ -18,14 +18,14 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         await WithEditor(async (factory, before) =>
         {
             using var client = factory.CreateAuthenticatedClient();
-            async Task<CanonicalRecipeContent> Read()
+            async Task<StructuredRecipeContent> Read()
             {
                 using var scope = factory.Services.CreateScope();
-                return CanonicalRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
+                return StructuredRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
                     .Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             }
             const string fixedText = "For any number of portions, use exactly 1 tbsp oil.";
-            object Steps(CanonicalRecipeContent current, string text) => new
+            object Steps(StructuredRecipeContent current, string text) => new
             {
                 expectedContentRevision = current.ContentRevision,
                 instructionSections = new[] { new { id = current.InstructionSections[0].Id,
@@ -133,10 +133,10 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         await WithEditor(async (factory, before) =>
         {
             using var client = factory.CreateAuthenticatedClient();
-            async Task<CanonicalRecipeContent> Read()
+            async Task<StructuredRecipeContent> Read()
             {
                 using var scope = factory.Services.CreateScope();
-                return CanonicalRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
+                return StructuredRecipeContentStore.Read(await scope.ServiceProvider.GetRequiredService<RecipeDbContext>()
                     .Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             }
             const string fixedText = "Quel que soit le nombre de portions, utilisez exactement 1 c. à soupe d’huile.";
@@ -175,7 +175,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             using var readScope = factory.Services.CreateScope();
             var db = readScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id);
-            current = CanonicalRecipeContentStore.Read(saved)!;
+            current = StructuredRecipeContentStore.Read(saved)!;
             Assert.Equal(winner == 0 ? "Ingredient winner" : "Instruction winner", saved.Name);
             Assert.Equal(winner == 0 ? "1/2" : "2", current.IngredientLines[0].AmountText);
             Assert.Equal(winner == 0 ? fixedText : correctedText, current.InstructionSections[0].Steps[0].Text);

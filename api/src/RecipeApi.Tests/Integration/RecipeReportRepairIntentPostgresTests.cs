@@ -22,9 +22,6 @@ public sealed class RecipeReportRepairIntentPostgresTests(ITestOutputHelper outp
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public Task HistoricalFeedbackWithoutCapture_UnchangedSaveNeverBuildsTodaysCommand() => RunAsync(x => RecipeReportRepairIntentTests.CheckHistoricalFeedbackAsync(x));
 
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task OriginalUrlCommand_CannotCaptureAChangedSourceAsItsBaseline() => RunAsync(x => RecipeReportRepairIntentTests.CheckChangedSourceAsync(x));
-
     private Task RunAsync(Func<Action<DbContextOptionsBuilder<RecipeDbContext>>, Task> check) =>
         new TomorrowPushPostgresTests(output).WithDatabase(settings =>
             check(builder => builder.UseNpgsql(settings.ConnectionString)));

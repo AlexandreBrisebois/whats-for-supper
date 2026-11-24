@@ -30,7 +30,7 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
     {
         var existing = string.IsNullOrWhiteSpace(existingCanonicalContent)
             ? null
-            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, CanonicalJson);
+            : JsonSerializer.Deserialize<StructuredRecipeContent>(existingCanonicalContent, CanonicalJson);
         var existingId = existing is { IngredientLines.Count: > 0 }
             ? existing.IngredientLines[0].Id
             : Guid.NewGuid();
@@ -47,7 +47,7 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
                         [])).ToArray())
             }
             : existing?.InstructionSections ?? [];
-        var content = new CanonicalRecipeContent(2, Guid.NewGuid().ToString("N"), "source", servings, [
+        var content = new StructuredRecipeContent(2, Guid.NewGuid().ToString("N"), "source", servings, [
             new RecipeIngredientLineDto
             {
                 Id = existingId,

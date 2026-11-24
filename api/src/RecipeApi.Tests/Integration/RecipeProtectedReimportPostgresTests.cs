@@ -1,111 +1,145 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using RecipeApi.Data;
+using RecipeApi.Dto;
+using RecipeApi.Infrastructure;
+using RecipeApi.Models;
+using RecipeApi.Services;
+using RecipeApi.Services.Agents;
 using RecipeApi.Tests.Infrastructure;
-using RecipeApi.Tests.Services;
+using Xunit;
 using Xunit.Abstractions;
 
 namespace RecipeApi.Tests.Integration;
 
 public sealed class RecipeProtectedReimportPostgresTests(ITestOutputHelper output)
 {
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PhotoIngredientRepair_UpdatesQualifiedSourceFacts() => WithPostgres("source");
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PhotoIngredientRepair_PreservesCapturedHumanClearsPrivateNameShoppingAndInstructions() => WithPostgres("protected-before");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PhotoIngredientRepair_RejectsHumanClearAfterAcceptedCapture() => WithPostgres("stale-after");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PhotoIngredientRepair_RequalifiesCapturedMappingWithoutChangingItsDecision() => WithPostgres("mapped-source");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PhotoIngredientRepair_DoesNotRematchExplicitIdentityClearEvenForAnExactAlias() => WithPostgres("mapped-clear-before");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PhotoIngredientRepair_FollowupsPreserveMediaAndProduceOneOrdinaryDemand() => WithPostgres("followup");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PhotoIngredientRepair_InterruptedDeliveryReplaysWithoutOverwritingLaterHumanFields() => WithPostgres("delivery-replay");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PhotoIngredientRepair_NewerHumanFieldsRejectPendingDelivery() => WithPostgres("delivery-newer-pending");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task PhotoIngredientRepair_DoesNotSelectStaleMetadataAfterCommittedUserEditSyncFailure() => WithPostgres("metadata-sync-failure");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_UpdatesFactsAndPreservesMediaOneDemand() => WithSourceChannels("followup");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_PreservesHumanClearsAndOriginalSteps() => WithSourceChannels("protected-before");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_RejectsNewerContent() => WithSourceChannels("stale-after");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_PreservesCapturedVocabularyDecision() => WithSourceChannels("mapped-source");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_DoesNotRestoreClearedIdentity() => WithSourceChannels("mapped-clear-before");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_ProviderFailurePreservesOriginals() => WithSourceChannels("provider-failure");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_CancellationPreservesOriginals() => WithSourceChannels("provider-cancellation");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_ResumesInterruptedDeliveryWithoutProviderReplay() => WithSourceChannels("delivery-replay");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_RejectsPendingDeliveryAfterHumanEdit() => WithSourceChannels("delivery-newer-pending");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_RejectsLateProviderAfterHumanSave() => WithSourceChannels("stale-during-provider");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_RejectsSourceChangeDuringProvider() => WithSourceChannels("source-during-provider");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public async Task RetainedSourceRepair_RejectsMalformedCandidateOrChangedCommand()
-    {
-        foreach (var mode in new[] { "reordered", "duplicate", "changed-shape", "report-note-mismatch", "report-reasons-mismatch" })
-            await WithSourceChannels(mode);
-    }
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_PreservesRenamedHumanRowAndRepairsUntouchedRows() => WithSourceChannels("renamed-before");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_UpdatesProvenOriginalStepsAndReevaluatesScaling() => WithSourceChannels("steps-source");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public async Task RetainedSourceRepair_AbstainsOnHumanRevertedAndMissingStepAuthority()
-    {
-        foreach (var mode in new[] { "steps-protected", "steps-reverted", "steps-missing-proof" }) await WithSourceChannels(mode);
-    }
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_RejectsLateHumanStepSave() => WithSourceChannels("steps-late-human");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_RequiresIndependentStepSourceForCommitAndRecovery() => WithSourceChannels("steps-forged-proof");
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task RetainedSourceRepair_ChangedFeedbackCanRepairPreviouslyCorrectedSourceSteps() => WithSourceChannels("steps-repeat");
-
-    private async Task WithSourceChannels(string mode)
-    {
-        foreach (var channel in new[] { "url", "pdf" }) await WithPostgres(mode, channel);
-    }
-
-    private Task WithPostgres(string mode, string channel = "photo") => new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
-    {
-        await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(configurationOverrides: new()
+    public Task GuidedIngredientRepair_PreservesHumanEditedIngredientsAndWritesSchemaOrgRecipe() =>
+        new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
         {
-            ["Tests:LocalRecipeStore"] = "true", ["Tests:RealWorkflowOrchestrator"] = "true",
-            ["Tests:PostgresConnectionString"] = settings.ConnectionString
+            await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(configurationOverrides: new()
+            {
+                ["Tests:LocalRecipeStore"] = "true",
+                ["Tests:RealWorkflowOrchestrator"] = "true",
+                ["Tests:PostgresConnectionString"] = settings.ConnectionString
+            });
+
+            using var scope = factory.Services.CreateScope();
+            var services = scope.ServiceProvider;
+            var db = services.GetRequiredService<RecipeDbContext>();
+            var recipeStore = services.GetRequiredService<IRecipeStore>();
+            var recipeRepository = services.GetRequiredService<RecipeRepository>();
+            var vocabulary = services.GetRequiredService<FoodVocabularyStore>();
+            var clock = services.GetRequiredService<IClock>();
+
+            var recipeId = Guid.NewGuid();
+            const string initialJson = """
+                {
+                  "@context": "https://schema.org/",
+                  "@type": "Recipe",
+                  "name": "Tomato Soup",
+                  "recipeYield": "4 portions",
+                  "recipeIngredient": ["500 g tomatoes", "1 onion"],
+                  "recipeInstructions": [
+                    { "@type": "HowToSection", "itemListElement": [{ "@type": "HowToStep", "text": "Simmer 20 minutes." }] }
+                  ]
+                }
+                """;
+            var (initialContent, initialEvidence) = StructuredRecipeContentStore.FromSchemaOrg(
+                recipeId, initialJson, sourceUrl: null, authority: null, operationId: Guid.NewGuid(), origin: "source");
+
+            // Mark first ingredient as human-protected
+            var lines = initialContent.IngredientLines.ToArray();
+            lines[0] = lines[0] with
+            {
+                Description = "heirloom tomatoes",
+                Provenance = lines[0].Provenance with
+                {
+                    Origin = "human",
+                    ProtectedFields = ["description", "amount", "amountText", "unit"]
+                }
+            };
+            var protectedContent = initialContent with { IngredientLines = lines };
+
+            await recipeStore.SaveOriginalImageAsync(recipeId, 0, "image/jpeg", new MemoryStream([1, 2, 3]), default);
+            await recipeStore.WriteInfoAsync(new RecipeInfo { Id = recipeId, Name = "Tomato Soup", ImageCount = 1, IsReady = true }, default);
+            await recipeStore.WriteRecipeJsonAsync(recipeId, initialJson, default);
+
+            db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Name = "Tomato Soup",
+                ImageCount = 1,
+                IsReady = true,
+                AddedBy = factory.DefaultFamilyMemberId,
+                RawMetadata = initialJson,
+                CanonicalContent = JsonSerializer.Serialize(protectedContent, WebJson),
+                FoodMappingEvidence = initialEvidence,
+                Servings = protectedContent.Servings,
+                Ingredients = JsonSerializer.Serialize(protectedContent.IngredientLines.Select(StructuredRecipeContentStore.Render), WebJson),
+                CreatedAt = clock.UtcNow,
+                UpdatedAt = clock.UtcNow
+            });
+            db.RecipeImportReports.Add(new RecipeImportReport
+            {
+                RecipeId = recipeId,
+                Reasons = ["ingredients"],
+                Note = "Second ingredient should be 2 onions",
+                Status = RecipeImportReportStatus.Reimporting,
+                ReportedBy = factory.DefaultFamilyMemberId,
+                UpdatedBy = factory.DefaultFamilyMemberId,
+                CreatedAt = clock.UtcNow,
+                UpdatedAt = clock.UtcNow
+            });
+            await db.SaveChangesAsync();
+
+            var chat = new Mock<IChatClient>();
+            chat.Setup(c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, """
+                    {
+                      "@context": "https://schema.org/",
+                      "@type": "Recipe",
+                      "name": "Tomato Soup",
+                      "recipeYield": "4 portions",
+                      "recipeIngredient": ["500 g tomatoes", "2 onion"],
+                      "recipeInstructions": [
+                        { "@type": "HowToSection", "itemListElement": [{ "@type": "HowToStep", "text": "Simmer 20 minutes." }] }
+                      ]
+                    }
+                    """)));
+            var prompts = new Mock<IPromptRepository>();
+            prompts.Setup(p => p.GetPrompt(It.IsAny<PromptType>())).Returns("Extract recipe.");
+
+            var agent = new RecipeAgent(chat.Object, prompts.Object, new ConfigurationManager(), NullLogger<RecipeAgent>.Instance,
+                "ExtractRecipe", db, recipeStore, recipeRepository, vocabulary, clock);
+            await agent.ExecuteAsync(new WorkflowTask
+            {
+                TaskId = Guid.NewGuid(),
+                Payload = JsonSerializer.Serialize(new { recipeId, repairReasons = "ingredients", repairNote = "Second ingredient should be 2 onions" })
+            }, CancellationToken.None);
+
+            db.ChangeTracker.Clear();
+            var repaired = await db.Recipes.AsNoTracking().SingleAsync(r => r.Id == recipeId);
+            var repairedContent = StructuredRecipeContentStore.Read(repaired)!;
+            Assert.Contains(repairedContent.IngredientLines, l => l.Description == "heirloom tomatoes");
+            Assert.Contains(repairedContent.IngredientLines, l => l.Description.Contains("onion", StringComparison.OrdinalIgnoreCase));
+
+            var savedJson = await recipeStore.ReadRecipeJsonAsync(recipeId, default);
+            Assert.NotNull(savedJson);
+            using var doc = JsonDocument.Parse(savedJson);
+            Assert.Equal("https://schema.org/", doc.RootElement.GetProperty("@context").GetString());
+            Assert.Equal("Recipe", doc.RootElement.GetProperty("@type").GetString());
+            Assert.False(doc.RootElement.TryGetProperty("format", out _));
+            Assert.False(Directory.Exists(Path.Combine(services.GetRequiredService<RecipesRootResolver>().Root, recipeId.ToString(), ".publications")));
         });
-        await RecipeProtectedReimportTests.QualifyPhotoRepairAsync(factory, mode, channel);
-    });
 }

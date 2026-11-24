@@ -21,7 +21,7 @@ public sealed partial class CanonicalRecipeReadTests
     {
         Id = Guid.NewGuid(), Servings = basis, Ingredients = "[]",
         RawMetadata = """{"recipeIngredient":["77 tsp obsolete"],"supply":[{"name":"obsolete","quantity":77,"unitText":"tsp"}]}""",
-        CanonicalContent = JsonSerializer.Serialize(new CanonicalRecipeContent(2, "saved-content", "saved-source", basis, rows,
+        CanonicalContent = JsonSerializer.Serialize(new StructuredRecipeContent(2, "saved-content", "saved-source", basis, rows,
             [new(Guid.NewGuid(), "Original steps", [new(Guid.NewGuid(), "Cook for 20 minutes at 180 °C in a 20 cm pan.", "saved-text", [])])]))
     };
 

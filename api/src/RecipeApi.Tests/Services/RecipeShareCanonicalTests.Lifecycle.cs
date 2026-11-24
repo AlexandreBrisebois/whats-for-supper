@@ -45,13 +45,15 @@ public sealed partial class RecipeShareCanonicalTests
         var db = services.GetRequiredService<RecipeDbContext>();
         var recipe = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
         var originalRaw = recipe.RawMetadata;
-        var original = CanonicalRecipeContentStore.Read(recipe)!;
+        var original = StructuredRecipeContentStore.Read(recipe)!;
         var originalLines = original.IngredientLines.Select(x => x.Id).ToArray();
         var originalStep = Assert.Single(Assert.Single(original.InstructionSections).Steps);
         Assert.Null(original.Servings);
-        Assert.All(original.IngredientLines, line => Assert.Null(line.Amount));
+        Assert.Equal("200", original.IngredientLines[0].Amount!.Value!.N);
+        Assert.Equal("g", original.IngredientLines[0].Unit?.Text);
+        Assert.Null(original.IngredientLines[1].Amount);
 
-        object Edit(CanonicalRecipeContent baseline, bool clear) => new
+        object Edit(StructuredRecipeContent baseline, bool clear) => new
         {
             expectedContentRevision = baseline.ContentRevision, servings = 4,
             ingredientLines = baseline.IngredientLines.Select((line, index) => new
@@ -67,7 +69,7 @@ public sealed partial class RecipeShareCanonicalTests
         using var saved = await client.PatchAsJsonAsync($"/api/recipes/{id}", Edit(original, clear: false));
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
         db.ChangeTracker.Clear();
-        var corrected = CanonicalRecipeContentStore.Read(await db.Recipes.SingleAsync(x => x.Id == id))!;
+        var corrected = StructuredRecipeContentStore.Read(await db.Recipes.SingleAsync(x => x.Id == id))!;
         Assert.Equal(originalLines, corrected.IngredientLines.Select(x => x.Id));
         Assert.Equal(QuantityMath.Parse("250"), corrected.IngredientLines[0].Amount);
         Assert.Equal("human", corrected.IngredientLines[0].Provenance.Origin);
@@ -100,7 +102,7 @@ public sealed partial class RecipeShareCanonicalTests
         await services.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026, 10, 12), default);
         db.ChangeTracker.Clear();
         var after = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-        var current = CanonicalRecipeContentStore.Read(after)!;
+        var current = StructuredRecipeContentStore.Read(after)!;
         Assert.Null(current.IngredientLines[0].Amount);
         Assert.Null(current.IngredientLines[0].AmountText);
         Assert.Contains("amount", current.IngredientLines[0].Provenance.ProtectedFields);
@@ -114,7 +116,7 @@ public sealed partial class RecipeShareCanonicalTests
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
         Assert.Equal([4, 5, 6], await client.GetByteArrayAsync($"/api/recipes/{id}/original/0"));
         Assert.Equal([1, 2, 3], await services.GetRequiredService<RecipeRepository>().StorageProvider.LoadAsync("recipes", $"{id}/hero.webp"));
-        Assert.Single(await db.RecipeFilePublications.Where(x => x.RecipeId == id).ToListAsync());
+        Assert.Empty(await db.RecipeFilePublications.Where(x => x.RecipeId == id).ToListAsync());
         Assert.Equal(2, await db.CanonicalRecipeOperations.CountAsync(x => x.RecipeId == id));
     }
 }

@@ -43,7 +43,7 @@ public sealed class HouseholdFoodOverrideStore(RecipeDbContext db, IClock clock,
             if (row is not null) await db.Entry(row).ReloadAsync(ct);
             if (row?.Revision != expectedRevision) throw new FoodCategoryConflictException("food_category_conflict", row?.Revision);
             var candidates = (await db.Recipes.AsNoTracking().Where(x => x.CanonicalContent != null).ToArrayAsync(ct))
-                .Where(recipe => CanonicalRecipeContentStore.Read(recipe)!.IngredientLines.Any(line => line.Shopping.FoodId == foodId))
+                .Where(recipe => StructuredRecipeContentStore.Read(recipe)!.IngredientLines.Any(line => line.Shopping.FoodId == foodId))
                 .OrderBy(x => x.Id).ToArray();
             RecipeFoodMapping? qualified = null;
             FoodVocabularyAuthority? qualifiedAuthority = null;
@@ -52,7 +52,7 @@ public sealed class HouseholdFoodOverrideStore(RecipeDbContext db, IClock clock,
                 var recipe = db.Database.IsNpgsql()
                     ? await db.Recipes.FromSql($"SELECT * FROM recipes WHERE id = {candidate.Id} FOR SHARE").AsNoTracking().SingleAsync(ct)
                     : candidate;
-                var content = CanonicalRecipeContentStore.Read(recipe)!;
+                var content = StructuredRecipeContentStore.Read(recipe)!;
                 if (!content.IngredientLines.Any(line => line.Shopping.FoodId == foodId)) continue;
                 var authority = await vocabulary.CaptureAuthorityAsync(recipe.FoodMappingEvidence, ct);
                 try { FoodMappingQualification.Validate(content, recipe.FoodMappingEvidence, authority, recipe.Id); }

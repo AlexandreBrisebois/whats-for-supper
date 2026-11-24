@@ -189,8 +189,7 @@ public sealed class WorkflowLifecyclePostgresTests(ITestOutputHelper output)
                         processor: NoOp
                     """);
                 var clock = new SystemClock();
-                var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), accepting,
-                    RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(accepting, storage, clock));
+                var orchestrator = new WorkflowOrchestrator(clock, new WorkflowRepository(storage), accepting);
                 var admit = orchestrator.TriggerImportAsync(workflow.Id, recipe.Id, "url-import", new() { ["recipeId"] = recipe.Id.ToString() });
                 Assert.NotSame(admit, await Task.WhenAny(admit, Task.Delay(100)));
                 barrier.Release.TrySetResult();
@@ -202,102 +201,6 @@ public sealed class WorkflowLifecyclePostgresTests(ITestOutputHelper output)
             Assert.Empty(await read.WorkflowInstances.ToArrayAsync());
             Assert.Single(await read.WorkflowLifecycleRecords.ToArrayAsync());
         });
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task Clear_RetainsActualReadyJournalIndependentlyOfLaterRecipeCascade() =>
-        new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
-        {
-            await using var factory = await TomorrowPushPostgresTests.CreateFactory(settings);
-            using var scope = factory.Services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Disposable PDF", IsReady = false };
-            db.Recipes.Add(recipe); await db.SaveChangesAsync();
-            var repository = scope.ServiceProvider.GetRequiredService<RecipeRepository>();
-            await repository.SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = recipe.Name }, default);
-            await scope.ServiceProvider.GetRequiredService<IStorageProvider>().SaveAsync("recipes", $"{recipe.Id}/original/source.pdf", "%PDF synthetic original");
-            var workflow = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "url-import", Status = WorkflowStatus.Paused,
-                Parameters = JsonSerializer.Serialize(new Dictionary<string, string> { ["recipeId"] = recipe.Id.ToString() }) };
-            var task = new WorkflowTask { TaskId = Guid.NewGuid(), InstanceId = workflow.Id, TaskName = "ready", ProcessorName = "RecipeReady",
-                Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }), Status = RecipeApi.Models.TaskStatus.Failed };
-            workflow.Tasks.Add(task);
-            var publications = scope.ServiceProvider.GetRequiredService<RecipeFilePublicationStore>();
-            await publications.CaptureLaunchAsync(workflow); db.WorkflowInstances.Add(workflow); await db.SaveChangesAsync();
-            Assert.True(await publications.CompleteReadinessAsync(task, recipe.Id));
-            var original = await db.RecipeFilePublications.AsNoTracking().SingleAsync();
-            Assert.True(original.Delivered);
-            Assert.Equal(CaptureFailureClearResultKind.Cleared, (await scope.ServiceProvider.GetRequiredService<CaptureFailureService>().ClearAsync(workflow.Id)).Kind);
-            db.Recipes.Remove(await db.Recipes.IgnoreQueryFilters().SingleAsync(x => x.Id == recipe.Id)); await db.SaveChangesAsync();
-            db.ChangeTracker.Clear();
-            Assert.Empty(await db.RecipeFilePublications.ToArrayAsync());
-            using var snapshot = JsonDocument.Parse((await db.WorkflowLifecycleRecords.SingleAsync()).Payload);
-            var retained = Assert.Single(snapshot.RootElement.GetProperty("publications").EnumerateArray());
-            Assert.Equal(original.InputHash, retained.GetProperty("inputHash").GetString());
-            Assert.Equal(original.Payload, retained.GetProperty("payload").GetString());
-            Assert.Equal(original.ResultHash, retained.GetProperty("resultHash").GetString());
-            Assert.True(retained.GetProperty("delivered").GetBoolean());
-            Assert.Equal(task.TaskId, retained.GetProperty("operationId").GetGuid());
-        });
-
-    [DeploymentCalendarPostgresTests.CalendarPostgresFact]
-    public Task Clear_DrainsActualReadinessPublicationAndRereadsRecipeBeforeMarkingDeletion() =>
-        new TomorrowPushPostgresTests(output).WithDatabase(async settings =>
-        {
-            var barrier = new ReadinessCommitBarrier();
-            var options = new DbContextOptionsBuilder<RecipeDbContext>().UseNpgsql(settings.ConnectionString).Options;
-            await using var publishing = new RecipeDbContext(new DbContextOptionsBuilder<RecipeDbContext>()
-                .UseNpgsql(settings.ConnectionString).AddInterceptors(barrier).Options);
-            var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Disposable readiness race", Category = "Supper" };
-            var workflow = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "url-import", Status = WorkflowStatus.Paused,
-                Parameters = JsonSerializer.Serialize(new { recipeId = recipe.Id }) };
-            workflow.Tasks.Add(new WorkflowTask { TaskId = Guid.NewGuid(), InstanceId = workflow.Id, TaskName = "failed",
-                ProcessorName = "NoOp", Status = RecipeApi.Models.TaskStatus.Failed });
-            publishing.Recipes.Add(recipe); publishing.WorkflowInstances.Add(workflow); await publishing.SaveChangesAsync();
-            var storage = new InMemoryStorageProvider();
-            await new RecipeRepository(storage).SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = recipe.Name }, default);
-            var readyTask = new WorkflowTask { TaskId = Guid.NewGuid(), InstanceId = Guid.Empty, TaskName = "direct-ready",
-                ProcessorName = "RecipeReady", Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) };
-            var publication = RecipeApi.Tests.Infrastructure.TestPublicationStore.Create(publishing, storage, new SystemClock())
-                .CompleteReadinessAsync(readyTask, recipe.Id);
-            await barrier.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
-            await using var clearing = new RecipeDbContext(options);
-            // This deliberately installs the old observed recipe in the clearing context.
-            Assert.False((await clearing.Recipes.SingleAsync()).IsReady);
-            var clear = new CaptureFailureService(clearing, new SystemClock(), Mock.Of<IWorkflowOrchestrator>()).ClearAsync(workflow.Id);
-            try
-            {
-                Assert.NotSame(clear, await Task.WhenAny(clear, Task.Delay(100)));
-            }
-            finally { barrier.Release.TrySetResult(); }
-            Assert.Equal(CaptureFailureClearResultKind.Cleared, (await clear.WaitAsync(TimeSpan.FromSeconds(10))).Kind);
-            // Delivery may contend with Clear after publication commits, but readiness must remain visible.
-            Assert.True(await publication.WaitAsync(TimeSpan.FromSeconds(10)));
-            await using var read = new RecipeDbContext(options);
-            var saved = await read.Recipes.IgnoreQueryFilters().SingleAsync(x => x.Id == recipe.Id);
-            Assert.True(saved.IsReady);
-            Assert.True(saved.IsDiscoverable);
-            Assert.Null(saved.DeletedAt);
-            Assert.Null(saved.DeleteNote);
-            Assert.True((await read.RecipeFilePublications.SingleAsync()).Delivered);
-            Assert.Single(await read.WorkflowLifecycleRecords.ToArrayAsync());
-            Assert.Single(await read.MaintenanceCommands.ToArrayAsync());
-        });
-
-    private sealed class ReadinessCommitBarrier : DbTransactionInterceptor
-    {
-        internal TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        internal TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private bool entered;
-        public override async ValueTask<InterceptionResult> TransactionCommittingAsync(DbTransaction transaction, TransactionEventData eventData,
-            InterceptionResult result, CancellationToken cancellationToken = default)
-        {
-            if (!entered && eventData.Context!.ChangeTracker.Entries<RecipeFilePublication>().Any())
-            {
-                entered = true; Entered.TrySetResult();
-                await Release.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
-            }
-            return result;
-        }
-    }
 
     private sealed class CommitBarrier : DbTransactionInterceptor
     {

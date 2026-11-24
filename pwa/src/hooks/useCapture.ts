@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 
 import { createRecipe } from '@/lib/api/recipes';
 import { validateImage, validateImageCount } from '@/lib/imageUtils';
+import { t } from '@/locales';
+import { useLocale } from '@/components/common/LocaleProvider';
 
 export type CaptureRating = 0 | 1 | 2 | 3;
 
@@ -26,6 +28,7 @@ export interface UseCaptureReturn {
 }
 
 export function useCapture(): UseCaptureReturn {
+  const { locale } = useLocale();
   const [images, setImages] = useState<File[]>([]);
   const [selectedDishPhotoIndex, setSelectedDishPhotoIndex] = useState<number | null>(null);
   const [rating, setRatingState] = useState<CaptureRating>(0); // Default to Unknown
@@ -136,13 +139,15 @@ export function useCapture(): UseCaptureReturn {
       return result.id;
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : 'Failed to save recipe. Please try again.';
+        err instanceof Error
+          ? err.message
+          : t('capture.saveFailed', 'Failed to save recipe. Please try again.', locale);
       setError(message);
       return null;
     } finally {
       setIsSubmitting(false);
     }
-  }, [images, rating, selectedDishPhotoIndex, notes]);
+  }, [images, rating, selectedDishPhotoIndex, notes, locale]);
 
   const submitUrl = useCallback(
     async (url: string): Promise<string> => {
@@ -152,18 +157,24 @@ export function useCapture(): UseCaptureReturn {
         const { captureUrl } = await import('@/lib/api/recipes');
         const result = await captureUrl(url.trim(), notes.trim() || undefined, rating);
         if (!result.id) {
-          throw new Error('Failed to capture URL. Please try again.');
+          throw new Error(
+            t('capture.urlCaptureFailed', 'Failed to capture URL. Please try again.', locale)
+          );
         }
         return result.id;
-      } catch (err: unknown) {
-        const message = 'Failed to capture URL. Please try again.';
+      } catch {
+        const message = t(
+          'capture.urlCaptureFailed',
+          'Failed to capture URL. Please try again.',
+          locale
+        );
         setError(message);
         throw new Error(message);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [rating, notes]
+    [rating, notes, locale]
   );
 
   const reset = useCallback(() => {

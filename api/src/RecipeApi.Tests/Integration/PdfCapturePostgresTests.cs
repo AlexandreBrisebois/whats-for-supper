@@ -91,7 +91,7 @@ public sealed class PdfCapturePostgresTests : IAsyncLifetime
         var task = Assert.Single(instance.Tasks);
         Assert.Equal("ConvertPdf", task.ProcessorName);
         var renderer = new ControlledRenderer();
-        var processor = new PdfConversionProcessor(scope.ServiceProvider.GetRequiredService<RecipeFilePublicationStore>(), renderer);
+        var processor = new PdfConversionProcessor(store, renderer, db, scope.ServiceProvider.GetRequiredService<IClock>());
         await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, CancellationToken.None));
         task.Status = RecipeApi.Models.TaskStatus.Failed;
         instance.Status = WorkflowStatus.Paused;

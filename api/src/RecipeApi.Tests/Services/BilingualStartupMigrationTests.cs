@@ -127,11 +127,11 @@ public sealed class BilingualStartupMigrationTests
             var mappedLines = 0;
             foreach (var recipe in migrated)
             {
-                var content = CanonicalRecipeContentStore.Read(recipe);
+                var content = StructuredRecipeContentStore.Read(recipe);
                 Assert.NotNull(content);
                 Assert.Equal(2, content.ContentSchemaVersion);
                 Assert.NotNull(recipe.FoodMappingEvidence);
-                _ = RecipeExportContent.WriteCurrent(new CanonicalRecipeExport(recipe.Id, content, null));
+                _ = RecipeExportContent.WriteCurrent(new StructuredRecipeExport(recipe.Id, content, null));
                 FoodMappingQualification.Validate(content, recipe.FoodMappingEvidence, authority, recipe.Id);
                 mappedLines += content.IngredientLines.Count(line => line.Shopping.FoodId is not null);
             }
@@ -256,7 +256,7 @@ public sealed class BilingualStartupMigrationTests
         {
             var db = verifyScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var enRecipe = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == enId);
-            var enContent = CanonicalRecipeContentStore.Read(enRecipe)!;
+            var enContent = StructuredRecipeContentStore.Read(enRecipe)!;
             Assert.Equal(2, enContent.ContentSchemaVersion);
             var step = Assert.Single(enContent.InstructionSections.SelectMany(x => x.Steps));
             Assert.NotEmpty(step.Bindings);
@@ -287,10 +287,10 @@ public sealed class BilingualStartupMigrationTests
 
         Assert.Null(assembly.GetType("RecipeApi.Services.CanonicalRecipeMigrationOperator", throwOnError: false));
         Assert.DoesNotContain(
-            typeof(CanonicalRecipeContentStore).GetMethods(AnyMember),
+            typeof(StructuredRecipeContentStore).GetMethods(AnyMember),
             method => method.Name is "CaptureMigrationManifestAsync" or "ExecuteMigrationAsync");
 
         Assert.NotNull(assembly.GetType(typeof(RecipeStartupMigrator).FullName!, throwOnError: false));
-        Assert.NotNull(assembly.GetType(typeof(CanonicalRecipeMigrationReceipt).FullName!, throwOnError: false));
+        Assert.NotNull(assembly.GetType(typeof(StructuredRecipeMigrationReceipt).FullName!, throwOnError: false));
     }
 }

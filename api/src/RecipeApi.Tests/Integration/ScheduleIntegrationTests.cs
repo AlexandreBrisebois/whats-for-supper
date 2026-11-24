@@ -1226,7 +1226,77 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             p => p.PublishRecipeReadyAsync(
                 recipeId,
                 "Spaghetti Carbonara",
-                $"/api/recipes/{recipeId}/hero"),
+                $"/api/recipes/{recipeId}/hero",
+                null,
+                false),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RecipeReady_WhenDuplicateExists_FlagsDuplicateReportAndPublishesDuplicateFlag()
+    {
+        var existingId = Guid.NewGuid();
+        var newId = Guid.NewGuid();
+        _db.Recipes.AddRange(
+            new Recipe
+            {
+                Id = existingId,
+                Name = "Spaghetti Carbonara",
+                SourceUrl = "https://example.com/recipes/carbonara/",
+                IsReady = true,
+                IsDiscoverable = true,
+                CreatedAt = new DateTimeOffset(2026, 10, 10, 12, 0, 0, TimeSpan.Zero),
+                UpdatedAt = new DateTimeOffset(2026, 10, 10, 12, 0, 0, TimeSpan.Zero)
+            },
+            new Recipe
+            {
+                Id = newId,
+                Name = "Spaghetti Carbonara",
+                SourceUrl = "https://EXAMPLE.COM/recipes/carbonara?utm_source=ig#top",
+                IsReady = false,
+                IsDiscoverable = false,
+                ImageCount = 1,
+                CreatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
+                UpdatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero)
+            });
+        await _db.SaveChangesAsync();
+
+        var publisherMock = new Mock<IScheduleEventPublisher>();
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = Guid.NewGuid(),
+            TaskName = "recipe_ready",
+            ProcessorName = "RecipeReady",
+            Payload = System.Text.Json.JsonSerializer.Serialize(new { recipeId = newId.ToString() }),
+            Status = RecipeApi.Models.TaskStatus.Pending,
+            DependsOn = [],
+            CreatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
+            UpdatedAt = new DateTimeOffset(2026, 10, 12, 1, 30, 0, TimeSpan.Zero),
+        };
+
+        var processor = await RecipeApi.Tests.Services.RecipeServingsTests.ReadyProcessor(_db, task, publisherMock.Object);
+        var result = await processor.ExecuteAsync(task, CancellationToken.None);
+
+        var receiptJson = System.Text.Json.JsonSerializer.Serialize(result);
+        using var receiptDoc = System.Text.Json.JsonDocument.Parse(receiptJson);
+        Assert.Equal("Ready", receiptDoc.RootElement.GetProperty("Status").GetString());
+        Assert.Equal(newId, receiptDoc.RootElement.GetProperty("RecipeId").GetGuid());
+        Assert.Equal(2, receiptDoc.RootElement.EnumerateObject().Count());
+
+        var report = await _db.RecipeImportReports.SingleOrDefaultAsync(r => r.RecipeId == newId);
+        Assert.NotNull(report);
+        Assert.Equal(["duplicate"], report.Reasons);
+        Assert.Equal(RecipeImportReportStatus.Reported, report.Status);
+        Assert.Null(report.ReportedBy);
+
+        publisherMock.Verify(
+            p => p.PublishRecipeReadyAsync(
+                newId,
+                "Spaghetti Carbonara",
+                $"/api/recipes/{newId}/hero",
+                null,
+                true),
             Times.Once);
     }
 

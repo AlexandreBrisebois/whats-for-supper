@@ -101,9 +101,8 @@ test.describe('Capture Flow', () => {
     await expect(saveBtn).toBeEnabled();
     await saveBtn.click();
 
-    // Success screen shows "Recipe queued" (async processing) or "Synthesizing…"
-    // The old "Captured!" text was replaced by the honest async state (Task 31).
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
+    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
   });
 
   test('large photo uploads show immediate upload feedback and a delayed overlay', async ({
@@ -144,12 +143,18 @@ test.describe('Capture Flow', () => {
     await page.getByTestId('capture-save-btn').click();
 
     await expect(page.getByTestId('capture-save-btn')).toBeDisabled();
-    await expect(page.getByTestId('capture-photo-upload-helper')).toBeVisible();
+    await expect(page.getByTestId('capture-photo-upload-helper')).toHaveCount(0);
     await expect(page.getByTestId('capture-photo-upload-overlay')).toBeVisible();
-    await expect(page.getByTestId('capture-upload-keep-open')).toBeVisible();
+    await expect(page.getByTestId('capture-photo-upload-overlay')).toContainText(
+      'Saving your photos…'
+    );
+    await expect(page.getByTestId('capture-upload-keep-open')).toContainText(
+      'We’ll take you home as soon as they’re saved.'
+    );
 
     releaseUpload();
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
+    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
+    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
   });
 
   test('after successful capture, user can return to home', async ({ page }) => {
@@ -201,12 +206,10 @@ test.describe('Capture Flow', () => {
     const body = req.postDataJSON();
     expect(body.url).toBe(testUrl);
     expect(body.notes).toBe('Added from Serious Eats');
-    expect(body.rating).toBe(3); // "Loved it" = 3
+    expect(body.rating).toBe(3);
 
-    // 5. Verify the success screen appears (queued state — no auto-redirect)
-    // Task 31: The 4-second auto-redirect was removed. The success screen now shows
-    // "Recipe queued" with explicit "Add Another" and "Done" CTAs.
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 10_000 });
+    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
   });
 
   test('navigating with text param containing a URL should show the review form', async ({
@@ -332,7 +335,9 @@ test.describe('Capture — initial state rendering', () => {
     await expect(page.getByTestId('capture-url-save-btn')).toBeVisible();
   });
 
-  test('clicking Back from URL review form returns to capture controls', async ({ page }) => {
+  test('clicking Cancel (x) from URL review form discards draft and returns home', async ({
+    page,
+  }) => {
     await page.goto('/capture');
 
     await page.route('**/api/goto', async (route) => {
@@ -344,11 +349,10 @@ test.describe('Capture — initial state rendering', () => {
     });
 
     await page.getByTestId('capture-secondary-action-link').click();
-    await page.getByTestId('capture-url-back-btn').click();
+    await expect(page.getByTestId('capture-url-back-btn')).toHaveCount(0);
+    await page.getByTestId('capture-cancel-btn').click();
 
-    await expect(page.getByTestId('capture-url-review-heading')).not.toBeVisible();
-    await expect(page.getByTestId('capture-take-photo-btn')).toBeVisible();
-    await expect(page.getByTestId('capture-secondary-action-link')).toBeVisible();
+    await expect(page).toHaveURL(/\/home/);
   });
 });
 
@@ -549,9 +553,8 @@ test.describe('Capture — GOTO intent', () => {
     );
     await page.getByTestId('capture-synthesize-btn').click();
     expect((await described).postDataJSON().name).toBe('Our family spaghetti');
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible();
+    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
     expect(writes).toEqual([]);
-    await expect(page.getByTestId('capture-success-cta')).toHaveCount(0);
   });
 
   // F8 — Capture path sets GOTO pending
@@ -569,9 +572,8 @@ test.describe('Capture — GOTO intent', () => {
       .setInputFiles(path.join(__dirname, 'fixtures', 'test-meal.jpg'));
     await expect(page.getByTestId('capture-photos-count')).toBeVisible();
     await page.getByTestId('capture-save-btn').click();
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible();
+    await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
     expect(writes).toEqual([]);
-    await expect(page.getByTestId('capture-success-cta')).toHaveCount(0);
   });
 });
 
@@ -708,16 +710,9 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await page.getByTestId('capture-rating-3').click();
     await page.getByTestId('capture-save-btn').click();
 
-    // Success screen shows "Recipe queued" (async processing)
-    await expect(page.getByTestId('capture-success-screen')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId('capture-success-heading')).toContainText(/recipe queued/i);
-
-    // The old "Add Another" and "Done" buttons were removed.
-    // The app now automatically redirects home after 10 seconds.
-    await expect(page.getByTestId('capture-done-btn')).toBeVisible();
-
-    // Verify the redirect happens (allow up to 12s for the 10s timer)
-    await expect(page).toHaveURL(/\/home/, { timeout: 12_000 });
+    await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
+    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
+    await expect(page.getByTestId('capture-success-screen')).toHaveCount(0);
   });
 
   // ── LibraryToast on recipe_ready ─────────────────────────────────────────
@@ -880,7 +875,7 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
 
     const toast = page.locator('[role="status"]').filter({ hasText: newestRecipeName });
     await expect(toast).toBeVisible();
-    await expect(toast).toContainText('+1 more');
+    await expect(toast).not.toContainText('+1 more');
     await toast.getByRole('button', { name: `View ${newestRecipeName}` }).click();
 
     await expect(page).toHaveURL(new RegExp(`/recipes\\?open=${MOCK_IDS.RECIPE_SPAGHETTI}`));
@@ -990,15 +985,8 @@ test.describe('Capture Family Cookbook dual-mode visual & a11y contract', () => 
       await expect(page.getByTestId('capture-take-photo-btn')).toBeVisible();
 
       if (mode === 'high') {
-        const headerStyle = await page.locator('header.glass-header').evaluate((el) => {
-          const cs = getComputedStyle(el);
-          return {
-            backgroundColor: cs.backgroundColor,
-            backdropFilter: cs.backdropFilter,
-          };
-        });
-        expect(headerStyle.backgroundColor).toBe('rgb(253, 252, 240)');
-        expect(headerStyle.backdropFilter).toBe('none');
+        await expect(page.locator('header.glass-header')).toHaveCount(0);
+        await expect(page.getByTestId('capture-cancel-btn')).toBeVisible();
       }
 
       await assertCookbookVisualA11y(page, { contrastLevel });
@@ -1046,7 +1034,7 @@ test.describe('Capture Family Cookbook dual-mode visual & a11y contract', () => 
       await expect(banner).toHaveCSS('opacity', '1');
 
       if (mode === 'high') {
-        const toastStyle = await toast.locator('.glass-toast').evaluate((el) => {
+        const toastStyle = await toast.getByTestId('library-toast-card').evaluate((el) => {
           const cs = getComputedStyle(el);
           return {
             backgroundColor: cs.backgroundColor,
@@ -1071,15 +1059,8 @@ test.describe('Capture Family Cookbook dual-mode visual & a11y contract', () => 
     await expect(page.getByTestId('capture-take-photo-btn')).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
 
-    const headerStyle = await page.locator('header.glass-header').evaluate((el) => {
-      const cs = getComputedStyle(el);
-      return {
-        backgroundColor: cs.backgroundColor,
-        backdropFilter: cs.backdropFilter,
-      };
-    });
-    expect(headerStyle.backgroundColor).toBe('rgb(253, 252, 240)');
-    expect(headerStyle.backdropFilter).toBe('none');
+    await expect(page.locator('header.glass-header')).toHaveCount(0);
+    await expect(page.getByTestId('capture-cancel-btn')).toBeVisible();
 
     await assertCookbookVisualA11y(page, { contrastLevel: 'aaa' });
 

@@ -189,8 +189,8 @@ public partial class RecoverySnapshotService
         FoodVocabularyInventoryFacts current, bool demo)
     {
         static string? JsonColumn(JsonElement row, string name) => row.GetProperty(name).ValueKind == JsonValueKind.Null
-            ? null : CanonicalRecipeContentStore.NormalizeJson(row.GetProperty(name).GetRawText());
-        static string? Normal(string? raw) => raw is null ? null : CanonicalRecipeContentStore.NormalizeJson(raw);
+            ? null : StructuredRecipeContentStore.NormalizeJson(row.GetProperty(name).GetRawText());
+        static string? Normal(string? raw) => raw is null ? null : StructuredRecipeContentStore.NormalizeJson(raw);
         static void Same<T, TKey>(IEnumerable<T> left, IEnumerable<T> right, Func<T, TKey> key) where TKey : IComparable<TKey> =>
             FoodVocabularyDefinitions.Require(left.OrderBy(key).SequenceEqual(right.OrderBy(key)));
         var membership = tables["family_settings"].EnumerateArray().Where(x => x.GetProperty("key").GetString() == "food_vocabulary_publication").ToArray();

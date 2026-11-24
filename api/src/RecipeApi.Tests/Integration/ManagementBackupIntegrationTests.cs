@@ -180,4 +180,65 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
         Assert.Equal(entry.NonCookingKind, restored.NonCookingKind);
         Assert.Equal(entry.NonCookingLabel, restored.NonCookingLabel);
     }
+
+    [Fact]
+    public async Task BackupAndRestore_WritesPureSchemaOrgWithoutCanonicalBackupJson_AndMergesStructuredRecipes()
+    {
+        var recipeId = Guid.NewGuid();
+        var missingMemberId = Guid.NewGuid();
+        const string raw = """{"@context":"https://schema.org/","@type":"Recipe","name":"Backup Stew","recipeYield":"6 portions","recipeIngredient":["500 g beef","2 carrots"],"recipeInstructions":[{"@type":"HowToSection","itemListElement":[{"@type":"HowToStep","text":"Braise beef and carrots."}]}]}""";
+        var (content, evidence) = StructuredRecipeContentStore.FromSchemaOrg(recipeId, raw, null, null, Guid.NewGuid(), "source");
+        var webJson = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Backup Stew",
+            AddedBy = missingMemberId,
+            ImageCount = 1,
+            IsReady = true,
+            Servings = 6,
+            RawMetadata = raw,
+            CanonicalContent = System.Text.Json.JsonSerializer.Serialize(content, webJson),
+            FoodMappingEvidence = evidence,
+            Ingredients = """["500 g beef","2 carrots"]""",
+            Notes = "Original backup note",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        await _management.BackupAsync();
+
+        var dataRoot = _scope.ServiceProvider.GetRequiredService<DataRootResolver>().Root;
+        Assert.False(File.Exists(Path.Combine(dataRoot, "canonical-backup.json")));
+
+        var store = _scope.ServiceProvider.GetRequiredService<IRecipeStore>();
+        var backedUpJson = await store.ReadRecipeJsonAsync(recipeId);
+        Assert.NotNull(backedUpJson);
+        using (var doc = System.Text.Json.JsonDocument.Parse(backedUpJson))
+        {
+            Assert.Equal("https://schema.org/", doc.RootElement.GetProperty("@context").GetString());
+            Assert.Equal("Recipe", doc.RootElement.GetProperty("@type").GetString());
+            Assert.False(doc.RootElement.TryGetProperty("format", out _));
+            Assert.False(doc.RootElement.TryGetProperty("backupContentVersion", out _));
+        }
+
+        // DisasterRecoveryAsync must recover AddedBy from recipe.info when recipe.json is pure Schema.org Recipe
+        var drResult = await _management.DisasterRecoveryAsync();
+        Assert.True(drResult.MembersAdded >= 1);
+
+        // Mutate existing structured recipe in DB, then RestoreAsync must merge-update without conflict errors
+        var existing = await _db.Recipes.SingleAsync(r => r.Id == recipeId);
+        existing.Notes = "Mutated in DB";
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        var restoreResult = await _management.RestoreAsync();
+        Assert.Equal(0, restoreResult.Errors);
+        var merged = await _db.Recipes.AsNoTracking().SingleAsync(r => r.Id == recipeId);
+        Assert.Equal("Original backup note", merged.Notes);
+        Assert.NotNull(merged.CanonicalContent);
+        Assert.Equal(6, merged.Servings);
+    }
 }

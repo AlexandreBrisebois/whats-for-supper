@@ -11,7 +11,7 @@ public sealed partial class CanonicalRecipeReadTests
     [Fact]
     public void CompatibleInstructions_RenderCanonicalStepsWithSchemaOrgKeys()
     {
-        var content = new CanonicalRecipeContent(2, "saved-content", "saved-source", null, [],
+        var content = new StructuredRecipeContent(2, "saved-content", "saved-source", null, [],
             [new(Guid.NewGuid(), "Sauce", [new(Guid.NewGuid(), "Current step", "text-revision", [])])]);
         var recipe = new Recipe { CanonicalContent = JsonSerializer.Serialize(content), RawMetadata = """{"recipeInstructions":["Stale source step"]}""" };
         var dto = JsonSerializer.SerializeToElement(RecipeService.MapToDto(recipe));
@@ -30,7 +30,7 @@ public sealed partial class CanonicalRecipeReadTests
             Id = Guid.NewGuid(), Description = description, Amount = amount is null ? null : QuantityMath.Parse(amount),
             AmountText = amount, Unit = new("cup", null), Scaling = scaling, Package = null,
             Shopping = new(description, null, null), Provenance = new("human", null, ["amount"]) };
-        var content = new CanonicalRecipeContent(2, "saved-content", "saved-source", 3,
+        var content = new StructuredRecipeContent(2, "saved-content", "saved-source", 3,
             [Line("flour", "⅓"), Line("oil", "2–3"), Line("herbs", null), Line("fixed", "1", "fixed")], []);
         var recipe = new Recipe { Servings = 3, CanonicalContent = JsonSerializer.Serialize(content), Ingredients = "[]",
             RawMetadata = """{"recipeIngredient":["9 cup stale"],"supply":[{"name":"stale","quantity":9,"unitText":"cup"}]}""" };

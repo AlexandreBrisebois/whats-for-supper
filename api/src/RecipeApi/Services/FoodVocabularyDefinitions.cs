@@ -8,6 +8,26 @@ using System.Text.RegularExpressions;
 
 namespace RecipeApi.Services;
 
+public sealed record CurrentRecoveryUnitAlias(string Locale, string Text);
+public sealed record CurrentRecoveryUnit(string Id, string Family, GroceryRational Factor, string? CountKind,
+    CurrentRecoveryUnitAlias[] Aliases);
+public sealed record CurrentRecoveryFoodLabels(string? En, string? Fr);
+public sealed record CurrentRecoveryFoodAlias(string Locale, string Text, string MatchKey, string Relation,
+    string SourceRef, DateTimeOffset ReviewedAt);
+public sealed record CurrentRecoveryFood(Guid Id, string Revision, CurrentRecoveryFoodLabels Labels,
+    Dictionary<string, string> Qualifiers, string Status, CurrentRecoveryFoodAlias[] Aliases);
+public sealed record CurrentRecoveryDictionaryRelease(string Revision, string SourceRef, CurrentRecoveryFood[] Foods);
+public sealed record CurrentRecoveryFoodMapping(Guid RecipeId, Guid IngredientLineId, string ContentRevision,
+    Guid FoodId, string FoodRevision, string DictionaryRevision, string MappingRevision, string Origin,
+    string? SourceRef, string? EvidenceSourceRevision, string[] ProtectedFields);
+public sealed record CurrentRecoveryDictionary(int Version, CurrentRecoveryUnit[] Units,
+    CurrentRecoveryDictionaryRelease[] Releases, CurrentRecoveryFoodMapping[] Mappings);
+public sealed record CurrentRecoveryFoodOverride(Guid Id, string Revision, Guid? FoodId, string? DictionaryRevision,
+    string? FallbackKey, string? ShoppingName, string? GrocerySection, string[] ProtectedFields,
+    DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+public sealed record CurrentRecoveryFoodOverrides(int Version, Guid HouseholdId, CurrentRecoveryFoodOverride[] Overrides);
+
+public sealed record FoodMappingObservation(string? Value);
 public sealed record FoodVocabularyReference(string Revision, string Sha256);
 public sealed record FoodVocabularyDocument(int Version, string Revision, string SourceRef,
     CurrentRecoveryUnit[] Units, CurrentRecoveryDictionaryRelease[] Releases);
@@ -175,9 +195,9 @@ public sealed class FoodVocabularyDefinitions
                     && food.Status is "validated" or "unresolved" or "retired" && food.Qualifiers is not null
                     && food.Qualifiers.All(x => Text(x.Key) && Text(x.Value)) && food.Aliases is not null);
                 if (food!.Status == "validated") Require(food.Labels.En is not null || food.Labels.Fr is not null);
-                var purchase = CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food.Qualifiers, Json));
+                var purchase = StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food.Qualifiers, Json));
                 if (qualifiers.TryGetValue(food.Id, out var prior)) Require(prior == purchase); else qualifiers.Add(food.Id, purchase);
-                var content = CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food, Json));
+                var content = StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food, Json));
                 if (revisions.TryGetValue((food.Id, food.Revision), out var previous)) Require(content == previous); else revisions.Add((food.Id, food.Revision), content);
                 var unique = new HashSet<(string, string)>();
                 foreach (var alias in food.Aliases)
@@ -230,15 +250,15 @@ public sealed class FoodVocabularyDefinitions
         {
             foreach (var prior in previous.foods.Values.Where(x => x.Id == id))
             {
-                Require(CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food.Qualifiers, Json))
-                    == CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(prior.Qualifiers, Json)));
+                Require(StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food.Qualifiers, Json))
+                    == StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(prior.Qualifiers, Json)));
                 if (food.Revision == prior.Revision)
-                    Require(CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food, Json))
-                        == CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(prior, Json)));
+                    Require(StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food, Json))
+                        == StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(prior, Json)));
             }
             if (previous.foods.TryGetValue((release, id), out var sameRelease))
-                Require(CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food, Json))
-                    == CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(sameRelease, Json)));
+                Require(StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(food, Json))
+                    == StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(sameRelease, Json)));
         }
     }
 }

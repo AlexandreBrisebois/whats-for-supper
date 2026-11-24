@@ -301,7 +301,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
     {
         var existing = string.IsNullOrWhiteSpace(existingCanonicalContent)
             ? null
-            : JsonSerializer.Deserialize<CanonicalRecipeContent>(existingCanonicalContent, PackageJson);
+            : JsonSerializer.Deserialize<StructuredRecipeContent>(existingCanonicalContent, PackageJson);
         var existingLines = existing?.IngredientLines ?? [];
         var mapped = lines.Select((line, index) => new RecipeIngredientLineDto
         {
@@ -315,7 +315,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
             Shopping = new(line.name, null, null),
             Provenance = new("human", "source", [])
         }).ToList();
-        return JsonSerializer.Serialize(new CanonicalRecipeContent(
+        return JsonSerializer.Serialize(new StructuredRecipeContent(
             2, Guid.NewGuid().ToString("N"), "source", basis, mapped, []), PackageJson);
     }
 

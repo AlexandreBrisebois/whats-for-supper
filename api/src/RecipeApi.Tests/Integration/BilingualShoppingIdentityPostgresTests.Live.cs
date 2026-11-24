@@ -151,10 +151,10 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 {
                     var recipe = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id);
                     var original = originalRecipes.Single(x => x.Id == recipe.Id);
-                    var content = CanonicalRecipeContentStore.Read(recipe)!;
+                    var content = StructuredRecipeContentStore.Read(recipe)!;
                     Assert.Equal("50", content.IngredientLines[0].AmountText);
                     Assert.Equal(original.RawMetadata, recipe.RawMetadata);
-                    var originalLines = CanonicalRecipeContentStore.Read(original)!.IngredientLines;
+                    var originalLines = StructuredRecipeContentStore.Read(original)!.IngredientLines;
                     Assert.Equal(originalLines.Skip(1).Select(x => x.Shopping), content.IngredientLines.Skip(1).Select(x => x.Shopping));
                     Assert.Equal(originalLines[0].Shopping.FoodId, content.IngredientLines[0].Shopping.FoodId);
                     Assert.Equal(locale == "fr" ? "onion, diced" : "oignon émincé", content.IngredientLines[0].Shopping.Name);

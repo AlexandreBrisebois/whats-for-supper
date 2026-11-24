@@ -65,8 +65,8 @@ public class WorkflowProcessor(
             || !value.TryGetProperty("scheduledAt", out var scheduled)
             || (scheduled.ValueKind == JsonValueKind.Null ? (DateTimeOffset?)null : scheduled.GetDateTimeOffset())
                 != child.Tasks.FirstOrDefault(x => x.DependsOn.Length == 0)?.ScheduledAt
-            || CanonicalRecipeContentStore.NormalizeJson(child.Parameters)
-                != CanonicalRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(input.Parameters ?? [])))
+            || StructuredRecipeContentStore.NormalizeJson(child.Parameters)
+                != StructuredRecipeContentStore.NormalizeJson(JsonSerializer.Serialize(input.Parameters ?? [])))
             throw new InvalidDataException("Started workflow receipt differs from its original child command.");
         // The retained selected schedule is observed. No current clock or cron
         // definition reconstructs a missing original scheduling decision.

@@ -128,9 +128,6 @@ public class WorkflowWorkerTests : IAsyncLifetime
             instance.Parameters = System.Text.Json.JsonSerializer.Serialize(parameters);
         }
         await db.SaveChangesAsync();
-        var store = TestPublicationStore.Create(db, storage, _clock);
-        foreach (var instance in instances) await store.CaptureLaunchAsync(instance);
-        await db.SaveChangesAsync();
     }
 
     [Fact]
@@ -2149,6 +2146,62 @@ public class WorkflowWorkerTests : IAsyncLifetime
         initCts.Dispose();
         await db.DisposeAsync();
     }
+
+    [Fact]
+    public async Task ProcessPendingTasks_AdmitsDuePendingTask_WhenRecipePublicationCaptureIsNull()
+    {
+        var executed = new List<string>();
+        var services = new ServiceCollection();
+        var dbName = $"UncapturedTaskTest_{Guid.NewGuid():N}";
+        services.AddDbContext<RecipeDbContext>(opts => opts.UseInMemoryDatabase(dbName));
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddScoped<IWorkflowProcessor>(_ => new MockWorkflowProcessor("MockNoCapture", executed));
+        services.AddLogging();
+
+        using var sp = services.BuildServiceProvider();
+        var db = sp.GetRequiredService<RecipeDbContext>();
+        var now = _clock.UtcNow;
+        var instance = new WorkflowInstance
+        {
+            Id = Guid.NewGuid(),
+            WorkflowId = "legacy-v0140-workflow",
+            Status = WorkflowStatus.Pending,
+            RecipePublicationCapture = null,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var task = new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            InstanceId = instance.Id,
+            TaskName = "step1",
+            ProcessorName = "MockNoCapture",
+            Status = TaskStatus.Pending,
+            ScheduledAt = now.AddMinutes(-1),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.WorkflowInstances.Add(instance);
+        db.WorkflowTasks.Add(task);
+        await db.SaveChangesAsync();
+
+        var worker = new WorkflowWorker(
+            _clock,
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            new Mock<ILogger<WorkflowWorker>>().Object,
+            new AiExceptionHandler(_clock, new Mock<ILogger<AiExceptionHandler>>().Object),
+            Options.Create(new WorkflowRetryOptions { RetryScheduleMinutes = [1], MaxRetries = 3 }));
+
+        var count = await worker.ProcessPendingTasksAsync(CancellationToken.None);
+
+        Assert.Equal(1, count);
+        Assert.Single(executed);
+        using var verifyScope = sp.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var completed = await verifyDb.WorkflowTasks.SingleAsync(x => x.TaskId == task.TaskId);
+        Assert.Equal(TaskStatus.Completed, completed.Status);
+        worker.Dispose();
+    }
 }
 
 /// <summary>
@@ -2195,7 +2248,7 @@ public class CapturingEventPublisher(
     public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, RecipeApi.Dto.SmartDefaultsDto defaults, string? excludeConnectionId = null) => Task.CompletedTask;
     public Task PublishFillTheGapInvalidatedAsync(int weekOffset, DateOnly weekStartDate, string? excludeConnectionId = null) => Task.CompletedTask;
     public Task PublishAllSuggestionsInvalidatedAsync() => Task.CompletedTask;
-    public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null) => Task.CompletedTask;
+    public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null, bool isSuspectedDuplicate = false) => Task.CompletedTask;
 
     public Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
     {

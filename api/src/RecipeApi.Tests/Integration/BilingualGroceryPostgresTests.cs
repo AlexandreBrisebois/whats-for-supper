@@ -64,13 +64,13 @@ public sealed partial class BilingualGroceryPostgresTests(ITestOutputHelper outp
         var revision = Guid.NewGuid().ToString("N");
         var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = name, Amount = QuantityMath.Parse(amount), AmountText = amount,
             Unit = new(unit, null), Scaling = "proportional", Package = package, Shopping = new(name, null, null), Provenance = new("source", revision, []) };
-        var source = JsonSerializer.Serialize(new { name, recipeYield = "4 servings", recipeIngredient = new[] { CanonicalRecipeContentStore.Render(row) },
+        var source = JsonSerializer.Serialize(new { name, recipeYield = "4 servings", recipeIngredient = new[] { StructuredRecipeContentStore.Render(row) },
             supply = new[] { new { name, requiredQuantity = new { value = double.Parse(amount, System.Globalization.CultureInfo.InvariantCulture), unitText = unit } } } }, Json);
-        var content = new CanonicalRecipeContent(2, Guid.NewGuid().ToString("N"), revision, 4, [row], []);
+        var content = new StructuredRecipeContent(2, Guid.NewGuid().ToString("N"), revision, 4, [row], []);
         var mapped = FoodMappingQualification.Prepare(new(id, content, source), await services.GetRequiredService<FoodVocabularyStore>().CaptureAuthorityAsync(null), Guid.NewGuid());
         Assert.NotNull(Assert.Single(mapped.Export.Content.IngredientLines).Shopping.FoodId);
         db.Recipes.Add(new() { Id = id, Name = name, Servings = 4, IsReady = true, CanonicalContent = JsonSerializer.Serialize(mapped.Export.Content, Json),
-            FoodMappingEvidence = mapped.Evidence, RawMetadata = source, Ingredients = JsonSerializer.Serialize(new[] { CanonicalRecipeContentStore.Render(row) }),
+            FoodMappingEvidence = mapped.Evidence, RawMetadata = source, Ingredients = JsonSerializer.Serialize(new[] { StructuredRecipeContentStore.Render(row) }),
             CreatedAt = services.GetRequiredService<IClock>().UtcNow, UpdatedAt = services.GetRequiredService<IClock>().UtcNow });
         await db.SaveChangesAsync();
         return id;
@@ -111,8 +111,8 @@ public sealed partial class BilingualGroceryPostgresTests(ITestOutputHelper outp
         }
         var checkedPlan = await Plan(factory);
         var baseline = JsonDocument.Parse(checkedPlan.GroceryCheckedDemandBaselines).RootElement.GetProperty(large.RowId).GetRawText();
-        CanonicalRecipeContent content;
-        using (var read = factory.Services.CreateScope()) content = CanonicalRecipeContentStore.Read(await read.ServiceProvider.GetRequiredService<RecipeDbContext>()
+        StructuredRecipeContent content;
+        using (var read = factory.Services.CreateScope()) content = StructuredRecipeContentStore.Read(await read.ServiceProvider.GetRequiredService<RecipeDbContext>()
             .Recipes.AsNoTracking().SingleAsync(x => x.Id == smallId))!;
         var line = content.IngredientLines[0];
         using var save = await client.PatchAsJsonAsync($"/api/recipes/{smallId}", new

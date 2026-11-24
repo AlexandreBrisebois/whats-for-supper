@@ -30,7 +30,7 @@ public sealed partial class CookingStepAllocationTests
         var row = new RecipeIngredientLineDto { Id = rowId, Description = splitOil ? "oil" : "pasta",
             Amount = QuantityMath.Parse(splitOil ? "2" : "200"), AmountText = null, Package = null, Unit = unit, Scaling = "proportional",
             Shopping = new(splitOil ? "oil" : "pasta", null, null), Provenance = new("human", null, []) };
-        var before = new CanonicalRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
+        var before = new StructuredRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
         var after = splitOil ? before : CookingStepProjection.Revalidate(before, before with
         { ContentRevision = "after", IngredientLines = [row with { Amount = QuantityMath.Parse("250") }] });
         var result = CookingStepProjection.Read(after, splitOil ? 8 : 6);
@@ -83,7 +83,7 @@ public sealed partial class CookingStepAllocationTests
                 status = "validated"
             })]);
         }).ToArray();
-        var before = new CanonicalRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
+        var before = new StructuredRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
         var content = fault == "reduced" ? CookingStepProjection.Revalidate(before, before with {
             ContentRevision = "after", IngredientLines = [row with { Amount = QuantityMath.Parse("1") }] }) : before;
         if (fault is "halvesCorrected" or "halfAndAbsoluteCorrected") content = CookingStepProjection.Revalidate(before, before with {
@@ -148,7 +148,7 @@ public sealed partial class CookingStepAllocationTests
         });
         var step = new RecipeInstructionStepDto(stepId, "Add half the pasta; cook 20 minutes at 180 °C.", "text", [raw]);
         if (fault == "overlap") step = step with { Bindings = [raw, JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), span = new { start = 4, end = 8 } })] };
-        var before = new CanonicalRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, [step])]);
+        var before = new StructuredRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, [step])]);
         if (fault == "range") before = before with { IngredientLines = [row with { Amount = QuantityMath.Parse("200–250") }] };
         if (fault == "unknownTotal") before = before with { IngredientLines = [row with { Amount = null, AmountText = null }] };
         if (fault == "overflow") before = before with { IngredientLines = [row with { Amount = QuantityMath.Parse("99999999999999999999999999999999999999") }] };
@@ -208,7 +208,7 @@ public sealed partial class CookingStepAllocationTests
                     fraction = new { n = "1", d = "2" }, unit = new RecipeUnitDto(fault == "unit" ? "tsp" : "tbsp", null) }, status = "validated"
             })]);
         }).ToArray();
-        var before = new CanonicalRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
+        var before = new StructuredRecipeContent(2, "before", "source", 4, [row], [new(Guid.NewGuid(), null, steps)]);
         if (fault is "fractionRange" or "scalarRange") before = before with { IngredientLines = [row with { Amount = QuantityMath.Parse("2–3") }] };
         if (fault == "unknown") before = before with { IngredientLines = [row with { Amount = null }] };
         if (fault == "overflow") before = before with { IngredientLines = [row with { Amount = QuantityMath.Parse("99999999999999999999999999999999999999") }] };
@@ -269,7 +269,7 @@ public sealed partial class CookingStepAllocationTests
         }
         var step = new RecipeInstructionStepDto(stepId, text, "text", fault == "duplicate" ? [count, count, dose] : fault == "overlap" ?
             [count, dose, JsonSerializer.SerializeToElement(new { id = Guid.NewGuid(), span = new { start = 26, end = 34 } })] : [count, dose]);
-        var before = new CanonicalRecipeContent(2, "before", "source", fault == "unknownBasis" ? null : 4,
+        var before = new StructuredRecipeContent(2, "before", "source", fault == "unknownBasis" ? null : 4,
             [countRow, doseRow], [new(Guid.NewGuid(), null, [step])]);
         if (fault == "duplicateDoseAcrossSteps") {
             var extraId = Guid.NewGuid();

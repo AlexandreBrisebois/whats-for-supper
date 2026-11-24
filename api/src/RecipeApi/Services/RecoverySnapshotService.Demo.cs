@@ -217,23 +217,6 @@ public partial class RecoverySnapshotService
                 if (FoodVocabularyInventoryQualification.RecipeReferences(recipe).Length != 0)
                     throw new InvalidDataException("Historical snapshots contain unsupported ingredient food authority.");
             }
-        await using (var command = new NpgsqlCommand("SELECT recipe_id,operation_id,input_hash,payload::text,result_hash,delivered,created_at FROM pg_temp.recovery_recipe_file_publications", connection))
-        await using (var reader = await command.ExecuteReaderAsync(ct))
-            while (await reader.ReadAsync(ct))
-            {
-                var publication = new RecipeFilePublication
-                {
-                    RecipeId = reader.GetGuid(0),
-                    OperationId = reader.GetGuid(1),
-                    InputHash = reader.GetString(2),
-                    Payload = reader.GetString(3),
-                    ResultHash = reader.GetString(4),
-                    Delivered = reader.GetBoolean(5),
-                    CreatedAt = reader.GetFieldValue<DateTimeOffset>(6)
-                };
-                if (RecipeFilePublicationStore.VocabularyReferences(publication).Length != 0)
-                    throw new InvalidDataException("Historical snapshots contain unsupported retained publication food authority.");
-            }
         await using (var command = new NpgsqlCommand("SELECT id,recipe_id,input_hash,payload::text,created_at FROM pg_temp.recovery_recipe_repair_intents", connection))
         await using (var reader = await command.ExecuteReaderAsync(ct))
             while (await reader.ReadAsync(ct))

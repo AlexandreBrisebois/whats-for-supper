@@ -30,7 +30,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
     };
 
     private static string BuildCanonical(int? basis, params RecipeIngredientLineDto[] lines) =>
-        JsonSerializer.Serialize(new CanonicalRecipeContent(2, Guid.NewGuid().ToString("N"), "source-v1", basis, lines, []), WebJson);
+        JsonSerializer.Serialize(new StructuredRecipeContent(2, Guid.NewGuid().ToString("N"), "source-v1", basis, lines, []), WebJson);
 
     private static Recipe Recipe(int? basis = 2)
     {
@@ -294,7 +294,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
             }
             var saved = await db.Recipes.SingleAsync();
             saved.Servings = null;
-            saved.CanonicalContent = BuildCanonical(null, CanonicalRecipeContentStore.Read(saved)!.IngredientLines.ToArray());
+            saved.CanonicalContent = BuildCanonical(null, StructuredRecipeContentStore.Read(saved)!.IngredientLines.ToArray());
             await db.SaveChangesAsync();
             using var missing = JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-preview?targetServings=4"));
             Assert.Equal(JsonValueKind.Null, missing.RootElement.GetProperty("factor").ValueKind);

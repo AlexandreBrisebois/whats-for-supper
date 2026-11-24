@@ -113,4 +113,97 @@ public class RecipeUpdateIntegrationTests : IAsyncLifetime
             It.IsAny<DateTimeOffset?>()),
             Times.Never);
     }
+
+    [Fact]
+    public async Task UpdateRecipe_StructuredEdit_SynchronizesSchemaOrgRecipeOnDiskAndRetainsExtensions()
+    {
+        var recipeId = Guid.NewGuid();
+        const string initialRaw = """
+            {
+              "@context": "https://schema.org/",
+              "@type": "Recipe",
+              "name": "Pasta Bake",
+              "recipeYield": "4 portions",
+              "recipeIngredient": ["200 g pasta", "salt"],
+              "recipeInstructions": [
+                { "@type": "HowToSection", "name": "Prep", "itemListElement": [{ "@type": "HowToStep", "text": "Boil pasta." }] }
+              ],
+              "nutrition": { "@type": "NutritionInformation", "calories": "420 calories" },
+              "suggestedPairing": "Crisp green salad"
+            }
+            """;
+        var (content, evidence) = RecipeApi.Services.StructuredRecipeContentStore.FromSchemaOrg(
+            recipeId, initialRaw, null, null, Guid.NewGuid(), "source");
+        var webJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Pasta Bake",
+            Servings = 4,
+            RawMetadata = initialRaw,
+            CanonicalContent = JsonSerializer.Serialize(content, webJson),
+            FoodMappingEvidence = evidence,
+            Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(RecipeApi.Services.StructuredRecipeContentStore.Render), webJson),
+            IsReady = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        await store.WriteInfoAsync(new RecipeInfo { Id = recipeId, Name = "Pasta Bake", IsReady = true });
+        await store.WriteRecipeJsonAsync(recipeId, initialRaw);
+
+        var line0 = content.IngredientLines[0];
+        var section0 = content.InstructionSections[0];
+        var step0 = section0.Steps[0];
+        var patch = new
+        {
+            expectedContentRevision = content.ContentRevision,
+            servings = 6,
+            ingredientLines = new object[]
+            {
+                new
+                {
+                    id = line0.Id,
+                    description = "rigatoni pasta",
+                    amount = new { kind = "scalar", value = new { n = "300", d = "1" } },
+                    amountText = "300",
+                    unit = new { text = "g", definitionId = (string?)null },
+                    scaling = "proportional",
+                    package = (object?)null,
+                    shopping = new { name = "rigatoni pasta", foodId = (Guid?)null, mappingRevision = (string?)null }
+                }
+            },
+            instructionSections = new object[]
+            {
+                new
+                {
+                    id = section0.Id,
+                    name = "Boil & Bake",
+                    steps = new object[]
+                    {
+                        new { id = step0.Id, text = "Boil rigatoni pasta until al dente." }
+                    }
+                }
+            }
+        };
+
+        var response = await _client.PatchAsJsonAsync($"/api/recipes/{recipeId}", patch);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var diskJson = await store.ReadRecipeJsonAsync(recipeId);
+        Assert.NotNull(diskJson);
+        using var doc = JsonDocument.Parse(diskJson);
+        Assert.Equal("https://schema.org/", doc.RootElement.GetProperty("@context").GetString());
+        Assert.Equal("Recipe", doc.RootElement.GetProperty("@type").GetString());
+        Assert.False(doc.RootElement.TryGetProperty("format", out _));
+        Assert.Equal("6 portions", doc.RootElement.GetProperty("recipeYield").GetString());
+        Assert.Contains("300 g rigatoni pasta", doc.RootElement.GetProperty("recipeIngredient")[0].GetString());
+        Assert.Equal("rigatoni pasta", doc.RootElement.GetProperty("supply")[0].GetProperty("name").GetString());
+        Assert.Equal("Boil & Bake", doc.RootElement.GetProperty("recipeInstructions")[0].GetProperty("name").GetString());
+        Assert.Equal("420 calories", doc.RootElement.GetProperty("nutrition").GetProperty("calories").GetString());
+        Assert.Equal("Crisp green salad", doc.RootElement.GetProperty("suggestedPairing").GetString());
+    }
 }

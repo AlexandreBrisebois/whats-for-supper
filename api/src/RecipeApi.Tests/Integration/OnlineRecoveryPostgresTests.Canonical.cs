@@ -25,9 +25,9 @@ public partial class OnlineRecoveryPostgresTests
             Ingredients = """["⅓ cup flour"]""", RawMetadata = """{"recipeIngredient":["⅓ cup flour"],"supply":[{"name":"flour","unitText":"cup","quantity":0.33}]}""" };
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
-        var store = new CanonicalRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, services.GetRequiredService<IStorageProvider>(), services.GetRequiredService<IClock>(), services));
-        var content = CanonicalRecipeContentStore.InspectContentRevision(recipe);
-        var source = CanonicalRecipeContentStore.InspectSourceRevision(recipe);
+        var store = new StructuredRecipeContentStore(db, services.GetRequiredService<IClock>(), services.GetRequiredService<SupperProjectionInvalidation>(), TestPublicationStore.Vocabulary(db, services.GetRequiredService<IStorageProvider>(), services.GetRequiredService<IClock>(), services));
+        var content = StructuredRecipeContentStore.InspectContentRevision(recipe);
+        var source = StructuredRecipeContentStore.InspectSourceRevision(recipe);
         var operation = Guid.NewGuid();
         var converted = await store.ConvertAsync(recipe.Id, content, source, operation);
         var snapshot = await services.GetRequiredService<RecoverySnapshotService>().CaptureAsync(default);
@@ -41,7 +41,7 @@ public partial class OnlineRecoveryPostgresTests
         Assert.Equal(1, await db.CanonicalRecipeOperations.CountAsync());
         Assert.Equal(JsonSerializer.Serialize(converted), JsonSerializer.Serialize(await store.ConvertAsync(recipe.Id, content, source, operation)));
         var restored = await db.Recipes.SingleAsync(x => x.Id == recipe.Id);
-        Assert.Equal(JsonSerializer.Serialize(converted.Content), JsonSerializer.Serialize(CanonicalRecipeContentStore.Read(restored)));
+        Assert.Equal(JsonSerializer.Serialize(converted.Content), JsonSerializer.Serialize(StructuredRecipeContentStore.Read(restored)));
         Assert.Null(restored.Servings);
     }
 }

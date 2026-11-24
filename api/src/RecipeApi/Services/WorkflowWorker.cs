@@ -185,9 +185,9 @@ public class WorkflowWorker(
             foreach (var candidate in candidates)
             {
                 considered.Add(candidate.TaskId);
-                var instance = await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks)
+                var instance = await db.WorkflowInstances.AsNoTracking()
                     .SingleOrDefaultAsync(x => x.Id == candidate.InstanceId, ct);
-                if (!HasExecutionAuthority(instance, candidate.TaskId)
+                if (instance is null
                     || await db.WorkflowResetIntents.AnyAsync(x => x.TaskId == candidate.TaskId && x.AppliedAt == null, ct)) continue;
                 pendingTasks.Add(candidate);
                 if (pendingTasks.Count == 10) break;
@@ -238,23 +238,6 @@ public class WorkflowWorker(
                 .Take(10)
                 .Include(t => t.Instance)
                 .ToListAsync(ct);
-        }
-    }
-
-    private bool HasExecutionAuthority(WorkflowInstance? instance, Guid taskId)
-    {
-        try
-        {
-            if (instance is null) throw new InvalidDataException("Workflow is unavailable.");
-            RecipeFilePublicationStore.ValidateExecutionLaunch(instance);
-            return true;
-        }
-        catch (Exception ex) when (ex is InvalidDataException or JsonException or ArgumentException)
-        {
-            // Do not clear results, advance retries, fail a parent or recapture
-            // current inputs as though they were the originally accepted command.
-            logger.LogWarning(ex, "Refusing workflow task {TaskId}: original launch authority is unavailable or divergent", taskId);
-            return false;
         }
     }
 
@@ -359,7 +342,7 @@ public class WorkflowWorker(
                 return;
             }
 
-            if (!HasExecutionAuthority(instance, task.TaskId)
+            if (instance is null
                 || await db.WorkflowResetIntents.AnyAsync(x => x.TaskId == task.TaskId && x.AppliedAt == null, ct)) return;
 
             // Do not track the eligibility snapshot as the parent's current

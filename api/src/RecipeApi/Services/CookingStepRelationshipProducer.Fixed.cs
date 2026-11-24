@@ -27,7 +27,7 @@ public static partial class CookingStepRelationshipProducer
         return new(new(span.Index, span.Index + span.Length, span.Value), quantity, "fixed");
     }
 
-    private static bool UsableFixedRow(CanonicalRecipeContent content, RecipeIngredientLineDto row) =>
+    private static bool UsableFixedRow(StructuredRecipeContent content, RecipeIngredientLineDto row) =>
         row.Id != Guid.Empty && content.IngredientLines.Count(other => other.Id == row.Id) == 1 &&
         row.Scaling is "proportional" or "fixed" && row.Package is null && FixedAmount(row, row.Amount) &&
         !string.IsNullOrWhiteSpace(row.Description) && row.Description.IndexOfAny(['\r', '\n', '.', ';', ':', '!', '?']) < 0 &&

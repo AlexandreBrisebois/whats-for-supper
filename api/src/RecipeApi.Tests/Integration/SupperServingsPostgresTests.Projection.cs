@@ -28,7 +28,7 @@ public partial class SupperServingsPostgresTests
     };
 
     private static string BuildProjectionCanonical(int? basis, params RecipeIngredientLineDto[] lines) =>
-        JsonSerializer.Serialize(new CanonicalRecipeContent(2, Guid.NewGuid().ToString("N"), "source-v1", basis, lines, []), ProjectionWebJson);
+        JsonSerializer.Serialize(new StructuredRecipeContent(2, Guid.NewGuid().ToString("N"), "source-v1", basis, lines, []), ProjectionWebJson);
 
     [DeploymentCalendarPostgresTests.CalendarPostgresFact]
     public async Task SupperServings_Projection_ProposedDateUsesSavedFourThenSixWithoutWrites()

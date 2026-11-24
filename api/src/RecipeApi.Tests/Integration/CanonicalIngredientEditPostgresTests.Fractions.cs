@@ -13,7 +13,7 @@ namespace RecipeApi.Tests.Integration;
 
 public sealed partial class CanonicalIngredientEditPostgresTests
 {
-    private static async Task<CanonicalRecipeContent> SeedCookingFraction(TestWebApplicationFactory factory, CanonicalRecipeContent before)
+    private static async Task<StructuredRecipeContent> SeedCookingFraction(TestWebApplicationFactory factory, StructuredRecipeContent before)
     {
         before = await SeedCookingAllocation(factory, before, false);
         var first = before.InstructionSections[0].Steps[0];
@@ -84,7 +84,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             }
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var current = CanonicalRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
+            var current = StructuredRecipeContentStore.Read(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id))!;
             Assert.Equal(before.SourceRevision, current.SourceRevision);
             Assert.Equal(before.InstructionSections[0].Steps.Select(x => x.Id), current.InstructionSections[0].Steps.Select(x => x.Id));
             Assert.Equal(before.InstructionSections[0].Steps.Select(x => x.Text), current.InstructionSections[0].Steps.Select(x => x.Text));

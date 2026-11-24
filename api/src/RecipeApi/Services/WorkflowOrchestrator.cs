@@ -14,7 +14,7 @@ namespace RecipeApi.Services;
 
 public class InvalidWorkflowException(string message) : Exception(message);
 
-public partial class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepository, RecipeDbContext dbContext, RecipeFilePublicationStore publications) : IWorkflowOrchestrator
+public partial class WorkflowOrchestrator(IClock clock, WorkflowRepository workflowRepository, RecipeDbContext dbContext) : IWorkflowOrchestrator
 {
     private readonly RecipeDbContext _dbContext = dbContext;
 
@@ -60,7 +60,6 @@ public partial class WorkflowOrchestrator(IClock clock, WorkflowRepository workf
         var instance = ConstructInstance(workflowId, definition, parameters, clock.UtcNow);
         instance.Id = instanceId;
         foreach (var task in instance.Tasks) task.InstanceId = instanceId;
-        await publications.CaptureLaunchAsync(instance, requireSourceMatch: true);
         return instance;
     }
 
@@ -191,13 +190,11 @@ public partial class WorkflowOrchestrator(IClock clock, WorkflowRepository workf
         WorkflowInstance? prepared = null;
         if (pending is not null && UrlCaptureInitialization.IsPending(pending))
         {
-            await publications.ValidateBootstrapInitializationAsync(pending, ct);
             var definition = await GetDefinitionAsync(pending.WorkflowId);
             var parameters = JsonSerializer.Deserialize<Dictionary<string, string>>(pending.Parameters!)!;
             prepared = ConstructInstance(pending.WorkflowId, definition, parameters, clock.UtcNow);
             prepared.Id = instanceId;
             foreach (var task in prepared.Tasks) task.InstanceId = instanceId;
-            await publications.CaptureLaunchAsync(prepared, ct);
         }
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
         var instance = await UrlCaptureInitialization.LoadLockedAsync(_dbContext, instanceId, ct);
@@ -207,16 +204,14 @@ public partial class WorkflowOrchestrator(IClock clock, WorkflowRepository workf
             return instance;
         }
 
-        await publications.ValidateBootstrapInitializationAsync(instance, ct);
         if (prepared is null) throw new InvalidWorkflowException("URL initialization is unavailable.");
         if (prepared.Tasks.Count == 0)
             throw new InvalidWorkflowException("URL import must contain acquisition work.");
         _dbContext.WorkflowTasks.RemoveRange(instance.Tasks);
         instance.Tasks.Clear();
         var now = clock.UtcNow;
-        if (CanonicalRecipeContentStore.NormalizeJson(instance.Parameters) != CanonicalRecipeContentStore.NormalizeJson(pending!.Parameters))
+        if (StructuredRecipeContentStore.NormalizeJson(instance.Parameters) != StructuredRecipeContentStore.NormalizeJson(pending!.Parameters))
             throw new InvalidWorkflowException("URL initialization inputs changed during capture.");
-        instance.RecipePublicationCapture = prepared.RecipePublicationCapture;
         foreach (var task in prepared.Tasks) instance.Tasks.Add(task);
         _dbContext.WorkflowTasks.AddRange(instance.Tasks);
         instance.Status = WorkflowStatus.Pending;
@@ -233,13 +228,11 @@ public partial class WorkflowOrchestrator(IClock clock, WorkflowRepository workf
         WorkflowInstance? prepared = null;
         if (pending is not null && RecipeFollowupInitialization.IsPending(pending))
         {
-            await publications.ValidateFollowupInitializationAsync(pending, ct);
             var definition = await GetDefinitionAsync(pending.WorkflowId);
             var parameters = JsonSerializer.Deserialize<Dictionary<string, string>>(pending.Parameters!)!;
             prepared = ConstructInstance(pending.WorkflowId, definition, parameters, clock.UtcNow);
             prepared.Id = instanceId;
             foreach (var task in prepared.Tasks) task.InstanceId = instanceId;
-            await publications.CaptureLaunchAsync(prepared, ct);
         }
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
         var instance = await UrlCaptureInitialization.LoadLockedAsync(_dbContext, instanceId, ct);
@@ -249,16 +242,14 @@ public partial class WorkflowOrchestrator(IClock clock, WorkflowRepository workf
             return instance;
         }
 
-        await publications.ValidateFollowupInitializationAsync(instance, ct);
         if (prepared is null) throw new InvalidWorkflowException("Recipe follow-up initialization is unavailable.");
         if (prepared.Tasks.Count == 0)
             throw new InvalidWorkflowException("Recipe follow-up must contain work.");
         _dbContext.WorkflowTasks.RemoveRange(instance.Tasks);
         instance.Tasks.Clear();
         var now = clock.UtcNow;
-        if (CanonicalRecipeContentStore.NormalizeJson(instance.Parameters) != CanonicalRecipeContentStore.NormalizeJson(pending!.Parameters))
+        if (StructuredRecipeContentStore.NormalizeJson(instance.Parameters) != StructuredRecipeContentStore.NormalizeJson(pending!.Parameters))
             throw new InvalidWorkflowException("Recipe follow-up initialization inputs changed during capture.");
-        instance.RecipePublicationCapture = prepared.RecipePublicationCapture;
         foreach (var task in prepared.Tasks) instance.Tasks.Add(task);
         _dbContext.WorkflowTasks.AddRange(instance.Tasks);
         instance.Status = WorkflowStatus.Pending;

@@ -2379,6 +2379,9 @@ function RecipesContent() {
       {detailRecipeId && (
         <RecipeDetailSheet
           recipeId={detailRecipeId}
+          initialReviewDuplicate={
+            searchParams.get('reviewDuplicate') === '1' && detailRecipeId === openRecipeId
+          }
           plannerDayLabel={originalSourceReview ? null : planningDayLabel}
           ingredientContext={
             !originalSourceReview && visibleTarget

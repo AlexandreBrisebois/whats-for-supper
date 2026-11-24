@@ -7,8 +7,8 @@ public static partial class CookingStepRelationshipProducer
     // Opaque newly created IDs are recorded facts, not semantic proof. Historical
     // V2 derivation supplies them at the exact same allocation sites while every
     // relationship field and graph edge is still independently reconstructed.
-    internal static CanonicalRecipeContent DiscoverRecorded(CanonicalRecipeContent content, CanonicalRecipeContent previous,
-        CanonicalRecipeContent recorded)
+    internal static StructuredRecipeContent DiscoverRecorded(StructuredRecipeContent content, StructuredRecipeContent previous,
+        StructuredRecipeContent recorded)
     {
         var priorBindings = previous.InstructionSections.SelectMany(x => x.Steps).SelectMany(x => x.Bindings)
             .Where(Owned).Select(Read).Where(x => x is not null).Select(x => x!).ToArray();

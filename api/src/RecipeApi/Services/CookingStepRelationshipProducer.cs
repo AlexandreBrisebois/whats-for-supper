@@ -41,11 +41,11 @@ public static partial class CookingStepRelationshipProducer
     private sealed record RemainderSequence(RecipeIngredientLineDto Row, RecipeInstructionStepDto Prior,
         Clause PriorClause, RecipeInstructionStepDto Final, Span FinalSpan);
 
-    public static CanonicalRecipeContent Discover(CanonicalRecipeContent content, CanonicalRecipeContent? previous = null)
+    public static StructuredRecipeContent Discover(StructuredRecipeContent content, StructuredRecipeContent? previous = null)
         => DiscoverWithIdentities(content, previous, _ => Guid.NewGuid());
 
     private sealed record CreationKey(Guid StepId, Guid IngredientLineId, string Kind, int Start, int End);
-    private static CanonicalRecipeContent DiscoverWithIdentities(CanonicalRecipeContent content, CanonicalRecipeContent? previous,
+    private static StructuredRecipeContent DiscoverWithIdentities(StructuredRecipeContent content, StructuredRecipeContent? previous,
         Func<CreationKey, Guid> createIdentity)
     {
         try { return DiscoverBounded(content, previous, createIdentity); }
@@ -59,7 +59,7 @@ public static partial class CookingStepRelationshipProducer
         }
     }
 
-    private static CanonicalRecipeContent DiscoverBounded(CanonicalRecipeContent content, CanonicalRecipeContent? previous, Func<CreationKey, Guid> createIdentity)
+    private static StructuredRecipeContent DiscoverBounded(StructuredRecipeContent content, StructuredRecipeContent? previous, Func<CreationKey, Guid> createIdentity)
     {
         var steps = content.InstructionSections.SelectMany(x => x.Steps).ToArray();
         var remainders = DiscoverRemainders(content, previous, steps, createIdentity);
@@ -113,7 +113,7 @@ public static partial class CookingStepRelationshipProducer
 
     // Called at the fresh-publication fence. Independently derive every expected
     // relationship from captured facts; supplied IDs/status/evidence are not proof.
-    public static void ValidateFresh(CanonicalRecipeContent content)
+    public static void ValidateFresh(StructuredRecipeContent content)
     {
         var stripped = content with
         {
@@ -193,8 +193,8 @@ public static partial class CookingStepRelationshipProducer
                 array[index] = replacement;
     }
 
-    private static Dictionary<Guid, JsonElement> DiscoverRemainders(CanonicalRecipeContent content,
-        CanonicalRecipeContent? previous, RecipeInstructionStepDto[] steps, Func<CreationKey, Guid> createIdentity)
+    private static Dictionary<Guid, JsonElement> DiscoverRemainders(StructuredRecipeContent content,
+        StructuredRecipeContent? previous, RecipeInstructionStepDto[] steps, Func<CreationKey, Guid> createIdentity)
     {
         var result = new Dictionary<Guid, JsonElement>();
         foreach (var row in content.IngredientLines)
@@ -219,7 +219,7 @@ public static partial class CookingStepRelationshipProducer
         return result;
     }
 
-    private static (JsonElement Prior, JsonElement Final) SequenceBindings(CanonicalRecipeContent content,
+    private static (JsonElement Prior, JsonElement Final) SequenceBindings(StructuredRecipeContent content,
         RemainderSequence sequence, Guid priorId, Guid finalId, Guid groupId)
     {
         var group = new AllocationGroup(groupId, true, [priorId, finalId]);
@@ -236,8 +236,8 @@ public static partial class CookingStepRelationshipProducer
 
     // The literal final clause supplies exhaustive intent. Only its complete
     // source-bound two-step graph can introduce an allocation group.
-    private static RemainderSequence? Remainder(CanonicalRecipeContent content, RecipeInstructionStepDto[] steps,
-        RecipeIngredientLineDto row, CanonicalRecipeContent? previous)
+    private static RemainderSequence? Remainder(StructuredRecipeContent content, RecipeInstructionStepDto[] steps,
+        RecipeIngredientLineDto row, StructuredRecipeContent? previous)
     {
         if (!UsableRow(content, row) || PartialOrConditional.IsMatch(row.Description) ||
             row.Amount is not { Kind: "scalar" } || row.Unit is null ||
@@ -261,7 +261,7 @@ public static partial class CookingStepRelationshipProducer
     // Every additional clause must have a closed, independently understood
     // subject or the one bounded neutral procedure. Unknown prose cannot prove
     // the absence of a conditional branch in this exhaustive sequence.
-    private static bool IndependentRemainderStep(CanonicalRecipeContent content, RecipeIngredientLineDto selected, string text, CanonicalRecipeContent? previous) =>
+    private static bool IndependentRemainderStep(StructuredRecipeContent content, RecipeIngredientLineDto selected, string text, StructuredRecipeContent? previous) =>
         NeutralRemainderStep.IsMatch(text) || IndependentPerItemStep(content, selected, text, previous) || content.IngredientLines
             .Where(row => row.Id != selected.Id && row.Id != Guid.Empty && !string.IsNullOrWhiteSpace(row.Description) &&
                 !PartialOrConditional.IsMatch(row.Description) && content.IngredientLines.Count(other => other.Id == row.Id) == 1 &&
@@ -279,13 +279,13 @@ public static partial class CookingStepRelationshipProducer
         return new(span.Index, span.Index + span.Length, span.Value);
     }
 
-    private static bool UsableRow(CanonicalRecipeContent content, RecipeIngredientLineDto row) =>
+    private static bool UsableRow(StructuredRecipeContent content, RecipeIngredientLineDto row) =>
         row.Id != Guid.Empty && content.IngredientLines.Count(other => other.Id == row.Id) == 1 &&
         row.Amount is not null && QuantityMath.IsCanonical(row.Amount) && row.Scaling == "proportional" && row.Package is null &&
         !string.IsNullOrWhiteSpace(row.Description) && row.Description.IndexOfAny(['\r', '\n', '.', ';', ':', '!', '?']) < 0 &&
         content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1;
 
-    private static bool Unambiguous(CanonicalRecipeContent content, RecipeInstructionStepDto[] steps, RecipeIngredientLineDto row, CanonicalRecipeContent? previous)
+    private static bool Unambiguous(StructuredRecipeContent content, RecipeInstructionStepDto[] steps, RecipeIngredientLineDto row, StructuredRecipeContent? previous)
     {
         if (!UsableRow(content, row) && !UsableFixedRow(content, row)) return false;
         if (!steps.Any(step => step.Text.Contains(row.Description, StringComparison.OrdinalIgnoreCase))) return false;
@@ -308,7 +308,7 @@ public static partial class CookingStepRelationshipProducer
     // A partial clause with no established subject can affect this row. A closed
     // clause explicitly naming another unique saved row does not. This does not
     // create or validate that other row's partial allocation.
-    private static bool IndependentPartial(CanonicalRecipeContent content, RecipeIngredientLineDto selected, string text, CanonicalRecipeContent? previous) =>
+    private static bool IndependentPartial(StructuredRecipeContent content, RecipeIngredientLineDto selected, string text, StructuredRecipeContent? previous) =>
         IndependentPerItemStep(content, selected, text, previous) || content.IngredientLines.Where(row => row.Id != selected.Id && !string.IsNullOrWhiteSpace(row.Description) &&
             content.IngredientLines.Count(other => string.Equals(other.Description, row.Description, StringComparison.OrdinalIgnoreCase)) == 1)
         .Any(row => Parse(text, row)?.Role == "fraction" || ParseFinalRemainder(text, row) is not null || Regex.IsMatch(text,
@@ -373,7 +373,7 @@ public static partial class CookingStepRelationshipProducer
         row.Unit is not null && row.Amount is { Kind: "scalar" } && amount is { Kind: "scalar", Value.N: not "0" } &&
         QuantityMath.SubtractScalar(row.Amount, amount) is { Value.N: not "0" };
 
-    private static Binding? Carry(CanonicalRecipeContent? previous, CanonicalRecipeContent content,
+    private static Binding? Carry(StructuredRecipeContent? previous, StructuredRecipeContent content,
         RecipeInstructionStepDto step, RecipeIngredientLineDto row, Clause clause, bool allocation = false)
     {
         if (previous is null || previous.SourceRevision != content.SourceRevision) return null;
@@ -391,7 +391,7 @@ public static partial class CookingStepRelationshipProducer
         return prior[0];
     }
 
-    private static bool Matches(Binding binding, CanonicalRecipeContent content, RecipeInstructionStepDto step,
+    private static bool Matches(Binding binding, StructuredRecipeContent content, RecipeInstructionStepDto step,
         RecipeIngredientLineDto row, Clause clause, bool allocation = false) => binding.Id != Guid.Empty && binding.IngredientLineId == row.Id &&
         binding.StepId == step.Id && binding.ValidatedContentRevision == content.ContentRevision && binding.ValidatedTextRevision == step.TextRevision &&
         binding.Span == clause.Span && binding.Role == clause.Role && binding.Status == "validated" &&

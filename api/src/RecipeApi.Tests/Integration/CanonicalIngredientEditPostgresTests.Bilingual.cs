@@ -44,7 +44,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Equal(before.SourceRevision, saved.SourceRevision);
             Assert.Equal(JsonSerializer.Serialize(before.InstructionSections, Json), JsonSerializer.Serialize(saved.InstructionSections, Json));
             Assert.Equal(before.IngredientLines.Select(x => x.Shopping), saved.IngredientLines.Select(x => x.Shopping));
-            CanonicalRecipeOperation accepted;
+            StructuredRecipeOperation accepted;
             RecipeFoodMappingEvidence evidence;
             string state;
             using (var read = factory.Services.CreateScope())
@@ -75,7 +75,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var db = replay.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 var count = await db.CanonicalRecipeOperations.CountAsync();
                 var input = JsonSerializer.Deserialize<UpdateRecipeDto>(JsonSerializer.Serialize(request, Json), Json)!;
-                var result = await replay.ServiceProvider.GetRequiredService<CanonicalRecipeContentStore>()
+                var result = await replay.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>()
                     .EditAsync(Id, before.SourceRevision, accepted.OperationId, input);
                 Assert.Equal(saved.ContentRevision, result.Content.ContentRevision);
                 Assert.Equal(count, await db.CanonicalRecipeOperations.CountAsync());
@@ -94,7 +94,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             {
                 Assert.Equal("legacy_ambiguous", decision.Kind);
                 Assert.Equal(accepted.OperationId, decision.DecidingOperationId);
-                Assert.Equal(CanonicalRecipeContentStore.Read(finalRecipe)!.ContentRevision, decision.ContentRevision);
+                Assert.Equal(StructuredRecipeContentStore.Read(finalRecipe)!.ContentRevision, decision.ContentRevision);
             });
             Assert.Equal(rawBefore, finalRecipe.RawMetadata);
         });

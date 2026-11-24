@@ -13,7 +13,7 @@ public partial class WorkflowOrchestrator
         Dictionary<string, string> Parameters, DateTimeOffset? ScheduledAt, Guid? ReportRecipeId, Guid? RecoveryOperationId);
     private sealed record LaunchTask(Guid Id, string Name, string Processor, string? Payload,
         string[] DependsOn, DateTimeOffset? ScheduledAt);
-    private sealed record LaunchPrepared(DateTimeOffset CreatedAt, string Capture, LaunchTask[] Tasks);
+    private sealed record LaunchPrepared(DateTimeOffset CreatedAt, string? Capture, LaunchTask[] Tasks);
 
     private static readonly JsonSerializerOptions LaunchHistoryJson = new()
     {
@@ -36,16 +36,16 @@ public partial class WorkflowOrchestrator
             return [];
         }
         var prepared = WorkflowProcessorHistory.ReadObservation<LaunchPrepared>(intent.Prepared, LaunchHistoryJson);
-        if (prepared.CreatedAt == default || string.IsNullOrWhiteSpace(prepared.Capture)
+        if (prepared.CreatedAt == default
             || prepared.Tasks is null || prepared.Tasks.Length == 0
             || prepared.Tasks.Any(x => x is null || x.Id == Guid.Empty || x.DependsOn is null)
             || prepared.Tasks.Select(x => x.Id).Distinct().Count() != prepared.Tasks.Length)
             throw new InvalidDataException("Original prepared launch is inconsistent.");
-        return RecipeFilePublicationStore.VocabularyReferences(InitializeOriginalLaunch(intent));
+        return [];
     }
 
     private static string LaunchHash(string value) => Convert.ToHexString(SHA256.HashData(
-        Encoding.UTF8.GetBytes(CanonicalRecipeContentStore.NormalizeJson(value))));
+        Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(value))));
 
     private async Task<WorkflowInstance> AcceptOriginalLaunchAsync(Guid id, string workflowId,
         Dictionary<string, string> parameters, DateTimeOffset? scheduledAt, Guid? reportRecipeId)
@@ -98,8 +98,7 @@ public partial class WorkflowOrchestrator
             var instance = ConstructInstance(original.WorkflowId, definition, original.Parameters, clock.UtcNow, original.ScheduledAt);
             instance.Id = id;
             foreach (var task in instance.Tasks) task.InstanceId = id;
-            await publications.CaptureLaunchAsync(instance);
-            var prepared = JsonSerializer.Serialize(new LaunchPrepared(instance.CreatedAt, instance.RecipePublicationCapture!,
+            var prepared = JsonSerializer.Serialize(new LaunchPrepared(instance.CreatedAt, null,
                 instance.Tasks.Select(x => new LaunchTask(x.TaskId, x.TaskName, x.ProcessorName,
                     x.Payload, x.DependsOn, x.ScheduledAt)).ToArray()));
             await using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -170,7 +169,7 @@ public partial class WorkflowOrchestrator
             throw new InvalidDataException("Original launch has no executable capture.");
         var prepared = JsonSerializer.Deserialize<LaunchPrepared>(intent.Prepared)
             ?? throw new InvalidDataException("Original launch graph is missing.");
-        if (prepared.Tasks is null || prepared.Capture is null)
+        if (prepared.Tasks is null)
             throw new InvalidDataException("Original launch graph is incomplete.");
         var instance = new WorkflowInstance
         {
@@ -195,17 +194,14 @@ public partial class WorkflowOrchestrator
                 UpdatedAt = prepared.CreatedAt
             }).ToList()
         };
-        RecipeFilePublicationStore.ValidateExecutionLaunch(instance);
         return instance;
     }
 
     private static void ValidateOriginalLaunch(WorkflowLaunchIntent intent, WorkflowInstance actual)
     {
         var original = InitializeOriginalLaunch(intent);
-        RecipeFilePublicationStore.ValidateExecutionLaunch(actual);
         if (original.Id != actual.Id || original.WorkflowId != actual.WorkflowId
-            || CanonicalRecipeContentStore.NormalizeJson(original.Parameters) != CanonicalRecipeContentStore.NormalizeJson(actual.Parameters)
-            || CanonicalRecipeContentStore.NormalizeJson(original.RecipePublicationCapture) != CanonicalRecipeContentStore.NormalizeJson(actual.RecipePublicationCapture))
+            || StructuredRecipeContentStore.NormalizeJson(original.Parameters) != StructuredRecipeContentStore.NormalizeJson(actual.Parameters))
             throw new InvalidDataException("Accepted work differs from its original launch.");
     }
 
