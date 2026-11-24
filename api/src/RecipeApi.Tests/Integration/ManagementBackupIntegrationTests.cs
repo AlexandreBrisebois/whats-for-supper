@@ -241,4 +241,81 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
         Assert.NotNull(merged.CanonicalContent);
         Assert.Equal(6, merged.Servings);
     }
+
+    [Fact]
+    public async Task RestoreAsync_RejectsRetiredWrapperEnvelopesAsLoadErrors_WhileLoadingValidSchemaOrgAndUnversionedLegacyRecipes()
+    {
+        var store = _scope.ServiceProvider.GetRequiredService<IRecipeStore>();
+        var webJson = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+
+        // 1. Retired backupContentVersion: 1 wrapper
+        var v1Id = Guid.Parse("00000001-0000-0000-0000-000000000001");
+        await store.WriteInfoAsync(new RecipeInfo { Id = v1Id, Name = "Retired V1", IsReady = true });
+        await store.WriteRecipeJsonAsync(v1Id, """{"backupContentVersion":1,"rawMetadata":"{\"@context\":\"https://schema.org/\",\"@type\":\"Recipe\",\"recipeYield\":\"4 portions\",\"recipeIngredient\":[\"1 cup rice\"]}","ingredients":"[\"1 cup rice\"]","servings":4}""");
+
+        // 2. Retired wfs-recipe v2 wrapper
+        var v2Id = Guid.Parse("00000002-0000-0000-0000-000000000002");
+        const string v2Raw = """{"@context":"https://schema.org/","@type":"Recipe","name":"Retired V2","recipeYield":"4 portions","recipeIngredient":["400 g chicken"]}""";
+        var (v2Content, _) = StructuredRecipeContentStore.FromSchemaOrg(v2Id, v2Raw, null, null, Guid.NewGuid(), "source");
+        await store.WriteInfoAsync(new RecipeInfo { Id = v2Id, Name = "Retired V2", IsReady = true });
+        var v2Envelope = new System.Text.Json.Nodes.JsonObject
+        {
+            ["format"] = "wfs-recipe",
+            ["version"] = 2,
+            ["recipeId"] = v2Id,
+            ["contentSchemaVersion"] = 2,
+            ["contentRevision"] = v2Content.ContentRevision,
+            ["content"] = System.Text.Json.JsonSerializer.SerializeToNode(v2Content, webJson),
+            ["rawMetadata"] = v2Raw
+        }.ToJsonString();
+        await store.WriteRecipeJsonAsync(v2Id, v2Envelope);
+
+        // 3. Unknown wrapper envelope
+        var unknownId = Guid.Parse("00000003-0000-0000-0000-000000000003");
+        await store.WriteInfoAsync(new RecipeInfo { Id = unknownId, Name = "Unknown Wrapper", IsReady = true });
+        await store.WriteRecipeJsonAsync(unknownId, """{"format":"custom-wrapper","version":9,"recipeIngredient":["1 cup milk"]}""");
+
+        // 4. Subsequent valid top-level https://schema.org/Recipe document
+        var validId = Guid.Parse("00000004-0000-0000-0000-000000000004");
+        await store.WriteInfoAsync(new RecipeInfo { Id = validId, Name = "Valid Schema.org Soup", IsReady = true });
+        await store.WriteRecipeJsonAsync(validId, """
+            {
+              "@context": "https://schema.org/",
+              "@type": "Recipe",
+              "name": "Valid Schema.org Soup",
+              "recipeYield": "4 portions",
+              "recipeIngredient": ["500 g carrots", "1 L broth"],
+              "recipeInstructions": [{ "@type": "HowToSection", "itemListElement": [{ "@type": "HowToStep", "text": "Simmer until tender." }] }]
+            }
+            """);
+
+        // 5. Unversioned legacy ingredients array (no wrapper keys)
+        var legacyArrayId = Guid.Parse("00000005-0000-0000-0000-000000000005");
+        await store.WriteInfoAsync(new RecipeInfo { Id = legacyArrayId, Name = "Legacy Array", IsReady = true });
+        await store.WriteRecipeJsonAsync(legacyArrayId, """{"ingredients":["2 cups flour","1 tsp salt"]}""");
+
+        // 6. Unversioned legacy serialized ingredients JSON-array string (no wrapper keys)
+        var legacyStringId = Guid.Parse("00000006-0000-0000-0000-000000000006");
+        await store.WriteInfoAsync(new RecipeInfo { Id = legacyStringId, Name = "Legacy Serialized", IsReady = true });
+        await store.WriteRecipeJsonAsync(legacyStringId, """{"ingredients":"[\"1 cup sugar\"]"}""");
+
+        var restoreResult = await _management.RestoreAsync();
+        Assert.Equal(3, restoreResult.Errors);
+
+        _db.ChangeTracker.Clear();
+        Assert.Null(await _db.Recipes.IgnoreQueryFilters().SingleOrDefaultAsync(r => r.Id == v1Id));
+        Assert.Null(await _db.Recipes.IgnoreQueryFilters().SingleOrDefaultAsync(r => r.Id == v2Id));
+        Assert.Null(await _db.Recipes.IgnoreQueryFilters().SingleOrDefaultAsync(r => r.Id == unknownId));
+
+        var valid = await _db.Recipes.AsNoTracking().SingleAsync(r => r.Id == validId);
+        Assert.NotNull(valid.CanonicalContent);
+        Assert.Equal(4, valid.Servings);
+        Assert.Contains("500 g carrots", valid.Ingredients);
+
+        var legacyArray = await _db.Recipes.AsNoTracking().SingleAsync(r => r.Id == legacyArrayId);
+        Assert.Contains("2 cups flour", legacyArray.Ingredients);
+
+        var legacyString = await _db.Recipes.AsNoTracking().SingleAsync(r => r.Id == legacyStringId);
+        Assert.Contains("1 cup sugar", legacyString.Ingredients);
+    }
 }

@@ -139,7 +139,7 @@ public static partial class FoodVocabularyInventoryQualification
             FoodVocabularyDefinitions.Require(recipe.FoodMappingEvidence is null);
             return [];
         }
-        RecipeExportContent.ValidateRetainedHistory(new(recipe.RecipeId, content, null));
+        StructuredRecipeContentStore.ValidateContent(content, retainedHistory: true);
         var references = recipe.FoodMappingEvidence is null ? [] : FoodMappingQualification.References(recipe.FoodMappingEvidence).ToArray();
         if (references.Length == 0) FoodMappingQualification.Validate(content, recipe.FoodMappingEvidence, new(null, []), recipe.RecipeId);
         return references;

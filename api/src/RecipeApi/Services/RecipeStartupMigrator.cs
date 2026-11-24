@@ -25,9 +25,7 @@ public sealed partial class RecipeStartupMigrator(
     GroceryRecomputeService groceries,
     DeploymentCalendar calendar,
     IClock clock,
-    ILogger<RecipeStartupMigrator>? logger = null,
-    IRecipeStore? recipeStore = null,
-    RecipesRootResolver? recipesRoot = null)
+    ILogger<RecipeStartupMigrator>? logger = null)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -70,8 +68,6 @@ public sealed partial class RecipeStartupMigrator(
     {
         var stopwatch = Stopwatch.StartNew();
 
-        CleanupPublicationDirectories(ct);
-
         var allRecipes = await db.Recipes.IgnoreQueryFilters().ToListAsync(ct);
         var toMigrate = allRecipes.Where(NeedsMigration).ToList();
 
@@ -80,7 +76,6 @@ public sealed partial class RecipeStartupMigrator(
 
         if (toMigrate.Count == 0 && legacyPlans.Count == 0)
         {
-            await UnwrapDiskRecipeFilesAsync(allRecipes, ct);
             stopwatch.Stop();
             return new RecipeStartupMigrationResult(0, 0, stopwatch.ElapsedMilliseconds);
         }
@@ -113,8 +108,6 @@ public sealed partial class RecipeStartupMigrator(
             await transaction.CommitAsync(ct);
         }
 
-        await UnwrapDiskRecipeFilesAsync(allRecipes, ct);
-
         var eventDates = await db.CalendarEvents
             .AsNoTracking()
             .Where(x => x.RecipeId != null && x.Status != CalendarEventStatus.Skipped)
@@ -139,94 +132,6 @@ public sealed partial class RecipeStartupMigrator(
             toMigrate.Count, weeksToRecompute.Length, stopwatch.ElapsedMilliseconds);
 
         return new RecipeStartupMigrationResult(toMigrate.Count, weeksToRecompute.Length, stopwatch.ElapsedMilliseconds);
-    }
-
-    private void CleanupPublicationDirectories(CancellationToken ct)
-    {
-        if (recipesRoot is null || !Directory.Exists(recipesRoot.Root)) return;
-        foreach (var recipeDir in Directory.EnumerateDirectories(recipesRoot.Root))
-        {
-            ct.ThrowIfCancellationRequested();
-            var pubDir = Path.Combine(recipeDir, ".publications");
-            if (Directory.Exists(pubDir))
-            {
-                try { Directory.Delete(pubDir, recursive: true); }
-                catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete retired .publications directory at {Path}", pubDir); }
-            }
-        }
-    }
-
-    private async Task UnwrapDiskRecipeFilesAsync(IReadOnlyList<Recipe> dbRecipes, CancellationToken ct)
-    {
-        if (recipeStore is null) return;
-        var recipesById = dbRecipes.ToDictionary(r => r.Id);
-        var diskIds = await recipeStore.ListRecipeIdsAsync(ct);
-        var unwrappedCount = 0;
-
-        foreach (var id in diskIds)
-        {
-            ct.ThrowIfCancellationRequested();
-            var rawJson = await recipeStore.ReadRecipeJsonAsync(id, ct);
-            if (string.IsNullOrWhiteSpace(rawJson)) continue;
-
-            try
-            {
-                using var doc = JsonDocument.Parse(rawJson);
-                if (doc.RootElement.ValueKind != JsonValueKind.Object) continue;
-
-                var isV1Wrapper = doc.RootElement.TryGetProperty("backupContentVersion", out _);
-                var isV2Wrapper = RecipeExportContent.IsCurrent(doc.RootElement);
-                if (!isV1Wrapper && !isV2Wrapper) continue;
-
-                string schemaOrgJson;
-                if (recipesById.TryGetValue(id, out var recipe) && StructuredRecipeContentStore.Read(recipe) is { } dbContent)
-                {
-                    schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(
-                        dbContent, recipe.RawMetadata, recipe.Name, recipe.Description);
-                }
-                else if (isV2Wrapper)
-                {
-                    var exported = RecipeExportContent.ReadCurrent(doc.RootElement, id);
-                    var info = await recipeStore.ReadInfoAsync(id, ct);
-                    schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(
-                        exported.Content, exported.RawMetadata, info?.Name, info?.Description);
-                }
-                else
-                {
-                    var legacy = RecipeExportContent.Read(doc.RootElement);
-                    var info = await recipeStore.ReadInfoAsync(id, ct);
-                    var innerRaw = legacy?.RawMetadata;
-                    if (!string.IsNullOrWhiteSpace(innerRaw))
-                    {
-                        var (derived, _) = StructuredRecipeContentStore.FromSchemaOrg(
-                            id, innerRaw, info?.SourceUrl, null, Guid.NewGuid(), "source");
-                        schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(
-                            derived, innerRaw, info?.Name, info?.Description);
-                    }
-                    else
-                    {
-                        var fallback = new SchemaOrgRecipe
-                        {
-                            Context = "https://schema.org/",
-                            Type = "Recipe",
-                            Name = info?.Name ?? string.Empty,
-                            Description = info?.Description
-                        };
-                        schemaOrgJson = JsonSerializer.Serialize(fallback, new JsonSerializerOptions(JsonDefaults.CamelCase) { WriteIndented = true });
-                    }
-                }
-
-                await recipeStore.WriteRecipeJsonAsync(id, schemaOrgJson, ct);
-                unwrappedCount++;
-            }
-            catch (Exception ex) when (ex is JsonException or InvalidDataException)
-            {
-                _logger.LogWarning(ex, "Skipped unwrapping malformed recipe.json for {RecipeId}", id);
-            }
-        }
-
-        if (unwrappedCount > 0)
-            _logger.LogInformation("Unwrapped {Count} legacy recipe.json file(s) to Schema.org Recipe format", unwrappedCount);
     }
 
     private static bool NeedsMigration(Recipe recipe)
@@ -314,7 +219,7 @@ public sealed partial class RecipeStartupMigrator(
             authority,
             operationId);
 
-        _ = RecipeExportContent.WriteCurrent(new StructuredRecipeExport(recipe.Id, mapped.Export.Content, null));
+        StructuredRecipeContentStore.ValidateContent(mapped.Export.Content);
 
         return new PreparedRecipeUpgrade(
             JsonSerializer.Serialize(mapped.Export.Content, Json),

@@ -1,8 +1,14 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using RecipeApi.Dto;
 using RecipeApi.Infrastructure;
+using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Services.Processors;
+using RecipeApi.Tests.Infrastructure;
 using Xunit;
 
 namespace RecipeApi.Tests.Services;
@@ -15,7 +21,7 @@ public sealed class CurrentRecipeExportTests
     public static StructuredRecipeExport Example() => new(RecipeId, new(2, "revision-opaque", "source-opaque", null,
         [Line("flour", "⅓", "cup"), Line("garlic", "2–3", "cloves"), Line("salt", null, null), Line("salt", "0", "tsp")],
         [new(Guid.NewGuid(), null, [new(Guid.NewGuid(), "Mix 🥣, puis cuire.", "text-opaque", [])])]),
-        """{ "recipeYield": "4 portions", "recipeIngredient": ["stale source"], "privateEvidence": "retain exactly" }""");
+        """{ "@context": "https://schema.org/", "@type": "Recipe", "recipeYield": "4 portions", "recipeIngredient": ["stale source"], "privateEvidence": "retain exactly" }""");
 
     private static RecipeIngredientLineDto Line(string description, string? amount, string? unit) => new()
     {
@@ -25,101 +31,85 @@ public sealed class CurrentRecipeExportTests
         Shopping = new(description, null, null), Provenance = new("unknown", "evidence:retained", ["amount", "description"])
     };
 
-    // Build the input independently of the writer, so decoder failures cannot hide behind it.
-    private static JsonObject Envelope(StructuredRecipeExport? input = null)
+    private static JsonObject ContentNode(StructuredRecipeContent? content = null)
+        => JsonSerializer.SerializeToNode(content ?? Example().Content, Json)!.AsObject();
+
+    private static JsonObject BoundContentNode()
     {
-        var export = input ?? Example();
-        return new()
+        var content = ContentNode();
+        var step = content["instructionSections"]![0]!["steps"]![0]!;
+        step["bindings"] = new JsonArray(new JsonObject
         {
-            ["format"] = "wfs-recipe", ["version"] = 2, ["recipeId"] = export.RecipeId,
-            ["contentSchemaVersion"] = 2, ["contentRevision"] = export.Content.ContentRevision,
-            ["content"] = JsonSerializer.SerializeToNode(export.Content, Json), ["rawMetadata"] = export.RawMetadata
-        };
+            ["id"] = Guid.NewGuid(), ["ingredientLineId"] = content["ingredientLines"]![0]!["id"]!.DeepClone(),
+            ["stepId"] = step["id"]!.DeepClone(), ["validatedContentRevision"] = content["contentRevision"]!.DeepClone(),
+            ["validatedTextRevision"] = step["textRevision"]!.DeepClone(),
+            ["span"] = new JsonObject { ["start"] = 4, ["end"] = 6, ["expectedText"] = "🥣" },
+            ["role"] = "mention", ["payload"] = new JsonObject(), ["status"] = "valid"
+        });
+        return content;
     }
 
-    private static StructuredRecipeExport Read(JsonNode node) =>
-        RecipeExportContent.ReadCurrent(JsonSerializer.SerializeToElement(node), RecipeId);
+    private static string BuildRetiredV2Wrapper(StructuredRecipeExport export)
+        => new JsonObject
+        {
+            ["format"] = "wfs-recipe",
+            ["version"] = 2,
+            ["recipeId"] = export.RecipeId,
+            ["contentSchemaVersion"] = 2,
+            ["contentRevision"] = export.Content.ContentRevision,
+            ["content"] = JsonSerializer.SerializeToNode(export.Content, Json),
+            ["rawMetadata"] = export.RawMetadata
+        }.ToJsonString();
 
     [Fact]
-    public void DeclaredCurrentEnvelope_PreservesExactFactsEvidenceAndUnknownBasis()
+    public void SchemaOrgRoundTrip_PreservesIngredientsInstructionsAndYieldBasis()
     {
-        var input = Example();
-        var decoded = Read(Envelope(input));
-        Assert.Equal(JsonSerializer.Serialize(input, Json), JsonSerializer.Serialize(decoded, Json));
-        Assert.Null(decoded.Content.Servings);
-        Assert.Equal("⅓", decoded.Content.IngredientLines[0].AmountText);
-        Assert.Equal(QuantityMath.Parse("1/3"), decoded.Content.IngredientLines[0].Amount);
-        Assert.Equal(QuantityMath.Parse("2–3"), decoded.Content.IngredientLines[1].Amount);
-        Assert.Null(decoded.Content.IngredientLines[2].Amount);
-        Assert.Equal(QuantityMath.Parse("0"), decoded.Content.IngredientLines[3].Amount);
-        Assert.Equal(4, decoded.Content.IngredientLines.Select(x => x.Id).Distinct().Count());
-    }
+        const string sourceJson = """
+            {
+              "@context": "https://schema.org/",
+              "@type": "Recipe",
+              "name": "Herb Pasta",
+              "recipeYield": "4 portions",
+              "recipeIngredient": ["340 g pasta", "2 tbsp olive oil"],
+              "recipeInstructions": [{ "@type": "HowToSection", "itemListElement": [{ "@type": "HowToStep", "text": "Boil pasta." }] }]
+            }
+            """;
 
-    [Fact]
-    public void RepeatedRoundTrip_KeepsExplicitClearsSeparateFromRetainedSource()
-    {
-        var original = Example();
-        var cleared = original with { Content = original.Content with { IngredientLines = [], InstructionSections = [] } };
-        var decoded = cleared;
-        for (var index = 0; index < 3; index++)
-        {
-            using var document = JsonDocument.Parse(RecipeExportContent.WriteCurrent(decoded));
-            decoded = RecipeExportContent.ReadCurrent(document.RootElement, RecipeId);
-            Assert.Equal(JsonSerializer.Serialize(cleared, Json), JsonSerializer.Serialize(decoded, Json));
-            Assert.Empty(decoded.Content.IngredientLines);
-            Assert.Empty(decoded.Content.InstructionSections);
-        }
-        decoded = Read(Envelope(original with { RawMetadata = null }));
-        Assert.Null(decoded.RawMetadata);
-        Assert.Equal(4, decoded.Content.IngredientLines.Count);
-    }
+        var (derived, _) = StructuredRecipeContentStore.FromSchemaOrg(RecipeId, sourceJson, null, null, Guid.NewGuid(), "source");
+        Assert.Equal(4, derived.Servings);
+        Assert.Equal(2, derived.IngredientLines.Count);
+        Assert.Single(derived.InstructionSections);
 
-    [Theory]
-    [InlineData("{}")]
-    [InlineData("[]")]
-    [InlineData("null")]
-    [InlineData("{\"backupContentVersion\":1,\"rawMetadata\":null,\"ingredients\":\"[]\",\"servings\":null}")]
-    [InlineData("{\"format\":\"wfs-recipe\",\"version\":1}")]
-    public void RoutineDecoder_RejectsLegacyAndUnversionedInput(string json)
-    {
-        using var document = JsonDocument.Parse(json);
-        Assert.Throws<InvalidDataException>(() => RecipeExportContent.ReadCurrent(document.RootElement, RecipeId));
+        var exported = StructuredRecipeContentStore.ToSchemaOrgJson(derived, sourceJson, "Herb Pasta", null);
+        using var exportedDoc = JsonDocument.Parse(exported);
+        Assert.Equal("https://schema.org/", exportedDoc.RootElement.GetProperty("@context").GetString());
+        Assert.Equal("Recipe", exportedDoc.RootElement.GetProperty("@type").GetString());
+        Assert.Equal("4 portions", exportedDoc.RootElement.GetProperty("recipeYield").GetString());
+        Assert.False(exportedDoc.RootElement.TryGetProperty("backupContentVersion", out _));
+        Assert.False(exportedDoc.RootElement.TryGetProperty("format", out _));
+
+        // Manually corrected servings updates recipeYield without altering printed ingredients
+        var corrected = derived with { Servings = 3 };
+        var correctedJson = StructuredRecipeContentStore.ToSchemaOrgJson(corrected, exported, "Herb Pasta", null);
+        var (reloadedCorrected, _) = StructuredRecipeContentStore.FromSchemaOrg(RecipeId, correctedJson, null, null, Guid.NewGuid(), "source");
+        Assert.Equal(3, reloadedCorrected.Servings);
+        Assert.Contains("340 g pasta", reloadedCorrected.IngredientLines.Select(StructuredRecipeContentStore.Render));
+
+        // Explicit unknown servings writes recipeYield as null and restores servings null
+        var unknown = derived with { Servings = null };
+        var unknownJson = StructuredRecipeContentStore.ToSchemaOrgJson(unknown, exported, "Herb Pasta", null);
+        using var unknownDoc = JsonDocument.Parse(unknownJson);
+        Assert.Equal(JsonValueKind.Null, unknownDoc.RootElement.GetProperty("recipeYield").ValueKind);
+        var (reloadedUnknown, _) = StructuredRecipeContentStore.FromSchemaOrg(RecipeId, unknownJson, null, null, Guid.NewGuid(), "source");
+        Assert.Null(reloadedUnknown.Servings);
     }
 
     [Theory]
-    [InlineData("recipeId")]
-    [InlineData("contentSchemaVersion")]
-    [InlineData("contentRevision")]
-    [InlineData("content")]
-    [InlineData("rawMetadata")]
-    public void MissingRequiredProperty_IsNotEquivalentToNull(string property)
-    {
-        var envelope = Envelope();
-        envelope.Remove(property);
-        Assert.Throws<InvalidDataException>(() => Read(envelope));
-    }
-
-    [Theory]
-    [InlineData("id")]
-    [InlineData("amount")]
-    [InlineData("amountText")]
-    [InlineData("unit")]
-    [InlineData("package")]
-    [InlineData("provenance")]
-    public void MissingSavedRowField_IsRejected(string property)
-    {
-        var envelope = Envelope();
-        envelope["content"]!["ingredientLines"]![0]!.AsObject().Remove(property);
-        Assert.Throws<InvalidDataException>(() => Read(envelope));
-    }
-
-    [Theory]
-    [InlineData("revision")]
+    [InlineData("schema-version")]
     [InlineData("source")]
     [InlineData("basis")]
     [InlineData("duplicate")]
     [InlineData("zero-id")]
-    [InlineData("client-id")]
     [InlineData("quantity")]
     [InlineData("notation")]
     [InlineData("unknown-protection")]
@@ -130,20 +120,18 @@ public sealed class CurrentRecipeExportTests
     [InlineData("text-revision")]
     [InlineData("null-steps")]
     [InlineData("missing-bindings")]
-    public void InvalidCanonicalFactsOrIdentities_FailPreflight(string mutation)
+    public void InvalidCanonicalFactsOrIdentities_FailValidation(string mutation)
     {
-        var envelope = Envelope();
-        var content = envelope["content"]!;
+        var content = ContentNode();
         var line = content["ingredientLines"]![0]!;
         var step = content["instructionSections"]![0]!["steps"]![0]!;
         switch (mutation)
         {
-            case "revision": content["contentRevision"] = "different"; break;
+            case "schema-version": content["contentSchemaVersion"] = 1; break;
             case "source": content["sourceRevision"] = ""; break;
             case "basis": content["servings"] = 0; break;
             case "duplicate": content["ingredientLines"]![1]!["id"] = line["id"]!.DeepClone(); break;
             case "zero-id": line["id"] = Guid.Empty; break;
-            case "client-id": line.AsObject().Remove("id"); line["clientId"] = "new"; break;
             case "quantity": line["amount"]!["value"]!["d"] = "0"; break;
             case "notation": line["amountText"] = "0.33"; break;
             case "unknown-protection": line["provenance"]!["protectedFields"] = new JsonArray("made-up"); break;
@@ -155,74 +143,16 @@ public sealed class CurrentRecipeExportTests
             case "null-steps": content["instructionSections"]![0]!["steps"] = null; break;
             case "missing-bindings": step.AsObject().Remove("bindings"); break;
         }
-        Assert.Throws<InvalidDataException>(() => Read(envelope));
+        var parsed = content.Deserialize<StructuredRecipeContent>(Json)!;
+        Assert.Throws<InvalidDataException>(() => StructuredRecipeContentStore.ValidateContent(parsed));
     }
 
     [Fact]
-    public void Decoder_RejectsRecipeMismatchUnknownAndDuplicateMembers()
+    public void SavedBinding_ValidatesExactUtf16SpanAndPayload()
     {
-        var envelope = Envelope();
-        Assert.Throws<InvalidDataException>(() => RecipeExportContent.ReadCurrent(JsonSerializer.SerializeToElement(envelope), Guid.NewGuid()));
-        envelope["unknown"] = true;
-        Assert.Throws<InvalidDataException>(() => Read(envelope));
-        envelope.Remove("unknown");
-        var json = envelope.ToJsonString().Insert(1, "\"version\":1,");
-        using var duplicate = JsonDocument.Parse(json);
-        Assert.Throws<InvalidDataException>(() => RecipeExportContent.ReadCurrent(duplicate.RootElement, RecipeId));
-    }
-
-    [Fact]
-    public void InternalVersionOneDecoder_RemainsSeparateAndAuthoritative()
-    {
-        using var document = JsonDocument.Parse("""{"backupContentVersion":1,"rawMetadata":"{\"recipeYield\":\"4 portions\"}","ingredients":"[]","servings":null}""");
-        var legacy = RecipeExportContent.Read(document.RootElement)!;
-        Assert.Null(legacy.Servings);
-        Assert.Equal("[]", legacy.Ingredients);
-        Assert.Throws<InvalidDataException>(() => RecipeExportContent.ReadCurrent(document.RootElement, RecipeId));
-    }
-
-    [Fact]
-    public void CurrentEnvelope_PreservesPackageCapacityFoodMappingAndIndependentUnitDefinitions()
-    {
-        var input = Example();
-        var row = input.Content.IngredientLines[0] with
-        {
-            Amount = QuantityMath.Parse("2"), AmountText = "2", Unit = new("cans", "count:can"),
-            Package = new(new("can", "count:can"), new(QuantityMath.Parse("400")!, new("g", "mass:g")), "net"),
-            Shopping = new("tomates", Guid.NewGuid(), "dictionary-captured"),
-            Provenance = new("human", null, ["amount", "shopping"])
-        };
-        input = input with { Content = input.Content with { Servings = 3, IngredientLines = [row] } };
-        var decoded = Read(JsonNode.Parse(RecipeExportContent.WriteCurrent(input))!);
-        Assert.Equal(JsonSerializer.Serialize(input, Json), JsonSerializer.Serialize(decoded, Json));
-        Assert.Equal("mass:g", decoded.Content.IngredientLines[0].Package!.Capacity.Unit.DefinitionId);
-        Assert.Equal("4 portions", JsonDocument.Parse(decoded.RawMetadata!).RootElement.GetProperty("recipeYield").GetString());
-    }
-
-    private static JsonObject BoundEnvelope()
-    {
-        var envelope = Envelope();
-        var content = envelope["content"]!;
-        var step = content["instructionSections"]![0]!["steps"]![0]!;
-        step["bindings"] = new JsonArray(new JsonObject
-        {
-            ["id"] = Guid.NewGuid(), ["ingredientLineId"] = content["ingredientLines"]![0]!["id"]!.DeepClone(),
-            ["stepId"] = step["id"]!.DeepClone(), ["validatedContentRevision"] = content["contentRevision"]!.DeepClone(),
-            ["validatedTextRevision"] = step["textRevision"]!.DeepClone(),
-            ["span"] = new JsonObject { ["start"] = 4, ["end"] = 6, ["expectedText"] = "🥣" },
-            ["role"] = "mention", ["payload"] = new JsonObject(), ["status"] = "valid"
-        });
-        return envelope;
-    }
-
-    [Fact]
-    public void SavedBinding_PreservesExactUtf16SpanAndPayload()
-    {
-        var envelope = BoundEnvelope();
-        var decoded = Read(envelope);
-        var roundTrip = Read(JsonNode.Parse(RecipeExportContent.WriteCurrent(decoded))!);
-        Assert.Equal(JsonSerializer.Serialize(decoded, Json), JsonSerializer.Serialize(roundTrip, Json));
-        var binding = Assert.Single(roundTrip.Content.InstructionSections[0].Steps[0].Bindings);
+        var parsed = BoundContentNode().Deserialize<StructuredRecipeContent>(Json)!;
+        StructuredRecipeContentStore.ValidateContent(parsed);
+        var binding = Assert.Single(parsed.InstructionSections[0].Steps[0].Bindings);
         Assert.Equal(4, binding.GetProperty("span").GetProperty("start").GetInt32());
         Assert.Equal("🥣", binding.GetProperty("span").GetProperty("expectedText").GetString());
     }
@@ -240,8 +170,8 @@ public sealed class CurrentRecipeExportTests
     [InlineData("overlap")]
     public void BindingIdentityAndSpanCorruption_IsRejectedAsInvalidData(string mutation)
     {
-        var envelope = BoundEnvelope();
-        var bindings = envelope["content"]!["instructionSections"]![0]!["steps"]![0]!["bindings"]!.AsArray();
+        var content = BoundContentNode();
+        var bindings = content["instructionSections"]![0]!["steps"]![0]!["bindings"]!.AsArray();
         var binding = bindings[0]!;
         switch (mutation)
         {
@@ -256,35 +186,105 @@ public sealed class CurrentRecipeExportTests
             case "expected-text": binding["span"]!["expectedText"] = "other"; break;
             case "overlap": var other = binding.DeepClone(); other["id"] = Guid.NewGuid(); bindings.Add(other); break;
         }
-        Assert.Throws<InvalidDataException>(() => Read(envelope));
+        var parsed = content.Deserialize<StructuredRecipeContent>(Json)!;
+        Assert.Throws<InvalidDataException>(() => StructuredRecipeContentStore.ValidateContent(parsed));
+    }
+
+    [Theory]
+    [InlineData("v1")]
+    [InlineData("v2")]
+    [InlineData("unknown")]
+    public async Task SyncRecipeProcessor_RejectsRetiredAndUnknownWrapperEnvelopes(string envelopeKind)
+    {
+        using var db = TestDbContextFactory.Create();
+        var export = Example();
+        var recipe = new Recipe { Id = export.RecipeId, Name = "Wrapped Recipe", IsReady = true };
+        db.Recipes.Add(recipe);
+        await db.SaveChangesAsync();
+
+        var repository = new RecipeRepository(new InMemoryStorageProvider());
+        var wrappedJson = envelopeKind switch
+        {
+            "v1" => """{"backupContentVersion":1,"rawMetadata":"{\"@context\":\"https://schema.org/\",\"@type\":\"Recipe\",\"recipeYield\":\"4 portions\",\"recipeIngredient\":[\"2 cups flour\"]}","ingredients":"[\"2 cups flour\"]","servings":4}""",
+            "v2" => BuildRetiredV2Wrapper(export),
+            _ => """{"format":"legacy-custom","version":3,"recipeIngredient":["2 cups flour"]}"""
+        };
+        await repository.SaveRecipeJsonAsync(recipe.Id, wrappedJson, default);
+
+        var clock = new SystemClock();
+        var publisher = new Mock<ISupperProjectionPublisher>();
+        var invalidation = new SupperProjectionInvalidation(db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var processor = new SyncRecipeProcessor(clock, db, repository, invalidation,
+            publisher.Object, NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, repository.StorageProvider, clock));
+        var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) };
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, default));
+        var saved = await db.Recipes.AsNoTracking().SingleAsync(r => r.Id == recipe.Id);
+        Assert.Null(saved.CanonicalContent);
     }
 
     [Fact]
-    public void IdenticalReplay_ComparesFactsAndEvidenceWithoutOrderingOpaqueTokens()
+    public async Task SyncRecipeProcessor_ReplayMode_RejectsRetiredWfsRecipeV2Wrapper()
     {
-        var saved = Example();
-        var incoming = Read(Envelope(saved));
-        Assert.True(RecipeExportContent.IsIdenticalCurrent(incoming, saved));
-        Assert.True(RecipeExportContent.IsIdenticalCurrent(incoming with { RawMetadata = JsonSerializer.Serialize(JsonDocument.Parse(saved.RawMetadata!).RootElement) }, saved));
-        Assert.False(RecipeExportContent.IsIdenticalCurrent(incoming with { Content = incoming.Content with { ContentRevision = "000-older-looking" } }, saved));
-        Assert.False(RecipeExportContent.IsIdenticalCurrent(incoming with { RawMetadata = null }, saved));
+        using var db = TestDbContextFactory.Create();
+        var export = Example();
+        var recipe = new Recipe
+        {
+            Id = export.RecipeId,
+            Name = "Current Recipe",
+            CanonicalContent = JsonSerializer.Serialize(export.Content, Json),
+            RawMetadata = export.RawMetadata,
+            Servings = export.Content.Servings,
+            Ingredients = "[]"
+        };
+        db.Recipes.Add(recipe);
+        await db.SaveChangesAsync();
+
+        var repository = new RecipeRepository(new InMemoryStorageProvider());
+        await repository.SaveRecipeJsonAsync(recipe.Id, BuildRetiredV2Wrapper(export), default);
+
+        var clock = new SystemClock();
+        var publisher = new Mock<ISupperProjectionPublisher>();
+        var invalidation = new SupperProjectionInvalidation(db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var processor = new SyncRecipeProcessor(clock, db, repository, invalidation,
+            publisher.Object, NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, repository.StorageProvider, clock));
+        var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id, mode = "current-format-replay" }) };
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, default));
     }
 
     [Fact]
-    public void IdenticalTokenWithDifferentCanonicalContent_IsCorrupt()
+    public async Task SyncRecipeProcessor_AcceptsPureSchemaOrgRecipeJsonDirectly()
     {
-        var saved = Example();
-        Assert.Throws<InvalidDataException>(() => RecipeExportContent.IsIdenticalCurrent(saved with
-            { Content = saved.Content with { Servings = 5 } }, saved));
-        Assert.Throws<InvalidDataException>(() => RecipeExportContent.IsIdenticalCurrent(saved with { RecipeId = Guid.NewGuid() }, saved));
-    }
+        using var db = TestDbContextFactory.Create();
+        var recipeId = Guid.NewGuid();
+        db.Recipes.Add(new Recipe { Id = recipeId, Name = "Pure Schema.org", IsReady = true });
+        await db.SaveChangesAsync();
 
-    [Fact]
-    public void Replay_DistinguishesAbsentEvidenceFromRetainedJsonNull()
-    {
-        var saved = Example() with { RawMetadata = null };
-        var retainedNull = saved with { RawMetadata = "null" };
-        Assert.False(RecipeExportContent.IsIdenticalCurrent(retainedNull, saved));
-        Assert.False(RecipeExportContent.IsIdenticalCurrent(saved, retainedNull));
+        var repository = new RecipeRepository(new InMemoryStorageProvider());
+        await repository.SaveRecipeJsonAsync(recipeId, """
+            {
+              "@context": "https://schema.org/",
+              "@type": "Recipe",
+              "name": "Pure Schema.org",
+              "recipeYield": "4 portions",
+              "recipeIngredient": ["500 g beef", "2 carrots"],
+              "recipeInstructions": [{ "@type": "HowToSection", "itemListElement": [{ "@type": "HowToStep", "text": "Simmer gently." }] }]
+            }
+            """, default);
+
+        var clock = new SystemClock();
+        var publisher = new Mock<ISupperProjectionPublisher>();
+        var invalidation = new SupperProjectionInvalidation(db, clock, new DeploymentCalendar(new Microsoft.Extensions.Configuration.ConfigurationManager()));
+        var processor = new SyncRecipeProcessor(clock, db, repository, invalidation,
+            publisher.Object, NullLogger<SyncRecipeProcessor>.Instance, TestPublicationStore.Vocabulary(db, repository.StorageProvider, clock));
+        var task = new WorkflowTask { Payload = JsonSerializer.Serialize(new { recipeId }) };
+
+        Assert.NotNull(await processor.ExecuteAsync(task, default));
+        var saved = await db.Recipes.AsNoTracking().SingleAsync(r => r.Id == recipeId);
+        Assert.NotNull(saved.CanonicalContent);
+        Assert.Equal(4, saved.Servings);
+        Assert.Contains("500 g beef", saved.Ingredients);
+        Assert.Contains("Simmer gently.", saved.RawMetadata);
     }
 }

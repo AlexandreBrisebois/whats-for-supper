@@ -35,7 +35,7 @@ public sealed partial class StructuredRecipeContentStore
         var content = new StructuredRecipeContent(2, NewRevision(), InspectSourceRevision(source), servings,
             lines, ConvertInstructions(rawMetadata, Guid.NewGuid, Guid.NewGuid, NewRevision));
         var export = new StructuredRecipeExport(id, content, rawMetadata);
-        _ = RecipeExportContent.WriteCurrent(export);
+        ValidateContent(content, rawMetadata: rawMetadata);
         return export;
     }
 }

@@ -100,9 +100,9 @@ public sealed partial class StructuredRecipeContentStore
                 && InspectSourceRevision(recipe) == request.ExpectedSourceRevision);
             var result = ReadOriginal<StructuredRecipeWriteResult>(operation.Result);
             RequireOriginal(result.Content is not null && result.CreatedIds is not null);
-            RecipeExportContent.WriteCurrent(new(operation.RecipeId, result.Content, null));
+            ValidateContent(result.Content);
             var current = recipe.CanonicalContent is null ? null : ReadOriginal<StructuredRecipeContent>(recipe.CanonicalContent);
-            if (current is not null) RecipeExportContent.WriteCurrent(new(operation.RecipeId, current, null));
+            if (current is not null) ValidateContent(current);
             StructuredRecipeWriteResult expected;
             string inputHash;
             if (request.Kind == "convert")

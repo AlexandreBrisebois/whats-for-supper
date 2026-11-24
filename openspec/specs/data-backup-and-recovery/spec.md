@@ -516,22 +516,22 @@ A valid complete history artifact SHALL replace history within its declared hous
 
 ### Requirement: Distinguish current recipe envelopes from legacy content
 
-Current recipe exports SHALL write top-level `https://schema.org/Recipe` JSON without custom wrapper envelopes. During the transitional unwrap period, merge restore and disk readers SHALL accept top-level `https://schema.org/Recipe` documents directly and SHALL also decode transitional `backupContentVersion` 1 and `wfs-recipe` version 2 envelopes separately from raw recipe content, while rejecting unknown wrapper versions as recipe-load errors.
+Current recipe exports, merge restore, and disk synchronization SHALL accept top-level `https://schema.org/Recipe` JSON documents directly without custom wrapper envelopes, and SHALL reject retired `backupContentVersion` 1 envelopes, retired `wfs-recipe` version 2 envelopes, and unknown wrapper envelopes as recipe-load errors instead of decoding or unwrapping them as recipe content.
 
 #### Scenario: Current recipe envelope
 
-- **WHEN** `recipe.json` is a current top-level `https://schema.org/Recipe` JSON object, or a pre-unwrap transitional `backupContentVersion` 1 or `wfs-recipe` version 2 envelope
-- **THEN** restore reads the `https://schema.org/Recipe` content directly or decodes the inner transitional recipe facts without treating a wrapper envelope as raw `https://schema.org/Recipe` content
+- **WHEN** `recipe.json` is a current top-level `https://schema.org/Recipe` JSON object
+- **THEN** restore reads its `recipeIngredient`, `recipeInstructions`, `recipeYield`, and metadata directly without expecting a wrapper envelope
 
 #### Scenario: Disk sync after export
 
-- **WHEN** the disk-sync workflow reads a freshly exported top-level `https://schema.org/Recipe` file (or a pre-unwrap transitional version-1 or version-2 recipe envelope)
-- **THEN** it preserves `recipeInstructions`, `recipeIngredient`, and `recipeYield` and derives structured portion facts instead of treating any wrapper envelope as raw content
+- **WHEN** the disk-sync workflow reads a freshly exported top-level `https://schema.org/Recipe` file
+- **THEN** it preserves `recipeInstructions`, `recipeIngredient`, and `recipeYield` and derives structured portion facts directly
 
 #### Scenario: Unsupported content version
 
-- **WHEN** a recipe envelope declares an unsupported `backupContentVersion` or `wfs-recipe` version
-- **THEN** merge restore counts that recipe as a load error instead of interpreting its envelope as raw content
+- **WHEN** `recipe.json` contains a retired `backupContentVersion` 1 envelope, a retired `wfs-recipe` version 2 envelope, or any other wrapper version envelope
+- **THEN** merge restore and disk sync count that recipe as a load error instead of decoding the wrapper or interpreting its envelope as raw content
 
 ### Requirement: Online independent exact recovery
 
@@ -635,7 +635,7 @@ Independent exact snapshot and restore SHALL treat grocery-extra occurrence memb
 
 ### Requirement: Preserve recipe servings without extending recipe info
 
-Recipe exports SHALL preserve database servings in `https://schema.org/Recipe` `recipeYield` (retaining matching phrasing when unedited, or null when unset) without adding serving fields to `recipe.info`. Disk sync and merge restore SHALL derive `servings` from `recipeYield` on `https://schema.org/Recipe` files and continue honoring explicit `servings` on transitional `backupContentVersion` 1 and `wfs-recipe` version 2 envelopes until wrapper retirement.
+Recipe exports SHALL preserve database servings in `https://schema.org/Recipe` `recipeYield` (retaining matching phrasing when unedited, or null when unset) without adding serving fields to `recipe.info`. Disk sync and merge restore SHALL derive `servings` exclusively from `recipeYield` on top-level `https://schema.org/Recipe` files and SHALL reject retired wrapper envelopes through existing recipe-load failure handling.
 
 #### Scenario: Current export and restore
 
@@ -654,8 +654,8 @@ Recipe exports SHALL preserve database servings in `https://schema.org/Recipe` `
 
 #### Scenario: Legacy exported envelope
 
-- **WHEN** a pre-unwrap `backupContentVersion` 1 or `wfs-recipe` version 2 `recipe.json` supplies explicit `servings` (or null) or omits `servings` while `rawMetadata` contains `recipeYield` `"2 portions"`
-- **THEN** transitional restore honors the explicit count or derives `servings` 2 from `rawMetadata` without treating the outer envelope as `https://schema.org/Recipe`
+- **WHEN** `recipe.json` supplies a retired `backupContentVersion` 1 or `wfs-recipe` version 2 wrapper envelope instead of a top-level `https://schema.org/Recipe` document
+- **THEN** restore and disk sync report that record as invalid through existing recipe-load failure handling rather than unwrapping or deriving a serving count
 
 #### Scenario: Legacy direct recipe content
 
@@ -664,27 +664,8 @@ Recipe exports SHALL preserve database servings in `https://schema.org/Recipe` `
 
 #### Scenario: Invalid exported count
 
-- **WHEN** a transitional envelope supplies a negative, zero, fractional, out-of-range, or non-integer `servings` field
+- **WHEN** `recipe.json` supplies a retired wrapper `servings` field or malformed JSON rather than a valid `https://schema.org/Recipe` document
 - **THEN** that record is reported as invalid through existing recipe-load failure handling rather than silently inferring a replacement count
-
-### Requirement: Unwrap wrapped recipe files to Schema.org Recipe on startup
-
-Startup migration SHALL upgrade unmigrated database recipes offline without AI calls or re-imports, unwrap any existing `backupContentVersion` 1 or `wfs-recipe` version 2 `{id}/recipe.json` file in the active recipe store into a top-level `https://schema.org/Recipe` JSON document in place (even when database rows are already upgraded), preserve `recipeYield`, `recipeIngredient`, `recipeInstructions`, `supply`, and `nutrition`, and remove `.publications` directories.
-
-#### Scenario: Upgrade v0.1.40 recipes and unwrap backupContentVersion 1 files without re-importing
-
-- **WHEN** an installation upgrades from `v0.1.40` (with unstructured database rows and `backupContentVersion: 1` `recipe.json` files wrapping Schema.org `rawMetadata`)
-- **THEN** startup derives structured portion lines, servings, step bindings, and bilingual food mappings offline without calling AI or re-importing recipes, atomically replaces each `recipe.json` with top-level `https://schema.org/Recipe` JSON preserving `supply` and `nutrition`, and leaves all original and hero media untouched
-
-#### Scenario: Unwrap wfs-recipe version 2 files and remove .publications residue
-
-- **WHEN** startup migration inspects an active recipe folder containing a `format: "wfs-recipe"` version 2 `recipe.json` or a `.publications` subdirectory (including when database structured content is already at version 2)
-- **THEN** it atomically replaces `recipe.json` with top-level `https://schema.org/Recipe` JSON reflecting current structured lines, steps, and `recipeYield`, and deletes the `.publications` subdirectory
-
-#### Scenario: Idempotent startup on pure Schema.org Recipe files
-
-- **WHEN** all active `{id}/recipe.json` files are already top-level `https://schema.org/Recipe` documents without `.publications` directories and structured database content is up to date
-- **THEN** startup completes without rewriting `recipe.json` files
 
 ### Requirement: Preserve servings in compatible exact recovery
 

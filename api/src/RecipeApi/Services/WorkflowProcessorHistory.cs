@@ -234,7 +234,7 @@ internal static class WorkflowProcessorHistory
             // Validate retained content without comparing it to a current recipe.
             // This does not supply missing original request/evidence/dictionary
             // authority or certify that the processor computed the right result.
-            RecipeExportContent.WriteCurrent(new(operation.RecipeId, result.Content, null));
+            StructuredRecipeContentStore.ValidateContent(result.Content);
             var ids = result.Content.IngredientLines.Select(x => x.Id)
                 .Concat(result.Content.InstructionSections.Select(x => x.Id))
                 .Concat(result.Content.InstructionSections.SelectMany(x => x.Steps).Select(x => x.Id)).ToHashSet();

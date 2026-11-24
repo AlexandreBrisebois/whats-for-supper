@@ -1048,57 +1048,41 @@ public partial class ManagementService(
                         using var doc = JsonDocument.Parse(currentJson);
                         var rootElement = doc.RootElement;
 
+                        StructuredRecipeContentStore.RejectRetiredRecipeWrapper(rootElement);
+
                         recipe ??= new Recipe { Id = recipeId, CreatedAt = clock.UtcNow, UpdatedAt = clock.UtcNow };
 
                         logger.LogDebug("Loaded recipe.json for {RecipeId}", recipeId);
 
-                        if (RecipeExportContent.IsCurrent(rootElement))
+                        recipe.RawMetadata = currentJson;
+                        recipe.Servings = RecipeServings.FromMetadata(recipe.RawMetadata);
+
+                        if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
+                            recipe.Ingredients = ingProp.GetRawText().Contains('\n') ? JsonSerializer.Serialize(ingProp) : ingProp.GetRawText();
+                        else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
+                            recipe.Ingredients = legacyIngProp.GetRawText();
+                        else if (rootElement.TryGetProperty("ingredients", out var serializedIngredients)
+                            && serializedIngredients.ValueKind == JsonValueKind.String
+                            && IsJsonArray(serializedIngredients.GetString()))
+                            recipe.Ingredients = serializedIngredients.GetString();
+
+                        if (!string.IsNullOrWhiteSpace(recipe.RawMetadata))
                         {
-                            var exported = RecipeExportContent.ReadCurrent(rootElement, recipeId);
-                            recipe.CanonicalContent = JsonSerializer.Serialize(exported.Content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-                            recipe.Ingredients = JsonSerializer.Serialize(exported.Content.IngredientLines.Select(StructuredRecipeContentStore.Render), new JsonSerializerOptions(JsonSerializerDefaults.Web));
-                            recipe.RawMetadata = exported.RawMetadata is null ? null : RemoveRetiredRecipeFields(exported.RawMetadata);
-                            recipe.Servings = exported.Content.Servings;
-                        }
-                        else
-                        {
-                            var exportedContent = RecipeExportContent.Read(rootElement);
-                            recipe.RawMetadata = exportedContent is null ? currentJson
-                                : exportedContent.RawMetadata is null ? null
-                                : RemoveRetiredRecipeFields(exportedContent.RawMetadata);
-
-                            recipe.Servings = exportedContent is null ? RecipeServings.FromMetadata(recipe.RawMetadata) : exportedContent.Servings;
-
-                            if (exportedContent is not null) recipe.Ingredients = exportedContent.Ingredients;
-                            else if (rootElement.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
-                                recipe.Ingredients = ingProp.GetRawText().Contains('\n') ? JsonSerializer.Serialize(ingProp) : ingProp.GetRawText();
-                            else if (rootElement.TryGetProperty("ingredients", out var legacyIngProp) && legacyIngProp.ValueKind == JsonValueKind.Array)
-                                recipe.Ingredients = legacyIngProp.GetRawText();
-                            else if (rootElement.TryGetProperty("ingredients", out var serializedIngredients)
-                                && serializedIngredients.ValueKind == JsonValueKind.String
-                                && IsJsonArray(serializedIngredients.GetString()))
-                                recipe.Ingredients = serializedIngredients.GetString();
-
-                            if (!string.IsNullOrWhiteSpace(recipe.RawMetadata))
+                            try
                             {
-                                try
-                                {
-                                    var (derived, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
-                                        recipeId, recipe.RawMetadata, recipe.SourceUrl, vocabularyAuthority, Guid.NewGuid(), "source");
-                                    if (exportedContent is not null)
-                                        derived = derived with { Servings = exportedContent.Servings };
-                                    else if (recipe.Servings is > 0 && derived.Servings is null)
-                                        derived = derived with { Servings = recipe.Servings };
-                                    recipe.CanonicalContent = JsonSerializer.Serialize(derived, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-                                    recipe.FoodMappingEvidence = evidence;
-                                    recipe.Servings = derived.Servings;
-                                    if (string.IsNullOrWhiteSpace(recipe.Ingredients) && derived.IngredientLines.Count > 0)
-                                        recipe.Ingredients = JsonSerializer.Serialize(derived.IngredientLines.Select(StructuredRecipeContentStore.Render), new JsonSerializerOptions(JsonSerializerDefaults.Web));
-                                }
-                                catch (Exception ex) when (ex is JsonException or InvalidDataException)
-                                {
-                                    logger.LogWarning(ex, "Could not derive structured content during restore for {RecipeId}", recipeId);
-                                }
+                                var (derived, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+                                    recipeId, recipe.RawMetadata, recipe.SourceUrl, vocabularyAuthority, Guid.NewGuid(), "source");
+                                if (recipe.Servings is > 0 && derived.Servings is null)
+                                    derived = derived with { Servings = recipe.Servings };
+                                recipe.CanonicalContent = JsonSerializer.Serialize(derived, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                                recipe.FoodMappingEvidence = evidence;
+                                recipe.Servings = derived.Servings;
+                                if (string.IsNullOrWhiteSpace(recipe.Ingredients) && derived.IngredientLines.Count > 0)
+                                    recipe.Ingredients = JsonSerializer.Serialize(derived.IngredientLines.Select(StructuredRecipeContentStore.Render), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                            }
+                            catch (Exception ex) when (ex is JsonException or InvalidDataException)
+                            {
+                                logger.LogWarning(ex, "Could not derive structured content during restore for {RecipeId}", recipeId);
                             }
                         }
 

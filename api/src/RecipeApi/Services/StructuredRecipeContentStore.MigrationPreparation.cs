@@ -34,7 +34,7 @@ public sealed partial class StructuredRecipeContentStore
         var mapped = existing is null
             ? FoodMappingQualification.Prepare(new(recipe.Id, content, recipe.RawMetadata), authority, operationId)
             : new FoodMappingPreparation(new(recipe.Id, content, recipe.RawMetadata), EvidenceValue(recipe), []);
-        if (existing is null) _ = RecipeExportContent.WriteCurrent(mapped.Export);
+        if (existing is null) ValidateContent(mapped.Export.Content, rawMetadata: mapped.Export.RawMetadata);
         var result = new StructuredRecipeWriteResult(mapped.Export.Content, new Dictionary<string, Guid>());
         var operation = CreateV2(recipe, operationId, "convert", hash, Observe(recipe),
             EvidenceValue(recipe), authority, null, result, mapped.Evidence, recordedAt);

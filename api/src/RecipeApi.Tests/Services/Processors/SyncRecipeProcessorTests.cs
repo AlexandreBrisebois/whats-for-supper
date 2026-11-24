@@ -24,7 +24,7 @@ public class SyncRecipeProcessorTests
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
         var repository = new RecipeRepository(new InMemoryStorageProvider());
-        await repository.SaveRecipeJsonAsync(recipe.Id, RecipeExportContent.WriteCurrent(export), default);
+        await repository.SaveRecipeJsonAsync(recipe.Id, export.RawMetadata!, default);
         await repository.SaveInfoAsync(new RecipeInfo { Id = recipe.Id, Name = "Stale file name" }, default);
         var jsonBefore = await repository.GetRecipeJsonAsync(recipe.Id, default);
         var rowBefore = JsonSerializer.Serialize(recipe);
@@ -42,11 +42,10 @@ public class SyncRecipeProcessorTests
         Assert.Empty(db.SupperServings);
         publisher.VerifyNoOtherCalls();
 
-        var changed = export with { Content = export.Content with { ContentRevision = "another-revision", Servings = 8 } };
-        await repository.SaveRecipeJsonAsync(recipe.Id, RecipeExportContent.WriteCurrent(changed), default);
+        await repository.SaveRecipeJsonAsync(recipe.Id, """{"@context":"https://schema.org/","@type":"Recipe","recipeYield":"8 portions","recipeIngredient":["changed"]}""", default);
         await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, default));
         Assert.Equal(rowBefore, JsonSerializer.Serialize(recipe));
-        await repository.SaveRecipeJsonAsync(recipe.Id, RecipeExportContent.WriteCurrent(export with { Content = export.Content with { Servings = 8 } }), default);
+        await repository.SaveRecipeJsonAsync(recipe.Id, """{"format":"wfs-recipe","version":2,"recipeId":"10000000-0000-0000-0000-000000000001"}""", default);
         await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, default));
         Assert.Equal(rowBefore, JsonSerializer.Serialize(recipe));
     }

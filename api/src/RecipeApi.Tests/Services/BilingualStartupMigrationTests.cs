@@ -131,7 +131,7 @@ public sealed class BilingualStartupMigrationTests
                 Assert.NotNull(content);
                 Assert.Equal(2, content.ContentSchemaVersion);
                 Assert.NotNull(recipe.FoodMappingEvidence);
-                _ = RecipeExportContent.WriteCurrent(new StructuredRecipeExport(recipe.Id, content, null));
+                StructuredRecipeContentStore.ValidateContent(content);
                 FoodMappingQualification.Validate(content, recipe.FoodMappingEvidence, authority, recipe.Id);
                 mappedLines += content.IngredientLines.Count(line => line.Shopping.FoodId is not null);
             }

@@ -69,19 +69,17 @@ public class SyncRecipeProcessor(
             if (!string.IsNullOrWhiteSpace(rawJson))
             {
                 using var parsedDoc = JsonDocument.Parse(rawJson);
-                var envelope = RecipeExportContent.Read(parsedDoc.RootElement);
-                var schemaJson = envelope?.RawMetadata ?? rawJson;
-                var explicitServings = envelope is not null ? envelope.Servings : recipe.Servings;
+                StructuredRecipeContentStore.RejectRetiredRecipeWrapper(parsedDoc.RootElement);
                 var authority = await vocabulary.CaptureAuthorityAsync(recipe.FoodMappingEvidence, ct);
                 var (content, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
-                    recipeId, schemaJson, recipe.SourceUrl, authority,
-                    explicitServings: explicitServings);
+                    recipeId, rawJson, recipe.SourceUrl, authority,
+                    explicitServings: recipe.Servings);
 
                 await using var syncTx = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true);
                 var tracked = await db.Recipes.SingleAsync(x => x.Id == recipeId, ct);
                 if (tracked.CanonicalContent is null)
                 {
-                    tracked.RawMetadata = StructuredRecipeContentStore.ToSchemaOrgJson(content, schemaJson, tracked.Name, tracked.Description);
+                    tracked.RawMetadata = StructuredRecipeContentStore.ToSchemaOrgJson(content, rawJson, tracked.Name, tracked.Description);
                     tracked.CanonicalContent = JsonSerializer.Serialize(content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
                     tracked.FoodMappingEvidence = evidence;
                     tracked.Servings = content.Servings;
@@ -116,14 +114,8 @@ public class SyncRecipeProcessor(
             ?? throw new InvalidDataException("Current recipe replay requires an existing structured destination.");
         var diskText = await recipeRepository.GetRecipeJsonAsync(recipeId, ct);
         using var document = JsonDocument.Parse(diskText);
-        if (document.RootElement.TryGetProperty("format", out var format) && format.ValueKind == JsonValueKind.String
-            && format.GetString() == "wfs-recipe")
-        {
-            var incoming = RecipeExportContent.ReadCurrent(document.RootElement, recipeId);
-            if (!RecipeExportContent.IsIdenticalCurrent(incoming, new(recipeId, content, recipe.RawMetadata)))
-                throw new InvalidDataException("Divergent recipe content requires reviewed recovery.");
-        }
-        else if (StructuredRecipeContentStore.NormalizeJson(diskText) != StructuredRecipeContentStore.NormalizeJson(recipe.RawMetadata))
+        StructuredRecipeContentStore.RejectRetiredRecipeWrapper(document.RootElement);
+        if (StructuredRecipeContentStore.NormalizeJson(diskText) != StructuredRecipeContentStore.NormalizeJson(recipe.RawMetadata))
         {
             throw new InvalidDataException("Divergent recipe content requires reviewed recovery.");
         }

@@ -91,14 +91,14 @@ public sealed partial class StructuredRecipeContentStore
             var current = Read(recipe);
             if (current is not null)
             {
-                RecipeExportContent.ValidateRetainedHistory(new(recipe.Id, current, recipe.RawMetadata));
+                ValidateContent(current, retainedHistory: true, rawMetadata: recipe.RawMetadata);
                 FoodMappingQualification.Validate(current, recipe.FoodMappingEvidence, request.FoodAuthority, recipe.Id);
             }
             else RequireOriginal(recipe.FoodMappingEvidence is null);
             var saved = ReadOriginal<CanonicalResultV2>(operation.Result);
             RequireOriginal(saved.Version == 2 && saved.Result is not null && saved.Evidence is not null && saved.Decisions is not null);
             var result = saved.Result;
-            RecipeExportContent.ValidateRetainedHistory(new(operation.RecipeId, result.Content, null));
+            ValidateContent(result.Content, retainedHistory: true);
             StructuredRecipeWriteResult prepared;
             UpdateRecipeDto? input = null;
             string callerHash;

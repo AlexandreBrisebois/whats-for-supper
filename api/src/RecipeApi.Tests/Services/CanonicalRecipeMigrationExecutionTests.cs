@@ -252,7 +252,7 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         command.ScheduledFor, command.StartedAt, command.CompletedAt, command.LastError);
 
     [Fact]
-    public async Task StartupMigrator_UnwrapsWrappedRecipeFilesAndDeletesPublicationsIndependentlyOfDbVersion()
+    public async Task StartupMigrator_UpgradesDatabaseRowsWithoutUnwrappingDiskWrappersOrDeletingPublications()
     {
         await using var factory = await TestWebApplicationFactory.CreateAsync(
             configurationOverrides: new() { ["Tests:LocalRecipeStore"] = "true" });
@@ -262,7 +262,7 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         var recipesRoot = scope.ServiceProvider.GetRequiredService<RecipeApi.Infrastructure.RecipesRootResolver>();
         var migrator = scope.ServiceProvider.GetRequiredService<RecipeStartupMigrator>();
 
-        // (a) Offline v0.1.40 recipe: CanonicalContent == null, Servings == null, backupContentVersion: 1 on disk
+        // (a) Unmigrated DB row with a retired backupContentVersion: 1 file on disk
         var legacyId = Guid.NewGuid();
         const string legacyInnerRaw = """{"@context":"https://schema.org/","@type":"Recipe","name":"Legacy Chili","recipeYield":"4 portions","recipeIngredient":["500 g ground beef","2 cups beans"],"recipeInstructions":[{"@type":"HowToSection","itemListElement":[{"@type":"HowToStep","text":"Simmer the beef and beans."}]}]}""";
         var legacyWrapped = JsonSerializer.Serialize(new
@@ -286,7 +286,7 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         await store.WriteInfoAsync(new RecipeInfo { Id = legacyId, Name = "Legacy Chili", IsReady = true });
         await store.WriteRecipeJsonAsync(legacyId, legacyWrapped);
 
-        // (b) Already-migrated DB v2 recipe with wfs-recipe v2 wrapper on disk + .publications residue
+        // (b) Already-migrated DB v2 recipe with a retired wfs-recipe v2 wrapper on disk + .publications residue
         var v2Id = Guid.NewGuid();
         const string v2Raw = """{"@context":"https://schema.org/","@type":"Recipe","name":"V2 Curry","recipeYield":"4 portions","recipeIngredient":["400 g chicken"],"recipeInstructions":[{"@type":"HowToSection","itemListElement":[{"@type":"HowToStep","text":"Cook chicken."}]}]}""";
         var (v2Content, v2Evidence) = StructuredRecipeContentStore.FromSchemaOrg(v2Id, v2Raw, null, null, Guid.NewGuid(), "source");
@@ -303,7 +303,17 @@ public sealed class CanonicalRecipeMigrationExecutionTests
             Ingredients = """["400 g chicken"]"""
         });
         await store.WriteInfoAsync(new RecipeInfo { Id = v2Id, Name = "V2 Curry", IsReady = true });
-        await store.WriteRecipeJsonAsync(v2Id, RecipeApi.Infrastructure.RecipeExportContent.WriteCurrent(new(v2Id, v2Content, v2Raw)));
+        var v2Wrapped = new JsonObject
+        {
+            ["format"] = "wfs-recipe",
+            ["version"] = 2,
+            ["recipeId"] = v2Id,
+            ["contentSchemaVersion"] = 2,
+            ["contentRevision"] = v2Content.ContentRevision,
+            ["content"] = JsonSerializer.SerializeToNode(v2Content, webJson),
+            ["rawMetadata"] = v2Raw
+        }.ToJsonString();
+        await store.WriteRecipeJsonAsync(v2Id, v2Wrapped);
         var pubDir = Path.Combine(recipesRoot.Root, v2Id.ToString(), ".publications", "stale");
         Directory.CreateDirectory(pubDir);
         await File.WriteAllTextAsync(Path.Combine(pubDir, "journal.json"), "{}");
@@ -318,17 +328,20 @@ public sealed class CanonicalRecipeMigrationExecutionTests
         Assert.NotNull(upgraded.CanonicalContent);
         Assert.Equal(4, upgraded.Servings);
 
-        foreach (var id in new[] { legacyId, v2Id })
+        // Disk wrappers and .publications directories are no longer scanned or rewritten on startup
+        var legacyDisk = await store.ReadRecipeJsonAsync(legacyId);
+        Assert.NotNull(legacyDisk);
+        using (var legacyDoc = JsonDocument.Parse(legacyDisk))
+            Assert.Equal(1, legacyDoc.RootElement.GetProperty("backupContentVersion").GetInt32());
+
+        var v2Disk = await store.ReadRecipeJsonAsync(v2Id);
+        Assert.NotNull(v2Disk);
+        using (var v2Doc = JsonDocument.Parse(v2Disk))
         {
-            var disk = await store.ReadRecipeJsonAsync(id);
-            Assert.NotNull(disk);
-            using var doc = JsonDocument.Parse(disk);
-            Assert.Equal("https://schema.org/", doc.RootElement.GetProperty("@context").GetString());
-            Assert.Equal("Recipe", doc.RootElement.GetProperty("@type").GetString());
-            Assert.False(doc.RootElement.TryGetProperty("format", out _));
-            Assert.False(doc.RootElement.TryGetProperty("backupContentVersion", out _));
+            Assert.Equal("wfs-recipe", v2Doc.RootElement.GetProperty("format").GetString());
+            Assert.Equal(2, v2Doc.RootElement.GetProperty("version").GetInt32());
         }
-        Assert.False(Directory.Exists(Path.Combine(recipesRoot.Root, v2Id.ToString(), ".publications")));
+        Assert.True(Directory.Exists(Path.Combine(recipesRoot.Root, v2Id.ToString(), ".publications")));
 
         // (c) Idempotent second startup run
         var second = await migrator.MigrateAsync();

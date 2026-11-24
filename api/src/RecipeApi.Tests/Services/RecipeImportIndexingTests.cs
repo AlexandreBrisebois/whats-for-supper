@@ -20,7 +20,7 @@ public sealed class RecipeImportIndexingTests
         while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "api", "src", "RecipeApi", "Workflows")))
             root = root.Parent;
         var storage = new InMemoryStorageProvider();
-        foreach (var name in new[] { "recipe-import", "index-recipe-search" })
+        foreach (var name in new[] { "recipe-import", "goto-synthesis", "url-import", "index-recipe-search" })
         {
             var yaml = await File.ReadAllTextAsync(Path.Combine(root!.FullName, "api", "src", "RecipeApi", "Workflows", name + ".yaml"));
             await storage.SaveAsync("workflows", name + ".yaml", yaml);
@@ -102,5 +102,31 @@ public sealed class RecipeImportIndexingTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => processor.ExecuteAsync(task, CancellationToken.None));
         Assert.Empty(await db.WorkflowInstances.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("goto-synthesis", "recipe_ready")]
+    [InlineData("url-import", "complete_import_report")]
+    public async Task Synthesis_and_url_import_queue_indexing_after_expected_completion_step(
+        string workflowId,
+        string expectedDependency)
+    {
+        await using var db = TestDbContextFactory.Create();
+        var recipeId = Guid.NewGuid();
+        var orchestrator = await CreateOrchestratorAsync(db, recipeId);
+        var parameters = new Dictionary<string, string> { ["recipeId"] = recipeId.ToString() };
+        if (workflowId == "goto-synthesis")
+            parameters["description"] = "Butter chicken";
+        else
+            parameters["url"] = "https://example.com/recipe";
+
+        var instance = await orchestrator.TriggerAsync(workflowId, parameters);
+        var queue = Assert.Single(instance.Tasks, t => t.TaskName == "queue_search_index");
+        Assert.Equal(TaskStatus.Waiting, queue.Status);
+        Assert.Equal("QueueRecipeSearchIndex", queue.ProcessorName);
+        Assert.Equal([expectedDependency], queue.DependsOn);
+        using var payload = JsonDocument.Parse(queue.Payload!);
+        Assert.Equal(recipeId, payload.RootElement.GetProperty("recipeId").GetGuid());
+        Assert.DoesNotContain(await db.WorkflowInstances.ToListAsync(), i => i.WorkflowId == "index-recipe-search");
     }
 }

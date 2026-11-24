@@ -18,6 +18,8 @@ public sealed record StructuredRecipeContent(
     IReadOnlyList<RecipeIngredientLineDto> IngredientLines,
     IReadOnlyList<RecipeInstructionSectionDto> InstructionSections);
 
+public sealed record StructuredRecipeExport(Guid RecipeId, StructuredRecipeContent Content, string? RawMetadata);
+
 public sealed record StructuredRecipeWriteResult(StructuredRecipeContent Content, IReadOnlyDictionary<string, Guid> CreatedIds);
 
 public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, IClock clock, SupperProjectionInvalidation invalidation, FoodVocabularyStore vocabulary, IValidationService? validation = null)
@@ -58,7 +60,7 @@ public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, ICl
             Provenance = new("human", prepared.Content.SourceRevision, ProtectedFacts)
         }).ToArray();
         var result = prepared with { Content = prepared.Content with { IngredientLines = lines } };
-        _ = RecipeExportContent.WriteCurrent(result);
+        ValidateContent(result.Content, rawMetadata: result.RawMetadata);
         return result;
     }
 

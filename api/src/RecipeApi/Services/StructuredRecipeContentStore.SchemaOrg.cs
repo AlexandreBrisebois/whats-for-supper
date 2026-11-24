@@ -38,70 +38,87 @@ public sealed partial class StructuredRecipeContentStore
     [GeneratedRegex(@"\s+", RegexOptions.CultureInvariant)]
     private static partial Regex TolerantWhitespaceRegex();
 
-    public static void ValidateContent(StructuredRecipeContent content, bool retainedHistory = false)
+    internal static void RejectRetiredRecipeWrapper(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object)
+            throw new InvalidDataException("Recipe content must be a JSON object.");
+        if (root.TryGetProperty("backupContentVersion", out _) || root.TryGetProperty("format", out _))
+            throw new InvalidDataException("Unsupported or retired recipe wrapper envelope.");
+    }
+
+    public static void ValidateContent(StructuredRecipeContent content, bool retainedHistory = false, string? rawMetadata = null)
     {
         static InvalidDataException Invalid() => new("Unsupported or malformed structured recipe content.");
 
-        if (content.ContentSchemaVersion != 2 || string.IsNullOrWhiteSpace(content.ContentRevision)
-            || string.IsNullOrWhiteSpace(content.SourceRevision) || content.Servings is <= 0
-            || content.IngredientLines is null || content.InstructionSections is null) throw Invalid();
-
-        var ids = new HashSet<Guid>();
-        void Identity(Guid id) { if (id == Guid.Empty || !ids.Add(id)) throw Invalid(); }
-
-        foreach (var line in content.IngredientLines)
+        try
         {
-            if (line is null) throw Invalid();
-            Identity(line.Id);
-            RecipeContentInput.Facts(line);
-            if (line.Provenance is not { Origin: "human" or "source" or "legacy_unknown" or "unknown", ProtectedFields: { } fields }
-                || line.Provenance.SourceRef is { } source && string.IsNullOrWhiteSpace(source)
-                || fields.Any(x => x is not ("description" or "amount" or "amountText" or "unit" or "scaling" or "package" or "shopping"))
-                || fields.Distinct(StringComparer.Ordinal).Count() != fields.Count) throw Invalid();
-        }
+            if (content.ContentSchemaVersion != 2 || string.IsNullOrWhiteSpace(content.ContentRevision)
+                || string.IsNullOrWhiteSpace(content.SourceRevision) || content.Servings is <= 0
+                || content.IngredientLines is null || content.InstructionSections is null) throw Invalid();
 
-        foreach (var section in content.InstructionSections)
-        {
-            if (section is null || section.Steps is null) throw Invalid();
-            Identity(section.Id);
-            foreach (var step in section.Steps)
+            var ids = new HashSet<Guid>();
+            void Identity(Guid id) { if (id == Guid.Empty || !ids.Add(id)) throw Invalid(); }
+
+            foreach (var line in content.IngredientLines)
             {
-                if (step is null || step.Text is null || string.IsNullOrWhiteSpace(step.TextRevision)
-                    || step.Bindings is null) throw Invalid();
-                Identity(step.Id);
+                if (line is null) throw Invalid();
+                Identity(line.Id);
+                RecipeContentInput.Facts(line);
+                if (line.Provenance is not { Origin: "human" or "source" or "legacy_unknown" or "unknown", ProtectedFields: { } fields }
+                    || line.Provenance.SourceRef is { } source && string.IsNullOrWhiteSpace(source)
+                    || fields.Any(x => x is not ("description" or "amount" or "amountText" or "unit" or "scaling" or "package" or "shopping"))
+                    || fields.Distinct(StringComparer.Ordinal).Count() != fields.Count) throw Invalid();
             }
-        }
 
-        var ingredients = content.IngredientLines.Select(x => x.Id).ToHashSet();
-        foreach (var step in content.InstructionSections.SelectMany(x => x.Steps))
-        {
-            var spans = new List<(int Start, int End, string TextRevision)>();
-            foreach (var binding in step.Bindings)
+            foreach (var section in content.InstructionSections)
             {
-                if (binding.ValueKind != JsonValueKind.Object) throw Invalid();
-                Identity(binding.GetProperty("id").GetGuid());
-                var ingredientId = binding.GetProperty("ingredientLineId").GetGuid();
-                var contentRevision = binding.GetProperty("validatedContentRevision").GetString();
-                var textRevision = binding.GetProperty("validatedTextRevision").GetString();
-                var current = contentRevision == content.ContentRevision && textRevision == step.TextRevision;
-                var inert = retainedHistory && !current;
-                if (ingredientId == Guid.Empty || !inert && !ingredients.Contains(ingredientId)
-                    || binding.GetProperty("stepId").GetGuid() != step.Id
-                    || string.IsNullOrWhiteSpace(contentRevision) || string.IsNullOrWhiteSpace(textRevision)
-                    || !retainedHistory && !current) throw Invalid();
-                var span = binding.GetProperty("span");
-                var start = span.GetProperty("start").GetInt32();
-                var end = span.GetProperty("end").GetInt32();
-                var expectedText = span.GetProperty("expectedText").GetString();
-                if (start < 0 || end <= start || expectedText is null || expectedText.Length != end - start
-                    || !inert && (end > step.Text.Length || !Utf16Boundary(step.Text, start) || !Utf16Boundary(step.Text, end)
-                        || expectedText != step.Text[start..end])
-                    || spans.Any(x => x.TextRevision == textRevision && start < x.End && end > x.Start)) throw Invalid();
-                spans.Add((start, end, textRevision!));
-                if (binding.GetProperty("role").GetString() is not ("mention" or "whole" or "absolute" or "fraction" or "remainder" or "fixed" or "perItem")
-                    || binding.GetProperty("payload").ValueKind != JsonValueKind.Object
-                    || string.IsNullOrWhiteSpace(binding.GetProperty("status").GetString())) throw Invalid();
+                if (section is null || section.Steps is null) throw Invalid();
+                Identity(section.Id);
+                foreach (var step in section.Steps)
+                {
+                    if (step is null || step.Text is null || string.IsNullOrWhiteSpace(step.TextRevision)
+                        || step.Bindings is null) throw Invalid();
+                    Identity(step.Id);
+                }
             }
+
+            var ingredients = content.IngredientLines.Select(x => x.Id).ToHashSet();
+            foreach (var step in content.InstructionSections.SelectMany(x => x.Steps))
+            {
+                var spans = new List<(int Start, int End, string TextRevision)>();
+                foreach (var binding in step.Bindings)
+                {
+                    if (binding.ValueKind != JsonValueKind.Object) throw Invalid();
+                    Identity(binding.GetProperty("id").GetGuid());
+                    var ingredientId = binding.GetProperty("ingredientLineId").GetGuid();
+                    var contentRevision = binding.GetProperty("validatedContentRevision").GetString();
+                    var textRevision = binding.GetProperty("validatedTextRevision").GetString();
+                    var current = contentRevision == content.ContentRevision && textRevision == step.TextRevision;
+                    var inert = retainedHistory && !current;
+                    if (ingredientId == Guid.Empty || !inert && !ingredients.Contains(ingredientId)
+                        || binding.GetProperty("stepId").GetGuid() != step.Id
+                        || string.IsNullOrWhiteSpace(contentRevision) || string.IsNullOrWhiteSpace(textRevision)
+                        || !retainedHistory && !current) throw Invalid();
+                    var span = binding.GetProperty("span");
+                    var start = span.GetProperty("start").GetInt32();
+                    var end = span.GetProperty("end").GetInt32();
+                    var expectedText = span.GetProperty("expectedText").GetString();
+                    if (start < 0 || end <= start || expectedText is null || expectedText.Length != end - start
+                        || !inert && (end > step.Text.Length || !Utf16Boundary(step.Text, start) || !Utf16Boundary(step.Text, end)
+                            || expectedText != step.Text[start..end])
+                        || spans.Any(x => x.TextRevision == textRevision && start < x.End && end > x.Start)) throw Invalid();
+                    spans.Add((start, end, textRevision!));
+                    if (binding.GetProperty("role").GetString() is not ("mention" or "whole" or "absolute" or "fraction" or "remainder" or "fixed" or "perItem")
+                        || binding.GetProperty("payload").ValueKind != JsonValueKind.Object
+                        || string.IsNullOrWhiteSpace(binding.GetProperty("status").GetString())) throw Invalid();
+                }
+            }
+
+            if (rawMetadata is not null) using (JsonDocument.Parse(rawMetadata)) { }
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException or KeyNotFoundException or FormatException or OverflowException)
+        {
+            throw Invalid();
         }
     }
 
