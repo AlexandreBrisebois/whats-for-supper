@@ -33,26 +33,31 @@ import { resolveOccupiedSlot } from './slotAssignment';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.deferPost.mockImplementation(async (_body, config) => {
-    const offset = config.queryParameters.targetWeekOffset;
-    return {
-      data: {
-        scheduledDate: new Date(
-          Date.parse(`${config.queryParameters.referenceWeekStartDate}T00:00:00Z`) +
-            offset * 7 * 86400000
-        )
-          .toISOString()
-          .slice(0, 10),
-        scheduledWeekOffset: offset,
-        message: 'Moved',
-      },
-    };
+  mocks.movePost.mockImplementation(async (body, config) => {
+    if (body?.intent === 'defer') {
+      const offset = body.targetWeekOffset ?? 1;
+      const reference = config?.queryParameters?.referenceWeekStartDate ?? '2026-05-11';
+      const destinationDate = new Date(Date.parse(`${reference}T00:00:00Z`) + offset * 7 * 86400000)
+        .toISOString()
+        .slice(0, 10);
+      return {
+        data: {
+          moved: true,
+          sourceDate: body.sourceDate,
+          destinationDate,
+          scheduledWeekOffset: offset,
+          affectedWeekStartDates: [reference, destinationDate],
+          refreshComplete: true,
+          message: 'Moved',
+        },
+      };
+    }
+    return { data: { moved: true, refreshComplete: true } };
   });
-  mocks.movePost.mockResolvedValue({ data: { moved: true, refreshComplete: true } });
 });
 
 describe('resolveOccupiedSlot', () => {
-  it('uses defer with the exact source date for next-week recovery', async () => {
+  it('uses unified move intent defer with the exact source date for next-week recovery', async () => {
     await resolveOccupiedSlot(
       {
         weekOffset: 0,
@@ -64,17 +69,21 @@ describe('resolveOccupiedSlot', () => {
       'next_week'
     );
 
-    expect(mocks.deferPost).toHaveBeenCalledWith(
+    expect(mocks.movePost).toHaveBeenCalledWith(
       {
+        weekOffset: 0,
+        fromIndex: 2,
         sourceDate: '2026-05-13',
         recipeId: '550e8400-e29b-41d4-a716-446655440000',
+        intent: 'defer',
+        targetWeekOffset: 1,
       },
       {
-        queryParameters: { referenceWeekStartDate: '2026-05-11', targetWeekOffset: 1 },
+        queryParameters: { referenceWeekStartDate: '2026-05-11' },
         options: [expect.objectContaining({ maxRetries: 0 })],
       }
     );
-    expect(mocks.movePost).not.toHaveBeenCalled();
+    expect(mocks.deferPost).not.toHaveBeenCalled();
   });
 });
 
@@ -137,10 +146,17 @@ it('defers offset one to offset two using the captured reference and exact sourc
     },
     'next_week'
   );
-  expect(mocks.deferPost).toHaveBeenLastCalledWith(
-    { sourceDate: '2026-10-21', recipeId: '550e8400-e29b-41d4-a716-446655440000' },
+  expect(mocks.movePost).toHaveBeenLastCalledWith(
     {
-      queryParameters: { referenceWeekStartDate: '2026-10-12', targetWeekOffset: 2 },
+      weekOffset: 1,
+      fromIndex: 2,
+      sourceDate: '2026-10-21',
+      recipeId: '550e8400-e29b-41d4-a716-446655440000',
+      intent: 'defer',
+      targetWeekOffset: 2,
+    },
+    {
+      queryParameters: { referenceWeekStartDate: '2026-10-12' },
       options: [expect.objectContaining({ maxRetries: 0 })],
     }
   );
@@ -163,12 +179,15 @@ it.each([0, 2])(
         },
         'next_week'
       );
-      expect(mocks.deferPost).toHaveBeenLastCalledWith(
-        expect.objectContaining({ sourceDate: date }),
+      expect(mocks.movePost).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          intent: 'defer',
+          sourceDate: date,
+          targetWeekOffset: weekOffset + 1,
+        }),
         {
           queryParameters: {
             referenceWeekStartDate: '2026-10-12',
-            targetWeekOffset: weekOffset + 1,
           },
           options: [expect.objectContaining({ maxRetries: 0 })],
         }
@@ -183,11 +202,18 @@ it.each([0, 1, 2])(
   'uses exact-source defer for Search/Browse offset %i and retains a spillover destination',
   async (weekOffset) => {
     const date = `2026-10-${14 + weekOffset * 7}`;
-    const scheduledDate = new Date(Date.UTC(2026, 9, 12 + (weekOffset + 2) * 7))
+    const destinationDate = new Date(Date.UTC(2026, 9, 12 + (weekOffset + 2) * 7))
       .toISOString()
       .slice(0, 10);
-    mocks.deferPost.mockResolvedValueOnce({
-      data: { scheduledDate, scheduledWeekOffset: weekOffset + 2, message: 'Full week' },
+    mocks.movePost.mockResolvedValueOnce({
+      data: {
+        moved: true,
+        sourceDate: date,
+        destinationDate,
+        scheduledWeekOffset: weekOffset + 2,
+        refreshComplete: true,
+        message: 'Full week',
+      },
     });
     const result = await resolveOccupiedSlot(
       {
@@ -199,26 +225,36 @@ it.each([0, 1, 2])(
       },
       'next_week'
     );
-    expect(mocks.deferPost).toHaveBeenCalledWith(
-      { sourceDate: date, recipeId: 'original' },
+    expect(mocks.movePost).toHaveBeenCalledWith(
       {
-        queryParameters: { referenceWeekStartDate: '2026-10-12', targetWeekOffset: weekOffset + 1 },
+        weekOffset,
+        fromIndex: 2,
+        sourceDate: date,
+        recipeId: 'original',
+        intent: 'defer',
+        targetWeekOffset: weekOffset + 1,
+      },
+      {
+        queryParameters: { referenceWeekStartDate: '2026-10-12' },
         options: [expect.objectContaining({ maxRetries: 0 })],
       }
     );
-    expect(result).toMatchObject({ data: { scheduledDate, scheduledWeekOffset: weekOffset + 2 } });
-    expect(mocks.movePost).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      data: { destinationDate, scheduledWeekOffset: weekOffset + 2 },
+    });
+    expect(mocks.deferPost).not.toHaveBeenCalled();
   }
 );
 
 it.each([
   {},
-  { scheduledDate: '2026-10-32', scheduledWeekOffset: 2 },
-  { scheduledDate: '2027-02-31', scheduledWeekOffset: 20 },
-  { scheduledDate: '2026-10-21', scheduledWeekOffset: 1 },
-  { scheduledDate: '2026-11-02', scheduledWeekOffset: 2 },
+  { moved: false, destinationDate: '2026-10-26', scheduledWeekOffset: 2 },
+  { moved: true, destinationDate: '2026-10-32', scheduledWeekOffset: 2 },
+  { moved: true, destinationDate: '2027-02-31', scheduledWeekOffset: 20 },
+  { moved: true, destinationDate: '2026-10-21', scheduledWeekOffset: 1 },
+  { moved: true, destinationDate: '2026-11-02', scheduledWeekOffset: 2 },
 ])('blocks Next Week without a coherent following-week destination: %j', async (data) => {
-  mocks.deferPost.mockResolvedValueOnce({ data });
+  mocks.movePost.mockResolvedValueOnce({ data });
   await expect(
     resolveOccupiedSlot(
       {
@@ -241,12 +277,18 @@ it('retains an acknowledged defer and never repeats it after a replacement rejec
     referenceWeekStartDate: '2026-10-12',
     recipe: { id: 'original' } as any,
   };
-  mocks.deferPost.mockResolvedValueOnce({
-    data: { scheduledDate: '2026-11-02', scheduledWeekOffset: 3, message: 'Full week' },
+  mocks.movePost.mockResolvedValueOnce({
+    data: {
+      moved: true,
+      destinationDate: '2026-11-02',
+      scheduledWeekOffset: 3,
+      refreshComplete: true,
+      message: 'Full week',
+    },
   });
   await resolveOccupiedSlot(source, 'next_week');
   await resolveOccupiedSlot(source, 'next_week');
-  expect(mocks.deferPost).toHaveBeenCalledTimes(1);
+  expect(mocks.movePost).toHaveBeenCalledTimes(1);
 });
 
 it('does not replay a lost defer reply, even with an empty source', async () => {
@@ -254,7 +296,7 @@ it('does not replay a lost defer reply, even with an empty source', async () => 
   vi.mocked(getSchedule).mockResolvedValue({
     days: [{ date: '2026-10-21', recipe: null, status: 0 }],
   } as any);
-  mocks.deferPost.mockRejectedValueOnce(new Error('Reply lost'));
+  mocks.movePost.mockRejectedValueOnce(new Error('Reply lost'));
   const source = {
     weekOffset: 1,
     dayIndex: 2,
@@ -264,8 +306,58 @@ it('does not replay a lost defer reply, even with an empty source', async () => 
   };
   await expect(resolveOccupiedSlot(source, 'next_week')).rejects.toThrow();
   await expect(resolveOccupiedSlot(source, 'next_week')).rejects.toThrow();
-  expect(mocks.deferPost).toHaveBeenCalledTimes(1);
+  expect(mocks.movePost).toHaveBeenCalledTimes(1);
   expect(getSchedule).toHaveBeenCalled();
+});
+
+it('forwards cookedDisposition and sourceNonCooking and warns on refreshComplete === false', async () => {
+  const { deferToFollowingWeek } = await import('./slotAssignment');
+  const { useUiStore } = await import('@/store/uiStore');
+  const addToast = vi.spyOn(useUiStore.getState(), 'addToast');
+  mocks.movePost.mockResolvedValueOnce({
+    data: {
+      moved: true,
+      sourceDate: '2026-10-14',
+      destinationDate: '2026-10-19',
+      scheduledWeekOffset: 1,
+      affectedWeekStartDates: ['2026-10-12', '2026-10-19'],
+      refreshComplete: false,
+      message: 'Moved Pasta to Monday, October 19.',
+    },
+  });
+  const result = await deferToFollowingWeek(
+    {
+      weekOffset: 0,
+      dayIndex: 2,
+      date: '2026-10-14',
+      referenceWeekStartDate: '2026-10-12',
+      recipe: { id: '550e8400-e29b-41d4-a716-446655440000' } as any,
+    },
+    { kind: 'eating_out', customLabel: null },
+    { cookedDisposition: 'preserve' }
+  );
+  expect(result.data.refreshComplete).toBe(false);
+  expect(mocks.movePost).toHaveBeenLastCalledWith(
+    {
+      weekOffset: 0,
+      fromIndex: 2,
+      sourceDate: '2026-10-14',
+      recipeId: '550e8400-e29b-41d4-a716-446655440000',
+      intent: 'defer',
+      targetWeekOffset: 1,
+      sourceNonCooking: { kind: 'eating_out', customLabel: null },
+      cookedDisposition: 'preserve',
+    },
+    {
+      queryParameters: { referenceWeekStartDate: '2026-10-12' },
+      options: [expect.objectContaining({ maxRetries: 0 })],
+    }
+  );
+  expect(addToast).toHaveBeenCalledWith({
+    type: 'warning',
+    message: 'Meal moved. Some updates could not refresh. Refresh your plan to check it.',
+  });
+  addToast.mockRestore();
 });
 
 it.each([2, 6])('preserves Tomorrow movement for day %i', async (dayIndex) => {

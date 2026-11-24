@@ -67,7 +67,8 @@ public partial class PreparedSupperPostgresTests
             var request=await Capture(client,recipe);await Prepare(client,request);
             Assert.Equal(HttpStatusCode.Conflict,(await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12",new {weekOffset=0,fromIndex=4,toIndex=5,recipeId=recipe,intent="tomorrow"})).StatusCode);
             Assert.Equal(HttpStatusCode.OK,(await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12",new {weekOffset=0,fromIndex=4,toIndex=3,recipeId=recipe})).StatusCode);
-            Assert.Equal(HttpStatusCode.OK,(await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12",new {weekOffset=0,targetWeekOffset=1,fromIndex=3,toIndex=0,recipeId=recipe})).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest,(await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12",new {weekOffset=0,targetWeekOffset=1,fromIndex=3,toIndex=0,recipeId=recipe,intent="swap"})).StatusCode);
+            Assert.Equal(HttpStatusCode.OK,(await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12",new {weekOffset=0,targetWeekOffset=1,fromIndex=3,recipeId=recipe,intent="defer",cookedDisposition="preserve"})).StatusCode);
             using var scope=app.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var entry=await db.CalendarEvents.SingleAsync(x=>x.Id==(Guid)request["expectedOccurrenceId"]);
             Assert.Equal(new DateOnly(2026,10,19),entry.Date);Assert.Equal(CalendarEventStatus.Cooked,entry.Status);Assert.Equal(Tuesday,entry.PreparedAtUtc);Assert.Equal(6,entry.PreparedServings);

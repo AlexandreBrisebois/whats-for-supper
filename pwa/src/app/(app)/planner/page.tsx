@@ -34,10 +34,8 @@ import {
   saveNonCookingDay,
   getSchedule,
   removeRecipeFromDay,
-  referenceRequest,
   normalizeScheduleRecipe,
 } from '@/lib/api/planner';
-import { apiClient } from '@/lib/api/api-client';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { Button } from '@/components/ui/button';
 import { NonCookingDaySheet } from '@/components/planner/NonCookingDaySheet';
@@ -45,6 +43,7 @@ import { NonCookingIcon } from '@/components/planner/NonCookingIcon';
 import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
 import type { NonCookingPlanDto } from '@/lib/api/generated/models';
 import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
+import { CookedDeferConfirmSheet } from '@/components/planner/CookedDeferConfirmSheet';
 import { cn } from '@/lib/utils';
 import { getLocale, t, tWithVars } from '@/locales';
 import { QuickFindModal } from '@/components/planner/QuickFindModal';
@@ -61,7 +60,11 @@ import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
 import { readPlanningResult, retirePlanningResult } from '@/lib/planner/planningResult';
 import { describeOriginalDisposition } from '@/lib/planner/replacementCopy';
 import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
-import { type AssignmentRecipe } from '@/lib/planner/slotAssignment';
+import {
+  deferToFollowingWeek,
+  type AssignmentRecipe,
+  type PlannerSlot,
+} from '@/lib/planner/slotAssignment';
 import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
 import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
 import { usePlannerDrag } from '@/components/planner/usePlannerDrag';
@@ -141,6 +144,8 @@ export default function PlannerPage() {
     activeNonCookingDate.current = nonCookingTarget?.date ?? null;
   }, [nonCookingTarget]);
   const [showPivot, setShowPivot] = useState<{ dayIndex: number } | null>(null);
+  const [pendingCookedDefer, setPendingCookedDefer] = useState<PlannerSlot | null>(null);
+  const [cookedDeferSubmitting, setCookedDeferSubmitting] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [showQuickFind, setShowQuickFind] = useState(false);
   const [pendingQuickFindDayIndex, setPendingQuickFindDayIndex] = useState<number | null>(null);
@@ -709,43 +714,77 @@ export default function PlannerPage() {
     useWeekStore.getState().removeRecipe(dayIndex, date);
   };
 
+  const executePlanLater = async (slot: PlannerSlot, cookedDisposition?: 'reset' | 'preserve') => {
+    let result;
+    try {
+      result = await deferToFollowingWeek(
+        slot,
+        undefined,
+        cookedDisposition ? { cookedDisposition } : undefined
+      );
+    } catch (error) {
+      const status = (error as { responseStatusCode?: number })?.responseStatusCode;
+      useUiStore.getState().addToast({
+        type: 'error',
+        message:
+          status === 404 || status === 409
+            ? 'That meal changed. Your plan was refreshed; review it before trying again.'
+            : 'Could not move that meal right now. Review your plan before trying again.',
+      });
+      await Promise.allSettled([
+        useWeekStore.getState().init(slot.weekOffset, referenceWeekStartDate),
+      ]);
+      return;
+    }
+
+    let viewRefreshFailed = false;
+    try {
+      await useWeekStore.getState().init(slot.weekOffset, referenceWeekStartDate);
+      if (slot.weekOffset === 0 && slot.date === useTodayStore.getState().calendar?.today) {
+        await useTodayStore.getState().sync();
+      }
+    } catch {
+      viewRefreshFailed = true;
+    }
+
+    if (result.data.refreshComplete !== false) {
+      if (viewRefreshFailed) {
+        useUiStore.getState().addToast({
+          type: 'warning',
+          message: 'Meal moved. Some updates could not refresh. Refresh your plan to check it.',
+        });
+      } else if (result.data.message) {
+        useUiStore.getState().addToast(result.data.message);
+      }
+    }
+  };
+
   const handlePlanLater = async (dayIndex: number) => {
     const day = schedule[dayIndex];
     const recipeId = day?.recipe?.id;
     if (!recipeId || !day?.date) return;
 
-    try {
-      setShowPivot(null);
-      setSelectedDayIndex(null);
-      setPendingQuickFindDayIndex(null);
+    setShowPivot(null);
+    setSelectedDayIndex(null);
+    setPendingQuickFindDayIndex(null);
 
-      const reference = useWeekStore.getState().calendar?.referenceWeekStartDate;
-      const result = await apiClient.api.schedule.move.post(
-        {
-          weekOffset: currentWeekOffset,
-          fromIndex: dayIndex,
-          toIndex: 0,
-          targetWeekOffset: currentWeekOffset + 1,
-          intent: 'push',
-          recipeId,
-        },
-        referenceRequest(reference)
-      );
+    const slot: PlannerSlot = {
+      weekOffset: currentWeekOffset,
+      referenceWeekStartDate: useWeekStore.getState().calendar?.referenceWeekStartDate,
+      dayIndex,
+      date: day.date,
+      recipe: day.recipe ?? null,
+      status: day.status,
+      removalToken: day.removalToken,
+      nonCooking: day.nonCooking,
+    };
 
-      if (result?.data?.moved && result.data.refreshComplete === false) {
-        useUiStore.getState().addToast({
-          type: 'warning',
-          message: 'Meal moved. Some updates could not refresh. Refresh your plan to check it.',
-        });
-      }
-      await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
-
-      if (currentWeekOffset === 0 && day.date === useTodayStore.getState().calendar?.today) {
-        await useTodayStore.getState().sync();
-      }
-    } catch (error) {
-      console.error('Failed plan later:', error);
+    if (day.status === 2) {
+      setPendingCookedDefer(slot);
+      return;
     }
+
+    await executePlanLater(slot);
   };
 
   const isFinalized = isLocked;
@@ -1280,6 +1319,27 @@ export default function PlannerPage() {
             (schedule[showPivot.dayIndex]?.recipe?.id || schedule[showPivot.dayIndex]?.status === 3)
           )
         }
+      />
+
+      <CookedDeferConfirmSheet
+        isOpen={pendingCookedDefer !== null}
+        date={pendingCookedDefer?.date}
+        recipeName={pendingCookedDefer?.recipe?.name ?? null}
+        pending={cookedDeferSubmitting}
+        onClose={() => {
+          if (!cookedDeferSubmitting) setPendingCookedDefer(null);
+        }}
+        onSelect={async (disposition) => {
+          if (!pendingCookedDefer || cookedDeferSubmitting) return;
+          const slot = pendingCookedDefer;
+          setCookedDeferSubmitting(true);
+          try {
+            await executePlanLater(slot, disposition);
+          } finally {
+            setCookedDeferSubmitting(false);
+            setPendingCookedDefer(null);
+          }
+        }}
       />
 
       <FamilyNudgeDialog open={showNudgeDialog} onClose={closeNudgeDialog} />

@@ -306,10 +306,14 @@ test('Plan B Eating out and inline Made plans resolve through Step 2 to the Cook
   await page.getByTestId('recovery-custom-plan-next').click();
 
   const deferReq = page.waitForRequest(
-    (r) => r.method() === 'POST' && r.url().includes('/api/schedule/defer')
+    (r) =>
+      r.method() === 'POST' &&
+      r.url().includes('/api/schedule/move') &&
+      r.postDataJSON()?.intent === 'defer'
   );
   await page.getByTestId('recovery-action-next-week').click();
   expect((await deferReq).postDataJSON()).toMatchObject({
+    intent: 'defer',
     sourceNonCooking: { kind: 'custom', customLabel: "Supper at Grandma's" },
   });
   await expect(page.getByTestId('today-non-cooking-plan')).toBeVisible();

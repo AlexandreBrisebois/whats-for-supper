@@ -83,11 +83,12 @@ public partial class RecipeDetailPlanningPostgresTests(ITestOutputHelper output)
             }
             using var first = factory.CreateAuthenticatedClient();
             using var second = factory.CreateAuthenticatedClient();
-            var moved = await first.PostAsJsonAsync("/api/schedule/defer?referenceWeekStartDate=2026-10-05&targetWeekOffset=2", new { sourceDate = "2026-10-14", recipeId = TomorrowPushPostgresTests.Selected });
+            var moved = await first.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-05", new { weekOffset = 1, sourceDate = "2026-10-14", recipeId = TomorrowPushPostgresTests.Selected, intent = "defer", targetWeekOffset = 2 });
             moved.EnsureSuccessStatusCode();
             using var result = JsonDocument.Parse(await moved.Content.ReadAsStringAsync());
             var data = result.RootElement.GetProperty("data");
-            Assert.Equal("2026-10-26", data.GetProperty("scheduledDate").GetString());
+            Assert.True(data.GetProperty("moved").GetBoolean());
+            Assert.Equal("2026-10-26", data.GetProperty("destinationDate").GetString());
             Assert.Equal(3, data.GetProperty("scheduledWeekOffset").GetInt32());
             Assert.Contains("full", data.GetProperty("message").GetString());
             (await second.PostAsJsonAsync(TonightReplacementPostgresTests.AssignUrl, new { weekOffset = 1, dayIndex = 2, recipeId = TomorrowPushPostgresTests.Other, requireEmpty = true })).EnsureSuccessStatusCode();

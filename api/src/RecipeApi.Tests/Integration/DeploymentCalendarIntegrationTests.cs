@@ -131,7 +131,6 @@ public class DeploymentCalendarIntegrationTests
     [InlineData("lock")]
     [InlineData("voting/open")]
     [InlineData("move")]
-    [InlineData("defer")]
     public async Task RelativeMutations_RejectNonMondayBeforeWork(string operation)
     {
         await using var factory = await CreateAsync();
@@ -139,6 +138,16 @@ public class DeploymentCalendarIntegrationTests
         var response = await client.PostAsJsonAsync($"/api/schedule/{operation}?referenceWeekStartDate=2026-10-06",
             new { weekOffset = 0, recipeId = Guid.NewGuid(), toIndex = 0, sourceDate = "2026-10-11" });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RetiredDeferEndpoint_ReturnsNotFound()
+    {
+        await using var factory = await CreateAsync();
+        using var client = factory.CreateAuthenticatedClient();
+        var response = await client.PostAsJsonAsync("/api/schedule/defer?referenceWeekStartDate=2026-10-12",
+            new { sourceDate = "2026-10-14", recipeId = Guid.NewGuid() });
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Theory]
@@ -152,9 +161,9 @@ public class DeploymentCalendarIntegrationTests
     }
 
     [Theory]
-    [InlineData("move")]
+    [InlineData("tomorrow")]
     [InlineData("defer")]
-    public async Task Movement_UsesOneReferenceForSourceAndNextWeek(string operation)
+    public async Task Movement_UsesOneReferenceForSourceAndNextWeek(string intent)
     {
         await using var factory = await CreateAsync();
         using var scope = factory.Services.CreateScope();
@@ -168,8 +177,8 @@ public class DeploymentCalendarIntegrationTests
         db.CalendarEvents.Add(new CalendarEvent { Date = new DateOnly(2026, 10, 11), RecipeId = recipe.Id });
         await db.SaveChangesAsync();
         using var client = factory.CreateAuthenticatedClient();
-        var response = await client.PostAsJsonAsync($"/api/schedule/{operation}?referenceWeekStartDate=2026-10-05",
-            new { weekOffset = 0, fromIndex = 6, toIndex = 0, targetWeekOffset = 1, recipeId = recipe.Id, sourceDate = "2026-10-11", intent = "push" });
+        var response = await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-05",
+            new { weekOffset = 0, fromIndex = 6, toIndex = 0, targetWeekOffset = 1, recipeId = recipe.Id, sourceDate = "2026-10-11", intent });
         response.EnsureSuccessStatusCode();
         var saved = await db.CalendarEvents.AsNoTracking().SingleAsync();
         Assert.Equal(new DateOnly(2026, 10, 12), saved.Date);

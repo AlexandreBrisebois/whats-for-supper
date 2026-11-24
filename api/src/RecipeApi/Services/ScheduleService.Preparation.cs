@@ -27,6 +27,16 @@ public partial class ScheduleService
         (left.PreparationServingVersion, right.PreparationServingVersion) = (right.PreparationServingVersion, left.PreparationServingVersion);
     }
 
+    private static void CopyPreparation(CalendarEvent source, CalendarEvent destination)
+    {
+        destination.PreparedOn = source.PreparedOn;
+        destination.PreparedAtUtc = source.PreparedAtUtc;
+        destination.PreparedServings = source.PreparedServings;
+        destination.PreparedOriginalServings = source.PreparedOriginalServings;
+        destination.PreparationPlanToken = source.PreparationPlanToken;
+        destination.PreparationServingVersion = source.PreparationServingVersion;
+    }
+
     internal static SupperPreparationDto? Preparation(CalendarEvent? entry) => entry is { PreparedOn: { } on, PreparedAtUtc: { } at, PreparationPlanToken: { } plan, PreparationServingVersion: { } portions }
         ? new() { PreparedOn = on, PreparedAtUtc = at, Servings = entry.PreparedServings, PortionContext = entry.PreparedServings is null ? "original" : "dated", OriginalServings = entry.PreparedOriginalServings, PlanToken = plan, ServingVersion = portions } : null;
 

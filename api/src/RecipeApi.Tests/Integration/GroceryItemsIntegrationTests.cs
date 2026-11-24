@@ -153,10 +153,10 @@ public class GroceryItemsIntegrationTests : IAsyncLifetime
         var moveResponse = await _client.PostAsJsonAsync("/api/schedule/move", new
         {
             weekOffset = 0,
+            fromIndex = 0,
             recipeId,
-            toIndex = 0,
             targetWeekOffset = 1,
-            intent = "push",
+            intent = "defer",
         });
         Assert.Equal(HttpStatusCode.OK, moveResponse.StatusCode);
 

@@ -407,13 +407,14 @@ public class ScheduleServiceTests : IAsyncLifetime
             .Returns<ScheduleDays, string?, int?>((schedule, _, _) => schedule.WeekOffset == failedWeek
                 ? Task.FromException(new IOException("Publication failed")) : Task.CompletedTask);
 
-        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipe.Id, 0, "push", 1, 0), "viewer", 12);
+        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipe.Id, Intent: "defer", TargetWeekOffset: 1, FromIndex: 0), "viewer", 12);
 
         Assert.NotNull(result);
         Assert.True(result.Moved);
         Assert.Equal(failedWeek < 0, result.RefreshComplete);
         Assert.Equal(sourceMonday, result.SourceDate);
         Assert.Equal(targetMonday.AddDays(1), result.DestinationDate);
+        Assert.Equal(1, result.ScheduledWeekOffset);
         Assert.Equal(new[] { sourceMonday, targetMonday }, result.AffectedWeekStartDates);
         Assert.Equal(new[] { 0, 1 }, snapshots.Select(x => x.WeekOffset));
         Assert.DoesNotContain(snapshots[0].Days, x => x.Recipe != null);
@@ -450,7 +451,7 @@ public class ScheduleServiceTests : IAsyncLifetime
             _publisherMock.Object, grocery, clock, calendar, TestHistoricalInterest.Create(_db, clock, calendar),
             _scope.ServiceProvider.GetRequiredService<GroceryCheckCoordinator>(), new SupperProjectionInvalidation(_db,clock,calendar));
 
-        var result = await service.MoveScheduleEventAsync(new MoveScheduleDto(0, moved.Id, 0, "push", 1, 0));
+        var result = await service.MoveScheduleEventAsync(new MoveScheduleDto(0, moved.Id, Intent: "defer", TargetWeekOffset: 1, FromIndex: 0));
 
         Assert.NotNull(result);
         Assert.True(result.Moved);
@@ -461,7 +462,7 @@ public class ScheduleServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task PlanLater_FullTargetRetainsLegacyNoOpResultAndSource()
+    public async Task PlanLater_FullTargetSpillsToFollowingWeekAndPublishesAffectedWeeks()
     {
         var monday = new DateOnly(2026, 10, 12);
         var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Full week", Ingredients = "[]" };
@@ -471,13 +472,17 @@ public class ScheduleServiceTests : IAsyncLifetime
             { Date = monday.AddDays(7 + i), RecipeId = recipe.Id }));
         await _db.SaveChangesAsync();
 
-        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipe.Id, 0, "push", 1, 0));
+        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipe.Id, Intent: "defer", TargetWeekOffset: 1, FromIndex: 0));
 
-        Assert.Null(result);
+        Assert.NotNull(result);
+        Assert.True(result.Moved);
+        Assert.Equal(monday.AddDays(14), result.DestinationDate);
+        Assert.Equal(2, result.ScheduledWeekOffset);
         Assert.Equal(8, _db.CalendarEvents.Count());
-        Assert.Contains(_db.CalendarEvents, x => x.Date == monday && x.RecipeId == recipe.Id);
+        Assert.DoesNotContain(_db.CalendarEvents, x => x.Date == monday);
+        Assert.Contains(_db.CalendarEvents, x => x.Date == monday.AddDays(14) && x.RecipeId == recipe.Id);
         _publisherMock.Verify(p => p.PublishWeekUpdatedAsync(It.Is<ScheduleDays>(s => s.WeekOffset == 0), null, null), Times.Once);
-        _publisherMock.Verify(p => p.PublishWeekUpdatedAsync(It.Is<ScheduleDays>(s => s.WeekOffset == 1), null, null), Times.Never);
+        _publisherMock.Verify(p => p.PublishWeekUpdatedAsync(It.Is<ScheduleDays>(s => s.WeekOffset == 2), null, null), Times.Once);
     }
 
     [Fact]
@@ -623,9 +628,10 @@ public class ScheduleServiceTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        var result = await _service.DeferRecipeAsync(new DeferScheduleDto(today, recipeId), "connection", 12);
+        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, Intent: "defer", SourceDate: today), "connection", 12);
 
-        Assert.Equal(nextMonday, result.ScheduledDate);
+        Assert.NotNull(result);
+        Assert.Equal(nextMonday, result.DestinationDate);
         var moved = Assert.Single(_db.CalendarEvents);
         Assert.Equal(CalendarEventStatus.Planned, moved.Status);
         Assert.Equal(4, moved.VoteCount);
@@ -645,7 +651,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         });
         await _db.SaveChangesAsync();
 
-        await _service.DeferRecipeAsync(new DeferScheduleDto(sourceDate, recipeId));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, Intent: "defer", SourceDate: sourceDate));
 
         var source = Assert.Single(_db.CalendarEvents.Where(e => e.Date == sourceDate));
         Assert.Null(source.RecipeId);
@@ -671,7 +677,7 @@ public class ScheduleServiceTests : IAsyncLifetime
 
         var service = CreateService(new FixedClock(new DateTimeOffset(2026, 5, 13, 12, 0, 0, TimeSpan.Zero)));
 
-        await service.DeferRecipeAsync(new DeferScheduleDto(cookedDate, recipeId));
+        await service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, Intent: "defer", SourceDate: cookedDate));
 
         Assert.Null(_db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
     }
@@ -831,8 +837,8 @@ public class ScheduleServiceTests : IAsyncLifetime
         );
         await _db.SaveChangesAsync();
 
-        // Act: Push Slot 0 (R1) to Slot 1. R2 should shift to Slot 2.
-        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, r1Id, 1, "push"));
+        // Act: Tomorrow push Slot 0 (R1) to Slot 1. R2 should shift to Slot 2.
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, r1Id, 1, "tomorrow", FromIndex: 0));
 
         // Assert
         var e1 = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday);
@@ -865,7 +871,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act
-        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "push"));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "tomorrow", FromIndex: 0));
 
         // Assert: source day stays ordered-in, tomorrow gets the planned recipe
         var todayEvent = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday);
@@ -902,7 +908,7 @@ public class ScheduleServiceTests : IAsyncLifetime
 
         // Act: mirror the live flow used by Home recovery
         await _service.ValidateDayAsync(monday.ToString("yyyy-MM-dd"), new ValidationDto(3));
-        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "push"));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "tomorrow", FromIndex: 0));
 
         // Assert: source day stays ordered-in, tomorrow gets the planned recipe
         var todayEvent = _db.CalendarEvents.FirstOrDefault(e => e.Date == monday);
@@ -956,7 +962,7 @@ public class ScheduleServiceTests : IAsyncLifetime
         await _db.SaveChangesAsync();
 
         // Act: move the recipe from Thursday to Friday, not the matching Monday slot.
-        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 4, "push", null, 3));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 4, "tomorrow", null, 3));
 
         // Assert
         Assert.NotNull(_db.CalendarEvents.FirstOrDefault(e => e.Date == monday && e.RecipeId == recipeId));
@@ -1065,5 +1071,176 @@ public class ScheduleServiceTests : IAsyncLifetime
         Assert.NotNull(result.GroceryState);
         Assert.Empty(result.GroceryState);
         Assert.Null(result.GroceryListVersion);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("reset")]
+    public async Task MoveDefer_CookedSourceResetClearsPreparationAndRecalculatesLastCookedDate(string? cookedDisposition)
+    {
+        var recipeId = Guid.NewGuid();
+        var earlierDate = new DateOnly(2026, 10, 5);
+        var cookedDate = new DateOnly(2026, 10, 14);
+        var preparedAt = new DateTimeOffset(2026, 10, 14, 18, 0, 0, TimeSpan.Zero);
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Soup", Ingredients = "[]", LastCookedDate = preparedAt });
+        _db.CalendarEvents.AddRange(
+            new CalendarEvent { Id = Guid.NewGuid(), RecipeId = recipeId, Date = earlierDate, Status = CalendarEventStatus.Cooked },
+            new CalendarEvent
+            {
+                Id = Guid.NewGuid(), RecipeId = recipeId, Date = cookedDate, Status = CalendarEventStatus.Cooked,
+                PreparedOn = cookedDate, PreparedAtUtc = preparedAt, PreparedServings = 4, PreparedOriginalServings = 2,
+                PreparationPlanToken = "token", PreparationServingVersion = new string('A', 64)
+            });
+        await _db.SaveChangesAsync();
+
+        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(
+            0, recipeId, Intent: "defer", TargetWeekOffset: 1, SourceDate: cookedDate, CookedDisposition: cookedDisposition));
+
+        Assert.NotNull(result);
+        Assert.True(result.Moved);
+        Assert.Equal(cookedDate, result.SourceDate);
+        Assert.Equal(new DateOnly(2026, 10, 19), result.DestinationDate);
+        Assert.Equal(1, result.ScheduledWeekOffset);
+        Assert.True(result.RefreshComplete);
+
+        var moved = _db.CalendarEvents.Single(e => e.Date == new DateOnly(2026, 10, 19));
+        Assert.Equal(CalendarEventStatus.Planned, moved.Status);
+        Assert.Null(moved.PreparedOn);
+        Assert.Null(moved.PreparedAtUtc);
+        Assert.Null(moved.PreparedServings);
+        Assert.Null(moved.PreparedOriginalServings);
+        Assert.Null(moved.PreparationPlanToken);
+        Assert.Null(moved.PreparationServingVersion);
+        Assert.Equal(new DateTimeOffset(earlierDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
+            _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
+    }
+
+    [Fact]
+    public async Task MoveDefer_CookedSourcePreserveRetainsPreparationAndLastCookedDate()
+    {
+        var recipeId = Guid.NewGuid();
+        var cookedDate = new DateOnly(2026, 10, 14);
+        var preparedAt = new DateTimeOffset(2026, 10, 14, 18, 0, 0, TimeSpan.Zero);
+        _db.Recipes.Add(new Recipe { Id = recipeId, Name = "Chili", Ingredients = "[]", LastCookedDate = preparedAt });
+        _db.CalendarEvents.Add(new CalendarEvent
+        {
+            Id = Guid.NewGuid(), RecipeId = recipeId, Date = cookedDate, Status = CalendarEventStatus.Cooked,
+            PreparedOn = cookedDate, PreparedAtUtc = preparedAt, PreparedServings = 6, PreparedOriginalServings = 4,
+            PreparationPlanToken = "tok-1", PreparationServingVersion = new string('B', 64)
+        });
+        await _db.SaveChangesAsync();
+
+        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(
+            0, recipeId, Intent: "defer", TargetWeekOffset: 1, FromIndex: 2, CookedDisposition: "preserve"));
+
+        Assert.NotNull(result);
+        Assert.True(result.Moved);
+        Assert.Equal(new DateOnly(2026, 10, 19), result.DestinationDate);
+        Assert.Equal(1, result.ScheduledWeekOffset);
+
+        var moved = _db.CalendarEvents.Single(e => e.Date == new DateOnly(2026, 10, 19));
+        Assert.Equal(CalendarEventStatus.Cooked, moved.Status);
+        Assert.Equal(cookedDate, moved.PreparedOn);
+        Assert.Equal(preparedAt, moved.PreparedAtUtc);
+        Assert.Equal(6, moved.PreparedServings);
+        Assert.Equal(4, moved.PreparedOriginalServings);
+        Assert.Equal("tok-1", moved.PreparationPlanToken);
+        Assert.Equal(new string('B', 64), moved.PreparationServingVersion);
+        Assert.Equal(preparedAt, _db.Recipes.Single(r => r.Id == recipeId).LastCookedDate);
+    }
+
+    [Fact]
+    public async Task MoveDefer_SpillsPastFullTargetWeekAndReportsScheduledWeekOffset()
+    {
+        var monday = new DateOnly(2026, 10, 12);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Spillover Stew", Ingredients = "[]" };
+        _db.Recipes.Add(recipe);
+        _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = monday, RecipeId = recipe.Id });
+        _db.CalendarEvents.AddRange(Enumerable.Range(0, 7).Select(i => new CalendarEvent
+            { Id = Guid.NewGuid(), Date = monday.AddDays(7 + i), RecipeId = recipe.Id }));
+        await _db.SaveChangesAsync();
+
+        var result = await _service.MoveScheduleEventAsync(new MoveScheduleDto(
+            0, recipe.Id, Intent: "defer", TargetWeekOffset: 1, SourceDate: monday));
+
+        Assert.NotNull(result);
+        Assert.True(result.Moved);
+        Assert.Equal(monday.AddDays(14), result.DestinationDate);
+        Assert.Equal(2, result.ScheduledWeekOffset);
+        Assert.Contains("Next week is full.", result.Message);
+        Assert.Equal(new[] { monday, monday.AddDays(14) }, result.AffectedWeekStartDates);
+    }
+
+    [Fact]
+    public async Task MoveDefer_FollowUpFailureStillAttemptsRemainingWeeksAndReportsRefreshIncomplete()
+    {
+        var sourceMonday = new DateOnly(2026, 10, 12);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Tacos", Ingredients = "[]" };
+        _db.Recipes.Add(recipe);
+        _db.CalendarEvents.Add(new CalendarEvent { Id = Guid.NewGuid(), Date = sourceMonday, RecipeId = recipe.Id });
+        await _db.SaveChangesAsync();
+
+        var publishedWeeks = new List<int>();
+        _publisherMock.Setup(p => p.PublishWeekUpdatedAsync(It.IsAny<ScheduleDays>(), "viewer", 7))
+            .Callback<ScheduleDays, string?, int?>((s, _, _) => publishedWeeks.Add(s.WeekOffset))
+            .Returns<ScheduleDays, string?, int?>((s, _, _) => s.WeekOffset == 0
+                ? Task.FromException(new IOException("SSE failed")) : Task.CompletedTask);
+
+        var result = await _service.MoveScheduleEventAsync(
+            new MoveScheduleDto(0, recipe.Id, Intent: "defer", TargetWeekOffset: 1, SourceDate: sourceMonday),
+            excludeConnectionId: "viewer", echoSeq: 7);
+
+        Assert.NotNull(result);
+        Assert.True(result.Moved);
+        Assert.False(result.RefreshComplete);
+        Assert.Equal(1, result.ScheduledWeekOffset);
+        Assert.Equal(new[] { 0, 1 }, publishedWeeks);
+        Assert.Equal(sourceMonday.AddDays(7), _db.CalendarEvents.Single(e => e.RecipeId == recipe.Id).Date);
+    }
+
+    [Fact]
+    public async Task MoveDefer_RejectsMissingSourceAwaitingConsensusAndInvalidCookedDisposition()
+    {
+        var monday = new DateOnly(2026, 10, 12);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Curry", Ingredients = "[]" };
+        _db.Recipes.Add(recipe);
+        _db.CalendarEvents.Add(new CalendarEvent
+            { Id = Guid.NewGuid(), Date = monday, RecipeId = recipe.Id, Status = CalendarEventStatus.AwaitingConsensus });
+        await _db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.MoveScheduleEventAsync(
+            new MoveScheduleDto(0, recipe.Id, Intent: "defer", TargetWeekOffset: 1, SourceDate: monday, CookedDisposition: "bogus")));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.MoveScheduleEventAsync(
+            new MoveScheduleDto(0, recipe.Id, Intent: "defer", TargetWeekOffset: 1, SourceDate: monday.AddDays(1))));
+        await Assert.ThrowsAsync<DeferScheduleConflictException>(() => _service.MoveScheduleEventAsync(
+            new MoveScheduleDto(0, recipe.Id, Intent: "defer", TargetWeekOffset: 1, SourceDate: monday)));
+    }
+
+    [Fact]
+    public async Task MoveSchedule_RejectsRetiredPushUnknownIntentCrossWeekSwapAndInvalidCookedDisposition()
+    {
+        var monday = new DateOnly(2026, 10, 12);
+        var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Guard Test", Ingredients = "[]" };
+        _db.Recipes.Add(recipe);
+        _db.CalendarEvents.Add(new CalendarEvent
+            { Id = Guid.NewGuid(), Date = monday, RecipeId = recipe.Id, Status = CalendarEventStatus.Planned });
+        await _db.SaveChangesAsync();
+
+        foreach (var invalid in new[]
+        {
+            new MoveScheduleDto(0, recipe.Id, 1, "push", FromIndex: 0),
+            new MoveScheduleDto(0, recipe.Id, 0, "push", TargetWeekOffset: 1, FromIndex: 0),
+            new MoveScheduleDto(0, recipe.Id, 1, "unknown", FromIndex: 0),
+            new MoveScheduleDto(0, recipe.Id, 0, "swap", TargetWeekOffset: 1, FromIndex: 0),
+            new MoveScheduleDto(0, recipe.Id, 0, null, TargetWeekOffset: 1, FromIndex: 0),
+            new MoveScheduleDto(0, recipe.Id, 1, "swap", FromIndex: 0, CookedDisposition: "reset"),
+            new MoveScheduleDto(0, recipe.Id, 1, "tomorrow", FromIndex: 0, CookedDisposition: "preserve"),
+        })
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => _service.MoveScheduleEventAsync(invalid));
+        }
+
+        Assert.Equal(monday, _db.CalendarEvents.Single().Date);
+        Assert.Empty(_db.WeeklyPlans);
     }
 }

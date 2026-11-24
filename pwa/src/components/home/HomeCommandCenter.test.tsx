@@ -14,7 +14,20 @@ const mocks = vi.hoisted(() => ({
   sync: vi.fn(),
   readSchedule: vi.fn(),
   captureSlot: vi.fn(),
-  movePost: vi.fn().mockResolvedValue({ data: { moved: true, refreshComplete: true } }),
+  movePost: vi.fn().mockImplementation(async (body?: any) =>
+    body?.intent === 'defer'
+      ? {
+          data: {
+            moved: true,
+            sourceDate: body.sourceDate,
+            destinationDate: '2026-05-18',
+            scheduledWeekOffset: 2,
+            refreshComplete: true,
+            message: 'Moved meal to Monday, May 18.',
+          },
+        }
+      : { data: { moved: true, refreshComplete: true } }
+  ),
   deferPost: vi.fn().mockResolvedValue({
     data: {
       scheduledDate: '2026-05-18',
@@ -381,8 +394,28 @@ beforeEach(() => {
       status: mocks.todayStatus,
       removalToken: 'v1.' + 'a'.repeat(43),
     }));
-  mocks.movePost.mockReset().mockResolvedValue({
-    data: { moved: true, refreshComplete: true, destinationDate: '2026-05-08' },
+  mocks.movePost.mockReset().mockImplementation(async (body?: any, config?: any) => {
+    if (body?.intent === 'defer') {
+      const ref = config?.queryParameters?.referenceWeekStartDate?.toString() ?? '2026-05-04';
+      const destinationDate = '2026-05-18';
+      const scheduledWeekOffset = Math.floor(
+        (Date.parse(`${destinationDate}T00:00:00Z`) - Date.parse(`${ref}T00:00:00Z`)) /
+          (7 * 86400000)
+      );
+      return {
+        data: {
+          moved: true,
+          sourceDate: body.sourceDate,
+          destinationDate,
+          scheduledWeekOffset,
+          refreshComplete: true,
+          message: 'Moved meal to Monday, May 18.',
+        },
+      };
+    }
+    return {
+      data: { moved: true, refreshComplete: true, destinationDate: '2026-05-08' },
+    };
   });
   mocks.deferPost.mockReset().mockResolvedValue({
     data: {
@@ -860,17 +893,20 @@ describe('HomeCommandCenter', () => {
     });
 
     await waitFor(() => {
-      expect(mocks.deferPost).toHaveBeenCalledWith(
-        expect.objectContaining({ recipeId: 'recipe-1' }),
+      expect(mocks.movePost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipeId: 'recipe-1',
+          intent: 'defer',
+          targetWeekOffset: 1,
+        }),
         {
           queryParameters: {
             referenceWeekStartDate: DateOnly.parse('2026-05-04'),
-            targetWeekOffset: 1,
           },
           options: [expect.objectContaining({ maxRetries: 0 })],
         }
       );
-      expect(mocks.movePost).not.toHaveBeenCalled();
+      expect(mocks.deferPost).not.toHaveBeenCalled();
       expect(mocks.addToast).toHaveBeenCalledWith('Moved meal to Monday, May 18.');
       expect(mocks.push).not.toHaveBeenCalled();
     });
@@ -1085,8 +1121,12 @@ describe('atomic Tomorrow disposition', () => {
         fireEvent.click(screen.getByTestId('recovery-action-next-week'));
       });
       expect(mocks.validatePost).not.toHaveBeenCalled();
-      expect(mocks.deferPost).toHaveBeenLastCalledWith(
-        expect.objectContaining({ recipeId: 'recipe-1', sourceNonCooking: expectedPlan }),
+      expect(mocks.movePost).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          recipeId: 'recipe-1',
+          intent: 'defer',
+          sourceNonCooking: expectedPlan,
+        }),
         expect.anything()
       );
       expect(mocks.applyServerUpdate).toHaveBeenCalledWith({
@@ -1164,9 +1204,20 @@ describe('Home acknowledged replacement recovery', () => {
     mocks.readSchedule.mockReset().mockImplementation(async () => ({
       days: [{ date: '2026-05-07', recipe: { id: 'replacement-recipe' }, status: 0 }],
     }));
-    mocks.deferPost.mockReset().mockResolvedValue({
-      data: { scheduledDate: '2026-05-11', scheduledWeekOffset: 1, message: 'Moved' },
-    });
+    mocks.movePost.mockReset().mockImplementation(async (body?: any) =>
+      body?.intent === 'defer'
+        ? {
+            data: {
+              moved: true,
+              sourceDate: body.sourceDate,
+              destinationDate: '2026-05-11',
+              scheduledWeekOffset: 1,
+              refreshComplete: true,
+              message: 'Moved',
+            },
+          }
+        : { data: { moved: true, refreshComplete: true } }
+    );
     mocks.removeDelete.mockReset().mockResolvedValue(undefined);
   });
   const open = async (action = 'tomorrow') => {
@@ -1190,7 +1241,7 @@ describe('Home acknowledged replacement recovery', () => {
       await act(async () => {
         fireEvent.click(screen.getByTestId('retry-replacement'));
       });
-      expect(action === 'drop' ? mocks.removeDelete : mocks.deferPost).toHaveBeenCalledTimes(1);
+      expect(action === 'drop' ? mocks.removeDelete : mocks.movePost).toHaveBeenCalledTimes(1);
       expect(mocks.saveRecoveryRecipe).toHaveBeenLastCalledWith(
         expect.objectContaining({ id: 'replacement-recipe' }),
         expect.objectContaining({ today: '2026-05-07', referenceWeekStartDate: '2026-05-04' })
@@ -1198,7 +1249,7 @@ describe('Home acknowledged replacement recovery', () => {
     }
   );
   it('does not save after an unconfirmed Next Week destination', async () => {
-    mocks.deferPost.mockResolvedValueOnce({ data: { message: 'No change' } });
+    mocks.movePost.mockResolvedValueOnce({ data: { message: 'No change' } });
     await open('next-week');
     expect(mocks.saveRecoveryRecipe).not.toHaveBeenCalled();
     expect(screen.getByText(/original meal could not be confirmed/i)).toBeInTheDocument();
@@ -1311,7 +1362,7 @@ describe('Home acknowledged replacement recovery', () => {
     );
   });
   it('does not replay an unknown defer even when source is empty', async () => {
-    mocks.deferPost.mockRejectedValueOnce({ responseStatusCode: 504 });
+    mocks.movePost.mockRejectedValueOnce({ responseStatusCode: 504 });
     mocks.readSchedule.mockResolvedValue({
       days: [{ date: '2026-05-07', recipe: null, status: 0 }],
     });
@@ -1320,7 +1371,7 @@ describe('Home acknowledged replacement recovery', () => {
     await act(async () => {
       fireEvent.click(screen.getByTestId('retry-replacement'));
     });
-    expect(mocks.deferPost).toHaveBeenCalledTimes(1);
+    expect(mocks.movePost).toHaveBeenCalledTimes(1);
     expect(mocks.saveRecoveryRecipe).not.toHaveBeenCalled();
   });
   it('keeps confirmed save after refresh failure and refreshes without another mutation', async () => {
@@ -1338,7 +1389,7 @@ describe('Home acknowledged replacement recovery', () => {
 it('disables transport replay for a Pick Something Else defer', async () => {
   vi.clearAllMocks();
   mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
-  mocks.deferPost.mockResolvedValueOnce({ data: {} });
+  mocks.movePost.mockResolvedValueOnce({ data: {} });
   mocks.saveRecoveryRecipe.mockResolvedValueOnce(undefined);
   mocks.readSchedule.mockResolvedValue({
     days: [{ date: mocks.todayString, status: 0, recipe: { id: 'replacement-recipe' } }],
@@ -1350,8 +1401,8 @@ it('disables transport replay for a Pick Something Else defer', async () => {
   await act(async () => {
     fireEvent.click(screen.getByTestId('recovery-action-next-week'));
   });
-  expect(mocks.deferPost).toHaveBeenCalledWith(
-    expect.anything(),
+  expect(mocks.movePost).toHaveBeenCalledWith(
+    expect.objectContaining({ intent: 'defer' }),
     expect.objectContaining({ options: [expect.objectContaining({ maxRetries: 0 })] })
   );
 });
@@ -1437,10 +1488,13 @@ it('can leave after a confirmed save and failed refresh without claiming the mea
 it('retains the actual server destination in the replacement confirmation receipt', async () => {
   vi.clearAllMocks();
   mocks.currentRecipe = { id: 'original', name: 'A', image: '' };
-  mocks.deferPost.mockResolvedValueOnce({
+  mocks.movePost.mockResolvedValueOnce({
     data: {
-      scheduledDate: '2026-05-18',
+      moved: true,
+      sourceDate: mocks.todayString,
+      destinationDate: '2026-05-18',
       scheduledWeekOffset: 2,
+      refreshComplete: true,
       message: 'Moved meal to Monday, May 18.',
     },
   });
@@ -1458,7 +1512,7 @@ it('retains the actual server destination in the replacement confirmation receip
   expect(JSON.parse(sessionStorage.getItem('wfs.planning-result')!)).toMatchObject({
     original: { recipeName: 'A', destinationDate: '2026-05-18', spillover: true },
   });
-  expect(mocks.deferPost).toHaveBeenCalledTimes(1);
+  expect(mocks.movePost).toHaveBeenCalledTimes(1);
 });
 
 it('does not delete after the opening snapshot resolves for an unmounted Home recovery', async () => {

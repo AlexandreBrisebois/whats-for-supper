@@ -103,7 +103,7 @@ public partial class SupperServingsPostgresTests
             db.FamilySettings.Add(new FamilySetting {Key=SupperServingsService.DefaultKey,Value=JsonSerializer.SerializeToElement(new {servings=4})});
             db.SupperServings.AddRange(new SupperServing {Date=Wednesday,OverrideServings=6},new SupperServing {Date=new(2026,10,19),OverrideServings=5});await db.SaveChangesAsync();
             await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12),default);
-            using var client=factory.CreateAuthenticatedClient();(await client.PostAsJsonAsync("/api/schedule/defer?referenceWeekStartDate=2026-10-12",new {sourceDate="2026-10-14",recipeId=recipe.Id})).EnsureSuccessStatusCode();
+            using var client=factory.CreateAuthenticatedClient();(await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12",new {weekOffset=0,sourceDate="2026-10-14",recipeId=recipe.Id,intent="defer",targetWeekOffset=1})).EnsureSuccessStatusCode();
             db.ChangeTracker.Clear();Assert.Equal(new DateOnly(2026,10,19),(await db.CalendarEvents.SingleAsync()).Date);
             Assert.Equal(6,(await db.SupperServings.SingleAsync(x=>x.Date==Wednesday)).OverrideServings);var destination=await db.SupperServings.SingleAsync(x=>x.Date==new DateOnly(2026,10,19));Assert.Equal(5,destination.OverrideServings);Assert.Equal(4,destination.InheritedServings);
             var plan=await db.WeeklyPlans.SingleAsync(x=>x.WeekStartDate==new DateOnly(2026,10,19));Assert.Equal(500,JsonDocument.Parse(plan.GroceryItems!).RootElement[0].GetProperty("quantity").ExactScalar());

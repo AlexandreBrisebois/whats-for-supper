@@ -35,9 +35,9 @@ test('Plan later mock preserves the moved result, both week events and authorita
         body: JSON.stringify({
           weekOffset: 0,
           fromIndex: 0,
-          toIndex: 0,
+          sourceDate: '2026-10-12',
           targetWeekOffset: 1,
-          intent: 'push',
+          intent: 'defer',
           recipeId,
         }),
       })

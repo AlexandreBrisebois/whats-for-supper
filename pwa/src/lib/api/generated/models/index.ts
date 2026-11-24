@@ -231,28 +231,6 @@ export function createCreateGroceryExtraRequestFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {DeferScheduleDto}
- */
-// @ts-ignore
-export function createDeferScheduleDtoFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoDeferScheduleDto;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {DeferScheduleResultDto}
- */
-// @ts-ignore
-export function createDeferScheduleResultDtoFromDiscriminatorValue(
-  parseNode: ParseNode | undefined
-): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
-  return deserializeIntoDeferScheduleResultDto;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {DemoAiUnavailableError}
  */
 // @ts-ignore
@@ -1826,34 +1804,6 @@ export function createWorkflowTriggerResponseDtoFromDiscriminatorValue(
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoWorkflowTriggerResponseDto;
 }
-export interface DeferScheduleDto extends AdditionalDataHolder, Parsable {
-  /**
-   * The recipeId property
-   */
-  recipeId?: Guid | null;
-  /**
-   * The sourceDate property
-   */
-  sourceDate?: DateOnly | null;
-  /**
-   * Optional. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) on sourceDate in the same commit as deferral.
-   */
-  sourceNonCooking?: NonCookingPlanDto | null;
-}
-export interface DeferScheduleResultDto extends AdditionalDataHolder, Parsable {
-  /**
-   * The message property
-   */
-  message?: string | null;
-  /**
-   * The scheduledDate property
-   */
-  scheduledDate?: DateOnly | null;
-  /**
-   * The scheduledWeekOffset property
-   */
-  scheduledWeekOffset?: number | null;
-}
 export interface DemoAiUnavailableError extends ApiError, Parsable {
   /**
    * The code property
@@ -2134,50 +2084,6 @@ export function deserializeIntoCreateGroceryExtraRequest(
     },
     weekStartDate: (n) => {
       createGroceryExtraRequest.weekStartDate = n.getDateOnlyValue();
-    },
-  };
-}
-/**
- * The deserialization information for the current model
- * @param DeferScheduleDto The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoDeferScheduleDto(
-  deferScheduleDto: Partial<DeferScheduleDto> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    recipeId: (n) => {
-      deferScheduleDto.recipeId = n.getGuidValue();
-    },
-    sourceDate: (n) => {
-      deferScheduleDto.sourceDate = n.getDateOnlyValue();
-    },
-    sourceNonCooking: (n) => {
-      deferScheduleDto.sourceNonCooking = n.getObjectValue<NonCookingPlanDto>(
-        createNonCookingPlanDtoFromDiscriminatorValue
-      );
-    },
-  };
-}
-/**
- * The deserialization information for the current model
- * @param DeferScheduleResultDto The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoDeferScheduleResultDto(
-  deferScheduleResultDto: Partial<DeferScheduleResultDto> | undefined = {}
-): Record<string, (node: ParseNode) => void> {
-  return {
-    message: (n) => {
-      deferScheduleResultDto.message = n.getStringValue();
-    },
-    scheduledDate: (n) => {
-      deferScheduleResultDto.scheduledDate = n.getDateOnlyValue();
-    },
-    scheduledWeekOffset: (n) => {
-      deferScheduleResultDto.scheduledWeekOffset = n.getNumberValue();
     },
   };
 }
@@ -3592,6 +3498,11 @@ export function deserializeIntoMoveScheduleDto(
   moveScheduleDto: Partial<MoveScheduleDto> | undefined = {}
 ): Record<string, (node: ParseNode) => void> {
   return {
+    cookedDisposition: (n) => {
+      moveScheduleDto.cookedDisposition = n.getEnumValue<MoveScheduleDto_cookedDisposition>(
+        MoveScheduleDto_cookedDispositionObject
+      );
+    },
     fromIndex: (n) => {
       moveScheduleDto.fromIndex = n.getNumberValue();
     },
@@ -3602,6 +3513,9 @@ export function deserializeIntoMoveScheduleDto(
     },
     recipeId: (n) => {
       moveScheduleDto.recipeId = n.getGuidValue();
+    },
+    sourceDate: (n) => {
+      moveScheduleDto.sourceDate = n.getDateOnlyValue();
     },
     sourceDisposition: (n) => {
       moveScheduleDto.sourceDisposition = n.getEnumValue<MoveScheduleDto_sourceDisposition>(
@@ -3649,6 +3563,9 @@ export function deserializeIntoMoveScheduleResultDto(
     },
     refreshComplete: (n) => {
       moveScheduleResultDto.refreshComplete = n.getBooleanValue();
+    },
+    scheduledWeekOffset: (n) => {
+      moveScheduleResultDto.scheduledWeekOffset = n.getNumberValue();
     },
     sourceDate: (n) => {
       moveScheduleResultDto.sourceDate = n.getDateOnlyValue();
@@ -6989,6 +6906,10 @@ export type ManagementTaskStatusResponse_status =
   (typeof ManagementTaskStatusResponse_statusObject)[keyof typeof ManagementTaskStatusResponse_statusObject];
 export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
   /**
+   * Defer only. Controls how a Cooked source meal moves (reset default clears Cooked status and preparation receipt and recalculates LastCookedDate; preserve keeps Cooked status, preparation receipt, and LastCookedDate). Rejected with 400 on other intents or unrecognized values.
+   */
+  cookedDisposition?: MoveScheduleDto_cookedDisposition | null;
+  /**
    * The fromIndex property
    */
   fromIndex?: number | null;
@@ -7001,11 +6922,15 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
    */
   recipeId?: Guid | null;
   /**
+   * The sourceDate property
+   */
+  sourceDate?: DateOnly | null;
+  /**
    * Tomorrow only. Leave a recipe-free Order In source in the same commit as movement.
    */
   sourceDisposition?: MoveScheduleDto_sourceDisposition | null;
   /**
-   * Tomorrow only. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) in the same commit as movement. Preferred over legacy sourceDisposition when supplied.
+   * Tomorrow and defer only. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) in the same commit as movement. Preferred over legacy sourceDisposition when supplied.
    */
   sourceNonCooking?: NonCookingPlanDto | null;
   /**
@@ -7021,12 +6946,14 @@ export interface MoveScheduleDto extends AdditionalDataHolder, Parsable {
    */
   weekOffset?: number | null;
 }
+export type MoveScheduleDto_cookedDisposition =
+  (typeof MoveScheduleDto_cookedDispositionObject)[keyof typeof MoveScheduleDto_cookedDispositionObject];
 export type MoveScheduleDto_intent =
   (typeof MoveScheduleDto_intentObject)[keyof typeof MoveScheduleDto_intentObject];
 export type MoveScheduleDto_sourceDisposition =
   (typeof MoveScheduleDto_sourceDispositionObject)[keyof typeof MoveScheduleDto_sourceDispositionObject];
 /**
- * Tomorrow and actual legacy cross-week movement return moved=true and all date/refresh fields. Same-week and cross-week no-op legacy completion return message only.
+ * Tomorrow and defer movement return moved=true and all date/refresh fields (defer also populates scheduledWeekOffset). Same-week swap returns message only.
  */
 export interface MoveScheduleResultDto extends AdditionalDataHolder, Parsable {
   /**
@@ -7049,6 +6976,10 @@ export interface MoveScheduleResultDto extends AdditionalDataHolder, Parsable {
    * The refreshComplete property
    */
   refreshComplete?: boolean | null;
+  /**
+   * The scheduledWeekOffset property
+   */
+  scheduledWeekOffset?: number | null;
   /**
    * The sourceDate property
    */
@@ -8413,50 +8344,6 @@ export function serializeCreateGroceryExtraRequest(
 }
 /**
  * Serializes information the current object
- * @param DeferScheduleDto The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeDeferScheduleDto(
-  writer: SerializationWriter,
-  deferScheduleDto: Partial<DeferScheduleDto> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!deferScheduleDto || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeGuidValue('recipeId', deferScheduleDto.recipeId);
-  writer.writeDateOnlyValue('sourceDate', deferScheduleDto.sourceDate);
-  writer.writeObjectValue<NonCookingPlanDto>(
-    'sourceNonCooking',
-    deferScheduleDto.sourceNonCooking,
-    serializeNonCookingPlanDto
-  );
-  writer.writeAdditionalData(deferScheduleDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param DeferScheduleResultDto The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeDeferScheduleResultDto(
-  writer: SerializationWriter,
-  deferScheduleResultDto: Partial<DeferScheduleResultDto> | undefined | null = {},
-  isSerializingDerivedType: boolean = false
-): void {
-  if (!deferScheduleResultDto || isSerializingDerivedType) {
-    return;
-  }
-  writer.writeStringValue('message', deferScheduleResultDto.message);
-  writer.writeDateOnlyValue('scheduledDate', deferScheduleResultDto.scheduledDate);
-  writer.writeNumberValue('scheduledWeekOffset', deferScheduleResultDto.scheduledWeekOffset);
-  writer.writeAdditionalData(deferScheduleResultDto.additionalData);
-}
-/**
- * Serializes information the current object
  * @param DemoAiUnavailableError The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -9725,12 +9612,17 @@ export function serializeMoveScheduleDto(
   if (!moveScheduleDto || isSerializingDerivedType) {
     return;
   }
+  writer.writeEnumValue<MoveScheduleDto_cookedDisposition>(
+    'cookedDisposition',
+    moveScheduleDto.cookedDisposition
+  );
   writer.writeNumberValue('fromIndex', moveScheduleDto.fromIndex);
   writer.writeEnumValue<MoveScheduleDto_intent>(
     'intent',
     moveScheduleDto.intent ?? MoveScheduleDto_intentObject.Swap
   );
   writer.writeGuidValue('recipeId', moveScheduleDto.recipeId);
+  writer.writeDateOnlyValue('sourceDate', moveScheduleDto.sourceDate);
   writer.writeEnumValue<MoveScheduleDto_sourceDisposition>(
     'sourceDisposition',
     moveScheduleDto.sourceDisposition
@@ -9768,6 +9660,7 @@ export function serializeMoveScheduleResultDto(
   writer.writeStringValue('message', moveScheduleResultDto.message);
   writer.writeBooleanValue('moved', moveScheduleResultDto.moved);
   writer.writeBooleanValue('refreshComplete', moveScheduleResultDto.refreshComplete);
+  writer.writeNumberValue('scheduledWeekOffset', moveScheduleResultDto.scheduledWeekOffset);
   writer.writeDateOnlyValue('sourceDate', moveScheduleResultDto.sourceDate);
   writer.writeAdditionalData(moveScheduleResultDto.additionalData);
 }
@@ -12669,10 +12562,19 @@ export const ManagementTaskStatusResponse_statusObject = {
   Completed: 'Completed',
   Failed: 'Failed',
 } as const;
+/**
+ * Defer only. Controls how a Cooked source meal moves (reset default clears Cooked status and preparation receipt and recalculates LastCookedDate; preserve keeps Cooked status, preparation receipt, and LastCookedDate). Rejected with 400 on other intents or unrecognized values.
+ */
+export const MoveScheduleDto_cookedDispositionObject = {
+  Reset: 'reset',
+  Preserve: 'preserve',
+  OpenapiJsonNullSentinelValue2BF936000FE44250987AE5DDB203E464:
+    'openapi-json-null-sentinel-value-2BF93600-0FE4-4250-987A-E5DDB203E464',
+} as const;
 export const MoveScheduleDto_intentObject = {
   Swap: 'swap',
-  Push: 'push',
   Tomorrow: 'tomorrow',
+  Defer: 'defer',
 } as const;
 /**
  * Tomorrow only. Leave a recipe-free Order In source in the same commit as movement.

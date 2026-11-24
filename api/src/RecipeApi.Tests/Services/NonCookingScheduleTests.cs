@@ -189,14 +189,19 @@ public class NonCookingScheduleTests : IDisposable
     }
 
     [Fact]
-    public async Task Defer_WithSourceNonCookingPersistsNormalizedPlanAndDefersRecipe()
+    public async Task MoveDefer_WithSourceNonCookingPersistsNormalizedPlanAndRejectsMystery()
     {
         var recipeId = await AddRecipe(_monday);
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.DeferRecipeAsync(new DeferScheduleDto(_monday, recipeId, new NonCookingPlanDto("mystery"))));
-        var result = await _service.DeferRecipeAsync(
-            new DeferScheduleDto(_monday, recipeId, new NonCookingPlanDto("custom", "  Supper at Grandma's  ")));
-        Assert.Equal(_monday.AddDays(7), result.ScheduledDate);
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.MoveScheduleEventAsync(
+            new MoveScheduleDto(0, recipeId, Intent: "defer", TargetWeekOffset: 1, SourceDate: _monday,
+                SourceNonCooking: new NonCookingPlanDto("mystery"))));
+        var result = await _service.MoveScheduleEventAsync(
+            new MoveScheduleDto(0, recipeId, Intent: "defer", TargetWeekOffset: 1, SourceDate: _monday,
+                SourceNonCooking: new NonCookingPlanDto("custom", "  Supper at Grandma's  ")));
+        Assert.NotNull(result);
+        Assert.True(result.Moved);
+        Assert.Equal(_monday.AddDays(7), result.DestinationDate);
+        Assert.Equal(1, result.ScheduledWeekOffset);
         var source = _db.CalendarEvents.Single(e => e.Date == _monday);
         Assert.Null(source.RecipeId);
         Assert.Equal(CalendarEventStatus.Skipped, source.Status);
@@ -219,34 +224,32 @@ public class NonCookingScheduleTests : IDisposable
     }
 
     [Fact]
-    public async Task Push_ShiftsTheWholeCustomPlan()
+    public async Task Tomorrow_ShiftsTheWholeCustomPlan()
     {
         var recipeId = await AddRecipe(_monday);
         await _service.ValidateDayAsync("2026-10-13", Plan("custom", "Birthday"));
-        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "push", FromIndex: 0));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "tomorrow", FromIndex: 0));
         Assert.Equal("Birthday", _db.CalendarEvents.Single(e => e.Date == _monday.AddDays(2)).NonCookingLabel);
         Assert.Equal(recipeId, _db.CalendarEvents.Single(e => e.Date == _monday.AddDays(1)).RecipeId);
     }
 
     [Fact]
-    public async Task FullPush_FallsBackToSwapIncludingCustomMessage()
+    public async Task RetiredPushIntent_RejectsWithoutMutatingCustomPlan()
     {
         var recipeId = await AddRecipe(_monday);
-        for (var i = 1; i < 14; i++) await _service.ValidateDayAsync(_monday.AddDays(i).ToString("yyyy-MM-dd"), Plan("custom", $"Plan {i}"));
-        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "push", FromIndex: 0));
-        Assert.Equal("Plan 1", _db.CalendarEvents.Single(e => e.Date == _monday).NonCookingLabel);
-        Assert.Equal(recipeId, _db.CalendarEvents.Single(e => e.Date == _monday.AddDays(1)).RecipeId);
+        await _service.ValidateDayAsync("2026-10-13", Plan("custom", "Birthday"));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 1, "push", FromIndex: 0)));
+        Assert.Equal("Birthday", _db.CalendarEvents.Single(e => e.Date == _monday.AddDays(1)).NonCookingLabel);
+        Assert.Equal(recipeId, _db.CalendarEvents.Single(e => e.Date == _monday).RecipeId);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CrossWeekAndDefer_LeaveOccupiedCustomPlanInPlace(bool defer)
+    [Fact]
+    public async Task Defer_LeavesOccupiedCustomPlanInPlace()
     {
         var recipeId = await AddRecipe(_monday);
         await _service.ValidateDayAsync("2026-10-19", Plan("custom", "Grandma"));
-        if (defer) await _service.DeferRecipeAsync(new DeferScheduleDto(_monday, recipeId));
-        else await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 0, TargetWeekOffset: 1, FromIndex: 0));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, Intent: "defer", TargetWeekOffset: 1, FromIndex: 0));
         Assert.Equal("Grandma", _db.CalendarEvents.Single(e => e.Date == _monday.AddDays(7)).NonCookingLabel);
         Assert.Equal(recipeId, _db.CalendarEvents.Single(e => e.Date == _monday.AddDays(8)).RecipeId);
     }

@@ -189,19 +189,23 @@ vi.mock('@/lib/api/api-client', () => ({
   },
 }));
 
-vi.mock('@/lib/planner/slotAssignment', () => ({
-  assignRecipeToEmptySlot: (w: number, d: number, r: unknown, ref: string) =>
-    mocks.guardedAssign(w, d, r, ref, true),
-  disposeReplacementOriginal: async (slot: any, action: string) => {
-    await mocks.resolveOccupiedSlot(slot, action);
-    return {
-      action,
-      sourceDate: slot.date,
-      recipeName: slot.recipe?.name ?? '',
-      destinationDate: '2026-10-26',
-    };
-  },
-}));
+vi.mock('@/lib/planner/slotAssignment', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/planner/slotAssignment')>();
+  return {
+    ...actual,
+    assignRecipeToEmptySlot: (w: number, d: number, r: unknown, ref: string) =>
+      mocks.guardedAssign(w, d, r, ref, true),
+    disposeReplacementOriginal: async (slot: any, action: string) => {
+      await mocks.resolveOccupiedSlot(slot, action);
+      return {
+        action,
+        sourceDate: slot.date,
+        recipeName: slot.recipe?.name ?? '',
+        destinationDate: '2026-10-26',
+      };
+    },
+  };
+});
 
 vi.mock('@microsoft/kiota-abstractions', () => ({
   DateOnly: { parse: (value: string) => value },
@@ -2614,10 +2618,21 @@ describe('Planner Plan later completion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.setSearchParams('');
+    mocks.setLocale('en');
   });
 
-  it('warns about incomplete refresh after a committed move and sends movement only once', async () => {
-    mocks.movePost.mockResolvedValue({ data: { moved: true, refreshComplete: false } });
+  it('warns about incomplete refresh after a committed move and sends defer movement only once', async () => {
+    mocks.movePost.mockResolvedValue({
+      data: {
+        moved: true,
+        sourceDate: '2026-05-11',
+        destinationDate: '2026-05-18',
+        scheduledWeekOffset: 2,
+        affectedWeekStartDates: ['2026-05-11', '2026-05-18'],
+        refreshComplete: false,
+        message: 'Moved Pasta Carbonara to Monday, May 18.',
+      },
+    });
     mocks.setPlannerState({
       currentWeekOffset: 1,
       activeTab: 'planner',
@@ -2644,10 +2659,151 @@ describe('Planner Plan later completion', () => {
     );
     expect(mocks.movePost).toHaveBeenCalledTimes(1);
     expect(mocks.movePost).toHaveBeenCalledWith(
-      expect.objectContaining({ weekOffset: 1, targetWeekOffset: 2, intent: 'push' }),
+      expect.objectContaining({
+        weekOffset: 1,
+        fromIndex: 0,
+        sourceDate: '2026-05-11',
+        targetWeekOffset: 2,
+        intent: 'defer',
+      }),
       expect.anything()
     );
+    expect(screen.queryByTestId('cooked-defer-sheet')).not.toBeInTheDocument();
     expect(mocks.weekInit).toHaveBeenCalled();
+  });
+
+  it('defers uncooked meals immediately and reports spillover confirmation', async () => {
+    mocks.movePost.mockResolvedValue({
+      data: {
+        moved: true,
+        sourceDate: '2026-05-11',
+        destinationDate: '2026-05-25',
+        scheduledWeekOffset: 3,
+        affectedWeekStartDates: ['2026-05-11', '2026-05-25'],
+        refreshComplete: true,
+        message: 'Next week is full. Moved Pasta Carbonara to Monday, May 25.',
+      },
+    });
+    mocks.setPlannerState({
+      currentWeekOffset: 1,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: makeAssignedSchedule('2026-05-17', 0).map((day, idx) =>
+        idx === 0 ? { ...day, status: 1 } : day
+      ),
+      isLoading: false,
+      status: 2,
+      groceryItems: [],
+      init: mocks.weekInit,
+    });
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('change-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-plan-later'));
+    await waitFor(() =>
+      expect(mocks.addToast).toHaveBeenCalledWith(
+        'Next week is full. Moved Pasta Carbonara to Monday, May 25.'
+      )
+    );
+    expect(screen.queryByTestId('cooked-defer-sheet')).not.toBeInTheDocument();
+    expect(mocks.movePost).toHaveBeenCalledTimes(1);
+    expect(mocks.movePost.mock.calls[0][0]).not.toHaveProperty('cookedDisposition');
+  });
+
+  it.each([
+    ['cooked-defer-reset', 'reset'],
+    ['cooked-defer-preserve', 'preserve'],
+  ] as const)(
+    'prompts on a cooked day and submits cookedDisposition %s when choosing %s',
+    async (testId, expectedDisposition) => {
+      mocks.movePost.mockResolvedValue({
+        data: {
+          moved: true,
+          sourceDate: '2026-05-11',
+          destinationDate: '2026-05-18',
+          scheduledWeekOffset: 2,
+          affectedWeekStartDates: ['2026-05-11', '2026-05-18'],
+          refreshComplete: true,
+          message: 'Moved Pasta Carbonara to Monday, May 18.',
+        },
+      });
+      mocks.setPlannerState({
+        currentWeekOffset: 1,
+        activeTab: 'planner',
+        setWeekOffset: mocks.setWeekOffset,
+        setActiveTab: mocks.setActiveTab,
+        setGroceryState: mocks.setGroceryState,
+      });
+      mocks.setWeekState({
+        calendar: { referenceWeekStartDate: '2026-05-04' },
+        schedule: makeAssignedSchedule('2026-05-17', 0).map((day, idx) =>
+          idx === 0 ? { ...day, status: 2 } : day
+        ),
+        isLoading: false,
+        status: 0,
+        groceryItems: [],
+        init: mocks.weekInit,
+      });
+      render(<PlannerPage />);
+      fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('change-recipe-button'));
+      fireEvent.click(screen.getByTestId('mock-pivot-plan-later'));
+
+      expect(mocks.movePost).not.toHaveBeenCalled();
+      expect(screen.getByTestId('cooked-defer-sheet')).toBeInTheDocument();
+      expect(screen.getByTestId('cooked-defer-sheet')).toHaveTextContent(
+        'This meal is marked cooked. How should we move it?'
+      );
+
+      fireEvent.click(screen.getByTestId(testId));
+
+      await waitFor(() => expect(mocks.movePost).toHaveBeenCalledTimes(1));
+      expect(mocks.movePost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          weekOffset: 1,
+          fromIndex: 0,
+          sourceDate: '2026-05-11',
+          targetWeekOffset: 2,
+          intent: 'defer',
+          cookedDisposition: expectedDisposition,
+        }),
+        expect.anything()
+      );
+      await waitFor(() =>
+        expect(screen.queryByTestId('cooked-defer-sheet')).not.toBeInTheDocument()
+      );
+    }
+  );
+
+  it('submits nothing when the cooked-move prompt is dismissed', () => {
+    mocks.setPlannerState({
+      currentWeekOffset: 1,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: makeAssignedSchedule('2026-05-17', 0).map((day, idx) =>
+        idx === 0 ? { ...day, status: 2 } : day
+      ),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+    });
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('change-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-plan-later'));
+
+    expect(screen.getByTestId('cooked-defer-sheet')).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByTestId('cooked-defer-sheet'), { key: 'Escape' });
+    expect(screen.queryByTestId('cooked-defer-sheet')).not.toBeInTheDocument();
+    expect(mocks.movePost).not.toHaveBeenCalled();
   });
 });
 

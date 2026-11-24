@@ -77,7 +77,7 @@ public partial class PlanLaterPostgresTests(Xunit.Abstractions.ITestOutputHelper
         try
         {
             var response = await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12",
-                new { weekOffset = 0, fromIndex = 0, toIndex = 0, targetWeekOffset = 1, intent = "push", recipeId = source.Id });
+                new { weekOffset = 0, fromIndex = 0, targetWeekOffset = 1, intent = "defer", recipeId = source.Id });
             response.EnsureSuccessStatusCode();
             using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             Assert.True(result.RootElement.GetProperty("data").GetProperty("moved").GetBoolean());

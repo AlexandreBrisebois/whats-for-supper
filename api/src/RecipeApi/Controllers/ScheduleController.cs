@@ -40,38 +40,12 @@ public class ScheduleController(ScheduleService scheduleService) : ControllerBas
             return result is null ? Ok(new { message = "Recipe moved" }) : Ok(result);
         }
         catch (TomorrowMoveConflictException ex) { return Conflict(new { message = ex.Message }); }
+        catch (DeferScheduleConflictException ex) { return Conflict(new { message = ex.Message }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException)
+        { return BadRequest(new { status = StatusCodes.Status400BadRequest, message = "Choose a valid source and target calendar date." }); }
         catch (ArgumentException ex)
         { return BadRequest(new { status = StatusCodes.Status400BadRequest, message = ex.Message }); }
-        catch (OverflowException)
-        { return BadRequest(new { status = StatusCodes.Status400BadRequest, message = "Choose a valid source and its next calendar day." }); }
-    }
-
-    [HttpPost("defer")]
-    public async Task<IActionResult> DeferRecipe([FromBody] DeferScheduleDto dto, [FromQuery] string? referenceWeekStartDate = null, [FromQuery] int targetWeekOffset = 1)
-    {
-        if (!TryReadReference(referenceWeekStartDate, out var reference))
-            return BadRequest(new { message = "referenceWeekStartDate must be a yyyy-MM-dd Monday." });
-        try
-        {
-            var result = await _scheduleService.DeferRecipeAsync(dto, GetConnectionId(), GetMoveSeq(), referenceWeekStartDate: reference, targetWeekOffset: targetWeekOffset);
-            return Ok(result);
-        }
-        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException)
-        {
-            return BadRequest(new { status = StatusCodes.Status400BadRequest, message = "targetWeekOffset must resolve to a supported calendar date." });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { status = StatusCodes.Status400BadRequest, message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (DeferScheduleConflictException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
     }
 
     [HttpPost("assign")]

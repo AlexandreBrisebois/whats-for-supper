@@ -259,16 +259,23 @@ test('relative mock operations share a pinned reference and state', async ({ pag
       fromIndex: 6,
       toIndex: 0,
       recipeId,
-      intent: 'push',
+      intent: 'tomorrow',
     });
     const moved = await (await fetch(`/api/schedule?weekOffset=1&${reference}`)).json();
-    const deferred = await (await post('defer', { sourceDate: '2026-10-12', recipeId })).json();
+    const deferred = await (
+      await post('move', {
+        weekOffset: 1,
+        sourceDate: '2026-10-12',
+        recipeId,
+        intent: 'defer',
+      })
+    ).json();
     await post('voting/open', undefined, `weekOffset=1&${reference}`);
     const voting = await (await fetch(`/api/schedule?weekOffset=1&${reference}`)).json();
     await post('lock', undefined, `weekOffset=1&${reference}`);
     const locked = await (await fetch(`/api/schedule?weekOffset=1&${reference}`)).json();
     const invalid = [];
-    for (const path of ['move', 'defer', 'voting/open', 'lock'])
+    for (const path of ['move', 'voting/open', 'lock'])
       invalid.push((await post(path, {}, 'referenceWeekStartDate=2026-10-06')).status);
     for (const path of ['fill-the-gap', '0/smart-defaults'])
       invalid.push((await fetch(`/api/schedule/${path}?referenceWeekStartDate=2026-10-06`)).status);
@@ -284,7 +291,11 @@ test('relative mock operations share a pinned reference and state', async ({ pag
     date: '2026-10-12',
     recipe: { id: MOCK_IDS.RECIPE_CHICKEN },
   });
-  expect(result.deferred).toMatchObject({ scheduledDate: '2026-10-13', scheduledWeekOffset: 1 });
+  expect(result.deferred).toMatchObject({
+    moved: true,
+    destinationDate: '2026-10-13',
+    scheduledWeekOffset: 1,
+  });
   expect(result.voting.status).toBe(1);
   expect(result.locked.status).toBe(2);
   expect(result.locked.days[1]).toMatchObject({
@@ -292,7 +303,7 @@ test('relative mock operations share a pinned reference and state', async ({ pag
     recipe: { id: MOCK_IDS.RECIPE_CHICKEN },
     status: 1,
   });
-  expect(result.invalid).toEqual([400, 400, 400, 400, 400, 400]);
+  expect(result.invalid).toEqual([400, 400, 400, 400, 400]);
 });
 
 for (const action of ['cooked', 'order_in'] as const) {
@@ -553,30 +564,31 @@ test('defer mock validates query and exact source before mutation with explicit 
     const read = async (offset: number) =>
       (await (await fetch(`/api/schedule?weekOffset=${offset}`)).json()).data;
     await post('assign', { weekOffset: 1, dayIndex: 2, recipeId: id });
-    const body = { sourceDate: '2026-10-21', recipeId: id };
+    const body = { weekOffset: 1, sourceDate: '2026-10-21', recipeId: id, intent: 'defer' };
     const before = await read(1);
     const rejected = [];
-    for (const query of [
-      'targetWeekOffset=abc',
-      'targetWeekOffset=1.5',
-      'targetWeekOffset=2147483648',
-      'targetWeekOffset=2147483647',
-      'referenceWeekStartDate=2026-10-13',
-    ])
-      rejected.push((await post(`defer?${query}`, body)).status);
-    const missing = (await post('defer?targetWeekOffset=2', { ...body, sourceDate: '2026-10-20' }))
+    for (const [path, payload] of [
+      ['move', { ...body, targetWeekOffset: 2147483648 }],
+      ['move', { ...body, targetWeekOffset: 2147483647 }],
+      ['move', { ...body, cookedDisposition: 'invalid' }],
+      ['move?referenceWeekStartDate=2026-10-13', { ...body, targetWeekOffset: 2 }],
+    ] as const)
+      rejected.push((await post(path, payload)).status);
+    const missing = (await post('move', { ...body, sourceDate: '2026-10-20', targetWeekOffset: 2 }))
       .status;
-    await fetch('/api/schedule/defer?targetWeekOffset=2', { method: 'GET' });
+    await fetch('/api/schedule/move', { method: 'GET' });
     const after = await read(1);
-    const explicit = await (await post('defer?targetWeekOffset=2', body)).json();
+    const explicit = await (await post('move', { ...body, targetWeekOffset: 2 })).json();
     const destination = await read(2);
     const source = await read(1);
     // Omitted target keeps the legacy reference-next-week base even for a source in week two.
-    const legacy = await (await post('defer', { sourceDate: '2026-10-26', recipeId: id })).json();
+    const legacy = await (
+      await post('move', { weekOffset: 2, sourceDate: '2026-10-26', recipeId: id, intent: 'defer' })
+    ).json();
     await post('assign', { weekOffset: 1, dayIndex: 2, recipeId: id });
     await post('day/2026-10-21/validate', { status: 4, recipeId: id });
     const conflictBefore = await read(1);
-    const conflict = (await post('defer?targetWeekOffset=2', body)).status;
+    const conflict = (await post('move', { ...body, targetWeekOffset: 2 })).status;
     return {
       before,
       after,
@@ -591,14 +603,22 @@ test('defer mock validates query and exact source before mutation with explicit 
       conflictAfter: await read(1),
     };
   }, MOCK_IDS.RECIPE_CHICKEN);
-  expect(result.rejected).toEqual([400, 400, 400, 400, 400]);
+  expect(result.rejected).toEqual([400, 400, 400, 400]);
   expect(result.missing).toBe(404);
   expect(result.after).toEqual(result.before);
-  expect(result.explicit).toMatchObject({ scheduledDate: '2026-10-26', scheduledWeekOffset: 2 });
+  expect(result.explicit).toMatchObject({
+    moved: true,
+    destinationDate: '2026-10-26',
+    scheduledWeekOffset: 2,
+  });
   expect(result.explicit.message).not.toContain('full');
   expect(result.destination.days[0].recipe.id).toBe(MOCK_IDS.RECIPE_CHICKEN);
   expect(result.source.days[2].recipe).toBeNull();
-  expect(result.legacy).toMatchObject({ scheduledDate: '2026-10-19', scheduledWeekOffset: 1 });
+  expect(result.legacy).toMatchObject({
+    moved: true,
+    destinationDate: '2026-10-19',
+    scheduledWeekOffset: 1,
+  });
   expect(result.conflict).toBe(409);
   expect(result.conflictAfter).toEqual(result.conflictBefore);
 });

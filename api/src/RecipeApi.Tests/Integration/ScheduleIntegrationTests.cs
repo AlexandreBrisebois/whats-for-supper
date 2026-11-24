@@ -279,12 +279,14 @@ public class ScheduleIntegrationTests : IAsyncLifetime
         {
             status = 3,
         });
+        var todayIndex = ((int)today.DayOfWeek + 6) % 7;
         var moveResponse = await _client.PostAsJsonAsync("/api/schedule/move", new
         {
             weekOffset = 0,
             recipeId,
-            toIndex = ((int)today.DayOfWeek + 6) % 7 + 1,
-            intent = "push",
+            fromIndex = todayIndex,
+            toIndex = todayIndex + 1,
+            intent = "tomorrow",
         });
 
         // Assert
@@ -343,7 +345,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             recipeId,
             fromIndex = todayIndex,
             toIndex = todayIndex + 1,
-            intent = "push",
+            intent = "tomorrow",
         });
 
         // Assert
@@ -670,7 +672,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
 
         await _scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(sourceMonday, CancellationToken.None);
         var sourceRow = await CheckPersistedRowAsync(sourceMonday);
-        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, 0, "swap", TargetWeekOffset: 1, FromIndex: 0));
+        await _service.MoveScheduleEventAsync(new MoveScheduleDto(0, recipeId, Intent: "defer", TargetWeekOffset: 1, FromIndex: 0));
 
         var source = await ReloadWeeklyPlanAsync(sourceMonday);
         var target = await ReloadWeeklyPlanAsync(targetMonday);

@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     ingredientProjectionRead: vi.fn(),
+    movePost: vi.fn(),
     deferPost: vi.fn(),
     gotoMembershipVersion: 0,
     searchRecipes,
@@ -219,6 +220,7 @@ vi.mock('@/lib/api/api-client', () => ({
             config?.queryParameters?.referenceWeekStartDate?.toString()
           ),
         }),
+        move: { post: (...args: unknown[]) => mocks.movePost(...args) },
         defer: { post: (...args: unknown[]) => mocks.deferPost(...args) },
       },
       health: {
@@ -1105,10 +1107,17 @@ describe('RecipesPage', () => {
         i === 2 ? { ...day, recipe: { id: 'original', name: 'Lasagna' } } : day
       ),
     });
-    mocks.deferPost.mockImplementation(async () => {
+    mocks.movePost.mockImplementation(async () => {
       mocks.getSchedule.mockResolvedValue(base);
       return {
-        data: { scheduledDate: '2026-05-18', scheduledWeekOffset: 2, message: 'Full week' },
+        data: {
+          moved: true,
+          sourceDate: '2026-05-06',
+          destinationDate: '2026-05-18',
+          scheduledWeekOffset: 2,
+          refreshComplete: true,
+          message: 'Full week',
+        },
       };
     });
     mocks.assignRecipeToDay.mockRejectedValueOnce({ responseStatusCode: 400 });
@@ -1121,11 +1130,11 @@ describe('RecipesPage', () => {
     await waitFor(() => expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 6'));
     fireEvent.click(await screen.findByTestId('action-add-to-day'));
     fireEvent.click(await screen.findByTestId('recovery-action-next-week'));
-    await waitFor(() => expect(mocks.deferPost).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.movePost).toHaveBeenCalledTimes(1));
     mocks.getSchedule.mockResolvedValue(base);
     fireEvent.click(await screen.findByTestId('recovery-retry-save', {}, { timeout: 5000 }));
     await waitFor(() => expect(mocks.push).toHaveBeenCalled(), { timeout: 5000 });
-    expect(mocks.deferPost).toHaveBeenCalledTimes(1);
+    expect(mocks.movePost).toHaveBeenCalledTimes(1);
     expect(mocks.assignRecipeToDay).toHaveBeenCalledTimes(2);
     expect(JSON.parse(sessionStorage.getItem('wfs.planning-result')!)).toMatchObject({
       recipeId: makeRecipeDetail().id,

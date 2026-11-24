@@ -63,13 +63,18 @@ for (const action of ['tomorrow', 'next-week', 'drop'] as const) {
     await expect(page.getByText('Lasagna noodles')).toBeVisible();
     await page.getByTestId('quick-find-select').click();
     let assignments = 0,
-      dispositions = 0;
+      dispositions = 0,
+      moveIntents: string[] = [];
     page.on('request', (request) => {
       if (
         request.method() !== 'GET' &&
-        /\/api\/schedule\/(move|defer|day\/.*\/remove)/.test(request.url())
-      )
+        /\/api\/schedule\/(move|day\/.*\/remove)/.test(request.url())
+      ) {
         dispositions++;
+        if (request.url().includes('/api/schedule/move')) {
+          moveIntents.push(request.postDataJSON()?.intent ?? '');
+        }
+      }
     });
     await page.route('**/api/schedule/assign**', async (route) => {
       assignments++;
@@ -95,6 +100,8 @@ for (const action of ['tomorrow', 'next-week', 'drop'] as const) {
     await expect(page.getByTestId('recovery-dialog-title')).not.toBeVisible();
     expect(assignments).toBe(2);
     expect(dispositions).toBe(1);
+    if (action === 'next-week') expect(moveIntents).toEqual(['defer']);
+    if (action === 'tomorrow') expect(moveIntents).toEqual(['tomorrow']);
     const plan = await page.evaluate(
       async () =>
         (await (await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-10-05')).json())

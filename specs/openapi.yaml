@@ -987,13 +987,14 @@ components:
 
     MoveScheduleDto:
       type: object
-      required: [weekOffset, recipeId, toIndex]
+      required: [weekOffset, recipeId]
       properties:
         weekOffset: { type: integer }
         recipeId: { type: string, format: uuid }
         fromIndex: { type: [integer, 'null'] }
-        toIndex: { type: integer }
-        intent: { type: string, enum: [swap, push, tomorrow], default: swap }
+        toIndex: { type: [integer, 'null'] }
+        sourceDate: { type: [string, 'null'], format: date }
+        intent: { type: string, enum: [swap, tomorrow, defer], default: swap }
         targetWeekOffset: { type: [integer, 'null'] }
         sourceDisposition:
           type: [string, 'null']
@@ -1001,41 +1002,27 @@ components:
           description: Tomorrow only. Leave a recipe-free Order In source in the same commit as movement.
         sourceNonCooking:
           nullable: true
-          description: Tomorrow only. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) in the same commit as movement. Preferred over legacy sourceDisposition when supplied.
+          description: Tomorrow and defer only. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) in the same commit as movement. Preferred over legacy sourceDisposition when supplied.
           allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
+        cookedDisposition:
+          type: [string, 'null']
+          enum: [reset, preserve, null]
+          description: Defer only. Controls how a Cooked source meal moves (reset default clears Cooked status and preparation receipt and recalculates LastCookedDate; preserve keeps Cooked status, preparation receipt, and LastCookedDate). Rejected with 400 on other intents or unrecognized values.
 
     MoveScheduleResultDto:
       type: object
       required: [message]
-      description: Tomorrow and actual legacy cross-week movement return moved=true and all date/refresh fields. Same-week and cross-week no-op legacy completion return message only.
+      description: Tomorrow and defer movement return moved=true and all date/refresh fields (defer also populates scheduledWeekOffset). Same-week swap returns message only.
       properties:
         message: { type: string }
         moved: { type: boolean }
         sourceDate: { type: string, format: date }
         destinationDate: { type: string, format: date }
+        scheduledWeekOffset: { type: [integer, 'null'] }
         affectedWeekStartDates:
           type: array
           items: { type: string, format: date }
         refreshComplete: { type: boolean }
-
-    DeferScheduleDto:
-      type: object
-      required: [sourceDate, recipeId]
-      properties:
-        sourceDate: { type: string, format: date }
-        recipeId: { type: string, format: uuid }
-        sourceNonCooking:
-          nullable: true
-          description: Optional. Leave a recipe-free non-cooking source (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery is rejected with 400) on sourceDate in the same commit as deferral.
-          allOf: [{ $ref: '#/components/schemas/NonCookingPlanDto' }]
-
-    DeferScheduleResultDto:
-      type: object
-      required: [scheduledDate, scheduledWeekOffset, message]
-      properties:
-        scheduledDate: { type: string, format: date }
-        scheduledWeekOffset: { type: integer }
-        message: { type: string }
 
     AssignScheduleDto:
       type: object
@@ -4029,21 +4016,24 @@ paths:
 
   /api/schedule/move:
     post:
-      summary: Move a recipe in the schedule
+      summary: Move or defer a recipe in the schedule
       description: >
-        Preparation metadata travels with recipe/status during swaps and whole-event moves; frozen portions and actual history remain unchanged.
-        Legacy same-week swap and push retain their existing behavior. Actual cross-week placement
-        returns moved=true with sourceDate, destinationDate, affectedWeekStartDates and refreshComplete.
-        Both affected weeks receive independent grocery recomputation and snapshot publication attempts.
-        refreshComplete=false confirms committed movement with incomplete follow-ups; refresh the plan
-        rather than repeat movement. Legacy cross-week no-op completion remains unchanged. Intent tomorrow requires fromIndex
-        in 0..6 and the exact matching recipe at supper slot zero. The target must be the next
-        calendar day, using targetWeekOffset plus toIndex across Sunday. Tomorrow shifts the
-        contiguous occupied supper chain through all required weeks, stopping at the first empty
-        supper slot. Cooked, AwaitingConsensus or stale sources reject without mutation.
-        Source disposition order_in or sourceNonCooking (order_in, eating_out, or custom with trimmed 1-80 scalar-value customLabel; mystery rejected with 400) is allowed only for tomorrow and commits atomically with shifts.
-        A 200 tomorrow response confirms moved=true; refreshComplete=false means calendar changes
-        committed but some affected-week grocery/publication follow-ups failed. Do not repeat movement.
+        Single protected schedule movement operation supporting three intents: swap (default, same-week),
+        tomorrow (contiguous next-day chain shift), and defer (exact-source future-week placement with
+        indefinite spillover). Unsupported intents, cross-week swap, or invalid cookedDisposition/sourceNonCooking
+        return 400 without mutation.
+        Same-week swap preserves recipe status, preparation metadata, non-cooking content, and LastCookedDate.
+        Intent tomorrow requires fromIndex and toIndex in 0..6 targeting the next calendar day, shifts the
+        contiguous occupied supper chain through all required weeks, and rejects Cooked, AwaitingConsensus, or
+        stale sources with 409.
+        Intent defer identifies the exact source by sourceDate (or weekOffset + fromIndex) and recipeId (404 on
+        mismatch, 409 on AwaitingConsensus), searches from targetWeekOffset Monday (default 1) spilling into later
+        weeks when full, supports optional sourceNonCooking, and honors cookedDisposition (reset default clears
+        Cooked status and preparation receipt and recalculates LastCookedDate; preserve retains Cooked status,
+        preparation receipt, and LastCookedDate).
+        Committed tomorrow and defer responses return moved=true, sourceDate, destinationDate,
+        affectedWeekStartDates, scheduledWeekOffset (for defer), and refreshComplete; refreshComplete=false
+        confirms committed movement with incomplete follow-ups without inviting replay.
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
         - name: referenceWeekStartDate
@@ -4068,7 +4058,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecoveryBusyError' }
         '400':
-          description: Invalid reference, index, date, destination or disposition; no mutation.
+          description: Invalid reference, index, date, destination, intent, cookedDisposition, or disposition; no mutation.
           content:
             application/json:
               schema:
@@ -4077,10 +4067,12 @@ paths:
                 properties:
                   status: { type: integer }
                   message: { type: string }
+        '404':
+          description: Defer source does not match the exact requested date and recipe; no mutation.
         '409':
-          description: Tomorrow source changed, cooked or awaiting-consensus entry blocks movement, or concurrent conflict; no mutation.
+          description: Tomorrow source changed, cooked or awaiting-consensus entry blocks movement, defer source is awaiting consensus, or concurrent conflict; no mutation.
         '200':
-          description: Legacy completion or committed cross-week/Tomorrow movement; inspect moved and refreshComplete when present.
+          description: Same-week swap completion or committed Tomorrow/defer movement; inspect moved, scheduledWeekOffset, and refreshComplete when present.
           content:
             application/json:
               schema:
@@ -4088,59 +4080,6 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/MoveScheduleResultDto'
-
-  /api/schedule/defer:
-    post:
-      summary: Defer a scheduled recipe to the first free date next week or later
-      description: >
-        Deferral explicitly reopens completed content as Planned, clears its preparation receipt and recalculates history from remaining Cooked occurrences.
-        Keeps the exact source date and recipe body and existing response shape. Searches from
-        reference Monday plus targetWeekOffset weeks, continuing past occupied dates into later
-        weeks. Feedback reports the actual destination and claims next week is full only when
-        placement spills beyond the requested destination week. Invalid inputs reject before mutation.
-      parameters:
-        - $ref: '#/components/parameters/DemoGeneration'
-        - name: targetWeekOffset
-          in: query
-          required: false
-          schema: { type: integer, default: 1 }
-          description: Search-start week relative to referenceWeekStartDate. Omission retains offset one.
-        - name: referenceWeekStartDate
-          in: query
-          required: false
-          schema: { type: string, format: date }
-          description: Optional yyyy-MM-dd Monday anchoring all relative offsets. Omission captures the deployment current Monday (UTC by default). Literal source dates remain unchanged. Invalid or non-Monday references return 400 before work.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/DeferScheduleDto' }
-      responses:
-        '412':
-          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
-        '503':
-          description: Online recovery coordination is busy; retry after Retry-After seconds
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
-        '400':
-          description: Invalid query binding, non-Monday referenceWeekStartDate or unrepresentable destination; no mutation is performed.
-        '200':
-          description: Deferred
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data: { $ref: '#/components/schemas/DeferScheduleResultDto' }
-        '404':
-          description: No schedule event matches the exact source date and recipe
-        '409':
-          description: The source event is awaiting consensus
 
   /api/schedule/assign:
     post:

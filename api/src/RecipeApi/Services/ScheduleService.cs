@@ -218,25 +218,30 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
     public async Task<MoveScheduleResultDto?> MoveScheduleEventAsync(MoveScheduleDto dto, string? excludeConnectionId = null, int? echoSeq = null, DateOnly? referenceWeekStartDate = null, CancellationToken ct = default)
     {
         var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
-        if (dto.SourceDisposition != null && (dto.Intent != "tomorrow" || dto.SourceDisposition != "order_in"))
+        var intent = dto.Intent ?? "swap";
+        if (intent is not ("swap" or "tomorrow" or "defer"))
+            throw new ArgumentException("Intent must be 'swap', 'tomorrow', or 'defer'.");
+        if (dto.SourceDisposition != null && (intent != "tomorrow" || dto.SourceDisposition != "order_in"))
             throw new ArgumentException("Source disposition is only supported for Tomorrow Order In.");
-        if (dto.SourceNonCooking != null && dto.Intent != "tomorrow")
-            throw new ArgumentException("Source non-cooking disposition is only supported for Tomorrow.");
-        if (dto.Intent == "tomorrow")
+        if (dto.SourceNonCooking != null && intent is not ("tomorrow" or "defer"))
+            throw new ArgumentException("Source non-cooking disposition is only supported for Tomorrow and defer.");
+        if (dto.CookedDisposition != null && intent != "defer")
+            throw new ArgumentException("cookedDisposition is only supported for defer.");
+        if (intent == "tomorrow")
             return await MoveTomorrowAsync(dto, context, excludeConnectionId, echoSeq, ct);
-        var targetWeekOffset = dto.TargetWeekOffset ?? dto.WeekOffset;
-        if (targetWeekOffset != dto.WeekOffset)
-        {
-            var result = await MoveCrossWeekAsync(dto, targetWeekOffset, context, excludeConnectionId, echoSeq);
-            if (result is not null) return result;
-            var crossWeekSchedule = await ReadScheduleAsync(dto.WeekOffset, context);
-            await _publisher.PublishWeekUpdatedAsync(crossWeekSchedule, excludeConnectionId, echoSeq);
-            return null;
-        }
+        if (intent == "defer")
+            return await MoveDeferAsync(dto, context, excludeConnectionId, echoSeq, ct);
+
+        if (dto.TargetWeekOffset is { } targetWeekOffset && targetWeekOffset != dto.WeekOffset)
+            throw new ArgumentException("Cross-week movement requires intent 'defer' or 'tomorrow'.");
+        if (dto.ToIndex is not (>= 0 and <= 6))
+            throw new ArgumentException("Swap requires toIndex in 0..6.");
+        if (dto.FromIndex is < 0 or > 6)
+            throw new ArgumentException("fromIndex must be in 0..6.");
 
         await using var transaction = await SupperServingsService.BeginAsync(_dbContext, ct);
         var monday = context.WeekStart(dto.WeekOffset);
-        var toDate = monday.AddDays(dto.ToIndex);
+        var toDate = monday.AddDays(dto.ToIndex.Value);
 
         var fromDate = dto.FromIndex is { } fromIndex ? monday.AddDays(fromIndex) : (DateOnly?)null;
 
@@ -263,75 +268,7 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             return null;
         }
 
-        var preserveOrderedInSource = fromEvent.Status == CalendarEventStatus.Skipped;
-        var sourceRecipeId = fromEvent.RecipeId ?? throw new InvalidOperationException("Scheduled event is missing a recipe association.");
-        var sourceVoteCount = fromEvent.VoteCount;
-        var currentFromDate = fromEvent.Date;
-
-        if (dto.Intent == "push")
-        {
-            // Push logic: find first empty slot starting at toIndex
-            var targetIndex = dto.ToIndex;
-            bool foundEmpty = false;
-            while (targetIndex < 14)
-            {
-                var checkDate = monday.AddDays(targetIndex);
-                var exists = await _dbContext.CalendarEvents.AnyAsync(e => e.Date == checkDate);
-                if (!exists)
-                {
-                    foundEmpty = true;
-                    break;
-                }
-                targetIndex++;
-            }
-
-            if (foundEmpty)
-            {
-                _logger.LogInformation("Pushing recipe {RecipeId} from {From} to {To}, shifting slots", dto.RecipeId, currentFromDate, toDate);
-                // Shift recipes from targetIndex down to toIndex
-                for (int i = targetIndex; i > dto.ToIndex; i--)
-                {
-                    var currentDay = monday.AddDays(i);
-                    var prevDay = monday.AddDays(i - 1);
-                    var prevEvent = await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == prevDay);
-                    if (prevEvent != null)
-                    {
-                        prevEvent.Date = currentDay;
-                    }
-                }
-                if (dto.ToIndex >= 7)
-                {
-                    var targetWeekMonday = monday.AddDays((dto.ToIndex / 7) * 7);
-                    await EnsureWeekPlanExistsAsync(targetWeekMonday);
-                }
-                if (preserveOrderedInSource)
-                {
-                    _dbContext.CalendarEvents.Add(new CalendarEvent
-                    {
-                        Id = Guid.NewGuid(),
-                        RecipeId = sourceRecipeId,
-                        Date = toDate,
-                        Status = CalendarEventStatus.Planned,
-                        VoteCount = sourceVoteCount,
-                    });
-                    fromEvent.RecipeId = null;
-                    fromEvent.VoteCount = 0;
-                }
-                else
-                {
-                    fromEvent.Date = toDate;
-                }
-            }
-            else
-            {
-                _logger.LogWarning("No empty slot found for push, falling back to swap");
-                await SwapInternalAsync(currentFromDate, toDate);
-            }
-        }
-        else
-        {
-            await SwapInternalAsync(currentFromDate, toDate);
-        }
+        await SwapInternalAsync(fromEvent.Date, toDate);
 
         var affected = _dbContext.ChangeTracker.Entries<CalendarEvent>()
             .Where(x => x.State != EntityState.Unchanged)
@@ -345,167 +282,6 @@ public partial class ScheduleService(RecipeDbContext dbContext, ILogger<Schedule
             await RefreshCommittedWeekAsync(week, context, excludeConnectionId, echoSeq);
         }
         return null;
-    }
-
-    private async Task<MoveScheduleResultDto?> MoveCrossWeekAsync(MoveScheduleDto dto, int targetWeekOffset, DeploymentCalendarContext context, string? excludeConnectionId, int? echoSeq)
-    {
-        await using var transaction = await SupperServingsService.BeginAsync(_dbContext, CancellationToken.None);
-        var sourceMonday = context.WeekStart(dto.WeekOffset);
-        var targetMonday = context.WeekStart(targetWeekOffset);
-
-        var fromDate = dto.FromIndex is { } fromIndex ? sourceMonday.AddDays(fromIndex) : (DateOnly?)null;
-        var fromEvent = fromDate is { } explicitFromDate
-            ? await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.Date == explicitFromDate)
-            : null;
-
-        fromEvent ??= await _dbContext.CalendarEvents.FirstOrDefaultAsync(e => e.RecipeId == dto.RecipeId);
-        if (fromEvent == null) return null;
-
-        if (fromEvent.RecipeId != dto.RecipeId)
-        {
-            _logger.LogWarning(
-                "Cross-week move ignored: source slot {FromDate} does not contain recipe {RecipeId}.",
-                fromEvent.Date,
-                dto.RecipeId);
-            return null;
-        }
-
-        var sourceDate = fromEvent.Date;
-        var preserveOrderedInSource = fromEvent.Status == CalendarEventStatus.Skipped;
-        var sourceRecipeId = fromEvent.RecipeId ?? throw new InvalidOperationException("Scheduled event is missing a recipe association.");
-        var sourceVoteCount = fromEvent.VoteCount;
-
-        // Find first available slot in target week starting at toIndex
-        var targetIndex = dto.ToIndex;
-        while (targetIndex < 7)
-        {
-            var checkDate = targetMonday.AddDays(targetIndex);
-            var exists = await _dbContext.CalendarEvents.AnyAsync(e => e.Date == checkDate);
-            if (!exists) break;
-            targetIndex++;
-        }
-
-        if (targetIndex >= 7)
-        {
-            _logger.LogWarning("No empty slot in target week {Offset}, cross-week move aborted", targetWeekOffset);
-            return null;
-        }
-
-        await EnsureWeekPlanExistsAsync(targetMonday);
-
-        if (preserveOrderedInSource)
-        {
-            _dbContext.CalendarEvents.Add(new CalendarEvent
-            {
-                Id = Guid.NewGuid(),
-                RecipeId = sourceRecipeId,
-                Date = targetMonday.AddDays(targetIndex),
-                Status = CalendarEventStatus.Planned,
-                VoteCount = sourceVoteCount,
-            });
-            fromEvent.RecipeId = null;
-            fromEvent.VoteCount = 0;
-        }
-        else
-        {
-            fromEvent.Date = targetMonday.AddDays(targetIndex);
-        }
-        await _dbContext.SaveChangesAsync();
-
-        await EnlistSupperWeeksAsync([sourceMonday, targetMonday], CancellationToken.None);
-        if (transaction is not null) { await transaction.CommitAsync(); await transaction.DisposeAsync(); }
-        // Movement is committed. Follow-up failures must not invite replaying it.
-        var complete = true;
-        foreach (var monday in new[] { sourceMonday, targetMonday })
-        {
-            var offset = GetWeekOffset(monday, context);
-            complete &= await RefreshCommittedWeekAsync(monday, context, excludeConnectionId, echoSeq);
-        }
-        return new MoveScheduleResultDto("Recipe moved", true, sourceDate, targetMonday.AddDays(targetIndex),
-            new[] { sourceMonday, targetMonday }, complete);
-    }
-
-    public async Task<DeferScheduleResultDto> DeferRecipeAsync(
-        DeferScheduleDto dto,
-        string? excludeConnectionId = null,
-        int? echoSeq = null,
-        CancellationToken ct = default,
-        DateOnly? referenceWeekStartDate = null,
-        int targetWeekOffset = 1)
-    {
-        var context = _calendar.Capture(_clock.UtcNow, referenceWeekStartDate);
-        var sourceNonCooking = dto.SourceNonCooking is not null
-            ? NormalizeNonCookingPlan(dto.SourceNonCooking, allowMystery: false)
-            : null;
-        var nextWeekStart = context.WeekStart(targetWeekOffset);
-        await using var transaction = await SupperServingsService.BeginAsync(_dbContext, ct);
-        var source = await _dbContext.CalendarEvents
-            .Include(e => e.Recipe)
-            .SingleOrDefaultAsync(e => e.Date == dto.SourceDate && e.RecipeId == dto.RecipeId, ct)
-            ?? throw new KeyNotFoundException("The scheduled recipe was not found on the requested source date.");
-
-        if (source.Status == CalendarEventStatus.AwaitingConsensus)
-            throw new DeferScheduleConflictException("Meals awaiting consensus cannot be deferred.");
-
-        var sourceMonday = GetMonday(source.Date);
-        var destinationDate = await FindFirstAvailableDateAsync(nextWeekStart, ct);
-        var destinationMonday = GetMonday(destinationDate);
-        var voteCount = source.VoteCount;
-        var wasCooked = source.Status == CalendarEventStatus.Cooked;
-
-        if (!await _dbContext.WeeklyPlans.AnyAsync(p => p.WeekStartDate == destinationMonday, ct))
-        {
-            _dbContext.WeeklyPlans.Add(new WeeklyPlan
-            {
-                CreatedAt = _clock.UtcNow,
-                Id = Guid.NewGuid(),
-                WeekStartDate = destinationMonday,
-                Status = WeeklyPlanStatus.Draft
-            });
-        }
-
-        if (sourceNonCooking is not null || source.Status == CalendarEventStatus.Skipped)
-        {
-            source.RecipeId = null;
-            source.Status = CalendarEventStatus.Skipped;
-            ClearPreparation(source);
-            if (sourceNonCooking is not null)
-            {
-                source.VoteCount = 0;
-                source.NonCookingKind = sourceNonCooking.Kind;
-                source.NonCookingLabel = sourceNonCooking.CustomLabel;
-            }
-            _dbContext.CalendarEvents.Add(new CalendarEvent
-            {
-                Id = Guid.NewGuid(),
-                RecipeId = dto.RecipeId,
-                Date = destinationDate,
-                Status = CalendarEventStatus.Planned,
-                VoteCount = voteCount
-            });
-        }
-        else
-        {
-            source.Date = destinationDate;
-            source.Status = CalendarEventStatus.Planned;
-            ClearPreparation(source);
-        }
-
-        await SaveChangesAndRecalculateLastCookedDatesAsync(wasCooked ? [dto.RecipeId] : [], ct);
-
-        var mondays = new[] { sourceMonday, destinationMonday }.Distinct().ToArray();
-        await EnlistSupperWeeksAsync(mondays, ct);
-        if (transaction is not null) { await transaction.CommitAsync(ct); await transaction.DisposeAsync(); }
-        foreach (var monday in mondays)
-            await RefreshCommittedWeekAsync(monday, context, excludeConnectionId, echoSeq);
-
-        var offsetFromCurrent = GetWeekOffset(destinationMonday, context);
-        var recipeName = source.Recipe?.Name ?? "meal";
-        var spillPrefix = destinationMonday > nextWeekStart ? "Next week is full. " : string.Empty;
-        return new DeferScheduleResultDto(
-            destinationDate,
-            offsetFromCurrent,
-            $"{spillPrefix}Moved {recipeName} to {destinationDate:dddd, MMMM d}.");
     }
 
     public async Task FinalizeOverdueMealsAsync(CancellationToken ct = default)

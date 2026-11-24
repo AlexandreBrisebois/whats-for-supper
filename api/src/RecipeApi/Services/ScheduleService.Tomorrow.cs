@@ -10,7 +10,7 @@ public partial class ScheduleService
     private async Task<MoveScheduleResultDto> MoveTomorrowAsync(
         MoveScheduleDto dto, DeploymentCalendarContext context, string? excludeConnectionId, int? echoSeq, CancellationToken ct)
     {
-        if (dto.FromIndex is not (>= 0 and <= 6) || dto.ToIndex is < 0 or > 6)
+        if (dto.FromIndex is not (>= 0 and <= 6) || dto.ToIndex is not (>= 0 and <= 6))
             throw new ArgumentException("Tomorrow requires an exact supper source.");
         var sourceNonCooking = dto.SourceNonCooking is not null
             ? NormalizeNonCookingPlan(dto.SourceNonCooking, allowMystery: false)
@@ -19,7 +19,7 @@ public partial class ScheduleService
                 : null;
         var sourceDate = context.WeekStart(dto.WeekOffset).AddDays(dto.FromIndex.Value);
         var destination = sourceDate.AddDays(1);
-        if (context.WeekStart(dto.TargetWeekOffset ?? dto.WeekOffset).AddDays(dto.ToIndex) != destination)
+        if (context.WeekStart(dto.TargetWeekOffset ?? dto.WeekOffset).AddDays(dto.ToIndex.Value) != destination)
             throw new ArgumentException("Tomorrow must target the next calendar day.");
         var affected = new SortedSet<DateOnly> { GetMonday(sourceDate), GetMonday(destination) };
         await using var transaction = await SupperServingsService.BeginAsync(_dbContext, ct);

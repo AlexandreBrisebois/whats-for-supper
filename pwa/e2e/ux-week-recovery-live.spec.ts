@@ -109,6 +109,7 @@ test('reconnect reconciles raw grocery checks and Plan later refreshes the other
     await first.getByTestId('pivot-plan-later').click();
     const response = await moved;
     expect(response.status()).toBe(200);
+    expect(response.request().postDataJSON()).toMatchObject({ intent: 'defer' });
     expect((await response.json()).data.moved).toBe(true);
     await expect(first.getByTestId('day-card-0')).not.toContainText('Live carrot supper');
     await expect(second.getByTestId('day-card-0')).toContainText('Live carrot supper');

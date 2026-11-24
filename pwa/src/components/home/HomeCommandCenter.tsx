@@ -526,7 +526,7 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           if (activeNonCooking) {
             applyConfirmedNonCooking(activeNonCooking);
           }
-          if (deferResult?.data?.message) {
+          if (deferResult?.data?.message && deferResult.data.refreshComplete !== false) {
             useUiStore.getState().addToast(deferResult.data.message);
           }
 

@@ -262,7 +262,12 @@ test('exact-source Next Week spills past a full following week and retains the m
   let assigns = 0;
   page.on('request', (request) => {
     const path = new URL(request.url()).pathname;
-    if (request.method() === 'POST' && path === '/api/schedule/defer') defers++;
+    if (
+      request.method() === 'POST' &&
+      path === '/api/schedule/move' &&
+      request.postDataJSON()?.intent === 'defer'
+    )
+      defers++;
     if (request.method() === 'POST' && path === '/api/schedule/assign') assigns++;
   });
   let reject = true;
@@ -274,15 +279,20 @@ test('exact-source Next Week spills past a full following week and retains the m
   });
   const deferred = page.waitForRequest(
     (request) =>
-      request.method() === 'POST' && new URL(request.url()).pathname === '/api/schedule/defer'
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname === '/api/schedule/move' &&
+      request.postDataJSON()?.intent === 'defer'
   );
   await page.getByTestId('recovery-action-next-week').click();
   const request = await deferred;
   expect(request.postDataJSON()).toEqual({
+    weekOffset: 1,
+    fromIndex: 2,
     sourceDate: '2026-05-13',
     recipeId: MOCK_IDS.RECIPE_CHICKEN,
+    intent: 'defer',
+    targetWeekOffset: 2,
   });
-  expect(new URL(request.url()).searchParams.get('targetWeekOffset')).toBe('2');
   await expect(page.getByTestId('recovery-retry-save')).toBeVisible();
   await expect(page.getByTestId('replacement-recovery')).toContainText('May 25');
   await page.getByTestId('recovery-retry-save').click();
@@ -347,7 +357,7 @@ for (const stage of ['remove', 'assign', 'defer', 'move'] as const) {
     expect(lostStage).toBeNull();
     expect(
       writes.filter((path) =>
-        path.endsWith(stage === 'assign' ? '/assign' : stage === 'remove' ? '/remove' : `/${stage}`)
+        path.endsWith(stage === 'assign' ? '/assign' : stage === 'remove' ? '/remove' : '/move')
       )
     ).toHaveLength(1);
   });

@@ -2206,15 +2206,18 @@ test.describe('Quick Replace relative next week', () => {
     let deferComplete = false;
     let deferrals = 0;
     let replacements = 0;
-    await page.route('**/api/schedule/defer**', async (route) => {
+    await page.route('**/api/schedule/move**', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
       deferrals++;
-      expect(route.request().method()).toBe('POST');
       const url = new URL(route.request().url());
       expect(url.searchParams.get('referenceWeekStartDate')).toBe('2026-10-12');
-      expect(url.searchParams.get('targetWeekOffset')).toBe('2');
       expect(route.request().postDataJSON()).toEqual({
+        weekOffset: 1,
+        fromIndex: 2,
         sourceDate: '2026-10-21',
         recipeId: MOCK_IDS.RECIPE_CHICKEN,
+        intent: 'defer',
+        targetWeekOffset: 2,
       });
       await gate;
       deferComplete = true;
@@ -2246,7 +2249,9 @@ test.describe('Quick Replace relative next week', () => {
       });
     }, MOCK_IDS.RECIPE_CARBONARA);
     const pending = page.waitForRequest(
-      (request) => new URL(request.url()).pathname === '/api/schedule/defer'
+      (request) =>
+        new URL(request.url()).pathname === '/api/schedule/move' &&
+        request.postDataJSON()?.intent === 'defer'
     );
     await page.getByRole('button', { name: /Save for Next Week/ }).click();
     await pending;
@@ -2283,7 +2288,12 @@ test.describe('Quick Replace relative next week', () => {
     }) => {
       let deferrals = 0;
       let assignments = 0;
-      await page.route('**/api/schedule/defer**', async (route) => {
+      await page.route('**/api/schedule/move**', async (route) => {
+        if (
+          route.request().method() !== 'POST' ||
+          route.request().postDataJSON()?.intent !== 'defer'
+        )
+          return route.fallback();
         deferrals++;
         if (failure === 'defer')
           return route.fulfill({ status: 409, json: { message: 'Cannot defer' } });
@@ -2577,3 +2587,270 @@ for (const locale of ['fr', 'en'] as const) {
     }
   });
 }
+
+test.describe('Cooked meal Save for Next Week disposition', () => {
+  const cookedCalendar = builders.deploymentCalendar({ today: '2026-05-05' });
+
+  async function seedPreparedMonday(page: any, baseURL: string) {
+    await page.clock.setFixedTime(new Date(cookedCalendar.capturedAtUtc));
+    await setupCommonRoutes(page, cookedCalendar, {
+      supperServings: {
+        knownRecipe: {
+          id: MOCK_IDS.RECIPE_SPAGHETTI,
+          basis: 2,
+          quantity: 200,
+          ingredient: 'pasta',
+          unit: 'g',
+        },
+      },
+    });
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL }]);
+    await page.addInitScript(
+      (id: string) =>
+        localStorage.setItem(
+          'family-storage',
+          JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+        ),
+      MOCK_IDS.MEMBER_ALEX
+    );
+    await page.goto('/onboarding');
+    await page.evaluate(async (recipeId: string) => {
+      await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId }),
+      });
+      const schedule = (
+        await (await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-05-04')).json()
+      ).data;
+      const occurrenceId = schedule.days[0].occurrenceId;
+      const proj = await (
+        await fetch(
+          `/api/recipes/${recipeId}/ingredient-projection?supperDate=2026-05-04&context=assigned&occurrenceId=${occurrenceId}`
+        )
+      ).json();
+      await fetch('/api/schedule/day/2026-05-04/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipeId,
+          expectedOccurrenceId: occurrenceId,
+          expectedPlanToken: proj.preparationPlanToken,
+          expectedServingVersion: proj.preparationServingVersion,
+        }),
+      });
+    }, MOCK_IDS.RECIPE_SPAGHETTI);
+    await page.goto('/planner');
+    await expect(page.getByTestId('day-card-0')).toContainText('Spaghetti');
+  }
+
+  test('Cook it next week resets cooked status and preparation receipt in next week', async ({
+    page,
+    baseURL,
+  }) => {
+    await seedPreparedMonday(page, baseURL!);
+    await page.getByTestId('day-card-0').getByTestId('change-recipe-button').click();
+    await page.getByTestId('pivot-plan-later').click();
+
+    await expect(page.getByTestId('cooked-defer-sheet')).toBeVisible();
+    await expect(page.getByTestId('cooked-defer-sheet')).toContainText(
+      'This meal is marked cooked. How should we move it?'
+    );
+
+    const moveReq = page.waitForRequest(
+      (req) =>
+        req.method() === 'POST' &&
+        new URL(req.url()).pathname === '/api/schedule/move' &&
+        req.postDataJSON()?.intent === 'defer'
+    );
+    await page.getByTestId('cooked-defer-reset').click();
+    expect((await moveReq).postDataJSON()).toMatchObject({
+      intent: 'defer',
+      sourceDate: '2026-05-04',
+      targetWeekOffset: 1,
+      cookedDisposition: 'reset',
+    });
+
+    await expect(page.getByTestId('cooked-defer-sheet')).toBeHidden();
+    await expect(page.getByTestId('day-card-0')).not.toContainText('Spaghetti');
+
+    const nextWeek = await page.evaluate(
+      async () =>
+        (await (await fetch('/api/schedule?weekOffset=1&referenceWeekStartDate=2026-05-04')).json())
+          .data
+    );
+    expect(nextWeek.days[0].recipe.id).toBe(MOCK_IDS.RECIPE_SPAGHETTI);
+    expect(nextWeek.days[0].status).toBe(0);
+    expect(nextWeek.days[0].preparation).toBeNull();
+  });
+
+  test('Already cooked preserves cooked status and preparation receipt in next week', async ({
+    page,
+    baseURL,
+  }) => {
+    await seedPreparedMonday(page, baseURL!);
+    await page.getByTestId('day-card-0').getByTestId('change-recipe-button').click();
+    await page.getByTestId('pivot-plan-later').click();
+    await expect(page.getByTestId('cooked-defer-sheet')).toBeVisible();
+
+    const moveReq = page.waitForRequest(
+      (req) =>
+        req.method() === 'POST' &&
+        new URL(req.url()).pathname === '/api/schedule/move' &&
+        req.postDataJSON()?.intent === 'defer'
+    );
+    await page.getByTestId('cooked-defer-preserve').click();
+    expect((await moveReq).postDataJSON()).toMatchObject({
+      intent: 'defer',
+      sourceDate: '2026-05-04',
+      targetWeekOffset: 1,
+      cookedDisposition: 'preserve',
+    });
+
+    await expect(page.getByTestId('cooked-defer-sheet')).toBeHidden();
+    const nextWeek = await page.evaluate(
+      async () =>
+        (await (await fetch('/api/schedule?weekOffset=1&referenceWeekStartDate=2026-05-04')).json())
+          .data
+    );
+    expect(nextWeek.days[0].recipe.id).toBe(MOCK_IDS.RECIPE_SPAGHETTI);
+    expect(nextWeek.days[0].status).toBe(2);
+    expect(nextWeek.days[0].preparation).toBeTruthy();
+  });
+
+  test('dismissing the cooked-move prompt submits no mutation and preserves the meal', async ({
+    page,
+    baseURL,
+  }) => {
+    await seedPreparedMonday(page, baseURL!);
+    let moves = 0;
+    page.on('request', (req) => {
+      if (req.method() === 'POST' && new URL(req.url()).pathname === '/api/schedule/move') moves++;
+    });
+
+    await page.getByTestId('day-card-0').getByTestId('change-recipe-button').click();
+    await page.getByTestId('pivot-plan-later').click();
+    await expect(page.getByTestId('cooked-defer-sheet')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('cooked-defer-sheet')).toBeHidden();
+    expect(moves).toBe(0);
+    await expect(page.getByTestId('day-card-0')).toContainText('Spaghetti');
+  });
+
+  for (const locale of ['en', 'fr'] as const) {
+    test.describe(`visual & accessibility contract (${locale})`, () => {
+      test.use({ appLocale: locale, dateOnlyClock: true });
+
+      test(`CookedDeferConfirmSheet passes AA, AAA, and 320px/200% reflow in ${locale}`, async ({
+        page,
+        baseURL,
+      }) => {
+        await page.clock.setSystemTime(new Date(cookedCalendar.capturedAtUtc));
+        await setupCommonRoutes(page, cookedCalendar, {
+          supperServings: {
+            knownRecipe: {
+              id: MOCK_IDS.RECIPE_SPAGHETTI,
+              basis: 2,
+              quantity: 200,
+              ingredient: 'pasta',
+              unit: 'g',
+            },
+          },
+        });
+        await page
+          .context()
+          .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseURL! }]);
+        await page.addInitScript(
+          (id: string) =>
+            localStorage.setItem(
+              'family-storage',
+              JSON.stringify({ state: { selectedFamilyMemberId: id }, version: 0 })
+            ),
+          MOCK_IDS.MEMBER_ALEX
+        );
+        await page.goto('/onboarding');
+        await page.evaluate(async (recipeId: string) => {
+          await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ weekOffset: 0, dayIndex: 0, recipeId }),
+          });
+          const schedule = (
+            await (
+              await fetch('/api/schedule?weekOffset=0&referenceWeekStartDate=2026-05-04')
+            ).json()
+          ).data;
+          const occurrenceId = schedule.days[0].occurrenceId;
+          const proj = await (
+            await fetch(
+              `/api/recipes/${recipeId}/ingredient-projection?supperDate=2026-05-04&context=assigned&occurrenceId=${occurrenceId}`
+            )
+          ).json();
+          await fetch('/api/schedule/day/2026-05-04/prepare', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipeId,
+              expectedOccurrenceId: occurrenceId,
+              expectedPlanToken: proj.preparationPlanToken,
+              expectedServingVersion: proj.preparationServingVersion,
+            }),
+          });
+        }, MOCK_IDS.RECIPE_SPAGHETTI);
+
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto('/planner');
+        await expect(page.getByTestId('day-card-0')).toContainText('Spaghetti');
+
+        await page.getByTestId('day-card-0').getByTestId('change-recipe-button').click();
+        await page.getByTestId('pivot-plan-later').click();
+
+        const sheet = page.getByTestId('cooked-defer-sheet');
+        await expect(sheet).toBeVisible();
+        await expect
+          .poll(() =>
+            sheet.evaluate((el) => {
+              const s = getComputedStyle(el);
+              return s.opacity === '1' && s.transform === 'none';
+            })
+          )
+          .toBe(true);
+
+        // Standard AA at 390px
+        await assertCookbookVisualA11y(page, {
+          rootSelector: '[data-testid="cooked-defer-sheet"]',
+          contrastLevel: 'aa',
+        });
+
+        // High Contrast AAA at 390px
+        await page.evaluate(() => {
+          document.documentElement.dataset.contrast = 'high';
+        });
+        await assertCookbookVisualA11y(page, {
+          rootSelector: '[data-testid="cooked-defer-sheet"]',
+          contrastLevel: 'aaa',
+        });
+
+        // 320px narrow viewport in High Contrast AAA
+        await page.setViewportSize({ width: 320, height: 740 });
+        await assertCookbookVisualA11y(page, {
+          rootSelector: '[data-testid="cooked-defer-sheet"]',
+          contrastLevel: 'aaa',
+        });
+
+        // 320px narrow viewport in Standard AA with 200% text scaling
+        await page.evaluate(() => {
+          delete document.documentElement.dataset.contrast;
+          document.documentElement.style.fontSize = '32px';
+        });
+        await assertCookbookVisualA11y(page, {
+          rootSelector: '[data-testid="cooked-defer-sheet"]',
+          contrastLevel: 'aa',
+        });
+      });
+    });
+  }
+});

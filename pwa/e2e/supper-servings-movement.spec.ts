@@ -225,12 +225,18 @@ test('common defer spills past full next week into the actual Monday override', 
   for (let day = 0; day < 7; day++)
     expect(await assign(page, day, 1, MOCK_IDS.RECIPE_CHICKEN)).toBe(200);
   await saveCounts(page, 2, [{ date: '2026-05-18', servings: 8 }]);
-  const moved = await mutate(
-    page,
-    `/api/schedule/defer?referenceWeekStartDate=${reference}&targetWeekOffset=1`,
-    { sourceDate: '2026-05-06', recipeId: pasta }
-  );
-  expect(moved.data.data).toMatchObject({ scheduledDate: '2026-05-18', scheduledWeekOffset: 2 });
+  const moved = await mutate(page, `/api/schedule/move?referenceWeekStartDate=${reference}`, {
+    weekOffset: 0,
+    sourceDate: '2026-05-06',
+    recipeId: pasta,
+    intent: 'defer',
+    targetWeekOffset: 1,
+  });
+  expect(moved.data.data).toMatchObject({
+    moved: true,
+    destinationDate: '2026-05-18',
+    scheduledWeekOffset: 2,
+  });
   expect(
     (await readWeek(page, 2)).groceryItems.find((line: any) => line.normalizedKey === 'pasta')
       .quantity

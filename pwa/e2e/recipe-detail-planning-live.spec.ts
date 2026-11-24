@@ -360,18 +360,19 @@ test('real dated detail saves through generated client and a second client prese
     const acknowledged = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
-        new URL(response.url()).pathname === '/api/schedule/defer'
+        new URL(response.url()).pathname === '/api/schedule/move' &&
+        response.request().postDataJSON()?.intent === 'defer'
     );
     await page.getByTestId('recovery-action-next-week').click();
     const disposition = (await (await acknowledged).json()).data;
     await expect(page.getByTestId('replacement-feedback')).toContainText('Your plan changed');
     expect((await readWeek(1)).days[5].recipe.id).toBe(recipeId);
     const destinationIndex =
-      (new Date(disposition.scheduledDate + 'T00:00:00Z').getUTCDay() + 6) % 7;
+      (new Date(disposition.destinationDate + 'T00:00:00Z').getUTCDay() + 6) % 7;
     expect((await readWeek(disposition.scheduledWeekOffset)).days[destinationIndex].recipe.id).toBe(
       recipeId
     );
-    expect((await counts()).defer - (beforeConflict.defer ?? 0)).toBe(1);
+    expect((await counts()).move - (beforeConflict.move ?? 0)).toBe(1);
     await proveObserver('2026-10-17', recipeId, 1, 5);
     await page.getByTestId('recovery-review-plan').click();
     await page.getByTestId('recovery-abandon').click();
@@ -379,7 +380,7 @@ test('real dated detail saves through generated client and a second client prese
       (await readWeek(1)).days[5].recipe.name
     );
     console.log(
-      `Second-client conflict after disposition: source winner=${recipeId}, original actual destination=${disposition.scheduledDate}, counts=${JSON.stringify(await counts())}`
+      `Second-client conflict after disposition: source winner=${recipeId}, original actual destination=${disposition.destinationDate}, counts=${JSON.stringify(await counts())}`
     );
 
     await page.unroute('**/api/schedule/assign**');

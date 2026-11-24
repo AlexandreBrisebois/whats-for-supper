@@ -14,8 +14,6 @@ import { AssignRequestBuilderRequestsMetadata, type AssignRequestBuilder } from 
 // @ts-ignore
 import { DayRequestBuilderNavigationMetadata, type DayRequestBuilder } from './day/index';
 // @ts-ignore
-import { DeferRequestBuilderRequestsMetadata, type DeferRequestBuilder } from './defer/index';
-// @ts-ignore
 import {
   FillTheGapRequestBuilderRequestsMetadata,
   type FillTheGapRequestBuilder,
@@ -99,10 +97,6 @@ export interface ScheduleRequestBuilder extends BaseRequestBuilder<ScheduleReque
    * The day property
    */
   get day(): DayRequestBuilder;
-  /**
-   * The defer property
-   */
-  get defer(): DeferRequestBuilder;
   /**
    * The fillTheGap property
    */
@@ -198,9 +192,6 @@ export const ScheduleRequestBuilderNavigationMetadata: Record<
   },
   day: {
     navigationMetadata: DayRequestBuilderNavigationMetadata,
-  },
-  defer: {
-    requestsMetadata: DeferRequestBuilderRequestsMetadata,
   },
   fillTheGap: {
     requestsMetadata: FillTheGapRequestBuilderRequestsMetadata,

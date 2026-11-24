@@ -113,10 +113,16 @@ it('keeps preparation with swapped content and clears Sunday replacement receipt
     expectedServingVersion: deferredProjection.preparationServingVersion,
   });
   await call(
-    '**/api/schedule/defer**',
+    '**/api/schedule/move**',
     'POST',
-    '/api/schedule/defer?referenceWeekStartDate=2026-05-04&targetWeekOffset=2',
-    { sourceDate: '2026-05-11', recipeId: MOCK_IDS.RECIPE_SPAGHETTI }
+    '/api/schedule/move?referenceWeekStartDate=2026-05-04',
+    {
+      weekOffset: 1,
+      sourceDate: '2026-05-11',
+      recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+      intent: 'defer',
+      targetWeekOffset: 2,
+    }
   );
   const deferred = (
     await call(scheduleKey, 'GET', '/api/schedule?referenceWeekStartDate=2026-05-04&weekOffset=2')
@@ -124,4 +130,111 @@ it('keeps preparation with swapped content and clears Sunday replacement receipt
   expect(deferred.occurrenceId).toBe(next.occurrenceId);
   expect(deferred.status).toBe(0);
   expect(deferred.preparation).toBeFalsy();
+
+  // Unified POST /api/schedule/move with intent: "defer" supports preserve and reset cookedDisposition
+  const preserveProjection = await call(
+    projectionKey,
+    'GET',
+    `/api/recipes/${MOCK_IDS.RECIPE_SPAGHETTI}/ingredient-projection?supperDate=2026-05-18&context=assigned&occurrenceId=${deferred.occurrenceId}`
+  );
+  await call('**/api/schedule/day/*/prepare', 'POST', '/api/schedule/day/2026-05-18/prepare', {
+    recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+    expectedOccurrenceId: deferred.occurrenceId,
+    expectedPlanToken: preserveProjection.preparationPlanToken,
+    expectedServingVersion: preserveProjection.preparationServingVersion,
+  });
+  const preparedReceipt = (
+    await call(scheduleKey, 'GET', '/api/schedule?referenceWeekStartDate=2026-05-04&weekOffset=2')
+  ).data.days[0].preparation;
+  expect(preparedReceipt).toBeTruthy();
+
+  const preservedResp = await call(
+    '**/api/schedule/move**',
+    'POST',
+    '/api/schedule/move?referenceWeekStartDate=2026-05-04',
+    {
+      weekOffset: 2,
+      recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+      intent: 'defer',
+      sourceDate: '2026-05-18',
+      targetWeekOffset: 3,
+      cookedDisposition: 'preserve',
+    }
+  );
+  expect(preservedResp.data.moved).toBe(true);
+  expect(preservedResp.data.destinationDate).toBe('2026-05-25');
+  expect(preservedResp.data.scheduledWeekOffset).toBe(3);
+  const preservedDay = (
+    await call(scheduleKey, 'GET', '/api/schedule?referenceWeekStartDate=2026-05-04&weekOffset=3')
+  ).data.days[0];
+  expect(preservedDay.status).toBe(2);
+  expect(preservedDay.preparation).toEqual(preparedReceipt);
+
+  const resetResp = await call(
+    '**/api/schedule/move**',
+    'POST',
+    '/api/schedule/move?referenceWeekStartDate=2026-05-04',
+    {
+      weekOffset: 3,
+      recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+      intent: 'defer',
+      sourceDate: '2026-05-25',
+      targetWeekOffset: 4,
+      cookedDisposition: 'reset',
+    }
+  );
+  expect(resetResp.data.moved).toBe(true);
+  expect(resetResp.data.destinationDate).toBe('2026-06-01');
+  expect(resetResp.data.scheduledWeekOffset).toBe(4);
+  const resetDay = (
+    await call(scheduleKey, 'GET', '/api/schedule?referenceWeekStartDate=2026-05-04&weekOffset=4')
+  ).data.days[0];
+  expect(resetDay.status).toBe(0);
+  expect(resetDay.preparation).toBeFalsy();
+
+  // Retired route and legacy move intents are rejected
+  expect(handlers.has('**/api/schedule/defer**')).toBe(false);
+  for (const invalid of [
+    {
+      weekOffset: 4,
+      fromIndex: 0,
+      toIndex: 1,
+      recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+      intent: 'push',
+    },
+    {
+      weekOffset: 4,
+      fromIndex: 0,
+      toIndex: 0,
+      targetWeekOffset: 5,
+      recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+      intent: 'swap',
+    },
+    {
+      weekOffset: 4,
+      fromIndex: 0,
+      toIndex: 1,
+      recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+      intent: 'unknown',
+    },
+    {
+      weekOffset: 4,
+      sourceDate: '2026-06-01',
+      recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+      intent: 'defer',
+      cookedDisposition: 'bogus',
+    },
+  ]) {
+    const fulfill = vi.fn();
+    await handlers.get('**/api/schedule/move**')!({
+      request: () => ({
+        method: () => 'POST',
+        url: () => 'http://localhost/api/schedule/move?referenceWeekStartDate=2026-05-04',
+        postDataJSON: () => invalid,
+      }),
+      fulfill,
+      fallback: vi.fn(),
+    } as unknown as Route);
+    expect(fulfill.mock.calls[0][0].status).toBe(400);
+  }
 });

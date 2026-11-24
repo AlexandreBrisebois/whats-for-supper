@@ -1966,191 +1966,177 @@ export async function setupCommonRoutes(
       }
       return;
     }
-    if (body.sourceDisposition != null || body.sourceNonCooking != null)
-      return fulfill(route, {
-        status: 400,
-        json: { status: 400, message: 'Source disposition requires Tomorrow.' },
-      });
-    const monday = addDays(reference, body.weekOffset * 7);
-    const targetOffset = body.targetWeekOffset ?? body.weekOffset;
-    let sourceDate = body.fromIndex == null ? undefined : addDays(monday, body.fromIndex);
-    if (!sourceDate || !scheduleEntries.has(sourceDate))
-      sourceDate = [...scheduleEntries].find(
-        ([date, entry]) =>
-          entry.recipe?.id === body.recipeId &&
-          (targetOffset !== body.weekOffset || (date >= monday && date <= addDays(monday, 6)))
-      )?.[0];
-    const source = sourceDate ? scheduleEntries.get(sourceDate) : undefined;
-    const changedDates: string[] = [];
-    if (sourceDate && source && source.recipe?.id === body.recipeId) {
-      let destination = addDays(reference, targetOffset * 7 + body.toIndex);
-      let canMove = true;
-      if (targetOffset !== body.weekOffset) {
-        let index = body.toIndex;
-        while (index < 7 && scheduleEntries.has(addDays(reference, targetOffset * 7 + index)))
-          index++;
-        canMove = index < 7;
-        destination = addDays(reference, targetOffset * 7 + index);
-      } else if (body.intent === 'push') {
-        let index = body.toIndex;
-        while (index < 14 && scheduleEntries.has(addDays(monday, index))) index++;
-        if (index < 14) {
-          for (let position = index; position > body.toIndex; position--) {
-            const previous = addDays(monday, position - 1);
-            const entry = scheduleEntries.get(previous);
-            if (entry) {
-              changedDates.push(previous, addDays(monday, position));
-              scheduleEntries.delete(previous);
-              scheduleEntries.set(addDays(monday, position), entry);
-            }
-          }
-        } else {
-          const occupied = scheduleEntries.get(destination);
-          if (occupied) {
-            removalToken(sourceDate, source);
-            removalToken(destination, occupied);
-            const sourceId = entryIds.get(source)!;
-            entryIds.set(source, entryIds.get(occupied)!);
-            entryIds.set(occupied, sourceId);
-            scheduleEntries.set(sourceDate, occupied);
-          }
-        }
-      } else {
-        const occupied = scheduleEntries.get(destination);
-        if (occupied) {
-          removalToken(sourceDate, source);
-          removalToken(destination, occupied);
-          const sourceId = entryIds.get(source)!;
-          entryIds.set(source, entryIds.get(occupied)!);
-          entryIds.set(occupied, sourceId);
-          scheduleEntries.set(sourceDate, occupied);
-        }
+    if (body.intent === 'defer') {
+      const normalizedNonCooking = normalizeSourceNonCooking(body.sourceNonCooking);
+      const validCookedDisposition =
+        body.cookedDisposition == null ||
+        body.cookedDisposition === 'reset' ||
+        body.cookedDisposition === 'preserve';
+      const targetOffset = body.targetWeekOffset ?? 1;
+      const destinationTime = Date.parse(`${reference}T00:00:00Z`) + targetOffset * 7 * 86400000;
+      const validTarget =
+        Number.isInteger(targetOffset) &&
+        targetOffset >= -2147483648 &&
+        targetOffset <= 2147483647 &&
+        Number.isFinite(destinationTime) &&
+        destinationTime >= Date.parse('0001-01-01T00:00:00Z') &&
+        destinationTime <= Date.parse('9999-12-31T00:00:00Z');
+      let deferSourceDate: string | null = null;
+      if (body.sourceDate != null) {
+        if (typeof body.sourceDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.sourceDate))
+          deferSourceDate = body.sourceDate;
+      } else if (
+        Number.isInteger(body.weekOffset) &&
+        Number.isInteger(body.fromIndex) &&
+        body.fromIndex >= 0 &&
+        body.fromIndex <= 6
+      ) {
+        deferSourceDate = addDays(reference, body.weekOffset * 7 + body.fromIndex);
       }
-      if (canMove) {
-        changedDates.push(sourceDate, destination);
-        for (const [date, entry] of scheduleEntries)
-          if (entry === source) scheduleEntries.delete(date);
-        if (source.status === 3) {
-          scheduleEntries.set(sourceDate, { ...source, recipe: null });
-          scheduleEntries.set(destination, { recipe: source.recipe, status: 0 });
-        } else scheduleEntries.set(destination, source);
-        const refreshComplete = servingMock.calendarChanged(changedDates, reference);
-        if (targetOffset !== body.weekOffset) {
-          await fulfill(route, {
-            json: {
-              data: {
-                message: 'Recipe moved',
-                moved: true,
-                sourceDate,
-                destinationDate: destination,
-                affectedWeekStartDates: [monday, addDays(reference, targetOffset * 7)],
-                refreshComplete,
-              },
-            },
-          });
-          await emitSchedule(body.weekOffset, reference);
-          await emitSchedule(targetOffset, reference);
-          return;
-        }
-      }
-    }
-    await fulfill(route, { json: { data: { message: 'Recipe moved' } } });
-    const offsets = changedDates.length
-      ? [
-          ...new Set(
-            changedDates.map((date) =>
-              Math.floor((Date.parse(date) - Date.parse(reference)) / 604800000)
-            )
-          ),
-        ]
-      : [body.weekOffset];
-    for (const offset of offsets) await emitSchedule(offset, reference);
-  });
-
-  await page.route('**/api/schedule/defer**', async (route) => {
-    if (route.request().method() !== 'POST') return route.fallback();
-    const url = new URL(route.request().url());
-    const reference = readReference(url);
-    if (!reference)
-      return fulfill(route, { status: 400, json: { message: 'Invalid referenceWeekStartDate.' } });
-    const rawOffset = url.searchParams.get('targetWeekOffset');
-    const targetOffset = rawOffset === null ? 1 : Number(rawOffset);
-    const destinationTime = Date.parse(`${reference}T00:00:00Z`) + targetOffset * 7 * 86400000;
-    if (
-      (rawOffset !== null && !/^[+-]?\d+$/.test(rawOffset)) ||
-      !Number.isInteger(targetOffset) ||
-      targetOffset < -2147483648 ||
-      targetOffset > 2147483647 ||
-      !Number.isFinite(destinationTime) ||
-      destinationTime < Date.parse('0001-01-01T00:00:00Z') ||
-      destinationTime > Date.parse('9999-12-31T00:00:00Z')
-    )
-      return fulfill(route, { status: 400, json: { message: 'Invalid targetWeekOffset.' } });
-    const start = toDateStr(new Date(destinationTime));
-    const body = route.request().postDataJSON();
-    let normalizedDeferNonCooking: { kind: string; customLabel: string | null } | null = null;
-    if (body.sourceNonCooking != null) {
-      const kind = body.sourceNonCooking?.kind;
-      const raw = body.sourceNonCooking?.customLabel;
-      const trimmed = typeof raw === 'string' ? raw.trim() : null;
       if (
-        (kind !== 'order_in' && kind !== 'eating_out' && kind !== 'custom') ||
-        (raw != null && typeof raw !== 'string') ||
-        (kind === 'custom' && !trimmed) ||
-        (trimmed && [...trimmed].length > 80)
+        body.sourceDisposition != null ||
+        !validCookedDisposition ||
+        !normalizedNonCooking.ok ||
+        !validTarget ||
+        !deferSourceDate
       )
         return fulfill(route, {
           status: 400,
           json: {
             status: 400,
-            message:
-              'Choose a valid non-cooking plan; messages must contain at most 80 characters and custom messages are required.',
+            message: !normalizedNonCooking.ok
+              ? 'Choose a valid non-cooking plan; messages must contain at most 80 characters and custom messages are required.'
+              : 'Invalid defer request.',
           },
         });
-      normalizedDeferNonCooking = { kind, customLabel: trimmed || null };
-    }
-    const source = scheduleEntries.get(body.sourceDate);
-    if (!source || !source.recipe || source.recipe.id !== body.recipeId)
-      return fulfill(route, { status: 404, json: { message: 'Scheduled recipe not found.' } });
-    if (source.status === 4)
-      return fulfill(route, {
-        status: 409,
-        json: { message: 'Meals awaiting consensus cannot be deferred.' },
-      });
-    let destination = start;
-    while (scheduleEntries.has(destination)) destination = addDays(destination, 1);
-    if (normalizedDeferNonCooking || source.status === 3)
-      scheduleEntries.set(body.sourceDate, {
-        ...source,
-        recipe: null,
-        status: 3,
-        ...(normalizedDeferNonCooking ? { nonCooking: normalizedDeferNonCooking } : {}),
-      });
-    else scheduleEntries.delete(body.sourceDate);
-    const deferred = { recipe: source.recipe, status: 0 };
-    if (!normalizedDeferNonCooking && source.status !== 3 && entryIds.has(source))
-      entryIds.set(deferred, entryIds.get(source)!);
-    scheduleEntries.set(destination, deferred);
-    servingMock.calendarChanged([body.sourceDate, destination], reference);
-    const destinationOffset = Math.floor(
-      (Date.parse(destination) - Date.parse(reference)) / (7 * 86400000)
-    );
-    if (recoveryOptions.schedulePostCommitFailure?.('defer')) await route.abort('failed');
-    else
-      await fulfill(route, {
-        json: {
-          data: {
-            scheduledDate: destination,
-            scheduledWeekOffset: destinationOffset,
-            message: `${destinationOffset > targetOffset ? 'Next week is full. ' : ''}Moved meal to ${destination}.`,
+      const source = scheduleEntries.get(deferSourceDate);
+      if (!source || !source.recipe || source.recipe.id !== body.recipeId)
+        return fulfill(route, { status: 404, json: { message: 'Scheduled recipe not found.' } });
+      if (source.status === 4)
+        return fulfill(route, {
+          status: 409,
+          json: { message: 'Meals awaiting consensus cannot be deferred.' },
+        });
+      const start = toDateStr(new Date(destinationTime));
+      let destination = start;
+      while (scheduleEntries.has(destination)) destination = addDays(destination, 1);
+      const wasCooked = source.status === 2;
+      const preserveCooked = wasCooked && body.cookedDisposition === 'preserve';
+      const destinationEntry = {
+        recipe: source.recipe,
+        status: preserveCooked ? 2 : 0,
+        ...(preserveCooked && source.preparation ? { preparation: source.preparation } : {}),
+      };
+      if (normalizedNonCooking.value || source.status === 3) {
+        scheduleEntries.set(deferSourceDate, {
+          ...source,
+          recipe: null,
+          status: 3,
+          preparation: undefined,
+          ...(normalizedNonCooking.value ? { nonCooking: normalizedNonCooking.value } : {}),
+        });
+      } else {
+        scheduleEntries.delete(deferSourceDate);
+        if (entryIds.has(source)) entryIds.set(destinationEntry, entryIds.get(source)!);
+      }
+      scheduleEntries.set(destination, destinationEntry);
+      const refreshComplete = servingMock.calendarChanged(
+        [deferSourceDate, destination],
+        reference
+      );
+      const sourceOffset = Math.floor(
+        (Date.parse(`${deferSourceDate}T00:00:00Z`) - Date.parse(`${reference}T00:00:00Z`)) /
+          (7 * 86400000)
+      );
+      const destinationOffset = Math.floor(
+        (Date.parse(`${destination}T00:00:00Z`) - Date.parse(`${reference}T00:00:00Z`)) /
+          (7 * 86400000)
+      );
+      const affectedOffsets = [...new Set([sourceOffset, destinationOffset])];
+      const affectedWeekStartDates = affectedOffsets.map((offset) =>
+        addDays(reference, offset * 7)
+      );
+      if (
+        recoveryOptions.schedulePostCommitFailure?.('defer') ||
+        recoveryOptions.schedulePostCommitFailure?.('move')
+      )
+        await route.abort('failed');
+      else
+        await fulfill(route, {
+          json: {
+            data: {
+              message: `${destinationOffset > targetOffset ? 'Next week is full. ' : ''}Moved ${source.recipe.name ?? 'meal'} to ${destination}.`,
+              moved: true,
+              sourceDate: deferSourceDate,
+              destinationDate: destination,
+              scheduledWeekOffset: destinationOffset,
+              affectedWeekStartDates,
+              refreshComplete,
+            },
           },
+        });
+      for (const offset of affectedOffsets) await emitSchedule(offset, reference);
+      return;
+    }
+    const intent = body.intent ?? 'swap';
+    if (intent !== 'swap' && intent !== 'tomorrow' && intent !== 'defer')
+      return fulfill(route, {
+        status: 400,
+        json: { status: 400, message: "Intent must be 'swap', 'tomorrow', or 'defer'." },
+      });
+    if (
+      body.sourceDisposition != null ||
+      body.sourceNonCooking != null ||
+      body.cookedDisposition != null
+    )
+      return fulfill(route, {
+        status: 400,
+        json: { status: 400, message: 'Invalid move disposition for this intent.' },
+      });
+    const targetOffset = body.targetWeekOffset ?? body.weekOffset;
+    if (
+      targetOffset !== body.weekOffset ||
+      !Number.isInteger(body.toIndex) ||
+      body.toIndex < 0 ||
+      body.toIndex > 6 ||
+      (body.fromIndex != null &&
+        (!Number.isInteger(body.fromIndex) || body.fromIndex < 0 || body.fromIndex > 6))
+    )
+      return fulfill(route, {
+        status: 400,
+        json: {
+          status: 400,
+          message: 'Same-week swap requires valid in-week indices and no cross-week target.',
         },
       });
-    await emitSchedule(
-      Math.floor((Date.parse(body.sourceDate) - Date.parse(reference)) / (7 * 86400000)),
-      reference
-    );
-    await emitSchedule(destinationOffset, reference);
+    const monday = addDays(reference, body.weekOffset * 7);
+    let sourceDate = body.fromIndex == null ? undefined : addDays(monday, body.fromIndex);
+    if (!sourceDate || !scheduleEntries.has(sourceDate))
+      sourceDate = [...scheduleEntries].find(
+        ([date, entry]) =>
+          entry.recipe?.id === body.recipeId && date >= monday && date <= addDays(monday, 6)
+      )?.[0];
+    const source = sourceDate ? scheduleEntries.get(sourceDate) : undefined;
+    const changedDates: string[] = [];
+    if (sourceDate && source && source.recipe?.id === body.recipeId) {
+      const destination = addDays(monday, body.toIndex);
+      const occupied = scheduleEntries.get(destination);
+      if (occupied) {
+        removalToken(sourceDate, source);
+        removalToken(destination, occupied);
+        const sourceId = entryIds.get(source)!;
+        entryIds.set(source, entryIds.get(occupied)!);
+        entryIds.set(occupied, sourceId);
+        scheduleEntries.set(sourceDate, occupied);
+      } else {
+        scheduleEntries.delete(sourceDate);
+      }
+      scheduleEntries.set(destination, source);
+      changedDates.push(sourceDate, destination);
+      servingMock.calendarChanged(changedDates, reference);
+    }
+    await fulfill(route, { json: { data: { message: 'Recipe moved' } } });
+    await emitSchedule(body.weekOffset, reference);
   });
 
   await page.route('**/api/schedule/fill-the-gap**', async (route) => {

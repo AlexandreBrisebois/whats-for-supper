@@ -3,11 +3,7 @@ import type { OriginalDisposition, ReplacementAction } from './replacementSessio
 import { t } from '@/locales';
 import { nonCookingLabel } from './nonCooking';
 import { useUiStore } from '@/store/uiStore';
-import type {
-  NonCookingPlanDto,
-  DeferScheduleResultDto,
-  MoveScheduleResultDto,
-} from '@/lib/api/generated/models/index';
+import type { NonCookingPlanDto, MoveScheduleResultDto } from '@/lib/api/generated/models/index';
 import { civilDate, readCalendar, weekOffsetFor } from '@/lib/deployment-calendar';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { apiClient } from '@/lib/api/api-client';
@@ -177,17 +173,35 @@ type DeferSource = Pick<
   PlannerSlot,
   'weekOffset' | 'dayIndex' | 'date' | 'recipe' | 'referenceWeekStartDate'
 >;
+export type DeferOptions = {
+  cookedDisposition?: 'reset' | 'preserve';
+};
 type DeferAttempt = {
-  result?: { data: DeferScheduleResultDto };
+  result?: { data: MoveScheduleResultDto };
   unknown?: boolean;
-  pending?: Promise<{ data: DeferScheduleResultDto }>;
+  pending?: Promise<{ data: MoveScheduleResultDto }>;
 };
 const deferAttempts = new WeakMap<DeferSource, DeferAttempt>();
+
+async function rereadDefer(
+  source: DeferSource,
+  affected?: MoveScheduleResultDto['affectedWeekStartDates']
+) {
+  const offsets = new Set([source.weekOffset]);
+  for (const monday of affected ?? []) {
+    const offset = weekOffsetFor(monday, source.referenceWeekStartDate);
+    if (offset !== null) offsets.add(offset);
+  }
+  await Promise.allSettled(
+    [...offsets].map((offset) => getSchedule(offset, source.referenceWeekStartDate, true))
+  );
+}
 
 /** Retain the HTTP acknowledgement within the captured source's mounted recovery. */
 export async function deferToFollowingWeek(
   source: DeferSource,
-  sourceNonCooking?: NonCookingPlanDto
+  sourceNonCooking?: NonCookingPlanDto,
+  options?: DeferOptions
 ) {
   const previous = deferAttempts.get(source);
   if (previous?.result) return previous.result;
@@ -206,22 +220,24 @@ export async function deferToFollowingWeek(
   deferAttempts.set(source, attempt);
   attempt.pending = (async () => {
     try {
-      const response = await apiClient.api.schedule.defer.post(
+      const response = await apiClient.api.schedule.move.post(
         {
+          weekOffset: source.weekOffset,
+          fromIndex: source.dayIndex,
           sourceDate,
           recipeId: source.recipe!.id!,
+          intent: 'defer',
+          targetWeekOffset: source.weekOffset + 1,
           ...(sourceNonCooking ? { sourceNonCooking } : {}),
+          ...(options?.cookedDisposition ? { cookedDisposition: options.cookedDisposition } : {}),
         },
         {
-          queryParameters: {
-            ...referenceRequest(source.referenceWeekStartDate)?.queryParameters,
-            targetWeekOffset: source.weekOffset + 1,
-          },
+          ...referenceRequest(source.referenceWeekStartDate),
           options: [new RetryHandlerOptions({ maxRetries: 0 })],
         }
       );
       const data = response?.data;
-      const date = civilDate(data?.scheduledDate?.toString());
+      const date = civilDate(data?.destinationDate?.toString());
       const timestamp =
         date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN;
       const offset = Math.floor(
@@ -229,6 +245,7 @@ export async function deferToFollowingWeek(
       );
       if (
         !data ||
+        data.moved !== true ||
         !Number.isFinite(timestamp) ||
         offset < source.weekOffset + 1 ||
         offset !== data.scheduledWeekOffset
@@ -237,8 +254,16 @@ export async function deferToFollowingWeek(
           'The original meal could not be confirmed. Review your plan before choosing again.'
         );
       attempt.result = { data };
+      if (data.refreshComplete === false) {
+        await rereadDefer(source, data.affectedWeekStartDates);
+        useUiStore.getState().addToast({
+          type: 'warning',
+          message: 'Meal moved. Some updates could not refresh. Refresh your plan to check it.',
+        });
+      }
       return attempt.result;
     } catch (error) {
+      if (attempt.result) return attempt.result;
       const status = (error as { responseStatusCode?: number })?.responseStatusCode;
       if ([400, 401, 403, 404, 409].includes(status ?? 0)) deferAttempts.delete(source);
       else {
@@ -275,7 +300,7 @@ export async function disposeReplacementOriginal(
   const result = await deferToFollowingWeek(slot);
   return {
     ...base,
-    destinationDate: result.data.scheduledDate?.toString(),
+    destinationDate: result.data.destinationDate?.toString(),
     spillover: (result.data.scheduledWeekOffset ?? 0) > slot.weekOffset + 1,
   };
 }

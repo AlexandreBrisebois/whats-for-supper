@@ -100,9 +100,10 @@ public partial class SupperServingsPostgresTests
                 db.SupperServings.Add(new SupperServing { Date = Wednesday, OverrideServings = 6 });
                 if (targetCount is { } count) db.SupperServings.Add(new SupperServing { Date = destination, OverrideServings = count });
                 await db.SaveChangesAsync(); await AcceptanceRecompute(app, AcceptanceMonday);
-                var response = await client.PostAsJsonAsync($"/api/schedule/defer?{AcceptanceReference}", new { sourceDate = Wednesday.ToString("yyyy-MM-dd"), recipeId = recipe.Id }); response.EnsureSuccessStatusCode();
+                var response = await client.PostAsJsonAsync($"/api/schedule/move?{AcceptanceReference}", new { weekOffset = 0, sourceDate = Wednesday.ToString("yyyy-MM-dd"), recipeId = recipe.Id, intent = "defer", targetWeekOffset = 1 }); response.EnsureSuccessStatusCode();
                 var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("data");
-                Assert.Equal("2026-10-26", result.GetProperty("scheduledDate").GetString()); Assert.Equal(2, result.GetProperty("scheduledWeekOffset").GetInt32());
+                Assert.True(result.GetProperty("moved").GetBoolean());
+                Assert.Equal("2026-10-26", result.GetProperty("destinationDate").GetString()); Assert.Equal(2, result.GetProperty("scheduledWeekOffset").GetInt32());
                 db.ChangeTracker.Clear(); Assert.Equal(destination, (await db.CalendarEvents.SingleAsync(x => x.RecipeId == recipe.Id)).Date);
                 Assert.Equal(6, (await db.SupperServings.SingleAsync(x => x.Date == Wednesday)).OverrideServings);
                 var row = await db.SupperServings.SingleAsync(x => x.Date == destination); Assert.Equal(targetCount, row.OverrideServings); Assert.Equal(4, row.InheritedServings);

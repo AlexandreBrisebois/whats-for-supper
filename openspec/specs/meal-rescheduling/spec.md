@@ -95,17 +95,22 @@ During a supported recipe-card drag, Planner SHALL exchange source and destinati
 
 ### Requirement: Submit dated-source movement through the protected operation
 
-POST /api/schedule/move SHALL accept weekOffset, recipeId and toIndex, with optional fromIndex, intent and targetWeekOffset. Its source and target week dates SHALL use the accepted deployment-calendar-relative week interpretation. Access SHALL follow household-identity's Authenticate protected API requests independently requirement.
+`POST /api/schedule/move` SHALL be the single protected movement operation for `intent` `"swap"` (default), `"tomorrow"`, or `"defer"`, accepting `weekOffset`, `recipeId`, and intent-applicable fields (`toIndex`, `fromIndex`, `sourceDate`, `targetWeekOffset`, `sourceDisposition`, `sourceNonCooking`, `cookedDisposition`). Unsupported intents, cross-week `"swap"`, or invalid `cookedDisposition` SHALL return `400` without mutation. Access SHALL follow household-identity authentication.
 
 #### Scenario: Explicit drag source
 
-- **WHEN** Planner commits a recipe drag
-- **THEN** the request supplies source week, recipe ID, fromIndex and toIndex without an explicit cross-week target
+- **WHEN** Planner commits a same-week recipe drag
+- **THEN** the request supplies source week, recipe ID, `fromIndex`, and `toIndex` with `"swap"` (or omitted default) and no cross-week target
 
 #### Scenario: Protected movement lacks credentials
 
 - **WHEN** movement lacks accepted household credentials
 - **THEN** shared API authentication rejects it independently of page access
+
+#### Scenario: Unsupported intent or cross-week swap rejects with 400
+
+- **WHEN** a request submits legacy `intent: "push"`, an unknown intent, cross-week `intent: "swap"`, or an unknown `cookedDisposition` value
+- **THEN** `POST /api/schedule/move` returns `400` without mutating the calendar, weekly plans, or groceries
 
 ### Requirement: Prefer an explicit movement source with legacy fallback
 
@@ -128,97 +133,60 @@ Movement SHALL first inspect the supplied source date when fromIndex exists. If 
 
 ### Requirement: Swap stored content within a week
 
-For ordinary same-week swap movement with a found source and successful persistence, an occupied destination SHALL exchange recipe ID, saved vote count, day status and non-cooking kind/label with the source. With no destination entry, the source SHALL move to that date. Weekly plan status SHALL remain distinct from the moved day status.
+For same-week `"swap"` movement with a found source and successful persistence, an occupied destination SHALL exchange recipe ID, saved vote count, day status, preparation metadata, and non-cooking kind/label with the source. With no destination entry, the source SHALL move there with status and preparation metadata preserved. Weekly plan status SHALL remain distinct from day status, and same-week swap SHALL NOT prompt for cooked disposition or clear preparation history.
 
 #### Scenario: Destination is occupied
 
-- **WHEN** a recipe swaps onto another stored date
-- **THEN** the two dates exchange their recipe/status/non-cooking content and saved vote counts
+- **WHEN** a recipe swaps onto another stored date in the same week
+- **THEN** the two dates exchange their recipe, status, preparation metadata, non-cooking content, and saved vote counts
 
 #### Scenario: Destination is empty
 
-- **WHEN** the selected destination has no entry
-- **THEN** the source entry moves to that date with its content retained
+- **WHEN** the selected destination has no entry in the same week
+- **THEN** the source entry moves to that date with its status, preparation metadata, and saved vote count retained
 
-### Requirement: Push toward a later available date within the search window
+#### Scenario: Cooked or prepared meal is dragged within the same week
 
-Same-offset push SHALL seek an empty date from toIndex through index thirteen relative to that week's Monday. When found, it SHALL shift intervening stored entries one day forward and place the source at the requested destination. With no empty date in that window it SHALL fall back to swap. This SHALL NOT establish relational collision safety for every shift.
-
-#### Scenario: Later date is empty
-
-- **WHEN** an ordinary source pushes to index one, which is occupied, and index two is empty
-- **THEN** the occupied destination shifts to index two and the source is placed at index one after successful persistence
-
-#### Scenario: Search window is full
-
-- **WHEN** no empty date exists from the requested destination through index thirteen
-- **THEN** the operation takes the swap path rather than continuing an unbounded push
-
-### Requirement: Place cross-week movement in the first available target-week date
-
-For legacy swap and push intents only: With a different targetWeekOffset and an ordinary target index zero through six, movement SHALL search that target week from toIndex through Sunday for a date with no entry. A found destination SHALL receive the source and have a weekly plan ensured as Draft only if absent. If no destination exists, the source SHALL remain in place through this path.
-
-#### Scenario: Target Monday is occupied
-
-- **WHEN** cross-week movement starts at Monday and Tuesday is the first date without an entry
-- **THEN** successful persistence moves the source to Tuesday without shifting Monday
-
-#### Scenario: Target week has no free date
-
-- **WHEN** every target date from the requested index through Sunday is occupied
-- **THEN** this path leaves the source unchanged without extending its search into another week
-
-### Requirement: Preserve a skipped source when moving its recipe forward
-
-When a recipe-backed Skipped source is pushed into an available destination or moved cross-week into an available date, movement SHALL preserve a recipe-free source and create a separate Planned destination carrying the recipe and saved vote count. The source SHALL remain Skipped; this rule SHALL NOT apply to ordinary swap fallback.
-
-#### Scenario: Push a skipped source
-
-- **WHEN** a skipped recipe is pushed forward with an available destination and persistence succeeds
-- **THEN** its source remains recipe-free Skipped and the destination contains the Planned recipe
-
-#### Scenario: Move a skipped source cross-week
-
-- **WHEN** cross-week placement succeeds for a skipped recipe
-- **THEN** the original date remains recipe-free Skipped while a new Planned recipe entry is saved in the target week
+- **WHEN** a `Cooked` or explicitly prepared meal is dragged to another slot in the same week
+- **THEN** no cooked-disposition prompt appears and the moved occurrence retains `Cooked` status, preparation receipt, and `LastCookedDate`
 
 ### Requirement: Distinguish movement follow-ups from movement confirmation
 
-For legacy swap and push intents, same-week saved movement SHALL attempt a source-week snapshot without grocery recomputation. Cross-week persistence SHALL attempt grocery recomputation and snapshot publication for both weeks independently. Follow-up failure SHALL NOT turn committed movement into a failed response. Publication receipt SHALL remain household-live-updates-owned.
+Same-week `"swap"` movement SHALL attempt a source-week snapshot without grocery recomputation. Committed `"defer"` and `"tomorrow"` movements SHALL attempt grocery recomputation and snapshot publication for every affected week independently after persistence. Follow-up failure SHALL NOT turn committed movement into a failed response. Publication receipt SHALL remain household-live-updates-owned.
 
 #### Scenario: Committed movement reports its refresh outcome
 
-- **WHEN** an actual cross-week movement completes
-- **THEN** the response SHALL return the existing moved=true, sourceDate, destinationDate, affectedWeekStartDates and refreshComplete result, with refreshComplete=false when any follow-up fails; completed moves, including supported no-op returns, SHALL return 200 with data.message Recipe moved
+- **WHEN** an actual `"defer"` or `"tomorrow"` movement completes
+- **THEN** the response returns `moved=true`, `sourceDate`, `destinationDate`, `affectedWeekStartDates`, `scheduledWeekOffset` (for `"defer"`), and `refreshComplete`, with `refreshComplete=false` when any follow-up fails
 
 #### Scenario: Same-week movement completes
 
-- **WHEN** same-week movement saves and its schedule read and publication return
+- **WHEN** same-week `"swap"` saves and its schedule read and publication return
 - **THEN** the success response follows source-week publication without requesting grocery recomputation through this path
 
 #### Scenario: Cross-week movement completes
 
-- **WHEN** cross-week persistence and both recomputations complete
-- **THEN** both affected snapshots are attempted before returning moved=true and refreshComplete=true
+- **WHEN** `"defer"` persistence and both affected-week recomputations complete
+- **THEN** both affected snapshots are attempted before returning `moved=true` and `refreshComplete=true`
 
 #### Scenario: Full target returns completion
 
-- **WHEN** cross-week destination search finds no free date and the subsequent source read/publication complete
-- **THEN** the response still says Recipe moved and does not confirm relocation
+- **WHEN** `"defer"` encounters a full target week
+- **THEN** search spills into the next available date in a later week and returns `moved=true` with the confirmed `destinationDate` and `scheduledWeekOffset`, rather than returning a silent no-op
 
 #### Scenario: Publication or recomputation fails after movement
 
-- **WHEN** cross-week movement is saved and any subsequent recomputation or snapshot publication fails
-- **THEN** remaining affected-week follow-ups are still attempted and the response confirms moved=true and refreshComplete=false without replaying movement
+- **WHEN** `"defer"` commits calendar changes and any subsequent recomputation or snapshot publication fails
+- **THEN** remaining affected-week follow-ups are still attempted and the response confirms `moved=true` and `refreshComplete=false` without replaying movement
 
 ### Requirement: Request Plan later from the selected Planner week
 
-Planner's recipe-backed Next Week action SHALL defer the exact dated recipe starting at the captured source week plus one, continuing into later weeks when full without shifting other plans. Completion SHALL confirm the actual destination and refresh the selected source week and Today when affected. Failure or an uncertain outcome SHALL retain actionable feedback without claiming movement or blindly replaying it.
+Planner's recipe-backed Save for Next Week SHALL defer the exact dated recipe via `POST /api/schedule/move` (`intent: "defer"`) from source week plus one, spilling into later weeks without shifting other plans. For `Cooked` days, Planner SHALL confirm `cookedDisposition` first. Completion SHALL report the destination (and spillover) and refresh the source week and Today when affected. Failures or uncertain outcomes SHALL show recovery feedback without claiming movement or replaying it.
 
 #### Scenario: Committed Plan later has incomplete refresh
 
-- **WHEN** the move is confirmed but its separate view refresh is incomplete
-- **THEN** Planner SHALL explain that the meal moved and some updates could not refresh, with guidance to refresh the plan rather than repeat movement
+- **WHEN** the move confirms `moved=true` and `refreshComplete=false` (or its separate view refresh fails)
+- **THEN** Planner explains that the meal moved and some updates could not refresh, with guidance to refresh the plan rather than repeat movement
 
 #### Scenario: Plan later for next selected week
 
@@ -227,7 +195,7 @@ Planner's recipe-backed Next Week action SHALL defer the exact dated recipe star
 
 #### Scenario: Movement request resolves or rejects
 
-- **WHEN** the Plan later request returns a confirmed destination, rejects or has an uncertain outcome
+- **WHEN** the Plan later request returns a confirmed destination, rejects, or has an uncertain outcome
 - **THEN** confirmed destination is reported and the source week refreshed; rejection or uncertainty shows recovery feedback without confirming relocation or repeating an uncertain write
 
 #### Scenario: Committed move has incomplete refresh
@@ -237,30 +205,35 @@ Planner's recipe-backed Next Week action SHALL defer the exact dated recipe star
 
 ### Requirement: Defer the exact dated recipe through a protected operation
 
-POST /api/schedule/defer SHALL identify the source by sourceDate and recipeId. No matching entry SHALL return 404; an AwaitingConsensus source SHALL return 409 before deferral. Access SHALL follow household-identity's Authenticate protected API requests independently requirement. Other supported day states SHALL not acquire a Locked-week prohibition through this action.
+`POST /api/schedule/move` (`intent: "defer"`) SHALL match the exact source supper by `sourceDate` (or `weekOffset` + `fromIndex`) and `recipeId`, with no fallback to other occurrences. Missing sources SHALL return `404`; `AwaitingConsensus` SHALL return `409`; invalid `sourceNonCooking`, `cookedDisposition`, or `targetWeekOffset` SHALL return `400` without mutation. Access SHALL follow household-identity authentication, and other supported states SHALL NOT be blocked by Locked weeks.
 
 #### Scenario: Source does not match
 
-- **WHEN** an authorized defer request has no entry matching both source date and recipe ID
-- **THEN** it returns 404 without moving another occurrence of the recipe
+- **WHEN** an authorized `"defer"` request has no entry matching both exact source date and recipe ID
+- **THEN** it returns `404` without moving another occurrence of the recipe
 
 #### Scenario: Source awaits consensus
 
-- **WHEN** the exact source is AwaitingConsensus
-- **THEN** it returns 409 without deferring that entry
+- **WHEN** the exact source is `AwaitingConsensus`
+- **THEN** it returns `409` without deferring that entry
 
 #### Scenario: Household credentials are absent
 
-- **WHEN** defer lacks accepted household credentials
+- **WHEN** `"defer"` lacks accepted household credentials
 - **THEN** the shared API authentication gate rejects the request
+
+#### Scenario: Invalid cookedDisposition or sourceNonCooking payload
+
+- **WHEN** a `"defer"` request supplies an unrecognized `cookedDisposition`, `sourceNonCooking.kind: "mystery"`, or a blank/`> 80`-character custom label
+- **THEN** the API returns `400` without mutating the calendar
 
 ### Requirement: Find a defer destination from deployment-current next week
 
-Deferral SHALL accept optional integer targetWeekOffset relative to the captured reference Monday, defaulting to one. Search SHALL start on that week's Monday and continue date by date until finding a date with no calendar entry. Any stored entry SHALL occupy its date. It SHALL ensure a Draft plan for the destination Monday only if absent, without changing an existing destination week's status.
+`POST /api/schedule/move` with `intent: "defer"` SHALL accept optional integer `targetWeekOffset` relative to the captured reference Monday, defaulting to one when omitted. Search SHALL start on that week's Monday and continue date by date until finding a date with no calendar entry. Any stored entry SHALL occupy its date. It SHALL ensure a `Draft` weekly plan for the destination Monday only if absent, without changing an existing destination week's status.
 
 #### Scenario: Next Monday is free
 
-- **WHEN** defer omits targetWeekOffset with no stored entry on reference-next Monday
+- **WHEN** `"defer"` omits `targetWeekOffset` with no stored entry on reference-next Monday
 - **THEN** that date is chosen regardless of the source's relative week offset, retaining deployment-current next week when reference Monday is also omitted
 
 #### Scenario: Next week is full
@@ -270,46 +243,57 @@ Deferral SHALL accept optional integer targetWeekOffset relative to the captured
 
 #### Scenario: Explicit future destination
 
-- **WHEN** reference Monday is October 12, targetWeekOffset is two, October 26 is occupied and October 27 has no entry
-- **THEN** defer selects October 27 without moving or replacing October 26's entry or using an earlier free date
+- **WHEN** reference Monday is October 12, `targetWeekOffset` is two, October 26 is occupied, and October 27 has no entry
+- **THEN** `"defer"` selects October 27 without moving or replacing October 26's entry or using an earlier free date
 
 #### Scenario: Non-cooking entry occupies a date
 
 - **WHEN** the requested destination Monday has a stored recipe-free non-cooking entry and Tuesday has no entry
-- **THEN** defer preserves Monday and selects Tuesday
+- **THEN** `"defer"` preserves Monday and selects Tuesday
 
 ### Requirement: Return deferred content to Planned state
 
-Successful deferral of a non-Skipped source SHALL move that entry to the selected date, set it Planned and retain its saved vote count. For a recipe-backed Skipped source it SHALL instead leave a recipe-free Skipped entry at the source and create a separate Planned destination with the recipe and saved vote count. A Cooked source SHALL invoke last-cooked recalculation.
+Deferring a non-Skipped, non-`Cooked` source SHALL move it to the destination as `Planned`, retaining saved votes. For a `Cooked` source, omitted or `"reset"` `cookedDisposition` SHALL move it as `Planned`, clear preparation fields, and recalculate `LastCookedDate`; `"preserve"` SHALL retain `Cooked`, preparation fields, and `LastCookedDate`. With `sourceNonCooking` or a recipe-backed `Skipped` source, deferral SHALL leave a recipe-free `Skipped` source and create a separate destination entry.
 
 #### Scenario: Locked source is deferred
 
-- **WHEN** a Locked recipe source defers successfully
-- **THEN** the moved entry is Planned at the selected destination with its saved vote count retained
+- **WHEN** a `Locked` recipe source defers successfully
+- **THEN** the moved entry is `Planned` at the selected destination with its saved vote count retained
 
 #### Scenario: Skipped source is deferred
 
-- **WHEN** a recipe-backed Skipped source defers successfully
-- **THEN** its original date remains recipe-free Skipped and the new destination contains the Planned recipe and saved vote count
+- **WHEN** a recipe-backed `Skipped` source defers successfully
+- **THEN** its original date remains recipe-free `Skipped` and the new destination contains the `Planned` recipe and saved vote count
 
 #### Scenario: Cooked source is deferred
 
-- **WHEN** a Cooked entry is moved back to Planned through defer
-- **THEN** the persistence path recalculates that recipe's last-cooked value from remaining Cooked calendar entries
+- **WHEN** a `Cooked` (or explicitly prepared) entry defers with `cookedDisposition: "reset"` or omitted `cookedDisposition`
+- **THEN** the moved entry becomes `Planned` with all preparation metadata cleared
+- **AND** the persistence path recalculates that recipe's `LastCookedDate` from remaining `Cooked` calendar entries
+
+#### Scenario: Cooked source is deferred with preserve disposition
+
+- **WHEN** a `Cooked` (or explicitly prepared) entry defers with `cookedDisposition: "preserve"`
+- **THEN** the moved entry retains `Cooked` status, its preparation receipt (`PreparedOn`, `PreparedAtUtc`, `PreparedServings`, `PreparedOriginalServings`, `PreparationPlanToken`, `PreparationServingVersion`), and its recipe's `LastCookedDate`
+
+#### Scenario: Non-cooking source disposition accompanies defer
+
+- **WHEN** a planned source defers with `sourceNonCooking` (`order_in`, `eating_out`, or validated `custom`)
+- **THEN** the source date becomes recipe-free `Skipped` with that normalized non-cooking plan in the same commit as placing the recipe in the target week
 
 ### Requirement: Complete defer after affected-week follow-ups
 
-After defer persistence completes, the operation SHALL await grocery recomputation for each distinct source/destination Monday, then attempt a snapshot for each affected week with request exclusion and optional move sequence. Only after these steps return SHALL it return 200 data containing scheduledDate, scheduledWeekOffset and message. Live delivery SHALL remain household-live-updates-owned.
+After `"defer"` commits, the operation SHALL await grocery recomputation and attempt snapshot publication (with request exclusion and optional move sequence) for each distinct affected week. Only then SHALL it return `200` with `moved: true`, `sourceDate`, `destinationDate`, `scheduledWeekOffset`, `affectedWeekStartDates`, `refreshComplete`, and `message`. Post-commit follow-up failures SHALL set `refreshComplete: false` without failing the response or inviting replay.
 
 #### Scenario: Both affected weeks complete
 
-- **WHEN** save, recomputation and publication calls all return
-- **THEN** the completed response identifies the chosen destination date and its deployment-calendar-relative week offset
+- **WHEN** save, recomputation, and publication calls all return without error
+- **THEN** the `200` response identifies `moved: true`, `sourceDate`, `destinationDate`, `scheduledWeekOffset`, `affectedWeekStartDates`, `refreshComplete: true`, and `message`
 
 #### Scenario: Later work rejects
 
-- **WHEN** a recomputation or publication throws after persistence
-- **THEN** the successful defer response is not reached without establishing reversal of the moved entry
+- **WHEN** a recomputation or publication throws after `"defer"` persistence commits
+- **THEN** remaining affected-week follow-ups are still attempted and the `200` response returns `moved: true` and `refreshComplete: false` without claiming reversal or inviting retry
 
 ### Requirement: Remove a recipe-backed Planner assignment optimistically
 
@@ -682,16 +666,16 @@ Disposition choices SHALL show the original recipe and full source date on warm 
 
 ### Requirement: Use consistent Next Week disposition across planning callers
 
-Home, Planner and recipe-selection Next Week actions SHALL use exact-source deferral beginning the captured source week plus one. They SHALL use its confirmed scheduled date, preserve other dated plans and explain spillover beyond a full requested week. A no-op or missing destination SHALL NOT permit replacement assignment or success feedback.
+Home, Planner, and recipe-selection Next Week actions SHALL all use exact-source deferral through `POST /api/schedule/move` (`intent: "defer"`) beginning at the captured source week plus one. They SHALL use its confirmed `destinationDate` and `scheduledWeekOffset`, preserve other dated plans, and explain spillover beyond a full requested week. A missing or unconfirmed destination SHALL NOT permit replacement assignment or success feedback.
 
 #### Scenario: Next two weeks are full
 
-- **WHEN** a replacement's Next Week disposition finds both the following and subsequent week full
-- **THEN** the original moves to the next available date after those weeks, other plans stay in place and confirmation identifies the actual date and spillover
+- **WHEN** a Next Week disposition finds both the following and subsequent week full
+- **THEN** the original moves to the next available date after those weeks, other plans stay in place, and confirmation identifies the actual date and spillover
 
 #### Scenario: Movement has no confirmed destination
 
-- **WHEN** disposition returns no movement or no usable destination
+- **WHEN** disposition rejects or returns no confirmed `moved: true` destination
 - **THEN** replacement is not submitted and the selected recipe is retained with actionable feedback
 
 ### Requirement: Expose a removal precondition for a dated supper plan
@@ -721,3 +705,34 @@ Date deletion SHALL accept optional expectedPlanToken, rejecting malformed suppl
 
 - **WHEN** deletion omits a token, or a matching guarded deletion commits before a follow-up fails
 - **THEN** omitted-token behavior remains compatible, and the latter failure does not imply restoration or authorise blind deletion replay
+
+### Requirement: Prompt for cooked disposition when deferring a cooked meal to next week
+
+When a household member triggers Save for Next Week on a `Cooked` meal (`status === 2`), Planner SHALL open a two-choice sheet naming the meal before submitting movement. Choosing **Cook it next week** SHALL submit `cookedDisposition: "reset"`; choosing **Already cooked** SHALL submit `cookedDisposition: "preserve"`. Dismissing the sheet SHALL submit nothing. Uncooked meals SHALL defer immediately without prompting.
+
+#### Scenario: Cooked meal chooses Cook it next week
+
+- **WHEN** a person activates Save for Next Week on a `Cooked` meal in Planner and chooses **Cook it next week**
+- **THEN** Planner submits `POST /api/schedule/move` with `intent: "defer"` and `cookedDisposition: "reset"`
+- **AND** the moved meal appears in the destination week as `Planned` without a preparation receipt
+
+#### Scenario: Cooked meal chooses Already cooked
+
+- **WHEN** a person activates Save for Next Week on a `Cooked` meal in Planner and chooses **Already cooked**
+- **THEN** Planner submits `POST /api/schedule/move` with `intent: "defer"` and `cookedDisposition: "preserve"`
+- **AND** the moved meal retains its `Cooked` status and preparation receipt in the destination week
+
+#### Scenario: Cooked prompt is dismissed
+
+- **WHEN** a person opens the cooked-move prompt from Save for Next Week and closes or cancels it
+- **THEN** no movement request is submitted and the meal remains on its original date unchanged
+
+#### Scenario: Uncooked meal defers without prompting
+
+- **WHEN** a person activates Save for Next Week on a `Planned` or `Locked` meal in Planner
+- **THEN** no cooked-disposition prompt opens and deferral submits immediately
+
+#### Scenario: Bilingual prompt copy stays truthful to persisted effects
+
+- **WHEN** the cooked-move prompt renders in English or French
+- **THEN** the subtitle asks *"This meal is marked cooked. How should we move it?"* (or its French equivalent), the choices present **Cook it next week** (*"Move as planned and clear cooked status"*) and **Already cooked** (*"Keep it marked cooked (prepped ahead or frozen)"*), and neither option claims ingredients are excluded from groceries

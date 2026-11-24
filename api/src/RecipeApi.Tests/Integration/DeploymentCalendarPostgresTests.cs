@@ -36,18 +36,21 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
             db.CalendarEvents.Add(new CalendarEvent { Date = new DateOnly(2026, 10, 21), RecipeId = SelectedId, Status = CalendarEventStatus.AwaitingConsensus, VoteCount = 3 });
             await db.SaveChangesAsync();
             using var client = factory.CreateAuthenticatedClient();
-            foreach (var query in new[] {
-                "referenceWeekStartDate=2026-10-13", "referenceWeekStartDate=invalid",
-                "targetWeekOffset=abc", "targetWeekOffset=1.5", "targetWeekOffset=2147483648",
-                "targetWeekOffset=2147483647", "targetWeekOffset=-2147483648", "targetWeekOffset=1000000",
+            foreach (var (query, payload) in new (string, object)[] {
+                ("referenceWeekStartDate=2026-10-13", new { weekOffset = 1, sourceDate = "2026-10-21", recipeId = SelectedId, intent = "defer", targetWeekOffset = 2 }),
+                ("referenceWeekStartDate=invalid", new { weekOffset = 1, sourceDate = "2026-10-21", recipeId = SelectedId, intent = "defer", targetWeekOffset = 2 }),
+                ("referenceWeekStartDate=2026-10-12", new { weekOffset = 1, sourceDate = "2026-10-21", recipeId = SelectedId, intent = "defer", targetWeekOffset = int.MaxValue }),
+                ("referenceWeekStartDate=2026-10-12", new { weekOffset = 1, sourceDate = "2026-10-21", recipeId = SelectedId, intent = "defer", targetWeekOffset = int.MinValue }),
+                ("referenceWeekStartDate=2026-10-12", new { weekOffset = 1, sourceDate = "2026-10-21", recipeId = SelectedId, intent = "defer", targetWeekOffset = 1000000 }),
+                ("referenceWeekStartDate=2026-10-12", new { weekOffset = 1, sourceDate = "2026-10-21", recipeId = SelectedId, intent = "defer", targetWeekOffset = 2, cookedDisposition = "invalid" }),
             })
             {
-                var result = await client.PostAsJsonAsync($"/api/schedule/defer?{query}", new { sourceDate = "2026-10-21", recipeId = SelectedId });
+                var result = await client.PostAsJsonAsync($"/api/schedule/move?{query}", payload);
                 Assert.Equal(HttpStatusCode.BadRequest, result.StatusCode);
             }
-            Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/schedule/defer?targetWeekOffset=2&referenceWeekStartDate=2026-10-12", new { sourceDate = "2026-10-21", recipeId = SelectedId })).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/schedule/defer?targetWeekOffset=2&referenceWeekStartDate=2026-10-12", new { sourceDate = "2026-10-20", recipeId = SelectedId })).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/schedule/defer?targetWeekOffset=2&referenceWeekStartDate=2026-10-12", new { sourceDate = "2026-10-21", recipeId = SentinelId })).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12", new { weekOffset = 1, sourceDate = "2026-10-21", recipeId = SelectedId, intent = "defer", targetWeekOffset = 2 })).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12", new { weekOffset = 1, sourceDate = "2026-10-20", recipeId = SelectedId, intent = "defer", targetWeekOffset = 2 })).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12", new { weekOffset = 1, sourceDate = "2026-10-21", recipeId = SentinelId, intent = "defer", targetWeekOffset = 2 })).StatusCode);
             db.ChangeTracker.Clear();
             var events = await db.CalendarEvents.AsNoTracking().ToListAsync();
             Assert.Equal(2, events.Count);
@@ -97,14 +100,22 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
             // Advance deployment week after capturing the reference, before dispatch.
             if (item.Reference) clock.UtcNow = DateTimeOffset.Parse("2026-10-19T12:00:00Z");
             using var client = factory.CreateAuthenticatedClient();
-            var query = item.Reference ? "referenceWeekStartDate=2026-10-12" : "";
-            if (item.Target is { } offset) query += $"&targetWeekOffset={offset}";
-            var response = await client.PostAsJsonAsync($"/api/schedule/defer?{query}", new { sourceDate = item.Source, recipeId = SelectedId });
+            var query = item.Reference ? "?referenceWeekStartDate=2026-10-12" : "";
+            var response = await client.PostAsJsonAsync($"/api/schedule/move{query}", new
+            {
+                weekOffset = 0,
+                sourceDate = item.Source,
+                recipeId = SelectedId,
+                intent = "defer",
+                targetWeekOffset = item.Target,
+            });
             response.EnsureSuccessStatusCode();
             using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var data = body.RootElement.GetProperty("data");
-            Assert.Equal(item.Expected, data.GetProperty("scheduledDate").GetString());
+            Assert.True(data.GetProperty("moved").GetBoolean());
+            Assert.Equal(item.Expected, data.GetProperty("destinationDate").GetString());
             Assert.Equal((expected.DayNumber - reference.DayNumber) / 7, data.GetProperty("scheduledWeekOffset").GetInt32());
+            Assert.True(data.GetProperty("refreshComplete").GetBoolean());
             Assert.Equal(item.Occupied >= 7, data.GetProperty("message").GetString()!.Contains("Next week is full."));
             using var scope = factory.Services.CreateScope();
             var stored = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
@@ -143,13 +154,15 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
             stream.EnsureSuccessStatusCode();
             using var reader = new StreamReader(await stream.Content.ReadAsStreamAsync());
             using var connected = await ReadEvent(reader, "connected");
-            var response = await client.PostAsJsonAsync("/api/schedule/defer?referenceWeekStartDate=2026-10-12&targetWeekOffset=2",
-                new { sourceDate = "2026-10-21", recipeId = SelectedId });
+            var response = await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-12",
+                new { weekOffset = 1, sourceDate = "2026-10-21", recipeId = SelectedId, intent = "defer", targetWeekOffset = 2 });
             response.EnsureSuccessStatusCode();
             using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             var data = result.RootElement.GetProperty("data");
-            Assert.Equal("2026-10-26", data.GetProperty("scheduledDate").GetString());
+            Assert.True(data.GetProperty("moved").GetBoolean());
+            Assert.Equal("2026-10-26", data.GetProperty("destinationDate").GetString());
             Assert.Equal(2, data.GetProperty("scheduledWeekOffset").GetInt32());
+            Assert.True(data.GetProperty("refreshComplete").GetBoolean());
             Assert.DoesNotContain("full", data.GetProperty("message").GetString());
             using var sourceSnapshot = await ReadEvent(reader, "week_updated");
             using var destinationSnapshot = await ReadEvent(reader, "week_updated");
@@ -207,7 +220,7 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
     [CalendarPostgresFact]
     public async Task RelativeMoveAndDefer_PersistThePinnedNextMonday()
     {
-        foreach (var operation in new[] { "move", "defer" })
+        foreach (var intent in new[] { "tomorrow", "defer" })
         await WithDatabase(async settings =>
         {
             await using var factory = await CreateFactory(settings);
@@ -215,8 +228,8 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
             using var client = factory.CreateAuthenticatedClient();
             (await client.PostAsJsonAsync("/api/schedule/assign?referenceWeekStartDate=2026-10-05",
                 new { weekOffset = 0, dayIndex = 6, recipeId = SelectedId })).EnsureSuccessStatusCode();
-            (await client.PostAsJsonAsync($"/api/schedule/{operation}?referenceWeekStartDate=2026-10-05",
-                new { weekOffset = 0, fromIndex = 6, toIndex = 0, targetWeekOffset = 1, sourceDate = "2026-10-11", recipeId = SelectedId, intent = "push" })).EnsureSuccessStatusCode();
+            (await client.PostAsJsonAsync("/api/schedule/move?referenceWeekStartDate=2026-10-05",
+                new { weekOffset = 0, fromIndex = 6, toIndex = 0, targetWeekOffset = 1, sourceDate = "2026-10-11", recipeId = SelectedId, intent })).EnsureSuccessStatusCode();
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             var selected = await db.CalendarEvents.AsNoTracking().SingleAsync(e => e.RecipeId == SelectedId);

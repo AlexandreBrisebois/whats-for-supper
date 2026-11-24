@@ -30,7 +30,6 @@ public partial class RecipeDetailPlanningPostgresTests
                     app.Use(async (context, next) => {
                         var operation = context.Request.Method switch {
                             "POST" when context.Request.Path == "/api/schedule/assign" => "assign",
-                            "POST" when context.Request.Path == "/api/schedule/defer" => "defer",
                             "POST" when context.Request.Path == "/api/schedule/move" => "move",
                             "DELETE" when context.Request.Path.Value?.EndsWith("/remove") == true => "remove",
                             _ => null,
