@@ -96,12 +96,12 @@
   </g>
 
   <!-- ====================================================================== -->
-  <!-- JOURNEY 2 · DIRECT OS SHARE & SHARED RECIPE BUNDLE (.TXT / .RECIPE)    -->
+  <!-- JOURNEY 2 · DIRECT OS SHARE & SHARED RECIPE BUNDLE (.TXT)              -->
   <!-- ====================================================================== -->
   <g transform="translate(40, 398)">
     <rect x="0" y="0" width="1360" height="196" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
     <rect x="20" y="16" width="318" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
-    <text x="179" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Journey 2 · Direct OS Share &amp; Shared Bundle</text>
+    <text x="179" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Journey 2 · Direct OS Share &amp; Shared .txt</text>
     <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">Zero hub detours · Demo-safe local .txt path</text>
 
     <!-- Node 1: Share or File -->
@@ -111,7 +111,7 @@
       <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">OS Share or Recipe File</text>
       <text x="16" y="68" font-size="12" fill="#28231F">• Android Share → POST /share-target (PDF)</text>
       <text x="16" y="86" font-size="12" fill="#28231F">• Browser Share → /capture?url=…</text>
-      <text x="16" y="104" font-size="12" fill="#6E645B">• File picker → .pdf or .txt / .recipe bundle</text>
+      <text x="16" y="104" font-size="12" fill="#6E645B">• File picker → .pdf or shared .txt file</text>
     </g>
 
     <line x1="310" y1="116" x2="348" y2="116" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
@@ -122,7 +122,7 @@
       <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">DIRECT PREVIEW / CONFIRMATION</text>
       <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Skip Hub · Single × Cancel</text>
       <text x="16" y="68" font-size="12" fill="#28231F">• PDF: single-claim token + filename + notes.</text>
-      <text x="16" y="86" font-size="12" fill="#28231F">• Bundle: full card preview (hero, steps, badge).</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• Shared .txt: scrubbed preview + Rating &amp; Notes.</text>
       <text x="16" y="104" font-size="12" fill="#6E645B">• × discards draft cleanly (no hidden exit).</text>
     </g>
 
@@ -189,12 +189,12 @@
     <!-- Node 3: Paired Comparison -->
     <g transform="translate(714, 56)">
       <rect x="0" y="0" width="310" height="142" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
-      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">HUMAN REVIEW (WHEN READY)</text>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">HOW TO OPEN · 3 DIRECT PATHS</text>
       <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Compare pair in 1 sheet</text>
-      <text x="16" y="68" font-size="12" fill="#28231F">• Reach via LibraryToast or Needs review.</text>
-      <text x="16" y="86" font-size="12" fill="#28231F">• Loads New + Existing side by side:</text>
-      <text x="26" y="103" font-size="12" fill="#6E645B">photo, rating, notes, source &amp; count.</text>
-      <text x="16" y="123" font-size="12" font-weight="600" fill="#4E6E52">• Zero manual searching for the twin.</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">1. Tap LibraryToast (“tap to review”)</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">2. Recipes → Reported → Compare &amp; resolve</text>
+      <text x="16" y="104" font-size="12" fill="#6E645B">3. Detail Reported badge / ••• Review issue</text>
+      <text x="16" y="124" font-size="12" font-weight="600" fill="#4E6E52">• Loads New + Existing together (zero search)</text>
     </g>
 
     <line x1="1024" y1="127" x2="1062" y2="127" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
