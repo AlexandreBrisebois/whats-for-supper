@@ -30,7 +30,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         var content = before with { ContentRevision = revision, IngredientLines = [before.IngredientLines[0]], InstructionSections = [before.InstructionSections[0] with { Steps = steps }] };
         using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-        recipe.CanonicalContent = JsonSerializer.Serialize(content, Json);
+        recipe.StructuredContent = JsonSerializer.Serialize(content, Json);
         recipe.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render));
         await db.SaveChangesAsync(); return content;
     }

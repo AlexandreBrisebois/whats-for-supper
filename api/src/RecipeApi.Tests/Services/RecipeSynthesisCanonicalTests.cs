@@ -116,7 +116,7 @@ public sealed partial class RecipeSynthesisCanonicalTests
         db.ChangeTracker.Clear();
         var completed = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
         Assert.Equal("Supper", completed.Category);
-        Assert.Equal(saved.CanonicalContent, completed.CanonicalContent);
+        Assert.Equal(saved.StructuredContent, completed.StructuredContent);
 
         var ready = Assert.Single(workflow.Tasks, x => x.ProcessorName == "RecipeReady");
         var readyProcessor = ActivatorUtilities.CreateInstance<RecipeReadyProcessor>(services);
@@ -126,7 +126,7 @@ public sealed partial class RecipeSynthesisCanonicalTests
         var finalized = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
         Assert.True(finalized.IsReady);
         Assert.True(finalized.IsSynthesized);
-        Assert.Equal(saved.CanonicalContent, finalized.CanonicalContent);
+        Assert.Equal(saved.StructuredContent, finalized.StructuredContent);
         var read = await client.GetFromJsonAsync<RecipeDetailResponseDto>($"/api/recipes/{id}");
         Assert.Equal("synthesized", read!.Recipe.SourceType);
         if (mode == "valid")
@@ -169,7 +169,7 @@ public sealed partial class RecipeSynthesisCanonicalTests
             Assert.Equal(callsBeforeLateReplay, calls);
             db.ChangeTracker.Clear();
             var afterReplay = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-            Assert.Equal(human.CanonicalContent, afterReplay.CanonicalContent);
+            Assert.Equal(human.StructuredContent, afterReplay.StructuredContent);
             Assert.Equal(human.RawMetadata, afterReplay.RawMetadata);
             Assert.Equal([1, 2, 3], await services.GetRequiredService<RecipeRepository>().StorageProvider.LoadAsync("recipes", $"{id}/hero.webp"));
         }

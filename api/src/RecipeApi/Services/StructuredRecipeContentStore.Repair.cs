@@ -11,7 +11,7 @@ public sealed partial class StructuredRecipeContentStore
     // added, removed, duplicated or manually renamed source rows.
     internal static StructuredRecipeExport PreparePhotoIngredientRepair(RecipePublicationFields captured, string raw, string revision)
     {
-        var current = Read(new Recipe { Id = captured.Id, CanonicalContent = captured.CanonicalContent })
+        var current = Read(new Recipe { Id = captured.Id, StructuredContent = captured.StructuredContent })
             ?? throw new InvalidDataException("Ingredient repair requires captured canonical content.");
         var old = PrepareFreshSource(captured.Id, captured.RawMetadata!, captured.SourceUrl).Content;
         var generated = PrepareFreshSource(captured.Id, raw, captured.SourceUrl);

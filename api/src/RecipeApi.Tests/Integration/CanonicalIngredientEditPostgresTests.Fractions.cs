@@ -53,7 +53,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-        recipe.CanonicalContent = JsonSerializer.Serialize(seeded, Json);
+        recipe.StructuredContent = JsonSerializer.Serialize(seeded, Json);
         await db.SaveChangesAsync();
         return seeded;
     }

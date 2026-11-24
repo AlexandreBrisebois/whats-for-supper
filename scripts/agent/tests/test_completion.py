@@ -142,10 +142,10 @@ class CompletionTests(IsolatedGitTestCase):
         with mock.patch.object(f, 'identity', side_effect=identity), \
              mock.patch.object(f, 'run_check', side_effect=check), \
              mock.patch('time.perf_counter', side_effect=lambda: clock[0]):
-            results = f.verify(['agent:drift:endpoints'])
-        self.assertEqual(results['agent:drift:endpoints']['status'], 'blocked')
-        self.assertEqual(results['agent:drift:endpoints']['duration_seconds'], 3.0)
-        self.assertEqual(results['agent:drift:endpoints']['identity_duration_seconds'], 2.0)
+            results = f.verify(['database-behavior'])
+        self.assertEqual(results['database-behavior']['status'], 'blocked')
+        self.assertEqual(results['database-behavior']['duration_seconds'], 3.0)
+        self.assertEqual(results['database-behavior']['identity_duration_seconds'], 2.0)
         self.assertEqual(results['content']['timing'], {
             'initial_identity_seconds': 2.0,
             'identity_seconds': 4.0,
@@ -272,7 +272,14 @@ class CompletionTests(IsolatedGitTestCase):
                     run.assert_not_called()
                 for real_contract in ['specs/openapi.yaml', 'specs/db.sql',
                                       'api/src/RecipeApi/Models/Example.cs', 'unknown.bin']:
-                    self.assertIn('database-behavior', f.checks_for([path, real_contract]))
+                    contract_checks = f.checks_for([path, real_contract])
+                    self.assertIn('database-behavior', contract_checks)
+                    self.assertIn('test:api', contract_checks)
+                    self.assertNotIn('agent:drift:endpoints', contract_checks)
+        openapi_checks = f.checks_for(['specs/openapi.yaml'])
+        self.assertIn('test:api', openapi_checks)
+        self.assertIn('database-behavior', openapi_checks)
+        self.assertNotIn('agent:drift:endpoints', openapi_checks)
 
     def test_other_compose_effects_remain_conservative(self):
         before = 'services:\n  api:\n    environment:\n      EXISTING: value\n'

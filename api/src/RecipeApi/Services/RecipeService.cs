@@ -23,7 +23,7 @@ public class RecipeService(
     ISupperProjectionPublisher projectionPublisher,
     RecipesRootResolver recipesRoot,
     IScheduleEventPublisher? publisher = null,
-    StructuredRecipeContentStore? canonicalEditor = null,
+    StructuredRecipeContentStore? structuredEditor = null,
     FoodVocabularyStore? vocabulary = null)
 {
     private const string RecipeShareBundleVersion = "1.0";
@@ -399,7 +399,7 @@ public class RecipeService(
             Notes = info.Notes,
             Rating = info.Rating,
             RawMetadata = schemaOrgJson,
-            CanonicalContent = JsonSerializer.Serialize(content, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            StructuredContent = JsonSerializer.Serialize(content, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
             FoodMappingEvidence = evidence,
             Servings = content.Servings,
             Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render), new JsonSerializerOptions(JsonSerializerDefaults.Web)),
@@ -425,14 +425,14 @@ public class RecipeService(
             throw new ArgumentException("Servings must be a whole number from 1 to 2147483647.");
         // Only explicitly converted recipes enter the guarded canonical owner.
         // An ordinary edit never converts legacy content or allocates saved IDs.
-        if (canonicalEditor is not null && (dto.HasCanonicalContent ||
+        if (structuredEditor is not null && (dto.HasStructuredContent ||
             dto.HasServings && dto.Ingredients is null && dto.RecipeInstructions is null))
         {
             var baseline = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id)
                 ?? throw new KeyNotFoundException($"Recipe {id} not found.");
-            if (baseline.CanonicalContent is not null)
+            if (baseline.StructuredContent is not null)
             {
-                var result = await canonicalEditor.EditAsync(id,
+                var result = await structuredEditor.EditAsync(id,
                     StructuredRecipeContentStore.InspectSourceRevision(baseline), Guid.NewGuid(), dto);
                 var saved = await db.Recipes.SingleAsync(x => x.Id == id);
                 if (dto.HasServings || dto.IngredientLines.ValueKind != JsonValueKind.Undefined)
@@ -456,7 +456,7 @@ public class RecipeService(
         // Legacy content requires explicit conversion; legacy payloads cannot
         // replace canonical facts. Check before mutating ANY tracked or disk field.
         RecipeContentInput.Validate(dto);
-        if (dto.HasCanonicalContent || recipe.CanonicalContent is not null &&
+        if (dto.HasStructuredContent || recipe.StructuredContent is not null &&
             (dto.HasServings || dto.Ingredients is not null || dto.RecipeInstructions is not null))
             throw new RecipeContentConflictException(StructuredRecipeContentStore.InspectContentRevision(recipe), upgradeRequired: true);
 
@@ -618,7 +618,7 @@ public class RecipeService(
             info.Category = recipe.Category;
             await recipeStore.WriteInfoAsync(info);
         }
-        if (recipe.CanonicalContent is not null && StructuredRecipeContentStore.Read(recipe) is { } structuredContent)
+        if (recipe.StructuredContent is not null && StructuredRecipeContentStore.Read(recipe) is { } structuredContent)
         {
             var existingDiskJson = await recipeStore.ReadRecipeJsonAsync(id) ?? recipe.RawMetadata;
             var schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(
@@ -885,7 +885,7 @@ public class RecipeService(
             Images = Enumerable.Range(0, r.ImageCount).ToList(),
             Ingredients = content is null ? DeserializeIngredients(r.Ingredients) : content.IngredientLines.Select(StructuredRecipeContentStore.Render).ToList(),
             Servings = r.Servings,
-            RecipeInstructions = content is null ? ExtractRecipeInstructions(r.RawMetadata) : RenderCanonicalInstructions(content),
+            RecipeInstructions = content is null ? ExtractRecipeInstructions(r.RawMetadata) : RenderStructuredInstructions(content),
             IsVegetarian = r.IsVegetarian ?? false,
             IsDiscoverable = r.IsDiscoverable,
             CreatedAt = r.CreatedAt,
@@ -898,7 +898,7 @@ public class RecipeService(
         };
     }
 
-    private static object RenderCanonicalInstructions(StructuredRecipeContent content) =>
+    private static object RenderStructuredInstructions(StructuredRecipeContent content) =>
         content.InstructionSections.Select(section => new Dictionary<string, object?>
         {
             ["@type"] = "HowToSection",

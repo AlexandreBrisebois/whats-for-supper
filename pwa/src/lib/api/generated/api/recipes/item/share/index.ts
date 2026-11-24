@@ -79,7 +79,7 @@ export function serializeRecipeShareBundleDto400Error(
  */
 export interface ShareRequestBuilder extends BaseRequestBuilder<ShareRequestBuilder> {
   /**
-   * Reads one coherent saved recipe and selected media snapshot. Canonical ingredient and instruction text is current; private evidence and local content identities are omitted. A pending file publication must be reconciled before export.
+   * Reads one coherent saved recipe and selected media snapshot. Structured ingredient and instruction text is current; private evidence and local content identities are omitted. A pending file publication must be reconciled before export.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeShareBundleDto>}
    * @throws {RecipeShareBundleDto400Error} error when the service returns a 400 status code
@@ -90,7 +90,7 @@ export interface ShareRequestBuilder extends BaseRequestBuilder<ShareRequestBuil
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<RecipeShareBundleDto | undefined>;
   /**
-   * Reads one coherent saved recipe and selected media snapshot. Canonical ingredient and instruction text is current; private evidence and local content identities are omitted. A pending file publication must be reconciled before export.
+   * Reads one coherent saved recipe and selected media snapshot. Structured ingredient and instruction text is current; private evidence and local content identities are omitted. A pending file publication must be reconciled before export.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */

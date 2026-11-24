@@ -10,7 +10,7 @@ public sealed partial class StructuredRecipeContentStore
     internal static StructuredRecipeExport PrepareContentRepair(RecipePublicationFields captured, string raw,
         string[] reasons, StructuredRecipeContent? originalSteps, string revision, StructuredRecipeContent? recorded = null)
     {
-        var current = Read(new Recipe { Id = captured.Id, CanonicalContent = captured.CanonicalContent })
+        var current = Read(new Recipe { Id = captured.Id, StructuredContent = captured.StructuredContent })
             ?? throw new InvalidDataException("Content repair requires captured canonical facts.");
         var prepared = reasons.Contains("ingredients") ? PreparePhotoIngredientRepair(captured, raw, revision)
             : new StructuredRecipeExport(captured.Id, current with { ContentRevision = revision }, captured.RawMetadata);

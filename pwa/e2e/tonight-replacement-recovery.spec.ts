@@ -213,7 +213,7 @@ for (const appLocale of ['en', 'fr'] as const) {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.clock.setFixedTime(new Date(calendar.capturedAtUtc));
       await setupCommonRoutes(page, calendar, {
-        canonicalEditor: builders.recipe({
+        structuredEditor: builders.recipe({
           id: MOCK_IDS.RECIPE_CHICKEN,
           name: 'Grilled Cilantro Lime Chicken with Mango Avocado Salsa',
           isReady: true,

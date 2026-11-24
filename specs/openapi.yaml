@@ -269,7 +269,7 @@ components:
         importId: { type: [string, 'null'], format: uuid }
         reimportLaunchFailed: { type: boolean }
 
-    # Original canonical facts. Nullable on legacy reads until explicit guarded conversion.
+    # Structured recipe domain schemas. Recipe content fields are nullable on unmigrated reads.
     RecipeUnit:
       type: object
       additionalProperties: false
@@ -394,7 +394,7 @@ components:
         role: { type: string, enum: [mention, whole, absolute, fraction, remainder, fixed, perItem] }
         payload:
           type: object
-          description: 'Role evidence: whole uses the saved row total; absolute/fixed carry amount and unit; ungrouped fixed uses require a unique binding identity across current steps and canonical amount/unit evidence matching the bound row; their exact span wording remains unchanged at every target, including missing serving basis and permitted original-total corrections. Fixed is a binding policy independent of ingredient-row scaling and grocery demand. Grouped fixed uses, including exhaustive and remainder members, are unsupported and preserve affected original wording; fraction carries fraction {n,d}, a canonical exact rational in [0,1] of the current row total; validated relative spans retain their exact original wording at every target. An optional annotationSpan {start,end,expectedText} uses UTF-16 half-open offsets for an existing numeric measurement independently proved by explicit half wording, one unique current ingredient and compatible exact original-total evidence. Projection may replace only that validated nonoverlapping annotation with the fraction of the current total at the requested portions; it never adds an annotation or changes saved wording. Stale, forged, ambiguous, contradictory, conditional or overlapping annotation evidence leaves source wording unchanged; remainder carries allocationGroupId (UUID) and predecessors (ordered binding UUIDs), matching every preceding member of its explicit exhaustive allocationGroup; a single final remainder uses the current total less those proven uses. Its original relative span is retained with a parenthesized exact quantity in projection only; saved prose is unchanged. Scalar prior uses subtract exactly; fractions refer to the same current total, permitting correlation-safe range arithmetic; independent prior ranges cannot prove a remainder. perItem carries dose {amount,unit} (a canonical scalar fixed dose in the bound ingredient unit) and countBindingId (UUID of a separately validated whole item-count binding on a different ingredient row). The per-item binding identity must itself be unique across current steps. The count proof must be unique across current steps, revision/span-valid, ungrouped, scalar and proportional; the declared link is item-count evidence, never numeric discovery. Only that count scales; the exact per-item span remains unchanged. Missing, stale, overlapping, duplicate, cyclic, grouped or unsupported count proof leaves the dose wording uncertain; other valid bindings remain independent. Ingredient-total edits may carry this proof only when both linked rows and the count step keep identity, wording, unit, policy, package, shopping and source dependencies; their original totals may change without altering the fixed dose. An optional allocationGroup carries id (UUID), exhaustive (true), and ordered bindingIds (UUID array) repeated identically on every member. Only complete same-row groups of compatible whole/absolute/fraction uses whose exact sum equals the saved scalar total, or a terminal remainder whose known compatible predecessors and current total prove a nonnegative bounded exact result may project; missing, stale, ambiguous, contradictory or unsupported members preserve affected wording. Fraction proof requires a canonical known total and bounded exact arithmetic at the requested serving context; corrected totals retain the fraction and binding identity when other proof dependencies are unchanged. Ungrouped uses are never summed. Unsupported or unproved roles preserve original wording.'
+          description: 'Role evidence: whole uses the saved row total; absolute/fixed carry amount and unit; ungrouped fixed uses require a unique binding identity across current steps and structured amount/unit evidence matching the bound row; their exact span wording remains unchanged at every target, including missing serving basis and permitted original-total corrections. Fixed is a binding policy independent of ingredient-row scaling and grocery demand. Grouped fixed uses, including exhaustive and remainder members, are unsupported and preserve affected original wording; fraction carries fraction {n,d}, a canonical exact rational in [0,1] of the current row total; validated relative spans retain their exact original wording at every target. An optional annotationSpan {start,end,expectedText} uses UTF-16 half-open offsets for an existing numeric measurement independently proved by explicit half wording, one unique current ingredient and compatible exact original-total evidence. Projection may replace only that validated nonoverlapping annotation with the fraction of the current total at the requested portions; it never adds an annotation or changes saved wording. Stale, forged, ambiguous, contradictory, conditional or overlapping annotation evidence leaves source wording unchanged; remainder carries allocationGroupId (UUID) and predecessors (ordered binding UUIDs), matching every preceding member of its explicit exhaustive allocationGroup; a single final remainder uses the current total less those proven uses. Its original relative span is retained with a parenthesized exact quantity in projection only; saved prose is unchanged. Scalar prior uses subtract exactly; fractions refer to the same current total, permitting correlation-safe range arithmetic; independent prior ranges cannot prove a remainder. perItem carries dose {amount,unit} (a canonical scalar fixed dose in the bound ingredient unit) and countBindingId (UUID of a separately validated whole item-count binding on a different ingredient row). The per-item binding identity must itself be unique across current steps. The count proof must be unique across current steps, revision/span-valid, ungrouped, scalar and proportional; the declared link is item-count evidence, never numeric discovery. Only that count scales; the exact per-item span remains unchanged. Missing, stale, overlapping, duplicate, cyclic, grouped or unsupported count proof leaves the dose wording uncertain; other valid bindings remain independent. Ingredient-total edits may carry this proof only when both linked rows and the count step keep identity, wording, unit, policy, package, shopping and source dependencies; their original totals may change without altering the fixed dose. An optional allocationGroup carries id (UUID), exhaustive (true), and ordered bindingIds (UUID array) repeated identically on every member. Only complete same-row groups of compatible whole/absolute/fraction uses whose exact sum equals the saved scalar total, or a terminal remainder whose known compatible predecessors and current total prove a nonnegative bounded exact result may project; missing, stale, ambiguous, contradictory or unsupported members preserve affected wording. Fraction proof requires a structured known total and bounded exact arithmetic at the requested serving context; corrected totals retain the fraction and binding identity when other proof dependencies are unchanged. Ungrouped uses are never summed. Unsupported or unproved roles preserve original wording.'
           additionalProperties: true
         status: { type: string, enum: [validated, uncertain] }
     InstructionProjection:
@@ -563,7 +563,7 @@ components:
         originalText: { type: string }
         displayText:
           type: [string, 'null']
-          description: 'Optional server-derived ingredient presentation for the captured portion context. Canonical non-package lines with a reliable projected amount use exact scalar or range text, their independently declared unit and current shopping name; rounded compatibility quantity is not used to construct this text. Original, unquantified or unresolved non-package lines may omit this field or return null and retain originalText, without inventing an amount or factor. Package lines retain the exact projected ingredient count and unchanged declared capacity, count label and basis; no purchase rounding. If package scaling is unresolved, retains the original count without inventing a factor. originalText always retains original-basis wording and supported notation. Presentation is not an input to grocery identity, relationship discovery or semantic quantity versions. Older legacy lines may omit this field or return null.'
+          description: 'Optional server-derived ingredient presentation for the captured portion context. Structured non-package lines with a reliable projected amount use exact scalar or range text, their independently declared unit and current shopping name; rounded compatibility quantity is not used to construct this text. Original, unquantified or unresolved non-package lines may omit this field or return null and retain originalText, without inventing an amount or factor. Package lines retain the exact projected ingredient count and unchanged declared capacity, count label and basis; no purchase rounding. If package scaling is unresolved, retains the original count without inventing a factor. originalText always retains original-basis wording and supported notation. Presentation is not an input to grocery identity, relationship discovery or semantic quantity versions. Older legacy lines may omit this field or return null.'
         name: { type: string }
         quantity: { type: number, nullable: true }
         unitText: { type: string, nullable: true }
@@ -1082,7 +1082,7 @@ components:
 
     UpdateRecipeDto:
       type: object
-      description: At canonical cutover every supplied semantic field requires expectedContentRevision; conflicts apply no field. Canonical and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly. Canonical writes remain gated by recovery and client qualification.
+      description: For structured recipes every supplied semantic field requires expectedContentRevision; conflicts apply no field. Structured and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly.
       properties:
         expectedContentRevision: { type: string, minLength: 1 }
         ingredientLines:
@@ -1807,7 +1807,7 @@ components:
         unitText: { type: [string, 'null'] }
         quantityComplete:
           type: [boolean, 'null']
-          description: False when this line includes unknown or unusable numeric contributions, so a non-null quantity is only the known subtotal. Canonical null amounts stay unknown without phrase classification; retained qualitative legacy evidence keeps its compatibility semantics. Null or legacy absence means unknown completeness and cannot prove a requirement increase.
+          description: False when this line includes unknown or unusable numeric contributions, so a non-null quantity is only the known subtotal. Structured null amounts stay unknown without phrase classification; retained qualitative legacy evidence keeps its compatibility semantics. Null or legacy absence means unknown completeness and cannot prove a requirement increase.
         recipeIds:
           type: array
           items: { type: string, format: uuid }
@@ -2852,7 +2852,7 @@ paths:
         Corrupt, encrypted and over-10-page documents fail the workflow and remain
         in Settings for Retry/Delete. No page truncation or PDF download.
         A witnessed fresh PDF extraction that can preserve its supported original
-        facts losslessly publishes canonical ingredients and steps through its
+        facts losslessly publishes structured ingredients and steps through its
         guarded publication before readiness. Usable content requiring review
         retains the existing unready review behavior. Rendered pages retain their
         PDF conversion ancestry; later reimports do not inherit fresh-intake authority.
@@ -3264,7 +3264,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: Export a privacy-scrubbed portable recipe bundle
-      description: Reads one coherent saved recipe and selected media snapshot. Canonical ingredient and instruction text is current; private evidence and local content identities are omitted. A pending file publication must be reconciled before export.
+      description: Reads one coherent saved recipe and selected media snapshot. Structured ingredient and instruction text is current; private evidence and local content identities are omitted. A pending file publication must be reconciled before export.
       operationId: exportRecipeShareBundle
       security: [{ FamilyMemberId: [] }]
       responses:
@@ -3553,7 +3553,7 @@ paths:
         schema: { type: string, format: uuid }
     post:
       summary: Upload an original photo for the recipe
-      description: Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload. Canonical owners remain fenced until activation.
+      description: Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload.
       operationId: uploadRecipeOriginal
       tags: [Recipes]
       requestBody:
@@ -3572,7 +3572,7 @@ paths:
         '404':
           description: Recipe not found
         '409':
-          description: Recipe/source changed during upload, pending file publication, or canonical owner remains fenced; no new append was published
+          description: Recipe/source changed during upload or pending file publication; no new append was published
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecipeContentConflict' }

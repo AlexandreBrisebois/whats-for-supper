@@ -92,7 +92,8 @@ public static partial class FoodVocabularyInventoryQualification
             }
         }
         Add("recipe", facts.Recipes, x => x.RecipeId.ToString("D"));
-        Add("canonical-operation", facts.CanonicalOperations, x => $"{x.RecipeId:D}/{x.OperationId:D}", x => new
+        // Persisted snapshot wire identifier ("canonical-operation").
+        Add("canonical-operation", facts.StructuredOperations, x => $"{x.RecipeId:D}/{x.OperationId:D}", x => new
         { x.RecipeId, x.OperationId, x.InputHash, x.OriginalRequest, x.Result, x.CreatedAt });
         Add("publication", facts.Publications, x => $"{x.RecipeId:D}/{x.OperationId:D}");
         Add("workflow", facts.History.Instances, x => x.Id.ToString("D"), x => new WorkflowObservation(x.Id, x.WorkflowId,

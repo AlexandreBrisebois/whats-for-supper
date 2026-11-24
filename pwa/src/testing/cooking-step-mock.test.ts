@@ -1,11 +1,11 @@
 import { expect, it } from 'vitest';
-import { applyCanonicalEditorPatch } from '../../e2e/canonical-editor';
+import { applyStructuredEditorPatch } from '../../e2e/structured-editor';
 import { cookingStepRecipe } from '../../e2e/cooking-step-fixture';
 
 it('carries a proven whole use through a guarded original-total correction and rejects a stale step edit', () => {
   const original: any = cookingStepRecipe();
   const row = original.ingredientLines[0];
-  const result = applyCanonicalEditorPatch(original, {
+  const result = applyStructuredEditorPatch(original, {
     expectedContentRevision: original.contentRevision,
     ingredientLines: [
       {
@@ -22,7 +22,7 @@ it('carries a proven whole use through a guarded original-total correction and r
   expect(step.text).toBe(original.instructionSections[0].steps[0].text);
   expect(step.bindings).toHaveLength(1);
   expect(step.bindings[0].validatedContentRevision).toBe(result.body.recipe.contentRevision);
-  const stale = applyCanonicalEditorPatch(result.body.recipe, {
+  const stale = applyStructuredEditorPatch(result.body.recipe, {
     expectedContentRevision: original.contentRevision,
     instructionSections: [
       {
@@ -76,12 +76,12 @@ it.each([true, false])(
   'keeps absolute allocations separate from ingredient totals (split oil: %s)',
   async (splitOil) => {
     const { cookingAllocationRecipe } = await import('../../e2e/cooking-step-fixture');
-    const { cookingProjection, canonicalIngredientLines } =
+    const { cookingProjection, structuredIngredientLines } =
       await import('../../e2e/cooking-step-projection');
     const original = cookingAllocationRecipe(splitOil);
     const result = splitOil
       ? { status: 200, body: { recipe: original } }
-      : applyCanonicalEditorPatch(original, {
+      : applyStructuredEditorPatch(original, {
           expectedContentRevision: original.contentRevision,
           ingredientLines: [
             {
@@ -101,7 +101,7 @@ it.each([true, false])(
         ? ['Heat 2 tbsp oil.', 'Finish with 2 tbsp oil.']
         : ['Add 75 g pasta from a 400 g package; cook 20 minutes at 180 °C.']
     );
-    expect(canonicalIngredientLines(saved, splitOil ? 8 : 6)[0].quantity).toBe(splitOil ? 4 : 375);
+    expect(structuredIngredientLines(saved, splitOil ? 8 : 6)[0].quantity).toBe(splitOil ? 4 : 375);
     expect(saved.instructionSections[0].steps.map((step: any) => step.text)).toEqual(
       original.instructionSections[0].steps.map((step: any) => step.text)
     );
@@ -116,7 +116,7 @@ it('invalidates the entire explicit exhaustive group after a guarded total reduc
   const { cookingProjection } = await import('../../e2e/cooking-step-projection');
   const before = exhaustiveCookingRecipe();
   expect(cookingProjection(before, 8)!.validatedUses).toBe(2);
-  const reply = applyCanonicalEditorPatch(before, {
+  const reply = applyStructuredEditorPatch(before, {
     expectedContentRevision: before.contentRevision,
     ingredientLines: [
       {
@@ -138,10 +138,10 @@ it('invalidates the entire explicit exhaustive group after a guarded total reduc
 
 it('preserves relative half and binding identity through corrected totals with mixed uncertainty', async () => {
   const { fractionCookingRecipe } = await import('../../e2e/cooking-step-fixture');
-  const { cookingProjection, canonicalIngredientLines } =
+  const { cookingProjection, structuredIngredientLines } =
     await import('../../e2e/cooking-step-projection');
   const before = fractionCookingRecipe();
-  const reply = applyCanonicalEditorPatch(before, {
+  const reply = applyStructuredEditorPatch(before, {
     expectedContentRevision: before.contentRevision,
     ingredientLines: [
       {
@@ -161,7 +161,7 @@ it('preserves relative half and binding identity through corrected totals with m
     expect(result.sections[0].steps.slice(2).map((x: any) => x.text)).toEqual(
       before.instructionSections[0].steps.slice(2).map((x: any) => x.text)
     );
-    expect(canonicalIngredientLines(after, target)[0].quantity).toBe(
+    expect(structuredIngredientLines(after, target)[0].quantity).toBe(
       target == null ? 250 : (250 * target) / 4
     );
   }
@@ -210,7 +210,7 @@ it('revalidates two exhaustive relative halves against a corrected total', async
   }
   recipe.instructionSections[0].steps = steps;
   expect(cookingProjection(recipe, 6)!.validatedUses).toBe(2);
-  const reply = applyCanonicalEditorPatch(recipe, {
+  const reply = applyStructuredEditorPatch(recipe, {
     expectedContentRevision: recipe.contentRevision,
     ingredientLines: [
       {
@@ -258,7 +258,7 @@ it.each([
     };
   let current = before;
   if (['corrected', 'reduced'].includes(fault)) {
-    const result = applyCanonicalEditorPatch(before, {
+    const result = applyStructuredEditorPatch(before, {
       expectedContentRevision: before.contentRevision,
       ingredientLines: [
         {
@@ -350,7 +350,7 @@ it.each([
       rows[1].amountText = '3';
     }
     if (fault === 'countUnitChanged') rows[0].unit.text = 'g';
-    const reply = applyCanonicalEditorPatch(before, {
+    const reply = applyStructuredEditorPatch(before, {
       expectedContentRevision: before.contentRevision,
       ingredientLines: rows,
     });
@@ -358,7 +358,7 @@ it.each([
     after = reply.body.recipe;
   }
   if (fault === 'countTextChanged') {
-    const reply = applyCanonicalEditorPatch(before, {
+    const reply = applyStructuredEditorPatch(before, {
       expectedContentRevision: before.contentRevision,
       instructionSections: [
         {
@@ -473,7 +473,7 @@ it.each([
     rows[0].amount.value.n = '3';
     rows[0].amountText = '3';
     if (fault === 'rowUnitChanged') rows[0].unit.text = 'tsp';
-    const reply = applyCanonicalEditorPatch(before, {
+    const reply = applyStructuredEditorPatch(before, {
       expectedContentRevision: before.contentRevision,
       ingredientLines: rows,
     });
@@ -515,7 +515,7 @@ it('projects only an existing proven half annotation and carries it through a gu
   expect(cookingProjection(recipe, 6)!.sections[0].steps[0].text).toBe(
     'Add half of the pasta (150 g).'
   );
-  const corrected = applyCanonicalEditorPatch(recipe, {
+  const corrected = applyStructuredEditorPatch(recipe, {
     expectedContentRevision: recipe.contentRevision,
     ingredientLines: [
       {

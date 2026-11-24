@@ -193,7 +193,7 @@ public partial class RecoverySnapshotService
                 ? FoodVocabularyInventoryQualification.RequiredReferencesForDemoInvalidation(facts)
                 : FoodVocabularyInventoryQualification.RequiredReferences(facts)).Count != 0)
             throw new InvalidDataException("Legacy demo format 2 cannot represent food vocabulary authority or private food overrides; capture format 4 is required.");
-        foreach (var operation in facts.CanonicalOperations)
+        foreach (var operation in facts.StructuredOperations)
         {
             if (operation.OriginalRequest is null) continue;
             using var request = JsonDocument.Parse(operation.OriginalRequest);

@@ -54,7 +54,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 Assert.Equal(rawBefore, recipe.RawMetadata);
                 Assert.NotNull(recipe.FoodMappingEvidence);
                 evidence = JsonSerializer.Deserialize<RecipeFoodMappingEvidence>(recipe.FoodMappingEvidence, Json)!;
-                var retained = await db.CanonicalRecipeOperations.AsNoTracking().Where(x => x.RecipeId == Id).ToArrayAsync();
+                var retained = await db.StructuredRecipeOperations.AsNoTracking().Where(x => x.RecipeId == Id).ToArrayAsync();
                 accepted = Assert.Single(retained, x => x.OriginalRequest != null
                     && x.OriginalRequest.Contains(before.ContentRevision, StringComparison.Ordinal)
                     && x.Result.Contains(saved.ContentRevision, StringComparison.Ordinal));
@@ -73,12 +73,12 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             using (var replay = factory.Services.CreateScope())
             {
                 var db = replay.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                var count = await db.CanonicalRecipeOperations.CountAsync();
+                var count = await db.StructuredRecipeOperations.CountAsync();
                 var input = JsonSerializer.Deserialize<UpdateRecipeDto>(JsonSerializer.Serialize(request, Json), Json)!;
                 var result = await replay.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>()
                     .EditAsync(Id, before.SourceRevision, accepted.OperationId, input);
                 Assert.Equal(saved.ContentRevision, result.Content.ContentRevision);
-                Assert.Equal(count, await db.CanonicalRecipeOperations.CountAsync());
+                Assert.Equal(count, await db.StructuredRecipeOperations.CountAsync());
                 Assert.Equal(state, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id), Json));
             }
             using var following = await client.PatchAsJsonAsync($"/api/recipes/{Id}", new

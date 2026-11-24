@@ -518,12 +518,12 @@ public class DeploymentCalendarPostgresTests(ITestOutputHelper output)
             new Recipe
             {
                 Id = SelectedId, Name = "Sunday Chicken", Ingredients = "[\"Carrot\"]", IsReady = true, IsDiscoverable = true,
-                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+                StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
             },
             new Recipe
             {
                 Id = SentinelId, Name = "Next Sunday Lasagna", Ingredients = "[\"Potato\"]", IsReady = true, IsDiscoverable = true,
-                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)])
+                StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)])
             });
         foreach (var entry in db.ChangeTracker.Entries<Recipe>().ToArray())
         {

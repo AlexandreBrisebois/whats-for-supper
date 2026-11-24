@@ -64,7 +64,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
             Assert.Equal(files, VocabularyFiles(services));
             Assert.Equal(membership, (await db.FamilySettings.AsNoTracking().SingleAsync(x => x.Key == "food_vocabulary_publication")).Value.GetRawText());
             var after = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id);
-            Assert.Equal(saved.CanonicalContent, after.CanonicalContent);
+            Assert.Equal(saved.StructuredContent, after.StructuredContent);
             Assert.Equal(saved.FoodMappingEvidence, after.FoodMappingEvidence);
         });
 
@@ -128,7 +128,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                         new(Guid.Parse(onion.RowId), plan.WeekStartDate, onion.RowVersion, true, Guid.NewGuid(), epoch), reference: plan.WeekStartDate);
                     checkedPlan = await db.WeeklyPlans.AsNoTracking().SingleAsync(x => x.WeekStartDate == plan.WeekStartDate);
                     recipe = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-                    canonical = recipe.CanonicalContent!;
+                    canonical = recipe.StructuredContent!;
                     evidence = recipe.FoodMappingEvidence!;
                     files = VocabularyFiles(services);
                     membership = (await db.FamilySettings.AsNoTracking().SingleAsync(x => x.Key == "food_vocabulary_publication")).Value.GetRawText();
@@ -156,7 +156,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     using var response = await client.GetAsync($"/api/recipes/{id}");
                     response.EnsureSuccessStatusCode();
                     var recipe = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-                    Assert.Equal(canonical, recipe.CanonicalContent);
+                    Assert.Equal(canonical, recipe.StructuredContent);
                     Assert.Equal(evidence, recipe.FoodMappingEvidence);
                     Assert.Equal(membership, (await db.FamilySettings.AsNoTracking().SingleAsync(x => x.Key == "food_vocabulary_publication")).Value.GetRawText());
                     Assert.Equal(files, VocabularyFiles(services));

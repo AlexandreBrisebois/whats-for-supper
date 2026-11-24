@@ -238,11 +238,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             var saved = await db.Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id);
             Assert.Equal(winner == 0 ? "Count winner" : "Instruction winner", saved.Name);
             var beforeReplay = JsonSerializer.Serialize(saved);
-            var operations = await db.CanonicalRecipeOperations.CountAsync();
+            var operations = await db.StructuredRecipeOperations.CountAsync();
             Assert.Equal(HttpStatusCode.Conflict, (await other.PatchAsJsonAsync($"/api/recipes/{Id}", stepInput)).StatusCode);
             db.ChangeTracker.Clear();
             Assert.Equal(beforeReplay, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id)));
-            Assert.Equal(operations, await db.CanonicalRecipeOperations.CountAsync());
+            Assert.Equal(operations, await db.StructuredRecipeOperations.CountAsync());
             foreach (var response in responses) response.Dispose();
         });
     }

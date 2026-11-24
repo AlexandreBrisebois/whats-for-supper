@@ -344,7 +344,7 @@ ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS prepared_original
 ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS preparation_plan_token text;
 ALTER TABLE IF EXISTS calendar_events ADD COLUMN IF NOT EXISTS preparation_serving_version text;
 
--- Additive storage only. Canonical conversion remains an explicit gated operation.
+-- Additive storage for structured recipe content and edit operations.
 DO $$
 BEGIN
     IF to_regclass('public.recipes') IS NOT NULL THEN
@@ -374,8 +374,8 @@ BEGIN
     END IF;
 END $$;
 
--- Prevent legacy semantic writers (including raw SQL jobs) from replacing a
--- converted owner without a new coherent canonical revision.
+-- Prevent legacy semantic writers (including raw SQL jobs) from replacing
+-- structured recipe content without a new coherent content revision.
 CREATE OR REPLACE FUNCTION guard_canonical_recipe_content() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     IF OLD.canonical_content IS NOT NULL AND (

@@ -37,11 +37,16 @@ internal static partial class GroceryRowState
         if (!document.RootElement.TryGetProperty("version", out _))
             return (JsonSerializer.Deserialize<GroceryMutationResult>(record.Outcome) ?? throw new InvalidDataException("Missing grocery mutation result."), null);
         var retained = FoodVocabularyDefinitions.ReadStrict<CapturedMutation>(record.Outcome);
-        StructuredRecipeMigrationManifest.Require(retained.Version == 2 && !string.IsNullOrEmpty(retained.Input)
+        Require(retained.Version == 2 && !string.IsNullOrEmpty(retained.Input)
             && Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(retained.Input))) == record.InputHash,
             "Captured grocery mutation input does not match its immutable hash.");
         var result = FoodVocabularyDefinitions.ReadStrict<GroceryMutationResult>(retained.Result.GetRawText());
         var input = FoodVocabularyDefinitions.ReadStrict<JsonElement>(retained.Input);
         return (result, input);
+    }
+
+    private static void Require(bool valid, string message)
+    {
+        if (!valid) throw new InvalidDataException(message);
     }
 }

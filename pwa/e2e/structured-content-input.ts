@@ -1,5 +1,5 @@
 import { parseIngredientAmount } from '../src/lib/recipes/ingredient-amount';
-/** Staged canonical PATCH validation for the stateful API mock; no publication or ID allocation. */
+/** Staged structured PATCH validation for the stateful API mock; no publication or ID allocation. */
 type ObjectValue = Record<string, any>;
 const object = (value: unknown): value is ObjectValue =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -90,7 +90,7 @@ function facts(value: ObjectValue) {
       unit(pack.capacity.unit))
   );
 }
-export function canonicalRecipePatchIsValid(input: ObjectValue): boolean {
+export function structuredRecipePatchIsValid(input: ObjectValue): boolean {
   if (input.ingredients != null || input.recipeInstructions != null) return false;
   const saved = new Set<string>();
   const clients = new Set<string>();

@@ -136,7 +136,7 @@ public class CategorizeIngredientsProcessorTests : IDisposable
         _db.Recipes.Add(new Recipe
         {
             Id = _recipeId, RawMetadata = BuildRawMetadata("stale"),
-            CanonicalContent = JsonSerializer.Serialize(current)
+            StructuredContent = JsonSerializer.Serialize(current)
         });
         _db.IngredientCategories.Add(new IngredientCategory
         {

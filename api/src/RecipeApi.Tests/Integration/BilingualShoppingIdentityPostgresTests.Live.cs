@@ -179,7 +179,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                 await File.WriteAllTextAsync(Path.Combine(evidence, "persisted-result.json"), JsonSerializer.Serialize(new
                 {
                     recipes = await db.Recipes.AsNoTracking().Where(x => imports.Values.Select(value => value.Id).Contains(x.Id))
-                        .Select(x => new { x.Id, x.CanonicalContent, x.FoodMappingEvidence, x.RawMetadata }).ToArrayAsync(),
+                        .Select(x => new { x.Id, x.StructuredContent, x.FoodMappingEvidence, x.RawMetadata }).ToArrayAsync(),
                     vocabularyFiles = JsonSerializer.Deserialize<JsonElement>(originalFiles),
                     groceries = new { plan.GroceryItems, plan.GroceryState, plan.GroceryCheckedDemandBaselines },
                     providerCalls = provider.Invocations.Count, networkCalls = network.Invocations.Count

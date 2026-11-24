@@ -8,18 +8,18 @@ public static class SupperIngredientProjection
 {
     public static List<IngredientProjectionLineDto> Read(Recipe recipe, int? target)
     {
-        if (StructuredRecipeContentStore.Read(recipe) is { } canonical)
+        if (StructuredRecipeContentStore.Read(recipe) is { } structured)
         {
-            if (canonical.ContentSchemaVersion != 2)
+            if (structured.ContentSchemaVersion != 2)
                 throw new InvalidDataException("Unsupported canonical recipe content schema version.");
-            return ReadCanonical(canonical, target);
+            return ReadStructured(structured, target);
         }
         if (RecipeService.DeserializeIngredients(recipe.Ingredients).Count == 0 && string.IsNullOrWhiteSpace(recipe.RawMetadata))
             return [];
         throw new InvalidDataException("Recipe requires structured v2 canonical content.");
     }
 
-    private static List<IngredientProjectionLineDto> ReadCanonical(StructuredRecipeContent content, int? target)
+    private static List<IngredientProjectionLineDto> ReadStructured(StructuredRecipeContent content, int? target)
     {
         return content.IngredientLines.Select(row =>
         {

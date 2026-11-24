@@ -29,7 +29,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-                recipe.CanonicalContent = JsonSerializer.Serialize(seeded, Json);
+                recipe.StructuredContent = JsonSerializer.Serialize(seeded, Json);
                 await db.SaveChangesAsync();
             }
             return seeded;
@@ -110,14 +110,14 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Equal(section.Steps[0].Id, content.InstructionSections[0].Steps[0].Id);
             Assert.Equal(before.SourceRevision, content.SourceRevision);
             var persisted = JsonSerializer.Serialize(saved);
-            var operations = await db.CanonicalRecipeOperations.CountAsync();
+            var operations = await db.StructuredRecipeOperations.CountAsync();
             // Replaying the losing baseline and an unversioned writer cannot partially change even metadata.
             Assert.Equal(HttpStatusCode.Conflict, (await instructionClient.PatchAsJsonAsync($"/api/recipes/{Id}", instructionInput)).StatusCode);
             Assert.Equal(HttpStatusCode.Conflict, (await instructionClient.PatchAsJsonAsync($"/api/recipes/{Id}", new
             { name = "Must not save", instructionSections = instructionInput.instructionSections })).StatusCode);
             db.ChangeTracker.Clear();
             Assert.Equal(persisted, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)));
-            Assert.Equal(operations, await db.CanonicalRecipeOperations.CountAsync());
+            Assert.Equal(operations, await db.StructuredRecipeOperations.CountAsync());
             foreach (var reply in writes) reply.Dispose();
         });
     }

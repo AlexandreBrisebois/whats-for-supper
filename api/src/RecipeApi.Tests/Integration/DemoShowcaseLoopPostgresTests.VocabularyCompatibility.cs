@@ -36,9 +36,15 @@ public partial class DemoShowcaseLoopPostgresTests
         }
         if (owner == "canonical-v2")
         {
-            await services.GetRequiredService<StructuredRecipeContentStore>().ConvertAsync(recipe.Id,
-                StructuredRecipeContentStore.InspectContentRevision(recipe), StructuredRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
-            Assert.NotEmpty(await db.CanonicalRecipeOperations.ToArrayAsync());
+            var authority = await services.GetRequiredService<FoodVocabularyStore>().CaptureAuthorityAsync(null);
+            var (content, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+                recipe.Id, """{"recipeIngredient":["salt"]}""", null, authority, Guid.NewGuid(), "unknown");
+            recipe.StructuredContent = System.Text.Json.JsonSerializer.Serialize(content, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+            recipe.FoodMappingEvidence = evidence;
+            await db.SaveChangesAsync();
+            await services.GetRequiredService<StructuredRecipeContentStore>().EditAsync(recipe.Id, content.SourceRevision,
+                Guid.NewGuid(), new RecipeApi.Dto.UpdateRecipeDto { ExpectedContentRevision = content.ContentRevision, Name = "Structured boundary" });
+            Assert.NotEmpty(await db.StructuredRecipeOperations.ToArrayAsync());
         }
         var before = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id);
         await services.GetRequiredService<ManagementService>().CaptureDemoStateAsync();
@@ -50,7 +56,7 @@ public partial class DemoShowcaseLoopPostgresTests
         Assert.Contains(manifest.Files, x => x.Path == "vocabulary/index.json");
         Assert.Contains(manifest.Files, x => x.Path == "vocabulary/history-observations.json");
         var after = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id);
-        Assert.Equal((before.CanonicalContent, before.FoodMappingEvidence), (after.CanonicalContent, after.FoodMappingEvidence));
+        Assert.Equal((before.StructuredContent, before.FoodMappingEvidence), (after.StructuredContent, after.FoodMappingEvidence));
         Assert.Equal(owner == "override" ? 1 : 0, await db.HouseholdFoodOverrides.CountAsync());
         Assert.Equal(owner == "membership", await db.FamilySettings.AnyAsync(x => x.Key == "food_vocabulary_publication"));
     }

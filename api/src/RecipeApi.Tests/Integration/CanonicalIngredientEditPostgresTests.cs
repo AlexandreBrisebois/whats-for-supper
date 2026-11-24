@@ -46,9 +46,16 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
                     r.RawMetadata = """{"recipeIngredient":["200 g pasta","100 ml sauce"],"supply":[{"name":"pasta","quantity":200,"unitText":"g"},{"name":"sauce","quantity":100,"unitText":"ml"}],"recipeInstructions":[{"@type":"HowToStep","text":"Mix pasta and sauce."}]}""";
                 });
                 var recipe = await db.Recipes.SingleAsync(x => x.Id == Id);
-                content = (await services.GetRequiredService<StructuredRecipeContentStore>().ConvertAsync(Id,
-                    StructuredRecipeContentStore.InspectContentRevision(recipe),
-                    StructuredRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid())).Content;
+                (content, _) = StructuredRecipeContentStore.FromSchemaOrg(
+                    Id,
+                    recipe.RawMetadata!,
+                    recipe.SourceUrl,
+                    authority: null,
+                    origin: "unknown",
+                    explicitServings: recipe.Servings,
+                    overrideIngredientTexts: RecipeService.DeserializeIngredients(recipe.Ingredients));
+                recipe.StructuredContent = JsonSerializer.Serialize(content, Json);
+                await db.SaveChangesAsync();
             }
             await check(factory, content);
         });
@@ -93,7 +100,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             var content = StructuredRecipeContentStore.Read(saved)!;
             Assert.Equal("250", content.IngredientLines[0].AmountText);
             var baseline = JsonSerializer.Serialize(saved);
-            var operations = await db.CanonicalRecipeOperations.CountAsync();
+            var operations = await db.StructuredRecipeOperations.CountAsync();
             foreach (var invalid in new object[]
             {
                 new { expectedContentRevision = content.ContentRevision, name = "Invalid rating", rating = 4, ingredientLines = Array.Empty<object>() },
@@ -110,7 +117,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             })).StatusCode);
             db.ChangeTracker.Clear();
             Assert.Equal(baseline, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)));
-            Assert.Equal(operations, await db.CanonicalRecipeOperations.CountAsync());
+            Assert.Equal(operations, await db.StructuredRecipeOperations.CountAsync());
         });
     }
 
@@ -242,11 +249,11 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             Assert.Equal(QuantityMath.Parse("200"), SupperIngredientProjection.Read(saved, 8)[1].GroceryObservation.Quantity);
             Assert.Equal("pending", (await db.RecipeSearchDocuments.SingleAsync(x => x.RecipeId == Id)).IndexStatus);
             var persisted = JsonSerializer.Serialize(saved);
-            var operations = await db.CanonicalRecipeOperations.CountAsync();
+            var operations = await db.StructuredRecipeOperations.CountAsync();
             for (var i = 0; i < 2; i++) Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/recipes/{Id}")).StatusCode);
             db.ChangeTracker.Clear();
             Assert.Equal(persisted, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)));
-            Assert.Equal(operations, await db.CanonicalRecipeOperations.CountAsync());
+            Assert.Equal(operations, await db.StructuredRecipeOperations.CountAsync());
         });
     }
 
@@ -426,7 +433,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests(ITestOutputHelp
             await Assert.ThrowsAsync<RecipeContentConflictException>(() => store.EditAsync(Id, "stale-source", Guid.NewGuid(),
                 new UpdateRecipeDto { ExpectedContentRevision = content.ContentRevision, Name = "Must not save", IngredientLines = JsonSerializer.SerializeToElement(Array.Empty<object>()) }));
             db.ChangeTracker.Clear();
-            Assert.Equal(saved.CanonicalContent, (await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)).CanonicalContent);
+            Assert.Equal(saved.StructuredContent, (await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)).StructuredContent);
         });
     }
 

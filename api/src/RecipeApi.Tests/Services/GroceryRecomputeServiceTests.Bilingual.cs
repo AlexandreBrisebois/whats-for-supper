@@ -43,7 +43,7 @@ public partial class GroceryRecomputeServiceTests
         var mapped = FoodMappingQualification.Prepare(new(id, content, source), authority, Guid.NewGuid());
         var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
         recipe.RawMetadata = source;
-        recipe.CanonicalContent = JsonSerializer.Serialize(mapped.Export.Content, PackageJson);
+        recipe.StructuredContent = JsonSerializer.Serialize(mapped.Export.Content, PackageJson);
         recipe.FoodMappingEvidence = mapped.Evidence;
         await _db.SaveChangesAsync();
         return id;

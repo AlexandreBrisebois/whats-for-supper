@@ -1085,7 +1085,7 @@ public class RecipeSearchIntegrationTests : IAsyncLifetime
     {
         var reported = CreateRecipe("Best Chicken", "Chicken dinner", "30 min");
         reported.Rating = RecipeRating.Love;
-        reported.CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("chicken", null, null), ("garlic", null, null), ("spinach", null, null)]);
+        reported.StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("chicken", null, null), ("garlic", null, null), ("spinach", null, null)]);
         var ready = CreateRecipe("Ready Chicken", "Chicken dinner", "30 min");
         var ordinary = CreateRecipe("Ordinary Chicken", "Chicken dinner", "30 min");
 

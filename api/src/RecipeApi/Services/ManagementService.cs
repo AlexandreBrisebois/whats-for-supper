@@ -85,7 +85,7 @@ public partial class ManagementService(
                        || (!string.IsNullOrEmpty(recipe.Name) && recipe.IsSynthesized);
             if (!historyRecipeIds.Contains(recipe.Id) && pdfSource is null && !isReady &&
                 string.IsNullOrEmpty(recipe.RawMetadata) &&
-                recipe.CanonicalContent is null &&
+                recipe.StructuredContent is null &&
                 string.IsNullOrEmpty(recipe.Notes) &&
                 recipe.Rating == RecipeRating.Unknown)
             {
@@ -96,7 +96,7 @@ public partial class ManagementService(
             var existing = await recipeStore.ReadInfoAsync(recipe.Id);
             if (existing != null)
             {
-                if (recipe.CanonicalContent is not null)
+                if (recipe.StructuredContent is not null)
                 {
                     existing.AddedBy = recipe.AddedBy;
                     existing.CreatedAt = recipe.CreatedAt;
@@ -131,7 +131,7 @@ public partial class ManagementService(
             {
                 var info = new RecipeInfo
                 {
-                    IsReady = recipe.CanonicalContent is not null || pdfSource is not null || historyRecipeIds.Contains(recipe.Id) ? recipe.IsReady : null,
+                    IsReady = recipe.StructuredContent is not null || pdfSource is not null || historyRecipeIds.Contains(recipe.Id) ? recipe.IsReady : null,
                     DeletedAt = recipe.DeletedAt,
                     Id = recipe.Id,
                     Notes = recipe.Notes,
@@ -963,7 +963,7 @@ public partial class ManagementService(
         logger.LogInformation("Found {Count} recipes in store", recipeIds.Count);
         var missingMemberIds = new HashSet<Guid>();
         var recipesToRestore = new List<Recipe>();
-        var canonicalSeedConflicts = new HashSet<Guid>();
+        var structuredSeedConflicts = new HashSet<Guid>();
         var pendingPdfIds = new HashSet<Guid>();
         var explicitReadiness = new Dictionary<Guid, bool>();
 
@@ -1074,7 +1074,7 @@ public partial class ManagementService(
                                     recipeId, recipe.RawMetadata, recipe.SourceUrl, vocabularyAuthority, Guid.NewGuid(), "source");
                                 if (recipe.Servings is > 0 && derived.Servings is null)
                                     derived = derived with { Servings = recipe.Servings };
-                                recipe.CanonicalContent = JsonSerializer.Serialize(derived, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                                recipe.StructuredContent = JsonSerializer.Serialize(derived, new JsonSerializerOptions(JsonSerializerDefaults.Web));
                                 recipe.FoodMappingEvidence = evidence;
                                 recipe.Servings = derived.Servings;
                                 if (string.IsNullOrWhiteSpace(recipe.Ingredients) && derived.IngredientLines.Count > 0)
@@ -1169,7 +1169,7 @@ public partial class ManagementService(
                     existing.TotalTime = recipe.TotalTime;
                     existing.Ingredients = recipe.Ingredients;
                     existing.RawMetadata = recipe.RawMetadata;
-                    existing.CanonicalContent = recipe.CanonicalContent ?? existing.CanonicalContent;
+                    existing.StructuredContent = recipe.StructuredContent ?? existing.StructuredContent;
                     existing.FoodMappingEvidence = recipe.FoodMappingEvidence ?? existing.FoodMappingEvidence;
                     existing.Servings = recipe.Servings;
                     existing.ImageCount = recipe.ImageCount;
@@ -1213,7 +1213,7 @@ public partial class ManagementService(
 
         // 4b. Restore search index sidecars
         var configuredModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2";
-        foreach (var recipe in recipesToRestore.Where(x => !canonicalSeedConflicts.Contains(x.Id)))
+        foreach (var recipe in recipesToRestore.Where(x => !structuredSeedConflicts.Contains(x.Id)))
         {
             if (ct.IsCancellationRequested) break;
             try
@@ -1586,7 +1586,7 @@ public partial class ManagementService(
         {
             // Canonical metadata was already staged with its recipe. This legacy
             // repair must not reapply old disk choices after a guarded seed defers.
-            var recipes = await db.Recipes.IgnoreQueryFilters().Where(x => x.CanonicalContent == null).ToListAsync(ct);
+            var recipes = await db.Recipes.IgnoreQueryFilters().Where(x => x.StructuredContent == null).ToListAsync(ct);
             int updated = 0;
             foreach (var recipe in recipes)
             {

@@ -34,7 +34,7 @@ public static partial class FoodVocabularyInventoryQualification
             }
         }
         var facts = contexts.Select(x => x.Facts).ToArray();
-        Consistent(facts.SelectMany(x => x.CanonicalOperations), x => (x.RecipeId, x.OperationId), x => new
+        Consistent(facts.SelectMany(x => x.StructuredOperations), x => (x.RecipeId, x.OperationId), x => new
         {
             x.InputHash,
             OriginalRequest = JsonValue(x.OriginalRequest),

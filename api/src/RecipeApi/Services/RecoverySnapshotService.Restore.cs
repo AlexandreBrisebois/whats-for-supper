@@ -369,7 +369,7 @@ public partial class RecoverySnapshotService
         var servings = row.TryGetProperty("servings", out var sv) && sv.ValueKind == JsonValueKind.Number ? (int?)sv.GetInt32() : null;
         string recipeJson;
         if (!string.IsNullOrWhiteSpace(canonicalJson) &&
-            StructuredRecipeContentStore.Read(new Recipe { Id = id, CanonicalContent = canonicalJson }) is { } structured)
+            StructuredRecipeContentStore.Read(new Recipe { Id = id, StructuredContent = canonicalJson }) is { } structured)
         {
             recipeJson = StructuredRecipeContentStore.ToSchemaOrgJson(structured, rawMetadata, info.Name, info.Description);
         }

@@ -17,18 +17,18 @@ public class UpdateRecipeDto
     // input cannot be silently ignored while other fields in the PATCH commit.
     private System.Text.Json.JsonElement ingredientLines;
     private System.Text.Json.JsonElement instructionSections;
-    [JsonIgnore] public bool HasCanonicalContent { get; private set; }
+    [JsonIgnore] public bool HasStructuredContent { get; private set; }
     [JsonPropertyName("ingredientLines"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public System.Text.Json.JsonElement IngredientLines
     {
         get => ingredientLines;
-        set { ingredientLines = value; HasCanonicalContent = true; }
+        set { ingredientLines = value; HasStructuredContent = true; }
     }
     [JsonPropertyName("instructionSections"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public System.Text.Json.JsonElement InstructionSections
     {
         get => instructionSections;
-        set { instructionSections = value; HasCanonicalContent = true; }
+        set { instructionSections = value; HasStructuredContent = true; }
     }
 
     [JsonPropertyName("name")]

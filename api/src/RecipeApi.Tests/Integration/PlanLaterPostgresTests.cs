@@ -56,12 +56,12 @@ public partial class PlanLaterPostgresTests(Xunit.Abstractions.ITestOutputHelper
         var source = new Recipe
         {
             Id = Guid.NewGuid(), Name = "Carrot supper", Ingredients = "[\"carrots\"]", IsReady = true,
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("carrots", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("carrots", null, null)])
         };
         var target = new Recipe
         {
             Id = Guid.NewGuid(), Name = "Onion supper", Ingredients = "[\"onions\"]", IsReady = true,
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("onions", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("onions", null, null)])
         };
         db.Recipes.AddRange(source, target);
         db.CalendarEvents.AddRange(new CalendarEvent { Date = new(2026, 10, 12), RecipeId = source.Id },

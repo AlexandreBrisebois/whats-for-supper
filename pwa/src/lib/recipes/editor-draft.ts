@@ -15,12 +15,12 @@ export interface EditorFields {
   cuisineType: string;
   mealTypes: UpdateRecipeDto_mealTypes[];
   ingredients: string[];
-  canonicalDrafts: IngredientDraft[];
+  ingredientDrafts: IngredientDraft[];
   instructions?: unknown[];
 }
 export interface EditorBaseline {
   revision: string | null;
-  canonical: boolean;
+  structured: boolean;
   fields: EditorFields;
 }
 export interface EditorDraft {
@@ -73,10 +73,10 @@ function comparisonDraft(row: IngredientDraft): IngredientDraft {
 }
 export const editorBaselineMatches = (a: EditorBaseline, b: EditorBaseline) =>
   a.revision === b.revision &&
-  a.canonical === b.canonical &&
+  a.structured === b.structured &&
   same(
-    { ...a.fields, canonicalDrafts: a.fields.canonicalDrafts.map(comparisonDraft) },
-    { ...b.fields, canonicalDrafts: b.fields.canonicalDrafts.map(comparisonDraft) }
+    { ...a.fields, ingredientDrafts: a.fields.ingredientDrafts.map(comparisonDraft) },
+    { ...b.fields, ingredientDrafts: b.fields.ingredientDrafts.map(comparisonDraft) }
   );
 
 export function editorBaseline(
@@ -85,7 +85,7 @@ export function editorBaseline(
 ): EditorBaseline {
   return {
     revision: recipe.contentRevision ?? null,
-    canonical: recipe.contentSchemaVersion === 2,
+    structured: recipe.contentSchemaVersion === 2,
     fields: {
       name: recipe.name,
       description: recipe.description ?? '',
@@ -94,22 +94,22 @@ export function editorBaseline(
       mealTypes,
       ingredients: recipe.ingredients ?? [],
       instructions: originalInstructions(recipe),
-      canonicalDrafts: (recipe.ingredientLines ?? []).map(ingredientDraft),
+      ingredientDrafts: (recipe.ingredientLines ?? []).map(ingredientDraft),
     },
   };
 }
 
-function value(fields: EditorFields, field: EditorField, canonical: boolean) {
+function value(fields: EditorFields, field: EditorField, structured: boolean) {
   return field === 'ingredients'
-    ? canonical
-      ? fields.canonicalDrafts.map(comparisonDraft)
+    ? structured
+      ? fields.ingredientDrafts.map(comparisonDraft)
       : fields.ingredients
     : fields[field];
 }
 function set(target: EditorFields, source: EditorFields, field: EditorField) {
   if (field === 'ingredients') {
     target.ingredients = source.ingredients;
-    target.canonicalDrafts = source.canonicalDrafts;
+    target.ingredientDrafts = source.ingredientDrafts;
   } else Object.assign(target, { [field]: source[field] });
 }
 export function reconcileEditorDraft(
@@ -120,13 +120,13 @@ export function reconcileEditorDraft(
   const fields = structuredClone(current.fields);
   const conflicts: EditorField[] = [];
   for (const field of editorFields) {
-    const before = value(draft.baseline.fields, field, draft.baseline.canonical);
-    const mine = value(draft.fields, field, draft.baseline.canonical);
-    const theirs = value(current.fields, field, current.canonical);
+    const before = value(draft.baseline.fields, field, draft.baseline.structured);
+    const mine = value(draft.fields, field, draft.baseline.structured);
+    const theirs = value(current.fields, field, current.structured);
     if (same(mine, before)) continue;
     const compatible =
       !['ingredients', 'instructions'].includes(field) ||
-      draft.baseline.canonical === current.canonical;
+      draft.baseline.structured === current.structured;
     if (compatible && (same(theirs, before) || same(mine, theirs)))
       set(fields, draft.fields, field);
     else if (choices[field] === 'current') continue;
@@ -141,14 +141,14 @@ export function restoreDeletedEditorRows(
   fields: EditorFields,
   current: EditorBaseline
 ): EditorFields {
-  const savedIds = new Set(current.fields.canonicalDrafts.map((row) => row.source.id));
+  const savedIds = new Set(current.fields.ingredientDrafts.map((row) => row.source.id));
   const literalUnit = (unit: IngredientDraft['source']['unit']) =>
     unit == null ? unit : { text: unit.text, definitionId: null };
   // Only called by explicit Apply. A restored deleted row is a new create,
   // never a claim that an absent saved identity continued.
   return {
     ...fields,
-    ...(current.canonical && fields.instructions
+    ...(current.structured && fields.instructions
       ? {
           instructions: restoreDeletedInstructionIds(
             fields.instructions,
@@ -156,7 +156,7 @@ export function restoreDeletedEditorRows(
           ),
         }
       : {}),
-    canonicalDrafts: fields.canonicalDrafts.map((row) => {
+    ingredientDrafts: fields.ingredientDrafts.map((row) => {
       if (!row.source.id || savedIds.has(row.source.id)) return row;
       const { id: _id, ...facts } = row.source;
       const clientId = crypto.randomUUID();
@@ -222,8 +222,8 @@ function validFields(value: unknown): value is EditorFields {
     strings(value.mealTypes) &&
     strings(value.ingredients) &&
     (value.instructions === undefined || Array.isArray(value.instructions)) &&
-    Array.isArray(value.canonicalDrafts) &&
-    value.canonicalDrafts.every(
+    Array.isArray(value.ingredientDrafts) &&
+    value.ingredientDrafts.every(
       (row) =>
         object(row) &&
         ['key', 'description', 'amount', 'unit', 'shoppingName'].every(
@@ -250,7 +250,7 @@ function validBaseline(value: unknown): value is EditorBaseline {
   return (
     object(value) &&
     (value.revision === null || typeof value.revision === 'string') &&
-    typeof value.canonical === 'boolean' &&
+    typeof value.structured === 'boolean' &&
     validFields(value.fields)
   );
 }

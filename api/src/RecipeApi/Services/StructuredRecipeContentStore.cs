@@ -29,8 +29,8 @@ public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, ICl
 
     public static string InspectContentRevision(Recipe recipe) => Read(recipe)?.ContentRevision ?? RecipeContentRevision.Legacy(recipe);
     public static string InspectSourceRevision(Recipe recipe) => Read(recipe)?.SourceRevision ?? "source." + Hash(new { recipe.SourceUrl, Source = NormalizeJson(recipe.RawMetadata) });
-    public static StructuredRecipeContent? Read(Recipe recipe) => recipe.CanonicalContent is null ? null
-        : JsonSerializer.Deserialize<StructuredRecipeContent>(recipe.CanonicalContent, Json)
+    public static StructuredRecipeContent? Read(Recipe recipe) => recipe.StructuredContent is null ? null
+        : JsonSerializer.Deserialize<StructuredRecipeContent>(recipe.StructuredContent, Json)
             ?? throw new InvalidDataException("Invalid saved canonical recipe content.");
 
     // This is preparation for a witnessed new source, not conversion of a saved
@@ -48,7 +48,7 @@ public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, ICl
     // never a second provider response or today's mutable recipe row.
     internal static StructuredRecipeExport PrepareReviewedSource(RecipePublicationFields saved)
     {
-        if (saved.Ingredients is null || saved.RawMetadata is null || saved.CanonicalContent is not null || saved.IsReady)
+        if (saved.Ingredients is null || saved.RawMetadata is null || saved.StructuredContent is not null || saved.IsReady)
             throw new InvalidDataException("Reviewed source needs captured editable content.");
         var raw = JsonNode.Parse(saved.RawMetadata) as JsonObject
             ?? throw new InvalidDataException("Reviewed source metadata is invalid.");
@@ -61,36 +61,6 @@ public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, ICl
         }).ToArray();
         var result = prepared with { Content = prepared.Content with { IngredientLines = lines } };
         ValidateContent(result.Content, rawMetadata: result.RawMetadata);
-        return result;
-    }
-
-    public Task<StructuredRecipeWriteResult> ConvertAsync(Guid id, string expectedContentRevision,
-        string expectedSourceRevision, Guid operationId, CancellationToken ct = default)
-        => ConvertCoreAsync(id, expectedContentRevision, expectedSourceRevision, operationId, ct);
-
-    // The migration caller rebuilds every week synchronously. The same converter
-    // and V2 replay owner run without scheduling redundant refresh workflows.
-    private async Task<StructuredRecipeWriteResult> ConvertCoreAsync(Guid id, string expectedContentRevision,
-        string expectedSourceRevision, Guid operationId, CancellationToken ct,
-        Func<CancellationToken, Task>? migrationAdmission = null, StructuredRecipeOperation? prepared = null)
-    {
-        if (migrationAdmission is not null) await migrationAdmission(ct);
-        RequireOperation(operationId);
-        var hash = Hash(new { Kind = "convert", expectedContentRevision, expectedSourceRevision });
-        var before = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException();
-        if (await Replay(id, operationId, hash, before, ct) is { } historical) return historical;
-        var authority = await vocabulary.CaptureAuthorityAsync(before.FoodMappingEvidence, ct);
-        await using var transaction = await RecipeRotation.LockAsync(db, id, ct, lockSupperInputs: true);
-        var recipe = await db.Recipes.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new KeyNotFoundException();
-        if (migrationAdmission is not null) await migrationAdmission(ct);
-        if (await Replay(id, operationId, hash, recipe, ct) is { } replay) return replay;
-        Guard(recipe, expectedContentRevision, expectedSourceRevision);
-        if (EvidenceValue(recipe) != EvidenceValue(before)) throw Conflict(recipe);
-        await vocabulary.ValidateLiveAuthorityAsync(authority, ct);
-        var result = await ApplyPreparedConversionAsync(recipe, authority, operationId, hash, prepared,
-            deferGroceryRefresh: migrationAdmission is not null, ct);
-        if (migrationAdmission is not null) await migrationAdmission(ct);
-        if (transaction is not null) await transaction.CommitAsync(ct);
         return result;
     }
 
@@ -119,7 +89,7 @@ public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, ICl
         // No tracked mutation occurs above this point; invalid membership/guards cannot partially save.
         RecipeService.ApplyEditableDetailFields(recipe, input, validation ?? new ValidationService());
         recipe.FoodMappingEvidence = mapped.Evidence;
-        recipe.CanonicalContent = JsonSerializer.Serialize(content, Json);
+        recipe.StructuredContent = JsonSerializer.Serialize(content, Json);
         recipe.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(Render));
         recipe.Servings = content.Servings;
         recipe.UpdatedAt = clock.UtcNow;
@@ -468,22 +438,13 @@ public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, ICl
     }
     private async Task<StructuredRecipeWriteResult?> Replay(Guid id, Guid operation, string hash, Recipe recipe, CancellationToken ct)
     {
-        var previous = await db.CanonicalRecipeOperations.AsNoTracking().SingleOrDefaultAsync(x => x.RecipeId == id && x.OperationId == operation, ct);
+        var previous = await db.StructuredRecipeOperations.AsNoTracking().SingleOrDefaultAsync(x => x.RecipeId == id && x.OperationId == operation, ct);
         if (previous is null) return null;
         if (IsV2(previous)) return ReplayV2(previous, hash, recipe);
         if (previous.InputHash != hash) throw Conflict(recipe);
         ValidateOriginalOperation(previous);
         return JsonSerializer.Deserialize<StructuredRecipeWriteResult>(previous.Result, Json) ?? throw new InvalidDataException("Invalid canonical replay.");
     }
-    private void Record(Guid id, Guid operation, string hash, StructuredRecipeWriteResult result, string originalRequest) => db.CanonicalRecipeOperations.Add(new()
-    {
-        RecipeId = id,
-        OperationId = operation,
-        InputHash = hash,
-        OriginalRequest = originalRequest,
-        Result = JsonSerializer.Serialize(result, Json),
-        CreatedAt = clock.UtcNow
-    });
     private async Task Invalidate(Recipe recipe, CancellationToken ct, bool deferGroceryRefresh = false)
     {
         var sidecar = await db.RecipeSearchDocuments.FindAsync([recipe.Id], ct);

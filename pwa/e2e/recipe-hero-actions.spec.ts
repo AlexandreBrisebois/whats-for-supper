@@ -249,7 +249,7 @@ test('canonical original editor saves through the generated client and reopens s
     provenance: { origin: 'unknown', sourceRef: null, protectedFields: [] },
   });
   await setupCommonRoutes(page, undefined, {
-    canonicalEditor: builders.recipe({
+    structuredEditor: builders.recipe({
       id,
       name: 'Original facts pasta',
       contentSchemaVersion: 2,

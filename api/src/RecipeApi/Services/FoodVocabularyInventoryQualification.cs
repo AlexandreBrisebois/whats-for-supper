@@ -1,10 +1,12 @@
+using System.Text.Json.Serialization;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 
 namespace RecipeApi.Services;
 
 public sealed record FoodVocabularyMembershipObservation(string? RawJson);
-public sealed record FoodVocabularyRecipeObservation(Guid RecipeId, string? CanonicalContent, string? FoodMappingEvidence);
+public sealed record FoodVocabularyRecipeObservation(Guid RecipeId,
+    [property: JsonPropertyName("canonicalContent")] string? StructuredContent, string? FoodMappingEvidence);
 public enum FoodVocabularyOverrideCoverage { LiveOwnerNotImplemented, CapturedV1 }
 public sealed record FoodVocabularyScopedOverrideObservation(Guid Id, string Revision, Guid? FoodId,
     string? DictionaryRevision, FoodVocabularyReference? Document, string? FallbackKey, string? ShoppingName,
@@ -20,7 +22,7 @@ public sealed record FoodVocabularyHistoryFacts(IReadOnlyList<WorkflowInstance> 
     IReadOnlyList<MaintenanceCommandLifecycleRecord> MaintenanceRetirements, IReadOnlyList<FoodVocabularyStagedJournalObservation> StagedJournals,
     IReadOnlyList<MaintenanceCommandObservation> Commands);
 public sealed record FoodVocabularyInventoryFacts(FoodVocabularyMembershipObservation Membership,
-    IReadOnlyList<FoodVocabularyRecipeObservation> Recipes, IReadOnlyList<StructuredRecipeOperation> CanonicalOperations,
+    IReadOnlyList<FoodVocabularyRecipeObservation> Recipes, IReadOnlyList<StructuredRecipeOperation> StructuredOperations,
     IReadOnlyList<RecipeFilePublication> Publications, FoodVocabularyHistoryFacts History, FoodVocabularyOverrideFeed Overrides);
 public sealed record FoodVocabularyReferenceOrigin(FoodVocabularyReference Reference, string OwnerKind, string OwnerKey);
 
@@ -40,14 +42,14 @@ public static partial class FoodVocabularyInventoryQualification
     private static IReadOnlyList<FoodVocabularyReferenceOrigin> RequiredReferences(FoodVocabularyInventoryFacts facts, bool prospectiveDemoInvalidation)
     {
         FoodVocabularyDefinitions.Require(facts is not null && facts.Membership is not null && facts.Recipes is not null
-            && facts.CanonicalOperations is not null && facts.Publications is not null && facts.History is not null
+            && facts.StructuredOperations is not null && facts.Publications is not null && facts.History is not null
             && facts.Overrides is not null);
         var history = facts.History;
         FoodVocabularyDefinitions.Require(history.Instances is not null && history.Launches is not null && history.Children is not null
             && history.Resets is not null && history.Attempts is not null && history.Retirements is not null && history.Repairs is not null
             && history.PhysicalRetirements is not null && history.MaintenanceRetirements is not null && history.StagedJournals is not null && history.Commands is not null);
         RequireUnique(facts.Recipes, x => x.RecipeId);
-        RequireUnique(facts.CanonicalOperations, x => (x.RecipeId, x.OperationId));
+        RequireUnique(facts.StructuredOperations, x => (x.RecipeId, x.OperationId));
         RequireUnique(facts.Publications, x => (x.RecipeId, x.OperationId));
         RequireUnique(history.Instances, x => x.Id);
         RequireUnique(history.Launches, x => x.Id);
@@ -72,8 +74,9 @@ public static partial class FoodVocabularyInventoryQualification
         if (facts.Membership.RawJson is { } membership)
             Add(FoodVocabularyStore.MembershipReferences(membership), "membership", "food_vocabulary_publication");
         foreach (var recipe in facts.Recipes) Add(RecipeReferences(recipe), "recipe", recipe.RecipeId.ToString("D"));
-        foreach (var operation in facts.CanonicalOperations)
+        foreach (var operation in facts.StructuredOperations)
             Add(StructuredRecipeContentStore.VocabularyReferences(operation),
+                // Persisted snapshot wire identifier ("canonical-operation").
                 "canonical-operation", $"{operation.RecipeId:D}/{operation.OperationId:D}");
         foreach (var launch in history.Launches)
             Add(WorkflowOrchestrator.VocabularyReferences(launch), "launch", launch.Id.ToString("D"));
@@ -93,17 +96,9 @@ public static partial class FoodVocabularyInventoryQualification
         foreach (var physical in history.PhysicalRetirements)
             Add(RecipePhysicalLifecycle.VocabularyReferences(physical), "physical-retirement", physical.RecipeId.ToString("D"));
         foreach (var command in history.Commands)
-        {
             MaintenanceCommandLifecycle.ValidateCurrentReferences(command, history.Retirements, history.PhysicalRetirements);
-            if (command.CommandType == StructuredRecipeMigrationReceipt.CommandType)
-                Add(StructuredRecipeMigrationReceipt.VocabularyReferences(command), "migration-receipt", command.Id.ToString("D"));
-        }
         foreach (var maintenance in history.MaintenanceRetirements)
-        {
-            var command = MaintenanceCommandLifecycle.ReadValidatedRetainedCommand(maintenance, history.Retirements, history.PhysicalRetirements);
-            if (command.CommandType == StructuredRecipeMigrationReceipt.CommandType)
-                Add(StructuredRecipeMigrationReceipt.VocabularyReferences(command), "retained-migration-receipt", command.Id.ToString("D"));
-        }
+            MaintenanceCommandLifecycle.ValidateRetainedReferences(maintenance, history.Retirements, history.PhysicalRetirements);
         foreach (var physical in history.PhysicalRetirements)
             RecipePhysicalLifecycle.ValidateRetainedWorkflowReferences(physical, history.Retirements);
         if (facts.Overrides.Coverage == FoodVocabularyOverrideCoverage.LiveOwnerNotImplemented)
@@ -133,7 +128,7 @@ public static partial class FoodVocabularyInventoryQualification
     internal static FoodVocabularyReference[] RecipeReferences(FoodVocabularyRecipeObservation recipe)
     {
         FoodVocabularyDefinitions.Require(recipe.RecipeId != Guid.Empty);
-        var content = StructuredRecipeContentStore.Read(new Recipe { Id = recipe.RecipeId, CanonicalContent = recipe.CanonicalContent });
+        var content = StructuredRecipeContentStore.Read(new Recipe { Id = recipe.RecipeId, StructuredContent = recipe.StructuredContent });
         if (content is null)
         {
             FoodVocabularyDefinitions.Require(recipe.FoodMappingEvidence is null);

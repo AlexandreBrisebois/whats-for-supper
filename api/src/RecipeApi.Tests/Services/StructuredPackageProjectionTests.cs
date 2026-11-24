@@ -18,7 +18,7 @@ public sealed class StructuredPackageProjectionTests
             Package = package ? new(new("cans", null), new(QuantityMath.Parse(capacity)!, new("g", null)), "net") : null,
             Shopping = new("tomatoes", null, null), Provenance = new("human", "retained-source", ["package"]) };
         var content = new StructuredRecipeContent(2, "content", "source", basis, [row], []);
-        return (new Recipe { Servings = basis, CanonicalContent = JsonSerializer.Serialize(content, Json),
+        return (new Recipe { Servings = basis, StructuredContent = JsonSerializer.Serialize(content, Json),
             Ingredients = "[\"original source tomatoes\"]", RawMetadata = "{\"recipeIngredient\":[\"original source tomatoes\"]}" }, row);
     }
 

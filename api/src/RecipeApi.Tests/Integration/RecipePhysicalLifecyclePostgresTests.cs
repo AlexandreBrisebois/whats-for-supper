@@ -35,7 +35,7 @@ public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper outpu
                 Payload = "{\"original\":\"pending, not a receipt\"}", InputHash = "original-input", ResultHash = "original-result", Delivered = false };
             var canonical = new StructuredRecipeOperation { RecipeId = recipe.Id, OperationId = Guid.NewGuid(),
                 InputHash = "original-canonical", Result = "{\"humanClear\":null}" };
-            db.Recipes.Add(recipe); db.RecipeFilePublications.Add(publication); db.CanonicalRecipeOperations.Add(canonical);
+            db.Recipes.Add(recipe); db.RecipeFilePublications.Add(publication); db.StructuredRecipeOperations.Add(canonical);
             await db.SaveChangesAsync();
             var directory = Path.Combine(root.Root, recipe.Id.ToString());
             Directory.CreateDirectory(directory); await File.WriteAllTextAsync(Path.Combine(directory, "recipe.json"), "original files");
@@ -46,7 +46,7 @@ public sealed class RecipePhysicalLifecyclePostgresTests(ITestOutputHelper outpu
             db.ChangeTracker.Clear();
             Assert.False(await db.Recipes.IgnoreQueryFilters().AnyAsync(x => x.Id == recipe.Id));
             Assert.Empty(await db.RecipeFilePublications.ToArrayAsync());
-            Assert.Empty(await db.CanonicalRecipeOperations.ToArrayAsync());
+            Assert.Empty(await db.StructuredRecipeOperations.ToArrayAsync());
             var connection = db.Database.GetDbConnection(); await connection.OpenAsync();
             await using var exists = connection.CreateCommand();
             exists.CommandText = "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename='recipe_physical_deletions'";

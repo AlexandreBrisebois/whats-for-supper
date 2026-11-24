@@ -44,7 +44,7 @@ public partial class SupperServingsPostgresTests
                 Servings = 2,
                 Ingredients = "[\"200 g pasta\",\"Salt to taste\"]",
                 RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\",\"Salt to taste\"],\"supply\":[{\"name\":\"pasta\",\"requiredQuantity\":{\"value\":200,\"unitText\":\"g\"}},{\"name\":\"Salt\",\"requiredQuantity\":null}]}",
-                CanonicalContent = BuildProjectionCanonical(2, ProjectionLine("pasta", "200", "g"), ProjectionLine("Salt to taste", null))
+                StructuredContent = BuildProjectionCanonical(2, ProjectionLine("pasta", "200", "g"), ProjectionLine("Salt to taste", null))
             };
             db.Recipes.Add(recipe);
             db.FamilySettings.Add(new FamilySetting { Key = "supper_servings_default", Value = JsonSerializer.SerializeToElement(new { servings = 4 }) });
@@ -119,11 +119,11 @@ public partial class SupperServingsPostgresTests
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
             db.FamilySettings.Add(new FamilySetting { Key = "supper_servings_default", Value = JsonSerializer.SerializeToElement(new { servings = 6 }) });
             var recipes = new[] {
-                new Recipe { Name="Fraction", Servings=2, Ingredients="[\"1/2 cup flour\"]", RawMetadata="{\"ingredients\":[\"1/2 cup flour\"],\"supply\":[{\"name\":\"flour\",\"quantity\":0.5,\"unitText\":\"cup\"}]}", CanonicalContent=BuildProjectionCanonical(2, ProjectionLine("flour", "1/2", "cup")) },
-                new Recipe { Name="Package", Servings=2, Ingredients="[\"2 cans tomatoes (400 g each)\"]", RawMetadata="{\"recipeIngredient\":[\"2 cans tomatoes (400 g each)\"],\"supply\":[{\"name\":\"tomatoes (400 g each)\",\"requiredQuantity\":{\"value\":2,\"unitText\":\"cans\"}}]}", CanonicalContent=BuildProjectionCanonical(2, ProjectionLine("tomatoes (400 g each)", "2", "cans")) },
-                new Recipe { Name="IndependentEdit", Servings=2, Ingredients="[\"300 g current pasta\"]", RawMetadata="{\"recipeIngredient\":[\"200 g old pasta\"],\"supply\":[{\"name\":\"old pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent=BuildProjectionCanonical(2, ProjectionLine("current pasta", "300", "g")) },
-                new Recipe { Name="UnquantifiedLine", Servings=2, Ingredients="[\"pasta\"]", CanonicalContent=BuildProjectionCanonical(2, ProjectionLine("pasta", null)) },
-                new Recipe { Name="Unknown basis", Ingredients="[\"200 g pasta\"]", RawMetadata="{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent=BuildProjectionCanonical(null, ProjectionLine("pasta", "200", "g")) },
+                new Recipe { Name="Fraction", Servings=2, Ingredients="[\"1/2 cup flour\"]", RawMetadata="{\"ingredients\":[\"1/2 cup flour\"],\"supply\":[{\"name\":\"flour\",\"quantity\":0.5,\"unitText\":\"cup\"}]}", StructuredContent=BuildProjectionCanonical(2, ProjectionLine("flour", "1/2", "cup")) },
+                new Recipe { Name="Package", Servings=2, Ingredients="[\"2 cans tomatoes (400 g each)\"]", RawMetadata="{\"recipeIngredient\":[\"2 cans tomatoes (400 g each)\"],\"supply\":[{\"name\":\"tomatoes (400 g each)\",\"requiredQuantity\":{\"value\":2,\"unitText\":\"cans\"}}]}", StructuredContent=BuildProjectionCanonical(2, ProjectionLine("tomatoes (400 g each)", "2", "cans")) },
+                new Recipe { Name="IndependentEdit", Servings=2, Ingredients="[\"300 g current pasta\"]", RawMetadata="{\"recipeIngredient\":[\"200 g old pasta\"],\"supply\":[{\"name\":\"old pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", StructuredContent=BuildProjectionCanonical(2, ProjectionLine("current pasta", "300", "g")) },
+                new Recipe { Name="UnquantifiedLine", Servings=2, Ingredients="[\"pasta\"]", StructuredContent=BuildProjectionCanonical(2, ProjectionLine("pasta", null)) },
+                new Recipe { Name="Unknown basis", Ingredients="[\"200 g pasta\"]", RawMetadata="{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", StructuredContent=BuildProjectionCanonical(null, ProjectionLine("pasta", "200", "g")) },
             };
             var populatedV1 = new Recipe { Name = "Populated V1", Servings = 2, Ingredients = "[\"200 g pasta\"]" };
             db.Recipes.AddRange(recipes);
@@ -165,7 +165,7 @@ public partial class SupperServingsPostgresTests
             var recipe = new Recipe { Name = "Mixed", Servings = 2,
                 Ingredients = "[\"200 g pasta\",\"sauce\"]",
                 RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\",\"sauce\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"},{\"name\":\"\",\"quantity\":10}]}",
-                CanonicalContent = BuildProjectionCanonical(2, ProjectionLine("pasta", "200", "g"), ProjectionLine("sauce", null)) };
+                StructuredContent = BuildProjectionCanonical(2, ProjectionLine("pasta", "200", "g"), ProjectionLine("sauce", null)) };
             db.Recipes.Add(recipe);
             db.FamilySettings.Add(new FamilySetting { Key = "supper_servings_default", Value = JsonSerializer.SerializeToElement(new { servings = 4 }) });
             await db.SaveChangesAsync();
@@ -205,9 +205,9 @@ public partial class SupperServingsPostgresTests
             await using var factory = await TomorrowPushPostgresTests.CreateFactory(settings);
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var known = new Recipe { Name = "Known", Servings = 2, Ingredients = "[\"200 g pasta\",\"Salt to taste\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\",\"Salt to taste\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"},{\"name\":\"salt\"}]}", CanonicalContent = BuildProjectionCanonical(2, ProjectionLine("pasta", "200", "g"), ProjectionLine("Salt to taste", null, shoppingName: "salt")) };
-            var unknown = new Recipe { Name = "Unknown", Servings = 2, Ingredients = "[\"pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"pasta\"],\"supply\":[{\"name\":\"pasta\",\"unitText\":\"g\"}]}", CanonicalContent = BuildProjectionCanonical(2, ProjectionLine("pasta", null, "g")) };
-            var stale = new Recipe { Name = "Stale", Servings = 2, Ingredients = "[\"current sauce\"]", RawMetadata = "{\"recipeIngredient\":[\"old sauce\"],\"supply\":[{\"name\":\"old sauce\",\"quantity\":100,\"unitText\":\"g\"}]}", CanonicalContent = BuildProjectionCanonical(2, ProjectionLine("current sauce", null)) };
+            var known = new Recipe { Name = "Known", Servings = 2, Ingredients = "[\"200 g pasta\",\"Salt to taste\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\",\"Salt to taste\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"},{\"name\":\"salt\"}]}", StructuredContent = BuildProjectionCanonical(2, ProjectionLine("pasta", "200", "g"), ProjectionLine("Salt to taste", null, shoppingName: "salt")) };
+            var unknown = new Recipe { Name = "Unknown", Servings = 2, Ingredients = "[\"pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"pasta\"],\"supply\":[{\"name\":\"pasta\",\"unitText\":\"g\"}]}", StructuredContent = BuildProjectionCanonical(2, ProjectionLine("pasta", null, "g")) };
+            var stale = new Recipe { Name = "Stale", Servings = 2, Ingredients = "[\"current sauce\"]", RawMetadata = "{\"recipeIngredient\":[\"old sauce\"],\"supply\":[{\"name\":\"old sauce\",\"quantity\":100,\"unitText\":\"g\"}]}", StructuredContent = BuildProjectionCanonical(2, ProjectionLine("current sauce", null)) };
             db.Recipes.AddRange(known, unknown, stale);
             db.CalendarEvents.AddRange(new CalendarEvent { Date = Wednesday, RecipeId = known.Id }, new CalendarEvent { Date = Wednesday.AddDays(1), RecipeId = unknown.Id }, new CalendarEvent { Date = Wednesday.AddDays(2), RecipeId = stale.Id });
             db.FamilySettings.Add(new FamilySetting { Key = "supper_servings_default", Value = JsonSerializer.SerializeToElement(new { servings = 4 }) });

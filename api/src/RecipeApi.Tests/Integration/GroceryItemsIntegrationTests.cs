@@ -95,7 +95,7 @@ public class GroceryItemsIntegrationTests : IAsyncLifetime
             Name = name,
             ImageCount = 1,
             RawMetadata = supplyJson,
-            CanonicalContent = BuildCanonicalContentFromSupplyJson(supplyJson),
+            StructuredContent = BuildCanonicalContentFromSupplyJson(supplyJson),
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };

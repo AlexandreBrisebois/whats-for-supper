@@ -35,7 +35,7 @@ public partial class GroceryRecomputeServiceTests
         var text = amount is null ? "pasta" : $"{amount} {unit} pasta";
         recipe.Ingredients = JsonSerializer.Serialize(new[] { text });
         recipe.RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { text }, supply = new[] { new { name = "pasta", quantity = amount is null ? (double?)null : double.Parse(amount.Split('–')[0], System.Globalization.CultureInfo.InvariantCulture), unitText = unit } } });
-        recipe.CanonicalContent = BuildCanonicalContent([("pasta", amount, unit)], recipe.Servings, recipe.CanonicalContent);
+        recipe.StructuredContent = BuildCanonicalContent([("pasta", amount, unit)], recipe.Servings, recipe.StructuredContent);
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
         _db.ChangeTracker.Clear();
@@ -140,7 +140,7 @@ public partial class GroceryRecomputeServiceTests
         var recipe = await _db.Recipes.SingleAsync(r => r.Id == id);
         recipe.Ingredients = "[\"1/3 cup pasta\"]";
         recipe.RawMetadata = "{\"recipeIngredient\":[\"1/3 cup pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":0.33,\"unitText\":\"cup\"}]}";
-        recipe.CanonicalContent = BuildCanonicalContent([("pasta", "1/3", "cup")], recipe.Servings, recipe.CanonicalContent);
+        recipe.StructuredContent = BuildCanonicalContent([("pasta", "1/3", "cup")], recipe.Servings, recipe.StructuredContent);
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
         _db.ChangeTracker.Clear();

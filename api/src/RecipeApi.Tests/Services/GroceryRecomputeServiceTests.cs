@@ -59,7 +59,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
         await SetChecksAsync(("pasta", true), ("sauce", true));
         var recipe = await _db.Recipes.SingleAsync(r => r.Id == id);
         recipe.RawMetadata = BuildRawMetadata([("pasta", 600, "g"), ("sauce", 300, "ml")]);
-        recipe.CanonicalContent = BuildCanonicalContent([("pasta", "600", "g"), ("sauce", "300", "ml")], recipe.Servings, recipe.CanonicalContent);
+        recipe.StructuredContent = BuildCanonicalContent([("pasta", "600", "g"), ("sauce", "300", "ml")], recipe.Servings, recipe.StructuredContent);
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
         _db.ChangeTracker.Clear();
@@ -85,7 +85,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
         var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
         recipe.Servings = 2; recipe.Ingredients = "[\"2 eggs\"]";
         recipe.RawMetadata = "{\"recipeIngredient\":[\"2 eggs\"],\"supply\":[{\"name\":\"eggs\",\"quantity\":2,\"unitText\":\"piece\"}]}";
-        recipe.CanonicalContent = BuildCanonicalContent([("eggs", "2", "piece")], 2, recipe.CanonicalContent);
+        recipe.StructuredContent = BuildCanonicalContent([("eggs", "2", "piece")], 2, recipe.StructuredContent);
         _db.CalendarEvents.AddRange(new CalendarEvent { Date = TestMonday.AddDays(1), RecipeId = id }, new CalendarEvent { Date = TestMonday.AddDays(2), RecipeId = null, Status = CalendarEventStatus.Skipped });
         await _db.SaveChangesAsync();
         for (var run = 0; run < 2; run++) {
@@ -112,9 +112,9 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
         recipe.RawMetadata = source == "structured"
             ? "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}"
             : "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"   \",\"quantity\":999,\"unitText\":\"kg\"}]}";
-        recipe.CanonicalContent = source == "structured"
-            ? BuildCanonicalContent([("pasta", "200", "g")], existingCanonicalContent: recipe.CanonicalContent)
-            : BuildCanonicalContent([("200 g pasta", null, null)], existingCanonicalContent: recipe.CanonicalContent);
+        recipe.StructuredContent = source == "structured"
+            ? BuildCanonicalContent([("pasta", "200", "g")], existingCanonicalContent: recipe.StructuredContent)
+            : BuildCanonicalContent([("200 g pasta", null, null)], existingCanonicalContent: recipe.StructuredContent);
         await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default);
         var item = Assert.Single(await GetGroceryItemsAsync(TestMonday));
         if (source == "structured") { Assert.Equal("pasta", item.DisplayName); Assert.Equal(200, item.Quantity); Assert.Equal("g", item.UnitText); }
@@ -160,7 +160,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
             _db.ChangeTracker.Clear();
             var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
             recipe.RawMetadata = BuildRawMetadata([("pasta", quantity, "g")]);
-            recipe.CanonicalContent = BuildCanonicalContent([("pasta", quantity.ToString(System.Globalization.CultureInfo.InvariantCulture), "g")], recipe.Servings, recipe.CanonicalContent);
+            recipe.StructuredContent = BuildCanonicalContent([("pasta", quantity.ToString(System.Globalization.CultureInfo.InvariantCulture), "g")], recipe.Servings, recipe.StructuredContent);
             await _db.SaveChangesAsync();
             if (check) await SetChecksAsync(("pasta", true));
             await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default); _db.ChangeTracker.Clear();
@@ -188,13 +188,13 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
         await SetChecksAsync(("pasta", true));
         var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
         recipe.RawMetadata = BuildRawMetadata([("pasta", 600, "g")]);
-        recipe.CanonicalContent = BuildCanonicalContent([("pasta", "600", "g")], recipe.Servings, recipe.CanonicalContent);
+        recipe.StructuredContent = BuildCanonicalContent([("pasta", "600", "g")], recipe.Servings, recipe.StructuredContent);
         await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default);
         _db.ChangeTracker.Clear();
         Assert.NotNull((await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion);
         var reverted = await _db.Recipes.SingleAsync(x => x.Id == id);
         reverted.RawMetadata = BuildRawMetadata([("pasta", 200, "g")]);
-        reverted.CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], reverted.Servings, reverted.CanonicalContent);
+        reverted.StructuredContent = BuildCanonicalContent([("pasta", "200", "g")], reverted.Servings, reverted.StructuredContent);
         await _db.SaveChangesAsync(); await _service.RecomputeForWeekAsync(TestMonday, default); _db.ChangeTracker.Clear();
         Assert.Null((await _db.WeeklyPlans.SingleAsync()).GroceryResetSummaryVersion);
         Assert.False(await IsCheckedAsync("pasta"));
@@ -239,7 +239,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
         {
             var id = await SeedRecipeWithSupplyAsync(day, []);
             var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
-            recipe.CanonicalContent = BuildCanonicalContent([("pasta", max, "kg")], existingCanonicalContent: recipe.CanonicalContent);
+            recipe.StructuredContent = BuildCanonicalContent([("pasta", max, "kg")], existingCanonicalContent: recipe.StructuredContent);
         }
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
@@ -255,7 +255,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
         var id = await SeedRecipeWithSupplyAsync(TestMonday, [("pasta", 200, "g")]);
         var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
         recipe.RawMetadata = "{\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}";
-        recipe.CanonicalContent = BuildCanonicalContent([("pasta", null, null)], existingCanonicalContent: recipe.CanonicalContent);
+        recipe.StructuredContent = BuildCanonicalContent([("pasta", null, null)], existingCanonicalContent: recipe.StructuredContent);
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
@@ -270,7 +270,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
     {
         var id = await SeedRecipeWithSupplyAsync(TestMonday, [("flour", 200.0, "g"), ("flour", 1.0, "cup")]);
         var recipe = await _db.Recipes.SingleAsync(x => x.Id == id);
-        recipe.CanonicalContent = BuildCanonicalContent([("flour", null, null)], existingCanonicalContent: recipe.CanonicalContent);
+        recipe.StructuredContent = BuildCanonicalContent([("flour", null, null)], existingCanonicalContent: recipe.StructuredContent);
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
         var row = Assert.Single(await GetGroceryItemsAsync(TestMonday));
@@ -335,7 +335,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
             Name = "Test Recipe",
             Servings = basis,
             RawMetadata = BuildRawMetadata(list),
-            CanonicalContent = BuildCanonicalContent(
+            StructuredContent = BuildCanonicalContent(
                 list.Select(s => (s.name, s.quantity?.ToString("G17", System.Globalization.CultureInfo.InvariantCulture), s.unitText)),
                 basis),
         });
@@ -638,13 +638,13 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
             {
                 Id = firstRecipeId, Name = "First",
                 RawMetadata = BuildRawMetadata([("huile d’olive", 1.0, "cup"), ("zucchini(s)", 1.0, "pcs")]),
-                CanonicalContent = BuildCanonicalContent([("huile d’olive", "1", "cup"), ("zucchini(s)", "1", "pcs")])
+                StructuredContent = BuildCanonicalContent([("huile d’olive", "1", "cup"), ("zucchini(s)", "1", "pcs")])
             },
             new Recipe
             {
                 Id = secondRecipeId, Name = "Second",
                 RawMetadata = BuildRawMetadata([("huile d'olive", 2.0, "cup"), ("zucchinis", 2.0, "pcs")]),
-                CanonicalContent = BuildCanonicalContent([("huile d'olive", "2", "cup"), ("zucchinis", "2", "pcs")])
+                StructuredContent = BuildCanonicalContent([("huile d'olive", "2", "cup"), ("zucchinis", "2", "pcs")])
             });
         _db.CalendarEvents.AddRange(
             new CalendarEvent { Id = Guid.NewGuid(), RecipeId = firstRecipeId, Date = firstMonday, Status = CalendarEventStatus.Planned },
@@ -810,7 +810,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
                                     ]
                                 }
                                 """,
-                        CanonicalContent = BuildCanonicalContent([("garlic cloves", "4", "piece")]),
+                        StructuredContent = BuildCanonicalContent([("garlic cloves", "4", "piece")]),
                 });
                 _db.CalendarEvents.Add(new CalendarEvent
                 {
@@ -1075,7 +1075,7 @@ public partial class GroceryRecomputeServiceTests : IAsyncLifetime
             Id = recipeId,
             Name = "Test Recipe",
             RawMetadata = BuildRawMetadata([("chicken", 200.0, "g")]),
-            CanonicalContent = BuildCanonicalContent([("chicken", "200", "g")]),
+            StructuredContent = BuildCanonicalContent([("chicken", "200", "g")]),
         });
         _db.CalendarEvents.Add(new CalendarEvent
         {

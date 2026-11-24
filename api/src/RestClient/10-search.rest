@@ -16,7 +16,7 @@
 # Next page: copy a request and add "continuationToken": "<nextCursor>".
 # Embedding problems → 12-embeddings.rest. Reindex a recipe → 07-workflow.rest B1.
 
-@searchText = poultry
+@searchText = Poulet au Beurre
 @concept = poultry
 
 ### READ ONLY — Chip vocabulary

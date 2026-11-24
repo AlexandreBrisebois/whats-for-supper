@@ -173,7 +173,7 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
   ): Promise<RecipeDetailResponse | undefined>;
   /**
    * Recipe basis or ingredient corrections commit together with invalidation and durable grocery refresh work for affected current/future grocery contributions, preserving dated portion snapshots and original unscaled legacy non-supper/night-away contributions. Counts and original amounts are preserved; reads expose pending freshness until the worker recomputes. Existing week updates invalidate dated readers after commit.
-   * @param body At canonical cutover every supplied semantic field requires expectedContentRevision; conflicts apply no field. Canonical and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly. Canonical writes remain gated by recovery and client qualification.
+   * @param body For structured recipes every supplied semantic field requires expectedContentRevision; conflicts apply no field. Structured and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<RecipeDetailResponse>}
    * @throws {RecipeContentConflict} error when the service returns a 409 status code
@@ -202,7 +202,7 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
   ): RequestInformation;
   /**
    * Recipe basis or ingredient corrections commit together with invalidation and durable grocery refresh work for affected current/future grocery contributions, preserving dated portion snapshots and original unscaled legacy non-supper/night-away contributions. Counts and original amounts are preserved; reads expose pending freshness until the worker recomputes. Existing week updates invalidate dated readers after commit.
-   * @param body At canonical cutover every supplied semantic field requires expectedContentRevision; conflicts apply no field. Canonical and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly. Canonical writes remain gated by recovery and client qualification.
+   * @param body For structured recipes every supplied semantic field requires expectedContentRevision; conflicts apply no field. Structured and legacy arrays cannot coexist. Omission preserves; nullable row facts clear explicitly.
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */

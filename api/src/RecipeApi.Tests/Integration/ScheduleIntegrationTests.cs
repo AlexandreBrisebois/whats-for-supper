@@ -555,7 +555,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Assign grocery recipe",
             Ingredients = "[\"assign carrots\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("assign carrots", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("assign carrots", null, null)])
         });
         await _db.SaveChangesAsync();
 
@@ -584,7 +584,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Remove grocery recipe",
             Ingredients = "[\"remove onions\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("remove onions", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("remove onions", null, null)])
         });
         _db.CalendarEvents.Add(new CalendarEvent
         {
@@ -622,7 +622,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Same week grocery recipe",
             Ingredients = "[\"same week peppers\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("same week peppers", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("same week peppers", null, null)])
         });
         _db.CalendarEvents.Add(new CalendarEvent
         {
@@ -659,7 +659,7 @@ public class ScheduleIntegrationTests : IAsyncLifetime
             Id = recipeId,
             Name = "Cross week grocery recipe",
             Ingredients = "[\"cross week cabbage\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("cross week cabbage", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("cross week cabbage", null, null)])
         });
         _db.CalendarEvents.Add(new CalendarEvent
         {

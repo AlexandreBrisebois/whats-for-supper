@@ -199,7 +199,7 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
             IsReady = true,
             Servings = 6,
             RawMetadata = raw,
-            CanonicalContent = System.Text.Json.JsonSerializer.Serialize(content, webJson),
+            StructuredContent = System.Text.Json.JsonSerializer.Serialize(content, webJson),
             FoodMappingEvidence = evidence,
             Ingredients = """["500 g beef","2 carrots"]""",
             Notes = "Original backup note",
@@ -238,7 +238,7 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
         Assert.Equal(0, restoreResult.Errors);
         var merged = await _db.Recipes.AsNoTracking().SingleAsync(r => r.Id == recipeId);
         Assert.Equal("Original backup note", merged.Notes);
-        Assert.NotNull(merged.CanonicalContent);
+        Assert.NotNull(merged.StructuredContent);
         Assert.Equal(6, merged.Servings);
     }
 
@@ -308,7 +308,7 @@ public class ManagementBackupIntegrationTests : IAsyncLifetime
         Assert.Null(await _db.Recipes.IgnoreQueryFilters().SingleOrDefaultAsync(r => r.Id == unknownId));
 
         var valid = await _db.Recipes.AsNoTracking().SingleAsync(r => r.Id == validId);
-        Assert.NotNull(valid.CanonicalContent);
+        Assert.NotNull(valid.StructuredContent);
         Assert.Equal(4, valid.Servings);
         Assert.Contains("500 g carrots", valid.Ingredients);
 

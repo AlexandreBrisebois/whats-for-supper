@@ -117,6 +117,6 @@ public sealed partial class RecipeShareCanonicalTests
         Assert.Equal([4, 5, 6], await client.GetByteArrayAsync($"/api/recipes/{id}/original/0"));
         Assert.Equal([1, 2, 3], await services.GetRequiredService<RecipeRepository>().StorageProvider.LoadAsync("recipes", $"{id}/hero.webp"));
         Assert.Empty(await db.RecipeFilePublications.Where(x => x.RecipeId == id).ToListAsync());
-        Assert.Equal(2, await db.CanonicalRecipeOperations.CountAsync(x => x.RecipeId == id));
+        Assert.Equal(2, await db.StructuredRecipeOperations.CountAsync(x => x.RecipeId == id));
     }
 }

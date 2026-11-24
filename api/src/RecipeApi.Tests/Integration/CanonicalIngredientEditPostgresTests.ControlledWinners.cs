@@ -58,14 +58,14 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             Assert.Equal(instructionWins ? 0 : 1, projection.ValidatedUses);
             Assert.Equal(instructionWins ? 1 : 0, projection.UncertainUses);
             var prior = JsonSerializer.Serialize(saved);
-            var count = await db.CanonicalRecipeOperations.CountAsync();
+            var count = await db.StructuredRecipeOperations.CountAsync();
             using var stale = await instruction.PatchAsJsonAsync($"/api/recipes/{Id}", InstructionInput());
             Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
             using var unversioned = await instruction.PatchAsJsonAsync($"/api/recipes/{Id}", new
             { name = "Must not save", instructionSections = new[] { new { id = section.Id, name = section.Name, steps = Array.Empty<object>() } } });
             Assert.Equal(HttpStatusCode.Conflict, unversioned.StatusCode);
             Assert.Equal(prior, JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == Id)));
-            Assert.Equal(count, await db.CanonicalRecipeOperations.CountAsync());
+            Assert.Equal(count, await db.StructuredRecipeOperations.CountAsync());
         }, configureApplication: app => app.Use(async (context, next) =>
         {
             if (context.Request.Headers.ContainsKey("X-Test-Controlled-Loser"))

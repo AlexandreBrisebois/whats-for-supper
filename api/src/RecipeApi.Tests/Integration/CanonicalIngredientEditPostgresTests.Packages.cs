@@ -28,7 +28,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var recipe = await db.Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id);
                 storedBefore = JsonSerializer.Serialize(recipe, Json);
                 metadataBefore = recipe.RawMetadata!;
-                operationsBefore = await db.CanonicalRecipeOperations.CountAsync();
+                operationsBefore = await db.StructuredRecipeOperations.CountAsync();
             }
             var declared = new RecipeIngredientLineInput
             {
@@ -54,7 +54,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var rejectedDb = rejectedScope.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 Assert.Equal(storedBefore, JsonSerializer.Serialize(await rejectedDb.Recipes.AsNoTracking()
                     .SingleAsync(recipe => recipe.Id == Id), Json));
-                Assert.Equal(operationsBefore, await rejectedDb.CanonicalRecipeOperations.CountAsync());
+                Assert.Equal(operationsBefore, await rejectedDb.StructuredRecipeOperations.CountAsync());
             }
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -120,7 +120,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
         return (JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(recipe => recipe.Id == Id), Json),
-            await db.CanonicalRecipeOperations.CountAsync());
+            await db.StructuredRecipeOperations.CountAsync());
     }
 
     private static async Task<StructuredRecipeContent> SaveDeclaredPackageRows(TestWebApplicationFactory factory,
@@ -250,7 +250,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 var recipe = await db.Recipes.SingleAsync(recipe => recipe.Id == Id);
-                recipe.CanonicalContent = JsonSerializer.Serialize(seeded, Json);
+                recipe.StructuredContent = JsonSerializer.Serialize(seeded, Json);
                 recipe.Ingredients = JsonSerializer.Serialize(seeded.IngredientLines.Select(StructuredRecipeContentStore.Render), Json);
                 await db.SaveChangesAsync();
             }
@@ -451,7 +451,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
                 var recipe = await db.Recipes.SingleAsync(recipe => recipe.Id == Id);
                 recipe.Servings = null;
-                recipe.CanonicalContent = JsonSerializer.Serialize(unknown, Json);
+                recipe.StructuredContent = JsonSerializer.Serialize(unknown, Json);
                 await db.SaveChangesAsync();
             }
             var current = await SaveDeclaredPackageRows(factory, unknown,
@@ -498,7 +498,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 var recipe = await db.Recipes.SingleAsync(recipe => recipe.Id == Id);
                 metadataBefore = recipe.RawMetadata;
                 sourceUrlBefore = recipe.SourceUrl;
-                recipe.CanonicalContent = JsonSerializer.Serialize(baseline, Json);
+                recipe.StructuredContent = JsonSerializer.Serialize(baseline, Json);
                 recipe.Ingredients = JsonSerializer.Serialize(baseline.IngredientLines.Select(StructuredRecipeContentStore.Render), Json);
                 db.SupperServings.Add(new RecipeApi.Models.SupperServing { Date = monday.AddDays(3), OverrideServings = 8 });
                 await db.SaveChangesAsync();

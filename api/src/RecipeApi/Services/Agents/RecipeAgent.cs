@@ -115,7 +115,7 @@ RULES:
         if (db is not null)
         {
             var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
-            if (existing is { CanonicalContent: not null })
+            if (existing is { StructuredContent: not null })
             {
                 var report = await db.RecipeImportReports.AsNoTracking().SingleOrDefaultAsync(x => x.RecipeId == recipeId, ct);
                 var isGuidedRepair = report is { Status: RecipeImportReportStatus.Reimporting }
@@ -240,7 +240,7 @@ RULES:
         {
             var existingSnapshot = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
             var report = await db.RecipeImportReports.AsNoTracking().SingleOrDefaultAsync(x => x.RecipeId == recipeId, ct);
-            if (existingSnapshot is { CanonicalContent: not null }
+            if (existingSnapshot is { StructuredContent: not null }
                 && report is { Status: RecipeImportReportStatus.Reimporting }
                 && report.Reasons.Any(r => r is "ingredients" or "steps"))
             {
@@ -268,7 +268,7 @@ RULES:
                 entity.Name = finalRecipe.Name;
                 if (!string.IsNullOrWhiteSpace(info.Description)) entity.Description = info.Description;
                 entity.RawMetadata = schemaOrgJson;
-                entity.CanonicalContent = JsonSerializer.Serialize(content, WebJson);
+                entity.StructuredContent = JsonSerializer.Serialize(content, WebJson);
                 entity.FoodMappingEvidence = evidence;
                 entity.Servings = content.Servings;
                 entity.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render), WebJson);
@@ -285,7 +285,7 @@ RULES:
     {
         if (db is null) return;
         var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
-        if (existing is null || existing.IsReady || existing.CanonicalContent is not null) return;
+        if (existing is null || existing.IsReady || existing.StructuredContent is not null) return;
 
         partial.Context = "https://schema.org/";
         partial.Type = "Recipe";
@@ -296,7 +296,7 @@ RULES:
 
         await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct);
         var entity = await db.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, ct);
-        if (entity is not null && !entity.IsReady && entity.CanonicalContent is null)
+        if (entity is not null && !entity.IsReady && entity.StructuredContent is null)
         {
             if (!string.IsNullOrWhiteSpace(partial.Name)) entity.Name = partial.Name;
             entity.RawMetadata = reviewJson;
@@ -329,7 +329,7 @@ RULES:
         }
         else
         {
-            var hasHumanEdits = await db!.CanonicalRecipeOperations.AsNoTracking()
+            var hasHumanEdits = await db!.StructuredRecipeOperations.AsNoTracking()
                 .AnyAsync(x => x.RecipeId == recipeId && x.OriginalRequest != null && x.OriginalRequest.Contains("\"kind\":\"edit\""), ct);
             prepared = StructuredRecipeContentStore.PrepareContentRepair(
                 observed, normalizedJson, report.Reasons, hasHumanEdits ? null : current, Guid.NewGuid().ToString("N"));
@@ -359,7 +359,7 @@ RULES:
         if (entity is not null)
         {
             entity.RawMetadata = schemaOrgJson;
-            entity.CanonicalContent = JsonSerializer.Serialize(finalContent, WebJson);
+            entity.StructuredContent = JsonSerializer.Serialize(finalContent, WebJson);
             entity.FoodMappingEvidence = finalEvidence;
             entity.Servings = finalContent.Servings;
             entity.Ingredients = JsonSerializer.Serialize(finalContent.IngredientLines.Select(StructuredRecipeContentStore.Render), WebJson);
@@ -519,7 +519,7 @@ Please re-examine the images and refine the JSON according to these rules:
         if (db is not null)
         {
             var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
-            if (existing is { IsSynthesized: true, CanonicalContent: not null })
+            if (existing is { IsSynthesized: true, StructuredContent: not null })
             {
                 logger.LogInformation("Synthesized recipe {RecipeId} already persisted; skipping replay.", recipeId);
                 return;
@@ -627,7 +627,7 @@ Please re-examine the images and refine the JSON according to these rules:
             await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true);
             var entity = await db.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, ct)
                 ?? throw new KeyNotFoundException($"Recipe {recipeId} not found.");
-            if (entity.IsSynthesized && entity.CanonicalContent is not null)
+            if (entity.IsSynthesized && entity.StructuredContent is not null)
             {
                 if (transaction is not null) await transaction.CommitAsync(ct);
                 return;
@@ -638,7 +638,7 @@ Please re-examine the images and refine the JSON according to these rules:
             if (!string.IsNullOrWhiteSpace(recipe.TotalTime)) entity.TotalTime = recipe.TotalTime;
             entity.IsSynthesized = true;
             entity.RawMetadata = schemaOrgJson;
-            entity.CanonicalContent = JsonSerializer.Serialize(content, WebJson);
+            entity.StructuredContent = JsonSerializer.Serialize(content, WebJson);
             entity.FoodMappingEvidence = evidence;
             entity.Servings = content.Servings;
             entity.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render), WebJson);

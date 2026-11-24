@@ -695,7 +695,7 @@ for (const configured of [true, false]) {
         nextDayAtUtc: '2026-05-06T00:00:00Z',
       }),
       {
-        canonicalEditor: content,
+        structuredEditor: content,
         supperServings: {
           knownRecipe: {
             id: content.id,

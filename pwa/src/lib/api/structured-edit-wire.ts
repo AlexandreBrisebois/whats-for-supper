@@ -19,7 +19,7 @@ function quantity(value: RecipeIngredientLineInput['amount']) {
       min: present({ n: exact.min.n, d: exact.min.d }),
       max: present({ n: exact.max.n, d: exact.max.d }),
     };
-  throw new Error('Canonical edit quantity has no exact wire representation.');
+  throw new Error('Structured edit quantity has no exact wire representation.');
 }
 
 // The generated nullable quantity union serializes both scalar and range, writing

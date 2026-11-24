@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { applyCanonicalEditorPatch } from '../../e2e/canonical-editor';
+import { applyStructuredEditorPatch } from '../../e2e/structured-editor';
 import { cookingAllocationRecipe } from '../../e2e/cooking-step-fixture';
 import { cookingProjection } from '../../e2e/cooking-step-projection';
 import { setupCommonRoutes } from '../../e2e/mock-api';
@@ -19,7 +19,7 @@ function original(french = false) {
   return recipe;
 }
 function save(recipe: any, changes: any = {}) {
-  return applyCanonicalEditorPatch(recipe, {
+  return applyStructuredEditorPatch(recipe, {
     expectedContentRevision: recipe.contentRevision,
     instructionSections: recipe.instructionSections.map((section: any) => ({
       id: section.id,
@@ -79,7 +79,7 @@ it('publishes fixed proof through ordinary PATCH then GET/preview and rejects st
     route: async (pattern: any, handler: any) => handlers.set(pattern, handler),
     evaluate: vi.fn(),
   };
-  await setupCommonRoutes(page, undefined, { canonicalEditor: recipe });
+  await setupCommonRoutes(page, undefined, { structuredEditor: recipe });
   const call = async (pattern: string, method: string, suffix = '', body?: any) => {
     const fulfill = vi.fn();
     const fallback = vi.fn();

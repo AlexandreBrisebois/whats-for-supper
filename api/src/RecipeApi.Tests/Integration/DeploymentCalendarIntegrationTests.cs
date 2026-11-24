@@ -38,12 +38,12 @@ public class DeploymentCalendarIntegrationTests
         var first = new Recipe
         {
             Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440101"), Name = "October 11", Ingredients = "[\"Carrot\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
         };
         var second = new Recipe
         {
             Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440102"), Name = "October 18", Ingredients = "[\"Potato\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)])
         };
         db.Recipes.AddRange(first, second);
         db.CalendarEvents.AddRange(
@@ -77,12 +77,12 @@ public class DeploymentCalendarIntegrationTests
         var selected = new Recipe
         {
             Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440101"), Name = "Selected", Ingredients = "[\"Carrot\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
         };
         var sentinel = new Recipe
         {
             Id = Guid.Parse("550e8400-e29b-41d4-a716-446655440102"), Name = "Sentinel", Ingredients = "[\"Potato\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)])
         };
         db.Recipes.AddRange(selected, sentinel);
         db.CalendarEvents.Add(new CalendarEvent { Date = new DateOnly(2026, 10, 18), RecipeId = sentinel.Id });
@@ -171,7 +171,7 @@ public class DeploymentCalendarIntegrationTests
         var recipe = new Recipe
         {
             Name = "Sunday", Ingredients = "[\"Carrot\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
         };
         db.Recipes.Add(recipe);
         db.CalendarEvents.Add(new CalendarEvent { Date = new DateOnly(2026, 10, 11), RecipeId = recipe.Id });

@@ -46,7 +46,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
             IsReady = true,
             Ingredients = "[\"200 g pasta\",\"Salt to taste\"]",
             RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\",\"Salt to taste\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"},{\"name\":\"Salt to taste\"}]}",
-            CanonicalContent = BuildCanonical(basis, lines)
+            StructuredContent = BuildCanonical(basis, lines)
         };
     }
 
@@ -73,7 +73,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
             Ingredients = JsonSerializer.Serialize(lines),
             RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = lines,
                 supply = names.Select((name, i) => new { name, requiredQuantity = new { value = amounts[i], unitText = units[i] } }) }),
-            CanonicalContent = BuildCanonical(4, canonicalLines)
+            StructuredContent = BuildCanonical(4, canonicalLines)
         };
     }
 
@@ -159,7 +159,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
                 recipeIngredient = new[] { "999 kg stale" },
                 supply = new[] { new { name = "stale", quantity = 999, unitText = "kg" } }
             }),
-            CanonicalContent = BuildCanonical(4, linesInput)
+            StructuredContent = BuildCanonical(4, linesInput)
         };
 
         var lines = SupperIngredientProjection.Read(recipe, 6);
@@ -170,7 +170,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
         Assert.Null(lines[2].Quantity);
         Assert.Equal("unquantified", lines[2].Status);
 
-        recipe.CanonicalContent = BuildCanonical(null, linesInput);
+        recipe.StructuredContent = BuildCanonical(null, linesInput);
         recipe.Servings = null;
         var missingBasis = SupperIngredientProjection.Read(recipe, 6);
         Assert.Equal("unresolved", missingBasis[0].Status);
@@ -277,7 +277,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
             async Task<string> Snapshot() {
                 db.ChangeTracker.Clear();
                 return JsonSerializer.Serialize(new {
-                    recipes = await db.Recipes.AsNoTracking().Select(x => new { x.Id, x.Servings, x.Ingredients, x.RawMetadata, x.CanonicalContent, x.LastCookedDate, x.UpdatedAt }).ToListAsync(),
+                    recipes = await db.Recipes.AsNoTracking().Select(x => new { x.Id, x.Servings, x.Ingredients, x.RawMetadata, x.StructuredContent, x.LastCookedDate, x.UpdatedAt }).ToListAsync(),
                     events = await db.CalendarEvents.AsNoTracking().Select(x => new { x.Id, x.Date, x.RecipeId, x.Status, x.PreparedOn, x.PreparedAtUtc, x.PreparedServings, x.PreparedOriginalServings, x.PreparationPlanToken, x.PreparationServingVersion }).ToListAsync(),
                     counts = await db.SupperServings.AsNoTracking().ToListAsync(),
                     defaults = await db.FamilySettings.AsNoTracking().ToListAsync(),
@@ -294,7 +294,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
             }
             var saved = await db.Recipes.SingleAsync();
             saved.Servings = null;
-            saved.CanonicalContent = BuildCanonical(null, StructuredRecipeContentStore.Read(saved)!.IngredientLines.ToArray());
+            saved.StructuredContent = BuildCanonical(null, StructuredRecipeContentStore.Read(saved)!.IngredientLines.ToArray());
             await db.SaveChangesAsync();
             using var missing = JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-preview?targetServings=4"));
             Assert.Equal(JsonValueKind.Null, missing.RootElement.GetProperty("factor").ValueKind);
@@ -302,7 +302,7 @@ public class SupperIngredientPreviewPostgresTests(ITestOutputHelper output)
             Assert.Equal("200 g pasta", missing.RootElement.GetProperty("lines")[0].GetProperty("originalText").GetString());
             saved.Servings = 2;
             saved.Ingredients = "[\"Changed pasta\",\"Salt to taste\"]";
-            saved.CanonicalContent = BuildCanonical(2, Line("Changed pasta", null), Line("Salt to taste", null));
+            saved.StructuredContent = BuildCanonical(2, Line("Changed pasta", null), Line("Salt to taste", null));
             await db.SaveChangesAsync();
             using var stale = JsonDocument.Parse(await client.GetStringAsync($"/api/recipes/{recipe.Id}/ingredient-preview?targetServings=6"));
             Assert.Equal("scaled", stale.RootElement.GetProperty("status").GetString());

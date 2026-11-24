@@ -33,7 +33,7 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
                 var text = amount + " g pasta";
                 recipe.Ingredients = JsonSerializer.Serialize(new[] { text });
                 recipe.RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { text }, supply = new[] { new { name = "pasta", quantity = int.Parse(amount.Split('–')[0]), unitText = "g" } } });
-                recipe.CanonicalContent = BuildCanonicalContent([("pasta", amount, "g")], recipe.Servings, recipe.CanonicalContent);
+                recipe.StructuredContent = BuildCanonicalContent([("pasta", amount, "g")], recipe.Servings, recipe.StructuredContent);
                 await db.SaveChangesAsync();
                 await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(Monday, default);
             }

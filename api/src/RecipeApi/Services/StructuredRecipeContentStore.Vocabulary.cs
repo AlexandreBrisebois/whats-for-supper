@@ -11,7 +11,7 @@ public sealed partial class StructuredRecipeContentStore
     {
         ValidateOriginalOperation(operation);
         return IsV2(operation)
-            ? ReadOriginal<CanonicalResultV2>(operation.Result).Result
+            ? ReadOriginal<StructuredResultV2>(operation.Result).Result
             : ReadOriginal<StructuredRecipeWriteResult>(operation.Result);
     }
 
@@ -31,7 +31,7 @@ public sealed partial class StructuredRecipeContentStore
     private sealed record OriginalRequestV2(int Version, Guid RecipeId, Guid OperationId, string Kind,
         string CallerInputHash, string? Input, bool HasServings, RecipePublicationFields Baseline, string BaselineHash,
         FoodMappingObservation PriorEvidence, string PriorEvidenceHash, FoodVocabularyAuthority FoodAuthority);
-    private sealed record CanonicalResultV2(int Version, StructuredRecipeWriteResult Result, FoodMappingObservation Evidence,
+    private sealed record StructuredResultV2(int Version, StructuredRecipeWriteResult Result, FoodMappingObservation Evidence,
         RecipeFoodNameDecision[] Decisions);
     private static string? EvidenceValue(Recipe recipe) => recipe.FoodMappingEvidence is null ? null : NormalizeJson(recipe.FoodMappingEvidence);
     private static bool IsV2(StructuredRecipeOperation operation)
@@ -43,7 +43,7 @@ public sealed partial class StructuredRecipeContentStore
 
     private void RecordV2(Recipe recipe, Guid operationId, string kind, string callerInputHash, RecipePublicationFields baseline,
         string? priorEvidence, FoodVocabularyAuthority authority, UpdateRecipeDto? input, StructuredRecipeWriteResult result, string? evidence, DateTimeOffset? recordedAt = null)
-        => db.CanonicalRecipeOperations.Add(CreateV2(recipe, operationId, kind, callerInputHash, baseline, priorEvidence,
+        => db.StructuredRecipeOperations.Add(CreateV2(recipe, operationId, kind, callerInputHash, baseline, priorEvidence,
             authority, input, result, evidence, recordedAt ?? clock.UtcNow));
 
     private static StructuredRecipeOperation CreateV2(Recipe recipe, Guid operationId, string kind, string callerInputHash,
@@ -63,7 +63,7 @@ public sealed partial class StructuredRecipeContentStore
             OperationId = operationId,
             InputHash = Hash(request),
             OriginalRequest = JsonSerializer.Serialize(request, Json),
-            Result = JsonSerializer.Serialize(new CanonicalResultV2(2, result, new(evidence), decisions), Json),
+            Result = JsonSerializer.Serialize(new StructuredResultV2(2, result, new(evidence), decisions), Json),
             CreatedAt = recordedAt
         };
     }
@@ -73,7 +73,7 @@ public sealed partial class StructuredRecipeContentStore
         ValidateOriginalOperationV2(operation);
         var request = ReadOriginal<OriginalRequestV2>(operation.OriginalRequest!);
         if (request.CallerInputHash != callerHash) throw Conflict(recipe);
-        return ReadOriginal<CanonicalResultV2>(operation.Result).Result;
+        return ReadOriginal<StructuredResultV2>(operation.Result).Result;
     }
 
     private static bool ValidateOriginalOperationV2(StructuredRecipeOperation operation)
@@ -95,7 +95,7 @@ public sealed partial class StructuredRecipeContentStore
                 FoodMappingQualification.Validate(current, recipe.FoodMappingEvidence, request.FoodAuthority, recipe.Id);
             }
             else RequireOriginal(recipe.FoodMappingEvidence is null);
-            var saved = ReadOriginal<CanonicalResultV2>(operation.Result);
+            var saved = ReadOriginal<StructuredResultV2>(operation.Result);
             RequireOriginal(saved.Version == 2 && saved.Result is not null && saved.Evidence is not null && saved.Decisions is not null);
             var result = saved.Result;
             ValidateContent(result.Content, retainedHistory: true);
@@ -161,7 +161,7 @@ public sealed partial class StructuredRecipeContentStore
                     request.PriorEvidence.Value is null ? [] : FoodVocabularyDefinitions.ReadStrict<RecipeFoodMappingEvidence>(request.PriorEvidence.Value).NameDecisions);
             else expected = FoodMappingQualification.Prepare(new(recipe.Id, prepared.Content, recipe.RawMetadata), request.FoodAuthority,
                 operation.OperationId, request.Kind == "edit" ? current : null, request.Kind == "edit" ? request.PriorEvidence.Value : null);
-            var expectedResult = new CanonicalResultV2(2, prepared with { Content = expected.Export.Content }, new(expected.Evidence), expected.Decisions);
+            var expectedResult = new StructuredResultV2(2, prepared with { Content = expected.Export.Content }, new(expected.Evidence), expected.Decisions);
             RequireOriginal(NormalizeJson(JsonSerializer.Serialize(expectedResult, Json)) == NormalizeJson(operation.Result));
             FoodMappingQualification.Validate(result.Content, saved.Evidence.Value, request.FoodAuthority, recipe.Id);
             return true;

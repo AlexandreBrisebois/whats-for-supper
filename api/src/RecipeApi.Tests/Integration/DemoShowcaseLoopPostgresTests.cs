@@ -592,7 +592,7 @@ public partial class DemoShowcaseLoopPostgresTests : IAsyncLifetime
             Id = Guid.Parse($"b2a00000-0000-4000-8000-{index + 10:000000000000}"), Name = name,
             IsReady = true, IsDiscoverable = true, SupperSuitable = true, Category = "Supper",
             Ingredients = "[\"1 cup lentils\"]", AddedBy = firstMember.Id,
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("lentils", "1", "cup")])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("lentils", "1", "cup")])
         }).ToArray();
         db.Recipes.AddRange(recipes);
         await db.SaveChangesAsync();

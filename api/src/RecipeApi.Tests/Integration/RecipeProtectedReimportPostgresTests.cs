@@ -83,7 +83,7 @@ public sealed class RecipeProtectedReimportPostgresTests(ITestOutputHelper outpu
                 IsReady = true,
                 AddedBy = factory.DefaultFamilyMemberId,
                 RawMetadata = initialJson,
-                CanonicalContent = JsonSerializer.Serialize(protectedContent, WebJson),
+                StructuredContent = JsonSerializer.Serialize(protectedContent, WebJson),
                 FoodMappingEvidence = initialEvidence,
                 Servings = protectedContent.Servings,
                 Ingredients = JsonSerializer.Serialize(protectedContent.IngredientLines.Select(StructuredRecipeContentStore.Render), WebJson),

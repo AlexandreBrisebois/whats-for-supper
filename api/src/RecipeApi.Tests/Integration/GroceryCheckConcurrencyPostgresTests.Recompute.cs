@@ -102,7 +102,7 @@ public sealed partial class GroceryCheckConcurrencyPostgresTests
             });
             var recipe = new Recipe { Name = "Oil", Ingredients = "[\"1 ml huile d'olive\",\"1 ml huile d’olive\"]",
                 RawMetadata = """{"recipeIngredient":["1 ml huile d'olive","1 ml huile d’olive"],"supply":[{"name":"huile d'olive","quantity":1,"unitText":"ml"},{"name":"huile d’olive","quantity":1,"unitText":"ml"}]}""",
-                CanonicalContent = BuildCanonicalContent([("huile d'olive", "1", "ml"), ("huile d’olive", "1", "ml")]) };
+                StructuredContent = BuildCanonicalContent([("huile d'olive", "1", "ml"), ("huile d’olive", "1", "ml")]) };
             db.Recipes.Add(recipe);
             db.CalendarEvents.Add(new CalendarEvent { Date = Monday, RecipeId = recipe.Id });
             await db.SaveChangesAsync();

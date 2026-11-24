@@ -92,9 +92,9 @@ public class Recipe
     public string? Ingredients { get; set; }
 
     /// <summary>Serving basis of the stored ingredient quantities; unknown when null.</summary>
-    /// <summary>Null until explicit, recovery-qualified canonical conversion. Never allocated on GET.</summary>
+    /// <summary>Structured v2 recipe content stored as JSONB.</summary>
     [Column("canonical_content", TypeName = "jsonb")]
-    public string? CanonicalContent { get; set; }
+    public string? StructuredContent { get; set; }
 
     /// <summary>Revision-bound shopping identity and protected name/clear evidence; null before adoption.</summary>
     [Column("food_mapping_evidence", TypeName = "jsonb")]

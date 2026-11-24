@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Page, Route } from '@playwright/test';
 import { MOCK_IDS, builders, setupCommonRoutes } from '../../e2e/mock-api';
 import { fractionCookingRecipe } from '../../e2e/cooking-step-fixture';
-import { canonicalRecipePatchIsValid } from '../../e2e/canonical-content-input';
+import { structuredRecipePatchIsValid } from '../../e2e/structured-content-input';
 import { originalInstructions } from '../lib/recipes/instruction-draft';
 describe('finite SSE fixture completion', () => {
   async function fixture(connectedOnce: boolean) {
@@ -269,7 +269,7 @@ it('shared imports keep separate local identities when requested recipe membersh
 it('fraction binding negatives retain valid saved ingredient, section and step identities', () => {
   const recipe = fractionCookingRecipe();
   expect(
-    canonicalRecipePatchIsValid({
+    structuredRecipePatchIsValid({
       ingredientLines: recipe.ingredientLines.map(
         ({ provenance: _provenance, ...line }: any) => line
       ),
@@ -917,7 +917,7 @@ it('isolated canonical editor saves exact rows atomically and subsequent reads r
   };
   const id = MOCK_IDS.RECIPE_LASAGNA;
   await setupCommonRoutes(page as unknown as Page, undefined, {
-    canonicalEditor: {
+    structuredEditor: {
       id,
       contentSchemaVersion: 2,
       contentRevision: 'initial',
@@ -1058,7 +1058,7 @@ it('reported-only search finds an incomplete flagged recipe without promoting it
       isReimporting: false,
     },
   });
-  await setupCommonRoutes(page as unknown as Page, undefined, { canonicalEditor: recipe });
+  await setupCommonRoutes(page as unknown as Page, undefined, { structuredEditor: recipe });
   const fulfill = vi.fn();
   const call = async (filters: Record<string, unknown>) => {
     fulfill.mockClear();

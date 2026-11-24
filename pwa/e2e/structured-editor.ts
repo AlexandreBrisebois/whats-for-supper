@@ -1,4 +1,4 @@
-import { carryCookingBindings, canonicalIngredientText } from './cooking-step-projection';
+import { carryCookingBindings, structuredIngredientText } from './cooking-step-projection';
 import { isDeepStrictEqual as sameUnit } from 'node:util';
 import { discoverFixedBindings } from './cooking-fixed-producer';
 import { discoverPerItemBindings } from './cooking-per-item-producer';
@@ -6,7 +6,10 @@ import { discoverRemainderBindings } from './cooking-remainder-producer';
 import { randomUUID } from 'node:crypto';
 
 /** Explicit disposable mock composition; the common default remains fenced. */
-export function applyCanonicalEditorPatch(current: any, input: any): { status: number; body: any } {
+export function applyStructuredEditorPatch(
+  current: any,
+  input: any
+): { status: number; body: any } {
   const semantic = [
     'ingredientLines',
     'instructionSections',
@@ -106,7 +109,7 @@ export function applyCanonicalEditorPatch(current: any, input: any): { status: n
             };
         return result;
       });
-      recipe.ingredients = recipe.ingredientLines.map((row: any) => canonicalIngredientText(row));
+      recipe.ingredients = recipe.ingredientLines.map((row: any) => structuredIngredientText(row));
     }
     if (input.instructionSections) {
       const steps = current.instructionSections?.flatMap((section: any) => section.steps) ?? [];

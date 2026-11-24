@@ -31,10 +31,10 @@ export interface InstructionSectionDraft {
   steps: InstructionStepDraftRow[];
 }
 
-export function instructionRows(content: unknown[], canonical: boolean) {
+export function instructionRows(content: unknown[], structured: boolean) {
   return content.flatMap((entry, outer) => {
     const section = object(entry);
-    const steps = canonical ? section.steps : section.itemListElement;
+    const steps = structured ? section.steps : section.itemListElement;
     if (Array.isArray(steps))
       return steps.map((step, inner) => ({
         path: [outer, inner] as [number, number?],
@@ -55,14 +55,14 @@ function isLegacySectioned(content: unknown[]): boolean {
 
 export function instructionSections(
   content: unknown[],
-  canonical: boolean
+  structured: boolean
 ): InstructionSectionDraft[] {
   if (!content.length) return [];
-  if (canonical || isLegacySectioned(content)) {
+  if (structured || isLegacySectioned(content)) {
     let stepNumber = 1;
     return content.map((entry, outer) => {
       const section = object(entry);
-      const rawSteps = (canonical ? section.steps : section.itemListElement) as unknown[];
+      const rawSteps = (structured ? section.steps : section.itemListElement) as unknown[];
       const steps = Array.isArray(rawSteps) ? rawSteps : [];
       const key =
         typeof section.id === 'string'
@@ -102,11 +102,11 @@ export function instructionSections(
 
 export function changeInstructionSectionName(
   content: unknown[],
-  canonical: boolean,
+  structured: boolean,
   sectionIndex: number,
   name: string
 ): unknown[] {
-  if (canonical || isLegacySectioned(content)) {
+  if (structured || isLegacySectioned(content)) {
     return content.map((entry, index) =>
       index === sectionIndex ? { ...object(entry), name } : entry
     );
@@ -115,8 +115,8 @@ export function changeInstructionSectionName(
   return [{ '@type': 'HowToSection', name, itemListElement: [...content] }];
 }
 
-export function addInstructionSection(content: unknown[], canonical: boolean): unknown[] {
-  if (canonical) {
+export function addInstructionSection(content: unknown[], structured: boolean): unknown[] {
+  if (structured) {
     return [
       ...content,
       {
@@ -138,10 +138,10 @@ export function addInstructionSection(content: unknown[], canonical: boolean): u
 
 export function removeInstructionSection(
   content: unknown[],
-  canonical: boolean,
+  structured: boolean,
   sectionIndex: number
 ): unknown[] {
-  if (canonical || isLegacySectioned(content)) {
+  if (structured || isLegacySectioned(content)) {
     return content.filter((_, index) => index !== sectionIndex);
   }
   return sectionIndex === 0 ? [] : content;
@@ -149,12 +149,12 @@ export function removeInstructionSection(
 
 export function changeInstruction(
   content: unknown[],
-  canonical: boolean,
+  structured: boolean,
   path: [number, number?],
   text: string | null
 ): unknown[] {
   const [outer, inner] = path;
-  const field = canonical ? 'steps' : 'itemListElement';
+  const field = structured ? 'steps' : 'itemListElement';
   const update = (value: unknown) =>
     typeof value === 'string' ? text : { ...object(value), text };
   return content.flatMap((entry, index) => {
@@ -173,10 +173,10 @@ export function changeInstruction(
 }
 export function addInstruction(
   content: unknown[],
-  canonical: boolean,
+  structured: boolean,
   sectionIndex?: number
 ): unknown[] {
-  if (!canonical) {
+  if (!structured) {
     if (isLegacySectioned(content)) {
       const target = sectionIndex ?? content.length - 1;
       return content.map((entry, index) =>
@@ -202,7 +202,7 @@ export function addInstruction(
       : entry
   );
 }
-export function canonicalInstructionInput(content: unknown[]) {
+export function structuredInstructionInput(content: unknown[]) {
   return content.map((entry) => {
     const section = object(entry);
     const trimmed = typeof section.name === 'string' ? section.name.trim() : '';

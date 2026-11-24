@@ -36,7 +36,7 @@ public partial class SupperServingsPostgresTests
     private static Recipe AcceptanceRecipe(string name, int amount = 200) => new() {
         Name = name, Servings = 2, Ingredients = JsonSerializer.Serialize(new[] { $"{amount} g pasta" }),
         RawMetadata = JsonSerializer.Serialize(new { recipeIngredient = new[] { $"{amount} g pasta" }, supply = new[] { new { name = "pasta", quantity = amount, unitText = "g" } } }),
-        CanonicalContent = BuildCanonicalContent([("pasta", amount.ToString(), "g")], 2),
+        StructuredContent = BuildCanonicalContent([("pasta", amount.ToString(), "g")], 2),
     };
     private static FamilySetting AcceptanceDefault(int count = 4) => new() { Key = SupperServingsService.DefaultKey, Value = JsonSerializer.SerializeToElement(new { servings = count }) };
     private static async Task<JsonElement> AcceptanceSchedule(HttpClient client, int offset = 0) =>

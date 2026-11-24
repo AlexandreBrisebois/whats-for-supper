@@ -220,7 +220,7 @@ public sealed class CurrentRecipeExportTests
 
         await Assert.ThrowsAsync<InvalidDataException>(() => processor.ExecuteAsync(task, default));
         var saved = await db.Recipes.AsNoTracking().SingleAsync(r => r.Id == recipe.Id);
-        Assert.Null(saved.CanonicalContent);
+        Assert.Null(saved.StructuredContent);
     }
 
     [Fact]
@@ -232,7 +232,7 @@ public sealed class CurrentRecipeExportTests
         {
             Id = export.RecipeId,
             Name = "Current Recipe",
-            CanonicalContent = JsonSerializer.Serialize(export.Content, Json),
+            StructuredContent = JsonSerializer.Serialize(export.Content, Json),
             RawMetadata = export.RawMetadata,
             Servings = export.Content.Servings,
             Ingredients = "[]"
@@ -282,7 +282,7 @@ public sealed class CurrentRecipeExportTests
 
         Assert.NotNull(await processor.ExecuteAsync(task, default));
         var saved = await db.Recipes.AsNoTracking().SingleAsync(r => r.Id == recipeId);
-        Assert.NotNull(saved.CanonicalContent);
+        Assert.NotNull(saved.StructuredContent);
         Assert.Equal(4, saved.Servings);
         Assert.Contains("500 g beef", saved.Ingredients);
         Assert.Contains("Simmer gently.", saved.RawMetadata);

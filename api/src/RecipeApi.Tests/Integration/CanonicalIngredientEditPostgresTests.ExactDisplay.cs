@@ -77,7 +77,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     plan = await db.WeeklyPlans.AsNoTracking().SingleAsync(row => row.WeekStartDate == monday),
                     servings = await db.SupperServings.AsNoTracking().OrderBy(row => row.Date).ToArrayAsync(),
                     events = await db.CalendarEvents.AsNoTracking().OrderBy(row => row.Id).ToArrayAsync(),
-                    operations = await db.CanonicalRecipeOperations.CountAsync(),
+                    operations = await db.StructuredRecipeOperations.CountAsync(),
                     groceryOutcomes = await db.GroceryMutationOutcomes.CountAsync(),
                     tasks = await db.WorkflowTasks.AsNoTracking().OrderBy(row => row.InstanceId).ThenBy(row => row.TaskId).ToArrayAsync()
                 }, Json);

@@ -19,7 +19,7 @@ public class SyncRecipeProcessorTests
     {
         using var db = TestDbContextFactory.Create();
         var export = CurrentRecipeExportTests.Example();
-        var recipe = new Recipe { Id = export.RecipeId, Name = "Current human name", CanonicalContent = JsonSerializer.Serialize(export.Content, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+        var recipe = new Recipe { Id = export.RecipeId, Name = "Current human name", StructuredContent = JsonSerializer.Serialize(export.Content, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
             RawMetadata = export.RawMetadata, Servings = export.Content.Servings, Ingredients = "[]" };
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
@@ -38,7 +38,7 @@ public class SyncRecipeProcessorTests
         Assert.Equal(jsonBefore, await repository.GetRecipeJsonAsync(recipe.Id, default));
         Assert.Equal("Stale file name", (await repository.GetInfoAsync(recipe.Id, default)).Name);
         Assert.Empty(db.RecipeFilePublications);
-        Assert.Empty(db.CanonicalRecipeOperations);
+        Assert.Empty(db.StructuredRecipeOperations);
         Assert.Empty(db.SupperServings);
         publisher.VerifyNoOtherCalls();
 

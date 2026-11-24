@@ -76,7 +76,7 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
             Servings = 2,
             Ingredients = "[\"200 g pasta\"]",
             RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}",
-            CanonicalContent = BuildCanonicalContent(2, "200", "g", "pasta")
+            StructuredContent = BuildCanonicalContent(2, "200", "g", "pasta")
         };
         var other = new Recipe { Name = "Tuesday soup", Ingredients = "[]" };
         db.Recipes.AddRange(recipe, other);
@@ -146,7 +146,7 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
         Assert.Equal("2026-10-13", schedule.GetProperty("days")[4].GetProperty("preparation").GetProperty("preparedOn").GetString());
         var corrected = (await db.Recipes.FindAsync(recipe))!;
         corrected.Servings = 3; corrected.Ingredients = "[\"300 g pasta\"]";
-        corrected.CanonicalContent = BuildCanonicalContent(3, "300", "g", "pasta", corrected.CanonicalContent);
+        corrected.StructuredContent = BuildCanonicalContent(3, "300", "g", "pasta", corrected.StructuredContent);
         await db.SaveChangesAsync();
         ((DeploymentCalendarIntegrationTests.CalendarClock)scope.ServiceProvider.GetRequiredService<IClock>()).UtcNow = Tuesday.AddDays(2);
         Assert.Equal(prepared.GetRawText(), (await Prepare(client, request)).GetProperty("preparation").GetRawText());
@@ -164,7 +164,7 @@ public partial class PreparedSupperPostgresTests(ITestOutputHelper output)
             Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(PrepareUrl, captured)).StatusCode);
             row.OverrideServings = 6; await db.SaveChangesAsync();
             var source = await db.Recipes.FindAsync(recipe); source!.Ingredients = "[\"300 g pasta\"]";
-            source.CanonicalContent = BuildCanonicalContent(source.Servings, "300", "g", "pasta", source.CanonicalContent);
+            source.StructuredContent = BuildCanonicalContent(source.Servings, "300", "g", "pasta", source.StructuredContent);
             await db.SaveChangesAsync();
             Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(PrepareUrl, captured)).StatusCode);
             var entry = await db.CalendarEvents.SingleAsync(x => x.Date == Friday); db.CalendarEvents.Remove(entry); await db.SaveChangesAsync();

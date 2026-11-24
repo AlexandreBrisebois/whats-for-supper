@@ -66,10 +66,10 @@ public partial class SupperServingsPostgresTests(ITestOutputHelper output)
             await using (var factory = await TomorrowPushPostgresTests.CreateFactory(settings)) {
                 using var scope = factory.Services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-                var recipe = new Recipe { Name = "Pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) };
+                var recipe = new Recipe { Name = "Pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", StructuredContent = BuildCanonicalContent([("pasta", "200", "g")], 2) };
                 recipeId = recipe.Id;
                 db.Recipes.Add(recipe);
-                var unrelated = new Recipe { Name = "Unrelated lunch", Ingredients = "[\"1 g salt\"]", RawMetadata = "{\"recipeIngredient\":[\"1 g salt\"],\"supply\":[{\"name\":\"salt\",\"quantity\":1,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("salt", "1", "g")], null) };
+                var unrelated = new Recipe { Name = "Unrelated lunch", Ingredients = "[\"1 g salt\"]", RawMetadata = "{\"recipeIngredient\":[\"1 g salt\"],\"supply\":[{\"name\":\"salt\",\"quantity\":1,\"unitText\":\"g\"}]}", StructuredContent = BuildCanonicalContent([("salt", "1", "g")], null) };
                 db.Recipes.Add(unrelated); db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, MealSlot = 1, RecipeId = unrelated.Id });
                 db.FamilySettings.Add(new() { Key = SupperServingsService.DefaultKey, Value = JsonSerializer.SerializeToElement(new { servings = 2 }) });
                 db.CalendarEvents.Add(new CalendarEvent { Date = Wednesday, RecipeId = recipe.Id, Status = CalendarEventStatus.Planned, VoteCount = 7 });

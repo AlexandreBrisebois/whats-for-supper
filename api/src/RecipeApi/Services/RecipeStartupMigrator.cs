@@ -57,7 +57,7 @@ public sealed partial class RecipeStartupMigrator(
     private static partial Regex WhitespaceRegex();
 
     private sealed record PreparedRecipeUpgrade(
-        string CanonicalContent,
+        string StructuredContent,
         string? FoodMappingEvidence,
         int? Servings,
         string Ingredients);
@@ -139,7 +139,7 @@ public sealed partial class RecipeStartupMigrator(
         if (!recipe.IsReady && string.IsNullOrWhiteSpace(recipe.Ingredients) && string.IsNullOrWhiteSpace(recipe.RawMetadata))
             return false;
 
-        if (string.IsNullOrWhiteSpace(recipe.CanonicalContent))
+        if (string.IsNullOrWhiteSpace(recipe.StructuredContent))
             return true;
 
         try
@@ -230,7 +230,7 @@ public sealed partial class RecipeStartupMigrator(
 
     private static void ApplyRecipeUpgrade(Recipe recipe, PreparedRecipeUpgrade upgrade, DateTimeOffset now)
     {
-        recipe.CanonicalContent = upgrade.CanonicalContent;
+        recipe.StructuredContent = upgrade.StructuredContent;
         recipe.FoodMappingEvidence = upgrade.FoodMappingEvidence;
         recipe.Servings = upgrade.Servings;
         recipe.Ingredients = upgrade.Ingredients;

@@ -36,7 +36,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
             using var response = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", input, Json);
             Assert.Equal(status, response.StatusCode);
             var unchanged = await Read();
-            Assert.Equal((before.Name, before.CanonicalContent, before.FoodMappingEvidence), (unchanged.Name, unchanged.CanonicalContent, unchanged.FoodMappingEvidence));
+            Assert.Equal((before.Name, before.StructuredContent, before.FoodMappingEvidence), (unchanged.Name, unchanged.StructuredContent, unchanged.FoodMappingEvidence));
         }
         // A complete old-client request cannot partially change an unrelated field.
         await Reject(new { name = "must not leak", ingredientLines = Edit(content, "999").IngredientLines }, HttpStatusCode.Conflict);
@@ -68,7 +68,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
         var calls = imported.Provider.Invocations.Count;
         await imported.Agent.ExecuteAsync(imported.Extraction, default);
         var replay = await Read();
-        Assert.Equal((saved.CanonicalContent, saved.FoodMappingEvidence), (replay.CanonicalContent, replay.FoodMappingEvidence));
+        Assert.Equal((saved.StructuredContent, saved.FoodMappingEvidence), (replay.StructuredContent, replay.FoodMappingEvidence));
         Assert.Equal(calls, imported.Provider.Invocations.Count);
         Assert.Equal(BoundedVocabularyInput.Bytes(), (await vocabulary.CaptureActiveAsync())!.RawBytes);
     });
@@ -118,16 +118,16 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
             var quantityEvidence = JsonSerializer.Deserialize<RecipeFoodMappingEvidence>(afterQuantity.FoodMappingEvidence!, Json)!;
             Assert.All(quantityEvidence.Mappings, mapping => Assert.Equal(quantity.ContentRevision, mapping.Facts.ContentRevision));
             Assert.Equal(before.RawMetadata, afterQuantity.RawMetadata);
-            var retainedOperations = await db.CanonicalRecipeOperations.CountAsync();
+            var retainedOperations = await db.StructuredRecipeOperations.CountAsync();
             using (var stale = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", WireEdit(Edit(original, "999")), Json))
                 Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
             var foreign = quantity.IngredientLines[0].Shopping with { FoodId = Guid.NewGuid(), MappingRevision = "foreign-mapping" };
             using (var rejected = await client.PatchAsJsonAsync($"/api/recipes/{imported.Id}", WireEdit(Edit(quantity, "999", foreign)), Json))
                 Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
             var unchanged = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id);
-            Assert.Equal(afterQuantity.CanonicalContent, unchanged.CanonicalContent);
+            Assert.Equal(afterQuantity.StructuredContent, unchanged.StructuredContent);
             Assert.Equal(afterQuantity.FoodMappingEvidence, unchanged.FoodMappingEvidence);
-            Assert.Equal(retainedOperations, await db.CanonicalRecipeOperations.CountAsync());
+            Assert.Equal(retainedOperations, await db.StructuredRecipeOperations.CountAsync());
 
             var previousShopping = quantity.IngredientLines[0].Shopping;
             var privateShopping = clear ? new RecipeShoppingAssociationDto(previousShopping.Name, null, null)
@@ -150,7 +150,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
             var calls = imported.Provider.Invocations.Count;
             await imported.Agent.ExecuteAsync(imported.Extraction, default);
             var afterReplay = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == imported.Id);
-            Assert.Equal(saved.CanonicalContent, afterReplay.CanonicalContent);
+            Assert.Equal(saved.StructuredContent, afterReplay.StructuredContent);
             Assert.Equal(saved.FoodMappingEvidence, afterReplay.FoodMappingEvidence);
             Assert.Equal(before.RawMetadata, afterReplay.RawMetadata);
             Assert.Equal(calls, imported.Provider.Invocations.Count);

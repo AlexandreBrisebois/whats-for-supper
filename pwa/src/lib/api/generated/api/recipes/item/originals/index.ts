@@ -96,7 +96,7 @@ export interface OriginalsPostResponse_data extends AdditionalDataHolder, Parsab
  */
 export interface OriginalsRequestBuilder extends BaseRequestBuilder<OriginalsRequestBuilder> {
   /**
-   * Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload. Canonical owners remain fenced until activation.
+   * Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<OriginalsPostResponse>}
@@ -109,7 +109,7 @@ export interface OriginalsRequestBuilder extends BaseRequestBuilder<OriginalsReq
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<OriginalsPostResponse | undefined>;
   /**
-   * Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload. Canonical owners remain fenced until activation.
+   * Capture current recipe and source membership before reading the upload. Append one photo only against that baseline, retaining earlier media and dish selection. A committed file-delivery interruption remains pending; refresh before retrying an uncertain upload.
    * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}

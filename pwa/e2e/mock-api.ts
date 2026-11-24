@@ -1,7 +1,7 @@
-import { canonicalIngredientLines, cookingProjection } from './cooking-step-projection';
-import { applyCanonicalEditorPatch } from './canonical-editor';
+import { structuredIngredientLines, cookingProjection } from './cooking-step-projection';
+import { applyStructuredEditorPatch } from './structured-editor';
 import { declaredPackageGroceryRows } from './declared-package-grocery';
-import { canonicalRecipePatchIsValid } from './canonical-content-input';
+import { structuredRecipePatchIsValid } from './structured-content-input';
 import { createGroceryRowState } from './grocery-row-state';
 import { type Page, type Route } from '@playwright/test';
 import { createHash, randomUUID } from 'node:crypto';
@@ -261,7 +261,7 @@ export async function setupCommonRoutes(
   page: Page,
   calendarContext?: CalendarContext,
   recoveryOptions: {
-    canonicalEditor?: RecipeDto;
+    structuredEditor?: RecipeDto;
     busy?: boolean;
     recoveryDestination?: () => {
       version: number;
@@ -330,10 +330,10 @@ export async function setupCommonRoutes(
   let historyGeneration = 1;
   const recipeUpdates = new Map<string, Partial<RecipeDto>>();
   const importedShares = new Map<string, RecipeShareBundleDto>();
-  if (recoveryOptions.canonicalEditor?.id)
+  if (recoveryOptions.structuredEditor?.id)
     recipeUpdates.set(
-      String(recoveryOptions.canonicalEditor.id),
-      structuredClone(recoveryOptions.canonicalEditor)
+      String(recoveryOptions.structuredEditor.id),
+      structuredClone(recoveryOptions.structuredEditor)
     );
   const knownServingRecipe = recoveryOptions.supperServings?.knownRecipe;
   if (knownServingRecipe)
@@ -582,7 +582,7 @@ export async function setupCommonRoutes(
     );
   };
   let activeImportIssue: RecipeImportIssueDto | null =
-    recoveryOptions.canonicalEditor?.importIssue ?? null;
+    recoveryOptions.structuredEditor?.importIssue ?? null;
   let activeImportId: string | null = null;
   let importStatusReads = 0;
 
@@ -1353,14 +1353,14 @@ export async function setupCommonRoutes(
       if (
         (Object.hasOwn(changes, 'ingredientLines') ||
           Object.hasOwn(changes, 'instructionSections')) &&
-        !canonicalRecipePatchIsValid(changes)
+        !structuredRecipePatchIsValid(changes)
       )
         return fulfill(route, {
           status: 400,
           json: { message: 'Invalid canonical recipe content. No fields were saved.' },
         });
       if (
-        (recoveryOptions.canonicalEditor?.id === id || importedShares.has(id)) &&
+        (recoveryOptions.structuredEditor?.id === id || importedShares.has(id)) &&
         [
           'ingredientLines',
           'instructionSections',
@@ -1370,7 +1370,7 @@ export async function setupCommonRoutes(
         ].some((key) => Object.hasOwn(changes, key))
       ) {
         const current = builders.recipe({ id, ...recipeUpdates.get(id) });
-        const result = applyCanonicalEditorPatch(current, changes);
+        const result = applyStructuredEditorPatch(current, changes);
         if (result.status === 200) {
           recipeUpdates.set(id, result.body.recipe);
           await servingMock.recipeChanged(id, result.body.recipe);
@@ -3870,7 +3870,7 @@ export async function mockSupperServings(
   let currentTexts = [...sourceTexts];
   const knownLines = (target: number | null) => {
     const canonical = options.readRecipe?.(known!.id);
-    if (canonical?.contentSchemaVersion === 2) return canonicalIngredientLines(canonical, target);
+    if (canonical?.contentSchemaVersion === 2) return structuredIngredientLines(canonical, target);
     const supplies =
       known?.source?.supplies ??
       (known ? [{ name: known.ingredient, quantity: known.quantity, unitText: known.unit }] : []);
@@ -3916,7 +3916,7 @@ export async function mockSupperServings(
     id === known?.id ? known.basis : (recipeSource(id).servings ?? null);
   const linesFor = (id: string, target: number | null) =>
     recipeSource(id).contentSchemaVersion === 2
-      ? canonicalIngredientLines(recipeSource(id), target)
+      ? structuredIngredientLines(recipeSource(id), target)
       : id === known?.id
         ? knownLines(target)
         : (recipeSource(id).ingredients ?? []).map((text) => {

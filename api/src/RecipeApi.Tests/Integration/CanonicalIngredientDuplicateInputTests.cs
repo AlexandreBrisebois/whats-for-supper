@@ -35,18 +35,27 @@ public sealed class CanonicalIngredientDuplicateInputTests
         await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var recipe = new Recipe { Name = "Original", Notes = "Retained note", Servings = 4,
+        var recipeId = Guid.NewGuid();
+        const string rawMetadata = """{"recipeIngredient":["200 g tomatoes"],"supply":[{"name":"tomatoes","quantity":200,"unitText":"g"}]}""";
+        var (convertedContent, _) = StructuredRecipeContentStore.FromSchemaOrg(
+            recipeId, rawMetadata, null, null, origin: "unknown", explicitServings: 4, overrideIngredientTexts: ["200 g tomatoes"]);
+        var recipe = new Recipe
+        {
+            Id = recipeId,
+            Name = "Original",
+            Notes = "Retained note",
+            Servings = 4,
             Ingredients = "[\"200 g tomatoes\"]",
-            RawMetadata = """{"recipeIngredient":["200 g tomatoes"],"supply":[{"name":"tomatoes","quantity":200,"unitText":"g"}]}""" };
+            RawMetadata = rawMetadata,
+            StructuredContent = JsonSerializer.Serialize(convertedContent, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+        };
         db.Recipes.Add(recipe);
         await db.SaveChangesAsync();
-        var converted = await scope.ServiceProvider.GetRequiredService<StructuredRecipeContentStore>().ConvertAsync(recipe.Id,
-            StructuredRecipeContentStore.InspectContentRevision(recipe), StructuredRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
         var beforeRecipe = await RecipeState(db, recipe.Id);
         var beforeOperations = await OperationState(db);
-        var beforeOperationCount = await db.CanonicalRecipeOperations.CountAsync();
+        var beforeOperationCount = await db.StructuredRecipeOperations.CountAsync();
         var beforePublications = await PublicationState(db);
-        var id = JsonSerializer.Serialize(converted.Content.IngredientLines[0].Id);
+        var id = JsonSerializer.Serialize(convertedContent.IngredientLines[0].Id);
         const string quantity = """{"kind":"scalar","value":{"n":"200","d":"1"}}""";
         var amount = duplicate switch
         {
@@ -64,13 +73,13 @@ public sealed class CanonicalIngredientDuplicateInputTests
         var steps = $$$"""[{"clientId":"step-new",{{{text}}}}]""";
         var sectionIdentity = duplicate == "section-identity" ? "\"clientId\":\"section-new\",\"clientId\":\"section-new\"" : "\"clientId\":\"section-new\"";
         var sectionSteps = duplicate == "steps" ? $"\"steps\":{steps},\"steps\":{steps}" : $"\"steps\":{steps}";
-        var input = $$$"""{"expectedContentRevision":{{{JsonSerializer.Serialize(converted.Content.ContentRevision)}}},"name":"Saved","notes":"Changed note","ingredientLines":[{{{line}}}],"instructionSections":[{ {{{sectionIdentity}}},"name":null,{{{sectionSteps}}}}]}""";
+        var input = $$$"""{"expectedContentRevision":{{{JsonSerializer.Serialize(convertedContent.ContentRevision)}}},"name":"Saved","notes":"Changed note","ingredientLines":[{{{line}}}],"instructionSections":[{ {{{sectionIdentity}}},"name":null,{{{sectionSteps}}}}]}""";
         using var client = factory.CreateClient();
         using var response = await client.PatchAsync($"/api/recipes/{recipe.Id}", new StringContent(input, Encoding.UTF8, "application/json"));
         if (duplicate is not null)
         {
             Assert.True(response.StatusCode == HttpStatusCode.BadRequest,
-                $"Expected 400 for {duplicate}, received {(int)response.StatusCode}. Operations before {beforeOperationCount}, after {await db.CanonicalRecipeOperations.CountAsync()}. Body {await response.Content.ReadAsStringAsync()}");
+                $"Expected 400 for {duplicate}, received {(int)response.StatusCode}. Operations before {beforeOperationCount}, after {await db.StructuredRecipeOperations.CountAsync()}. Body {await response.Content.ReadAsStringAsync()}");
             Assert.Equal(beforeRecipe, await RecipeState(db, recipe.Id));
             Assert.Equal(beforeOperations, await OperationState(db));
             Assert.Equal(beforePublications, await PublicationState(db));
@@ -79,7 +88,7 @@ public sealed class CanonicalIngredientDuplicateInputTests
         {
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("Saved", (await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipe.Id)).Name);
-            Assert.Equal(2, await db.CanonicalRecipeOperations.CountAsync());
+            Assert.Equal(1, await db.StructuredRecipeOperations.CountAsync());
         }
         Assert.Null(await scope.ServiceProvider.GetRequiredService<FoodVocabularyStore>().CaptureActiveAsync());
     }
@@ -87,7 +96,7 @@ public sealed class CanonicalIngredientDuplicateInputTests
     private static async Task<string> RecipeState(RecipeDbContext db, Guid id) =>
         JsonSerializer.Serialize(await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id));
     private static async Task<string> OperationState(RecipeDbContext db) =>
-        JsonSerializer.Serialize(await db.CanonicalRecipeOperations.AsNoTracking().OrderBy(x => x.OperationId).ToArrayAsync());
+        JsonSerializer.Serialize(await db.StructuredRecipeOperations.AsNoTracking().OrderBy(x => x.OperationId).ToArrayAsync());
     private static async Task<string> PublicationState(RecipeDbContext db) =>
         JsonSerializer.Serialize(await db.RecipeFilePublications.AsNoTracking().OrderBy(x => x.OperationId).ToArrayAsync());
 }

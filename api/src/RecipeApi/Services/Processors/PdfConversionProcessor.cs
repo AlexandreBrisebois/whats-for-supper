@@ -24,7 +24,7 @@ public sealed class PdfConversionProcessor(
         if (db is not null)
         {
             var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
-            if (existing?.CanonicalContent is not null) return new { skipped = true };
+            if (existing?.StructuredContent is not null) return new { skipped = true };
         }
 
         await using var sourcePdf = await recipeStore.ReadSourcePdfAsync(id, ct);

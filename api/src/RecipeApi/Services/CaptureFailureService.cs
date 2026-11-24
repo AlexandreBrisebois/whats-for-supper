@@ -232,7 +232,7 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
     // Non-null persisted content also represents explicit human clears. Retain
     // partial automated content conservatively rather than inventing authorship.
     internal static bool HasRetainedRecipeContent(Recipe recipe) =>
-        recipe.Ingredients is not null || recipe.RawMetadata is not null || recipe.CanonicalContent is not null;
+        recipe.Ingredients is not null || recipe.RawMetadata is not null || recipe.StructuredContent is not null;
 
     internal static bool ShouldRetainRecipe(Recipe recipe) =>
         recipe.IsDiscoverable || HasRetainedRecipeContent(recipe)

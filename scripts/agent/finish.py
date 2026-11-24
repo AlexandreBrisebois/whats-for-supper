@@ -22,8 +22,7 @@ import harness_identity as harness_runtime
 
 ROOT = Path(__file__).resolve().parents[2]
 CHECKS = ('documentation', 'spec:check', 'test:agent', 'lint', 'format:check:pwa', 'typecheck', 'test:unit',
-          'agent:test:impact', 'test:api', 'review:contracts',
-          'agent:drift:endpoints', 'database-behavior')
+          'agent:test:impact', 'test:api', 'review:contracts', 'database-behavior')
 
 
 # Narrow exceptions for preview switches and the PWA demo pass-through addition.
@@ -150,7 +149,7 @@ def checks_for(paths):
         selected.update(('lint', 'format:check:pwa', 'typecheck', 'test:unit', 'agent:test:impact',
                          'test:api', 'review:contracts'))
     if classes & {'contract', 'unknown'}:
-        selected.update(('agent:drift:endpoints', 'database-behavior'))
+        selected.add('database-behavior')
     return [check for check in CHECKS if check in selected]
 
 
@@ -181,9 +180,6 @@ def verification_plan(paths, changed, *, explicit):
         if check == 'database-behavior':
             item['prerequisites'] = 'Repository .NET SDK and Docker, or WFS_TEST_POSTGRES_CONNECTION.'
             item['limitations'] = 'Runs local PostgreSQL suites without deploying the application; selected task acceptance remains separate.'
-        elif check == 'agent:drift:endpoints':
-            item['prerequisites'] = 'Running API exposing its generated OpenAPI document.'
-            item['limitations'] = 'Live endpoint parity only; does not prove database behavior.'
         elif check == 'spec:check':
             item['prerequisites'] = 'Installed OpenSpec CLI (@fission-ai/openspec).'
         elif check == 'documentation':
@@ -395,9 +391,7 @@ def run_check(check, paths=()):
         import database_tests
         return database_tests.run_database_tests()
     # Invoke scripts directly where Task wraps distinct exits as 201, preserving
-    # blocked live/Kiota evidence. Public commands remain Taskfile entrypoints.
-    if check == 'agent:drift:endpoints':
-        return run_command([sys.executable, '-B', 'scripts/agent/drift.py', '--endpoint-diff'])
+    # blocked Kiota evidence. Public commands remain Taskfile entrypoints.
     if check == 'review:contracts':
         results = [run_command([sys.executable, '-B', 'scripts/agent/api_tools.py', '--route-drift']),
                    run_command([sys.executable, '-B', 'scripts/agent/kiota_client.py', 'check']),

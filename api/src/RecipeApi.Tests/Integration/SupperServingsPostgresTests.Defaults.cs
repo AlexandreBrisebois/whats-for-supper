@@ -26,7 +26,7 @@ public partial class SupperServingsPostgresTests
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {
             await using var factory = await TomorrowPushPostgresTests.CreateFactory(settings);
             using var scope = factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var recipe = new Recipe { Name = "Original", Servings = 2, Ingredients = "[\"200 g pasta\"]", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) }; db.Recipes.Add(recipe);
+            var recipe = new Recipe { Name = "Original", Servings = 2, Ingredients = "[\"200 g pasta\"]", StructuredContent = BuildCanonicalContent([("pasta", "200", "g")], 2) }; db.Recipes.Add(recipe);
             db.FamilySettings.Add(new() { Key = SupperServingsService.DefaultKey, Value = JsonSerializer.SerializeToElement(new { servings = 4 }) });
             foreach (var date in new[] { new DateOnly(2026,10,10), Wednesday, new DateOnly(2026,10,15), new DateOnly(2026,10,21), new DateOnly(2026,10,28) })
                 db.CalendarEvents.Add(new() { Date = date, RecipeId = recipe.Id, Status = date.Day == 15 ? CalendarEventStatus.Cooked : CalendarEventStatus.Planned });
@@ -101,7 +101,7 @@ public partial class SupperServingsPostgresTests
             await using var factory = await TomorrowPushPostgresTests.CreateFactory(settings);
             using var scope = factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var recipe = new Recipe { Name = "Reset pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 2) };
+            var recipe = new Recipe { Name = "Reset pasta", Servings = 2, Ingredients = "[\"200 g pasta\"]", RawMetadata = "{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}", StructuredContent = BuildCanonicalContent([("pasta", "200", "g")], 2) };
             db.Recipes.Add(recipe);
             db.FamilySettings.Add(new() { Key = SupperServingsService.DefaultKey, Value = JsonSerializer.SerializeToElement(new { servings = 4 }) });
             db.CalendarEvents.Add(new() { Date = Wednesday, RecipeId = recipe.Id });

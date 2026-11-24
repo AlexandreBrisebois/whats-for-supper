@@ -24,6 +24,7 @@ const recipe = {
   ingredientLines: [],
 } as unknown as Recipe;
 const base = editorBaseline(recipe, ['Supper']);
+expect(base.structured).toBe(true);
 const draft = (): EditorDraft => ({
   version: 1,
   recipeId: recipe.id,
@@ -33,7 +34,7 @@ const draft = (): EditorDraft => ({
     name: 'My pasta',
     servings: 'invalid',
     description: '',
-    canonicalDrafts: [ingredientDraft()],
+    ingredientDrafts: [ingredientDraft()],
   },
 });
 beforeEach(() => {
@@ -62,7 +63,7 @@ describe('per-tab original editor recovery', () => {
     'retains malformed baseline package bytes without installing an unusable draft: %j',
     (packageEscaped) => {
       const value = draft();
-      Object.assign(value.fields.canonicalDrafts[0].source, { packageEscaped });
+      Object.assign(value.fields.ingredientDrafts[0].source, { packageEscaped });
       const bytes = JSON.stringify(value);
       sessionStorage.setItem(editorDraftKey(recipe.id), bytes);
       expect(readEditorDraft(recipe.id).status).toBe('incompatible');
@@ -87,7 +88,7 @@ describe('per-tab original editor recovery', () => {
     } as Recipe;
     const before = editorBaseline(original, ['Supper']);
     const old = structuredClone(before);
-    for (const row of old.fields.canonicalDrafts) {
+    for (const row of old.fields.ingredientDrafts) {
       delete row.packageEnabled;
       delete row.packageCountUnit;
       delete row.packageCapacityAmount;
@@ -101,13 +102,13 @@ describe('per-tab original editor recovery', () => {
       baseline: old,
       fields: structuredClone(old.fields),
     };
-    value.fields.canonicalDrafts[0].amount = '3';
+    value.fields.ingredientDrafts[0].amount = '3';
     const current = editorBaseline({ ...original, contentRevision: 'r2', name: 'Their name' }, [
       'Supper',
     ]);
     const reconciled = reconcileEditorDraft(value, current);
     expect(reconciled.conflicts).toEqual([]);
-    expect(reconciled.fields.canonicalDrafts[0].amount).toBe('3');
+    expect(reconciled.fields.ingredientDrafts[0].amount).toBe('3');
     expect(reconciled.fields.name).toBe('Their name');
   });
   it.each([
@@ -117,7 +118,7 @@ describe('per-tab original editor recovery', () => {
     { packageBasis: 'cooked' },
   ])('preserves malformed package draft bytes without installing them: %j', (patch) => {
     const value = draft();
-    Object.assign(value.fields.canonicalDrafts[0], patch);
+    Object.assign(value.fields.ingredientDrafts[0], patch);
     const bytes = JSON.stringify(value);
     sessionStorage.setItem(editorDraftKey(recipe.id), bytes);
     expect(readEditorDraft(recipe.id).status).toBe('incompatible');
@@ -134,7 +135,7 @@ describe('per-tab original editor recovery', () => {
     JSON.stringify({ version: 2, recipeId: recipe.id }),
     JSON.stringify({
       ...draft(),
-      fields: { ...draft().fields, canonicalDrafts: [{ source: null }] },
+      fields: { ...draft().fields, ingredientDrafts: [{ source: null }] },
     }),
   ])('retains unsupported/corrupt bytes without exposing a broken draft: %s', (bytes) => {
     sessionStorage.setItem(editorDraftKey(recipe.id), bytes);
@@ -247,7 +248,7 @@ describe('per-tab original editor recovery', () => {
   it('merges independent fields, preserves conflicts and detects metadata changes with the same content token', () => {
     const value = draft();
     value.fields.servings = base.fields.servings;
-    value.fields.canonicalDrafts = [];
+    value.fields.ingredientDrafts = [];
     const current = editorBaseline(
       { ...recipe, name: 'Their pasta', description: 'Their description' },
       ['Lunch']
@@ -270,11 +271,11 @@ describe('per-tab original editor recovery', () => {
       amount: null,
       unit: null,
     });
-    const values = { ...base.fields, canonicalDrafts: [row] };
+    const values = { ...base.fields, ingredientDrafts: [row] };
     const restored = restoreDeletedEditorRows(values, base);
-    expect(restored.canonicalDrafts[0].source.id).toBeUndefined();
-    expect(restored.canonicalDrafts[0].source.clientId).toBeTruthy();
-    expect(restored.canonicalDrafts[0].description).toBe('Pasta');
+    expect(restored.ingredientDrafts[0].source.id).toBeUndefined();
+    expect(restored.ingredientDrafts[0].source.clientId).toBeTruthy();
+    expect(restored.ingredientDrafts[0].description).toBe('Pasta');
     expect(row.source.id).toBe('saved-row');
   });
   it('restores deleted package literals as a new declaration without carrying definition authority', () => {
@@ -296,8 +297,8 @@ describe('per-tab original editor recovery', () => {
       },
     });
     const original = structuredClone(row);
-    const restored = restoreDeletedEditorRows({ ...base.fields, canonicalDrafts: [row] }, base);
-    const result = prepareIngredientDrafts(restored.canonicalDrafts);
+    const restored = restoreDeletedEditorRows({ ...base.fields, ingredientDrafts: [row] }, base);
+    const result = prepareIngredientDrafts(restored.ingredientDrafts);
     expect(result.invalid).toBe(false);
     expect(result.lines[0].id).toBeUndefined();
     expect(result.lines[0].clientId).toBeTruthy();
@@ -311,8 +312,8 @@ describe('per-tab original editor recovery', () => {
       basis: 'net',
     });
     expect(row).toEqual(original);
-    const existing = { ...base, fields: { ...base.fields, canonicalDrafts: [row] } };
-    expect(restoreDeletedEditorRows(existing.fields, existing).canonicalDrafts[0]).toEqual(
+    const existing = { ...base, fields: { ...base.fields, ingredientDrafts: [row] } };
+    expect(restoreDeletedEditorRows(existing.fields, existing).ingredientDrafts[0]).toEqual(
       original
     );
   });
@@ -404,7 +405,7 @@ describe('retained version1 generated quantity representations', () => {
   const retained = async (packaged = false) => {
     const older = await priorAdapter(wire(packaged));
     const baseline = editorBaseline(older, ['Supper']);
-    for (const row of baseline.fields.canonicalDrafts) {
+    for (const row of baseline.fields.ingredientDrafts) {
       delete row.packageEnabled;
       delete row.packageCountUnit;
       delete row.packageCapacityAmount;
@@ -417,12 +418,12 @@ describe('retained version1 generated quantity representations', () => {
       baseline,
       fields: structuredClone(baseline.fields),
     };
-    value.fields.canonicalDrafts[0].description = 'My retained tomatoes';
-    expect(value.baseline.fields.canonicalDrafts[0].source.amount).toEqual({
+    value.fields.ingredientDrafts[0].description = 'My retained tomatoes';
+    expect(value.baseline.fields.ingredientDrafts[0].source.amount).toEqual({
       kind: 'scalar',
       additionalData: { value: { n: '2', d: '1' } },
     });
-    expect(value.baseline.fields.canonicalDrafts[0].source.packageEscaped == null).toBe(!packaged);
+    expect(value.baseline.fields.ingredientDrafts[0].source.packageEscaped == null).toBe(!packaged);
     expect(persistEditorDraft(value)).toBe(true);
     return { value, bytes: sessionStorage.getItem(editorDraftKey(id))! };
   };
@@ -431,7 +432,7 @@ describe('retained version1 generated quantity representations', () => {
     const { bytes } = await retained();
     const restored = readEditorDraft(id);
     expect(restored.status).toBe('ready');
-    expect(restored.draft!.fields.canonicalDrafts[0].description).toBe('My retained tomatoes');
+    expect(restored.draft!.fields.ingredientDrafts[0].description).toBe('My retained tomatoes');
     const current = editorBaseline(await currentAdapter(wire()), ['Supper']);
     expect(sessionStorage.getItem(editorDraftKey(id))).toBe(bytes);
     expect(editorBaselineMatches(restored.draft!.baseline, current)).toBe(true);
@@ -447,8 +448,8 @@ describe('retained version1 generated quantity representations', () => {
     const reviewed = reconcileEditorDraft(restored.draft!, current);
     expect(sessionStorage.getItem(editorDraftKey(id))).toBe(bytes);
     expect(reviewed.conflicts).toEqual([]);
-    expect(reviewed.fields.canonicalDrafts[0].description).toBe('My retained tomatoes');
-    expect(reviewed.fields.canonicalDrafts[0].amount).toBe('2');
+    expect(reviewed.fields.ingredientDrafts[0].description).toBe('My retained tomatoes');
+    expect(reviewed.fields.ingredientDrafts[0].amount).toBe('2');
     expect(JSON.stringify(restored.draft)).toBe(bytes);
   });
 
@@ -461,15 +462,15 @@ describe('retained version1 generated quantity representations', () => {
     ]);
     expect(editorBaselineMatches(restored.draft!.baseline, current)).toBe(false);
     expect(reconcileEditorDraft(restored.draft!, current).conflicts).toEqual(['ingredients']);
-    expect(restored.draft!.fields.canonicalDrafts[0].description).toBe('My retained tomatoes');
-    expect(restored.draft!.fields.canonicalDrafts[0].amount).toBe('2');
+    expect(restored.draft!.fields.ingredientDrafts[0].description).toBe('My retained tomatoes');
+    expect(restored.draft!.fields.ingredientDrafts[0].amount).toBe('2');
     expect(JSON.stringify(restored.draft)).toBe(bytes);
     expect(sessionStorage.getItem(editorDraftKey(id))).toBe(bytes);
   });
 
   it('accepts an older decoded scalar package source as retained facts and compares it without a representation conflict', async () => {
     const { value, bytes } = await retained(true);
-    expect(value.fields.canonicalDrafts[0].source.packageEscaped!.capacity!.amount).toEqual({
+    expect(value.fields.ingredientDrafts[0].source.packageEscaped!.capacity!.amount).toEqual({
       kind: 'scalar',
       additionalData: { value: { n: '400', d: '1' } },
     });
@@ -479,12 +480,12 @@ describe('retained version1 generated quantity representations', () => {
     const current = editorBaseline(await currentAdapter(wire(true)), ['Supper']);
     expect(editorBaselineMatches(restored.draft!.baseline, current)).toBe(true);
     expect(reconcileEditorDraft(restored.draft!, current).conflicts).toEqual([]);
-    const row = restored.draft!.fields.canonicalDrafts[0];
+    const row = restored.draft!.fields.ingredientDrafts[0];
     expect(ingredientPackageDraft(row).capacityAmount).toBe('400');
     const prepared = prepareIngredientDrafts([row]);
     expect(prepared.invalid).toBe(false);
     expect(prepared.lines[0].packageEscaped).toEqual(wire(true).ingredientLines[0].package);
-    expect(restored.draft!.fields.canonicalDrafts[0].description).toBe('My retained tomatoes');
+    expect(restored.draft!.fields.ingredientDrafts[0].description).toBe('My retained tomatoes');
     expect(JSON.stringify(restored.draft)).toBe(bytes);
     expect(sessionStorage.getItem(editorDraftKey(id))).toBe(bytes);
   });
@@ -493,7 +494,7 @@ describe('retained version1 generated quantity representations', () => {
     const { bytes } = await retained(true);
     // Isolate the derived-control seam from the source-guard readiness regression above.
     const stored = JSON.parse(sessionStorage.getItem(editorDraftKey(id))!) as EditorDraft;
-    const row = stored.fields.canonicalDrafts[0];
+    const row = stored.fields.ingredientDrafts[0];
     expect(row).not.toHaveProperty('packageCapacityAmount');
     expect(ingredientPackageDraft(row).capacityAmount).toBe('400');
     const prepared = prepareIngredientDrafts([row]);
@@ -506,11 +507,11 @@ describe('retained version1 generated quantity representations', () => {
 
   it('keeps an explicitly retained blank capacity blank and invalid instead of restoring the source amount', async () => {
     const { value } = await retained(true);
-    value.fields.canonicalDrafts[0].packageCapacityAmount = '';
+    value.fields.ingredientDrafts[0].packageCapacityAmount = '';
     expect(persistEditorDraft(value)).toBe(true);
     const bytes = sessionStorage.getItem(editorDraftKey(id))!;
     const stored = JSON.parse(bytes) as EditorDraft;
-    const row = stored.fields.canonicalDrafts[0];
+    const row = stored.fields.ingredientDrafts[0];
     expect(ingredientPackageDraft(row).capacityAmount).toBe('');
     expect(prepareIngredientDrafts([row]).invalid).toBe(true);
     expect(row.description).toBe('My retained tomatoes');
@@ -529,9 +530,9 @@ describe('retained version1 generated quantity representations', () => {
     Object.assign(oldRow.source, {
       amount: { kind: 'unresolved-retained-shape', evidence: 'keep' },
     });
-    old.fields.canonicalDrafts = [oldRow];
+    old.fields.ingredientDrafts = [oldRow];
     const current = structuredClone(old);
-    current.fields.canonicalDrafts[0].source.amount = null;
+    current.fields.ingredientDrafts[0].source.amount = null;
     const bytes = JSON.stringify(old);
     expect(editorBaselineMatches(old, current)).toBe(false);
     expect(JSON.stringify(old)).toBe(bytes);

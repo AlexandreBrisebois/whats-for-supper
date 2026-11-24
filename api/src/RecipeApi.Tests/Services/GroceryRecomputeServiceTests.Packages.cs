@@ -22,7 +22,7 @@ public partial class GroceryRecomputeServiceTests
         var row = new RecipeIngredientLineDto { Id = Guid.NewGuid(), Description = "tomatoes", Amount = QuantityMath.Parse("2"),
             AmountText = "2", Unit = new("cans", null), Scaling = "proportional", Package = package,
             Shopping = new("tomatoes", null, null), Provenance = new("human", "source", ["package"]) };
-        recipe.CanonicalContent = JsonSerializer.Serialize(new StructuredRecipeContent(2, "before", "source", 4, [row], []), PackageJson);
+        recipe.StructuredContent = JsonSerializer.Serialize(new StructuredRecipeContent(2, "before", "source", 4, [row], []), PackageJson);
         await _db.SaveChangesAsync();
         return id;
     }
@@ -32,7 +32,7 @@ public partial class GroceryRecomputeServiceTests
         _db.ChangeTracker.Clear();
         var recipe = await _db.Recipes.SingleAsync(value => value.Id == id);
         var content = StructuredRecipeContentStore.Read(recipe)!;
-        recipe.CanonicalContent = JsonSerializer.Serialize(content with { ContentRevision = Guid.NewGuid().ToString(), IngredientLines =
+        recipe.StructuredContent = JsonSerializer.Serialize(content with { ContentRevision = Guid.NewGuid().ToString(), IngredientLines =
             [content.IngredientLines[0] with { Package = package, Amount = QuantityMath.Parse(count), AmountText = count }] }, PackageJson);
         await _db.SaveChangesAsync();
         await _service.RecomputeForWeekAsync(TestMonday, default);
@@ -140,7 +140,7 @@ public partial class GroceryRecomputeServiceTests
         var recipe = await _db.Recipes.SingleAsync(row => row.Id == id);
         var content = StructuredRecipeContentStore.Read(recipe)!;
         var first = content.IngredientLines[0];
-        recipe.CanonicalContent = JsonSerializer.Serialize(content with
+        recipe.StructuredContent = JsonSerializer.Serialize(content with
         {
             IngredientLines = [first, first with { Id = Guid.NewGuid(), Package = DeclaredPackage("800") }]
         }, PackageJson);
@@ -155,7 +155,7 @@ public partial class GroceryRecomputeServiceTests
         _db.ChangeTracker.Clear();
         var recipe = await _db.Recipes.SingleAsync(row => row.Id == recipeId);
         var content = StructuredRecipeContentStore.Read(recipe)!;
-        recipe.CanonicalContent = JsonSerializer.Serialize(content with
+        recipe.StructuredContent = JsonSerializer.Serialize(content with
         {
             ContentRevision = Guid.NewGuid().ToString("N"),
             IngredientLines = content.IngredientLines.Select(row => row.Id == lineId

@@ -92,7 +92,7 @@ for (const uncertain of [false, true])
     if (uncertain)
       recipe.instructionSections[0].steps[0].bindings[0].validatedTextRevision = 'stale';
     await setupCommonRoutes(page, undefined, {
-      canonicalEditor: recipe,
+      structuredEditor: recipe,
       supperServings: {
         knownRecipe: { id: recipe.id, basis: 4, quantity: 200, ingredient: 'pasta', unit: 'g' },
       },
@@ -179,7 +179,7 @@ for (const allocation of ['split', 'partial', 'exhaustive'])
     const ingredient = splitOil ? 'oil' : 'pasta';
     const scaled = uncertain ? '2 tbsp oil' : splitOil ? '4 tbsp oil' : '375 g pasta';
     await setupCommonRoutes(page, undefined, {
-      canonicalEditor: recipe,
+      structuredEditor: recipe,
       supperServings: {
         knownRecipe: {
           id: recipe.id,
@@ -294,7 +294,7 @@ test('dated report refresh preserves coherent content until accepted', async ({
 }, info) => {
   const recipe = cookingStepRecipe();
   await setupCommonRoutes(page, undefined, {
-    canonicalEditor: recipe,
+    structuredEditor: recipe,
     supperServings: {
       knownRecipe: { id: recipe.id!, basis: 4, quantity: 200, ingredient: 'pasta', unit: 'g' },
     },
@@ -335,7 +335,7 @@ test('relative fraction half retains wording with mixed invalid stale and ambigu
 }, info) => {
   const recipe = fractionCookingRecipe();
   await setupCommonRoutes(page, undefined, {
-    canonicalEditor: recipe,
+    structuredEditor: recipe,
     supperServings: {
       knownRecipe: { id: recipe.id, basis: 4, quantity: 200, ingredient: 'pasta', unit: 'g' },
     },
@@ -383,7 +383,7 @@ test('remaining follows corrected total and safely retains prose after reduction
   const recipe = remainderCookingRecipe();
   await setupCommonRoutes(page, undefined, {
     sseMode: 'connected-once',
-    canonicalEditor: recipe,
+    structuredEditor: recipe,
     supperServings: {
       knownRecipe: { id: recipe.id, basis: 4, quantity: 2, ingredient: 'oil', unit: 'tbsp' },
     },
@@ -424,7 +424,7 @@ test('per-item dose stays fixed while count scales and stale proof retains prose
 }, info) => {
   const recipe = perItemCookingRecipe();
   await setupCommonRoutes(page, undefined, {
-    canonicalEditor: recipe,
+    structuredEditor: recipe,
     supperServings: {
       knownRecipe: { id: recipe.id, basis: 4, quantity: 4, ingredient: 'pieces', unit: 'pieces' },
     },
@@ -465,7 +465,7 @@ test('standalone fixed use retains wording beside proportional use and guarded t
 }, info) => {
   const recipe = fixedCookingRecipe();
   await setupCommonRoutes(page, undefined, {
-    canonicalEditor: recipe,
+    structuredEditor: recipe,
     supperServings: {
       knownRecipe: { id: recipe.id, basis: 4, quantity: 2, ingredient: 'oil', unit: 'tbsp' },
     },
@@ -512,7 +512,7 @@ test('ordinary guarded Save discovers a final remainder and step editing replace
   }
   recipe.recipeInstructions[0].itemListElement = originalSteps.map((text) => ({ text }));
   await setupCommonRoutes(page, undefined, {
-    canonicalEditor: recipe,
+    structuredEditor: recipe,
     supperServings: {
       knownRecipe: { id: recipe.id, basis: 4, quantity: 2, ingredient: 'oil', unit: 'tbsp' },
     },
@@ -680,7 +680,7 @@ test('ordinary guarded Save discovers a standalone fixed use without additional 
   ];
   recipe.recipeInstructions[0].itemListElement = [{ text: source }];
   await setupCommonRoutes(page, undefined, {
-    canonicalEditor: recipe,
+    structuredEditor: recipe,
     supperServings: {
       knownRecipe: { id: recipe.id, basis: 4, quantity: 2, ingredient: 'oil', unit: 'tbsp' },
     },
@@ -765,7 +765,7 @@ test('ordinary guarded Save discovers per-item count and dose without binding-de
   recipe.instructionSections[0].steps[0].bindings = [];
   recipe.recipeInstructions[0].itemListElement = [{ text: source }];
   await setupCommonRoutes(page, undefined, {
-    canonicalEditor: recipe,
+    structuredEditor: recipe,
     supperServings: {
       knownRecipe: {
         id: recipe.id,

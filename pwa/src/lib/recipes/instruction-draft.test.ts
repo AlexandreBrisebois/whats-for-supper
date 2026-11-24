@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   addInstruction,
   addInstructionSection,
-  canonicalInstructionInput,
   changeInstruction,
   changeInstructionSectionName,
   instructionRows,
@@ -10,6 +9,7 @@ import {
   legacyInstructionInput,
   originalInstructions,
   removeInstructionSection,
+  structuredInstructionInput,
 } from './instruction-draft';
 import type { Recipe } from '@/lib/api/recipes';
 
@@ -128,7 +128,7 @@ describe('original instruction editing', () => {
 
     const renamed = changeInstructionSectionName(original, true, 1, '  Plating  ');
     expect(instructionSections(renamed, true)[1].name).toBe('  Plating  ');
-    expect(canonicalInstructionInput(renamed)).toEqual([
+    expect(structuredInstructionInput(renamed)).toEqual([
       {
         id: 'sec-1',
         name: 'Sauce',
@@ -145,7 +145,7 @@ describe('original instruction editing', () => {
     ]);
 
     const cleared = changeInstructionSectionName(renamed, true, 0, '   ');
-    expect(canonicalInstructionInput(cleared)?.[0]).toMatchObject({
+    expect(structuredInstructionInput(cleared)?.[0]).toMatchObject({
       id: 'sec-1',
       name: null,
       steps: [

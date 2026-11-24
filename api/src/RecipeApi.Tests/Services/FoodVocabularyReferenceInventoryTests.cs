@@ -88,6 +88,8 @@ public sealed class FoodVocabularyReferenceInventoryTests
         var retired = await db.RecipePhysicalDeletions.AsNoTracking().SingleAsync();
         using var payload = JsonDocument.Parse(retired.Payload);
         Assert.Equal(2, payload.RootElement.GetProperty("version").GetInt32());
+        Assert.True(payload.RootElement.GetProperty("recipe").TryGetProperty("canonicalContent", out _));
+        Assert.True(payload.RootElement.TryGetProperty("canonicalOperations", out _));
         Assert.True(payload.RootElement.GetProperty("recipe").TryGetProperty("foodMappingEvidence", out var observed));
         Assert.Equal(JsonValueKind.Null, observed.ValueKind);
         var vocabulary = TestPublicationStore.Vocabulary(db, new InMemoryStorageProvider(), clock);
@@ -180,8 +182,14 @@ public sealed class FoodVocabularyReferenceInventoryTests
             case "physical":
                 var canonical = new StructuredRecipeContentStore(db, clock,
                     new SupperProjectionInvalidation(db, clock, new DeploymentCalendar(new ConfigurationManager())), vocabulary);
-                await canonical.ConvertAsync(recipe.Id, StructuredRecipeContentStore.InspectContentRevision(recipe),
-                    StructuredRecipeContentStore.InspectSourceRevision(recipe), Guid.NewGuid());
+                var authority = await vocabulary.CaptureAuthorityAsync(null);
+                var (content, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+                    recipe.Id, recipe.RawMetadata!, recipe.SourceUrl, authority, Guid.NewGuid(), "unknown");
+                recipe.StructuredContent = JsonSerializer.Serialize(content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                recipe.FoodMappingEvidence = evidence;
+                await db.SaveChangesAsync();
+                await canonical.EditAsync(recipe.Id, content.SourceRevision, Guid.NewGuid(),
+                    new RecipeApi.Dto.UpdateRecipeDto { ExpectedContentRevision = content.ContentRevision, Name = "Mapped before retirement" });
                 var configuration = new ConfigurationManager { ["DataRoot"] = Path.Combine(Path.GetTempPath(), "wfs-inventory-" + Guid.NewGuid().ToString("N")) };
                 var roots = new RecipesRootResolver(new DataRootResolver(configuration), configuration);
                 await (Task)Method("RecipePhysicalLifecycle", "DeleteAsync").Invoke(null,
@@ -192,6 +200,8 @@ public sealed class FoodVocabularyReferenceInventoryTests
                     var generated = await db.RecipePhysicalDeletions.AsNoTracking().SingleAsync();
                     using var physicalPayload = JsonDocument.Parse(generated.Payload);
                     Assert.Equal(expectedVersion, physicalPayload.RootElement.GetProperty("version").GetInt32());
+                    Assert.Equal(JsonValueKind.String, physicalPayload.RootElement.GetProperty("recipe").GetProperty("canonicalContent").ValueKind);
+                    Assert.Equal(1, physicalPayload.RootElement.GetProperty("canonicalOperations").GetArrayLength());
                 }
                 break;
         }
@@ -200,11 +210,11 @@ public sealed class FoodVocabularyReferenceInventoryTests
         // fixture removals model independent retention without altering its bytes.
         db.WorkflowInstances.RemoveRange(await db.WorkflowInstances.Where(x => owner != "child" || x.WorkflowId != "parent").ToListAsync());
         db.WorkflowLaunchIntents.RemoveRange(await db.WorkflowLaunchIntents.Where(x => owner != "child" || x.Id == workflow.Id).ToListAsync());
-        db.CanonicalRecipeOperations.RemoveRange(await db.CanonicalRecipeOperations.ToListAsync());
+        db.StructuredRecipeOperations.RemoveRange(await db.StructuredRecipeOperations.ToListAsync());
         db.RecipeFilePublications.RemoveRange(await db.RecipeFilePublications.ToListAsync());
         db.FamilySettings.Remove(await db.FamilySettings.SingleAsync(x => x.Key == "food_vocabulary_publication"));
         await db.SaveChangesAsync();
-        if (owner != "physical") Assert.Null((await db.Recipes.SingleAsync()).CanonicalContent);
+        if (owner != "physical") Assert.Null((await db.Recipes.SingleAsync()).StructuredContent);
         if (missingObservation is { } missing) await CorruptOwnerAsync(db, owner, missing);
         var retainedBefore = await RetainedRows(db, owner);
         if (!owner.StartsWith("maintenance", StringComparison.Ordinal)) Assert.Contains(installed.NewHead.Sha256, retainedBefore);

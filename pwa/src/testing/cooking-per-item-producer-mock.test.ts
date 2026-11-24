@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { applyCanonicalEditorPatch } from '../../e2e/canonical-editor';
+import { applyStructuredEditorPatch } from '../../e2e/structured-editor';
 import { cookingProjection } from '../../e2e/cooking-step-projection';
 import { cookingStepRecipe } from '../../e2e/cooking-step-fixture';
 
@@ -35,7 +35,7 @@ function original(french = false) {
   return recipe;
 }
 function save(recipe: any, changes: any = {}) {
-  return applyCanonicalEditorPatch(recipe, {
+  return applyStructuredEditorPatch(recipe, {
     expectedContentRevision: recipe.contentRevision,
     instructionSections: recipe.instructionSections.map((section: any) => ({
       id: section.id,

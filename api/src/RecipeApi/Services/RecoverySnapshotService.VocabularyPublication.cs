@@ -38,7 +38,7 @@ public partial class RecoverySnapshotService
         if (facts.Membership.RawJson is not null || facts.Overrides.Rows!.Count != 0 || destination.Observation.Origins.Length != 0
             || facts.Recipes.Any(x => x.FoodMappingEvidence is not null))
             throw new InvalidDataException("Historical snapshots cannot replace destination food vocabulary authority.");
-        foreach (var operation in facts.CanonicalOperations)
+        foreach (var operation in facts.StructuredOperations)
         {
             if (operation.OriginalRequest is null) continue;
             using var request = JsonDocument.Parse(operation.OriginalRequest);

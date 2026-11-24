@@ -44,7 +44,7 @@ public class WebAcquisitionAgent(
         if (db is not null)
         {
             var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
-            if (existing?.CanonicalContent is not null) return new { skipped = true };
+            if (existing?.StructuredContent is not null) return new { skipped = true };
         }
 
         await ProcessUrlAsync(recipeId, url, ct);
@@ -154,7 +154,7 @@ public class WebAcquisitionAgent(
         {
             await using var transaction = await RecipeRotation.LockAsync(db, recipeId, ct);
             var entity = await db.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, ct);
-            if (entity is not null && entity.CanonicalContent is null)
+            if (entity is not null && entity.StructuredContent is null)
             {
                 entity.Name = info.Name;
                 entity.SourceUrl = info.SourceUrl;

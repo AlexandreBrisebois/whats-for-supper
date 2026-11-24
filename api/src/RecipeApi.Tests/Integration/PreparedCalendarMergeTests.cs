@@ -82,7 +82,7 @@ public class PreparedCalendarMergeTests
     internal static async Task RoundTrip(TestWebApplicationFactory app)
     {
         using var scope = app.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var recipe = new Recipe { Name = "Prepared pasta", IsSynthesized = true, Servings = 2, Ingredients = "[\"200 g pasta\"]", CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("pasta", "200", "g")], 2) }; db.Recipes.Add(recipe);
+        var recipe = new Recipe { Name = "Prepared pasta", IsSynthesized = true, Servings = 2, Ingredients = "[\"200 g pasta\"]", StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("pasta", "200", "g")], 2) }; db.Recipes.Add(recipe);
         var entry = Entry(recipe.Id); recipe.LastCookedDate = entry.PreparedAtUtc; db.CalendarEvents.Add(entry); await db.SaveChangesAsync();
         var service = scope.ServiceProvider.GetRequiredService<ManagementService>(); await service.BackupAsync();
         var path = Path.Combine(scope.ServiceProvider.GetRequiredService<DataRootResolver>().Root,"calendar-events.json");

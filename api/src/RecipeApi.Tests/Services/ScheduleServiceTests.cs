@@ -393,9 +393,9 @@ public class ScheduleServiceTests : IAsyncLifetime
         var sourceMonday = new DateOnly(2026, 10, 12);
         var targetMonday = sourceMonday.AddDays(7);
         var recipe = new Recipe { Id = Guid.NewGuid(), Name = "Carrot supper", Ingredients = "[\"carrots\"]",
-            CanonicalContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([("carrots", null, null)]) };
+            StructuredContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([("carrots", null, null)]) };
         var existing = new Recipe { Id = Guid.NewGuid(), Name = "Onion supper", Ingredients = "[\"onions\"]",
-            CanonicalContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([("onions", null, null)]) };
+            StructuredContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([("onions", null, null)]) };
         _db.Recipes.AddRange(recipe, existing);
         _db.CalendarEvents.AddRange(
             new CalendarEvent { Id = Guid.NewGuid(), Date = sourceMonday, RecipeId = recipe.Id },
@@ -429,10 +429,10 @@ public class ScheduleServiceTests : IAsyncLifetime
     {
         var sourceMonday = new DateOnly(2026, 10, 12);
         var moved = new Recipe { Id = Guid.NewGuid(), Name = "Move this", Ingredients = "[\"carrots\"]",
-            CanonicalContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([("carrots", null, null)]) };
+            StructuredContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([("carrots", null, null)]) };
         // Unsupported metadata is intentionally unresolved, not a grocery infrastructure failure.
         var malformed = new Recipe { Id = Guid.NewGuid(), Name = "Existing bad metadata", RawMetadata = "[]",
-            CanonicalContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([]) };
+            StructuredContent = RecipeApi.Tests.Integration.SupperServingsPostgresTests.BuildCanonicalContent([]) };
         _db.Recipes.AddRange(moved, malformed);
         _db.CalendarEvents.AddRange(new CalendarEvent { Date = sourceMonday, RecipeId = moved.Id },
             new CalendarEvent { Date = sourceMonday.AddDays(1), RecipeId = malformed.Id });

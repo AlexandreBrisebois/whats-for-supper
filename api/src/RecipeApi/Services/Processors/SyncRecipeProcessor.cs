@@ -54,7 +54,7 @@ public class SyncRecipeProcessor(
         if (recipe is null)
             throw new InvalidDataException($"Recipe {recipeId} not found for sync.");
 
-        if (recipe.CanonicalContent is null)
+        if (recipe.StructuredContent is null)
         {
             string? rawJson = null;
             try
@@ -77,10 +77,10 @@ public class SyncRecipeProcessor(
 
                 await using var syncTx = await RecipeRotation.LockAsync(db, recipeId, ct, lockSupperInputs: true);
                 var tracked = await db.Recipes.SingleAsync(x => x.Id == recipeId, ct);
-                if (tracked.CanonicalContent is null)
+                if (tracked.StructuredContent is null)
                 {
                     tracked.RawMetadata = StructuredRecipeContentStore.ToSchemaOrgJson(content, rawJson, tracked.Name, tracked.Description);
-                    tracked.CanonicalContent = JsonSerializer.Serialize(content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                    tracked.StructuredContent = JsonSerializer.Serialize(content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
                     tracked.FoodMappingEvidence = evidence;
                     tracked.Servings = content.Servings;
                     tracked.Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(StructuredRecipeContentStore.Render));

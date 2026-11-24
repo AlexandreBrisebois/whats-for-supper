@@ -314,7 +314,7 @@ public partial class TomorrowPushPostgresTests(ITestOutputHelper output)
         try
         {
             var recipe = await db.Recipes.SingleAsync(x => x.Id == recipeId);
-            recipe.CanonicalContent = null;
+            recipe.StructuredContent = null;
             configure(recipe);
             await db.SaveChangesAsync();
             await db.Entry(recipe).ReloadAsync();
@@ -334,12 +334,12 @@ public partial class TomorrowPushPostgresTests(ITestOutputHelper output)
             new Recipe
             {
                 Id = Selected, Name = "Sunday Chicken", Ingredients = "[\"Carrot\"]",
-                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)]), IsReady = true
+                StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)]), IsReady = true
             },
             new Recipe
             {
                 Id = Other, Name = "Chain Lasagna", Ingredients = "[\"Potato\"]",
-                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)]), IsReady = true
+                StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Potato", null, null)]), IsReady = true
             });
         for (var i=0; i<15; i++) db.CalendarEvents.Add(new CalendarEvent {
             Id = Guid.NewGuid(), Date = Sunday.AddDays(i), RecipeId = i is 0 or 4 ? Selected : Other,

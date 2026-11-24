@@ -428,7 +428,7 @@ public partial class OnlineRecoveryPostgresTests : IAsyncLifetime
         {
             Name = "Facts soup", IsReady = true, CuisineType = "French", Notes = "Family note",
             Ingredients = "[\"water\"]",
-            CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("water", null, null)])
+            StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("water", null, null)])
         };
         var oldRound = Guid.NewGuid();
         db.Recipes.Add(recipe);

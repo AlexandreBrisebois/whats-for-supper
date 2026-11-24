@@ -13,8 +13,8 @@ public sealed partial class FoodVocabularyStore
         await using var readConnection = await DatabaseReadConnection.RetainAsync(db, ct);
         var membership = await db.FamilySettings.AsNoTracking().SingleOrDefaultAsync(x => x.Key == Key, ct);
         var recipeFacts = await db.Recipes.IgnoreQueryFilters().AsNoTracking().Select(x => new FoodVocabularyRecipeObservation(
-            x.Id, x.CanonicalContent, x.FoodMappingEvidence)).ToArrayAsync(ct);
-        var operations = await db.CanonicalRecipeOperations.AsNoTracking().ToArrayAsync(ct);
+            x.Id, x.StructuredContent, x.FoodMappingEvidence)).ToArrayAsync(ct);
+        var operations = await db.StructuredRecipeOperations.AsNoTracking().ToArrayAsync(ct);
         var publications = await db.RecipeFilePublications.AsNoTracking().ToArrayAsync(ct);
         var history = new FoodVocabularyHistoryFacts(
             await db.WorkflowInstances.AsNoTracking().Include(x => x.Tasks).ToArrayAsync(ct),

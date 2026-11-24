@@ -197,10 +197,10 @@ public partial class RecoverySnapshotService
         FoodVocabularyDefinitions.Require(membership.Length <= 1 && (membership.Length == 0 ? current.Membership.RawJson is null
             : JsonColumn(membership[0], "value") == Normal(current.Membership.RawJson)));
         Same(tables["recipes"].EnumerateArray().Select(x => (Id: x.GetProperty("id").GetGuid(), Content: JsonColumn(x, "canonical_content"), Evidence: JsonColumn(x, "food_mapping_evidence"))),
-            current.Recipes.Select(x => (Id: x.RecipeId, Content: Normal(x.CanonicalContent), Evidence: Normal(x.FoodMappingEvidence))), x => x.Id);
+            current.Recipes.Select(x => (Id: x.RecipeId, Content: Normal(x.StructuredContent), Evidence: Normal(x.FoodMappingEvidence))), x => x.Id);
         Same(tables["canonical_recipe_operations"].EnumerateArray().Select(x => (Recipe: x.GetProperty("recipe_id").GetGuid(), Operation: x.GetProperty("operation_id").GetGuid(),
                 Hash: x.GetProperty("input_hash").GetString(), Original: Normal(x.GetProperty("original_request").GetString()), Result: JsonColumn(x, "result"), At: x.GetProperty("created_at").GetDateTimeOffset())),
-            current.CanonicalOperations.Select(x => (Recipe: x.RecipeId, Operation: x.OperationId, Hash: (string?)x.InputHash,
+            current.StructuredOperations.Select(x => (Recipe: x.RecipeId, Operation: x.OperationId, Hash: (string?)x.InputHash,
                 Original: Normal(x.OriginalRequest), Result: Normal(x.Result), At: x.CreatedAt)), x => (x.Recipe, x.Operation));
         Same(tables["recipe_file_publications"].EnumerateArray().Select(x => (Recipe: x.GetProperty("recipe_id").GetGuid(), Operation: x.GetProperty("operation_id").GetGuid(),
                 Hash: x.GetProperty("input_hash").GetString(), Payload: JsonColumn(x, "payload"), Result: x.GetProperty("result_hash").GetString(), Delivered: x.GetProperty("delivered").GetBoolean(), At: x.GetProperty("created_at").GetDateTimeOffset())),

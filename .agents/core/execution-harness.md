@@ -61,7 +61,7 @@ Task-specific acceptance and isolated model/host qualification remain separate o
 | Documentation   | Changed links, Python syntax where present, diff whitespace; review instruction meaning                   |
 | Harness         | Documentation checks and `task test:agent`; selected loading/fixture checks remain explicit task evidence |
 | Application     | Documentation, lint/types, unit/API/impact tests and static contract/client checks                        |
-| Contract/schema | Application checks plus live endpoint parity and task-specific real database behavior                     |
+| Contract/schema | Application checks plus in-process generated OpenAPI parity (`test:api`) and task-specific real database behavior (explicit live parity remains `task agent:drift:endpoints` / `task test:smoke -- --isolated`) |
 | Unknown         | Union of all classes; never silently reduce verification                                                  |
 
 OpenSpec planning documents, change `.openspec.yaml` metadata and spec/change
@@ -187,10 +187,13 @@ mocked API boundary.
 - `task agent:reconcile` and `agent:drift:routes` inspect source route coverage;
   `agent:drift:schemas` checks DTO property/requiredness patterns;
   `agent:drift:mocks` audits ID/GUID patterns. None proves live API/database behavior.
-- `task agent:drift:endpoints` probes the generated live API specification once.
-  Unavailable service is blocked (script exit 2), not zero mismatches.
-- Finish runs `agent:test:impact` and `test:api` locally. Contract/unknown changes also
-  run `database-behavior` through the same runner exposed as `task test:database`.
+- `task agent:drift:endpoints` is an explicit live-API parity command (used by
+  `task test:smoke -- --isolated`, not `task verify`). Unavailable service is blocked
+  (script exit 2), not zero mismatches.
+- Finish runs `agent:test:impact` and `test:api` locally (`test:api` verifies generated
+  OpenAPI endpoint parity against `specs/openapi.yaml` in-process). Contract/unknown
+  changes also run `database-behavior` through the same runner exposed as
+  `task test:database`.
   It runs the existing PostgreSQL integration suites against disposable databases,
   using `WFS_TEST_POSTGRES_CONNECTION` when configured or an automatically owned,
   temporary PostgreSQL/pgvector container otherwise. It does not deploy the API/PWA,

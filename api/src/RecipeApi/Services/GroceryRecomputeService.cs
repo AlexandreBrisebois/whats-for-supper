@@ -456,7 +456,7 @@ public partial class GroceryRecomputeService(
 
     public async Task RecomputeForFoodAsync(Guid foodId, CancellationToken ct)
     {
-        var recipes = await db.Recipes.AsNoTracking().Where(recipe => recipe.CanonicalContent != null).ToArrayAsync(ct);
+        var recipes = await db.Recipes.AsNoTracking().Where(recipe => recipe.StructuredContent != null).ToArrayAsync(ct);
         var ids = recipes.Where(recipe => StructuredRecipeContentStore.Read(recipe)!.IngredientLines.Any(line => line.Shopping.FoodId == foodId))
             .Select(recipe => recipe.Id).ToArray();
         var dates = await db.CalendarEvents.AsNoTracking().Where(occurrence => occurrence.RecipeId != null && ids.Contains(occurrence.RecipeId.Value))

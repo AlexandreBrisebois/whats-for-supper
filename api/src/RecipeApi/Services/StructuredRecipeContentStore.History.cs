@@ -9,7 +9,7 @@ namespace RecipeApi.Services;
 
 public sealed record RecipePublicationFields(Guid Id, string? Name, string? Description, string? Notes,
     RecipeRating Rating, Guid? AddedBy, string? SourceUrl, string? Ingredients, string? RawMetadata,
-    string? CanonicalContent, int? Servings, string? Category, string? CuisineType, string[]? MealTypes,
+    [property: JsonPropertyName("canonicalContent")] string? StructuredContent, int? Servings, string? Category, string? CuisineType, string[]? MealTypes,
     string? TotalTime, int ImageCount, int FinishedDishIndex, bool IsSynthesized, bool IsReady,
     bool IsDiscoverable, bool RotationHumanOff, string RotationSource, bool CookedSuppressed,
     bool? SupperSuitable, bool? IsVegetarian, DateTimeOffset? DeletedAt, Guid? DeletedBy,
@@ -21,7 +21,7 @@ public sealed partial class StructuredRecipeContentStore
     {
         static string? JsonValue(string? value) => value is null ? null : NormalizeJson(value);
         return new(recipe.Id, recipe.Name, recipe.Description, recipe.Notes, recipe.Rating, recipe.AddedBy,
-            recipe.SourceUrl, JsonValue(recipe.Ingredients), JsonValue(recipe.RawMetadata), JsonValue(recipe.CanonicalContent),
+            recipe.SourceUrl, JsonValue(recipe.Ingredients), JsonValue(recipe.RawMetadata), JsonValue(recipe.StructuredContent),
             recipe.Servings, recipe.Category, recipe.CuisineType, recipe.MealTypes?.ToArray(), recipe.TotalTime,
             recipe.ImageCount, recipe.FinishedDishIndex, recipe.IsSynthesized, recipe.IsReady, recipe.IsDiscoverable,
             recipe.RotationHumanOff, recipe.RotationSource, recipe.CookedSuppressed, recipe.SupperSuitable,
@@ -39,7 +39,7 @@ public sealed partial class StructuredRecipeContentStore
         SourceUrl = value.SourceUrl,
         Ingredients = value.Ingredients,
         RawMetadata = value.RawMetadata,
-        CanonicalContent = value.CanonicalContent,
+        StructuredContent = value.StructuredContent,
         Servings = value.Servings,
         Category = value.Category,
         CuisineType = value.CuisineType,
@@ -71,13 +71,6 @@ public sealed partial class StructuredRecipeContentStore
         string ExpectedContentRevision, string ExpectedSourceRevision, string? Input, bool HasServings,
         RecipePublicationFields Baseline, string BaselineHash);
 
-    private static string CaptureOriginal(Recipe recipe, Guid operationId, string kind, string content, string source, UpdateRecipeDto? input)
-    {
-        var baseline = Observe(recipe);
-        return JsonSerializer.Serialize(new OriginalRequest(1, recipe.Id, operationId, kind, content, source,
-            input is null ? null : JsonSerializer.Serialize(input, Json), input?.HasServings ?? false, baseline, Hash(baseline)), Json);
-    }
-
     // Pure qualification of original request/baseline and the saved result. This
     // never consults today's recipe, dictionaries, providers or files. Missing
     // old authority remains absent and retains its original wire representation.
@@ -94,14 +87,14 @@ public sealed partial class StructuredRecipeContentStore
                 && request.Baseline.Id == request.RecipeId && request.BaselineHash == Hash(request.Baseline));
             var recipe = RestoreObservation(request.Baseline);
             // Check embedded original JSON before any permissive legacy parser.
-            foreach (var raw in new[] { recipe.Ingredients, recipe.RawMetadata, recipe.CanonicalContent })
+            foreach (var raw in new[] { recipe.Ingredients, recipe.RawMetadata, recipe.StructuredContent })
                 if (raw is not null) ReadOriginal<JsonElement>(raw);
             RequireOriginal(InspectContentRevision(recipe) == request.ExpectedContentRevision
                 && InspectSourceRevision(recipe) == request.ExpectedSourceRevision);
             var result = ReadOriginal<StructuredRecipeWriteResult>(operation.Result);
             RequireOriginal(result.Content is not null && result.CreatedIds is not null);
             ValidateContent(result.Content);
-            var current = recipe.CanonicalContent is null ? null : ReadOriginal<StructuredRecipeContent>(recipe.CanonicalContent);
+            var current = recipe.StructuredContent is null ? null : ReadOriginal<StructuredRecipeContent>(recipe.StructuredContent);
             if (current is not null) ValidateContent(current);
             StructuredRecipeWriteResult expected;
             string inputHash;

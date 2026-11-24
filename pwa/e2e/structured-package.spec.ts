@@ -11,7 +11,7 @@ for (const locale of ['en', 'fr'] as const) {
     }, info) => {
       const recipe: any = cookingStepRecipe();
       await setupCommonRoutes(page, undefined, {
-        canonicalEditor: recipe,
+        structuredEditor: recipe,
         supperServings: {
           knownRecipe: { id: recipe.id, basis: 4, quantity: 200, ingredient: 'pasta', unit: 'g' },
         },

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
@@ -76,7 +77,7 @@ internal static class WorkflowLifecycle
         var repairCommands = await db.RecipeRepairIntents.AsNoTracking().Where(x => x.Id == instance.Id).ToArrayAsync(ct);
         var publications = await db.RecipeFilePublications.AsNoTracking().Where(x => taskIds.Contains(x.OperationId) || x.OperationId == instance.Id)
             .OrderBy(x => x.RecipeId).ThenBy(x => x.OperationId).ToArrayAsync(ct);
-        var canonicalOperations = await db.CanonicalRecipeOperations.AsNoTracking().Where(x => taskIds.Contains(x.OperationId) || x.OperationId == instance.Id)
+        var structuredOperations = await db.StructuredRecipeOperations.AsNoTracking().Where(x => taskIds.Contains(x.OperationId) || x.OperationId == instance.Id)
             .OrderBy(x => x.RecipeId).ThenBy(x => x.OperationId).ToArrayAsync(ct);
         var reports = await db.RecipeImportReports.AsNoTracking().Where(x => x.LastWorkflowInstanceId == instance.Id || x.RepairIntentId == instance.Id)
             .Select(x => new { x.RecipeId, x.LastWorkflowInstanceId, x.RepairIntentId }).OrderBy(x => x.RecipeId).ToArrayAsync(ct);
@@ -118,7 +119,7 @@ internal static class WorkflowLifecycle
             processorAttempts,
             repairCommands,
             publications,
-            canonicalOperations,
+            canonicalOperations = structuredOperations,
             reports,
             maintenanceCommand
         }, JsonDefaults.CamelCase);
@@ -162,7 +163,8 @@ internal static class WorkflowLifecycle
     private sealed record RetainedReport(Guid RecipeId, Guid? LastWorkflowInstanceId, Guid? RepairIntentId);
     private sealed record RetainedPayload(int Version, string ExecutionDisposition, RetainedWorkflow Workflow,
         WorkflowChildIntent[] ChildCommands, WorkflowResetIntent[] ResetCommands, WorkflowProcessorAttempt[] ProcessorAttempts,
-        RecipeRepairIntent[] RepairCommands, RecipeFilePublication[] Publications, StructuredRecipeOperation[] CanonicalOperations,
+        RecipeRepairIntent[] RepairCommands, RecipeFilePublication[] Publications,
+        [property: JsonPropertyName("canonicalOperations")] StructuredRecipeOperation[] StructuredOperations,
         RetainedReport[] Reports, MaintenanceCommand? MaintenanceCommand);
     private static readonly JsonSerializerOptions RetainedJson = new(JsonDefaults.CamelCase)
     {
@@ -194,7 +196,7 @@ internal static class WorkflowLifecycle
             || payload.Version != 1 || payload.ExecutionDisposition != "inert" || payload.Workflow is not { } workflow
             || workflow.Id != record.Id || workflow.Tasks is null || payload.ChildCommands is null || payload.ResetCommands is null
             || payload.ProcessorAttempts is null || payload.RepairCommands is null || payload.Publications is null
-            || payload.CanonicalOperations is null || payload.Reports is null
+            || payload.StructuredOperations is null || payload.Reports is null
             || workflow.Tasks.Any(x => x is null || x.TaskId == Guid.Empty || x.InstanceId != record.Id || x.DependsOn is null)
             || workflow.Tasks.Select(x => x.TaskId).Distinct().Count() != workflow.Tasks.Length)
             throw new InvalidDataException("Retained workflow observation is inconsistent.");
@@ -216,7 +218,7 @@ internal static class WorkflowLifecycle
         references.AddRange(payload.ResetCommands.SelectMany(WorkflowReset.VocabularyReferences));
         references.AddRange(payload.ProcessorAttempts.SelectMany(WorkflowProcessorHistory.VocabularyReferences));
         references.AddRange(payload.RepairCommands.SelectMany(RecipeReportRepairIntent.VocabularyReferences));
-        references.AddRange(payload.CanonicalOperations.SelectMany(StructuredRecipeContentStore.VocabularyReferences));
+        references.AddRange(payload.StructuredOperations.SelectMany(StructuredRecipeContentStore.VocabularyReferences));
         return references.Distinct().ToArray();
     }
 

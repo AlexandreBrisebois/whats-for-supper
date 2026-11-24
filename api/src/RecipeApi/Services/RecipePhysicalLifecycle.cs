@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using RecipeApi.Data;
@@ -61,7 +62,7 @@ internal static class RecipePhysicalLifecycle
                 historyHash = Hash(JsonSerializer.Serialize(history, JsonDefaults.CamelCase)),
                 // Every recipe-level operation, including operations unrelated to a workflow task.
                 history.Publications,
-                history.CanonicalOperations,
+                canonicalOperations = history.StructuredOperations,
                 history.RepairCommands,
                 history.Reports,
                 originalMaintenanceCommand = command,
@@ -146,7 +147,9 @@ internal static class RecipePhysicalLifecycle
     }
 
     private static SortedDictionary<string, object?> RecipeFacts(RecipeDbContext db, Recipe recipe) =>
-        new(db.Entry(recipe).Properties.ToDictionary(x => JsonNamingPolicy.CamelCase.ConvertName(x.Metadata.Name), x => x.CurrentValue), StringComparer.Ordinal);
+        new(db.Entry(recipe).Properties.ToDictionary(
+            x => x.Metadata.Name == nameof(Recipe.StructuredContent) ? "canonicalContent" : JsonNamingPolicy.CamelCase.ConvertName(x.Metadata.Name),
+            x => x.CurrentValue), StringComparer.Ordinal);
 
     private static string Hash(string payload) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(StructuredRecipeContentStore.NormalizeJson(payload))));
 
@@ -180,7 +183,8 @@ internal static class RecipePhysicalLifecycle
         return new("deleted", intent.FilesRemoved);
     }
 
-    private sealed record PhysicalHistory(RecipeFilePublication[] Publications, StructuredRecipeOperation[] CanonicalOperations,
+    private sealed record PhysicalHistory(RecipeFilePublication[] Publications,
+        [property: JsonPropertyName("canonicalOperations")] StructuredRecipeOperation[] StructuredOperations,
         RecipeRepairIntent[] RepairCommands, SortedDictionary<string, object?>[] Reports);
 
     private static async Task<PhysicalHistory> ReadHistoryAsync(RecipeDbContext db, Guid id, CancellationToken ct)
@@ -188,7 +192,7 @@ internal static class RecipePhysicalLifecycle
         var reports = await db.RecipeImportReports.AsNoTracking().Where(x => x.RecipeId == id).ToArrayAsync(ct);
         return new(
             await db.RecipeFilePublications.AsNoTracking().Where(x => x.RecipeId == id).OrderBy(x => x.OperationId).ToArrayAsync(ct),
-            await db.CanonicalRecipeOperations.AsNoTracking().Where(x => x.RecipeId == id).OrderBy(x => x.OperationId).ToArrayAsync(ct),
+            await db.StructuredRecipeOperations.AsNoTracking().Where(x => x.RecipeId == id).OrderBy(x => x.OperationId).ToArrayAsync(ct),
             await db.RecipeRepairIntents.AsNoTracking().Where(x => x.RecipeId == id).OrderBy(x => x.Id).ToArrayAsync(ct),
             reports.Select(x => new SortedDictionary<string, object?>(db.Entry(x).Properties.ToDictionary(
                 p => JsonNamingPolicy.CamelCase.ConvertName(p.Metadata.Name), p => p.CurrentValue), StringComparer.Ordinal)).ToArray());
@@ -298,7 +302,7 @@ internal static class RecipePhysicalLifecycle
         string? Name, string? TotalTime, string? SourceUrl, int ImageCount, bool IsSynthesized, bool IsDiscoverable,
         bool RotationHumanOff, string RotationSource, bool CookedSuppressed, bool? SupperSuitable, bool IsReady,
         string? Category, string? CuisineType, string[]? MealTypes, bool? IsVegetarian, string? RawMetadata,
-        string? Ingredients, string? CanonicalContent, int? Servings,
+        string? Ingredients, [property: JsonPropertyName("canonicalContent")] string? StructuredContent, int? Servings,
         DateTimeOffset? DeletedAt, Guid? DeletedBy, string? DeleteNote, DateTimeOffset CreatedAt,
         DateTimeOffset UpdatedAt, DateTimeOffset? LastCookedDate, int FinishedDishIndex, string? FoodMappingEvidence = null);
     private sealed record RetainedReport(Guid RecipeId, string[] Reasons, string? Note, RecipeImportReportStatus Status,
@@ -309,7 +313,7 @@ internal static class RecipePhysicalLifecycle
     private sealed record RetainedWorkflowLink(Guid Id, string Disposition, string PayloadHash);
     private sealed record RetainedPayload(int Version, RetainedIntent PhysicalIntent, PhysicalCapture PhysicalCapture,
         string HistoryDisposition, RetainedRecipe Recipe, string HistoryHash, RecipeFilePublication[] Publications,
-        StructuredRecipeOperation[] CanonicalOperations, RecipeRepairIntent[] RepairCommands, RetainedReport[] Reports,
+        [property: JsonPropertyName("canonicalOperations")] StructuredRecipeOperation[] StructuredOperations, RecipeRepairIntent[] RepairCommands, RetainedReport[] Reports,
         MaintenanceCommand? OriginalMaintenanceCommand, RetainedWorkflowLink[] WorkflowRetirements);
 
     internal static FoodVocabularyReference[] VocabularyReferences(RecipePhysicalDeletion intent)
@@ -339,26 +343,26 @@ internal static class RecipePhysicalLifecycle
             || intent.FilesDeliveredAt is null || payload.Version is not (1 or 2)
             || payload.HistoryDisposition != "inert" || payload.PhysicalIntent is not { Target: "recipe-aggregate" }
             || payload.Recipe is null || payload.Recipe.Id != intent.RecipeId || payload.PhysicalCapture is null
-            || payload.Publications is null || payload.CanonicalOperations is null || payload.RepairCommands is null
+            || payload.Publications is null || payload.StructuredOperations is null || payload.RepairCommands is null
             || payload.Reports is null || payload.WorkflowRetirements is null
             || payload.PhysicalCapture.StagedJournals is null || payload.PhysicalCapture.Files is null)
             throw new InvalidDataException("Retained physical retirement is incomplete or inconsistent.");
         var history = JsonSerializer.Serialize(new
         {
             payload.Publications,
-            payload.CanonicalOperations,
+            canonicalOperations = payload.StructuredOperations,
             payload.RepairCommands,
             payload.Reports
         }, JsonDefaults.CamelCase);
         if (Hash(history) != payload.HistoryHash) throw new InvalidDataException("Retained physical history hash differs.");
         var references = FoodVocabularyInventoryQualification.RecipeReferences(new(intent.RecipeId,
-            payload.Recipe.CanonicalContent, payload.Recipe.FoodMappingEvidence)).ToList();
+            payload.Recipe.StructuredContent, payload.Recipe.FoodMappingEvidence)).ToList();
         if (payload.Publications.Any(x => x.RecipeId != intent.RecipeId)
-            || payload.CanonicalOperations.Any(x => x.RecipeId != intent.RecipeId)
+            || payload.StructuredOperations.Any(x => x.RecipeId != intent.RecipeId)
             || payload.RepairCommands.Any(x => x.RecipeId != intent.RecipeId)
             || payload.Reports.Any(x => x.RecipeId != intent.RecipeId))
             throw new InvalidDataException("Retained physical history targets another recipe.");
-        references.AddRange(payload.CanonicalOperations.SelectMany(StructuredRecipeContentStore.VocabularyReferences));
+        references.AddRange(payload.StructuredOperations.SelectMany(StructuredRecipeContentStore.VocabularyReferences));
         references.AddRange(payload.RepairCommands.SelectMany(RecipeReportRepairIntent.VocabularyReferences));
         foreach (var stage in payload.PhysicalCapture.StagedJournals)
         {

@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
-import { applyCanonicalEditorPatch } from '../../e2e/canonical-editor';
-import { canonicalIngredientLines } from '../../e2e/cooking-step-projection';
+import { applyStructuredEditorPatch } from '../../e2e/structured-editor';
+import { structuredIngredientLines } from '../../e2e/cooking-step-projection';
 import { cookingStepRecipe } from '../../e2e/cooking-step-fixture';
 
 const scalar = (n: string) => ({ kind: 'scalar', value: { n, d: '1' } });
@@ -25,7 +25,7 @@ function input() {
   return { recipe, row };
 }
 const save = (recipe: any, row: any) =>
-  applyCanonicalEditorPatch(recipe, {
+  applyStructuredEditorPatch(recipe, {
     expectedContentRevision: recipe.contentRevision,
     ingredientLines: [row],
   });
@@ -55,7 +55,7 @@ it('preserves an unrelated original row when generated serialization changes obj
   };
   const added: any = { ...row, clientId: 'new-package' };
   delete added.id;
-  const response = applyCanonicalEditorPatch(recipe, {
+  const response = applyStructuredEditorPatch(recipe, {
     expectedContentRevision: recipe.contentRevision,
     ingredientLines: [unchanged, added],
   });
@@ -93,16 +93,16 @@ it('projects only the package count exactly and preserves fixed capacity and ind
   recipe.servings = 4;
   recipe.ingredientLines = [row];
   recipe.ingredients = ['2 cans tomatoes (400 g / cans; net)'];
-  const doubled: any = canonicalIngredientLines(recipe, 8)[0];
+  const doubled: any = structuredIngredientLines(recipe, 8)[0];
   expect(doubled.displayText).toBe('4 cans tomatoes (400 g / cans; net)');
   expect(doubled.originalText).toBe(recipe.ingredients[0]);
-  const fractional: any = canonicalIngredientLines(recipe, 1)[0];
+  const fractional: any = structuredIngredientLines(recipe, 1)[0];
   expect(fractional.displayText).toBe('1/2 cans tomatoes (400 g / cans; net)');
   row.unit = null as any;
-  expect((canonicalIngredientLines(recipe, 8)[0] as any).displayText).toBe(
+  expect((structuredIngredientLines(recipe, 8)[0] as any).displayText).toBe(
     '4 tomatoes (400 g / cans; net)'
   );
-  expect(canonicalIngredientLines(recipe, 8)[0].unitText).toBeNull();
+  expect(structuredIngredientLines(recipe, 8)[0].unitText).toBeNull();
   expect(row.package.capacity.amount).toEqual(scalar('400'));
 });
 it('retains the original readable count and truthful unresolved status on bounded arithmetic overflow', () => {
@@ -112,7 +112,7 @@ it('retains the original readable count and truthful unresolved status on bounde
   row.amount = scalar(row.amountText);
   recipe.ingredientLines = [row];
   recipe.ingredients = [`${row.amountText} cans tomatoes (400 g / cans; net)`];
-  expect(canonicalIngredientLines(recipe, 8)[0]).toMatchObject({
+  expect(structuredIngredientLines(recipe, 8)[0]).toMatchObject({
     quantity: null,
     status: 'unresolved',
     issues: ['unreliable_amount'],
@@ -257,7 +257,7 @@ it('retains the checked sibling purchase when an ordinary mock Save clears only 
       .groceryItems.find((row: any) => row.rowId === largePurchase.rowId)
   );
   if (!checkedLarge) throw new Error('Checked 800 g purchase is missing');
-  const clear = applyCanonicalEditorPatch(recipe, {
+  const clear = applyStructuredEditorPatch(recipe, {
     expectedContentRevision: recipe.contentRevision,
     ingredientLines: [{ ...recipe.ingredientLines[0], package: null }, recipe.ingredientLines[1]],
   });
@@ -272,7 +272,7 @@ it('retains the checked sibling purchase when an ordinary mock Save clears only 
     checkedLarge
   );
   expect(cleared.groceryState[checkedLarge.rowId]).toBe(true);
-  const following = applyCanonicalEditorPatch(recipe, {
+  const following = applyStructuredEditorPatch(recipe, {
     expectedContentRevision: recipe.contentRevision,
     ingredientLines: [
       { ...recipe.ingredientLines[0], amount: scalar('4'), amountText: '4' },

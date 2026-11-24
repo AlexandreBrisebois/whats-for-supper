@@ -142,7 +142,7 @@ public class RecipeUpdateIntegrationTests : IAsyncLifetime
             Name = "Pasta Bake",
             Servings = 4,
             RawMetadata = initialRaw,
-            CanonicalContent = JsonSerializer.Serialize(content, webJson),
+            StructuredContent = JsonSerializer.Serialize(content, webJson),
             FoodMappingEvidence = evidence,
             Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(RecipeApi.Services.StructuredRecipeContentStore.Render), webJson),
             IsReady = true,

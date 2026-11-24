@@ -28,7 +28,7 @@ import {
   addInstruction,
   addInstructionSection,
   removeInstructionSection,
-  canonicalInstructionInput,
+  structuredInstructionInput,
   legacyInstructionInput,
 } from '@/lib/recipes/instruction-draft';
 import { PreparationStatus } from '@/components/planner/PreparationStatus';
@@ -220,7 +220,7 @@ export function RecipeDetailSheet({
   const [draftDescription, setDraftDescription] = useState('');
   const [draftIngredients, setDraftIngredients] = useState<string[]>([]);
   const [draftInstructions, setDraftInstructions] = useState<unknown[] | undefined>(undefined);
-  const [canonicalDrafts, setCanonicalDrafts] = useState<IngredientDraft[]>([]);
+  const [ingredientDrafts, setIngredientDrafts] = useState<IngredientDraft[]>([]);
   const [draftRevision, setDraftRevision] = useState<string | null>(null);
   const [saveNeedsRead, setSaveNeedsRead] = useState(false);
   const [currentSavedRecipe, setCurrentSavedRecipe] = useState<Recipe | null>(null);
@@ -235,11 +235,12 @@ export function RecipeDetailSheet({
   const [reconcileReadError, setReconcileReadError] = useState(false);
   const [reconcileContext, setReconcileContext] = useState<{
     draftFields: EditorFields;
-    draftCanonical: boolean;
+    draftStructured: boolean;
     saved: EditorBaseline;
   } | null>(null);
-  const canonicalEditing = editorSession?.baseline.canonical ?? recipe?.contentSchemaVersion === 2;
-  const preparedDrafts = prepareIngredientDrafts(canonicalDrafts);
+  const structuredEditing =
+    editorSession?.baseline.structured ?? recipe?.contentSchemaVersion === 2;
+  const preparedDrafts = prepareIngredientDrafts(ingredientDrafts);
   const [draftCuisineType, setDraftCuisineType] = useState('');
   const [draftMealTypes, setDraftMealTypes] = useState<UpdateRecipeDto_mealTypes[]>([]);
   const [rating, setRating] = useState(0);
@@ -257,7 +258,7 @@ export function RecipeDetailSheet({
     cuisineType: draftCuisineType,
     mealTypes: draftMealTypes,
     ingredients: draftIngredients,
-    canonicalDrafts,
+    ingredientDrafts,
     instructions: draftInstructions,
   };
   const installEditorFields = (fields: EditorFields) => {
@@ -267,7 +268,7 @@ export function RecipeDetailSheet({
     setDraftCuisineType(fields.cuisineType);
     setDraftMealTypes(fields.mealTypes);
     setDraftIngredients(fields.ingredients);
-    setCanonicalDrafts(fields.canonicalDrafts);
+    setIngredientDrafts(fields.ingredientDrafts);
     setDraftInstructions(fields.instructions);
   };
   type EditorSessionState = Omit<EditorDraft, 'fields'>;
@@ -289,7 +290,7 @@ export function RecipeDetailSheet({
       return;
     }
     const draft = { ...session, fields: draftFields };
-    const schemaChanged = session.baseline.canonical !== next.canonical;
+    const schemaChanged = session.baseline.structured !== next.structured;
     const { conflicts } = reconcileEditorDraft(draft, next);
     const choices: Partial<Record<EditorField, 'draft' | 'current'>> = {};
     for (const field of conflicts)
@@ -309,7 +310,7 @@ export function RecipeDetailSheet({
     setConflictFields(conflicts);
     setReconcileContext(
       conflicts.length
-        ? { draftFields, draftCanonical: session.baseline.canonical, saved: next }
+        ? { draftFields, draftStructured: session.baseline.structured, saved: next }
         : null
     );
   };
@@ -345,7 +346,7 @@ export function RecipeDetailSheet({
     const next: EditorFields = { ...editorValues };
     if (field === 'ingredients') {
       next.ingredients = source.ingredients;
-      next.canonicalDrafts = source.canonicalDrafts;
+      next.ingredientDrafts = source.ingredientDrafts;
     } else (next as unknown as Record<string, unknown>)[field] = source[field];
     installEditorFields(restoreDeletedEditorRows(next, reconcileContext.saved));
     setReconcileChoices((choices) => ({ ...choices, [field]: choice }));
@@ -360,9 +361,9 @@ export function RecipeDetailSheet({
       ingredients: t('recipes.ingredients', 'Ingredients'),
       instructions: t('recipes.instructions', 'Instructions'),
     })[field];
-  const editorFieldText = (fields: EditorFields, field: EditorField, canonical: boolean) => {
+  const editorFieldText = (fields: EditorFields, field: EditorField, structured: boolean) => {
     if (field === 'instructions')
-      return instructionSections(fields.instructions ?? [], canonical)
+      return instructionSections(fields.instructions ?? [], structured)
         .flatMap((section) => [
           ...(section.name.trim() ? [section.name.trim()] : []),
           ...section.steps.map((row) => row.text),
@@ -370,8 +371,8 @@ export function RecipeDetailSheet({
         .join('\n');
     if (field !== 'ingredients')
       return Array.isArray(fields[field]) ? fields[field].join(', ') : fields[field];
-    return canonical
-      ? fields.canonicalDrafts
+    return structured
+      ? fields.ingredientDrafts
           .map((row) => {
             const pack = ingredientPackageDraft(row);
             const basis =
@@ -420,7 +421,7 @@ export function RecipeDetailSheet({
     draftCuisineType,
     draftMealTypes,
     draftIngredients,
-    canonicalDrafts,
+    ingredientDrafts,
     draftInstructions,
   ]);
   const previewScope = JSON.stringify([recipeId, projectionKey]);
@@ -725,7 +726,7 @@ export function RecipeDetailSheet({
           ? projection.baseServings
           : source.servings;
     setDraftServings(basis == null ? '' : String(basis));
-    setCanonicalDrafts((source.ingredientLines ?? []).map(ingredientDraft));
+    setIngredientDrafts((source.ingredientLines ?? []).map(ingredientDraft));
     setDraftInstructions(originalInstructions(source));
     setDraftRevision(source.contentRevision ?? null);
     setSaveNeedsRead(false);
@@ -773,7 +774,7 @@ export function RecipeDetailSheet({
   };
 
   const displayedServings = isEditing
-    ? canonicalEditing
+    ? structuredEditing
       ? recipe?.servings
       : ingredientContext
         ? projection?.baseServings
@@ -809,7 +810,7 @@ export function RecipeDetailSheet({
       !recipe ||
       servingsInvalid ||
       saveNeedsRead ||
-      (canonicalEditing && (preparedDrafts.invalid || !draftRevision))
+      (structuredEditing && (preparedDrafts.invalid || !draftRevision))
     )
       return;
     const savingVisit = saveVisitRef.current;
@@ -819,7 +820,7 @@ export function RecipeDetailSheet({
       .map((ingredient) => ingredient.trim())
       .filter(Boolean);
     const normalizedLegacyInstructions =
-      !canonicalEditing && draftInstructions !== undefined
+      !structuredEditing && draftInstructions !== undefined
         ? legacyInstructionInput(draftInstructions)
         : undefined;
     const nextRecipe: Recipe = {
@@ -842,13 +843,13 @@ export function RecipeDetailSheet({
         ...servingsUpdate,
         name: nextRecipe.name,
         description: nextRecipe.description,
-        ...(canonicalEditing
+        ...(structuredEditing
           ? {
               ingredientLines: preparedDrafts.lines,
               expectedContentRevision: draftRevision!,
               ...(draftInstructions === undefined
                 ? {}
-                : { instructionSections: canonicalInstructionInput(draftInstructions) }),
+                : { instructionSections: structuredInstructionInput(draftInstructions) }),
             }
           : {
               ingredients: cleanedIngredients,
@@ -860,7 +861,7 @@ export function RecipeDetailSheet({
         mealTypes: nextRecipe.mealTypes ?? [],
       });
       if (saveVisitRef.current !== savingVisit) return;
-      if (canonicalEditing && !saved) throw new Error('Authoritative saved recipe is absent.');
+      if (structuredEditing && !saved) throw new Error('Authoritative saved recipe is absent.');
       if (saved) installRecipeSnapshot(saved);
       else setRecipe(nextRecipe);
       reconcileReadRef.current += 1;
@@ -1799,10 +1800,10 @@ export function RecipeDetailSheet({
                 )}
                 {isEditing ? (
                   <div className="space-y-2">
-                    {canonicalEditing
-                      ? canonicalDrafts.map((row, index) => {
+                    {structuredEditing
+                      ? ingredientDrafts.map((row, index) => {
                           const change = (patch: Partial<IngredientDraft>) =>
-                            setCanonicalDrafts((rows) =>
+                            setIngredientDrafts((rows) =>
                               rows.map((item) =>
                                 item.key === row.key ? { ...item, ...patch } : item
                               )
@@ -1846,7 +1847,7 @@ export function RecipeDetailSheet({
                                   aria-label={t('recipes.removeIngredient', 'Remove ingredient')}
                                   title={t('recipes.removeIngredient', 'Remove ingredient')}
                                   onClick={() =>
-                                    setCanonicalDrafts((rows) =>
+                                    setIngredientDrafts((rows) =>
                                       rows.filter((item) => item.key !== row.key)
                                     )
                                   }
@@ -2010,7 +2011,7 @@ export function RecipeDetailSheet({
                             </button>
                           </div>
                         ))}
-                    {canonicalEditing && preparedDrafts.invalid && (
+                    {structuredEditing && preparedDrafts.invalid && (
                       <p
                         role="alert"
                         className="rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm font-medium text-hearth-ink"
@@ -2028,8 +2029,8 @@ export function RecipeDetailSheet({
                       data-testid="recipe-add-ingredient"
                       disabled={isSavingRecipe}
                       onClick={() =>
-                        canonicalEditing
-                          ? setCanonicalDrafts((rows) => [...rows, ingredientDraft()])
+                        structuredEditing
+                          ? setIngredientDrafts((rows) => [...rows, ingredientDraft()])
                           : handleAddIngredient()
                       }
                       className="gap-2 rounded-full border-chrome-line px-4 text-sm font-black text-ink-body shadow-sm hover:bg-cream"
@@ -2096,7 +2097,7 @@ export function RecipeDetailSheet({
                       const currentInstructions = draftInstructions ?? originalInstructions(recipe);
                       const editableSections = instructionSections(
                         currentInstructions,
-                        canonicalEditing
+                        structuredEditing
                       );
                       return (
                         <>
@@ -2130,7 +2131,7 @@ export function RecipeDetailSheet({
                                       setDraftInstructions(
                                         changeInstructionSectionName(
                                           currentInstructions,
-                                          canonicalEditing,
+                                          structuredEditing,
                                           section.sectionIndex,
                                           event.target.value
                                         )
@@ -2161,7 +2162,7 @@ export function RecipeDetailSheet({
                                     setDraftInstructions(
                                       removeInstructionSection(
                                         currentInstructions,
-                                        canonicalEditing,
+                                        structuredEditing,
                                         section.sectionIndex
                                       )
                                     )
@@ -2208,7 +2209,7 @@ export function RecipeDetailSheet({
                                         setDraftInstructions(
                                           changeInstruction(
                                             currentInstructions,
-                                            canonicalEditing,
+                                            structuredEditing,
                                             row.path,
                                             null
                                           )
@@ -2229,7 +2230,7 @@ export function RecipeDetailSheet({
                                       setDraftInstructions(
                                         changeInstruction(
                                           currentInstructions,
-                                          canonicalEditing,
+                                          structuredEditing,
                                           row.path,
                                           event.target.value
                                         )
@@ -2260,7 +2261,7 @@ export function RecipeDetailSheet({
                                   setDraftInstructions(
                                     addInstruction(
                                       currentInstructions,
-                                      canonicalEditing,
+                                      structuredEditing,
                                       section.sectionIndex
                                     )
                                   )
@@ -2279,7 +2280,7 @@ export function RecipeDetailSheet({
                               disabled={isSavingRecipe}
                               onClick={() =>
                                 setDraftInstructions(
-                                  addInstruction(currentInstructions, canonicalEditing)
+                                  addInstruction(currentInstructions, structuredEditing)
                                 )
                               }
                               className="rounded-xl border-chrome-line px-4 text-sm font-semibold text-ink-body hover:bg-cream"
@@ -2295,7 +2296,7 @@ export function RecipeDetailSheet({
                             disabled={isSavingRecipe}
                             onClick={() =>
                               setDraftInstructions(
-                                addInstructionSection(currentInstructions, canonicalEditing)
+                                addInstructionSection(currentInstructions, structuredEditing)
                               )
                             }
                             className="rounded-xl border-chrome-line px-4 text-sm font-semibold text-ink-body hover:bg-cream"
@@ -2517,7 +2518,7 @@ export function RecipeDetailSheet({
                 {conflictFields.map((field) => {
                   const draftAllowed =
                     !(field === 'ingredients' || field === 'instructions') ||
-                    reconcileContext.draftCanonical === reconcileContext.saved.canonical;
+                    reconcileContext.draftStructured === reconcileContext.saved.structured;
                   const pill = (choice: 'draft' | 'current', label: string) => {
                     const selected = reconcileChoices[field] === choice;
                     return (
@@ -2551,7 +2552,7 @@ export function RecipeDetailSheet({
                         {editorFieldText(
                           reconcileContext.draftFields,
                           field,
-                          reconcileContext.draftCanonical
+                          reconcileContext.draftStructured
                         )}
                       </p>
                       <p className="font-semibold text-ink-body">
@@ -2561,7 +2562,7 @@ export function RecipeDetailSheet({
                         {editorFieldText(
                           reconcileContext.saved.fields,
                           field,
-                          reconcileContext.saved.canonical
+                          reconcileContext.saved.structured
                         )}
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -2572,7 +2573,7 @@ export function RecipeDetailSheet({
                   );
                 })}
                 {editorSession &&
-                  reconcileContext.draftCanonical !== reconcileContext.saved.canonical && (
+                  reconcileContext.draftStructured !== reconcileContext.saved.structured && (
                     <p>
                       {t(
                         'recipes.legacyDraftReference',
@@ -2603,7 +2604,7 @@ export function RecipeDetailSheet({
                       {editorFieldText(
                         editorSession.original!.fields,
                         field,
-                        editorSession.original!.baseline.canonical
+                        editorSession.original!.baseline.structured
                       )}
                     </p>
                   </div>
@@ -2620,7 +2621,7 @@ export function RecipeDetailSheet({
                 isSavingRecipe ||
                 saveNeedsRead ||
                 servingsInvalid ||
-                (canonicalEditing && (preparedDrafts.invalid || !draftRevision)) ||
+                (structuredEditing && (preparedDrafts.invalid || !draftRevision)) ||
                 draftName.trim().length === 0 ||
                 draftMealTypes.length === 0
               }

@@ -18,7 +18,7 @@ internal static class RecipeContentInput
 
     public static void Validate(UpdateRecipeDto input)
     {
-        if (!input.HasCanonicalContent) return;
+        if (!input.HasStructuredContent) return;
         RequireUniqueProperties(input.IngredientLines);
         RequireUniqueProperties(input.InstructionSections);
         ValidateFacts(input);
@@ -28,7 +28,7 @@ internal static class RecipeContentInput
     // already checked exact bytes and its exhaustive historical duplicate sites.
     internal static void ValidateFacts(UpdateRecipeDto input)
     {
-        if (!input.HasCanonicalContent) return;
+        if (!input.HasStructuredContent) return;
         if (input.Ingredients is not null || input.RecipeInstructions is not null)
             throw Invalid();
         var savedIds = new HashSet<Guid>();

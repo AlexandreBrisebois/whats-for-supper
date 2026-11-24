@@ -286,11 +286,18 @@ public sealed class BilingualStartupMigrationTests
         const BindingFlags AnyMember = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
 
         Assert.Null(assembly.GetType("RecipeApi.Services.CanonicalRecipeMigrationOperator", throwOnError: false));
+        Assert.Null(assembly.GetType("RecipeApi.Services.StructuredRecipeMigrationManifest", throwOnError: false));
+        Assert.Null(assembly.GetType("RecipeApi.Services.StructuredRecipeMigrationReceipt", throwOnError: false));
         Assert.DoesNotContain(
             typeof(StructuredRecipeContentStore).GetMethods(AnyMember),
-            method => method.Name is "CaptureMigrationManifestAsync" or "ExecuteMigrationAsync");
+            method => method.Name is "CaptureMigrationManifestAsync"
+                or "ExecuteMigrationAsync"
+                or "ConvertAsync"
+                or "ConvertCoreAsync"
+                or "PrepareMigrationConversionAsync"
+                or "Record"
+                or "CaptureOriginal");
 
         Assert.NotNull(assembly.GetType(typeof(RecipeStartupMigrator).FullName!, throwOnError: false));
-        Assert.NotNull(assembly.GetType(typeof(StructuredRecipeMigrationReceipt).FullName!, throwOnError: false));
     }
 }

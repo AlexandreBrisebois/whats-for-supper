@@ -80,7 +80,7 @@ public partial class SupperServingsPostgresTests
     {
         await new TomorrowPushPostgresTests(output).WithDatabase(async settings => {
             await using var factory=await TomorrowPushPostgresTests.CreateFactory(settings);using var scope=factory.Services.CreateScope();var db=scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            var original=CorrectionRecipe();original.Servings=4;original.CanonicalContent=BuildCanonicalContent([("pasta","200","g")],4,original.CanonicalContent);var replacement=CorrectionRecipe();db.Recipes.AddRange(original,replacement);
+            var original=CorrectionRecipe();original.Servings=4;original.StructuredContent=BuildCanonicalContent([("pasta","200","g")],4,original.StructuredContent);var replacement=CorrectionRecipe();db.Recipes.AddRange(original,replacement);
             db.CalendarEvents.Add(new CalendarEvent {Date=Wednesday,RecipeId=original.Id});
             db.FamilySettings.Add(new FamilySetting {Key=SupperServingsService.DefaultKey,Value=JsonSerializer.SerializeToElement(new {servings=4})});await db.SaveChangesAsync();
             await scope.ServiceProvider.GetRequiredService<GroceryRecomputeService>().RecomputeForWeekAsync(new(2026,10,12),default);

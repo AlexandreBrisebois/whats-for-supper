@@ -398,7 +398,7 @@ export function declaredPackageSuffix(pack: any) {
     ? ` (${amountText(pack.capacity.amount, 1, 1)} ${pack.capacity.unit.text} / ${pack.countUnit.text}; ${pack.basis})`
     : '';
 }
-export function canonicalIngredientText(row: any, count?: string | null) {
+export function structuredIngredientText(row: any, count?: string | null) {
   return (
     [
       count === undefined
@@ -431,7 +431,7 @@ export function packageProjectedQuantity(row: any, target: number | null, basis:
     return null;
   }
 }
-export function canonicalIngredientLines(
+export function structuredIngredientLines(
   recipe: any,
   target: number | null
 ): Array<{
@@ -454,12 +454,12 @@ export function canonicalIngredientLines(
           ]
         : [];
     return {
-      originalText: row.package ? canonicalIngredientText(row) : recipe.ingredients[index],
+      originalText: row.package ? structuredIngredientText(row) : recipe.ingredients[index],
       ...(row.package
         ? {
             displayText: exact
-              ? canonicalIngredientText(row, amountText(exact, 1, 1))
-              : canonicalIngredientText(row),
+              ? structuredIngredientText(row, amountText(exact, 1, 1))
+              : structuredIngredientText(row),
           }
         : target != null && exact != null
           ? {

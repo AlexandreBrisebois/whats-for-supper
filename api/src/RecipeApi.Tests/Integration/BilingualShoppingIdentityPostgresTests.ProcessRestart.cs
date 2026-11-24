@@ -97,7 +97,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
                     Assert.Equal(original.RootElement.GetProperty("contentRevision").GetString(),
                         detail.RootElement.GetProperty("recipe").GetProperty("contentRevision").GetString());
                     var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
-                    Assert.Equal(canonical, saved.CanonicalContent);
+                    Assert.Equal(canonical, saved.StructuredContent);
                     Assert.Equal(evidence, saved.FoodMappingEvidence);
                     Assert.Equal(membership, (await db.FamilySettings.AsNoTracking().SingleAsync(x => x.Key == "food_vocabulary_publication")).Value.GetRawText());
                     var currentFiles = JsonSerializer.Serialize(Directory.GetFiles(Path.Combine(recipeRoot, ".household", "food-vocabulary"))

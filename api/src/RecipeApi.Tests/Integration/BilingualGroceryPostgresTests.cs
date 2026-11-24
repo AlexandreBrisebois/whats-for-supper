@@ -69,7 +69,7 @@ public sealed partial class BilingualGroceryPostgresTests(ITestOutputHelper outp
         var content = new StructuredRecipeContent(2, Guid.NewGuid().ToString("N"), revision, 4, [row], []);
         var mapped = FoodMappingQualification.Prepare(new(id, content, source), await services.GetRequiredService<FoodVocabularyStore>().CaptureAuthorityAsync(null), Guid.NewGuid());
         Assert.NotNull(Assert.Single(mapped.Export.Content.IngredientLines).Shopping.FoodId);
-        db.Recipes.Add(new() { Id = id, Name = name, Servings = 4, IsReady = true, CanonicalContent = JsonSerializer.Serialize(mapped.Export.Content, Json),
+        db.Recipes.Add(new() { Id = id, Name = name, Servings = 4, IsReady = true, StructuredContent = JsonSerializer.Serialize(mapped.Export.Content, Json),
             FoodMappingEvidence = mapped.Evidence, RawMetadata = source, Ingredients = JsonSerializer.Serialize(new[] { StructuredRecipeContentStore.Render(row) }),
             CreatedAt = services.GetRequiredService<IClock>().UtcNow, UpdatedAt = services.GetRequiredService<IClock>().UtcNow });
         await db.SaveChangesAsync();

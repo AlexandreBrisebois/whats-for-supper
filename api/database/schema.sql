@@ -67,7 +67,7 @@ CREATE TABLE recipes (
 
 COMMENT ON COLUMN recipes.is_vegetarian IS 'wfs-vegetarian-classification-nullable-v1';
 
--- Dormant canonical owner: no automatic conversion or public write activation.
+-- Audit trail for guarded structured recipe edits.
 CREATE TABLE canonical_recipe_operations (
     recipe_id uuid NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
     operation_id uuid NOT NULL,
@@ -456,8 +456,8 @@ CREATE TABLE recovery_publication (
     snapshot_id uuid NOT NULL
 );
 
--- Prevent legacy semantic writers (including raw SQL jobs) from replacing a
--- converted owner without a new coherent canonical revision.
+-- Prevent legacy semantic writers (including raw SQL jobs) from replacing
+-- structured recipe content without a new coherent content revision.
 CREATE OR REPLACE FUNCTION guard_canonical_recipe_content() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
     IF OLD.canonical_content IS NOT NULL AND (

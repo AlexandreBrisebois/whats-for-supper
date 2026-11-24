@@ -11,7 +11,7 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
     public DbSet<MaintenanceCommandLifecycleRecord> MaintenanceCommandLifecycleRecords => Set<MaintenanceCommandLifecycleRecord>();
     public DbSet<WorkflowLifecycleRecord> WorkflowLifecycleRecords => Set<WorkflowLifecycleRecord>();
     public DbSet<RecipeFilePublication> RecipeFilePublications => Set<RecipeFilePublication>();
-    public DbSet<StructuredRecipeOperation> CanonicalRecipeOperations => Set<StructuredRecipeOperation>();
+    public DbSet<StructuredRecipeOperation> StructuredRecipeOperations => Set<StructuredRecipeOperation>();
     public DbSet<RecoveryPublication> RecoveryPublications => Set<RecoveryPublication>();
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<Recipe> Recipes => Set<Recipe>();

@@ -42,7 +42,7 @@ public sealed class HouseholdFoodOverrideStore(RecipeDbContext db, IClock clock,
             var row = await db.HouseholdFoodOverrides.SingleOrDefaultAsync(x => x.FoodId == foodId, ct);
             if (row is not null) await db.Entry(row).ReloadAsync(ct);
             if (row?.Revision != expectedRevision) throw new FoodCategoryConflictException("food_category_conflict", row?.Revision);
-            var candidates = (await db.Recipes.AsNoTracking().Where(x => x.CanonicalContent != null).ToArrayAsync(ct))
+            var candidates = (await db.Recipes.AsNoTracking().Where(x => x.StructuredContent != null).ToArrayAsync(ct))
                 .Where(recipe => StructuredRecipeContentStore.Read(recipe)!.IngredientLines.Any(line => line.Shopping.FoodId == foodId))
                 .OrderBy(x => x.Id).ToArray();
             RecipeFoodMapping? qualified = null;

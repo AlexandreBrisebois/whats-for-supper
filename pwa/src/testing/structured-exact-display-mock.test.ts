@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { canonicalIngredientLines } from '../../e2e/cooking-step-projection';
+import { structuredIngredientLines } from '../../e2e/cooking-step-projection';
 import { cookingStepRecipe } from '../../e2e/cooking-step-fixture';
 import { ingredientProjectionText } from '../lib/ingredient-presentation';
 
@@ -35,23 +35,23 @@ function fixture() {
 it('projects exact non-package fractions and both range endpoints from originals without changing labels or saved wording', () => {
   const recipe = fixture();
   const before = structuredClone(recipe);
-  const lines = canonicalIngredientLines(recipe, 5);
+  const lines = structuredIngredientLines(recipe, 5);
   expect(lines[0].displayText).toBe('5/9 cup flour');
   expect(lines[1].displayText).toBe('10/3–5 cloves garlic');
   expect(lines[0].originalText).toBe('⅓ cup saved flour wording');
   expect(ingredientProjectionText(lines[0] as any)).toBe('5/9 cup flour');
   expect(ingredientProjectionText(lines[1] as any)).toBe('10/3–5 cloves garlic');
-  expect(canonicalIngredientLines(recipe, 3)[0].displayText).toBe('1/3 cup flour');
+  expect(structuredIngredientLines(recipe, 3)[0].displayText).toBe('1/3 cup flour');
   expect(recipe).toEqual(before);
 });
 
 it('keeps Original notation and honestly omits derived text for unknown proportional basis', () => {
   const recipe = fixture();
-  expect(ingredientProjectionText(canonicalIngredientLines(recipe, null)[0] as any)).toBe(
+  expect(ingredientProjectionText(structuredIngredientLines(recipe, null)[0] as any)).toBe(
     '⅓ cup saved flour wording'
   );
   recipe.servings = null;
-  const line = canonicalIngredientLines(recipe, 5)[0];
+  const line = structuredIngredientLines(recipe, 5)[0];
   expect(line).toMatchObject({ quantity: null, status: 'unresolved', issues: ['missing_basis'] });
   expect(line.displayText ?? null).toBeNull();
   expect(ingredientProjectionText(line as any)).toBe('⅓ cup saved flour wording');
@@ -62,7 +62,7 @@ it('keeps fixed exact amounts independent of an unknown basis and units independ
   recipe.servings = null;
   recipe.ingredientLines[0].scaling = 'fixed';
   recipe.ingredientLines[0].unit = null;
-  const line = canonicalIngredientLines(recipe, 5)[0];
+  const line = structuredIngredientLines(recipe, 5)[0];
   expect(line).toMatchObject({
     displayText: '1/3 flour',
     quantity: 1 / 3,
@@ -75,10 +75,10 @@ it('keeps fixed exact amounts independent of an unknown basis and units independ
 it('retains exact zero and absent amounts without inventing a quantity', () => {
   const recipe = fixture();
   recipe.ingredientLines[0].amount = { kind: 'scalar', value: { n: '0', d: '1' } };
-  expect(canonicalIngredientLines(recipe, 5)[0].displayText).toBe('0 cup flour');
+  expect(structuredIngredientLines(recipe, 5)[0].displayText).toBe('0 cup flour');
   recipe.ingredientLines[0].amount = null;
   recipe.ingredients[0] = 'flour to taste';
-  const line = canonicalIngredientLines(recipe, 5)[0];
+  const line = structuredIngredientLines(recipe, 5)[0];
   expect(line).toMatchObject({ quantity: null, status: 'unquantified', issues: [] });
   expect(line.displayText ?? null).toBeNull();
   expect(ingredientProjectionText(line as any)).toBe('flour to taste');
@@ -88,7 +88,7 @@ it('retains readable originals and unreliable status when exact projected operan
   const recipe = fixture();
   recipe.servings = 1;
   recipe.ingredientLines[0].amount = { kind: 'scalar', value: { n: '9'.repeat(38), d: '1' } };
-  const line = canonicalIngredientLines(recipe, 8)[0];
+  const line = structuredIngredientLines(recipe, 8)[0];
   expect(line).toMatchObject({
     quantity: null,
     status: 'unresolved',

@@ -45,7 +45,8 @@ internal static class WorkflowProcessorHistory
     }
     private sealed record Outcome(int Version, Guid Id, string RequestHash, string Disposition,
         bool ProcessorReturned, string? ReturnedResult, TaskFacts Task, Guid? SelectedChildLaunchIntentId,
-        RecipeFilePublication[] Publications, StructuredRecipeOperation[] CanonicalOperations,
+        RecipeFilePublication[] Publications,
+        [property: JsonPropertyName("canonicalOperations")] StructuredRecipeOperation[] StructuredOperations,
         ChildFacts? ChildCommand = null);
 
     private static TaskFacts Observe(WorkflowTask task) => new(task.TaskId, task.InstanceId, task.TaskName,
@@ -90,7 +91,7 @@ internal static class WorkflowProcessorHistory
             .SingleAsync(x => x.Id == child, ct);
         var publications = await db.RecipeFilePublications.AsNoTracking().Where(x => x.OperationId == task.TaskId)
             .OrderBy(x => x.RecipeId).ToArrayAsync(ct);
-        var operations = await db.CanonicalRecipeOperations.AsNoTracking().Where(x => x.OperationId == task.TaskId)
+        var operations = await db.StructuredRecipeOperations.AsNoTracking().Where(x => x.OperationId == task.TaskId)
             .OrderBy(x => x.RecipeId).ToArrayAsync(ct);
         attempt.Outcome = JsonSerializer.Serialize(new Outcome(task.ProcessorName == "SyncRecipe" ? 3 : 2, attempt.Id, attempt.RequestHash, disposition,
             processorReturned, returnedResult, Observe(task), child, publications, operations,
@@ -127,7 +128,7 @@ internal static class WorkflowProcessorHistory
             && outcome.Task.ProcessorName == request.Task.ProcessorName && outcome.Task.Payload == request.Task.Payload
             && outcome.Task.ResetIntentId == request.Task.ResetIntentId && outcome.Task.CreatedAt == request.Task.CreatedAt
             && outcome.Task.DependsOn is not null && outcome.Task.DependsOn.SequenceEqual(request.Task.DependsOn)
-            && outcome.Publications is not null && outcome.CanonicalOperations is not null
+            && outcome.Publications is not null && outcome.StructuredOperations is not null
             && attempt.OutcomeHash == Hash(attempt.Outcome) && attempt.ObservedAt is not null);
         Require(outcome.Disposition switch
         {
@@ -222,7 +223,7 @@ internal static class WorkflowProcessorHistory
             ValidateRecipeAssociation(request, SearchIndexWorkflow.ValidateOriginalHistory(
                 request.Task.Payload, outcome.ReturnedResult, request.Parameters));
         var operations = new HashSet<Guid>();
-        foreach (var operation in outcome.CanonicalOperations)
+        foreach (var operation in outcome.StructuredOperations)
         {
             Require(operation is not null && operation.OperationId == attempt.TaskId
                 && operation.RecipeId != Guid.Empty && operations.Add(operation.RecipeId)
@@ -296,7 +297,7 @@ internal static class WorkflowProcessorHistory
         if (attempt.Outcome is { } raw)
         {
             var outcome = ReadObservation<Outcome>(raw);
-            references.AddRange(outcome.CanonicalOperations.SelectMany(StructuredRecipeContentStore.VocabularyReferences));
+            references.AddRange(outcome.StructuredOperations.SelectMany(StructuredRecipeContentStore.VocabularyReferences));
             if (outcome.ChildCommand is { } child)
                 references.AddRange(WorkflowOrchestrator.VocabularyReferences(child.Restore(), [RetainedTask(attempt)]));
         }

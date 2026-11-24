@@ -142,7 +142,7 @@ public sealed partial class BilingualShoppingIdentityPostgresTests
             output.WriteLine("BILINGUAL_ADOPTION " + JsonSerializer.Serialize(new
             {
                 locale, before, after, installed,
-                source = new { recipe.Id, recipe.RawMetadata, recipe.CanonicalContent, recipe.FoodMappingEvidence, recipe.SourceUrl },
+                source = new { recipe.Id, recipe.RawMetadata, recipe.StructuredContent, recipe.FoodMappingEvidence, recipe.SourceUrl },
                 vocabularyFiles = JsonSerializer.Deserialize<JsonElement>(VocabularyFiles(services)),
                 sourceSnapshotKind = "actual-disposable-postgresql-and-local-files",
                 preexistingMappingsChanged = 0,

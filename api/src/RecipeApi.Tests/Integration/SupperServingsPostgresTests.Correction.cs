@@ -73,12 +73,12 @@ public partial class SupperServingsPostgresTests
             var before = await Project();
             db.SupperServings.Add(new SupperServing { Date = Wednesday.AddDays(3), OverrideServings = 9 });
             recipe.RawMetadata = recipe.RawMetadata!.Replace("\"supply\"", "\"recipeInstructions\":[\"Use 200 g\"],\"supply\"");
-            recipe.CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], recipe.Servings, recipe.CanonicalContent);
+            recipe.StructuredContent = BuildCanonicalContent([("pasta", "200", "g")], recipe.Servings, recipe.StructuredContent);
             await db.SaveChangesAsync();
             var after = await Project();
             Assert.NotEqual(before.GetProperty("servingVersion").GetString(), after.GetProperty("servingVersion").GetString());
             Assert.Equal(before.GetProperty("version").GetString(), after.GetProperty("version").GetString());
-            recipe.Servings = 4; recipe.CanonicalContent = BuildCanonicalContent([("pasta", "200", "g")], 4, recipe.CanonicalContent); await db.SaveChangesAsync();
+            recipe.Servings = 4; recipe.StructuredContent = BuildCanonicalContent([("pasta", "200", "g")], 4, recipe.StructuredContent); await db.SaveChangesAsync();
             var corrected = await Project();
             Assert.NotEqual(after.GetProperty("version").GetString(), corrected.GetProperty("version").GetString());
             Assert.Equal(200, corrected.GetProperty("lines")[0].GetProperty("quantity").GetDouble());
@@ -183,7 +183,7 @@ public partial class SupperServingsPostgresTests
             await storage.SaveAsync("recipes",$"{recipe.Id}/recipe.json",StructuredRecipeContentStore.ToSchemaOrgJson(StructuredRecipeContentStore.Read(recipe)!,recipe.RawMetadata,recipe.Name,recipe.Description));
             var sync=new RecipeApi.Services.Processors.SyncRecipeProcessor(scope.ServiceProvider.GetRequiredService<IClock>(),db,repository,scope.ServiceProvider.GetRequiredService<SupperProjectionInvalidation>(),scope.ServiceProvider.GetRequiredService<ISupperProjectionPublisher>(),Microsoft.Extensions.Logging.Abstractions.NullLogger<RecipeApi.Services.Processors.SyncRecipeProcessor>.Instance, RecipeApi.Tests.Infrastructure.TestPublicationStore.Vocabulary(db, storage, scope.ServiceProvider.GetRequiredService<IClock>(), scope.ServiceProvider));
             var task=await RecipeApi.Tests.Services.RecipeServingsTests.ProducerTask(db,repository,recipe.Id);
-            recipe.Servings=4;recipe.CanonicalContent=BuildCanonicalContent([("pasta","200","g")],4,recipe.CanonicalContent);await db.SaveChangesAsync();
+            recipe.Servings=4;recipe.StructuredContent=BuildCanonicalContent([("pasta","200","g")],4,recipe.StructuredContent);await db.SaveChangesAsync();
             await sync.ExecuteAsync(task,default);
             db.ChangeTracker.Clear();Assert.Equal(4,(await db.Recipes.SingleAsync()).Servings);var plan=await db.WeeklyPlans.SingleAsync();Assert.Equal("updating",plan.ServingRefreshStatus);Assert.Contains("400",plan.GroceryItems);Assert.Single(await db.WorkflowTasks.Where(x=>x.ProcessorName=="RefreshSupperGroceries").ToListAsync());
             await sync.ExecuteAsync(task,default);Assert.Single(await db.WorkflowTasks.Where(x=>x.ProcessorName=="RefreshSupperGroceries").ToListAsync());
@@ -374,5 +374,5 @@ public partial class SupperServingsPostgresTests
         });
     }
 
-    private static Recipe CorrectionRecipe() => new() {Name="Pasta",Servings=2,Ingredients="[\"200 g pasta\"]",RawMetadata="{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}",CanonicalContent=BuildCanonicalContent([("pasta","200","g")],2)};
+    private static Recipe CorrectionRecipe() => new() {Name="Pasta",Servings=2,Ingredients="[\"200 g pasta\"]",RawMetadata="{\"recipeIngredient\":[\"200 g pasta\"],\"supply\":[{\"name\":\"pasta\",\"quantity\":200,\"unitText\":\"g\"}]}",StructuredContent=BuildCanonicalContent([("pasta","200","g")],2)};
 }

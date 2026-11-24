@@ -36,7 +36,7 @@ public class DeploymentCalendarStreamTests
                 Id = recipeId,
                 Name = "Carrot supper",
                 Ingredients = "[\"Carrot\"]",
-                CanonicalContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
+                StructuredContent = SupperServingsPostgresTests.BuildCanonicalContent([("Carrot", null, null)])
             });
             db.WeeklyPlans.Add(new WeeklyPlan
             {
