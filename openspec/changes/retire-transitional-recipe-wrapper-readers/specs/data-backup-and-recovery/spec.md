@@ -23,7 +23,7 @@ Current recipe exports, merge restore, and disk synchronization SHALL accept top
 
 ### Requirement: Preserve recipe servings without extending recipe info
 
-Recipe exports SHALL preserve the database serving count in `https://schema.org/Recipe` `recipeYield` (such as `"4 portions"` when database `servings` is 4, retaining matching raw `recipeYield` phrasing when unedited, or setting `recipeYield` to null when `servings` is null) without adding serving fields to `recipe.info`. Disk sync and merge restore SHALL derive `servings` from `recipeYield` on top-level `https://schema.org/Recipe` files exclusively and SHALL reject retired wrapper envelopes through existing recipe-load failure handling.
+Recipe exports SHALL preserve database servings in `https://schema.org/Recipe` `recipeYield` (retaining matching phrasing when unedited, or null when unset) without adding serving fields to `recipe.info`. Disk sync and merge restore SHALL derive `servings` exclusively from `recipeYield` on top-level `https://schema.org/Recipe` files and SHALL reject retired wrapper envelopes through existing recipe-load failure handling.
 
 #### Scenario: Current export and restore
 
