@@ -1,38 +1,39 @@
+# FAMILY MEMBERS
+# The member making requests comes from {{familyMemberId}} in your environment.
+# Update and Delete below act on the member created by "Create", never on yours.
+# See README.md for environments and labels.
 
-@familyMemberId = 4bc839ac-5be0-4a75-8a9d-6a6630c9d2a7
-
-### List family members
+### READ ONLY — List family members
 GET {{baseUrl}}/api/family
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-### Create a family member
+### READ ONLY — The current member (from your environment)
+GET {{baseUrl}}/api/family/me
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
+
+### CHANGES DATA — Create a family member
 # @name createFamilyMember
 POST {{baseUrl}}/api/family
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
 {
-  "name": "papa"
+  "name": "test member"
 }
 
-> {%
-  const payload = response.body?.data ?? response.body;
-  if (payload?.id) {
-    client.global.set("familyMemberId", payload.id);
-  }
-%}
-
-### Update a family member
-PUT {{baseUrl}}/api/family/{{familyMemberId}}
+### CHANGES DATA — Rename the member created above
+PUT {{baseUrl}}/api/family/{{createFamilyMember.response.body.$.data.id}}
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
 {
-  "name": "papa (updated)"
+  "name": "test member (renamed)"
 }
 
-### Delete a family member
-DELETE {{baseUrl}}/api/family/{{familyMemberId}}
+### DESTRUCTIVE — Delete the member created above
+DELETE {{baseUrl}}/api/family/{{createFamilyMember.response.body.$.data.id}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}

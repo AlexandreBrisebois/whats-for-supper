@@ -1,64 +1,35 @@
-# Recipe search diagnostics - issue #288
-# Suggested repository location: api/src/RestClient/10-search.rest
+# SEARCH — what does search return for a word or a chip?
+# All requests are READ ONLY. See README.md for environments and labels.
 #
-# Uses the same REST Client environment variables as the existing .rest files:
-#   baseUrl        API origin, e.g. http://localhost:5050 (no trailing /api).
-#   hearthSecret   Your existing local REST Client secret. Never commit it.
-#   familyMemberId Your existing REST Client family member ID.
-# Select your usual REST Client environment before sending requests.
-# No real credentials are included. No requests were executed to prepare this file.
+# Set @searchText for typed searches and @concept for chip searches. Get the
+# chip concepts from the first request (main[].concept); each deployment
+# can configure them differently.
 #
-# Run each request individually. The first six are controlled comparisons:
-# same limit, empty hard filters, no planner/similar context or continuation.
-# Typed poultry/chicken/fish use query. Poultry/Fish chips use
-# preferences.concepts, NOT filters.categories or filters.includedIngredients.
-# Fetch vocabulary first: deployments can configure a different concept for an ID.
-# If so, replace poultry/fish in the CHIP request bodies with returned main[].concept.
+# Reading the response:
+#   topPick + results   count both; limit counts only results.
+#   resultPath          browse, lexical-only, hybrid, fallback-lexical, semantic-only.
+#                       semantic-only is valid even though OpenAPI omits it.
+#   nextCursor          more results exist; an empty first page proves nothing.
+# Errors: 400 bad JSON or limit outside 1..50 · 409 start over without
+# continuationToken · 503 recovery busy, respect Retry-After.
 #
-# Inspect the unwrapped JSON response:
-#   topPick and results: count BOTH; limit counts alternatives, not topPick.
-#   appliedFilters: hard filters only; does not echo preferences.concepts.
-#   searchMode: discovery for the empty probe and explicit for constrained probes.
-#   resultPath: browse, lexical-only, hybrid, fallback-lexical,
-#               or semantic-only (emitted by current implementation for chips).
-#   results[].id/name/score/reasons and topPick.id/name/score/reasons.
-#   nextCursor: more results, not proof the first page contains every match.
-# A successful semantic-only zero-match is not retried lexically by the service.
-# Concept-only fallback uses the selected concept text.
-# The current OpenAPI resultPath enum omits semantic-only (and similar);
-# preserve the actual response value rather than treating it as invalid.
-#
-# For UI parity, copy its active filters, preferences and optional weekOffset,
-# dayIndex, similarToRecipeId into the request; keep them identical across comparisons.
-# Baseline search includes ready, non-soft-deleted recipes; it does not default
-# to discoverableOnly. Do not infer missing recipes from an empty first page alone.
-# 401: check environment/auth. 400: check JSON and limit (1..50).
-# 409: restart first page without continuationToken.
-# 503: recovery is busy; respect Retry-After.
-#
-# Source-checked against main commit e84a2d786d900b7757b43a0bf61606ba249be442 (2026-10-20 UTC).
-# No repository writes, deployments, reindexing, or production requests performed.
-# Issue: https://github.com/AlexandreBrisebois/whats-for-supper/issues/288
-# Source: https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RestClient/03-recipes.rest
-# Source: https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RecipeApi/Controllers/RecipeController.cs
-# Source: https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/pwa/src/components/recipes/RecipeFiltersSheet.tsx
-# Source: https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RecipeApi/Services/RecipeSearchService.cs
-# Source: https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RecipeApi/Dto/RecipeSearchResponseDto.cs
-# Source: https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/api/src/RecipeApi/Infrastructure/HearthAuthenticationHandler.cs
-# Source: https://github.com/AlexandreBrisebois/whats-for-supper/blob/e84a2d786d900b7757b43a0bf61606ba249be442/specs/openapi.yaml
+# Next page: copy a request and add "continuationToken": "<nextCursor>".
+# Embedding problems → 12-embeddings.rest. Reindex a recipe → 07-workflow.rest B1.
 
-### Get configured Search filter vocabulary
+@searchText = poultry
+@concept = poultry
+
+### READ ONLY — Chip vocabulary
 GET {{baseUrl}}/api/recipes/search/filters
 Accept: application/json
-X-Family-Member-Id: {{familyMemberId}}
 X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
 
-### Browse baseline (no query or selected Main chip)
+### READ ONLY — Browse (no text, no chip)
 POST {{baseUrl}}/api/recipes/search
-Accept: application/json
 Content-Type: application/json
-X-Family-Member-Id: {{familyMemberId}}
 X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
 
 {
   "query": "",
@@ -67,133 +38,48 @@ X-Hearth-Secret: {{hearthSecret}}
   "preferences": {}
 }
 
-### Typed poultry
+### READ ONLY — Typed search (@searchText)
 POST {{baseUrl}}/api/recipes/search
-Accept: application/json
 Content-Type: application/json
-X-Family-Member-Id: {{familyMemberId}}
 X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
 
 {
-  "query": "poultry",
+  "query": "{{searchText}}",
   "limit": 12,
   "filters": {},
   "preferences": {}
 }
 
-### Typed chicken
+### READ ONLY — Chip search (@concept, no text)
 POST {{baseUrl}}/api/recipes/search
-Accept: application/json
 Content-Type: application/json
-X-Family-Member-Id: {{familyMemberId}}
 X-Hearth-Secret: {{hearthSecret}}
-
-{
-  "query": "chicken",
-  "limit": 12,
-  "filters": {},
-  "preferences": {}
-}
-
-### Typed fish
-POST {{baseUrl}}/api/recipes/search
-Accept: application/json
-Content-Type: application/json
 X-Family-Member-Id: {{familyMemberId}}
-X-Hearth-Secret: {{hearthSecret}}
-
-{
-  "query": "fish",
-  "limit": 12,
-  "filters": {},
-  "preferences": {}
-}
-
-### Poultry Main chip, with search text cleared
-POST {{baseUrl}}/api/recipes/search
-Accept: application/json
-Content-Type: application/json
-X-Family-Member-Id: {{familyMemberId}}
-X-Hearth-Secret: {{hearthSecret}}
 
 {
   "query": "",
   "limit": 12,
   "filters": {},
   "preferences": {
-    "concepts": [
-      "poultry"
-    ]
+    "concepts": ["{{concept}}"]
   }
 }
 
-### Fish Main chip, with search text cleared
+### READ ONLY — Chip search limited to Supper
+# filters are hard filters and can hide matches; compare with the request above.
 POST {{baseUrl}}/api/recipes/search
-Accept: application/json
 Content-Type: application/json
-X-Family-Member-Id: {{familyMemberId}}
 X-Hearth-Secret: {{hearthSecret}}
-
-{
-  "query": "",
-  "limit": 12,
-  "filters": {},
-  "preferences": {
-    "concepts": [
-      "fish"
-    ]
-  }
-}
-
-# Optional controlled hard-filter comparison: same Supper filter for both chips.
-# Run only after the unfiltered baseline above; a restrictive filter may hide matches.
-
-### poultry Main chip with Supper only
-POST {{baseUrl}}/api/recipes/search
-Accept: application/json
-Content-Type: application/json
 X-Family-Member-Id: {{familyMemberId}}
-X-Hearth-Secret: {{hearthSecret}}
 
 {
   "query": "",
   "limit": 12,
   "filters": {
-    "mealTypes": [
-      "Supper"
-    ]
+    "mealTypes": ["Supper"]
   },
   "preferences": {
-    "concepts": [
-      "poultry"
-    ]
+    "concepts": ["{{concept}}"]
   }
 }
-
-### fish Main chip with Supper only
-POST {{baseUrl}}/api/recipes/search
-Accept: application/json
-Content-Type: application/json
-X-Family-Member-Id: {{familyMemberId}}
-X-Hearth-Secret: {{hearthSecret}}
-
-{
-  "query": "",
-  "limit": 12,
-  "filters": {
-    "mealTypes": [
-      "Supper"
-    ]
-  },
-  "preferences": {
-    "concepts": [
-      "fish"
-    ]
-  }
-}
-
-# Pagination: duplicate the exact first-page request, keep query/filters/preferences
-# and optional planner/similar context unchanged, then add:
-#   "continuationToken": "<paste that response's nextCursor>"
-# Only do this when nextCursor is non-null. Do not reuse a cursor across probes.
-# Save the body and response for each probe without sharing auth headers.

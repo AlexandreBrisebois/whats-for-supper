@@ -1,26 +1,35 @@
+# SCHEDULE — the weekly supper plan.
+# weekOffset: 0 = this week, 1 = next week, -1 = last week.
+# Day indexes: 0 = Monday … 6 = Sunday.
+# Set @recipeId to a recipe that is planned in the week. See README.md.
+
 @weekOffset = 0
 @dayIndex = 0
-@recipeId = 5df6b7da-4537-4b06-bae6-e8278ce2d1a9
+@recipeId = 00000000-0000-0000-0000-000000000000
 
-### Get schedule for a week
-# Returns 7 days with planned recipes (or null if unplanned) for the specified weekOffset.
-# weekOffset=0 is this week, 1 is next week, -1 is last week.
+
+# ═══ READ ═══════════════════════════════════════════════════════════════════
+
+### READ ONLY — Week plan
 GET {{baseUrl}}/api/schedule?weekOffset={{weekOffset}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-### Lock the weekly schedule
-# Sets all calendar events for the week to 'Locked' status.
-# Side effects:
-#   - Purges all recipe votes for the week
-#   - Updates last_cooked_date on all planned recipes
-POST {{baseUrl}}/api/schedule/lock?weekOffset={{weekOffset}}
+### READ ONLY — Smart defaults (recipes that reached vote consensus, open days)
+GET {{baseUrl}}/api/schedule/{{weekOffset}}/smart-defaults
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-### Assign recipe to a day
-# Assigns (or updates) a recipe to a specific day in the week.
-# Creates a new CalendarEvent if none exists for that date.
+### READ ONLY — Fill the gap (well-liked recipes not cooked recently)
+GET {{baseUrl}}/api/schedule/fill-the-gap?weekOffset={{weekOffset}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+
+# ═══ PLAN ═══════════════════════════════════════════════════════════════════
+
+### CHANGES DATA — Put @recipeId on @dayIndex
+# requireEmpty: true returns 409 instead of replacing a recipe already there.
 POST {{baseUrl}}/api/schedule/assign
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
@@ -29,44 +38,38 @@ X-Hearth-Secret: {{hearthSecret}}
   "weekOffset": {{weekOffset}},
   "dayIndex": {{dayIndex}},
   "recipeId": "{{recipeId}}",
-  "recipeName": "Homemade Lasagna",
-  "recipeImage": "https://images.unsplash.com/photo-1574894709920-11b28e7367e3"
+  "requireEmpty": true
 }
 
-### Move recipe between days
-# Swaps recipes between two day slots within the same week.
-# fromIndex and toIndex are 0-6 (Mon-Sun).
+### CHANGES DATA — Swap @recipeId from one day to another in the same week
 POST {{baseUrl}}/api/schedule/move
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
 {
   "weekOffset": {{weekOffset}},
+  "recipeId": "{{recipeId}}",
+  "intent": "swap",
   "fromIndex": 0,
   "toIndex": 2
 }
 
-### Defer a scheduled recipe to the first free next-week date
-POST {{baseUrl}}/api/schedule/defer
+### CHANGES DATA — Defer @recipeId to the first free day next week
+# Give fromIndex or an exact "sourceDate": "YYYY-MM-DD".
+# For a meal already cooked, add "cookedDisposition": "reset" or "preserve".
+POST {{baseUrl}}/api/schedule/move
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
 {
-  "sourceDate": "2026-09-13",
-  "recipeId": "550e8400-e29b-41d4-a716-446655440000"
+  "weekOffset": {{weekOffset}},
+  "recipeId": "{{recipeId}}",
+  "intent": "defer",
+  "fromIndex": {{dayIndex}}
 }
 
-### Get smart defaults for week
-# Returns consensus-voted recipes and open slots for planning.
-# Only shows recipes that hit the consensus threshold.
-# Locks are applied only for unanimous votes (all family members voted Like).
-GET {{baseUrl}}/api/schedule/{{weekOffset}}/smart-defaults
-Accept: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
-### Fill the gap
-# Returns 5 recipes with high family interest that haven't been cooked recently.
-# Used to populate quick-pick recommendations.
-GET {{baseUrl}}/api/schedule/fill-the-gap
+### CHANGES DATA — Lock the week
+# Locks every day, clears the week's votes, and updates last-cooked dates.
+POST {{baseUrl}}/api/schedule/lock?weekOffset={{weekOffset}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}

@@ -169,7 +169,7 @@ RULES:
             userMessage.Contents.Add(new TextContent($"SOURCE HTML:\n\n{htmlContent}"));
         }
 
-        var response = await agent.RunAsync(messages: new[] { userMessage }, options: GetChatOptions(), cancellationToken: ct);
+        var response = await agent.RunAsync(messages: new[] { userMessage }, options: GetChatOptions(expectJson: true), cancellationToken: ct);
         var messages = response.Messages.ToList();
 
         var extractionJson = response.Text;
@@ -515,6 +515,7 @@ Please re-examine the images and refine the JSON according to these rules:
 
     public async Task DoSynthesizeRecipeAsync(Guid recipeId, string description, CancellationToken ct, Guid? operationId = null)
     {
+        string? requestedName = null;
         if (db is not null)
         {
             var existing = await db.Recipes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == recipeId, ct);
@@ -523,6 +524,12 @@ Please re-examine the images and refine the JSON according to these rules:
                 logger.LogInformation("Synthesized recipe {RecipeId} already persisted; skipping replay.", recipeId);
                 return;
             }
+            requestedName = existing?.Name;
+        }
+
+        if (string.IsNullOrWhiteSpace(requestedName))
+        {
+            requestedName = (await ReadInfoOrDefaultAsync(recipeId, ct))?.Name;
         }
 
         logger.LogInformation("Synthesizing recipe {RecipeId} from description: {Description}", recipeId, description);
@@ -535,27 +542,49 @@ Please re-examine the images and refine the JSON according to these rules:
         }
 
         var agent = chatClient.AsAIAgent(name: "RecipeSynthesizer", instructions: instructions);
-        var userMessage = new ChatMessage(ChatRole.User, $"Description: {description}");
-
-        var response = await agent.RunAsync(messages: new[] { userMessage }, options: GetChatOptions(), cancellationToken: ct);
-        var rawJson = response.Text ?? string.Empty;
-        var sanitized = JsonUtils.SanitizeJson(rawJson);
-
-        SchemaOrgRecipe? recipe = null;
-        try
+        var userPrompt = $"Description: {description}";
+        if (!string.IsNullOrWhiteSpace(requestedName) &&
+            !string.Equals(requestedName.Trim(), description.Trim(), StringComparison.Ordinal))
         {
-            recipe = JsonSerializer.Deserialize<SchemaOrgRecipe>(sanitized, JsonDefaults.CaseInsensitive);
+            userPrompt += $"\nRecipe Name: {requestedName.Trim()}";
         }
-        catch (JsonException ex)
-        {
-            logger.LogError(ex, "Failed to deserialize synthesis response for {RecipeId}. JSON (first 500): {Sample}",
-                recipeId, sanitized.Length > 500 ? sanitized[..500] : sanitized);
-        }
+        var userMessage = new ChatMessage(ChatRole.User, userPrompt);
 
-        if (string.IsNullOrWhiteSpace(recipe?.Name))
+        var response = await agent.RunAsync(messages: new[] { userMessage }, options: GetChatOptions(expectJson: true), cancellationToken: ct);
+        var initialResult = TryParseSynthesis(response.Text, requestedName, recipeId);
+
+        SchemaOrgRecipe? recipe;
+        if (initialResult?.IsSemanticallyComplete == true)
         {
-            logger.LogWarning("Synthesis produced no usable name for {RecipeId}. Falling back to description as name.", recipeId);
-            recipe = SynthesisFallback(description);
+            recipe = initialResult.Recipe!;
+        }
+        else
+        {
+            logger.LogWarning("Initial synthesis for {RecipeId} was incomplete or invalid JSON; running single-turn refinement.", recipeId);
+            var refinedText = await RefineSynthesisAsync(userMessage, response, instructions, ct);
+            var refinedResult = TryParseSynthesis(refinedText, requestedName, recipeId);
+
+            if (refinedResult?.IsSemanticallyComplete == true)
+            {
+                recipe = refinedResult.Recipe!;
+            }
+            else if (HasUsableSynthesisContent(initialResult?.Recipe) && !HasUsableSynthesisContent(refinedResult?.Recipe))
+            {
+                recipe = initialResult!.Recipe!;
+            }
+            else if (HasUsableSynthesisContent(refinedResult?.Recipe))
+            {
+                recipe = refinedResult!.Recipe!;
+            }
+            else if (HasUsableSynthesisContent(initialResult?.Recipe))
+            {
+                recipe = initialResult!.Recipe!;
+            }
+            else
+            {
+                logger.LogWarning("Synthesis produced no usable recipe content for {RecipeId}. Falling back with requested/truncated name.", recipeId);
+                recipe = SynthesisFallback(requestedName, description);
+            }
         }
 
         recipe.Context = "https://schema.org/";
@@ -633,13 +662,91 @@ Please re-examine the images and refine the JSON according to these rules:
 
     #region Helpers
 
-    private static SchemaOrgRecipe SynthesisFallback(string description) => new()
+    private RecipeExtractionParseResult? TryParseSynthesis(string? rawText, string? requestedName, Guid recipeId)
     {
-        Name = description,
+        var sanitized = JsonUtils.SanitizeJson(rawText ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(sanitized))
+        {
+            return null;
+        }
+
+        try
+        {
+            var parsed = RecipeExtractionParser.ParseAndNormalize(sanitized);
+            if (parsed.Recipe is not null &&
+                string.IsNullOrWhiteSpace(parsed.Recipe.Name) &&
+                !string.IsNullOrWhiteSpace(requestedName))
+            {
+                parsed.Recipe.Name = requestedName.Trim();
+                return new RecipeExtractionParseResult(
+                    parsed.Recipe,
+                    RecipeExtractionParser.IsSemanticallyComplete(parsed.Recipe));
+            }
+            return parsed;
+        }
+        catch (JsonException ex)
+        {
+            logger.LogError(ex, "Failed to deserialize synthesis response for {RecipeId}. JSON (first 500): {Sample}",
+                recipeId, sanitized.Length > 500 ? sanitized[..500] : sanitized);
+            return null;
+        }
+    }
+
+    private async Task<string?> RefineSynthesisAsync(
+        ChatMessage originalUserMessage,
+        AgentResponse initialResponse,
+        string instructions,
+        CancellationToken ct)
+    {
+        var messages = new List<ChatMessage> { originalUserMessage };
+        foreach (var msg in initialResponse.Messages)
+        {
+            if (msg.Role != ChatRole.User || !msg.Text.StartsWith("Description: ", StringComparison.Ordinal))
+            {
+                messages.Add(msg);
+            }
+        }
+
+        messages.Add(new ChatMessage(
+            ChatRole.User,
+            "Your previous response was either invalid JSON or missing ingredients/instructions. " +
+            "Return ONLY valid, complete Schema.org/Recipe JSON with a concise name, non-empty recipeIngredient, " +
+            "matching supply entries, and recipeInstructions containing HowToSection objects with HowToStep items. " +
+            "No markdown, no commentary."));
+
+        var refiner = chatClient.AsAIAgent(name: "RecipeSynthesizerRefiner", instructions: instructions);
+        var refined = await refiner.RunAsync(messages: messages, options: GetChatOptions(expectJson: true), cancellationToken: ct);
+        return refined.Text;
+    }
+
+    private static bool HasUsableSynthesisContent(SchemaOrgRecipe? recipe) =>
+        !string.IsNullOrWhiteSpace(recipe?.Name) &&
+        ((recipe.RecipeIngredient?.Any(x => !string.IsNullOrWhiteSpace(x)) == true) ||
+         (recipe.RecipeInstructions?.SelectMany(section => section.ItemListElement ?? [])
+             .Any(step => !string.IsNullOrWhiteSpace(step.Text)) == true));
+
+    private static SchemaOrgRecipe SynthesisFallback(string? requestedName, string description) => new()
+    {
+        Name = !string.IsNullOrWhiteSpace(requestedName)
+            ? requestedName.Trim()
+            : FallbackNameFromDescription(description),
         RecipeIngredient = [],
         RecipeInstructions = [],
         TotalTime = null
     };
+
+    private static string FallbackNameFromDescription(string description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return "Untitled Recipe";
+        }
+
+        var firstLine = description
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault() ?? description.Trim();
+        return firstLine.Length <= 120 ? firstLine : firstLine[..120].TrimEnd();
+    }
 
     private async Task<RecipeInfo> ReadInfoRequiredAsync(Guid recipeId, CancellationToken ct)
     {
@@ -726,15 +833,21 @@ Please re-examine the images and refine the JSON according to these rules:
         }
     }
 
-    private ChatClientAgentRunOptions GetChatOptions()
+    private ChatClientAgentRunOptions GetChatOptions(bool expectJson = false)
     {
+        var chatOptions = new ChatOptions
+        {
+            Temperature = 0.1f,
+            MaxOutputTokens = configuration.GetValue<int?>("GEMINI_MAX_OUTPUT_TOKENS") ?? 16384
+        };
+        if (expectJson)
+        {
+            chatOptions.ResponseFormat = ChatResponseFormat.Json;
+        }
+
         return new ChatClientAgentRunOptions
         {
-            ChatOptions = new ChatOptions
-            {
-                Temperature = 0.1f,
-                MaxOutputTokens = configuration.GetValue<int?>("GEMINI_MAX_OUTPUT_TOKENS") ?? 8192
-            }
+            ChatOptions = chatOptions
         };
     }
 

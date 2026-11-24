@@ -21,10 +21,10 @@ Extract a recipe from the HTML of a webpage and return a Schema.org/Recipe JSON 
 4. **Content Fidelity:** Extract 100% of ingredients and instruction steps. No compression.
 5. **Step Purity:** Each `HowToStep.text` must contain only the cooking action. Strip all inline blog commentary, author asides, photo captions, promotional text, and personal notes. A valid step describes what to do — not what the author thought, experienced, or recommends as an aside.
 6. **HTML Purge:** Strip all HTML tags (`<a>`, `<span>`, `<div>`) from extracted strings. Return clean text only.
-7. **Supply:** Populate `supply` as an array of `HowToSupply` objects, mapping each ingredient to a `QuantitativeValue`. If quantities cannot be reliably parsed, set `supply: null`.
+7. **Supply:** Produce `supply` as an array of `HowToSupply` objects with 1:1 order parity with `recipeIngredient` (never omit pantry staples, seasonings, oils, salt, pepper, or ingredients without a numeric quantity; exclude cookware and non-food equipment). For each entry, set `name` to the ingredient name without quantity or unit, and set `requiredQuantity.value` as a JSON number (e.g. `0.25`, `0.5` — never a fraction string) when a numeric amount exists, or `requiredQuantity: null` otherwise. Return `supply: null` only if a faithful complete list cannot be produced.
 8. **Format Standards:**
    - **Time:** Convert durations to ISO 8601 (e.g., "PT30M").
-   - **Yield:** Capture exact text (e.g., "Pour 25 boulettes").
+   - **Yield:** Capture exact text as a JSON string (e.g., "Pour 25 boulettes"), never a bare number.
    - **Nulls:** Use `null` for missing fields. Do not omit them.
 
 ## Examples (study these before extracting)
@@ -59,11 +59,10 @@ Extract a recipe from the HTML of a webpage and return a Schema.org/Recipe JSON 
 
 ## Schema Template (Follow Exactly)
 
-```json
 {
   "@context": "https://schema.org/",
   "@type": "Recipe",
-  "languageCode": "FR/EN",
+  "languageCode": "FR",
   "name": "Recipe Title",
   "recipeYield": "Total yield text",
   "totalTime": "ISO8601 duration or null",
@@ -103,6 +102,5 @@ Extract a recipe from the HTML of a webpage and return a Schema.org/Recipe JSON 
     "proteinContent": null
   }
 }
-```
 
 STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.

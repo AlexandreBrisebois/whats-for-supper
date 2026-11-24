@@ -72,4 +72,51 @@ public class EmbeddedPromptRepositoryWebRecipeTests
 
         Assert.Contains("null", prompt, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void RecipeSynthesis_Prompt_EnforcesNumericValuesStringYieldNullNutritionAndConciseTitle()
+    {
+        var repo = new EmbeddedPromptRepository();
+
+        var prompt = repo.GetPrompt(PromptType.RecipeSynthesis);
+
+        Assert.Contains("JSON number", prompt, StringComparison.Ordinal);
+        Assert.Contains("JSON string", prompt, StringComparison.Ordinal);
+        Assert.Contains("\"nutrition\": null", prompt, StringComparison.Ordinal);
+        Assert.Contains("concise dish title", prompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DescriptionGeneration_Prompt_InstructsMatchingRecipeLanguage()
+    {
+        var repo = new EmbeddedPromptRepository();
+
+        var prompt = repo.GetPrompt(PromptType.DescriptionGeneration);
+
+        Assert.Contains("same language as the recipe", prompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void WebRecipeExtraction_Prompt_OmitsMarkdownFencesAndAmbiguousLanguageCode()
+    {
+        var repo = new EmbeddedPromptRepository();
+
+        var prompt = repo.GetPrompt(PromptType.WebRecipeExtraction);
+
+        Assert.DoesNotContain("```json", prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"FR/EN\"", prompt, StringComparison.Ordinal);
+        Assert.Contains("JSON number", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RecipeExtraction_Prompt_HasUniqueSectionNumberingAndNumericSupplyRule()
+    {
+        var repo = new EmbeddedPromptRepository();
+
+        var prompt = repo.GetPrompt(PromptType.RecipeExtraction);
+
+        Assert.DoesNotContain("4. SCHEMA TEMPLATE", prompt, StringComparison.Ordinal);
+        Assert.Contains("7. SCHEMA TEMPLATE", prompt, StringComparison.Ordinal);
+        Assert.Contains("JSON number", prompt, StringComparison.Ordinal);
+    }
 }

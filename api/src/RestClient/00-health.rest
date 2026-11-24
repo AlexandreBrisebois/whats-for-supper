@@ -1,0 +1,12 @@
+# HEALTH — is the API up, and which mode is it in?
+# All requests here are READ ONLY. See README.md for environments and labels.
+
+### READ ONLY — Health (no secret needed)
+# Also reports Demo Mode and whether the restore schedule is valid.
+GET {{baseUrl}}/api/health
+Accept: application/json
+
+### READ ONLY — OpenAPI document (Development only, 404 elsewhere)
+GET {{baseUrl}}/openapi/v1.json
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}

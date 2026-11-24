@@ -87,7 +87,7 @@ public sealed partial class RecipeSynthesisCanonicalTests
         }
         else
         {
-            Assert.Equal(description, saved.Name);
+            Assert.Equal("Requested pasta", saved.Name);
             Assert.Empty(canonical.IngredientLines);
             Assert.Empty(canonical.InstructionSections);
             Assert.Null(canonical.Servings);
@@ -279,5 +279,229 @@ public sealed partial class RecipeSynthesisCanonicalTests
         var finalized = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
         Assert.True(finalized.IsReady);
         Assert.Equal("Canadian", finalized.CuisineType);
+    }
+
+    [Fact]
+    public async Task SynthesizeRecipe_TolerantPayloadWithFractionsNumericYieldAndFlatSteps_ParsesFullRecipe()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(
+            new Integration.DeploymentCalendarIntegrationTests.CalendarClock { UtcNow = DateTimeOffset.Parse("2026-10-12T16:00:00Z") }, new()
+            {
+                ["Calendar:TimeZone"] = "America/Toronto",
+                ["Tests:LocalRecipeStore"] = "true",
+                ["Tests:RealWorkflowOrchestrator"] = "true"
+            });
+        using var scope = factory.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var storage = services.GetRequiredService<IStorageProvider>();
+        await storage.SaveAsync("workflows", "goto-synthesis.yaml", await File.ReadAllTextAsync(Path.Combine(
+            Integration.DeploymentCalendarPostgresTests.RepositoryRoot(), "api/src/RecipeApi/Workflows/goto-synthesis.yaml")));
+
+        const string description = """
+            Pour 4 portion.
+            Ingrédients
+            4 poitrines de poulet désossée, sans la peau, coupée en cubes de 2,5 cm (1 po)
+            1 ml (1/4 de c. à thé) de sel
+            1 ml (1/4 de c. à thé) de poivre noir
+            30 ml (2 c. à soupe) de beurre
+            1/2 oignon, coupé en dés
+            1 gousse d’ail, émincée
+            1 pot (341 ml chacun) de Sauce pour poulet au beurre VH®
+            125 ml (1/2 tasse) de crème à fouetter à 35 %
+            Directives
+            Étape 1
+            Saler et poivrer le poulet.
+            Étape 2
+            Faire fondre le beurre et cuire le poulet, l'oignon et l'ail.
+            Étape 3
+            Ajouter la sauce et la crème et laisser mijoter.
+            """;
+
+        using var client = factory.CreateAuthenticatedClient();
+        client.DefaultRequestHeaders.Add("X-Family-Member-Id", factory.DefaultFamilyMemberId.ToString());
+        using var response = await client.PostAsJsonAsync("/api/recipes/describe", new { name = "Poulet au beurre VH", description });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data").GetProperty("id").GetGuid();
+
+        var db = services.GetRequiredService<RecipeDbContext>();
+        var workflow = await db.WorkflowInstances.Include(x => x.Tasks).SingleAsync(x => x.WorkflowId == "goto-synthesis");
+        var synthTask = Assert.Single(workflow.Tasks, x => x.ProcessorName == "SynthesizeRecipe");
+
+        const string tolerantAiPayload = """
+            {
+              "@context": "https://schema.org/",
+              "@type": "Recipe",
+              "name": "Poulet au beurre VH",
+              "recipeYield": 4,
+              "recipeIngredient": [
+                "4 poitrines de poulet désossée",
+                "1 ml (1/4 de c. à thé) de sel",
+                "1 ml (1/4 de c. à thé) de poivre noir",
+                "30 ml (2 c. à soupe) de beurre",
+                "1/2 oignon, coupé en dés",
+                "1 gousse d'ail, émincée",
+                "1 pot (341 ml) de Sauce pour poulet au beurre VH",
+                "125 ml (1/2 tasse) de crème à fouetter à 35 %"
+              ],
+              "supply": [
+                { "name": "Poitrines de poulet", "requiredQuantity": { "value": 4 } },
+                { "name": "Sel", "requiredQuantity": { "value": "1/4", "unitText": "tsp" } },
+                { "name": "Poivre noir", "requiredQuantity": { "value": "1/4", "unitText": "tsp" } },
+                { "name": "Beurre", "requiredQuantity": { "value": 30, "unitText": "ml" } },
+                { "name": "Oignon", "requiredQuantity": { "value": "1/2" } },
+                { "name": "Ail", "requiredQuantity": { "value": 1 } },
+                { "name": "Sauce pour poulet au beurre VH", "requiredQuantity": { "value": 341, "unitText": "ml" } },
+                { "name": "Crème à fouetter 35 %", "requiredQuantity": { "value": 125, "unitText": "ml" } }
+              ],
+              "recipeInstructions": [
+                { "@type": "HowToStep", "text": "Saler et poivrer le poulet." },
+                { "@type": "HowToStep", "text": "Faire fondre le beurre et cuire le poulet, l'oignon et l'ail." },
+                { "@type": "HowToStep", "text": "Ajouter la sauce et la crème et laisser mijoter." }
+              ]
+            }
+            """;
+
+        var recordedOptions = new List<ChatOptions?>();
+        var chat = new Mock<IChatClient>();
+        chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<ChatMessage> messages, ChatOptions options, CancellationToken _) =>
+            {
+                recordedOptions.Add(options);
+                var text = messages.Any(x => x.Text.StartsWith("Description: ", StringComparison.Ordinal))
+                    ? tolerantAiPayload
+                    : "A creamy butter chicken supper.";
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant, text));
+            });
+        var prompts = new Mock<IPromptRepository>();
+        prompts.Setup(x => x.GetPrompt(It.IsAny<PromptType>())).Returns("Prompt");
+
+        var agent = ActivatorUtilities.CreateInstance<RecipeAgent>(services, chat.Object, prompts.Object, "SynthesizeRecipe");
+        await agent.ExecuteAsync(synthTask, default);
+
+        Assert.Equal(2, recordedOptions.Count);
+        Assert.Equal(ChatResponseFormat.Json, recordedOptions[0]?.ResponseFormat);
+        Assert.Equal(16384, recordedOptions[0]?.MaxOutputTokens);
+        Assert.Null(recordedOptions[1]?.ResponseFormat);
+        Assert.Equal(16384, recordedOptions[1]?.MaxOutputTokens);
+
+        db.ChangeTracker.Clear();
+        var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
+        var canonical = StructuredRecipeContentStore.Read(saved);
+        Assert.NotNull(canonical);
+        Assert.True(saved.IsSynthesized);
+        Assert.Equal("Poulet au beurre VH", saved.Name);
+        Assert.Equal(8, canonical.IngredientLines.Count);
+        var section = Assert.Single(canonical.InstructionSections);
+        Assert.Equal(3, section.Steps.Count);
+    }
+
+    [Fact]
+    public async Task SynthesizeRecipe_MalformedFirstResponse_RefinesAndRecoversRecipe()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(
+            new Integration.DeploymentCalendarIntegrationTests.CalendarClock { UtcNow = DateTimeOffset.Parse("2026-10-12T16:00:00Z") }, new()
+            {
+                ["Calendar:TimeZone"] = "America/Toronto",
+                ["Tests:LocalRecipeStore"] = "true",
+                ["Tests:RealWorkflowOrchestrator"] = "true"
+            });
+        using var scope = factory.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var storage = services.GetRequiredService<IStorageProvider>();
+        await storage.SaveAsync("workflows", "goto-synthesis.yaml", await File.ReadAllTextAsync(Path.Combine(
+            Integration.DeploymentCalendarPostgresTests.RepositoryRoot(), "api/src/RecipeApi/Workflows/goto-synthesis.yaml")));
+
+        using var client = factory.CreateAuthenticatedClient();
+        client.DefaultRequestHeaders.Add("X-Family-Member-Id", factory.DefaultFamilyMemberId.ToString());
+        using var response = await client.PostAsJsonAsync("/api/recipes/describe", new { name = "Quick Chili", description = "Beef and bean chili" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data").GetProperty("id").GetGuid();
+
+        var db = services.GetRequiredService<RecipeDbContext>();
+        var workflow = await db.WorkflowInstances.Include(x => x.Tasks).SingleAsync(x => x.WorkflowId == "goto-synthesis");
+        var synthTask = Assert.Single(workflow.Tasks, x => x.ProcessorName == "SynthesizeRecipe");
+
+        const string validRefined = """
+            {
+              "name": "Quick Chili",
+              "recipeYield": "4 portions",
+              "recipeIngredient": ["500 g ground beef", "400 g kidney beans"],
+              "supply": [
+                { "name": "Ground beef", "requiredQuantity": { "value": 500, "unitText": "g" } },
+                { "name": "Kidney beans", "requiredQuantity": { "value": 400, "unitText": "g" } }
+              ],
+              "recipeInstructions": [
+                { "@type": "HowToSection", "name": "Cook", "itemListElement": [{ "@type": "HowToStep", "text": "Brown beef and simmer with beans." }] }
+              ]
+            }
+            """;
+
+        var synthesisCalls = 0;
+        var chat = new Mock<IChatClient>();
+        chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<ChatMessage> messages, ChatOptions _, CancellationToken _) =>
+            {
+                if (messages.Any(x => x.Text.StartsWith("Description: ", StringComparison.Ordinal)))
+                {
+                    synthesisCalls++;
+                    return new ChatResponse(new ChatMessage(ChatRole.Assistant, synthesisCalls == 1 ? "not valid json" : validRefined));
+                }
+                return new ChatResponse(new ChatMessage(ChatRole.Assistant, "A hearty beef and bean chili."));
+            });
+        var prompts = new Mock<IPromptRepository>();
+        prompts.Setup(x => x.GetPrompt(It.IsAny<PromptType>())).Returns("Prompt");
+
+        var agent = ActivatorUtilities.CreateInstance<RecipeAgent>(services, chat.Object, prompts.Object, "SynthesizeRecipe");
+        await agent.ExecuteAsync(synthTask, default);
+
+        db.ChangeTracker.Clear();
+        var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == id);
+        var canonical = StructuredRecipeContentStore.Read(saved);
+        Assert.NotNull(canonical);
+        Assert.Equal(2, synthesisCalls);
+        Assert.Equal("Quick Chili", saved.Name);
+        Assert.Equal(2, canonical.IngredientLines.Count);
+        Assert.Single(canonical.InstructionSections);
+    }
+
+    [Fact]
+    public async Task SynthesizeRecipe_FallbackWithEmptyRequestedName_TruncatesMultilineDescription()
+    {
+        await using var factory = await TestWebApplicationFactory.CreateWithAuthAsync(
+            new Integration.DeploymentCalendarIntegrationTests.CalendarClock { UtcNow = DateTimeOffset.Parse("2026-10-12T16:00:00Z") }, new()
+            {
+                ["Calendar:TimeZone"] = "America/Toronto",
+                ["Tests:LocalRecipeStore"] = "true",
+                ["Tests:RealWorkflowOrchestrator"] = "true"
+            });
+        using var scope = factory.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var recipeId = Guid.NewGuid();
+        var db = services.GetRequiredService<RecipeDbContext>();
+        db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "",
+            Description = "First line title\nSecond line ingredients\nThird line steps",
+            ImageCount = 0,
+            IsSynthesized = false,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var chat = new Mock<IChatClient>();
+        chat.Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "not valid json")));
+        var prompts = new Mock<IPromptRepository>();
+        prompts.Setup(x => x.GetPrompt(It.IsAny<PromptType>())).Returns("Prompt");
+
+        var agent = ActivatorUtilities.CreateInstance<RecipeAgent>(services, chat.Object, prompts.Object, "SynthesizeRecipe");
+        await agent.DoSynthesizeRecipeAsync(recipeId, "First line title\nSecond line ingredients\nThird line steps", default);
+
+        db.ChangeTracker.Clear();
+        var saved = await db.Recipes.AsNoTracking().SingleAsync(x => x.Id == recipeId);
+        Assert.Equal("First line title", saved.Name);
+        Assert.DoesNotContain("\n", saved.Name);
     }
 }

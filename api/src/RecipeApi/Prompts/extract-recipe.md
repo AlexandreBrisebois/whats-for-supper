@@ -29,7 +29,7 @@ EXTRACTION PROTOCOL (STRICT):
    - supply: Schema.org HowToSupply represents supplies consumed while following instructions; reusable equipment belongs to tool/HowToTool, not HowToSupply. For this application's recipe output, restrict supply to the food ingredients in recipeIngredient. Do not add a tool field to the existing output template.
      - Include exactly one HowToSupply entry per recipeIngredient entry, in the same order, with no extra or missing ingredients.
      - name: The corresponding ingredient name in the source language, including preparation details but without its quantity or unit.
-     - requiredQuantity: Use QuantitativeValue with the explicit numeric amount in value and the standardized unit in unitText. Represent fractions numerically without scaling quantities or converting units. If no unit is stated or reliably recoverable, use unitText: null.
+     - requiredQuantity: Use QuantitativeValue with the explicit numeric amount in value as a JSON number (e.g. `0.25`, `0.5` — NEVER a fraction string like `"1/4"`) and the standardized unit in unitText. Convert fractions to decimal JSON numbers without scaling quantities or converting units. If no unit is stated or reliably recoverable, use unitText: null.
      - If no reliable numeric amount is provided, use requiredQuantity: null and retain the ingredient entry. Never guess quantities or omit ingredients because their quantities are unknown.
      - Exclude equipment and non-food consumables, including pots, strainers, grills, peelers, graters, bowls, and paper towels.
      - If a complete, faithful structured ingredient list cannot be produced, return supply: null rather than a partial or unrelated list. Keep recipeIngredient complete.
@@ -59,7 +59,7 @@ EXAMPLES (study these before extracting):
 { "@type": "HowToStep", "text": "Top your overnight oats with your favorite toppings and enjoy!" }
 ]}
 
-4. SCHEMA TEMPLATE (MUST FOLLOW EXACTLY):
+7. SCHEMA TEMPLATE (MUST FOLLOW EXACTLY):
    {
    "@context": "https://schema.org/",
    "@type": "Recipe",
@@ -93,21 +93,12 @@ EXAMPLES (study these before extracting):
    ]
    }
    ],
-   "nutrition": {
-   "@type": "NutritionInformation",
-   "calories": "500 kcal",
-   "fatContent": "20 g",
-   "saturatedFatContent": "5 g",
-   "sodiumContent": "500 mg",
-   "carbohydrateContent": "50 g",
-   "fiberContent": "5 g",
-   "sugarContent": "10 g",
-   "proteinContent": "30 g"
-   }
+   "nutrition": null
    }
 
 STRICT OUTPUT:
 
 - Before returning, verify that recipeIngredient contains only food ingredients and that supply is either null or a complete corresponding representation of those ingredients. No equipment, non-food consumables, missing ingredients, or extra entries.
+- Populate `nutrition` as a `NutritionInformation` object only when nutrition facts are visible on the card; otherwise set `"nutrition": null`.
 - Return ONLY valid JSON. No markdown. No preamble.
 - Use null for missing fields.

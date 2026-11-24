@@ -1,125 +1,86 @@
-@workflowId = classify-recipe
-@recipeImportWorkflowId = classify-recipe
-@vegetarianBackfillWorkflowId = vegetarian-classification-backfill
-@vegetarianStatusWorkflowId = vegetarian-classification-status
-@vegetarianBackfillInstanceId = 5c235e0e-2239-4445-87d0-66bb21fe17d9
-@vegetarianStatusInstanceId = 8410300e-e4a9-4a8a-a6c0-3f9e6eadd2e3
-@servingsBackfillInstanceId = 00000000-0000-0000-0000-000000000000
+# WORKFLOWS — start background jobs and check on them.
+#
+# HOW TO USE
+#   1. Pick the REST Client environment (bottom-right of VS Code). Check it before
+#      sending anything that starts a job: it may be production.
+#   2. Set @recipeId below when using section B.
+#   3. Send a "START" request. Then send the "check" request directly below it.
+#      It reads the instance ID from the START response, so you don't copy anything.
+#   4. When a task fails, copy its taskId into @taskId and use section A.
+# Labels (READ ONLY, START, AI…) are explained in README.md.
+#
+# NOT IN THIS FILE
+#   Reimport a recipe from its URL or photos  → 11-recipe-reimport.rest
+#   Backup, seed, disaster recovery           → 04-management.rest
+#   Demo-mode capture and restore             → 08-demo-mode.rest
+#
+# Every workflow is defined in api/src/RecipeApi/Workflows/<workflow-id>.yaml.
+# The trigger checks that required parameters are present and ignores extra ones.
 
-@recipeId = 7d4c50f3-a3b9-412d-8e8b-940809b9553e
-#@recipeId = 9b683c7b-9ba7-4fd6-ae8b-b95eee02b689
-#@recipeId = e6fdbb5a-ae0b-429a-8e99-e23122b52e4f
-#@recipeId = 3fe040b3-29e8-4e26-90b6-1401c0bf3d03
+@recipeId = 5a7f6de2-3473-4229-9575-6948f01c3126
+@instanceId = 52ad4126-d444-4851-a51c-5791c11d055e
+@taskId = 00000000-0000-0000-0000-000000000000
 
-@instanceId = ae43e5c2-01e8-4dbe-a2df-b3be6fa893af
-@taskId = 5042beb0-19d8-46ce-abc4-a8c85dae2ef5
 
-### 1. Trigger recipe-import workflow execution
-# Triggers the recipe-import workflow with a recipe ID for the 3-step process:
-# Extract -> GenerateHero -> SyncRecipe
-POST {{baseUrl}}/api/workflows/{{recipeImportWorkflowId}}/trigger
-Content-Type: application/json
+# ═══════════════════════════════════════════════════════════════════════════
+# A. CHECK ON JOBS
+# ═══════════════════════════════════════════════════════════════════════════
+
+### A1. READ ONLY — Running and paused jobs
+# Lists instances that are Processing or Paused. Pending jobs that have not
+# started yet do not appear here.
+GET {{baseUrl}}/api/workflows/active
+Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-{
-  "parameters": {
-    "recipeId": "{{recipeId}}"
-  }
-}
+### A2. READ ONLY — One job by instance ID (paste it into @instanceId)
+# Shows the status of each task. Use the "check" requests in B and C for jobs
+# started from this file.
+GET {{baseUrl}}/api/workflows/instances/{{instanceId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
 
-### 1aa. Trigger url-import workflow execution
-# Triggers the url-import workflow for a recipe with a SourceUrl.
-POST {{baseUrl}}/api/workflows/url-import/trigger
+### A3. READ ONLY — Why a task failed (paste it into @taskId)
+GET {{baseUrl}}/api/workflows/tasks/{{taskId}}/diagnostics
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### A4. START — Retry a failed task (paste it into @taskId)
+# Sets the task back to Pending and resumes its workflow from that task.
+POST {{baseUrl}}/api/workflows/tasks/{{taskId}}/reset
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# B. ONE RECIPE (uses @recipeId)
+# ═══════════════════════════════════════════════════════════════════════════
+
+### B1. START + AI — Reindex search for one recipe (search text + embedding)
+# The empty fingerprint forces the job to run even if the content has not changed.
+# Completes without doing anything if the recipe is deleted, has no extracted
+# text, or has no search record yet. If it has no search record, run C1 instead.
+# In demo mode it rebuilds the search text but does not create an embedding.
+# @name reindexRecipe
+POST {{baseUrl}}/api/workflows/index-recipe-search/trigger
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
 {
   "parameters": {
     "recipeId": "{{recipeId}}",
-    "url": "https://www.ricardocuisine.com/en/recipes/4725-honey-glazed-rack-of-lamb-"
+    "fingerprint": ""
   }
 }
 
-### 1ab. Trigger search-reconciliation workflow execution
-# Triggers the search-reconciliation workflow for a recipe with a SourceUrl.
-POST {{baseUrl}}/api/workflows/search-reconciliation/trigger
-Content-Type: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
-{
-  "parameters": {
-    "recipeId": "{{recipeId}}",
-    "url": "https://www.ricardocuisine.com/en/recipes/4725-honey-glazed-rack-of-lamb-"
-  }
-}
-
-### 1ac. Start vegetarian classification backfill
-# Safe initial migration: known rows are skipped. Copy data.instanceId
-# from the 202 response into @vegetarianBackfillInstanceId before polling below.
-POST {{baseUrl}}/api/workflows/{{vegetarianBackfillWorkflowId}}/trigger
-Content-Type: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
-{
-  "parameters": {}
-}
-
-### 1ad. Get vegetarian backfill instance details
-# A batch contains at most 25 recipes and schedules successor batches. Check
-# "Get all active workflows" until no vegetarian-classification-backfill remains.
-GET {{baseUrl}}/api/workflows/instances/{{vegetarianBackfillInstanceId}}
+### B1 check
+GET {{baseUrl}}/api/workflows/instances/{{reindexRecipe.response.body.$.data.instanceId}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-### 1ae. Get vegetarian classification migration status
-# Copy data.instanceId into @vegetarianStatusInstanceId, then poll the request below.
-POST {{baseUrl}}/api/workflows/{{vegetarianStatusWorkflowId}}/trigger
-Content-Type: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
-{
-  "parameters": {}
-}
-
-### 1af. Get vegetarian classification status result
-# The completed task result reports total/classified/unknown/vegetarian/
-# non-vegetarian counts.
-GET {{baseUrl}}/api/workflows/instances/{{vegetarianStatusInstanceId}}
-Accept: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
-### 1ag. Reconcile search after vegetarian backfill settles
-# Run once only after no backfill workflow instances remain active.
-POST {{baseUrl}}/api/workflows/search-reconciliation/trigger
-Content-Type: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
-{
-  "parameters": {}
-}
-
-### 1ah. Start recipe servings backfill
-# Apply the servings schema migration first. Fills only missing counts from stored
-# yield metadata; preserves known counts and makes no AI calls.
-# Copy data.instanceId from the 202 response into @servingsBackfillInstanceId.
-POST {{baseUrl}}/api/workflows/recipe-servings-backfill/trigger
-Content-Type: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
-{
-  "parameters": {}
-}
-
-### 1ai. Get servings backfill instance details
-# Task results: Examined, Updated, Unresolved, Changed, NextCursor.
-# Each batch examines at most 25 recipes and schedules successor batches. Check
-# "Get all active workflows" until no recipe-servings-backfill remains.
-GET {{baseUrl}}/api/workflows/instances/{{servingsBackfillInstanceId}}
-Accept: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
-### 1a. Trigger recipe-description-regeneration workflow execution
-# Regenerates the AI-powered description from the existing recipe.json and finished dish image.
+### B2. START + AI — Regenerate the description
+# Steps: generate description → sync recipe → categorize recipe.
+# @name regenerateDescription
 POST {{baseUrl}}/api/workflows/recipe-description-regeneration/trigger
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
@@ -130,36 +91,124 @@ X-Hearth-Secret: {{hearthSecret}}
   }
 }
 
-### 1b. Trigger legacy recipe-extraction workflow execution
-# Triggers the recipe-extraction workflow with parameters.
-POST {{baseUrl}}/api/workflows/{{workflowId}}/trigger
+### B2 check
+GET {{baseUrl}}/api/workflows/instances/{{regenerateDescription.response.body.$.data.instanceId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### B3. START + AI — Regenerate the hero image
+# Uses the recipe endpoint, which applies the demo-mode AI guard.
+# It does not return an instance ID. Use A1 to watch the job.
+POST {{baseUrl}}/api/recipes/{{recipeId}}/hero/regenerate
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### B4. START + AI — Recategorize ingredients
+# Steps: categorize ingredients → mark recipe ready.
+# @name recategorizeIngredients
+POST {{baseUrl}}/api/workflows/recategorize-ingredients/trigger
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
 {
   "parameters": {
-    "recipeUrl": "{{recipeUrl}}"
+    "recipeId": "{{recipeId}}"
   }
 }
 
-@instanceId = ae43e5c2-01e8-4dbe-a2df-b3be6fa893af
-
-### 2. Get workflow instance details
-# Returns the instance metadata and all associated tasks.
-GET {{baseUrl}}/api/workflows/instances/{{instanceId}}
+### B4 check
+GET {{baseUrl}}/api/workflows/instances/{{recategorizeIngredients.response.body.$.data.instanceId}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-### 3. Get all active workflows
-# Returns all Processing or Paused workflow instances.
-GET {{baseUrl}}/api/workflows/active
+### B5. START + AI — Classify vegetarian / non-vegetarian
+# @name classifyVegetarian
+POST {{baseUrl}}/api/workflows/classify-recipe-vegetarian/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {
+    "recipeId": "{{recipeId}}"
+  }
+}
+
+### B5 check
+GET {{baseUrl}}/api/workflows/instances/{{classifyVegetarian.response.body.$.data.instanceId}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-@tastId = ef9f4855-9f00-4a23-a086-82aa20fdc5f7
 
-### 4. Reset a failed task
-# Resets a failed task to Pending status and updates the workflow to Processing.
-POST {{baseUrl}}/api/workflows/tasks/{{taskId}}/reset
+# ═══════════════════════════════════════════════════════════════════════════
+# C. ALL RECIPES (backfills — each batch queues the next batch)
+# A batch's check only shows that batch. Keep checking A1 until no instance of
+# the workflow remains.
+# ═══════════════════════════════════════════════════════════════════════════
+
+### C1. START — Search reconciliation (find recipes whose search is missing or stale)
+# Scans ready recipes in batches. Queues B1-style reindex jobs only for recipes
+# whose search is missing, stale, or failed. Those reindex jobs call AI.
+# There is no per-recipe option; use B1 for one recipe.
+# @name searchReconciliation
+POST {{baseUrl}}/api/workflows/search-reconciliation/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {}
+}
+
+### C1 check — result: scanned, queued, cursor
+GET {{baseUrl}}/api/workflows/instances/{{searchReconciliation.response.body.$.data.instanceId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### C2. START + AI — Vegetarian classification backfill
+# Classifies recipes that are not classified yet and skips the others.
+# Queues one B5 job per recipe, 25 recipes per batch.
+# After A1 shows no backfill left, run C3 and then C1.
+# @name vegetarianBackfill
+POST {{baseUrl}}/api/workflows/vegetarian-classification-backfill/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {}
+}
+
+### C2 check — result: total, classified, unknown, vegetarian, nonVegetarian, queued
+GET {{baseUrl}}/api/workflows/instances/{{vegetarianBackfill.response.body.$.data.instanceId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### C3. START — Vegetarian classification counts (no AI, changes nothing)
+# @name vegetarianStatus
+POST {{baseUrl}}/api/workflows/vegetarian-classification-status/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {}
+}
+
+### C3 check — result: total, classified, unknown, vegetarian, nonVegetarian
+GET {{baseUrl}}/api/workflows/instances/{{vegetarianStatus.response.body.$.data.instanceId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### C4. START — Servings backfill (no AI)
+# Fills only missing servings counts from stored yield data and keeps existing
+# counts. Requires the servings schema migration to be applied first.
+# @name servingsBackfill
+POST {{baseUrl}}/api/workflows/recipe-servings-backfill/trigger
+Content-Type: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+{
+  "parameters": {}
+}
+
+### C4 check — result: examined, updated, unresolved, changed, nextCursor
+GET {{baseUrl}}/api/workflows/instances/{{servingsBackfill.response.body.$.data.instanceId}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}

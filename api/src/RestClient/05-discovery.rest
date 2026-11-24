@@ -1,41 +1,41 @@
-@recipeId = 5df6b7da-4537-4b06-bae6-e8278ce2d1a9
+# DISCOVERY — the swipe stack and votes for {{familyMemberId}}.
+# Set @recipeId before voting. See README.md for environments and labels.
 
-### Get discovery categories
-# Returns categories that have recipes available for discovery for this member.
+@recipeId = 00000000-0000-0000-0000-000000000000
+
+### READ ONLY — Current voting session
+GET {{baseUrl}}/api/discovery/session
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### READ ONLY — Categories with recipes left to vote on
 GET {{baseUrl}}/api/discovery/categories
-X-Family-Member-Id: {{familyMemberId}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
 
-### Get discovery stack
-# Returns the list of discoverable recipes the member hasn't voted on yet.
+### READ ONLY — Recipes not voted on yet (optional ?category= or ?cuisine=)
 GET {{baseUrl}}/api/discovery
-X-Family-Member-Id: {{familyMemberId}}
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
-
-### Get discovery stack by category
-GET {{baseUrl}}/api/discovery?category=Chicken
 X-Family-Member-Id: {{familyMemberId}}
-Accept: application/json
-X-Hearth-Secret: {{hearthSecret}}
 
-### Vote on a recipe (Like - Value 1)
+### CHANGES DATA — Vote Like (1)
 POST {{baseUrl}}/api/discovery/{{recipeId}}/vote
-X-Family-Member-Id: {{familyMemberId}}
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
 
 {
-    "vote": 1
+  "vote": 1
 }
 
-### Vote on a recipe (Skip - Value 2)
+### CHANGES DATA — Vote Dislike (2)
 POST {{baseUrl}}/api/discovery/{{recipeId}}/vote
-X-Family-Member-Id: {{familyMemberId}}
 Content-Type: application/json
 X-Hearth-Secret: {{hearthSecret}}
+X-Family-Member-Id: {{familyMemberId}}
 
 {
-    "vote": 2
+  "vote": 2
 }

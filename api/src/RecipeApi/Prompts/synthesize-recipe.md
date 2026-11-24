@@ -8,16 +8,17 @@ RULES:
    - Ingredients + name only (no method provided)
    - High-level intent only (e.g. "Pantry Pasta / I'm going to make pasta with meat sauce and toasted garlic bread")
      In all cases, produce a COMPLETE recipe JSON with realistic ingredients, quantities, and step-by-step instructions. Never leave recipeIngredient or recipeInstructions empty or null.
-2. LANGUAGE: Detect the language of the input automatically. All output text must match the input language. Do not translate.
-3. UNIT NORMALISATION: Resolve any abbreviated or informal unit names to standard equivalents (e.g., "c. à soupe" → tablespoon, "c. à thé" → teaspoon, "t." → cup). Apply regardless of language.
-4. PERSONAL NOTES & VARIATIONS: If the input contains personal commentary (e.g., "Perso, j'ajoute...", "J'ai varié...") or suggested variations, DO NOT include them as recipe steps. Ignore them entirely.
-5. MISSING INSTRUCTIONS: If no instructions are provided, infer logical steps from the ingredient list and recipe type. Always produce at least one HowToSection with at least one HowToStep.
-6. recipeIngredient: Array of strings in format "[Quantity] [Unit] [Ingredient]" (e.g., "250 ml tomato sauce"). If quantity is unstated, use a reasonable default.
-7. SUPPLY COMPLETENESS — REQUIRED: `supply` is the grocery-list source of truth. Produce exactly one `HowToSupply` entry for every `recipeIngredient` entry, in the same order. Never omit pantry staples, seasonings, oils, salt, pepper, bread, garnishes, or ingredients without a numeric quantity. Each `supply[].name` must contain only the ingredient name, without quantity, unit, or preparation wording. When a reliable numeric quantity and unit are available, set `requiredQuantity.value` and `requiredQuantity.unitText`; otherwise set `requiredQuantity` to `null`. Before returning, verify that `supply.length` equals `recipeIngredient.length`; correct `supply` if it does not.
-8. totalTime: ISO 8601 duration (e.g., "PT45M"). Infer from recipe type if not stated.
-9. recipeYield: Reasonable serving size (e.g., "4 portions"). Infer if not stated.
-10. NUTRITION: Do NOT add nutrition data unless explicitly provided in the input.
-11. SCHEMA STRUCTURE — CRITICAL: `recipeInstructions` must contain ONLY `HowToSection` objects. NEVER place a bare `HowToStep` directly inside `recipeInstructions`. Every step must be nested inside a `HowToSection`.
+2. LANGUAGE: Detect the language of the input automatically. All recipe text (`name`, `recipeIngredient`, `supply[].name`, `recipeInstructions`) must match the input language. Do not translate.
+3. TITLE (`name`): `name` MUST be a concise dish title in the input language (never copy the full pasted recipe body into `name`). Use the provided `Recipe Name` when present; otherwise infer a short dish title from the description.
+4. UNIT NORMALISATION: Keep `recipeIngredient` wording in the input language, and resolve abbreviated or informal unit names in `supply[].requiredQuantity.unitText` to standard equivalents (e.g., "c. à soupe" → tablespoon, "c. à thé" → teaspoon, "t." → cup). Apply regardless of language.
+5. PERSONAL NOTES & VARIATIONS: If the input contains personal commentary (e.g., "Perso, j'ajoute...", "J'ai varié...") or suggested variations, DO NOT include them as recipe steps. Ignore them entirely.
+6. MISSING INSTRUCTIONS: If no instructions are provided, infer logical steps from the ingredient list and recipe type. Always produce at least one HowToSection with at least one HowToStep.
+7. recipeIngredient: Array of strings in format "[Quantity] [Unit] [Ingredient]" (e.g., "250 ml tomato sauce"). If quantity is unstated, use a reasonable default.
+8. SUPPLY COMPLETENESS — REQUIRED: `supply` is the grocery-list source of truth. Produce exactly one `HowToSupply` entry for every `recipeIngredient` entry, in the same order. Never omit pantry staples, seasonings, oils, salt, pepper, bread, garnishes, or ingredients without a numeric quantity. Each `supply[].name` must contain only the ingredient name, without quantity, unit, or preparation wording. When a reliable numeric quantity and unit are available, set `requiredQuantity.value` as a JSON number (e.g., `0.25`, `0.5`, `1.5` — NEVER a fraction string like `"1/4"` or `"1/2"`) and set `requiredQuantity.unitText` (or `null` if unitless); otherwise set `requiredQuantity` to `null`. Before returning, verify that `supply.length` equals `recipeIngredient.length`; correct `supply` if it does not.
+9. totalTime: ISO 8601 duration string (e.g., "PT45M"), or `null`. Infer from recipe type if not stated.
+10. recipeYield: Reasonable serving size as a JSON string (e.g., `"4 portions"`), NEVER a bare number like `4`. Infer if not stated.
+11. NUTRITION: Do NOT add nutrition data unless explicitly provided in the input; otherwise set `"nutrition": null`.
+12. SCHEMA STRUCTURE — CRITICAL: `recipeInstructions` must contain ONLY `HowToSection` objects. NEVER place a bare `HowToStep` directly inside `recipeInstructions`. Every step must be nested inside a `HowToSection`.
 
 EXAMPLES (study these before synthesizing):
 
@@ -104,17 +105,7 @@ SCHEMA TEMPLATE (MUST FOLLOW EXACTLY):
 ]
 }
 ],
-"nutrition": {
-"@type": "NutritionInformation",
-"calories": "500 kcal",
-"fatContent": "20 g",
-"saturatedFatContent": "5 g",
-"sodiumContent": "500 mg",
-"carbohydrateContent": "50 g",
-"fiberContent": "5 g",
-"sugarContent": "10 g",
-"proteinContent": "30 g"
-}
+"nutrition": null
 }
 
 STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.

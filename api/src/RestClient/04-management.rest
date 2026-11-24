@@ -1,33 +1,63 @@
+# MANAGEMENT — backups, restores, recovery snapshots.
+# Several requests here OVERWRITE data. Check the environment before each one.
+# Demo-mode capture and restore → 08-demo-mode.rest.
+# Rebuilding search (formerly "backfill-search") → 07-workflow.rest, C1.
+# See README.md for environments and labels.
+
+@snapshotId = 00000000-0000-0000-0000-000000000000
 
 
-### 1. Trigger Disaster Recovery
-# Scans RECIPES_ROOT/original to harvest unique AddedBy IDs 
-# and generates placeholders in family-members.json.
-POST {{baseUrl}}/api/management/disaster-recovery
+# ═══ STATUS ════════════════════════════════════════════════════════════════
+
+### READ ONLY — Most recent management job
+GET {{baseUrl}}/api/management/status
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-### 2. Trigger Full Backup
-# Exports current DB (FamilyMembers and Recipes) to JSON files in RECIPES_ROOT.
+### READ ONLY — Recovery status
+GET {{baseUrl}}/api/management/recovery/status
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+
+# ═══ BACKUP (safe: only writes backup files) ═══════════════════════════════
+
+### START — Back up the database to JSON files
 POST {{baseUrl}}/api/management/backup
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-### 3. Trigger Full Seed (Restore)
-# Imports/Syncs database from JSON files in RECIPES_ROOT.
-# Idempotent: safe to run multiple times.
+### START — Take a recovery snapshot (copy its ID into @snapshotId)
+POST {{baseUrl}}/api/management/recovery/snapshots
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+
+# ═══ RESTORE (overwrites the live database) ════════════════════════════════
+
+### READ ONLY — Check whether a snapshot can be restored
+GET {{baseUrl}}/api/management/recovery/restore/{{snapshotId}}/preflight
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### DESTRUCTIVE — Restore a snapshot over the live database
+# Run preflight first. 409 "busy": wait for Retry-After and check status.
+POST {{baseUrl}}/api/management/recovery/restore/{{snapshotId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### START — Resume an interrupted recovery
+POST {{baseUrl}}/api/management/recovery/resume
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### DESTRUCTIVE — Seed: reload the database from the JSON backup files
 POST {{baseUrl}}/api/management/seed
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
 
-### 4. Trigger Search Index Backfill
-# Enqueues missing or stale recipes for search indexing.
-POST {{baseUrl}}/api/management/backfill-search
-Accept: application/json
-X-Hearth-Secret: {{hearthSecret}}
-
-### 5. Check Task Status
-# Returns the status of the current or most recent management task.
-GET {{baseUrl}}/api/management/status
+### DESTRUCTIVE — Disaster recovery: rebuild from the original recipe files
+# Scans the original photo folders and rebuilds placeholder family members.
+POST {{baseUrl}}/api/management/disaster-recovery
 Accept: application/json
 X-Hearth-Secret: {{hearthSecret}}
