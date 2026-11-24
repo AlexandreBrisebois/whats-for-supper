@@ -1,0 +1,275 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1280" viewBox="0 0 1440 1280" role="img" aria-labelledby="jr-title jr-desc">
+  <title id="jr-title">Household Capture &amp; Import Journeys (Save &amp; Back to Life · Era 3)</title>
+  <desc id="jr-desc">End-to-end journey map covering all four household capture paths: Save-and-Forget Async Capture (Photo, Web Link, Describe, PDF), Direct OS Share and Shared Recipe Bundle, Workflow Suspected-Duplicate Detection and Paired Human Review, and Failure Recovery plus Post-Import Quality Repair.</desc>
+
+  <defs>
+    <filter id="cardShadow" x="-8%" y="-8%" width="116%" height="122%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#28231F" flood-opacity="0.07"/>
+    </filter>
+    <marker id="arrowHearth" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#B85542"/>
+    </marker>
+    <marker id="arrowGarden" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#4E6E52"/>
+    </marker>
+    <marker id="arrowSunlight" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#856400"/>
+    </marker>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="1280" fill="#FDFCF0"/>
+
+  <!-- HEADER -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · End-to-End Journeys</text>
+  <rect x="1096" y="24" width="304" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1248" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">4 Capture Journeys · Save &amp; Back to Life</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Capture &amp; Import Journeys — From Source to Trusted Library</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">Save-and-forget async capture with immediate return to Home, paired human duplicate review, and recoverable failures — zero dead ends.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 1 · SAVE-AND-FORGET ASYNC CAPTURE (PHOTO / LINK / DESCRIBE / PDF) -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 158)">
+    <rect x="0" y="0" width="1360" height="222" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="318" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="179" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Journey 1 · Save &amp; Return Home (Async Capture)</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#4E6E52" text-anchor="end">Photo · Web Link · Describe · PDF → Zero waiting screen</text>
+
+    <!-- Node 1: Entry -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="236" height="142" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">ENTRY · APP OR OS</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Capture a Recipe</text>
+      <text x="16" y="70" font-size="12" fill="#6E645B">Home trigger, Recipes +, Discovery,</text>
+      <text x="16" y="87" font-size="12" fill="#6E645B">or OS Share (URL / Android PDF)</text>
+      <rect x="16" y="102" width="204" height="28" rx="10" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+      <text x="118" y="120.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">/capture · Locked × cancel</text>
+    </g>
+
+    <line x1="256" y1="129" x2="292" y2="129" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 2: Stage & Optional Metadata -->
+    <g transform="translate(296, 58)">
+      <rect x="0" y="0" width="328" height="142" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">STAGE &amp; OPTIONAL METADATA</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">One unified Era 3 form</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• Photo: collapsed hub + Main dish toggle</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• URL / Describe: inline duplicate advisory</text>
+      <text x="16" y="104" font-size="12" fill="#28231F">• PDF: editorial filename + restored × cancel</text>
+      <text x="16" y="124" font-size="12" font-weight="600" fill="#A44A37">Tap “Save recipe” → submit-locked</text>
+    </g>
+
+    <line x1="624" y1="129" x2="660" y2="129" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 3: Immediate Return to Home -->
+    <g transform="translate(664, 58)">
+      <rect x="0" y="0" width="332" height="142" rx="18" fill="#FDFCF0" stroke="#C7CFB0" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">INTAKE ACCEPTED (202) · BACK TO LIFE</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Return straight to Home</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• No 10-second countdown wait screen.</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• Quiet ambient ribbon on Home:</text>
+      <text x="26" y="103" font-size="12" fill="#4E6E52">“Preparing 1 recipe in the background”</text>
+      <text x="16" y="124" font-size="12" font-weight="600" fill="#A44A37">• 1-tap “+ Add another” for multi-recipe bursts</text>
+    </g>
+
+    <line x1="996" y1="129" x2="1032" y2="129" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4: Resolution -->
+    <g transform="translate(1036, 58)">
+      <rect x="0" y="0" width="304" height="142" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="128" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="80" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">SSE · READY</text>
+      <text x="16" y="56" font-size="16" font-weight="800" fill="#28231F" class="heading">LibraryToast (5s)</text>
+      <text x="16" y="76" font-size="12" fill="#6E645B">“✓ Grandma’s Tourtière is ready!”</text>
+      <text x="16" y="95" font-size="12" fill="#28231F">• Tap opens RecipeDetailSheet directly</text>
+      <text x="16" y="114" font-size="12" fill="#6E645B">• Originals preserved via View Original</text>
+      <text x="16" y="131" font-size="12" fill="#4E6E52">• Ambient ribbon clears automatically</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 2 · DIRECT OS SHARE & SHARED RECIPE BUNDLE (.TXT / .RECIPE)    -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 398)">
+    <rect x="0" y="0" width="1360" height="196" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="318" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="179" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Journey 2 · Direct OS Share &amp; Shared Bundle</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">Zero hub detours · Demo-safe local .txt path</text>
+
+    <!-- Node 1: Share or File -->
+    <g transform="translate(20, 56)">
+      <rect x="0" y="0" width="290" height="120" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">EXTERNAL HANDOFF</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">OS Share or Recipe File</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• Android Share → POST /share-target (PDF)</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• Browser Share → /capture?url=…</text>
+      <text x="16" y="104" font-size="12" fill="#6E645B">• File picker → .pdf or .txt / .recipe bundle</text>
+    </g>
+
+    <line x1="310" y1="116" x2="348" y2="116" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 2: Direct Confirmation -->
+    <g transform="translate(352, 56)">
+      <rect x="0" y="0" width="320" height="120" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">DIRECT PREVIEW / CONFIRMATION</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Skip Hub · Single × Cancel</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• PDF: single-claim token + filename + notes.</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• Bundle: full card preview (hero, steps, badge).</text>
+      <text x="16" y="104" font-size="12" fill="#6E645B">• × discards draft cleanly (no hidden exit).</text>
+    </g>
+
+    <line x1="672" y1="116" x2="710" y2="116" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 3: Lifecycle & Demo Guardrails -->
+    <g transform="translate(714, 56)">
+      <rect x="0" y="0" width="310" height="120" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">GUARDRAILS &amp; DEMO MODE</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Safe ownership &amp; limits</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• Member switch / background discards PDF draft.</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• Demo mode gates AI via DemoAiActionGate</text>
+      <text x="26" y="103" font-size="12" fill="#6E645B">while keeping prepared .txt import working.</text>
+    </g>
+
+    <line x1="1024" y1="116" x2="1062" y2="116" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4: Saved -->
+    <g transform="translate(1066, 56)">
+      <rect x="0" y="0" width="274" height="120" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">IN LIBRARY</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Instant or Async Save</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• PDF → Home + ambient ribbon.</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• .txt bundle → instant save +</text>
+      <text x="26" y="103" font-size="12" fill="#6E645B">LibraryToast → Home.</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 3 · WORKFLOW DUPLICATE DETECTION & PAIRED HUMAN REVIEW         -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 612)">
+    <rect x="0" y="0" width="1360" height="220" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="336" height="26" rx="13" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+    <text x="188" y="33.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">Journey 3 · Suspected Duplicate &amp; Human Review</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#856400" text-anchor="end">Works with Save-and-Forget · Zero library hunting</text>
+
+    <!-- Node 1: Background Detection -->
+    <g transform="translate(20, 56)">
+      <rect x="0" y="0" width="290" height="142" rx="18" fill="#FFFFFF" stroke="#FFE666" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#856400">WORKFLOW · DETECT_DUPLICATES</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Runs after SyncRecipe</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">Checks non-deleted library recipes:</text>
+      <text x="16" y="86" font-size="12" fill="#6E645B">1. Normalized source URL match</text>
+      <text x="16" y="103" font-size="12" fill="#6E645B">2. Case/accent-folded title similarity</text>
+      <text x="16" y="120" font-size="12" fill="#6E645B">3. Ingredient overlap / search match</text>
+    </g>
+
+    <line x1="310" y1="127" x2="348" y2="127" stroke="#856400" stroke-width="2" marker-end="url(#arrowSunlight)"/>
+
+    <!-- Node 2: Paired Flagging -->
+    <g transform="translate(352, 56)">
+      <rect x="0" y="0" width="320" height="142" rx="18" fill="#FFFBE6" stroke="#FFE666" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#856400">FLAGGED · LINKED TO EXISTING</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Never auto-deletes work</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• Marks new recipe Duplicate (Reported)</text>
+      <text x="26" y="85" font-size="12" fill="#28231F">+ stores suspectedDuplicateRecipeId.</text>
+      <text x="16" y="104" font-size="12" fill="#6E645B">• Holds new copy out of Discovery voting</text>
+      <text x="26" y="121" font-size="12" fill="#6E645B">until reviewed; existing favourite stays clean.</text>
+    </g>
+
+    <line x1="672" y1="127" x2="710" y2="127" stroke="#856400" stroke-width="2" marker-end="url(#arrowSunlight)"/>
+
+    <!-- Node 3: Paired Comparison -->
+    <g transform="translate(714, 56)">
+      <rect x="0" y="0" width="310" height="142" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">HUMAN REVIEW (WHEN READY)</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Compare pair in 1 sheet</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• Reach via LibraryToast or Needs review.</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• Loads New + Existing side by side:</text>
+      <text x="26" y="103" font-size="12" fill="#6E645B">photo, rating, notes, source &amp; count.</text>
+      <text x="16" y="123" font-size="12" font-weight="600" fill="#4E6E52">• Zero manual searching for the twin.</text>
+    </g>
+
+    <line x1="1024" y1="127" x2="1062" y2="127" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4: 1-Tap Resolution -->
+    <g transform="translate(1066, 56)">
+      <rect x="0" y="0" width="274" height="142" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="114" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="73" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">1-TAP CLEANUP</text>
+      <text x="16" y="54" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Human decides</text>
+      <text x="16" y="74" font-size="12" fill="#A44A37" font-weight="600">• Keep existing · discard new</text>
+      <text x="16" y="92" font-size="12" fill="#28231F">• Keep both (clears flag)</text>
+      <text x="16" y="110" font-size="12" fill="#28231F">• Keep new · archive existing</text>
+      <text x="16" y="129" font-size="11.5" fill="#6E645B">Discarded copy → Recycle Bin.</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 4 · FAILURE RECOVERY, QUALITY REPAIR & UNIVERSAL INVARIANTS    -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 850)">
+    <rect x="0" y="0" width="1360" height="374" rx="26" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="24" y="34" font-size="17" font-weight="800" fill="#28231F" class="heading">Journey 4 · Failure Recovery, Quality Repair &amp; Universal Capture Invariants</text>
+
+    <!-- Left column: Recovery & Repair States -->
+    <g transform="translate(24, 54)">
+      <rect x="0" y="0" width="644" height="296" rx="20" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="20" y="28" font-size="12.5" font-weight="700" fill="#A44A37">HONEST FAILURE &amp; POST-IMPORT RECOVERY LOOPS</text>
+
+      <!-- Card 1: Foreground intake failure -->
+      <rect x="20" y="44" width="294" height="108" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="34" y="66" font-size="13.5" font-weight="800" fill="#A44A37" class="heading">Foreground Intake Failure</text>
+      <text x="34" y="86" font-size="12" fill="#28231F">• Stays on capture form; draft retained.</text>
+      <text x="34" y="103" font-size="12" fill="#6E645B">• Localized Hearth role="alert" error.</text>
+      <text x="34" y="120" font-size="12" fill="#6E645B">• Uncertain reply warns of duplicate risk</text>
+      <text x="44" y="136" font-size="12" fill="#6E645B">before retrying.</text>
+
+      <!-- Card 2: Background workflow failure -->
+      <rect x="330" y="44" width="294" height="108" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="344" y="66" font-size="13.5" font-weight="800" fill="#A44A37" class="heading">Background Workflow Failure</text>
+      <text x="344" y="86" font-size="12" fill="#28231F">• Persistent RecipeFailureBanner (Retry</text>
+      <text x="354" y="103" font-size="12" fill="#6E645B">+ single Dismiss; max 2 visible).</text>
+      <text x="344" y="120" font-size="12" fill="#6E645B">• Settings Failed captures retains source</text>
+      <text x="354" y="136" font-size="12" fill="#6E645B">for Retry or confirmed Clear (Era 3).</text>
+
+      <!-- Card 3: Post-import quality repair -->
+      <rect x="20" y="166" width="604" height="110" rx="14" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+      <text x="34" y="189" font-size="13.5" font-weight="800" fill="#4E6E52" class="heading">Post-Import Quality Repair (RecipeImportIssueSheet · Era 3)</text>
+      <text x="34" y="210" font-size="12.5" fill="#28231F">• Household members report Ingredients or Steps + note → triggers contextual re-import</text>
+      <text x="44" y="227" font-size="12.5" fill="#6E645B">against retained source URL or original photos/PDF pages.</text>
+      <text x="34" y="248" font-size="12.5" fill="#4E6E52">• Completed repair surfaces Review badge → human inspects → explicit Mark as resolved.</text>
+    </g>
+
+    <!-- Right column: Universal Capture Invariants -->
+    <g transform="translate(692, 54)">
+      <rect x="0" y="0" width="644" height="296" rx="20" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="20" y="28" font-size="12.5" font-weight="700" fill="#4E6E52">UNIVERSAL CAPTURE &amp; ACCESSIBILITY INVARIANTS</text>
+
+      <text x="20" y="58" font-size="13.5" font-weight="800" fill="#28231F" class="heading">1. Save &amp; Back to Life (Zero Forced Wait)</text>
+      <text x="20" y="77" font-size="12.5" fill="#6E645B">Every async capture returns straight to Home after 202 intake. Ambient Home status</text>
+      <text x="20" y="94" font-size="12.5" fill="#6E645B">reassures the household and offers 1-tap “+ Add another” without a 10s timer lock.</text>
+
+      <text x="20" y="124" font-size="13.5" font-weight="800" fill="#28231F" class="heading">2. One Exit Grammar (Locked × · Zero Dead Ends)</text>
+      <text x="20" y="143" font-size="12.5" fill="#6E645B">Every capture state — including PDF Confirmation — keeps the locked top-right 48px ×</text>
+      <text x="20" y="160" font-size="12.5" fill="#6E645B">cancel control. No giant bottom Cancel buttons or trapped standalone-PWA screens.</text>
+
+      <text x="20" y="190" font-size="13.5" font-weight="800" fill="#28231F" class="heading">3. Honest Provenance &amp; Human-in-the-Loop Duplicates</text>
+      <text x="20" y="209" font-size="12.5" fill="#6E645B">Original photos and rendered PDF pages remain accessible via View Original. Suspected</text>
+      <text x="20" y="226" font-size="12.5" fill="#6E645B">duplicates link directly to their existing match for calm 1-tap human resolution.</text>
+
+      <text x="20" y="256" font-size="13.5" font-weight="800" fill="#28231F" class="heading">4. Dual-Mode AA / AAA, Touch &amp; Bilingual Parity</text>
+      <text x="20" y="275" font-size="12.5" fill="#6E645B">&gt;= 48×48px targets, 2px outline-ink-body (4px offset), &gt;= 12px floor, EN/FR, reduced motion.</text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <text x="40" y="1258" font-size="12.5" fill="#6E645B">Capture &amp; Import Journeys · Exploration &amp; design board — does not authorize code changes until approved via OpenSpec.</text>
+</svg>

@@ -1,0 +1,605 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2140" viewBox="0 0 1440 2140" role="img" aria-labelledby="suite-title suite-desc">
+  <title id="suite-title">Unified Capture Visual Design Suite (Family Cookbook Era 3)</title>
+  <desc id="suite-desc">Complete Era 3 visual design specification for What's for Supper Capture journeys: Entry Hub, collapsed Photo Staging, unified PDF/URL/Describe confirmation with restored top-right close control, Save-and-Return-Home ambient progress and notifications, paired human Duplicate Review, migrated Era 3 RecipeImportIssueSheet, French expansion proof, and High Contrast AAA adaptation.</desc>
+
+  <defs>
+    <filter id="sheetShadow" x="-12%" y="-10%" width="124%" height="126%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#28231F" flood-opacity="0.14"/>
+    </filter>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#28231F" flood-opacity="0.06"/>
+    </filter>
+    <linearGradient id="dishWarm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E6B3A9"/>
+      <stop offset="55%" stop-color="#D98D7E"/>
+      <stop offset="100%" stop-color="#B85542"/>
+    </linearGradient>
+    <linearGradient id="pageWarm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F3EFEA"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="2140" fill="#FDFCF0"/>
+
+  <!-- ====================================================================== -->
+  <!-- HEADER                                                                 -->
+  <!-- ====================================================================== -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · Capture &amp; Import Suite</text>
+  <rect x="1076" y="24" width="324" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1238" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Save &amp; Return Home · Standard AA &amp; AAA</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Unified Capture Visual Design Suite</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">Save-and-forget capture across Photo, Link, Describe, PDF, and Shared File — one locked × cancel header, ambient Home progress, and paired duplicate review.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 1 · CAPTURE ENTRY HUB, PHOTO STAGING & DIRECT SOURCE SCREENS   -->
+  <!-- ====================================================================== -->
+  <text x="40" y="170" font-size="18" font-weight="700" fill="#28231F" class="heading">1 · Capture Entry Hub, Focused Photo Staging &amp; Unified Direct-Entry Forms (412×915 · Locked × Header)</text>
+
+  <!-- ==================== COL 1 · CAPTURE ENTRY HUB ==================== -->
+  <g transform="translate(40, 188)">
+    <rect x="0" y="0" width="436" height="726" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="176" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="108" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Entry Hub · All 5 Sources</text>
+    <text x="416" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">Zero scroll · Sentence case</text>
+
+    <!-- Phone viewport well -->
+    <rect x="20" y="54" width="396" height="546" rx="24" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- Sticky glass header -->
+    <path d="M 44 54 H 392 Q 416 54 416 78 V 112 H 20 V 78 Q 20 54 44 54 Z" fill="#FDFCF0"/>
+    <line x1="20" y1="112" x2="416" y2="112" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="218" y="90" font-size="18" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">Add a recipe</text>
+    <!-- Locked 48px Close button -->
+    <rect x="356" y="62" width="44" height="44" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <path d="M372 78 L384 90 M384 78 L372 90" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- Primary Photo Dropzone -->
+    <g transform="translate(38, 128)">
+      <rect x="0" y="0" width="360" height="206" rx="28" fill="#F9ECE9" fill-opacity="0.55" stroke="#E6B3A9" stroke-width="1.8" stroke-dasharray="7 5"/>
+      <!-- Primary Camera Circle -->
+      <circle cx="180" cy="64" r="38" fill="#B85542" stroke="#FFFFFF" stroke-width="3.5" filter="url(#softShadow)"/>
+      <g transform="translate(165, 49) scale(1.25)" fill="none" stroke="#FDFCF0" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/>
+        <circle cx="12" cy="13" r="3"/>
+      </g>
+      <text x="180" y="124" font-size="16" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">Take a photo</text>
+      <text x="180" y="142" font-size="12" font-weight="400" fill="#6E645B" text-anchor="middle">Snap 1 or more cookbook pages, or drop images</text>
+
+      <!-- Pick from gallery pill -->
+      <rect x="92" y="154" width="176" height="38" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
+      <g transform="translate(109, 165) scale(0.6667)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+        <circle cx="9" cy="9" r="2"/>
+        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+      </g>
+      <text x="132" y="177.5" font-size="13" font-weight="600" fill="#A44A37">Pick from gallery</text>
+    </g>
+
+    <!-- Other ways to add panel (Era 3 option rows) -->
+    <g transform="translate(38, 350)">
+      <rect x="0" y="0" width="360" height="232" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#softShadow)"/>
+      <text x="18" y="25" font-size="12" font-weight="600" fill="#6E645B">Or add another way</text>
+
+      <!-- Row 1: Paste recipe link -->
+      <g transform="translate(14, 36)">
+        <rect x="0" y="0" width="332" height="56" rx="16" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="10" y="10" width="36" height="36" rx="11" fill="#F9ECE9"/>
+        <g transform="translate(19, 19) scale(0.75)" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+          <path d="M2 12h20"/>
+        </g>
+        <text x="58" y="26" font-size="14" font-weight="700" fill="#28231F" class="heading">Paste recipe link</text>
+        <text x="58" y="43" font-size="12" fill="#6E645B">From any recipe website or blog</text>
+        <path d="M312 22 L318 28 L312 34" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+
+      <!-- Row 2: Describe a recipe -->
+      <g transform="translate(14, 100)">
+        <rect x="0" y="0" width="332" height="56" rx="16" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="10" y="10" width="36" height="36" rx="11" fill="#FFFBE6"/>
+        <g transform="translate(19, 19) scale(0.75)" fill="none" stroke="#856400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/>
+          <path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>
+        </g>
+        <text x="58" y="26" font-size="14" font-weight="700" fill="#28231F" class="heading">Describe a recipe</text>
+        <text x="58" y="43" font-size="12" fill="#6E645B">Name &amp; family notes — we’ll draft it</text>
+        <path d="M312 22 L318 28 L312 34" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+
+      <!-- Row 3: Import PDF or recipe file -->
+      <g transform="translate(14, 164)">
+        <rect x="0" y="0" width="332" height="56" rx="16" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+        <rect x="10" y="10" width="36" height="36" rx="11" fill="#F1F3EB"/>
+        <g transform="translate(19, 19) scale(0.75)" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+          <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+          <path d="M10 13H8"/><path d="M16 17H8"/><path d="M16 13h-2"/>
+        </g>
+        <text x="58" y="26" font-size="14" font-weight="700" fill="#28231F" class="heading">Import PDF or recipe file</text>
+        <text x="58" y="43" font-size="12" fill="#6E645B">PDF (up to 10 pages) or shared .txt</text>
+        <path d="M312 22 L318 28 L312 34" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </g>
+
+    <!-- Design notes -->
+    <g transform="translate(24, 616)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#A44A37">CLEAR AFFORDANCES · ZERO HIDDEN CAPABILITIES</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Visible "Take a photo" label + multi-page hint.</text>
+      <text x="0" y="55" font-size="12.5" fill="#28231F">• Replaces rotated ArrowLeft with FileText + names PDF.</text>
+      <text x="0" y="74" font-size="12.5" fill="#6E645B">• Home trigger updates from "Photo or Link" →</text>
+      <text x="10" y="91" font-size="12.5" fill="#6E645B">"Photo, link, PDF, or idea".</text>
+    </g>
+  </g>
+
+  <!-- ==================== COL 2 · PHOTO STAGING (COLLAPSED HUB) ==================== -->
+  <g transform="translate(502, 188)">
+    <rect x="0" y="0" width="436" height="726" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="194" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="117" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Photo Staging · Hub Collapses</text>
+    <text x="416" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">No 600ms scroll hack</text>
+
+    <!-- Phone viewport well -->
+    <rect x="20" y="54" width="396" height="546" rx="24" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- Sticky glass header -->
+    <path d="M 44 54 H 392 Q 416 54 416 78 V 112 H 20 V 78 Q 20 54 44 54 Z" fill="#FDFCF0"/>
+    <line x1="20" y1="112" x2="416" y2="112" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="218" y="90" font-size="18" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">Add a recipe</text>
+    <rect x="356" y="62" width="44" height="44" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <path d="M372 78 L384 90 M384 78 L372 90" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- Photos section -->
+    <g transform="translate(38, 128)">
+      <text x="0" y="16" font-size="16" font-weight="800" fill="#28231F" class="heading">Photos (2)</text>
+      <text x="360" y="16" font-size="12.5" font-weight="600" fill="#A44A37" text-anchor="end">Clear all</text>
+      <text x="0" y="34" font-size="12" fill="#6E645B">Tap a photo to mark or clear the main dish cover.</text>
+
+      <!-- Thumb 1 (Main dish selected) -->
+      <g transform="translate(0, 48)">
+        <rect x="0" y="0" width="106" height="106" rx="18" fill="url(#dishWarm)" stroke="#B85542" stroke-width="2.5"/>
+        <!-- Simple dish silhouette -->
+        <circle cx="53" cy="48" r="24" fill="#FDFCF0" fill-opacity="0.32"/>
+        <circle cx="53" cy="48" r="15" fill="#FDFCF0" fill-opacity="0.45"/>
+        <!-- Star badge top-left -->
+        <circle cx="18" cy="18" r="11" fill="#B85542"/>
+        <path d="M18 12.5 L19.6 15.8 L23.2 16.3 L20.6 18.8 L21.2 22.4 L18 20.7 L14.8 22.4 L15.4 18.8 L12.8 16.3 L16.4 15.8 Z" fill="#FDFCF0"/>
+        <!-- Main dish strip -->
+        <path d="M 1 82 H 105 V 90 Q 105 105 90 105 H 16 Q 1 105 1 90 Z" fill="#B85542"/>
+        <text x="53" y="98" font-size="11.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">Main dish</text>
+        <!-- Always-visible remove button (48px hit area, crisp visual badge) -->
+        <circle cx="96" cy="10" r="12" fill="#28231F" stroke="#FDFCF0" stroke-width="2"/>
+        <path d="M92.5 6.5 L99.5 13.5 M99.5 6.5 L92.5 13.5" fill="none" stroke="#FDFCF0" stroke-width="1.8" stroke-linecap="round"/>
+      </g>
+
+      <!-- Thumb 2 (Recipe page) -->
+      <g transform="translate(122, 48)">
+        <rect x="0" y="0" width="106" height="106" rx="18" fill="url(#pageWarm)" stroke="#E5DFD7" stroke-width="1.5"/>
+        <line x1="18" y1="30" x2="72" y2="30" stroke="#CFC6BC" stroke-width="3" stroke-linecap="round"/>
+        <line x1="18" y1="46" x2="86" y2="46" stroke="#E5DFD7" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="18" y1="58" x2="80" y2="58" stroke="#E5DFD7" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="18" y1="70" x2="84" y2="70" stroke="#E5DFD7" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="18" y1="82" x2="64" y2="82" stroke="#E5DFD7" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="96" cy="10" r="12" fill="#28231F" stroke="#FDFCF0" stroke-width="2"/>
+        <path d="M92.5 6.5 L99.5 13.5 M99.5 6.5 L92.5 13.5" fill="none" stroke="#FDFCF0" stroke-width="1.8" stroke-linecap="round"/>
+      </g>
+
+      <!-- Tile 3 (+ Add photo right in grid) -->
+      <g transform="translate(244, 48)">
+        <rect x="0" y="0" width="106" height="106" rx="18" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.5" stroke-dasharray="5 4"/>
+        <path d="M53 34 V54 M43 44 H63" fill="none" stroke="#A44A37" stroke-width="2.4" stroke-linecap="round"/>
+        <text x="53" y="76" font-size="12.5" font-weight="700" fill="#A44A37" text-anchor="middle">Add photo</text>
+      </g>
+    </g>
+
+    <!-- Shared Appreciation Fieldset -->
+    <g transform="translate(38, 304)">
+      <text x="0" y="14" font-size="13.5" font-weight="700" fill="#28231F">Appreciation</text>
+      <text x="360" y="14" font-size="12" fill="#6E645B" text-anchor="end">Optional · tap again to clear</text>
+
+      <!-- 1: Not for me -->
+      <rect x="0" y="24" width="114" height="66" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <text x="57" y="54" font-size="18" text-anchor="middle">👎</text>
+      <text x="57" y="76" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Not for me</text>
+
+      <!-- 2: It was OK -->
+      <rect x="123" y="24" width="114" height="66" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <text x="180" y="54" font-size="18" text-anchor="middle">👍</text>
+      <text x="180" y="76" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">It was OK</text>
+
+      <!-- 3: Loved it! (Selected) -->
+      <rect x="246" y="24" width="114" height="66" rx="16" fill="#FFFFFF" stroke="#28231F" stroke-width="2" filter="url(#softShadow)"/>
+      <path d="M342 35 L345.5 38.5 L351.5 32" fill="none" stroke="#28231F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="303" y="54" font-size="18" text-anchor="middle">💚</text>
+      <text x="303" y="76" font-size="12" font-weight="700" fill="#28231F" text-anchor="middle">Loved it!</text>
+    </g>
+
+    <!-- Notes textarea -->
+    <g transform="translate(38, 412)">
+      <text x="0" y="14" font-size="13.5" font-weight="700" fill="#28231F">Notes <tspan font-weight="400" fill="#6E645B">(optional)</tspan></text>
+      <rect x="0" y="24" width="360" height="72" rx="18" fill="#FFFFFF" stroke="#9B9085" stroke-width="1.2"/>
+      <text x="16" y="52" font-size="13.5" fill="#6E645B">Any tweaks for next time?</text>
+    </g>
+
+    <!-- Primary Save CTA (standard Button size="lg" min-h-14 rounded-2xl) -->
+    <g transform="translate(38, 524)">
+      <rect x="0" y="0" width="360" height="54" rx="16" fill="#B85542" filter="url(#softShadow)"/>
+      <text x="180" y="33" font-size="16" font-weight="700" fill="#FDFCF0" text-anchor="middle">Save recipe</text>
+    </g>
+
+    <!-- Design notes -->
+    <g transform="translate(24, 616)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">FOCUSED STAGING · SAVE &amp; RETURN HOME</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Hub collapses once staged; "+ Add photo" sits in grid.</text>
+      <text x="0" y="55" font-size="12.5" fill="#28231F">• Standard Button size="lg" (min-h-14, rounded-2xl).</text>
+      <text x="0" y="74" font-size="12.5" fill="#6E645B">• 800ms upload overlay kept for slow transfers; 202</text>
+      <text x="10" y="91" font-size="12.5" fill="#6E645B">returns straight to Home (no 10s countdown wait).</text>
+    </g>
+  </g>
+
+  <!-- ==================== COL 3 · UNIFIED DIRECT-ENTRY FORMS (PDF / URL / DESCRIBE) ==================== -->
+  <g transform="translate(964, 188)">
+    <rect x="0" y="0" width="436" height="726" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="204" height="26" rx="13" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+    <text x="122" y="33.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">PDF · URL · Describe Parity</text>
+    <text x="416" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">Restores × exit on PDF</text>
+
+    <!-- Phone viewport well -->
+    <rect x="20" y="54" width="396" height="546" rx="24" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- Sticky glass header WITH RESTORED × -->
+    <path d="M 44 54 H 392 Q 416 54 416 78 V 112 H 20 V 78 Q 20 54 44 54 Z" fill="#FDFCF0"/>
+    <line x1="20" y1="112" x2="416" y2="112" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="218" y="90" font-size="18" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">Add a recipe</text>
+    <rect x="356" y="62" width="44" height="44" rx="22" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.4"/>
+    <path d="M372 78 L384 90 M384 78 L372 90" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- Editorial source context on cream + 3.5px terracotta bar (non-clickable!) -->
+    <g transform="translate(38, 128)">
+      <rect x="0" y="2" width="3.5" height="56" rx="1.75" fill="#B85542"/>
+      <text x="14" y="14" font-size="12" font-weight="600" fill="#A44A37">PDF recipe · up to 10 pages · 20 MiB</text>
+      <text x="14" y="37" font-size="19" font-weight="800" fill="#28231F" class="heading">Grandmas-Tourtiere.pdf</text>
+      <text x="14" y="55" font-size="12" fill="#6E645B">We’ll extract ingredients and steps in the background.</text>
+    </g>
+
+    <line x1="38" y1="200" x2="398" y2="200" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- Shared Appreciation Fieldset (exact same component!) -->
+    <g transform="translate(38, 214)">
+      <text x="0" y="14" font-size="13.5" font-weight="700" fill="#28231F">Appreciation</text>
+      <rect x="0" y="24" width="114" height="62" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <text x="57" y="52" font-size="17" text-anchor="middle">👎</text>
+      <text x="57" y="73" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Not for me</text>
+
+      <rect x="123" y="24" width="114" height="62" rx="16" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1.8"/>
+      <path d="M219 35 L222.5 38.5 L228.5 32" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="180" y="52" font-size="17" text-anchor="middle">👍</text>
+      <text x="180" y="73" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">It was OK</text>
+
+      <rect x="246" y="24" width="114" height="62" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <text x="303" y="52" font-size="17" text-anchor="middle">💚</text>
+      <text x="303" y="73" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Loved it!</text>
+    </g>
+
+    <!-- Notes -->
+    <g transform="translate(38, 314)">
+      <text x="0" y="14" font-size="13.5" font-weight="700" fill="#28231F">Notes <tspan font-weight="400" fill="#6E645B">(optional)</tspan></text>
+      <rect x="0" y="24" width="360" height="64" rx="18" fill="#FFFFFF" stroke="#9B9085" stroke-width="1.2"/>
+      <text x="16" y="50" font-size="13.5" fill="#28231F">Add pinch of clove; double pastry</text>
+    </g>
+
+    <!-- Primary Save CTA -->
+    <g transform="translate(38, 416)">
+      <rect x="0" y="0" width="360" height="54" rx="16" fill="#B85542" filter="url(#softShadow)"/>
+      <text x="180" y="33" font-size="16" font-weight="700" fill="#FDFCF0" text-anchor="middle">Save recipe</text>
+    </g>
+
+    <!-- Sibling parity callout strip inside well -->
+    <g transform="translate(38, 484)">
+      <rect x="0" y="0" width="360" height="98" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="14" y="22" font-size="12" font-weight="700" fill="#A44A37">SAME SHELL FOR URL, DESCRIBE &amp; .TXT BUNDLE</text>
+      <text x="14" y="42" font-size="12" fill="#28231F">• URL &amp; Describe show inline Sunlight duplicate</text>
+      <text x="24" y="58" font-size="12" fill="#6E645B">advisory before save (still non-blocking).</text>
+      <text x="14" y="78" font-size="12" fill="#28231F">• No giant bottom Cancel button — top-right × cancels.</text>
+    </g>
+
+    <!-- Design notes -->
+    <g transform="translate(24, 616)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#856400">CLOSES THE PDF DEAD END (ONE EXIT GRAMMAR)</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Top-right × stays mounted on PDF confirmation and</text>
+      <text x="10" y="53" font-size="12.5" fill="#6E645B">discards the unsaved draft cleanly on tap.</text>
+      <text x="0" y="74" font-size="12.5" fill="#28231F">• Optional: add [← Back] only when entered from Hub</text>
+      <text x="10" y="91" font-size="12.5" fill="#6E645B">(direct OS shares &amp; PDFs need only ×).</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 2 · SAVE-AND-FORGET FEEDBACK + DUPLICATE REVIEW & ISSUE SHEET  -->
+  <!-- ====================================================================== -->
+  <text x="40" y="954" font-size="18" font-weight="700" fill="#28231F" class="heading">2 · Save-and-Return-Home Async Feedback, Paired Duplicate Review &amp; Era 3 Issue Sheet</text>
+
+  <!-- ==================== LEFT HALF · AMBIENT HOME FEEDBACK & TOASTS ==================== -->
+  <g transform="translate(40, 972)">
+    <rect x="0" y="0" width="664" height="548" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="248" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="144" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Home Async Feedback · Zero Waiting</text>
+    <text x="644" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">captureStore + SSE lifecycle</text>
+
+    <!-- Inner warm canvas showcase -->
+    <rect x="20" y="54" width="624" height="390" rx="22" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- State A: Quiet Ambient In-Flight Ribbon (New!) -->
+    <text x="40" y="82" font-size="12" font-weight="700" fill="#4E6E52">A · AMBIENT IN-FLIGHT STATUS ON HOME (RIGHT AFTER SAVE → HOME)</text>
+    <g transform="translate(40, 92)">
+      <rect x="0" y="0" width="584" height="62" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.3" filter="url(#softShadow)"/>
+      <circle cx="30" cy="31" r="14" fill="#F1F3EB"/>
+      <circle cx="30" cy="31" r="5" fill="#4E6E52"/>
+      <text x="56" y="28" font-size="14" font-weight="700" fill="#28231F" class="heading">Preparing 1 recipe in the background</text>
+      <text x="56" y="46" font-size="12" fill="#6E645B">Carry on — we’ll let you know when it’s in your library.</text>
+      <rect x="462" y="11" width="108" height="40" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+      <text x="516" y="35.5" font-size="12.5" font-weight="700" fill="#A44A37" text-anchor="middle">+ Add another</text>
+    </g>
+
+    <!-- State B: LibraryToast (Ready + Optional Duplicate Review hint) -->
+    <text x="40" y="180" font-size="12" font-weight="700" fill="#4E6E52">B · COMPLETION TOAST (SSE recipe_ready · 5s AUTO-DISMISS)</text>
+    <g transform="translate(40, 190)">
+      <rect x="0" y="0" width="388" height="72" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2" filter="url(#softShadow)"/>
+      <rect x="0" y="0" width="5" height="72" rx="2.5" fill="#4E6E52"/>
+      <rect x="16" y="16" width="40" height="40" rx="12" fill="url(#dishWarm)"/>
+      <text x="68" y="33" font-size="14" font-weight="700" fill="#28231F"><tspan fill="#4E6E52">✓ </tspan>Grandma’s Tourtière is ready!</text>
+      <text x="68" y="52" font-size="12" fill="#6E645B">Tap to view · 1 possible duplicate flagged</text>
+      <path d="M362 30 L372 40 M372 30 L362 40" fill="none" stroke="#6E645B" stroke-width="1.8" stroke-linecap="round"/>
+
+      <!-- +N more pill beside toast -->
+      <rect x="404" y="22" width="84" height="28" rx="14" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="446" y="40" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">+1 more</text>
+    </g>
+
+    <!-- State C: Persistent Failure Banner (Cleaned up: single Dismiss, no duplicate X) -->
+    <text x="40" y="290" font-size="12" font-weight="700" fill="#A44A37">C · PERSISTENT FAILURE BANNER (SSE recipe_failed · SINGLE DISMISS)</text>
+    <g transform="translate(40, 300)">
+      <rect x="0" y="0" width="584" height="120" rx="18" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.3" filter="url(#softShadow)"/>
+      <rect x="0" y="0" width="5" height="120" rx="2.5" fill="#B85542"/>
+      <circle cx="32" cy="34" r="16" fill="#F9ECE9"/>
+      <text x="32" y="39.5" font-size="16" font-weight="800" fill="#A44A37" text-anchor="middle">!</text>
+      <text x="60" y="31" font-size="14" font-weight="700" fill="#28231F">Recipe couldn’t be saved — Grandma’s Tourtière.</text>
+      <text x="60" y="50" font-size="12.5" fill="#6E645B">Your original file is still safe. Retry now or manage later in Settings.</text>
+
+      <rect x="60" y="64" width="112" height="42" rx="12" fill="#B85542"/>
+      <text x="116" y="89.5" font-size="13" font-weight="700" fill="#FDFCF0" text-anchor="middle">Retry</text>
+
+      <rect x="182" y="64" width="112" height="42" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <text x="238" y="89.5" font-size="13" font-weight="600" fill="#28231F" text-anchor="middle">Dismiss</text>
+      <text x="312" y="89.5" font-size="12" fill="#6E645B">No duplicate × icon (clean 320px wrap)</text>
+    </g>
+
+    <!-- Bottom rationale strip -->
+    <g transform="translate(24, 464)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">WHY SAVE-AND-RETURN-HOME FITS THE NORTH STAR</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Eliminates the 10s countdown wait screen across Photo, URL, Describe &amp; PDF.</text>
+      <text x="0" y="56" font-size="12.5" fill="#6E645B">• Ambient Home ribbon confirms intake + gives a 1-tap "+ Add another" shortcut for batch cooking sessions.</text>
+    </g>
+  </g>
+
+  <!-- ==================== RIGHT HALF · PAIRED DUPLICATE REVIEW & ERA 3 ISSUE SHEET ==================== -->
+  <g transform="translate(736, 972)">
+    <rect x="0" y="0" width="664" height="548" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="262" height="26" rx="13" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+    <text x="151" y="33.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">Paired Duplicate Review &amp; Issue Sheet</text>
+    <text x="644" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">Zero hunting · Era 3 opaque</text>
+
+    <!-- Left sub-panel: Paired Duplicate Review Sheet (Option 2 Recommended) -->
+    <g transform="translate(20, 54)">
+      <rect x="0" y="0" width="308" height="404" rx="22" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+      <text x="16" y="28" font-size="13" font-weight="700" fill="#856400" class="heading">Possible duplicate</text>
+      <text x="16" y="45" font-size="11.5" fill="#6E645B">Matched by title &amp; ingredients</text>
+      <rect x="256" y="12" width="38" height="38" rx="19" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <path d="M270 26 L280 36 M280 26 L270 36" fill="none" stroke="#6E645B" stroke-width="1.8" stroke-linecap="round"/>
+
+      <line x1="16" y1="60" x2="292" y2="60" stroke="#E5DFD7" stroke-width="1"/>
+
+      <!-- Card 1: New Import -->
+      <rect x="16" y="72" width="276" height="68" rx="14" fill="#FFFBE6" stroke="#FFE666" stroke-width="1.2"/>
+      <rect x="26" y="84" width="44" height="44" rx="10" fill="url(#pageWarm)" stroke="#FFE666" stroke-width="1"/>
+      <text x="80" y="99" font-size="11.5" font-weight="700" fill="#856400">NEW IMPORT · PDF · TODAY</text>
+      <text x="80" y="117" font-size="13.5" font-weight="800" fill="#28231F" class="heading">Grandma’s Tourtière</text>
+      <text x="80" y="132" font-size="11.5" fill="#6E645B">12 ingredients · Tap to preview</text>
+
+      <!-- Card 2: Existing Match (Fetched automatically — zero hunting!) -->
+      <rect x="16" y="148" width="276" height="68" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <rect x="26" y="160" width="44" height="44" rx="10" fill="url(#dishWarm)"/>
+      <text x="80" y="175" font-size="11.5" font-weight="700" fill="#4E6E52">EXISTING IN LIBRARY · ♥ LOVE</text>
+      <text x="80" y="193" font-size="13.5" font-weight="800" fill="#28231F" class="heading">Tourtière familiale</text>
+      <text x="80" y="208" font-size="11.5" fill="#6E645B">11 ingredients · Tap to preview</text>
+
+      <!-- 3 Clean 1-Tap Resolutions -->
+      <rect x="16" y="228" width="276" height="42" rx="13" fill="#B85542"/>
+      <text x="154" y="253.5" font-size="13" font-weight="700" fill="#FDFCF0" text-anchor="middle">Keep existing · discard new</text>
+
+      <rect x="16" y="278" width="276" height="42" rx="13" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="154" y="303.5" font-size="13" font-weight="700" fill="#A44A37" text-anchor="middle">Keep both recipes</text>
+
+      <rect x="16" y="328" width="276" height="40" rx="13" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="154" y="352.5" font-size="12.5" font-weight="600" fill="#28231F" text-anchor="middle">Keep new · archive existing</text>
+      <text x="154" y="388" font-size="11.5" fill="#6E645B" text-anchor="middle">Discarded copies stay in Recycle Bin.</text>
+    </g>
+
+    <!-- Right sub-panel: Migrated Era 3 RecipeImportIssueSheet -->
+    <g transform="translate(342, 54)">
+      <rect x="0" y="0" width="302" height="404" rx="22" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+      <text x="16" y="28" font-size="15" font-weight="800" fill="#28231F" class="heading">Review issue</text>
+      <text x="16" y="45" font-size="11.5" fill="#6E645B">What needs a closer look?</text>
+      <rect x="250" y="12" width="38" height="38" rx="19" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <path d="M264 26 L274 36 M274 26 L264 36" fill="none" stroke="#6E645B" stroke-width="1.8" stroke-linecap="round"/>
+
+      <line x1="16" y1="60" x2="286" y2="60" stroke="#E5DFD7" stroke-width="1"/>
+
+      <!-- Role-locked blush aria-pressed reason pills (48px) -->
+      <rect x="16" y="74" width="90" height="42" rx="14" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.4"/>
+      <text x="61" y="99.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">✓ Ingredients</text>
+
+      <rect x="112" y="74" width="76" height="42" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="150" y="99.5" font-size="12" font-weight="600" fill="#28231F" text-anchor="middle">Steps</text>
+
+      <rect x="194" y="74" width="92" height="42" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="240" y="99.5" font-size="12" font-weight="600" fill="#28231F" text-anchor="middle">Duplicate</text>
+
+      <!-- Note field -->
+      <text x="16" y="140" font-size="12.5" font-weight="700" fill="#28231F">What should we check?</text>
+      <text x="16" y="156" font-size="11.5" fill="#6E645B">Add a note to request automatic repair.</text>
+      <rect x="16" y="166" width="270" height="66" rx="14" fill="#FFFFFF" stroke="#9B9085" stroke-width="1.2"/>
+      <text x="28" y="192" font-size="12.5" fill="#28231F">Missing 2 cups milk from sauce</text>
+
+      <!-- Save + Resolve -->
+      <rect x="16" y="248" width="270" height="44" rx="14" fill="#B85542"/>
+      <text x="151" y="274.5" font-size="13.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">Save</text>
+
+      <line x1="16" y1="308" x2="286" y2="308" stroke="#E5DFD7" stroke-width="1"/>
+      <rect x="16" y="322" width="270" height="44" rx="14" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1.3"/>
+      <text x="151" y="348.5" font-size="13" font-weight="700" fill="#4E6E52" text-anchor="middle">Mark as resolved</text>
+      <text x="151" y="386" font-size="11.5" fill="#6E645B" text-anchor="middle">All targets &gt;= 48px · Full EN + FR copy</text>
+    </g>
+
+    <!-- Bottom rationale strip -->
+    <g transform="translate(24, 474)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#856400">PAIRED DUPLICATE REVIEW + ERA 3 ISSUE SHEET UPGRADE</text>
+      <text x="0" y="36" font-size="12.5" fill="#28231F">• Existing match is linked automatically — zero searching, and 1-tap resolution clears flags cleanly.</text>
+      <text x="0" y="56" font-size="12.5" fill="#6E645B">• Migrates RecipeImportIssueSheet off 44px targets, hardcoded English, and Era 2 alpha borders.</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 3 · FRENCH BILINGUAL EXPANSION & HIGH CONTRAST AAA PROOFS      -->
+  <!-- ====================================================================== -->
+  <text x="40" y="1556" font-size="18" font-weight="700" fill="#28231F" class="heading">3 · French Bilingual Parity (FR Expansion) &amp; High Contrast AAA Proof</text>
+
+  <!-- Left Half: French Proof -->
+  <g transform="translate(40, 1574)">
+    <rect x="0" y="0" width="664" height="278" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="24" y="32" font-size="14" font-weight="700" fill="#28231F" class="heading">French Bilingual Proof (Ajouter une recette · Doublon possible · Zero Clipping)</text>
+
+    <!-- Mini French Capture Card -->
+    <g transform="translate(24, 48)">
+      <rect x="0" y="0" width="304" height="206" rx="20" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1" filter="url(#softShadow)"/>
+      <text x="152" y="26" font-size="14" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">Ajouter une recette</text>
+      <rect x="262" y="8" width="30" height="30" rx="15" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="277" y="27.5" font-size="13" font-weight="600" fill="#6E645B" text-anchor="middle">×</text>
+      <line x1="12" y1="42" x2="292" y2="42" stroke="#E5DFD7" stroke-width="1"/>
+
+      <rect x="16" y="52" width="272" height="38" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="152" y="75.5" font-size="12.5" font-weight="700" fill="#A44A37" text-anchor="middle">Prendre une photo · Photothèque</text>
+
+      <rect x="16" y="98" width="272" height="28" rx="9" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="28" y="116" font-size="12" font-weight="600" fill="#28231F">Coller un lien de recette</text>
+
+      <rect x="16" y="132" width="272" height="28" rx="9" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="28" y="150" font-size="12" font-weight="600" fill="#28231F">Décrire une recette</text>
+
+      <rect x="16" y="166" width="272" height="28" rx="9" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="28" y="184" font-size="12" font-weight="600" fill="#28231F">Importer un PDF ou un fichier</text>
+    </g>
+
+    <!-- French Copy Notes -->
+    <g transform="translate(348, 54)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#A44A37">FR EXPANSION &amp; COPY PARITY</text>
+      <text x="0" y="38" font-size="12.5" fill="#28231F">• Sentence case in EN &amp; FR (no Title Case</text>
+      <text x="10" y="55" font-size="12.5" fill="#6E645B">remnants or technical "synthesize" jargon).</text>
+      <text x="0" y="78" font-size="12.5" fill="#28231F">• Ambient Home ribbon:</text>
+      <text x="10" y="95" font-size="12.5" fill="#6E645B">"Préparation de 1 recette en cours…"</text>
+      <text x="0" y="118" font-size="12.5" fill="#28231F">• Duplicate actions wrap cleanly at 320px:</text>
+      <text x="10" y="135" font-size="12.5" fill="#6E645B">"Garder l’existante" · "Garder les deux"</text>
+      <text x="0" y="158" font-size="12.5" fill="#4E6E52">• Localizes useCapture.ts, BrowseAllEmptyState</text>
+      <text x="10" y="175" font-size="12.5" fill="#4E6E52">&amp; RecipeImportIssueSheet cleanly.</text>
+    </g>
+  </g>
+
+  <!-- Right Half: High Contrast AAA Proof -->
+  <g transform="translate(736, 1574)">
+    <rect x="0" y="0" width="664" height="278" rx="28" fill="#FAF8F5" stroke="#6E645B" stroke-width="1.5"/>
+    <text x="24" y="32" font-size="14" font-weight="700" fill="#191512" class="heading">High Contrast AAA (:root[data-contrast="high"]) · Opaque Chrome &amp; Focus</text>
+
+    <!-- AAA Capture Preview -->
+    <g transform="translate(24, 48)">
+      <rect x="0" y="0" width="304" height="206" rx="20" fill="#FDFCF0" stroke="#6E645B" stroke-width="1.5"/>
+      <text x="152" y="26" font-size="14" font-weight="800" fill="#191512" text-anchor="middle" class="heading">Add a recipe</text>
+      <rect x="262" y="8" width="30" height="30" rx="15" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.5"/>
+      <text x="277" y="27.5" font-size="13" font-weight="700" fill="#191512" text-anchor="middle">×</text>
+      <line x1="12" y1="42" x2="292" y2="42" stroke="#6E645B" stroke-width="1.5"/>
+
+      <!-- Crisp AAA Sunlight Duplicate Banner -->
+      <rect x="16" y="54" width="272" height="44" rx="12" fill="#FFFBE6" stroke="#8F6D01" stroke-width="1.5"/>
+      <text x="26" y="73" font-size="11.5" font-weight="700" fill="#664E01">Possible duplicate: Tourtière familiale</text>
+      <text x="26" y="89" font-size="11.5" font-weight="600" fill="#664E01" text-decoration="underline">Compare recipes</text>
+
+      <!-- Crisp AAA Input -->
+      <rect x="16" y="108" width="272" height="36" rx="12" fill="#FFFFFF" stroke="#524A43" stroke-width="1.5"/>
+      <text x="28" y="130" font-size="12.5" fill="#191512">Add pinch of clove…</text>
+
+      <!-- Focused AAA Primary Button (2px outline-ink-body at 4px offset) -->
+      <rect x="12" y="152" width="280" height="44" rx="16" fill="none" stroke="#191512" stroke-width="2"/>
+      <rect x="16" y="156" width="272" height="36" rx="12" fill="#7B3829"/>
+      <text x="152" y="178.5" font-size="13" font-weight="700" fill="#FDFCF0" text-anchor="middle">Save recipe</text>
+    </g>
+
+    <!-- AAA Token Notes -->
+    <g transform="translate(348, 54)">
+      <text x="0" y="14" font-size="12" font-weight="700" fill="#191512">ZERO-JS DUAL-MODE GUARANTEES</text>
+      <text x="0" y="38" font-size="12.5" fill="#191512">• Ink AAA: #191512 (17.59:1 on cream)</text>
+      <text x="0" y="57" font-size="12.5" fill="#524A43">• Muted AAA: #524A43 (8.42:1)</text>
+      <text x="0" y="76" font-size="12.5" fill="#7B3829">• Hearth AAA: #7B3829 (8.61:1 white)</text>
+      <text x="0" y="95" font-size="12.5" fill="#324D36">• Garden AAA: #324D36 (9.33:1 white)</text>
+      <text x="0" y="114" font-size="12.5" fill="#664E01">• Sunlight AAA: #664E01 (7.61:1 ochre-50)</text>
+      <text x="0" y="137" font-size="12.5" fill="#191512">• Opaque .glass-header / .glass-toast</text>
+      <text x="0" y="156" font-size="12.5" fill="#191512">• Focus: 2px outline-ink-body (4px offset)</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- BOTTOM IMPLEMENTATION & CONTRACT ARCHITECTURE STRIP                    -->
+  <!-- ====================================================================== -->
+  <rect x="40" y="1878" width="1360" height="198" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="64" y="1910" font-size="16" font-weight="700" fill="#28231F" class="heading">Component, Workflow &amp; OpenSpec Architecture Summary</text>
+
+  <g transform="translate(64, 1932)">
+    <text x="0" y="14" font-size="12" font-weight="700" fill="#A44A37">1 · UNIFIED CAPTURE SHELL &amp; PRIMITIVES</text>
+    <text x="0" y="36" font-size="12.5" fill="#28231F">• Keep locked × header across all 5 sources</text>
+    <text x="10" y="53" font-size="12.5" fill="#6E645B">(including PDF); drop bottom Cancel buttons.</text>
+    <text x="0" y="74" font-size="12.5" fill="#28231F">• Extract shared CaptureAppreciationFieldset</text>
+    <text x="10" y="91" font-size="12.5" fill="#6E645B">+ standard Button size="lg" (min-h-14).</text>
+    <text x="0" y="112" font-size="12.5" fill="#6E645B">• Retire dead isGoto code in MinimalCapture.</text>
+  </g>
+
+  <line x1="484" y1="1930" x2="484" y2="2052" stroke="#E5DFD7" stroke-width="1"/>
+
+  <g transform="translate(508, 1932)">
+    <text x="0" y="14" font-size="12" font-weight="700" fill="#4E6E52">2 · WORKFLOW DUPLICATE DETECTION SEAM</text>
+    <text x="0" y="36" font-size="12.5" fill="#28231F">• Add detect_duplicates task after sync_recipe</text>
+    <text x="10" y="53" font-size="12.5" fill="#6E645B">in recipe-import, url-import &amp; goto-synthesis.</text>
+    <text x="0" y="74" font-size="12.5" fill="#28231F">• Flag new recipe with Duplicate + linked</text>
+    <text x="10" y="91" font-size="12.5" fill="#6E645B">suspectedDuplicateRecipeId (zero hunting).</text>
+    <text x="0" y="112" font-size="12.5" fill="#6E645B">• 1-tap resolution cleans up flags atomically.</text>
+  </g>
+
+  <line x1="932" y1="1930" x2="932" y2="2052" stroke="#E5DFD7" stroke-width="1"/>
+
+  <g transform="translate(956, 1932)">
+    <text x="0" y="14" font-size="12" font-weight="700" fill="#856400">3 · OPENSPEC DELTAS &amp; VERIFICATION</text>
+    <text x="0" y="36" font-size="12.5" fill="#28231F">• Update recipe-capture, capture-recovery &amp;</text>
+    <text x="10" y="53" font-size="12.5" fill="#6E645B">recipe-quality specs before implementation.</text>
+    <text x="0" y="74" font-size="12.5" fill="#28231F">• Migrate RecipeImportIssueSheet to Era 3 + FR.</text>
+    <text x="0" y="95" font-size="12.5" fill="#6E645B">• Verify EN/FR, 320px/200% reflow, and</text>
+    <text x="10" y="112" font-size="12.5" fill="#6E645B">assertCookbookVisualA11y in AA &amp; AAA.</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="40" y="2112" font-size="12.5" fill="#6E645B">Capture Visual Design Suite · Exploration artifact — does not authorize code changes until approved via OpenSpec.</text>
+</svg>

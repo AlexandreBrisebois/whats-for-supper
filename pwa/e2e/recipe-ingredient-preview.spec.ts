@@ -66,6 +66,7 @@ test('four-portion preview keeps five saved portions and groceries unchanged', a
     },
   ]);
   await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
+    sseMode: 'connected-once',
     supperServings: {
       knownRecipe: { id, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },
     },
@@ -132,6 +133,7 @@ test('early preview survives initial target resolution, schedule hints and resum
     },
   ]);
   await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
+    sseMode: 'connected-once',
     supperServings: {
       knownRecipe: { id, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },
     },
@@ -204,6 +206,7 @@ test('preview failure renders Era 3 Hearth retry card at AA, AAA, and 320px/200%
     },
   ]);
   await setupCommonRoutes(page, builders.deploymentCalendar({ today: '2026-05-04' }), {
+    sseMode: 'connected-once',
     supperServings: {
       knownRecipe: { id, basis: 2, quantity: 200, ingredient: 'pasta', unit: 'g' },
     },

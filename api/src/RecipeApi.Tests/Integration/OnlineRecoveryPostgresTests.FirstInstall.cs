@@ -15,6 +15,7 @@ public partial class OnlineRecoveryPostgresTests
     {
         using var scope = app.Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<IConfiguration>()["Recovery:BackupRoot"] = null;
+        scope.ServiceProvider.GetRequiredService<IConfiguration>()["Recovery:WaitSeconds"] = "1";
         var gate = scope.ServiceProvider.GetRequiredService<RecoveryBoundary>();
         Assert.False(gate.Enabled);
         await using var reader = new NpgsqlConnection(connection);
@@ -31,6 +32,7 @@ public partial class OnlineRecoveryPostgresTests
     {
         using var scope = app.Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<IConfiguration>()["Recovery:BackupRoot"] = null;
+        scope.ServiceProvider.GetRequiredService<IConfiguration>()["Recovery:WaitSeconds"] = "1";
         Assert.False(scope.ServiceProvider.GetRequiredService<RecoveryBoundary>().Enabled);
         await using var publisher = new NpgsqlConnection(connection);
         await publisher.OpenAsync();

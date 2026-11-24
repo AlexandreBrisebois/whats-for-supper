@@ -42,7 +42,7 @@ public partial class OnlineRecoveryPostgresTests : IAsyncLifetime
             ["Tests:PostgresConnectionString"] = connection,
             ["Tests:LocalRecipeStore"] = "true",
             ["Recovery:BackupRoot"] = backup,
-            ["Recovery:WaitSeconds"] = "1"
+            ["Recovery:WaitSeconds"] = "10"
         });
     }
 
@@ -162,6 +162,7 @@ public partial class OnlineRecoveryPostgresTests : IAsyncLifetime
     public async Task SnapshotBoundary_KeepsReadsOnline_AndRejectsTimedOutWritesWithoutMutation()
     {
         using var scope = app.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IConfiguration>()["Recovery:WaitSeconds"] = "1";
         var gate = scope.ServiceProvider.GetRequiredService<RecoveryBoundary>();
         await using var snapshot = await gate.EnterAsync(RecoveryAccess.Snapshot, CancellationToken.None);
         using var client = app.CreateAuthenticatedClient();
@@ -358,8 +359,10 @@ public partial class OnlineRecoveryPostgresTests : IAsyncLifetime
         var services = scope.ServiceProvider;
         var gate = services.GetRequiredService<RecoveryBoundary>();
         var service = services.GetRequiredService<RecoverySnapshotService>();
+        services.GetRequiredService<IConfiguration>()["Recovery:WaitSeconds"] = "1";
         await using (var writer = await gate.EnterAsync(RecoveryAccess.Write, CancellationToken.None))
             await Assert.ThrowsAsync<RecoveryBusyException>(() => service.CaptureAsync(CancellationToken.None));
+        services.GetRequiredService<IConfiguration>()["Recovery:WaitSeconds"] = "10";
         Assert.Empty(Directory.Exists(backup) ? Directory.GetDirectories(backup) : []);
         var previous = await service.CaptureAsync(CancellationToken.None);
         var interrupted = new RecoverySnapshotService(services.GetRequiredService<RecipeDbContext>(), services.GetRequiredService<RecipesRootResolver>(),
