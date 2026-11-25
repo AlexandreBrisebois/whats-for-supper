@@ -1,0 +1,490 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1760" viewBox="0 0 1440 1760" role="img" aria-labelledby="suite-title suite-desc">
+  <title id="suite-title">Capture Progress, Failure Recovery &amp; Success Visual Design Suite (Family Cookbook Era 3)</title>
+  <desc id="suite-desc">Complete Era 3 visual design specification for Journey 1: pure /capture entry, Home Capture Activity Bar with Sheet A progress bar supporting single and multiple parallel imports (no + Add another), Capture Activity Sheet across parallel imports, inline Delete confirmation, enrichment paused, neutral Details copied, and auto-close back to Home (zero global floating toasts or off-Home banners), plus French 320px reflow and High Contrast AAA adaptation.</desc>
+
+  <defs>
+    <filter id="sheetShadow" x="-12%" y="-10%" width="124%" height="126%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#28231F" flood-opacity="0.22"/>
+    </filter>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#28231F" flood-opacity="0.06"/>
+    </filter>
+    <linearGradient id="scrimBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6F655B"/>
+      <stop offset="100%" stop-color="#4A433C"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="1760" fill="#FDFCF0"/>
+
+  <!-- ====================================================================== -->
+  <!-- HEADER                                                                 -->
+  <!-- ====================================================================== -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · Journey 1: Capture Progress, Recovery &amp; Success</text>
+  <rect x="1086" y="24" width="314" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1243" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Pure /capture · Parallel Home Bar + Sheet</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Capture Activity, Failure Recovery &amp; Success Suite</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">/capture stays pure &amp; straightforward; Home shows Sheet A progress bars for single or parallel imports (no + Add another) and opens the Activity Sheet.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 1 · HOME CAPTURE ACTIVITY BAR STATES (4 COLUMNS)               -->
+  <!-- ====================================================================== -->
+  <text x="40" y="168" font-size="18" font-weight="700" fill="#28231F" class="heading">1. Home Capture Activity Bar States (Directly beneath QuickCaptureTrigger · NO “+ Add another” · Parallel Imports)</text>
+
+  <!-- Col 1: Single In-Progress (Sheet A Progress Bar style) -->
+  <g transform="translate(40, 186)">
+    <rect x="0" y="0" width="325" height="236" rx="24" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="16" y="14" width="184" height="24" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="108" y="30" font-size="12" font-weight="700" fill="#6E645B" text-anchor="middle">1 · Single In-Progress</text>
+
+    <!-- Compact QuickCaptureTrigger preview -->
+    <rect x="16" y="48" width="293" height="60" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.5" filter="url(#softShadow)"/>
+    <circle cx="46" cy="78" r="16" fill="#F9ECE9"/>
+    <g fill="none" stroke="#A44A37" stroke-width="2.2" stroke-linecap="round">
+      <path d="M46 72 v12 M40 78 h12"/>
+    </g>
+    <text x="72" y="74" font-size="14" font-weight="800" fill="#28231F" class="heading">Capture a Recipe</text>
+    <text x="72" y="90" font-size="12" font-weight="500" fill="#6E645B">Snap, paste, upload, or describe</text>
+    <circle cx="285" cy="78" r="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <path d="M283 74 L288 78 L283 82" fill="none" stroke="#9B9085" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Home Activity Bar (Sheet A progress bar style) -->
+    <rect x="16" y="118" width="293" height="90" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <circle cx="33" cy="140" r="4.5" fill="#B85542"/>
+    <text x="45" y="144" font-size="13.5" font-weight="800" fill="#28231F" class="heading">Spicy Thai Noodles</text>
+    <path d="M287 136 L292 141 L287 146" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="30" y="169" font-size="12" font-weight="600" fill="#28231F">Step 2 of 3: Indexing for keyword search…</text>
+    <rect x="30" y="182" width="265" height="8" rx="4" fill="#F3EFEA"/>
+    <rect x="30" y="182" width="176" height="8" rx="4" fill="#B85542"/>
+    <text x="16" y="224" font-size="12" fill="#6E645B">Sheet A progress bar directly on Home</text>
+  </g>
+
+  <!-- Col 2: Multiple Parallel Imports (3 running) -->
+  <g transform="translate(385, 186)">
+    <rect x="0" y="0" width="325" height="236" rx="24" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="16" y="14" width="212" height="24" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="122" y="30" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">2 · Parallel Imports (3 running)</text>
+
+    <!-- Compact QuickCaptureTrigger preview -->
+    <rect x="16" y="48" width="293" height="60" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.5" filter="url(#softShadow)"/>
+    <circle cx="46" cy="78" r="16" fill="#F9ECE9"/>
+    <g fill="none" stroke="#A44A37" stroke-width="2.2" stroke-linecap="round">
+      <path d="M46 72 v12 M40 78 h12"/>
+    </g>
+    <text x="72" y="74" font-size="14" font-weight="800" fill="#28231F" class="heading">Capture a Recipe</text>
+    <text x="72" y="90" font-size="12" font-weight="500" fill="#6E645B">Snap, paste, upload, or describe</text>
+    <circle cx="285" cy="78" r="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <path d="M283 74 L288 78 L283 82" fill="none" stroke="#9B9085" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Home Activity Bar (Parallel aggregate progress bar) -->
+    <rect x="16" y="118" width="293" height="90" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <circle cx="33" cy="140" r="4.5" fill="#B85542"/>
+    <text x="45" y="144" font-size="13.5" font-weight="800" fill="#28231F" class="heading">Preparing 3 recipes</text>
+    <rect x="218" y="128" width="56" height="22" rx="11" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="246" y="143" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">3 active</text>
+    <path d="M287 136 L292 141 L287 146" fill="none" stroke="#9B9085" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="30" y="169" font-size="12" font-weight="600" fill="#6E645B">1 indexing · 2 preparing · Tap to inspect</text>
+    <rect x="30" y="182" width="265" height="8" rx="4" fill="#F3EFEA"/>
+    <rect x="30" y="182" width="138" height="8" rx="4" fill="#B85542"/>
+    <text x="16" y="224" font-size="12" fill="#6E645B">Tap opens Sheet listing all 3 individually</text>
+  </g>
+
+  <!-- Col 3: Searchable · Still enriching -->
+  <g transform="translate(730, 186)">
+    <rect x="0" y="0" width="325" height="236" rx="24" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="16" y="14" width="206" height="24" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="119" y="30" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">3 · Searchable · Still enriching</text>
+
+    <!-- Compact QuickCaptureTrigger preview -->
+    <rect x="16" y="48" width="293" height="60" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.5" filter="url(#softShadow)"/>
+    <circle cx="46" cy="78" r="16" fill="#F9ECE9"/>
+    <g fill="none" stroke="#A44A37" stroke-width="2.2" stroke-linecap="round">
+      <path d="M46 72 v12 M40 78 h12"/>
+    </g>
+    <text x="72" y="74" font-size="14" font-weight="800" fill="#28231F" class="heading">Capture a Recipe</text>
+    <text x="72" y="90" font-size="12" font-weight="500" fill="#6E645B">Snap, paste, upload, or describe</text>
+    <circle cx="285" cy="78" r="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <path d="M283 74 L288 78 L283 82" fill="none" stroke="#9B9085" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Garden Enriching Bar -->
+    <rect x="16" y="118" width="293" height="90" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#softShadow)"/>
+    <circle cx="36" cy="144" r="12" fill="#F1F3EB"/>
+    <path d="M36 138 L37.6 142.4 L42 144 L37.6 145.6 L36 150 L34.4 145.6 L30 144 L34.4 142.4 Z" fill="none" stroke="#4E6E52" stroke-width="1.6" stroke-linejoin="round"/>
+    <text x="56" y="148" font-size="13.5" font-weight="800" fill="#28231F" class="heading">1 recipe searchable</text>
+    <path d="M287 139 L292 144 L287 149" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="30" y="172" font-size="12" font-weight="600" fill="#4E6E52">Still enriching for smart search</text>
+    <rect x="30" y="184" width="265" height="8" rx="4" fill="#F1F3EB"/>
+    <rect x="30" y="184" width="224" height="8" rx="4" fill="#4E6E52"/>
+    <text x="16" y="224" font-size="12" fill="#4E6E52">Stays visible until vector index finishes</text>
+  </g>
+
+  <!-- Col 4: Needs attention (Mixed parallel + failed) -->
+  <g transform="translate(1075, 186)">
+    <rect x="0" y="0" width="325" height="236" rx="24" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="16" y="14" width="214" height="24" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="123" y="30" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">4 · Needs Attention (Mixed)</text>
+
+    <!-- Compact QuickCaptureTrigger preview -->
+    <rect x="16" y="48" width="293" height="60" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.5" filter="url(#softShadow)"/>
+    <circle cx="46" cy="78" r="16" fill="#F9ECE9"/>
+    <g fill="none" stroke="#A44A37" stroke-width="2.2" stroke-linecap="round">
+      <path d="M46 72 v12 M40 78 h12"/>
+    </g>
+    <text x="72" y="74" font-size="14" font-weight="800" fill="#28231F" class="heading">Capture a Recipe</text>
+    <text x="72" y="90" font-size="12" font-weight="500" fill="#6E645B">Snap, paste, upload, or describe</text>
+    <circle cx="285" cy="78" r="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <path d="M283 74 L288 78 L283 82" fill="none" stroke="#9B9085" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Hearth Priority Bar (white surface + Hearth border, compact 58px < 60px Capture card) -->
+    <rect x="16" y="118" width="293" height="58" rx="16" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.3"/>
+    <circle cx="38" cy="147" r="12" fill="#F9ECE9"/>
+    <text x="38" y="151.5" font-size="13" font-weight="800" fill="#A44A37" text-anchor="middle">!</text>
+    <text x="58" y="143" font-size="13" font-weight="800" fill="#A44A37" class="heading">1 needs attention · 2 preparing</text>
+    <text x="58" y="160" font-size="12" font-weight="500" fill="#6E645B">Grandma’s Chili · Tap to review</text>
+    <path d="M287 142 L292 147 L287 152" fill="none" stroke="#A44A37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="16" y="224" font-size="12" fill="#A44A37">White surface + Hearth border stays lighter than Capture</text>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 2 · CAPTURE ACTIVITY SHEET STATES (3 PHONE FRAMES)             -->
+  <!-- ====================================================================== -->
+  <text x="40" y="454" font-size="18" font-weight="700" fill="#28231F" class="heading">2. Capture Activity Sheet States (No Global Toasts or Off-Home Banners · Status Lives Calmly on Home)</text>
+
+  <!-- ==================== FRAME 1 · SHEET A: PARALLEL IMPORTS, NEEDS ATTENTION & SEARCHABLE ==================== -->
+  <g transform="translate(40, 474)">
+    <rect x="0" y="0" width="668" height="752" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="290" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="165" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Sheet A · Parallel Imports &amp; Recovery</text>
+    <text x="648" y="33.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">Pixel 10 Scrim</text>
+
+    <!-- Scrim well -->
+    <rect x="20" y="54" width="396" height="680" rx="24" fill="url(#scrimBg)"/>
+    <path d="M 44 54 H 392 Q 416 54 416 74 V 74 H 20 V 74 Q 20 54 44 54 Z" fill="#B85542" opacity="0.9"/>
+    <text x="38" y="68" font-size="12" font-weight="600" fill="#FFFFFF" opacity="0.9">5:18</text>
+    <text x="218" y="68" font-size="12" font-weight="500" fill="#FDFCF0" text-anchor="middle" opacity="0.9">Home dimmed behind sheet</text>
+
+    <!-- Sheet Container -->
+    <g transform="translate(36, 90)">
+      <rect x="0" y="0" width="364" height="628" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1" filter="url(#sheetShadow)"/>
+
+      <!-- Sticky Header -->
+      <text x="20" y="36" font-size="22" font-weight="800" fill="#28231F" class="heading">Capture activity</text>
+      <text x="20" y="55" font-size="12.5" font-weight="500" fill="#6E645B">Household imports and recipe status</text>
+      <rect x="298" y="14" width="48" height="48" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <path d="M316 32 L328 44 M328 32 L316 44" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round"/>
+      <line x1="20" y1="72" x2="344" y2="72" stroke="#E5DFD7" stroke-width="1"/>
+
+      <!-- Group 1: Needs Attention -->
+      <text x="20" y="88" font-size="12" font-weight="700" fill="#A44A37">Needs attention (1)</text>
+      <rect x="20" y="96" width="324" height="134" rx="18" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.3"/>
+      <circle cx="40" cy="120" r="10" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
+      <text x="40" y="124.5" font-size="12" font-weight="800" fill="#A44A37" text-anchor="middle">!</text>
+      <text x="58" y="124" font-size="14.5" font-weight="800" fill="#28231F" class="heading">Grandma’s Chili</text>
+      <text x="32" y="148" font-size="12.5" font-weight="600" fill="#28231F">Couldn’t write the recipe — AI timed out.</text>
+      <!-- Single 3-control row: [ RotateCcw + Retry ] [ Copy 48x48 ] [ Trash2 48x48 ] -->
+      <rect x="32" y="166" width="192" height="48" rx="14" fill="#B85542"/>
+      <g transform="translate(92, 182) scale(0.68)" fill="none" stroke="#FDFCF0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5"/>
+      </g>
+      <text x="115" y="195" font-size="13.5" font-weight="700" fill="#FDFCF0">Retry</text>
+      <rect x="232" y="166" width="48" height="48" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <g transform="translate(248, 182) scale(0.68)" fill="none" stroke="#6E645B" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </g>
+      <rect x="288" y="166" width="48" height="48" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <g fill="none" stroke="#A44A37" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M305 184 h14 M309 184 v-2 h6 v2 M307 184 l1 13 h8 l1 -13"/>
+      </g>
+
+      <!-- Group 2: In progress (2 parallel imports) -->
+      <text x="20" y="252" font-size="12" font-weight="700" fill="#6E645B">In progress (2 parallel)</text>
+
+      <!-- Parallel Row 1 -->
+      <rect x="20" y="260" width="324" height="74" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <circle cx="38" cy="280" r="4.5" fill="#B85542"/>
+      <text x="52" y="284" font-size="14.5" font-weight="800" fill="#28231F" class="heading">Spicy Thai Noodles</text>
+      <text x="34" y="307" font-size="12" font-weight="600" fill="#28231F">Step 2 of 3: Indexing for keyword search…</text>
+      <rect x="34" y="317" width="296" height="7" rx="3.5" fill="#F3EFEA"/>
+      <rect x="34" y="317" width="198" height="7" rx="3.5" fill="#B85542"/>
+
+      <!-- Parallel Row 2 -->
+      <rect x="20" y="342" width="324" height="74" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <circle cx="38" cy="362" r="4.5" fill="#B85542"/>
+      <text x="52" y="366" font-size="14.5" font-weight="800" fill="#28231F" class="heading">Weeknight Ramen</text>
+      <text x="34" y="389" font-size="12" font-weight="600" fill="#28231F">Step 1 of 3: Extracting recipe…</text>
+      <rect x="34" y="399" width="296" height="7" rx="3.5" fill="#F3EFEA"/>
+      <rect x="34" y="399" width="98" height="7" rx="3.5" fill="#B85542"/>
+
+      <!-- Group 3: Searchable · Still enriching (tappable card with ChevronRight) -->
+      <text x="20" y="438" font-size="12" font-weight="700" fill="#4E6E52">Searchable · Still enriching (1)</text>
+      <rect x="20" y="446" width="324" height="84" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4"/>
+      <rect x="34" y="458" width="104" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="86" y="473" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Searchable</text>
+      <path d="M322 482 L328 488 L322 494" fill="none" stroke="#4E6E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="34" y="498" font-size="14.5" font-weight="800" fill="#28231F" class="heading">Lemon Garlic Pasta</text>
+      <text x="34" y="516" font-size="12" fill="#6E645B">Tappable row · Still enriching smart search</text>
+    </g>
+
+    <!-- Sheet A Annotation Column -->
+    <g transform="translate(432, 54)">
+      <rect x="0" y="0" width="216" height="680" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="30" font-size="14" font-weight="800" fill="#28231F" class="heading">Sheet A Rules</text>
+
+      <text x="16" y="58" font-size="12" font-weight="700" fill="#A44A37">1. Single-row icon actions</text>
+      <text x="16" y="76" font-size="12" fill="#6E645B">• RotateCcw + Retry (flex-1)</text>
+      <text x="16" y="93" font-size="12" fill="#6E645B">• Copy icon (48×48)</text>
+      <text x="16" y="110" font-size="12" fill="#6E645B">• Trash2 icon (48×48)</text>
+
+      <line x1="16" y1="132" x2="200" y2="132" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="158" font-size="12" font-weight="700" fill="#28231F">2. Neutral diagnostics copy</text>
+      <text x="16" y="176" font-size="12" fill="#6E645B">Tap Copy fetches error +</text>
+      <text x="16" y="193" font-size="12" fill="#6E645B">stack trace + IDs and shows</text>
+      <text x="16" y="210" font-size="12" fill="#6E645B">quiet “Details copied”</text>
+      <text x="16" y="227" font-size="12" fill="#6E645B">(never green, 0 checkmarks).</text>
+
+      <line x1="16" y1="248" x2="200" y2="248" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="274" font-size="12" font-weight="700" fill="#A44A37">3. Retry error inline</text>
+      <text x="16" y="292" font-size="12" fill="#6E645B">Rejected Retry renders</text>
+      <text x="16" y="309" font-size="12" fill="#6E645B">inline role=“alert” inside</text>
+      <text x="16" y="326" font-size="12" fill="#6E645B">this same card (no popup).</text>
+
+      <line x1="16" y1="348" x2="200" y2="348" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="374" font-size="12" font-weight="700" fill="#4E6E52">4. Searchable &amp; duplicates</text>
+      <text x="16" y="392" font-size="12" fill="#6E645B">Rows become tappable at</text>
+      <text x="16" y="409" font-size="12" fill="#6E645B">IndexStatus = ready. If</text>
+      <text x="16" y="426" font-size="12" fill="#6E645B">flagged duplicate, tap opens</text>
+      <text x="16" y="443" font-size="12" fill="#6E645B">paired comparison directly.</text>
+    </g>
+  </g>
+
+  <!-- ==================== FRAME 2 · SHEET B: INLINE CLEAR CONFIRM & ENRICHMENT PAUSED ==================== -->
+  <g transform="translate(732, 474)">
+    <rect x="0" y="0" width="668" height="752" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="296" height="26" rx="13" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+    <text x="168" y="33.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">Sheet B · Inline Confirm &amp; Enrichment Paused</text>
+    <text x="648" y="33.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">Zero window.confirm</text>
+
+    <!-- Scrim well -->
+    <rect x="20" y="54" width="396" height="680" rx="24" fill="url(#scrimBg)"/>
+    <path d="M 44 54 H 392 Q 416 54 416 74 V 74 H 20 V 74 Q 20 54 44 54 Z" fill="#B85542" opacity="0.9"/>
+    <text x="38" y="68" font-size="12" font-weight="600" fill="#FFFFFF" opacity="0.9">5:18</text>
+    <text x="218" y="68" font-size="12" font-weight="500" fill="#FDFCF0" text-anchor="middle" opacity="0.9">DB + disk stub purge vs. protected recipe</text>
+
+    <!-- Sheet Container -->
+    <g transform="translate(36, 90)">
+      <rect x="0" y="0" width="364" height="628" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1" filter="url(#sheetShadow)"/>
+
+      <!-- Sticky Header -->
+      <text x="20" y="36" font-size="22" font-weight="800" fill="#28231F" class="heading">Capture activity</text>
+      <text x="20" y="55" font-size="12.5" font-weight="500" fill="#6E645B">Inline Clear confirmation &amp; enrichment</text>
+      <rect x="298" y="14" width="48" height="48" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <path d="M316 32 L328 44 M328 32 L316 44" fill="none" stroke="#6E645B" stroke-width="2" stroke-linecap="round"/>
+      <line x1="20" y1="72" x2="344" y2="72" stroke="#E5DFD7" stroke-width="1"/>
+
+      <!-- Inline Delete Confirmation Card (unready stub) -->
+      <text x="20" y="96" font-size="12" font-weight="700" fill="#A44A37">Inline Delete Confirmation (!IsReady stub)</text>
+      <rect x="20" y="106" width="324" height="196" rx="20" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.3"/>
+      <text x="34" y="132" font-size="15" font-weight="800" fill="#28231F" class="heading">Grandma’s Chili</text>
+
+      <!-- Inner White Confirmation Box -->
+      <rect x="32" y="148" width="300" height="140" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="44" y="170" font-size="12.5" font-weight="500" fill="#28231F">Delete this failed capture and its</text>
+      <text x="44" y="187" font-size="12.5" font-weight="500" fill="#28231F">unfinished files? You can always add it</text>
+      <text x="44" y="204" font-size="12.5" font-weight="500" fill="#28231F">again later.</text>
+      <rect x="44" y="222" width="128" height="48" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <text x="108" y="251" font-size="13" font-weight="700" fill="#28231F" text-anchor="middle">Cancel</text>
+      <rect x="180" y="222" width="140" height="48" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.3"/>
+      <g transform="translate(208, 238) scale(0.66)" fill="none" stroke="#A44A37" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18 M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      </g>
+      <text x="232" y="251" font-size="13" font-weight="700" fill="#A44A37">Delete</text>
+
+      <!-- Published-recipe safety note -->
+      <rect x="20" y="314" width="324" height="60" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="32" y="335" font-size="12" font-weight="700" fill="#4E6E52">Published-recipe protection (IsReady = true):</text>
+      <text x="32" y="354" font-size="12" fill="#6E645B">“Dismiss this failed update?” → Cancel / Dismiss</text>
+
+      <!-- Enrichment Paused Card (Tappable card with ChevronRight + single RefreshCw Retry enrichment button) -->
+      <text x="20" y="400" font-size="12" font-weight="700" fill="#856400">Enrichment paused (Searchable · Never offers Clear)</text>
+      <rect x="20" y="410" width="324" height="196" rx="20" fill="#FFFBE6" stroke="#FFE666" stroke-width="1.4"/>
+      <rect x="34" y="424" width="212" height="26" rx="13" fill="#FFFFFF" stroke="#FFE666" stroke-width="1.2"/>
+      <text x="140" y="441.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">! Searchable · Enrichment paused</text>
+      <path d="M322 464 L328 470 L322 476" fill="none" stroke="#856400" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="34" y="474" font-size="15" font-weight="800" fill="#28231F" class="heading">Roasted Cauliflower Tacos</text>
+      <text x="34" y="495" font-size="12" fill="#28231F">Recipe is saved and keyword-searchable.</text>
+      <text x="34" y="512" font-size="12" fill="#6E645B">Tap card to open · Or retry enrichment below.</text>
+
+      <rect x="34" y="534" width="296" height="48" rx="14" fill="#FFFFFF" stroke="#FFE666" stroke-width="1.4"/>
+      <g transform="translate(106, 550) scale(0.68)" fill="none" stroke="#856400" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5 M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16 M21 21v-5h-5"/>
+      </g>
+      <text x="129" y="563" font-size="13" font-weight="700" fill="#856400">Retry enrichment</text>
+    </g>
+
+    <!-- Sheet B Annotation Column -->
+    <g transform="translate(432, 54)">
+      <rect x="0" y="0" width="216" height="680" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="30" font-size="14" font-weight="800" fill="#28231F" class="heading">Quiet Status &amp; Exit</text>
+
+      <text x="16" y="58" font-size="12" font-weight="700" fill="#4E6E52">1. Zero global popups</text>
+      <text x="16" y="76" font-size="12" fill="#6E645B">No floating toasts or off-</text>
+      <text x="16" y="93" font-size="12" fill="#6E645B">Home banners interrupting</text>
+      <text x="16" y="110" font-size="12" fill="#6E645B">Planner, Library, or</text>
+      <text x="16" y="127" font-size="12" fill="#6E645B">Groceries. Status lives</text>
+      <text x="16" y="144" font-size="12" fill="#6E645B">calmly on Home (and Settings).</text>
+
+      <line x1="16" y1="166" x2="200" y2="166" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="192" font-size="12" font-weight="700" fill="#A44A37">2. Clean exit (no empty state)</text>
+      <text x="16" y="210" font-size="12" fill="#6E645B">Deleting the final failed</text>
+      <text x="16" y="227" font-size="12" fill="#6E645B">capture auto-closes the</text>
+      <text x="16" y="244" font-size="12" fill="#6E645B">sheet straight back to Home</text>
+      <text x="16" y="261" font-size="12" fill="#6E645B">(never renders an unreachable</text>
+      <text x="16" y="278" font-size="12" fill="#6E645B">“All caught up” screen).</text>
+
+      <line x1="16" y1="300" x2="200" y2="300" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="326" font-size="12" font-weight="700" fill="#856400">3. Non-destructive retry</text>
+      <text x="16" y="344" font-size="12" fill="#6E645B">Paused smart-search cards</text>
+      <text x="16" y="361" font-size="12" fill="#6E645B">stay tappable (ChevronRight)</text>
+      <text x="16" y="378" font-size="12" fill="#6E645B">and never offer Delete.</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 3 · FRENCH EXPANSION PROOF & HIGH CONTRAST AAA (2 WIDE PANELS) -->
+  <!-- ====================================================================== -->
+  <text x="40" y="1256" font-size="18" font-weight="700" fill="#28231F" class="heading">3. Bilingual French Expansion Proof (320px reflow) &amp; High Contrast AAA Adaptation</text>
+
+  <!-- Panel 1: French Expansion Proof -->
+  <g transform="translate(40, 1276)">
+    <rect x="0" y="0" width="668" height="448" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="270" height="26" rx="13" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="155" y="33.5" font-size="12" font-weight="700" fill="#28231F" text-anchor="middle">French Expansion · 320px Reflow</text>
+    <text x="648" y="33.5" font-size="12" font-weight="600" fill="#4E6E52" text-anchor="end">min-h-12 wrapping · Zero truncation</text>
+
+    <!-- 320px viewport column -->
+    <rect x="20" y="56" width="320" height="372" rx="20" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="34" y="80" font-size="12" font-weight="700" fill="#6E645B">320px PHONE WIDTH</text>
+
+    <!-- FR Home Bar (with progress bar) -->
+    <rect x="32" y="92" width="296" height="72" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="46" y="114" font-size="12.5" font-weight="700" fill="#28231F">Préparation de 3 recettes</text>
+    <text x="46" y="132" font-size="12" fill="#6E645B">1 indexée · 2 en préparation ›</text>
+    <rect x="46" y="144" width="268" height="7" rx="3.5" fill="#F3EFEA"/>
+    <rect x="46" y="144" width="146" height="7" rx="3.5" fill="#B85542"/>
+
+    <!-- FR Inline Confirm Card -->
+    <rect x="32" y="176" width="296" height="142" rx="16" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+    <text x="44" y="198" font-size="12" font-weight="700" fill="#A44A37">Confirmation · min-h-12 flex-wrap</text>
+    <text x="44" y="218" font-size="12" fill="#28231F">Supprimer cette capture échouée et</text>
+    <text x="44" y="234" font-size="12" fill="#28231F">ses fichiers inachevés?</text>
+    <rect x="44" y="250" width="118" height="52" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="103" y="280" font-size="12.5" font-weight="700" fill="#28231F" text-anchor="middle">Annuler</text>
+    <rect x="170" y="250" width="146" height="52" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.2"/>
+    <text x="243" y="280" font-size="12.5" font-weight="700" fill="#A44A37" text-anchor="middle">Supprimer</text>
+
+    <!-- FR Searchable Card (tappable ChevronRight + single Retry enrichment) -->
+    <rect x="32" y="328" width="296" height="86" rx="16" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+    <rect x="44" y="340" width="248" height="24" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="168" y="356" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Cherchable · Enrichissement</text>
+    <path d="M306 346 L312 352 L306 358" fill="none" stroke="#4E6E52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="44" y="372" width="272" height="34" rx="10" fill="#B85542"/>
+    <text x="180" y="393.5" font-size="12" font-weight="700" fill="#FDFCF0" text-anchor="middle">↻ Réessayer l’enrichissement</text>
+
+    <!-- FR Spec Notes Column -->
+    <g transform="translate(358, 56)">
+      <rect x="0" y="0" width="290" height="372" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="18" y="30" font-size="14" font-weight="800" fill="#28231F" class="heading">FR Copy &amp; Layout Rules</text>
+      <text x="18" y="56" font-size="12" font-weight="700" fill="#A44A37">1. Natural multi-line wrapping</text>
+      <text x="18" y="74" font-size="12" fill="#6E645B">Use min-h-12 on text buttons; Copy &amp;</text>
+      <text x="18" y="90" font-size="12" fill="#6E645B">Trash stay compact 48×48 icon buttons.</text>
+
+      <text x="18" y="122" font-size="12" font-weight="700" fill="#4E6E52">2. Honest terminology</text>
+      <text x="18" y="140" font-size="12" fill="#6E645B">• Cherchable (lexical search ready)</text>
+      <text x="18" y="157" font-size="12" fill="#6E645B">• Enrichissement en cours (embeddings)</text>
+      <text x="18" y="174" font-size="12" fill="#6E645B">• Enrichissement en pause (retryable)</text>
+
+      <text x="18" y="206" font-size="12" font-weight="700" fill="#28231F">3. Clean full-width titles</text>
+      <text x="18" y="224" font-size="12" fill="#6E645B">No source-type badges next to titles</text>
+
+      <text x="18" y="256" font-size="12" font-weight="700" fill="#28231F">4. Neutral Copy status</text>
+      <text x="18" y="274" font-size="12" fill="#6E645B">• Copy icon (48×48, inline with Retry)</text>
+      <text x="18" y="291" font-size="12" fill="#6E645B">• “Détails copiés” (neutral text, ~1.5s)</text>
+      <text x="18" y="320" font-size="12" font-weight="700" fill="#28231F">5. /capture stays untouched</text>
+      <text x="18" y="338" font-size="12" fill="#6E645B">Focus returns to Home bar on close.</text>
+    </g>
+  </g>
+
+  <!-- Panel 2: High Contrast AAA Adaptation -->
+  <g transform="translate(732, 1276)">
+    <rect x="0" y="0" width="668" height="448" rx="28" fill="#FAF8F5" stroke="#6E645B" stroke-width="1.5"/>
+    <rect x="20" y="16" width="290" height="26" rx="13" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.2"/>
+    <text x="165" y="33.5" font-size="12" font-weight="700" fill="#191512" text-anchor="middle">High Contrast AAA (:root[data-contrast=“high”])</text>
+    <text x="648" y="33.5" font-size="12" font-weight="700" fill="#191512" text-anchor="end">≥7.0:1 text &amp; icons · Crisp #6E645B chrome</text>
+
+    <!-- AAA Home Bar (white surface + crisp Hearth border) -->
+    <rect x="20" y="58" width="628" height="68" rx="18" fill="#FFFFFF" stroke="#A44A37" stroke-width="1.6"/>
+    <circle cx="50" cy="92" r="14" fill="#F9ECE9" stroke="#A44A37" stroke-width="1.4"/>
+    <text x="50" y="97" font-size="14" font-weight="800" fill="#7B3829" text-anchor="middle">!</text>
+    <text x="76" y="88" font-size="14.5" font-weight="800" fill="#7B3829">1 needs attention · 2 preparing</text>
+    <text x="76" y="108" font-size="12.5" font-weight="600" fill="#191512">Grandma’s Chili · #7B3829 on white (8.61:1)</text>
+    <path d="M620 86 L626 92 L620 98" fill="none" stroke="#7B3829" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- AAA Failure Row (single [Retry][Copy][Trash] row, no source badge) -->
+    <rect x="20" y="140" width="356" height="222" rx="20" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.6"/>
+    <text x="36" y="166" font-size="15.5" font-weight="800" fill="#191512" class="heading">Grandma’s Chili</text>
+    <text x="36" y="188" font-size="12" font-weight="600" fill="#524A43">Couldn’t write recipe — AI timed out.</text>
+
+    <!-- AAA Single Action Row: [ RotateCcw + Retry ] [ Copy 48x48 ] [ Trash2 48x48 ] -->
+    <rect x="36" y="204" width="204" height="48" rx="14" fill="#7B3829"/>
+    <g transform="translate(52, 220) scale(0.66)" fill="none" stroke="#FDFCF0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5"/>
+    </g>
+    <text x="74" y="233" font-size="13" font-weight="700" fill="#FDFCF0">Retry (8.34:1)</text>
+    <rect x="248" y="204" width="48" height="48" rx="14" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.5"/>
+    <g transform="translate(264, 220) scale(0.68)" fill="none" stroke="#191512" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2"/>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </g>
+    <rect x="304" y="204" width="50" height="48" rx="14" fill="#F9ECE9" stroke="#A44A37" stroke-width="1.5"/>
+    <g fill="none" stroke="#7B3829" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M322 222 h14 M326 222 v-2 h6 v2 M324 222 l1 13 h8 l1 -13"/>
+    </g>
+    <text x="36" y="280" font-size="12.5" font-weight="700" fill="#524A43">Details copied (#524A43 · 8.42:1)</text>
+
+    <!-- AAA Searchable & Sunlight pills -->
+    <rect x="36" y="310" width="154" height="44" rx="12" fill="#F1F3EB" stroke="#324D36" stroke-width="1.5"/>
+    <text x="113" y="336.5" font-size="12" font-weight="700" fill="#324D36" text-anchor="middle">Searchable (8.34:1)</text>
+    <rect x="200" y="310" width="154" height="44" rx="12" fill="#FFFBE6" stroke="#8F6D01" stroke-width="1.5"/>
+    <text x="277" y="336.5" font-size="12" font-weight="700" fill="#664E01" text-anchor="middle">! Enrich paused (7.9:1)</text>
+
+    <!-- AAA Token Map Table -->
+    <g transform="translate(392, 150)">
+      <rect x="0" y="0" width="256" height="274" rx="20" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.4"/>
+      <text x="16" y="28" font-size="14" font-weight="800" fill="#191512" class="heading">AAA Role Token Map</text>
+      <text x="16" y="54" font-size="12" font-weight="700" fill="#191512">ink-body: #191512 (17.59:1)</text>
+      <text x="16" y="76" font-size="12" font-weight="700" fill="#524A43">ink-muted: #524A43 (8.42:1)</text>
+      <text x="16" y="98" font-size="12" font-weight="700" fill="#7B3829">hearth-fill/ink: #7B3829</text>
+      <text x="16" y="120" font-size="12" font-weight="700" fill="#A44A37">hearth-line: #A44A37</text>
+      <text x="16" y="142" font-size="12" font-weight="700" fill="#324D36">garden-ink/line: #324D36</text>
+      <text x="16" y="164" font-size="12" font-weight="700" fill="#664E01">sunlight-ink: #664E01</text>
+      <text x="16" y="186" font-size="12" font-weight="700" fill="#8F6D01">sunlight-line: #8F6D01</text>
+      <text x="16" y="208" font-size="12" font-weight="700" fill="#6E645B">chrome-line: #6E645B</text>
+      <line x1="16" y1="224" x2="240" y2="224" stroke="#6E645B" stroke-width="1"/>
+      <text x="16" y="246" font-size="12" fill="#191512">Focus ring: 2px #191512</text>
+      <text x="16" y="264" font-size="12" fill="#524A43">outline-offset: 4px</text>
+    </g>
+
+    <text x="20" y="378" font-size="12.5" font-weight="600" fill="#191512">Verified against visual-identity.md &amp; cookbook-surfaces-and-motion.md</text>
+    <text x="20" y="400" font-size="12" fill="#524A43">Zero raw hex overrides in components; dual-mode CSS custom properties switch automatically.</text>
+    <text x="20" y="420" font-size="12" fill="#524A43">Checked for Forced Colors Mode &amp; prefers-reduced-motion: reduce.</text>
+  </g>
+</svg>

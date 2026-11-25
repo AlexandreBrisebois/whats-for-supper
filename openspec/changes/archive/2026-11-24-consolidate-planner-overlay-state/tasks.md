@@ -1,0 +1,72 @@
+# Tasks
+
+Commands below run from the repository root. `PAGE_TEST` =
+`'src/app/(app)/planner/page.test.tsx'`, `REDUCER_TEST` =
+`src/lib/planner/plannerOverlay.test.ts` (paths relative to `pwa/`).
+
+## 0. Baseline
+
+- [x] 0.1 Record the pre-change baseline: run `task test:unit -- "$PAGE_TEST"` and `task test:e2e -- e2e/action-pivot.spec.ts e2e/planner.spec.ts e2e/planner-non-cooking-days.spec.ts e2e/recipe-recovery.spec.ts`. Record pass/fail counts as evidence. Any test failing here is pre-existing; record it and leave it outside this change's scope.
+- [x] 0.2 Flake baseline: run the same four E2E specs with `--repeat-each=10 --retries=0`, and `PAGE_TEST` 10 times. Record each test that fails at least once, with its failure rate. This is the number the change must not worsen (see 2.4).
+
+## 1. Pivot → Quick Find on the overlay reducer (first observable slice)
+
+**Outcome and scenarios:** Choosing Quick Find from the pivot opens Quick Find in the same interaction, and selection still completes or recovers as before. `meal-assignment`: *Choose Quick Find for an empty day*, *Search from the pivot*, *Quick Find selection completes*, *Assignment path rejects*. Design D1, D2.
+**Owners and boundaries:** New `pwa/src/lib/planner/plannerOverlay.ts` (pure reducer + `usePlannerOverlay`). `pwa/src/app/(app)/planner/page.tsx`: only `pivot` and `quickFind` move to the union in this slice. Other surfaces keep their `useState`s until group 2.
+**Dependencies and prerequisites:** 0.1.
+**Acceptance boundary:** Vitest page tests use the existing component mocks. Playwright runs against `pwa/e2e/mock-api.ts` unchanged. No API, client or mock change.
+
+- [x] 1.1 Red, reducer: add `REDUCER_TEST` with an example table over the `pivot`/`quickFind`/`none` kinds × `openPivot`/`openQuickFind`/`close` (design invariants 1 and 4). Add a `plannerOverlay.ts` skeleton whose reducer returns `state` unchanged, so it compiles. Run `task test:unit -- src/lib/planner/plannerOverlay.test.ts` and observe assertion failures (not compile errors).
+- [x] 1.2 Red, page: in `PAGE_TEST`, add a test where clicking `mock-pivot-quick-find` shows `mock-quick-find-select` **without advancing timers**. Also assert focus returns to the page, not a day card, after Quick Find closes (design → User Experience). Run `task test:unit -- "$PAGE_TEST"` and observe the new test fail on the missing synchronous open. All other tests stay green.
+- [x] 1.3 Green: implement the reducer actions and `usePlannerOverlay`. Wire the pivot and Quick Find onto it in `page.tsx`. Delete `showPivot`, `showQuickFind`, `selectedDayIndex`, `pendingQuickFindDayIndex` and the 240 ms effect, and make `handleSearchPath` read the `pivot` variant. Until group 2, the non-cooking/cooked-defer/recovery call sites call `close()` where they called `setShowPivot(null)`. Run both commands from 1.1 and 1.2; expect all to pass.
+- [x] 1.4 Acceptance: run `task test:e2e -- e2e/action-pivot.spec.ts e2e/planner.spec.ts`. Expect results to match baseline 0.1. Investigate any new failure as a regression (design → Risks).
+
+## 2. Remaining overlays on the union
+
+**Outcome and scenarios:** Non-cooking (with Back), cooked-defer, nudge, recipe detail (day card and `detailRecipe` deep link) and replace-recovery behave as today, now with only one overlay open at a time. A stale non-cooking save never closes a newer sheet. `meal-assignment`: *Occupied Quick Find target*, *Dismiss the recovery choice*, *Replacement is still pending*, *Replacement resolves*. Design D1, D3, D4, D6.
+**Owners and boundaries:** `plannerOverlay.ts`, `page.tsx`. `useReplacementRecovery` receives `slot`/`recipe` from the `replaceRecovery` variant, and its own interface is unchanged. Detail-verification state stays in the page (D6).
+**Dependencies and prerequisites:** Group 1.
+**Acceptance boundary:** As in group 1, plus `pwa/e2e/planner-non-cooking-days.spec.ts` and `pwa/e2e/recipe-recovery.spec.ts`.
+
+- [x] 2.1 Red, reducer: extend `REDUCER_TEST` to cover all kinds × all actions. Include `closeIfCurrent` matching and non-matching (invariant 2), `close` ignored while `cookedDefer.submitting` (invariant 3), `backToPivot` from `nonCooking`, and `replaceRecovery` → `detail` on unsaved close. Leave the new actions as no-op stubs. Run `task test:unit -- src/lib/planner/plannerOverlay.test.ts` and observe failures for the new cases only.
+- [x] 2.2 Green: implement the actions. Move `nonCookingTarget`, `pendingCookedDefer`/`cookedDeferSubmitting`, `showNudgeDialog`, `openDetailRecipeId`/`detailSource` and `pendingRecovery` onto the union. Replace the `activeNonCookingDate` ref with `closeIfCurrent` (D3) and the `planDate` 0 ms timer with direct dispatch (D4, keeping the deferral only if `task lint:pwa` requires it). Derive `detailIdentity` from the `detail` variant. Run `task test:unit -- src/lib/planner/plannerOverlay.test.ts` and `task test:unit -- "$PAGE_TEST"`; expect all green. Only the 1.2 timing expectation differs from baseline.
+- [x] 2.3 Acceptance: run `task test:e2e -- e2e/action-pivot.spec.ts e2e/planner.spec.ts e2e/planner-non-cooking-days.spec.ts e2e/recipe-recovery.spec.ts`. Expect results to match baseline 0.1. Confirm by `grep` that `page.tsx` no longer declares any of the removed `useState`s or the `activeNonCookingDate` ref.
+- [x] 2.4 Flake check: repeat the 0.2 runs (`--repeat-each=10 --retries=0`, `PAGE_TEST` 10 times). Expect no test that was stable in 0.2 to fail. For each test that failed in 0.2, report its new failure rate. If an overlay-related test still fails intermittently, record it as a finding; do not raise timeouts to hide it.
+
+## 3. Extract planning confirmation
+
+**Outcome and scenarios:** The post-planning receipt, refresh retry, dismiss, 5 s routine auto-dismiss and success ring all behave identically. Covered by the existing `PAGE_TEST` fake-timer tests (around lines 578–713) and the `planner-planning-confirmation` / `planner-confirmation-refresh` / `planner-confirmation-dismiss` interactions. Design D5.
+**Owners and boundaries:** New `pwa/src/lib/planner/usePlanningConfirmation.ts`. `page.tsx` keeps only the banner markup. This is a pure relocation: no logic, dependency-array or timing edits.
+**Dependencies and prerequisites:** Group 2 (avoids overlapping edits in `page.tsx`).
+**Acceptance boundary:** Existing page tests are the behavior net. No new behavior, so there is no red step: this is the refactor phase of red/green/refactor, with the existing tests held green.
+
+- [x] 3.1 Move the confirmation cluster listed in design → Context into `usePlanningConfirmation`, returning `visibleConfirmation`, `pendingResult`, `successDay`, `successFading`, `retry` and `dismiss`. Run `task test:unit -- "$PAGE_TEST"`; expect the same pass count as after 2.2 with no test edits.
+- [x] 3.2 Run `task lint:pwa` and `task typecheck`; expect no new findings. Then run `task test:e2e -- e2e/planner.spec.ts` (it covers the confirmation receipt and its 5.2 s wait); expect results to match baseline.
+
+## 4. Final Integration and Verification
+
+- [x] 4.1 Reconcile each scenario listed in groups 1–3 with its recorded evidence. Run `task prepare -- <complete task path set>` (inspect effects first), review the complete task diff against the proposal scope (no store, API, sheet-component or out-of-scope state edits), then run `task verify -- <complete task path set>` and `task spec:check -- consolidate-planner-overlay-state --type change`. Report actual statuses and the verify record path. Do not claim completion while any required acceptance is blocked or missing.
+
+## Workflow follow-up
+
+- Archive the change after review, then confirm `documentation_check` passes for the archived paths.
+- Optional, separate: reword the `meal-assignment` scenario "pending pivot handoff state clear" (design → Deferrable).
+
+## Evidence
+
+- 0.1 (2026-11-24, HEAD `b470ccc1`): `PAGE_TEST` 133/133 passed. Four Planner E2E specs 197/197 passed (2.0 min). No pre-existing failures.
+- 0.2: `PAGE_TEST` ×10: 133/133 on every run, no failures. E2E `--repeat-each=10 --retries=0`: 1970 expected, 0 unexpected, 0 flaky. Flake baseline: no test failed at least once.
+- 1.1 red: `task test:unit -- src/lib/planner/plannerOverlay.test.ts`: 9/10 cases failed on assertions (stub returns `state`), no compile errors. The `none` + `close` case passes trivially.
+- 1.2 red: `PAGE_TEST` 3 failed / 133 passed. The synchronous-open test cannot find `mock-quick-find-select`. The dismiss-focus test fails on the same missing synchronous open. The assignment-focus test fails `toHaveFocus` on `day-card-1`. The QuickFindModal mock gained a `mock-quick-find-close` control. Focus decision: see design → User Experience.
+- 1.3 green: reducer + `PAGE_TEST`: 146/146 passed (10 reducer, 136 page). `tsc --noEmit` and `eslint` on the touched files: clean. `pivot`/`quickFind` are on the union; the 240 ms effect, `showPivot`, `showQuickFind`, `selectedDayIndex` and `pendingQuickFindDayIndex` are removed. The page focuses `#day-card-<n>` when Quick Find closes.
+- 1.4: `action-pivot.spec.ts` + `planner.spec.ts`: 153/153 passed, matching baseline.
+- 2.1 red: `REDUCER_TEST` extended to 9 states × all actions: 55 failed / 58 passed (113). Every failure is a new action or invariant (open* for the new kinds, `closeIfCurrent` matching, `backToPivot`, `setCookedDeferSubmitting`, `close` on a submitting cooked-defer, recovery → detail). Every slice-1 case still passes.
+- 2.2 green: `REDUCER_TEST` 113/113 and `PAGE_TEST` 136/136 (249 total). `tsc --noEmit` clean. `eslint` on the touched files is clean with the direct `planDate` dispatch, so the D4 deferral was not kept. Callbacks that can arrive after an overlay changed close through `closeIfCurrent` scoped to the kinds the old code reset: Quick Find and nudge (can fire during an `AnimatePresence` exit), recovery saved, ask-family after `await`, detail close and navigation, and cooked-defer finish. Only the 1.2 tests are new relative to baseline. No existing test was edited apart from the QuickFindModal mock's added close control.
+- 2.3: four Planner E2E specs: 197/197 passed, matching baseline. `grep` finds no remaining `useState` for the moved flags, no `activeNonCookingDate`, and no 240 ms or 0 ms handoff timers in `page.tsx`.
+- 2.4 (finding, left unchecked): `PAGE_TEST` ×10 after the change: 136/136 on every run. E2E `--repeat-each=10 --retries=0`: 1969 passed, 1 unexpected, 0 flaky. `action-pivot.spec.ts:176` "Quick Replace in Planner: Search retains the selected date through assignment" failed 1/10. It was 0/10 in 0.2. The failing step is on `/recipes`, after the Planner has unmounted: clicking `action-add-to-day` in `RecipeDetailSheet` did not show `recovery-dialog-title` within 5 s. The snapshot shows the detail sheet open with "Plan for Tuesday, May 12" and no dialog. Every earlier step in the overlay path passed, including the Quick Find → Search `href` with `addToDay=1`. A targeted rerun (`e2e/action-pivot.spec.ts:176 --repeat-each=40 --retries=0`) passed 40/40, giving 1/50 after the change. This diff does not touch the failing step's code. The sample cannot separate a regression from a pre-existing low-rate flake. No timeouts were changed.
+- 3.1: confirmation cluster moved verbatim into `pwa/src/lib/planner/usePlanningConfirmation.ts`. The page calls it where the cluster's derived values and effects used to sit. The retry and dismiss handlers moved from the banner markup into the hook. `PAGE_TEST`: 136/136 passed, the same count as after 2.2, with no test edits.
+- 3.2: `task lint:pwa`: 0 errors, 1 warning in `RecipesExperience.tsx`, which this change does not touch. `task typecheck`: clean. `planner.spec.ts`: 147/147 passed, matching baseline.
+- 4.1 (in progress): `task prepare` formatted `page.tsx` and `plannerOverlay.test.ts`. Scope review: the diff is limited to the five application paths and this change's planning files. No store, API, sheet-component or detail-verification edits. First `task verify` (`.task/agent-finish/runs/0f3d8b90f4964c88b2ef6408d70e022a.json`): documentation, spec:check, lint, format:check:pwa, typecheck and test:unit passed. `agent:test:impact` failed (exit 1) and content failed ("Mutation during verification"). A parallel agent edited files outside this path set during the run, and the full-runtime identity covers them. Standalone impact re-run (`test_ops.py --impact --files <path set>`): 1065 passed, 55 skipped, 0 failed, no mutation. `task verify` still needs a clean run.
+- Focus decision revised (user, 2026-11-24): focus returns to the page, not to a day card. The `#day-card-<n>` focus call recorded under 1.3 is removed. The two focus tests now focus a Quick Find control, close Quick Find, and assert `document.body` has focus. `REDUCER_TEST` + `PAGE_TEST`: 249/249 passed. `tsc --noEmit`, `eslint` and `prettier --check` on the touched files: clean. The 1.2 red observation for focus no longer applies: this is the pre-change behavior, kept as a regression test.
+- 2.4 resolved (2026-11-24): `action-pivot.spec.ts:176` compared directly with `--repeat-each=100 --retries=0`. Old `page.tsx` (HEAD, swapped in temporarily, then the new file restored and its hash checked): 98 passed, 2 failed, both at line 238 (`recovery-dialog-title` not visible on `/recipes`). New `page.tsx`: 100/100 passed. Totals: old code 2/110 failures, new code 1/150. The failure predates this change and sits in the recipes-page recovery step. It is recorded as a pre-existing intermittent failure outside this change's scope. No test that was stable in 0.2 is attributable to this change. No timeouts were changed.
+- 4.1 (2026-11-24): `task prepare`: no changes. Scope review: the diff covers the five application paths and this change's planning files only. No store, API, sheet-component or detail-verification edits. Final `task verify` on the nine-path set (`.task/agent-finish/runs/94993a647fa84f1d821db4bc59471a04.json`): documentation, spec:check, lint, format:check:pwa, typecheck, test:unit, agent:test:impact (1065 passed, 55 skipped, 0 failed), test:api, review:contracts (static only), content: all passed. test:agent and database-behavior: not-applicable. `task spec:check -- consolidate-planner-overlay-state --type change`: valid (`skip_specs`, zero deltas). Scenario reconciliation: group 1 → 1.2/1.3/1.4 evidence; group 2 → 2.2/2.3/2.4; group 3 → 3.1/3.2. This evidence entry was written after the verify run, so the record covers the content before this line.

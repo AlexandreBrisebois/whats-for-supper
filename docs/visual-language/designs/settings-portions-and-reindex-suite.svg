@@ -1,0 +1,335 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1600" viewBox="0 0 1440 1600" role="img" aria-labelledby="suite-title suite-desc">
+  <title id="suite-title">Settings Auto-Save Usual Portions &amp; Search Reindex Visual Design Suite (Era 3)</title>
+  <desc id="suite-desc">Complete Era 3 visual design specification for Journey 2: /profile/settings showing Usual portions with no Save button (checked Use family size vs. unchecked auto-saving number input), Search index card strictly below Usual portions (Index missing recipes vs. Rebuild full search index), R3 contextual single-recipe Reindex in RecipeDetailSheet overflow menu, plus French 320px reflow and High Contrast AAA adaptation.</desc>
+
+  <defs>
+    <filter id="sheetShadow" x="-12%" y="-10%" width="124%" height="126%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#28231F" flood-opacity="0.22"/>
+    </filter>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#28231F" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="1600" fill="#FDFCF0"/>
+
+  <!-- ====================================================================== -->
+  <!-- HEADER                                                                 -->
+  <!-- ====================================================================== -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · Journey 2: Settings Portions &amp; Search Reindex</text>
+  <rect x="1086" y="24" width="314" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1243" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Auto-Save Portions + R2 &amp; R3 Reindex</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Settings Auto-Save Portions &amp; Recipe Reindex Suite</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">Usual portions removes the Save button and auto-saves immediately; Search index sits strictly below Usual portions in Settings + in RecipeDetailSheet •••.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 1 · /profile/settings FRAMES (2 WIDE PIXEL-10 COLUMNS)         -->
+  <!-- ====================================================================== -->
+  <text x="40" y="168" font-size="18" font-weight="700" fill="#28231F" class="heading">1. /profile/settings — Auto-Save Usual Portions + Search Index Card Strictly Below Portions (R2)</text>
+
+  <!-- ==================== FRAME 1 · FAMILY SIZE CHECKED + SEARCH INDEX ==================== -->
+  <g transform="translate(40, 188)">
+    <rect x="0" y="0" width="668" height="848" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="310" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="175" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">State A · Checked (Family Size) + Search Card</text>
+    <text x="648" y="33.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">No Save button</text>
+
+    <!-- Phone Viewport (left half) -->
+    <rect x="20" y="56" width="396" height="770" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+    <path d="M 48 56 H 388 Q 416 56 416 76 V 80 H 20 V 76 Q 20 56 48 56 Z" fill="#B85542" opacity="0.92"/>
+    <text x="38" y="72" font-size="12" font-weight="600" fill="#FFFFFF">5:18</text>
+    <text x="218" y="72" font-size="12" font-weight="500" fill="#FDFCF0" text-anchor="middle">/profile/settings</text>
+
+    <!-- Settings Header -->
+    <circle cx="58" cy="116" r="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <path d="M61 109 L54 116 L61 123" fill="none" stroke="#A44A37" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="94" y="114" font-size="22" font-weight="800" fill="#28231F" class="heading">Settings</text>
+    <text x="94" y="133" font-size="12.5" fill="#6E645B">Family &amp; app preferences</text>
+
+    <!-- Card 1: Usual portions (COMPACT, CHECKED, 0px SHIFT) -->
+    <rect x="36" y="156" width="364" height="136" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="56" y="186" font-size="17" font-weight="800" fill="#28231F" class="heading">Usual portions</text>
+    <text x="56" y="207" font-size="12.5" fill="#6E645B">Total to cook, including leftovers.</text>
+
+    <!-- Single compact 48px row: portions left (4 portions), checkbox takes over on right -->
+    <text x="56" y="255" font-size="20" font-weight="800" fill="#28231F">4 <tspan font-size="15" font-weight="600" fill="#28231F">portions</tspan></text>
+    <rect x="228" y="236" width="24" height="24" rx="6" fill="#B85542"/>
+    <path d="M234 248 L238 252 L246 243" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="262" y="253" font-size="13.5" font-weight="500" fill="#28231F">Use family size</text>
+
+    <!-- Card 2: Search index (STRICTLY BELOW PORTIONS) -->
+    <rect x="36" y="310" width="364" height="332" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="56" y="340" font-size="12" font-weight="700" fill="#4E6E52">Search index</text>
+    <text x="56" y="368" font-size="18" font-weight="800" fill="#28231F" class="heading">142 of 145 searchable</text>
+    <text x="56" y="389" font-size="12.5" fill="#6E645B">139 smart-search enriched · 3 missing or paused</text>
+
+    <!-- Dual Progress Bar -->
+    <rect x="56" y="406" width="324" height="10" rx="5" fill="#F3EFEA"/>
+    <rect x="56" y="406" width="316" height="10" rx="5" fill="#C7CFB0"/>
+    <rect x="56" y="406" width="302" height="10" rx="5" fill="#4E6E52"/>
+    <text x="56" y="434" font-size="12" fill="#6E645B">139 smart-search · 3 keyword-only · 3 not indexed</text>
+
+    <!-- Primary CTA: RefreshCw + Index missing -->
+    <rect x="56" y="454" width="324" height="50" rx="14" fill="#B85542"/>
+    <g transform="translate(114, 471) scale(0.68)" fill="none" stroke="#FDFCF0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5 M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16 M21 21v-5h-5"/>
+    </g>
+    <text x="137" y="484" font-size="13.5" font-weight="700" fill="#FDFCF0">Index missing recipes (3)</text>
+
+    <!-- Secondary CTA: RotateCcw + Rebuild full index -->
+    <rect x="56" y="516" width="324" height="48" rx="14" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+    <g transform="translate(96, 532) scale(0.68)" fill="none" stroke="#A44A37" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5"/>
+    </g>
+    <text x="119" y="545" font-size="13" font-weight="700" fill="#A44A37">Rebuild full search index (all 145)</text>
+
+    <text x="56" y="588" font-size="12" fill="#6E645B">Existing keyword search keeps working while</text>
+    <text x="56" y="605" font-size="12" fill="#6E645B">missing or full reindex runs in the background.</text>
+
+    <!-- Failed captures sits below Search index -->
+    <rect x="36" y="660" width="364" height="52" rx="18" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="56" y="691" font-size="13" font-weight="700" fill="#6E645B">Failed captures · Preview features (below)</text>
+
+    <!-- Right-side Annotation Column -->
+    <g transform="translate(432, 56)">
+      <rect x="0" y="0" width="216" height="770" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="30" font-size="14" font-weight="800" fill="#28231F" class="heading">Settings Order &amp; Rules</text>
+      <text x="16" y="58" font-size="12" font-weight="700" fill="#4E6E52">1. Family management</text>
+      <text x="16" y="82" font-size="12" font-weight="700" fill="#28231F">2. Usual portions (compact)</text>
+      <text x="16" y="100" font-size="12" fill="#6E645B">• Portions left, checkbox right</text>
+      <text x="16" y="117" font-size="12" fill="#6E645B">• Checked takes over right (4)</text>
+      <text x="16" y="134" font-size="12" fill="#6E645B">• No Save button, no repeat</text>
+      <text x="16" y="151" font-size="12" fill="#6E645B">• 0px shift on toggle</text>
+
+      <line x1="16" y1="172" x2="200" y2="172" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="198" font-size="12" font-weight="700" fill="#A44A37">3. Search index (R2)</text>
+      <text x="16" y="216" font-size="12" fill="#6E645B">• Strictly below Portions</text>
+      <text x="16" y="234" font-size="12" fill="#6E645B">• Shows Searchable vs.</text>
+      <text x="24" y="250" font-size="12" fill="#6E645B">Enriched counts</text>
+      <text x="16" y="268" font-size="12" fill="#6E645B">• 1-tap missing reindex</text>
+      <text x="16" y="286" font-size="12" fill="#6E645B">• Inline-confirmed full</text>
+      <text x="24" y="302" font-size="12" fill="#6E645B">index rebuild</text>
+
+      <line x1="16" y1="324" x2="200" y2="324" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="350" font-size="12" font-weight="700" fill="#6E645B">4. Failed captures</text>
+      <text x="16" y="368" font-size="12" fill="#6E645B">(Shared with Home sheet)</text>
+      <text x="16" y="396" font-size="12" font-weight="700" fill="#6E645B">5. Preview features</text>
+    </g>
+  </g>
+
+  <!-- ==================== FRAME 2 · UNCHECKED (CUSTOM NUMBER) + INLINE FULL REBUILD CONFIRM ==================== -->
+  <g transform="translate(732, 188)">
+    <rect x="0" y="0" width="668" height="848" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="346" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="193" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">State B · Unchecked (Custom Box) + Rebuild Confirm</text>
+    <text x="648" y="33.5" font-size="12" font-weight="600" fill="#4E6E52" text-anchor="end">Auto-saves valid entry</text>
+
+    <!-- Phone Viewport -->
+    <rect x="20" y="56" width="396" height="770" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+    <path d="M 48 56 H 388 Q 416 56 416 76 V 80 H 20 V 76 Q 20 56 48 56 Z" fill="#B85542" opacity="0.92"/>
+    <text x="38" y="72" font-size="12" font-weight="600" fill="#FFFFFF">5:18</text>
+    <text x="218" y="72" font-size="12" font-weight="500" fill="#FDFCF0" text-anchor="middle">/profile/settings</text>
+
+    <!-- Settings Header -->
+    <circle cx="58" cy="116" r="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <path d="M61 109 L54 116 L61 123" fill="none" stroke="#A44A37" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="94" y="114" font-size="22" font-weight="800" fill="#28231F" class="heading">Settings</text>
+    <text x="94" y="133" font-size="12.5" fill="#6E645B">Family &amp; app preferences</text>
+
+    <!-- Card 1: Usual portions (COMPACT, UNCHECKED, 0px SHIFT) -->
+    <rect x="36" y="156" width="364" height="136" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="56" y="186" font-size="17" font-weight="800" fill="#28231F" class="heading">Usual portions</text>
+    <text x="56" y="207" font-size="12.5" fill="#6E645B">Total to cook, including leftovers.</text>
+
+    <!-- Single compact 48px row: 72x48 numeric input + portions left, checkbox right -->
+    <rect x="56" y="224" width="72" height="48" rx="12" fill="#FFFFFF" stroke="#B85542" stroke-width="1.6"/>
+    <text x="92" y="254" font-size="16" font-weight="800" fill="#28231F" text-anchor="middle">6</text>
+    <text x="138" y="254" font-size="15" font-weight="600" fill="#28231F">portions</text>
+    <rect x="228" y="236" width="24" height="24" rx="6" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.5"/>
+    <text x="262" y="253" font-size="13.5" font-weight="500" fill="#6E645B">Use family size</text>
+
+    <!-- Card 2: Search index with Inline Full Rebuild Confirmation -->
+    <rect x="36" y="310" width="364" height="396" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="56" y="340" font-size="12" font-weight="700" fill="#4E6E52">Search index</text>
+    <text x="56" y="368" font-size="18" font-weight="800" fill="#28231F" class="heading">145 of 145 searchable</text>
+    <text x="56" y="389" font-size="12.5" fill="#4E6E52">145 of 145 smart-search enriched</text>
+
+    <rect x="56" y="406" width="324" height="10" rx="5" fill="#4E6E52"/>
+    <text x="56" y="434" font-size="12" fill="#4E6E52">Everything indexed &amp; enriched</text>
+
+    <!-- Inline Rebuild Confirmation Box (never window.confirm) -->
+    <rect x="56" y="456" width="324" height="164" rx="18" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.3"/>
+    <text x="72" y="482" font-size="13.5" font-weight="800" fill="#A44A37">Rebuild full search index?</text>
+    <text x="72" y="502" font-size="12" fill="#28231F">Re-indexes all 145 saved recipes in</text>
+    <text x="72" y="519" font-size="12" fill="#28231F">batches of 50. Search stays working.</text>
+    <rect x="72" y="544" width="138" height="48" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="141" y="573" font-size="13" font-weight="700" fill="#28231F" text-anchor="middle">Cancel</text>
+    <rect x="220" y="544" width="144" height="48" rx="12" fill="#B85542"/>
+    <text x="292" y="573" font-size="13" font-weight="700" fill="#FDFCF0" text-anchor="middle">Rebuild all</text>
+
+    <!-- Quiet queued status -->
+    <rect x="56" y="634" width="324" height="48" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="218" y="663" font-size="12.5" font-weight="700" fill="#4E6E52" text-anchor="middle">Reindexing in background… (updates live)</text>
+
+    <!-- Right-side Annotation Column -->
+    <g transform="translate(432, 56)">
+      <rect x="0" y="0" width="216" height="770" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="30" font-size="14" font-weight="800" fill="#28231F" class="heading">Auto-Save &amp; Conflict</text>
+      <text x="16" y="56" font-size="12" font-weight="700" fill="#28231F">1. Unchecked behavior</text>
+      <text x="16" y="74" font-size="12" fill="#6E645B">Unchecking enables the</text>
+      <text x="16" y="90" font-size="12" fill="#6E645B">72×48 box on the left and</text>
+      <text x="16" y="106" font-size="12" fill="#6E645B">auto-saves valid ints</text>
+      <text x="16" y="122" font-size="12" fill="#6E645B">silently (0px shift).</text>
+
+      <line x1="16" y1="144" x2="200" y2="144" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="170" font-size="12" font-weight="700" fill="#A44A37">2. Inline validation</text>
+      <text x="16" y="188" font-size="12" fill="#6E645B">Empty or &lt;1 shows inline</text>
+      <text x="16" y="204" font-size="12" fill="#6E645B">role=“alert”; never sends</text>
+      <text x="16" y="220" font-size="12" fill="#6E645B">invalid value.</text>
+
+      <line x1="16" y1="242" x2="200" y2="242" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="268" font-size="12" font-weight="700" fill="#4E6E52">3. Rebuild guard</text>
+      <text x="16" y="286" font-size="12" fill="#6E645B">“Rebuild full search index”</text>
+      <text x="16" y="302" font-size="12" fill="#6E645B">uses inline Cancel / Rebuild</text>
+      <text x="16" y="318" font-size="12" fill="#6E645B">all confirmation before</text>
+      <text x="16" y="334" font-size="12" fill="#6E645B">queueing all recipes.</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 2 · R3 CONTEXTUAL SINGLE-RECIPE REINDEX + FR & AAA PROOFS      -->
+  <!-- ====================================================================== -->
+  <text x="40" y="1076" font-size="18" font-weight="700" fill="#28231F" class="heading">2. R3 Contextual Single-Recipe Reindex (RecipeDetailSheet •••) + French 320px Reflow &amp; High Contrast AAA</text>
+
+  <!-- Card 1: R3 RecipeDetailSheet ••• -->
+  <g transform="translate(40, 1096)">
+    <rect x="0" y="0" width="436" height="464" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="268" height="26" rx="13" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+    <text x="154" y="33.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">R3 · RecipeDetailSheet ••• Menu</text>
+
+    <rect x="20" y="56" width="396" height="388" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="38" y="86" font-size="12" font-weight="700" fill="#6E645B">IN-CONTEXT SINGLE-RECIPE REINDEX</text>
+    <text x="38" y="110" font-size="16" font-weight="800" fill="#28231F" class="heading">Lemon Garlic Pasta</text>
+
+    <!-- Protected Icon Toolbar (UtensilsCrossed, Star, Share2, Ellipsis active, X) -->
+    <rect x="38" y="126" width="360" height="52" rx="14" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <circle cx="80" cy="152" r="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <g transform="translate(72, 144) scale(0.68)" fill="none" stroke="#A44A37" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8 M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7 M2.1 21.8l6.4-6.3"/>
+    </g>
+    <circle cx="148" cy="152" r="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <g transform="translate(140, 144) scale(0.68)" fill="none" stroke="#856400" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </g>
+    <circle cx="216" cy="152" r="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <g transform="translate(208, 144) scale(0.68)" fill="none" stroke="#6E645B" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <path d="M8.59 13.51l6.83 3.98 M15.41 6.51l-6.82 3.98"/>
+    </g>
+    <circle cx="284" cy="152" r="21" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.3"/>
+    <g transform="translate(276, 144) scale(0.68)" fill="#A44A37">
+      <circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/>
+    </g>
+    <circle cx="352" cy="152" r="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <g transform="translate(344, 144) scale(0.68)" fill="none" stroke="#6E645B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 6L6 18M6 6l12 12"/>
+    </g>
+
+    <!-- Open ••• ActionGearMenu (with leading 16px Lucide icons) -->
+    <rect x="98" y="186" width="300" height="178" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.3" filter="url(#sheetShadow)"/>
+    <rect x="110" y="196" width="276" height="36" rx="10" fill="#FAF8F5"/>
+    <g transform="translate(120, 206) scale(0.65)" fill="none" stroke="#A44A37" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+    </g>
+    <text x="142" y="219" font-size="13" font-weight="600" fill="#28231F">Edit recipe</text>
+
+    <g transform="translate(120, 240) scale(0.65)" fill="none" stroke="#A44A37" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z M4 22v-7"/>
+    </g>
+    <text x="142" y="253" font-size="13" font-weight="600" fill="#28231F">Report issue</text>
+
+    <rect x="110" y="268" width="276" height="44" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1.2"/>
+    <g transform="translate(120, 282) scale(0.68)" fill="none" stroke="#4E6E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5 M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16 M21 21v-5h-5"/>
+    </g>
+    <text x="142" y="295" font-size="13.5" font-weight="700" fill="#4E6E52">Reindex</text>
+
+    <g transform="translate(120, 326) scale(0.65)" fill="none" stroke="#A44A37" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 6h18 M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    </g>
+    <text x="142" y="339" font-size="13" font-weight="600" fill="#A44A37">Move to Bin</text>
+
+    <!-- Confirmation banner -->
+    <rect x="38" y="376" width="360" height="48" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="218" y="405" font-size="12.5" font-weight="700" fill="#4E6E52" text-anchor="middle">Queued for search reindex (POST /recipes/{id}/reindex)</text>
+  </g>
+
+  <!-- Card 2: French 320px Reflow Proof -->
+  <g transform="translate(502, 1096)">
+    <rect x="0" y="0" width="436" height="464" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="248" height="26" rx="13" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="144" y="33.5" font-size="12" font-weight="700" fill="#28231F" text-anchor="middle">French Expansion · 320px Reflow</text>
+
+    <rect x="58" y="56" width="320" height="388" rx="20" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="72" y="80" font-size="12" font-weight="700" fill="#6E645B">320px PHONE WIDTH (FR)</text>
+
+    <!-- FR Portions (compact single row: 4 portions left, checkbox right) -->
+    <rect x="70" y="92" width="296" height="96" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="84" y="116" font-size="14.5" font-weight="800" fill="#28231F" class="heading">Portions habituelles</text>
+    <text x="84" y="150" font-size="16" font-weight="800" fill="#28231F">4 <tspan font-size="13.5" font-weight="600" fill="#28231F">portions</tspan></text>
+    <rect x="176" y="134" width="20" height="20" rx="5" fill="#B85542"/>
+    <path d="M181 144 L184.5 147.5 L191 140" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="204" y="149" font-size="12" font-weight="500" fill="#28231F">Taille famille</text>
+
+    <!-- FR Search Index -->
+    <rect x="70" y="202" width="296" height="226" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="84" y="226" font-size="12" font-weight="700" fill="#4E6E52">Index de recherche</text>
+    <text x="84" y="248" font-size="14" font-weight="800" fill="#28231F" class="heading">142 sur 145 cherchables</text>
+    <rect x="84" y="264" width="268" height="54" rx="12" fill="#B85542"/>
+    <text x="218" y="287" font-size="12.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">Indexer les recettes</text>
+    <text x="218" y="304" font-size="12.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">manquantes (3)</text>
+    <rect x="84" y="328" width="268" height="52" rx="12" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+    <text x="218" y="350" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Reconstruire tout l’index</text>
+    <text x="218" y="367" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">(Annuler / Tout reconstruire)</text>
+    <text x="84" y="406" font-size="12" fill="#6E645B">0px de décalage au basculement</text>
+  </g>
+
+  <!-- Card 3: High Contrast AAA Adaptation -->
+  <g transform="translate(964, 1096)">
+    <rect x="0" y="0" width="436" height="464" rx="28" fill="#FAF8F5" stroke="#6E645B" stroke-width="1.5"/>
+    <rect x="20" y="16" width="290" height="26" rx="13" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.2"/>
+    <text x="165" y="33.5" font-size="12" font-weight="700" fill="#191512" text-anchor="middle">High Contrast AAA (:root[data-contrast=“high”])</text>
+
+    <rect x="20" y="56" width="396" height="388" rx="22" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.6"/>
+    <text x="38" y="84" font-size="15.5" font-weight="800" fill="#191512" class="heading">Portions &amp; Search Index (AAA)</text>
+    <text x="38" y="106" font-size="12" font-weight="700" fill="#324D36">142 of 145 searchable</text>
+
+    <!-- AAA Checkbox + Input -->
+    <rect x="38" y="122" width="360" height="48" rx="12" fill="#FAF8F5" stroke="#6E645B" stroke-width="1.3"/>
+    <text x="54" y="151" font-size="13" font-weight="700" fill="#191512">☐ Use family size · Custom: 6</text>
+
+    <!-- AAA Primary CTA -->
+    <rect x="38" y="186" width="360" height="50" rx="14" fill="#7B3829"/>
+    <text x="218" y="216" font-size="13.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">Index missing (3) · #7B3829 (8.34:1)</text>
+
+    <!-- AAA Secondary CTA -->
+    <rect x="38" y="248" width="360" height="48" rx="14" fill="#FFFFFF" stroke="#A44A37" stroke-width="1.5"/>
+    <text x="218" y="277" font-size="13" font-weight="700" fill="#7B3829" text-anchor="middle">Rebuild full index · #7B3829 (8.61:1)</text>
+
+    <!-- AAA R3 pill -->
+    <rect x="38" y="312" width="360" height="48" rx="14" fill="#F1F3EB" stroke="#324D36" stroke-width="1.5"/>
+    <text x="218" y="341" font-size="13" font-weight="700" fill="#324D36" text-anchor="middle">Reindex · #324D36 (8.34:1)</text>
+
+    <text x="38" y="388" font-size="12" font-weight="600" fill="#191512">Focus ring: 2px #191512 · offset 4px</text>
+    <text x="38" y="408" font-size="12" fill="#524A43">Crisp #6E645B borders · Forced Colors preserved</text>
+    <text x="38" y="428" font-size="12" fill="#524A43">≥48×48 CSS px touch targets throughout</text>
+  </g>
+</svg>

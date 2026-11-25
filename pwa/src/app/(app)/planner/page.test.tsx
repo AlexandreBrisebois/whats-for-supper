@@ -262,19 +262,30 @@ vi.mock('@/components/planner/PlanningPivotSheet', () => ({
 }));
 
 vi.mock('@/components/planner/QuickFindModal', () => ({
-  QuickFindModal: ({ onSelect }: { onSelect: (recipe: any) => void }) => (
-    <button
-      data-testid="mock-quick-find-select"
-      onClick={() =>
-        onSelect({
-          id: '22222222-2222-2222-2222-222222222222',
-          name: 'Replacement recipe',
-          image: '',
-        })
-      }
-    >
-      Select replacement
-    </button>
+  QuickFindModal: ({
+    onSelect,
+    onClose,
+  }: {
+    onSelect: (recipe: any) => void;
+    onClose: () => void;
+  }) => (
+    <>
+      <button
+        data-testid="mock-quick-find-select"
+        onClick={() =>
+          onSelect({
+            id: '22222222-2222-2222-2222-222222222222',
+            name: 'Replacement recipe',
+            image: '',
+          })
+        }
+      >
+        Select replacement
+      </button>
+      <button data-testid="mock-quick-find-close" onClick={onClose}>
+        Close Quick Find
+      </button>
+    </>
   ),
 }));
 
@@ -2430,6 +2441,47 @@ describe('PlannerPage quick replacement recovery', () => {
     await waitFor(() =>
       expect(mocks.guardedAssign).toHaveBeenCalledWith(0, 0, expect.anything(), '2026-05-11', true)
     );
+  });
+
+  it('opens Quick Find from the pivot in the same interaction, without waiting on a timer', () => {
+    vi.useFakeTimers();
+    renderPlanner(0, '2026-05-17', 0, '2026-05-11');
+
+    fireEvent.click(within(screen.getByTestId('day-card-1')).getByTestId('plan-meal-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+
+    expect(screen.queryByTestId('mock-planning-pivot-sheet')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mock-quick-find-select')).toBeInTheDocument();
+  });
+
+  it('returns focus to the page, not a day card, when Quick Find is dismissed', () => {
+    vi.useFakeTimers();
+    renderPlanner(0, '2026-05-17', 0, '2026-05-11');
+
+    fireEvent.click(within(screen.getByTestId('day-card-1')).getByTestId('plan-meal-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+    const close = screen.getByTestId('mock-quick-find-close');
+    close.focus();
+    fireEvent.click(close);
+
+    expect(screen.queryByTestId('mock-quick-find-select')).not.toBeInTheDocument();
+    expect(document.body).toHaveFocus();
+  });
+
+  it('returns focus to the page, not a day card, when the Quick Find assignment completes', async () => {
+    renderPlanner(0, '2026-05-17', 0, '2026-05-11');
+
+    fireEvent.click(within(screen.getByTestId('day-card-1')).getByTestId('plan-meal-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+    const select = await screen.findByTestId('mock-quick-find-select');
+    select.focus();
+    fireEvent.click(select);
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('mock-quick-find-select')).not.toBeInTheDocument()
+    );
+    expect(mocks.assignRecipe).toHaveBeenCalledWith(1, expect.anything());
+    expect(document.body).toHaveFocus();
   });
 
   it('keeps Quick Find open, shows an error, and reconciles when an empty-slot assignment fails', async () => {

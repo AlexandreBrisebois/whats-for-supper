@@ -1,0 +1,300 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1260" viewBox="0 0 1440 1260" role="img" aria-labelledby="jr-title jr-desc">
+  <title id="jr-title">Journey 1 · End-to-End Capture, Parallel Progress, Failure Recovery &amp; Success (Era 3)</title>
+  <desc id="jr-desc">End-to-end journey map for Journey 1: pure /capture entry feeding a server-backed Home progress bar supporting parallel imports, honest Searchable vs. Still enriching stages, full capture failure recovery across Photo, PDF, Link, and Description (goto-synthesis), enrichment-only failure recovery, and multi-device sync with zero global toast or banner interruptions.</desc>
+
+  <defs>
+    <filter id="cardShadow" x="-8%" y="-8%" width="116%" height="122%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#28231F" flood-opacity="0.07"/>
+    </filter>
+    <marker id="arrowHearth" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#B85542"/>
+    </marker>
+    <marker id="arrowGarden" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#4E6E52"/>
+    </marker>
+    <marker id="arrowSunlight" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#856400"/>
+    </marker>
+    <marker id="arrowMuted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#6E645B"/>
+    </marker>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="1260" fill="#FDFCF0"/>
+
+  <!-- HEADER -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · Journey 1 (OpenSpec: capture-activity-and-recovery)</text>
+  <rect x="1116" y="24" width="284" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1258" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">4 End-to-End Flows · Pure /capture</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Capture, Parallel Progress, Failure Recovery &amp; Success Journeys</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">/capture stays pure &amp; fast; Home displays live parallel progress bars; Searchable precedes Still enriching; every capture error recovers cleanly.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 1 · PURE /capture -> PARALLEL PROGRESS ON HOME -> SUCCESS      -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 158)">
+    <rect x="0" y="0" width="1360" height="240" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="430" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="235" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Flow 1 · Pure /capture → Parallel Progress on Home → Honest Success</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#4E6E52" text-anchor="end">Supports 1 or N parallel imports · Hydrated via GET /api/captures/activity + SSE</text>
+
+    <!-- Node 1: Pure /capture -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="268" height="160" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">1 · PURE /capture (UNTOUCHED)</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Capture &amp; Return Home</text>
+      <text x="16" y="70" font-size="12" fill="#28231F">• Photo, PDF, Link, or Description</text>
+      <text x="16" y="88" font-size="12" fill="#28231F">• Submit multiple recipes in a row</text>
+      <rect x="16" y="106" width="236" height="38" rx="12" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.1"/>
+      <text x="134" y="129.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Zero tabs, drawers, or menus in /capture</text>
+    </g>
+
+    <line x1="288" y1="138" x2="324" y2="138" stroke="#6E645B" stroke-width="2" marker-end="url(#arrowMuted)"/>
+
+    <!-- Node 2: Home Parallel Progress Bar -->
+    <g transform="translate(328, 58)">
+      <rect x="0" y="0" width="332" height="160" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">2 · HOME BAR (NO + ADD ANOTHER)</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Parallel Progress on Home</text>
+      <text x="16" y="69" font-size="12" fill="#28231F">• 1 item: Recipe name, step &amp; progress bar</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• N items: “Preparing 3 recipes” + bar</text>
+      <rect x="16" y="100" width="300" height="44" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+      <text x="28" y="119" font-size="12" font-weight="700" fill="#28231F">Preparing 3 recipes (1 indexing · 2 preparing)</text>
+      <rect x="28" y="128" width="276" height="6" rx="3" fill="#F3EFEA"/>
+      <rect x="28" y="128" width="144" height="6" rx="3" fill="#B85542"/>
+    </g>
+
+    <line x1="660" y1="138" x2="696" y2="138" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 3: Honest Stage Progression -->
+    <g transform="translate(700, 58)">
+      <rect x="0" y="0" width="336" height="160" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">3 · HONEST STAGE PROGRESSION</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Preparing → Indexing → Searchable</text>
+      <text x="16" y="69" font-size="12" fill="#28231F">1. Preparing (OCR / fetch / synthesize / hero)</text>
+      <text x="16" y="87" font-size="12" fill="#28231F">2. Indexing (saved; lexical index publishing)</text>
+      <rect x="16" y="100" width="304" height="44" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1.2"/>
+      <text x="28" y="119" font-size="12.5" font-weight="700" fill="#4E6E52">Searchable · Still enriching</text>
+      <text x="28" y="136" font-size="12" fill="#6E645B">IndexStatus=“ready”, EmbeddingStatus=“indexing”</text>
+    </g>
+
+    <line x1="1036" y1="138" x2="1072" y2="138" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4: Calm Completion -->
+    <g transform="translate(1076, 58)">
+      <rect x="0" y="0" width="264" height="160" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="114" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="73" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">SUCCESS</text>
+      <text x="16" y="56" font-size="16" font-weight="800" fill="#28231F" class="heading">Calm Home Completion</text>
+      <text x="16" y="78" font-size="12" fill="#28231F">• Searchable row opens recipe / dupes</text>
+      <text x="16" y="96" font-size="12" fill="#28231F">• Zero disruptive floating toasts</text>
+      <text x="16" y="114" font-size="12" fill="#6E645B">• Leaves Home bar once enriched</text>
+      <text x="16" y="136" font-size="12" font-weight="600" fill="#4E6E52">• Check Home bar whenever ready</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- FLOW 2 · FAILED CAPTURE RECOVERY (ALL 4 SOURCES INCL. DESCRIPTION)     -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 416)">
+    <rect x="0" y="0" width="1360" height="256" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="444" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="242" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Flow 2 · Failed Capture Recovery (Photo, PDF, Link &amp; Description)</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#A44A37" text-anchor="end">Includes goto-synthesis · Zero DB or disk leftovers when unready stub is cleared</text>
+
+    <!-- Node 1 -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="270" height="176" rx="18" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">1 · WORKFLOW FAILURE</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Any Capture Workflow</text>
+      <text x="16" y="70" font-size="12" fill="#28231F">• recipe-import (Photo / PDF)</text>
+      <text x="16" y="88" font-size="12" fill="#28231F">• url-import (Web Link)</text>
+      <text x="16" y="106" font-size="12" font-weight="700" fill="#A44A37">• goto-synthesis (Description)</text>
+      <rect x="16" y="122" width="238" height="38" rx="10" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+      <text x="135" y="145.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Paused or Failed → surfaced</text>
+    </g>
+
+    <line x1="290" y1="146" x2="326" y2="146" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 2 -->
+    <g transform="translate(330, 58)">
+      <rect x="0" y="0" width="300" height="176" rx="18" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">2 · HOME HEARTH BAR</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">1 needs attention · 2 preparing</text>
+      <text x="16" y="70" font-size="12" fill="#28231F">Failure takes visual priority while</text>
+      <text x="16" y="87" font-size="12" fill="#28231F">parallel imports keep progressing.</text>
+      <rect x="16" y="104" width="268" height="54" rx="12" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="28" y="126" font-size="12.5" font-weight="700" fill="#A44A37">!  Grandma’s Chili (Description)</text>
+      <text x="28" y="145" font-size="12" fill="#28231F">Tap bar → opens Activity Sheet ›</text>
+    </g>
+
+    <line x1="630" y1="146" x2="666" y2="146" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 3 -->
+    <g transform="translate(670, 58)">
+      <rect x="0" y="0" width="356" height="176" rx="18" fill="#FDFCF0" stroke="#E6B3A9" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">3 · CAPTURE ACTIVITY SHEET</text>
+      <text x="16" y="46" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Friendly Message + Icon Actions</text>
+      <text x="16" y="65" font-size="12" fill="#28231F">1. Step-specific message (timeout / URL / PDF)</text>
+      <text x="16" y="82" font-size="12" font-weight="700" fill="#A44A37">2. 1-row [Retry] [Copy icon] [Trash icon]</text>
+      <rect x="16" y="92" width="154" height="32" rx="9" fill="#B85542"/>
+      <text x="93" y="112.5" font-size="12" font-weight="700" fill="#FDFCF0" text-anchor="middle">Retry + Copy</text>
+      <rect x="180" y="92" width="160" height="32" rx="9" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="260" y="112.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Trash → Inline confirm</text>
+      <rect x="16" y="131" width="324" height="36" rx="9" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1"/>
+      <text x="26" y="153.5" font-size="12" font-weight="700" fill="#A44A37">Never window.confirm · [ Cancel ] [ Delete ]</text>
+    </g>
+
+    <line x1="1026" y1="146" x2="1062" y2="146" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4 -->
+    <g transform="translate(1066, 58)">
+      <rect x="0" y="0" width="274" height="176" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="94" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="63" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">RESOLVED</text>
+      <text x="16" y="56" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Clean DB &amp; Disk State</text>
+      <text x="16" y="78" font-size="12" fill="#28231F">• Retry → re-queues failed task on</text>
+      <text x="24" y="94" font-size="12" fill="#28231F">existing workflow instance (202)</text>
+      <text x="16" y="114" font-size="12" font-weight="700" fill="#A44A37">• Delete (!IsReady stub):</text>
+      <text x="24" y="130" font-size="12" fill="#28231F">purges DB row + disk folder</text>
+      <text x="16" y="150" font-size="12" font-weight="700" fill="#4E6E52">• Dismiss (IsReady recipe):</text>
+      <text x="24" y="166" font-size="12" fill="#6E645B">clears failed re-import, keeps recipe</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- FLOW 3 · ENRICHMENT-ONLY FAILURE (SEARCHABLE · ENRICHMENT PAUSED)      -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 690)">
+    <rect x="0" y="0" width="1360" height="248" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="428" height="26" rx="13" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+    <text x="234" y="33.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">Flow 3 · Enrichment-Only Failure (Searchable · Enrichment paused)</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#856400" text-anchor="end">Recipe stays cookable &amp; keyword-searchable · Never offers destructive Clear</text>
+
+    <!-- Node 1 -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="300" height="168" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">1 · PARTIAL INDEX OUTCOME</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Lexical OK, Vector Failed</text>
+      <text x="16" y="72" font-size="12" fill="#4E6E52" font-weight="700">IndexStatus = “ready”</text>
+      <text x="16" y="90" font-size="12" fill="#6E645B">Keyword search &amp; recipe detail work.</text>
+      <text x="16" y="114" font-size="12" fill="#856400" font-weight="700">! EmbeddingStatus = “failed”</text>
+      <text x="16" y="132" font-size="12" fill="#6E645B">Smart/similar vector enrichment</text>
+      <text x="16" y="149" font-size="12" fill="#6E645B">paused without blocking supper.</text>
+    </g>
+
+    <line x1="320" y1="142" x2="356" y2="142" stroke="#856400" stroke-width="2" marker-end="url(#arrowSunlight)"/>
+
+    <!-- Node 2 -->
+    <g transform="translate(360, 58)">
+      <rect x="0" y="0" width="366" height="168" rx="18" fill="#FFFBE6" stroke="#FFE666" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#856400">2 · SUNLIGHT STATUS CARD (NON-DESTRUCTIVE)</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Searchable · Enrichment paused</text>
+      <path d="M340 40 L346 46 L340 52" fill="none" stroke="#856400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="16" y="69" font-size="12" fill="#28231F">Tap card to open recipe; Trash is intentionally</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">omitted so saved recipes stay protected.</text>
+      <rect x="16" y="106" width="334" height="40" rx="12" fill="#FFFFFF" stroke="#FFE666" stroke-width="1.4"/>
+      <text x="183" y="130.5" font-size="12.5" font-weight="700" fill="#856400" text-anchor="middle">↻ Retry enrichment</text>
+    </g>
+
+    <line x1="726" y1="142" x2="762" y2="142" stroke="#856400" stroke-width="2" marker-end="url(#arrowSunlight)"/>
+
+    <!-- Node 3 -->
+    <g transform="translate(766, 58)">
+      <rect x="0" y="0" width="280" height="168" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">3 · QUIET RE-INDEX</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Queues index-recipe-search</text>
+      <text x="16" y="70" font-size="12" fill="#28231F">• Re-queues vector embedding job</text>
+      <text x="16" y="88" font-size="12" fill="#28231F">• Preserves lexical search &amp; edits</text>
+      <text x="16" y="106" font-size="12" fill="#6E645B">• Row shifts back to:</text>
+      <rect x="16" y="118" width="248" height="32" rx="10" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="140" y="138.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Searchable · Still enriching</text>
+    </g>
+
+    <line x1="1046" y1="142" x2="1082" y2="142" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4 -->
+    <g transform="translate(1086, 58)">
+      <rect x="0" y="0" width="254" height="168" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="96" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="64" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">ENRICHED</text>
+      <text x="16" y="56" font-size="16" font-weight="800" fill="#28231F" class="heading">Smart Search Ready</text>
+      <text x="16" y="78" font-size="12" fill="#28231F">• EmbeddingStatus = “ready”</text>
+      <text x="16" y="96" font-size="12" fill="#28231F">• Similar &amp; semantic search</text>
+      <text x="16" y="113" font-size="12" fill="#28231F">  now active for household</text>
+      <text x="16" y="140" font-size="12" font-weight="600" fill="#4E6E52">• Activity bar clears automatically</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- FLOW 4 · MULTI-DEVICE SYNC & CALM HOME RECOVERY                        -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 956)">
+    <rect x="0" y="0" width="1360" height="256" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="468" height="26" rx="13" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="254" y="33.5" font-size="12" font-weight="700" fill="#28231F" text-anchor="middle">Flow 4 · Multi-Device Sync &amp; Zero-Disruption Access</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">Survives reload, closed tab, or partner’s phone · Shared recovery contract</text>
+
+    <!-- Node 1 -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="286" height="176" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">1 · REAL HOUSEHOLD LIFE</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Refresh or Partner Phone</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Phone A starts 3 captures, locks</text>
+      <text x="16" y="90" font-size="12" fill="#28231F">• Page reloads, or Phone B opens app</text>
+      <text x="16" y="112" font-size="12" fill="#6E645B">No longer trapped in tab-local</text>
+      <text x="16" y="129" font-size="12" fill="#6E645B">Zustand memory (`captureStore`).</text>
+      <text x="16" y="154" font-size="12" font-weight="700" fill="#4E6E52">GET /api/captures/activity hydrates</text>
+    </g>
+
+    <line x1="306" y1="146" x2="342" y2="146" stroke="#6E645B" stroke-width="2" marker-end="url(#arrowMuted)"/>
+
+    <!-- Node 2 -->
+    <g transform="translate(346, 58)">
+      <rect x="0" y="0" width="350" height="176" rx="18" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">2 · ZERO-DISRUPTION STATUS</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">No Global Toasts or Banners</text>
+      <text x="16" y="70" font-size="12" fill="#28231F">• Planner, Library &amp; Groceries stay calm</text>
+      <text x="16" y="88" font-size="12" fill="#28231F">• No floating popups break focus mid-task</text>
+      <rect x="16" y="106" width="318" height="52" rx="12" fill="#FAF8F5" stroke="#E6B3A9" stroke-width="1.1"/>
+      <text x="28" y="127" font-size="12.5" font-weight="700" fill="#A44A37">Status waits calmly on Home</text>
+      <text x="28" y="146" font-size="12" fill="#6E645B">Return to /home when ready to check progress</text>
+    </g>
+
+    <line x1="696" y1="146" x2="732" y2="146" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 3 -->
+    <g transform="translate(736, 58)">
+      <rect x="0" y="0" width="310" height="176" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">3 · ONE RECOVERY GRAMMAR</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Home Sheet = Settings List</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Capture Activity Sheet (1 tap from Home)</text>
+      <text x="16" y="90" font-size="12" fill="#28231F">• /profile/settings FailedCapturesSection</text>
+      <text x="16" y="112" font-size="12" fill="#6E645B">Both mount the exact same failure-row</text>
+      <text x="16" y="129" font-size="12" fill="#6E645B">component &amp; /api/captures/failures API.</text>
+      <text x="16" y="154" font-size="12" font-weight="700" fill="#A44A37">Same behavior, same confirmation, zero drift</text>
+    </g>
+
+    <line x1="1046" y1="146" x2="1082" y2="146" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4 -->
+    <g transform="translate(1086, 58)">
+      <rect x="0" y="0" width="254" height="176" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="128" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="80" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">SYNCED OUTCOME</text>
+      <text x="16" y="56" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Shared Household Truth</text>
+      <text x="16" y="78" font-size="12" fill="#28231F">• Either partner can retry or clear</text>
+      <text x="16" y="96" font-size="12" fill="#28231F">• SSE updates both devices live</text>
+      <text x="16" y="114" font-size="12" fill="#28231F">• No duplicate captures</text>
+      <text x="16" y="148" font-size="12" font-weight="700" fill="#4E6E52">Zero SQL / disk cleanup needed</text>
+    </g>
+  </g>
+</svg>

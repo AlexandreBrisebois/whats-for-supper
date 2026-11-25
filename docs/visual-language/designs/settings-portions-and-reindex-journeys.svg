@@ -1,0 +1,275 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1260" viewBox="0 0 1440 1260" role="img" aria-labelledby="jr-title jr-desc">
+  <title id="jr-title">Journey 2 · Settings Auto-Save Usual Portions &amp; Recipe Reindexing (R2 + R3 · Era 3)</title>
+  <desc id="jr-desc">End-to-end journey map for Journey 2 (separate OpenSpec): auto-saving Usual portions in /profile/settings without a Save button, R2 library Search index card strictly below Usual portions (Index missing vs. Rebuild full index), R3 contextual single-recipe Reindex inside RecipeDetailSheet overflow menu, and error, conflict, plus Demo Mode guardrails.</desc>
+
+  <defs>
+    <filter id="cardShadow" x="-8%" y="-8%" width="116%" height="122%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#28231F" flood-opacity="0.07"/>
+    </filter>
+    <marker id="arrowHearth" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#B85542"/>
+    </marker>
+    <marker id="arrowGarden" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#4E6E52"/>
+    </marker>
+    <marker id="arrowSunlight" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#856400"/>
+    </marker>
+    <marker id="arrowMuted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#6E645B"/>
+    </marker>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="1260" fill="#FDFCF0"/>
+
+  <!-- HEADER -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · Journey 2 (OpenSpec: settings-portions-and-search-index)</text>
+  <rect x="1086" y="24" width="314" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1243" y="42.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Auto-Save Portions + R2 &amp; R3 Reindexing</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Settings Auto-Save Portions &amp; Recipe Reindex Journeys</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">No Save button on Usual portions; Search index card strictly below Usual portions (R2); contextual single-recipe reindex in RecipeDetailSheet ••• (R3).</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- FLOW 1 · AUTO-SAVE USUAL PORTIONS IN /profile/settings                 -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 158)">
+    <rect x="0" y="0" width="1360" height="240" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="386" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="213" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Flow 1 · Auto-Save Usual Portions (No Save Button)</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#4E6E52" text-anchor="end">Immediate save on toggle or valid number change · Version-conflict safe</text>
+
+    <!-- Node 1 -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="290" height="160" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">1 · /profile/settings</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Usual portions Card</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Loads baseline via GET supper-servings</text>
+      <text x="16" y="90" font-size="12" fill="#28231F">• Checkbox: “Use family size”</text>
+      <text x="16" y="108" font-size="12" fill="#28231F">• Number box: explicit servings</text>
+      <rect x="16" y="122" width="258" height="26" rx="10" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="145" y="139" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Save button removed completely</text>
+    </g>
+
+    <line x1="310" y1="138" x2="346" y2="138" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 2 -->
+    <g transform="translate(350, 58)">
+      <rect x="0" y="0" width="320" height="160" rx="18" fill="#FDFCF0" stroke="#C7CFB0" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">2A · CHECKED: USE FAMILY SIZE</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Follows Family Member Count</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Checking box immediately saves</text>
+      <text x="24" y="89" font-size="12" fill="#28231F">defaultServings: null (family mode)</text>
+      <text x="16" y="110" font-size="12" fill="#6E645B">• Box displays server’s family count</text>
+      <text x="24" y="127" font-size="12" fill="#6E645B">(read-only) and updates automatically</text>
+      <text x="24" y="144" font-size="12" fill="#4E6E52" font-weight="600">when household members change</text>
+    </g>
+
+    <line x1="670" y1="138" x2="706" y2="138" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 3 -->
+    <g transform="translate(710, 58)">
+      <rect x="0" y="0" width="320" height="160" rx="18" fill="#FDFCF0" stroke="#E6B3A9" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">2B · UNCHECKED: CUSTOM NUMBER</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Auto-Saves Entered Number</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Unchecking enables number input</text>
+      <text x="16" y="90" font-size="12" fill="#28231F">• Typing valid int (≥1) auto-saves</text>
+      <text x="24" y="107" font-size="12" fill="#28231F">(debounced + on blur) via PUT</text>
+      <text x="16" y="128" font-size="12" fill="#6E645B">• Invalid/empty input shows quiet</text>
+      <text x="24" y="145" font-size="12" fill="#A44A37">inline validation; never sends bad PUT</text>
+    </g>
+
+    <line x1="1030" y1="138" x2="1066" y2="138" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4 -->
+    <g transform="translate(1070, 58)">
+      <rect x="0" y="0" width="270" height="160" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="114" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="73" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">SYNCED</text>
+      <text x="16" y="56" font-size="16" font-weight="800" fill="#28231F" class="heading">Silent Save &amp; Sync</text>
+      <text x="16" y="78" font-size="12" fill="#28231F">• Silent auto-save (no banner noise);</text>
+      <text x="24" y="95" font-size="12" fill="#28231F">only surfaces inline alert on error</text>
+      <text x="16" y="116" font-size="12" fill="#6E645B">• ExpectedVersion conflict auto-</text>
+      <text x="24" y="133" font-size="12" fill="#6E645B">reconciles fresh baseline</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- FLOW 2 · R2 LIBRARY REINDEX STRICTLY BELOW PORTIONS IN SETTINGS        -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 416)">
+    <rect x="0" y="0" width="1360" height="252" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="444" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="242" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Flow 2 · R2 Library Reindex in /profile/settings (Strictly Below Portions)</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#A44A37" text-anchor="end">Searchable vs. Enriched counts · Missing-only vs. Full rebuild</text>
+
+    <!-- Node 1 -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="290" height="172" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">1 · SETTINGS → SEARCH INDEX</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Honest Library Health</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Placed directly below Usual portions</text>
+      <text x="16" y="90" font-size="12" fill="#28231F">• Displays live counts:</text>
+      <text x="24" y="108" font-size="12" font-weight="700" fill="#4E6E52">142 of 145 searchable</text>
+      <text x="24" y="125" font-size="12" fill="#6E645B">139 smart-search enriched</text>
+      <text x="16" y="150" font-size="12" fill="#6E645B">GET /api/management/search-status</text>
+    </g>
+
+    <line x1="310" y1="144" x2="346" y2="144" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 2 -->
+    <g transform="translate(350, 58)">
+      <rect x="0" y="0" width="330" height="172" rx="18" fill="#FDFCF0" stroke="#E6B3A9" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">2 · CHOOSE REINDEX SCOPE</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Missing/Failed or Full Rebuild</text>
+      <rect x="16" y="64" width="298" height="36" rx="10" fill="#B85542"/>
+      <text x="165" y="86.5" font-size="12.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">Index missing recipes (3)</text>
+      <rect x="16" y="108" width="298" height="48" rx="10" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.2"/>
+      <text x="165" y="129" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Rebuild full search index (all 145)</text>
+      <text x="165" y="146" font-size="12" fill="#6E645B" text-anchor="middle">Inline confirm: Cancel / Rebuild all</text>
+    </g>
+
+    <line x1="680" y1="144" x2="716" y2="144" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 3 -->
+    <g transform="translate(720, 58)">
+      <rect x="0" y="0" width="320" height="172" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">3 · BOUNDED BACKGROUND WORK</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">POST /api/management/backfill-search</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Returns 202 Accepted immediately</text>
+      <text x="16" y="90" font-size="12" fill="#28231F">• search-reconciliation scans batches</text>
+      <text x="24" y="107" font-size="12" fill="#28231F">of 50 ready recipes</text>
+      <text x="16" y="129" font-size="12" fill="#6E645B">• Optional force=true marks current</text>
+      <text x="24" y="146" font-size="12" fill="#6E645B">docs stale before queueing jobs</text>
+    </g>
+
+    <line x1="1040" y1="144" x2="1076" y2="144" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4 -->
+    <g transform="translate(1080, 58)">
+      <rect x="0" y="0" width="260" height="172" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="122" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="77" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">100% INDEXED</text>
+      <text x="16" y="56" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Live Progress &amp; Ready</text>
+      <text x="16" y="78" font-size="12" fill="#28231F">• Dual progress bar updates via SSE</text>
+      <text x="16" y="96" font-size="12" fill="#28231F">• Existing keyword search stays live</text>
+      <text x="16" y="118" font-size="12" fill="#6E645B">• Paused embeddings stay flagged</text>
+      <text x="24" y="135" font-size="12" fill="#856400">in Sunlight with remaining count</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- FLOW 3 · R3 SINGLE-RECIPE REINDEX IN CONTEXT (RecipeDetailSheet •••)   -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 686)">
+    <rect x="0" y="0" width="1360" height="248" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="420" height="26" rx="13" fill="#FFFBE6" stroke="#FFE666" stroke-width="1"/>
+    <text x="230" y="33.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">Flow 3 · R3 Single-Recipe Reindex in Context (RecipeDetailSheet •••)</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#856400" text-anchor="end">Fix 1 specific recipe without rebuilding the whole library or touching /capture</text>
+
+    <!-- Node 1 -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="290" height="168" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">1 · RECIPEDETAILSHEET</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Open Recipe → Tap •••</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Existing toolbar order preserved:</text>
+      <text x="24" y="90" font-size="12" font-weight="700" fill="#28231F">Cook · GOTO · Share · ••• · Close</text>
+      <rect x="16" y="108" width="258" height="42" rx="12" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="145" y="133.5" font-size="12.5" font-weight="700" fill="#4E6E52" text-anchor="middle">“Reindex” in ••• menu</text>
+    </g>
+
+    <line x1="310" y1="142" x2="346" y2="142" stroke="#856400" stroke-width="2" marker-end="url(#arrowSunlight)"/>
+
+    <!-- Node 2 -->
+    <g transform="translate(350, 58)">
+      <rect x="0" y="0" width="330" height="168" rx="18" fill="#FDFCF0" stroke="#FFE666" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#856400">2 · SINGLE-RECIPE ENDPOINT</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">POST /api/recipes/{id}/reindex</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Computes current source fingerprint</text>
+      <text x="16" y="90" font-size="12" fill="#28231F">• Queues index-recipe-search for this</text>
+      <text x="24" y="107" font-size="12" fill="#28231F">single recipeId (202 Accepted)</text>
+      <text x="16" y="129" font-size="12" fill="#6E645B">• Existing recipe edits stay untouched</text>
+      <text x="16" y="147" font-size="12" fill="#6E645B">• No redundant duplicate job if pending</text>
+    </g>
+
+    <line x1="680" y1="142" x2="716" y2="142" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 3 -->
+    <g transform="translate(720, 58)">
+      <rect x="0" y="0" width="320" height="168" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">3 · IN-CONTEXT FEEDBACK</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Honest Status Inside Sheet</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Inline status inside detail sheet:</text>
+      <text x="24" y="90" font-size="12" fill="#4E6E52">“Queued for search reindex…”</text>
+      <text x="16" y="114" font-size="12" fill="#28231F">• Transitions Searchable → Enriched</text>
+      <text x="16" y="138" font-size="12" fill="#A44A37">• Errors show inline role=“alert”</text>
+    </g>
+
+    <line x1="1040" y1="142" x2="1076" y2="142" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 4 -->
+    <g transform="translate(1080, 58)">
+      <rect x="0" y="0" width="260" height="168" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <rect x="16" y="14" width="114" height="22" rx="11" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+      <text x="73" y="29" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">FINDABLE</text>
+      <text x="16" y="56" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Search &amp; Filters Updated</text>
+      <text x="16" y="78" font-size="12" fill="#28231F">• Lexical + vector docs refreshed</text>
+      <text x="16" y="96" font-size="12" fill="#28231F">• Cuisine filters &amp; affinity synced</text>
+      <text x="16" y="118" font-size="12" fill="#4E6E52" font-weight="700">• Rest of library untouched</text>
+      <text x="16" y="144" font-size="12" fill="#6E645B">• Zero SQL or curl needed</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- FLOW 4 · ERROR, CONFLICT & DEMO MODE GUARDRAILS                        -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 952)">
+    <rect x="0" y="0" width="1360" height="256" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="388" height="26" rx="13" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="214" y="33.5" font-size="12" font-weight="700" fill="#28231F" text-anchor="middle">Flow 4 · Error, Version-Conflict &amp; Demo Mode Guardrails</text>
+    <text x="1340" y="33.5" font-size="12.5" font-weight="600" fill="#6E645B" text-anchor="end">No silent failures · No manual Review gate · Honest Demo Mode</text>
+
+    <!-- Guardrail 1 -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="424" height="176" rx="18" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">1 · USUAL PORTIONS CONFLICT RECOVERY</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Auto-Reconcile Without Review Gate</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Partner changes family size or portions first</text>
+      <text x="16" y="90" font-size="12" fill="#28231F">• Auto-save detects stale ExpectedVersion →</text>
+      <text x="24" y="107" font-size="12" fill="#28231F">reads fresh baseline automatically</text>
+      <text x="16" y="129" font-size="12" fill="#6E645B">• Shows quiet inline “Updated from family</text>
+      <text x="24" y="146" font-size="12" fill="#6E645B">plan” or “Couldn’t save — retrying…”</text>
+    </g>
+
+    <!-- Guardrail 2 -->
+    <g transform="translate(468, 58)">
+      <rect x="0" y="0" width="424" height="176" rx="18" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.3" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">2 · REJECTED REINDEX FEEDBACK</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Visible Inline role=“alert”</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Network / 5xx rejection in Settings or</text>
+      <text x="24" y="89" font-size="12" fill="#28231F">RecipeDetailSheet never fails silently</text>
+      <rect x="16" y="106" width="392" height="50" rx="12" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.1"/>
+      <text x="28" y="128" font-size="12.5" font-weight="700" fill="#A44A37">! Couldn’t start reindex. Try again.</text>
+      <text x="28" y="146" font-size="12" fill="#6E645B">Reindex button remains enabled immediately</text>
+    </g>
+
+    <!-- Guardrail 3 -->
+    <g transform="translate(916, 58)">
+      <rect x="0" y="0" width="424" height="176" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">3 · DEMO MODE HONESTY</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#28231F" class="heading">Prepared Demo Isolation</text>
+      <text x="16" y="72" font-size="12" fill="#28231F">• Demo Mode keeps lexical docs ready</text>
+      <text x="24" y="89" font-size="12" fill="#28231F">and avoids external AI embedding calls</text>
+      <text x="16" y="112" font-size="12" fill="#6E645B">• Search index card explains Demo Mode</text>
+      <text x="24" y="129" font-size="12" fill="#6E645B">honestly rather than faking vector rebuilds</text>
+      <text x="16" y="152" font-size="12" font-weight="700" fill="#4E6E52">• Usual portions auto-save works in all modes</text>
+    </g>
+  </g>
+</svg>
