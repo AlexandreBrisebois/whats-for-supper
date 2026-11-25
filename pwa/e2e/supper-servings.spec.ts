@@ -47,29 +47,30 @@ test('Settings portions use persisted family size, preserve explicit five, and r
 }) => {
   const { section, read } = await settingsFixture(page);
   const automatic = section.getByTestId('usual-portions-automatic');
-  const input = section.getByTestId('usual-portions-input');
-  const save = section.getByTestId('save-usual-portions');
+  const display = section.getByTestId('usual-portions-display');
   await expect(automatic).toBeChecked();
-  await expect(input).toHaveValue('2');
+  await expect(display).toHaveText('2 portions');
+  await expect(section.getByTestId('save-usual-portions')).toHaveCount(0);
   await page.getByTestId('add-member-trigger').click();
   for (const name of ['Sam', 'Pat']) {
     await page.getByTestId('family-name-input').fill(name);
     await page.getByTestId('add-member-submit').click();
     await expect(page.getByTestId('family-name-input')).toHaveValue('');
   }
-  await expect(input).toHaveValue('4');
+  await expect(display).toHaveText('4 portions');
   await automatic.uncheck();
+  const input = section.getByTestId('usual-portions-input');
   await input.fill('5');
   const committed = page.waitForResponse(
     (response) =>
       response.request().method() === 'PUT' &&
       new URL(response.url()).pathname === '/api/schedule/servings'
   );
-  await save.click();
+  await input.blur();
   const response = await committed;
   expect(response.ok()).toBe(true);
   expect(response.request().postDataJSON()).toMatchObject({ defaultServings: 5, days: [] });
-  await expect(section.getByText('Saved', { exact: true })).toBeVisible();
+  await expect(section.getByText('Saved', { exact: true })).toHaveCount(0);
   await page.getByTestId('family-name-input').fill('Lee');
   await page.getByTestId('add-member-submit').click();
   await expect(page.getByTestId('family-name-input')).toHaveValue('');
@@ -79,10 +80,14 @@ test('Settings portions use persisted family size, preserve explicit five, and r
   await expect(automatic).not.toBeChecked();
   await expect(input).toHaveValue('5');
   const before = await read();
+  const resetCommitted = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname === '/api/schedule/servings'
+  );
   await automatic.check();
-  await expect(save).toBeEnabled();
-  await save.click();
-  await expect(section.getByText('Saved', { exact: true })).toBeVisible();
+  await resetCommitted;
+  await expect(display).toHaveText('5 portions');
   const after = await read();
   expect(after).toMatchObject({ defaultServingsSource: 'family', defaultServings: 5 });
   expect(after.version).not.toBe(before.version);
@@ -94,15 +99,19 @@ test('Settings portions retain invalid drafts and explicit values during roster 
   const { section, read } = await settingsFixture(page);
   await section.getByTestId('usual-portions-automatic').uncheck();
   const input = section.getByTestId('usual-portions-input');
-  const save = section.getByTestId('save-usual-portions');
   for (const value of ['0', '-1', '1.5', '2147483648']) {
     await input.fill(value);
     await expect(input).toHaveValue(value);
-    await expect(save).toBeDisabled();
+    await expect(section.getByRole('alert')).toBeVisible();
   }
   await input.fill('7');
-  await save.click();
-  await expect(section.getByText('Saved', { exact: true })).toBeVisible();
+  const firstSave = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname === '/api/schedule/servings'
+  );
+  await input.blur();
+  await firstSave;
   await page.route('**/api/family', async (route) =>
     route.request().method() === 'GET'
       ? route.fulfill({
@@ -118,8 +127,13 @@ test('Settings portions retain invalid drafts and explicit values during roster 
   await expect(input).toBeEnabled();
   await expect(section.getByRole('button', { name: 'Retry family list' })).toBeVisible();
   await input.fill('5');
-  await save.click();
-  await expect(section.getByText('Saved', { exact: true })).toBeVisible();
+  const secondSave = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname === '/api/schedule/servings'
+  );
+  await input.blur();
+  await secondSave;
   expect(await read()).toMatchObject({ defaultServingsSource: 'explicit', defaultServings: 5 });
 });
 
@@ -133,13 +147,15 @@ test('Settings portions reconcile a dropped acknowledgement without replaying a 
       writes++;
   });
   await section.getByTestId('usual-portions-automatic').uncheck();
-  await section.getByTestId('usual-portions-input').fill('5');
+  const input = section.getByTestId('usual-portions-input');
+  await input.fill('5');
   control.loseNextSaveReply();
-  await section.getByTestId('save-usual-portions').click();
-  // The lost reply is reconciled automatically: no manual Review gate.
-  await expect(section.getByText('Saved', { exact: true })).toBeVisible();
+  await input.blur();
+  // The lost reply is reconciled automatically: no manual Review gate, no routine Saved notice.
+  await expect.poll(async () => (await read()).defaultServings).toBe(5);
   await expect(section.getByRole('button', { name: 'Review current portions' })).toHaveCount(0);
-  await expect(section.getByTestId('usual-portions-input')).toHaveValue('5');
+  await expect(section.getByText('Saved', { exact: true })).toHaveCount(0);
+  await expect(input).toHaveValue('5');
   expect(await read()).toMatchObject({ defaultServingsSource: 'explicit', defaultServings: 5 });
   expect(writes).toBe(1);
 });
@@ -149,28 +165,33 @@ test('Settings portions protect a dirty baseline across a concurrent membership 
 }) => {
   const { section, read } = await settingsFixture(page);
   await section.getByTestId('usual-portions-automatic').uncheck();
-  await section.getByTestId('usual-portions-input').fill('7');
-  await page.getByTestId('add-member-trigger').click();
-  await page.getByTestId('family-name-input').fill('Concurrent member');
-  await page.getByTestId('add-member-submit').click();
-  await expect(page.getByTestId('family-name-input')).toHaveValue('');
+  const input = section.getByTestId('usual-portions-input');
+  await input.focus();
+  await input.fill('7');
+  await page.evaluate(async () => {
+    const response = await fetch('/api/family', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Concurrent member' }),
+    });
+    if (!response.ok) throw new Error(`add concurrent member ${response.status}`);
+    window.dispatchEvent(new Event('focus'));
+  });
   await expect(section.getByText('Current saved portions: 3 (Family size)')).toBeVisible();
   await expect(section.getByRole('button', { name: 'Review current portions' })).toHaveCount(0);
-  await expect(section.getByTestId('usual-portions-input')).toHaveValue('7');
-  await expect(section.getByTestId('save-usual-portions')).toBeEnabled();
+  await expect(input).toHaveValue('7');
   const current = await read();
   const committed = page.waitForResponse(
     (response) =>
       response.request().method() === 'PUT' &&
       new URL(response.url()).pathname === '/api/schedule/servings'
   );
-  await section.getByTestId('save-usual-portions').click();
+  await input.blur();
   expect((await committed).request().postDataJSON()).toMatchObject({
     expectedVersion: current.version,
     defaultServings: 7,
     days: [],
   });
-  await expect(section.getByText('Saved', { exact: true })).toBeVisible();
 });
 
 test('Settings portions late reads cannot replace the newest authoritative count', async ({
@@ -200,9 +221,9 @@ test('Settings portions late reads cannot replace the newest authoritative count
     });
     window.dispatchEvent(new Event('focus'));
   });
-  await expect(section.getByTestId('usual-portions-input')).toHaveValue('3');
+  await expect(section.getByTestId('usual-portions-display')).toHaveText('3 portions');
   release();
-  await expect(section.getByTestId('usual-portions-input')).toHaveValue('3');
+  await expect(section.getByTestId('usual-portions-display')).toHaveText('3 portions');
 });
 
 test('Settings portions retain the draft after a real mock optimistic conflict', async ({
@@ -210,7 +231,8 @@ test('Settings portions retain the draft after a real mock optimistic conflict',
 }) => {
   const { section } = await settingsFixture(page);
   await section.getByTestId('usual-portions-automatic').uncheck();
-  await section.getByTestId('usual-portions-input').fill('7');
+  const input = section.getByTestId('usual-portions-input');
+  await input.fill('7');
   let competed = false;
   await page.route('**/api/schedule/servings', async (route) => {
     if (route.request().method() !== 'PUT' || competed) return route.fallback();
@@ -236,14 +258,12 @@ test('Settings portions retain the draft after a real mock optimistic conflict',
     (response) =>
       response.status() === 409 && new URL(response.url()).pathname === '/api/schedule/servings'
   );
-  await section.getByTestId('save-usual-portions').click();
+  await input.blur();
   await conflict;
   await expect(section.getByRole('button', { name: 'Review current portions' })).toHaveCount(0);
-  await expect(section.getByTestId('usual-portions-input')).toHaveValue('7');
+  await expect(input).toHaveValue('7');
   await expect(section.getByText('Current saved portions: 5 (Your chosen total)')).toBeVisible();
   await expect(section.getByTestId('usual-portions-recovery')).toHaveClass(/bg-terracotta-50/);
-  // Let the shared Button finish its opacity/color transition before measuring contrast.
-  await page.waitForTimeout(500);
   await assertCookbookVisualA11y(page, {
     rootSelector: '[data-testid="usual-portions-section"]',
     contrastLevel: 'aa',
@@ -269,7 +289,7 @@ test('Settings portions retain the draft after a real mock optimistic conflict',
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '';
   });
-  await expect(section.getByTestId('save-usual-portions')).toBeEnabled();
+  await expect(input).toBeEnabled();
   await expect(section.getByText('Saved', { exact: true })).toHaveCount(0);
 });
 
@@ -286,13 +306,20 @@ test('Settings portions display an actual empty family as unavailable through th
     window.dispatchEvent(new Event('focus'));
   });
   expect(await read()).toMatchObject({ defaultServingsSource: 'family', defaultServings: null });
-  await expect(section.getByTestId('usual-portions-input')).toHaveValue('');
   await expect(
     section.getByText('Family size is unavailable. You can set usual portions.')
   ).toBeVisible();
   await section.getByTestId('usual-portions-automatic').uncheck();
   await section.getByTestId('usual-portions-input').fill('3');
-  await expect(section.getByTestId('save-usual-portions')).toBeEnabled();
+  const savedExplicit = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname === '/api/schedule/servings' &&
+      response.ok()
+  );
+  await section.getByTestId('usual-portions-input').blur();
+  await savedExplicit;
+  expect(await read()).toMatchObject({ defaultServingsSource: 'explicit', defaultServings: 3 });
 });
 
 for (const locale of ['en', 'fr'] as const) {
@@ -316,8 +343,6 @@ for (const locale of ['en', 'fr'] as const) {
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
         ).toBe(true);
-        await section.getByTestId('save-usual-portions').scrollIntoViewIfNeeded();
-        await section.getByTestId('save-usual-portions').click({ trial: true });
         await section.screenshot({ path: info.outputPath(`settings-${locale}-${width}.png`) });
         await section.getByTestId('usual-portions-automatic').check();
       }
@@ -422,8 +447,14 @@ async function configureUsualInSettings(page: Page, count: number) {
   await page.goto('/profile/settings');
   await page.getByTestId('usual-portions-automatic').uncheck();
   await page.getByTestId('usual-portions-input').fill(String(count));
-  await page.getByTestId('save-usual-portions').click();
-  await expect(page.getByTestId('save-usual-portions')).toBeDisabled();
+  const savedPortions = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname === '/api/schedule/servings' &&
+      response.ok()
+  );
+  await page.getByTestId('usual-portions-input').blur();
+  await savedPortions;
 }
 
 async function fixture(

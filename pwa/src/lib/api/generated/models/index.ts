@@ -42,6 +42,78 @@ export interface BulkImportTriggerResponseDto extends AdditionalDataHolder, Pars
    */
   queuedCount?: number | null;
 }
+export interface CaptureActivityItemDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The friendlyReason property
+   */
+  friendlyReason?: string | null;
+  /**
+   * The id property
+   */
+  id?: Guid | null;
+  /**
+   * The isReady property
+   */
+  isReady?: boolean | null;
+  /**
+   * The isSuspectedDuplicate property
+   */
+  isSuspectedDuplicate?: boolean | null;
+  /**
+   * The previewText property
+   */
+  previewText?: string | null;
+  /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+  /**
+   * The retryCount property
+   */
+  retryCount?: number | null;
+  /**
+   * The sourceType property
+   */
+  sourceType?: CaptureActivityItemDto_sourceType | null;
+  /**
+   * The sourceWorkflowId property
+   */
+  sourceWorkflowId?: string | null;
+  /**
+   * The stage property
+   */
+  stage?: CaptureActivityItemDto_stage | null;
+  /**
+   * The stepLabel property
+   */
+  stepLabel?: string | null;
+  /**
+   * The stepName property
+   */
+  stepName?: string | null;
+  /**
+   * The title property
+   */
+  title?: string | null;
+  /**
+   * The updatedAt property
+   */
+  updatedAt?: Date | null;
+  /**
+   * The workflowInstanceId property
+   */
+  workflowInstanceId?: Guid | null;
+}
+export type CaptureActivityItemDto_sourceType =
+  (typeof CaptureActivityItemDto_sourceTypeObject)[keyof typeof CaptureActivityItemDto_sourceTypeObject];
+export type CaptureActivityItemDto_stage =
+  (typeof CaptureActivityItemDto_stageObject)[keyof typeof CaptureActivityItemDto_stageObject];
+export interface CaptureActivityListResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The items property
+   */
+  items?: CaptureActivityItemDto[] | null;
+}
 export interface CaptureFailureClearResponse extends AdditionalDataHolder, Parsable {
   /**
    * The cleanupCommandId property
@@ -52,6 +124,50 @@ export interface CaptureFailureClearResponse extends AdditionalDataHolder, Parsa
    */
   cleared?: boolean | null;
 }
+export interface CaptureFailureDetailsDto extends AdditionalDataHolder, Parsable {
+  /**
+   * The errorMessage property
+   */
+  errorMessage?: string | null;
+  /**
+   * The failedStep property
+   */
+  failedStep?: string | null;
+  /**
+   * The friendlyReason property
+   */
+  friendlyReason?: string | null;
+  /**
+   * The lastFailedAt property
+   */
+  lastFailedAt?: Date | null;
+  /**
+   * The recipeId property
+   */
+  recipeId?: Guid | null;
+  /**
+   * The retryCount property
+   */
+  retryCount?: number | null;
+  /**
+   * The sourceType property
+   */
+  sourceType?: CaptureFailureDetailsDto_sourceType | null;
+  /**
+   * The sourceWorkflowId property
+   */
+  sourceWorkflowId?: string | null;
+  /**
+   * The stackTrace property
+   */
+  stackTrace?: string | null;
+  /**
+   * The workflowInstanceId property
+   */
+  workflowInstanceId?: Guid | null;
+}
+export type CaptureFailureDetailsDto_sourceType =
+  (typeof CaptureFailureDetailsDto_sourceTypeObject)[keyof typeof CaptureFailureDetailsDto_sourceTypeObject];
 export interface CaptureFailureDto extends AdditionalDataHolder, Parsable {
   /**
    * The createdAt property
@@ -77,6 +193,10 @@ export interface CaptureFailureDto extends AdditionalDataHolder, Parsable {
    * The id property
    */
   id?: Guid | null;
+  /**
+   * The isReady property
+   */
+  isReady?: boolean | null;
   /**
    * The lastFailedAt property
    */
@@ -165,6 +285,28 @@ export function createBulkImportTriggerResponseDtoFromDiscriminatorValue(
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CaptureActivityItemDto}
+ */
+// @ts-ignore
+export function createCaptureActivityItemDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoCaptureActivityItemDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CaptureActivityListResponse}
+ */
+// @ts-ignore
+export function createCaptureActivityListResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoCaptureActivityListResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {CaptureFailureClearResponse}
  */
 // @ts-ignore
@@ -172,6 +314,17 @@ export function createCaptureFailureClearResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoCaptureFailureClearResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CaptureFailureDetailsDto}
+ */
+// @ts-ignore
+export function createCaptureFailureDetailsDtoFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoCaptureFailureDetailsDto;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -773,6 +926,28 @@ export function createManagementBackfillSearchAcceptedResponseFromDiscriminatorV
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ManagementBackfillSearchRequest}
+ */
+// @ts-ignore
+export function createManagementBackfillSearchRequestFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoManagementBackfillSearchRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ManagementSearchStatusResponse}
+ */
+// @ts-ignore
+export function createManagementSearchStatusResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoManagementSearchStatusResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ManagementTaskAcceptedResponse}
  */
 // @ts-ignore
@@ -1187,6 +1362,17 @@ export function createRecipePurgeResponseFromDiscriminatorValue(
   parseNode: ParseNode | undefined
 ): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
   return deserializeIntoRecipePurgeResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RecipeReindexAcceptedResponse}
+ */
+// @ts-ignore
+export function createRecipeReindexAcceptedResponseFromDiscriminatorValue(
+  parseNode: ParseNode | undefined
+): (instance?: Parsable) => Record<string, (node: ParseNode) => void> {
+  return deserializeIntoRecipeReindexAcceptedResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1939,6 +2125,84 @@ export function deserializeIntoBulkImportTriggerResponseDto(
 }
 /**
  * The deserialization information for the current model
+ * @param CaptureActivityItemDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCaptureActivityItemDto(
+  captureActivityItemDto: Partial<CaptureActivityItemDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    friendlyReason: (n) => {
+      captureActivityItemDto.friendlyReason = n.getStringValue();
+    },
+    id: (n) => {
+      captureActivityItemDto.id = n.getGuidValue();
+    },
+    isReady: (n) => {
+      captureActivityItemDto.isReady = n.getBooleanValue();
+    },
+    isSuspectedDuplicate: (n) => {
+      captureActivityItemDto.isSuspectedDuplicate = n.getBooleanValue();
+    },
+    previewText: (n) => {
+      captureActivityItemDto.previewText = n.getStringValue();
+    },
+    recipeId: (n) => {
+      captureActivityItemDto.recipeId = n.getGuidValue();
+    },
+    retryCount: (n) => {
+      captureActivityItemDto.retryCount = n.getNumberValue();
+    },
+    sourceType: (n) => {
+      captureActivityItemDto.sourceType = n.getEnumValue<CaptureActivityItemDto_sourceType>(
+        CaptureActivityItemDto_sourceTypeObject
+      );
+    },
+    sourceWorkflowId: (n) => {
+      captureActivityItemDto.sourceWorkflowId = n.getStringValue();
+    },
+    stage: (n) => {
+      captureActivityItemDto.stage = n.getEnumValue<CaptureActivityItemDto_stage>(
+        CaptureActivityItemDto_stageObject
+      );
+    },
+    stepLabel: (n) => {
+      captureActivityItemDto.stepLabel = n.getStringValue();
+    },
+    stepName: (n) => {
+      captureActivityItemDto.stepName = n.getStringValue();
+    },
+    title: (n) => {
+      captureActivityItemDto.title = n.getStringValue();
+    },
+    updatedAt: (n) => {
+      captureActivityItemDto.updatedAt = n.getDateValue();
+    },
+    workflowInstanceId: (n) => {
+      captureActivityItemDto.workflowInstanceId = n.getGuidValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param CaptureActivityListResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCaptureActivityListResponse(
+  captureActivityListResponse: Partial<CaptureActivityListResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    items: (n) => {
+      captureActivityListResponse.items = n.getCollectionOfObjectValues<CaptureActivityItemDto>(
+        createCaptureActivityItemDtoFromDiscriminatorValue
+      );
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param CaptureFailureClearResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -1952,6 +2216,50 @@ export function deserializeIntoCaptureFailureClearResponse(
     },
     cleared: (n) => {
       captureFailureClearResponse.cleared = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param CaptureFailureDetailsDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCaptureFailureDetailsDto(
+  captureFailureDetailsDto: Partial<CaptureFailureDetailsDto> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    errorMessage: (n) => {
+      captureFailureDetailsDto.errorMessage = n.getStringValue();
+    },
+    failedStep: (n) => {
+      captureFailureDetailsDto.failedStep = n.getStringValue();
+    },
+    friendlyReason: (n) => {
+      captureFailureDetailsDto.friendlyReason = n.getStringValue();
+    },
+    lastFailedAt: (n) => {
+      captureFailureDetailsDto.lastFailedAt = n.getDateValue();
+    },
+    recipeId: (n) => {
+      captureFailureDetailsDto.recipeId = n.getGuidValue();
+    },
+    retryCount: (n) => {
+      captureFailureDetailsDto.retryCount = n.getNumberValue();
+    },
+    sourceType: (n) => {
+      captureFailureDetailsDto.sourceType = n.getEnumValue<CaptureFailureDetailsDto_sourceType>(
+        CaptureFailureDetailsDto_sourceTypeObject
+      );
+    },
+    sourceWorkflowId: (n) => {
+      captureFailureDetailsDto.sourceWorkflowId = n.getStringValue();
+    },
+    stackTrace: (n) => {
+      captureFailureDetailsDto.stackTrace = n.getStringValue();
+    },
+    workflowInstanceId: (n) => {
+      captureFailureDetailsDto.workflowInstanceId = n.getGuidValue();
     },
   };
 }
@@ -1982,6 +2290,9 @@ export function deserializeIntoCaptureFailureDto(
     },
     id: (n) => {
       captureFailureDto.id = n.getGuidValue();
+    },
+    isReady: (n) => {
+      captureFailureDto.isReady = n.getBooleanValue();
     },
     lastFailedAt: (n) => {
       captureFailureDto.lastFailedAt = n.getDateValue();
@@ -3387,6 +3698,48 @@ export function deserializeIntoManagementBackfillSearchAcceptedResponse(
 }
 /**
  * The deserialization information for the current model
+ * @param ManagementBackfillSearchRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoManagementBackfillSearchRequest(
+  managementBackfillSearchRequest: Partial<ManagementBackfillSearchRequest> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    force: (n) => {
+      managementBackfillSearchRequest.force = n.getBooleanValue() ?? false;
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param ManagementSearchStatusResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoManagementSearchStatusResponse(
+  managementSearchStatusResponse: Partial<ManagementSearchStatusResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    activeIndexingJobs: (n) => {
+      managementSearchStatusResponse.activeIndexingJobs = n.getNumberValue();
+    },
+    demoMode: (n) => {
+      managementSearchStatusResponse.demoMode = n.getBooleanValue();
+    },
+    enrichedRecipes: (n) => {
+      managementSearchStatusResponse.enrichedRecipes = n.getNumberValue();
+    },
+    searchableRecipes: (n) => {
+      managementSearchStatusResponse.searchableRecipes = n.getNumberValue();
+    },
+    totalReadyRecipes: (n) => {
+      managementSearchStatusResponse.totalReadyRecipes = n.getNumberValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
  * @param ManagementTaskAcceptedResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -4415,6 +4768,24 @@ export function deserializeIntoRecipePurgeResponse(
   return {
     purged: (n) => {
       recipePurgeResponse.purged = n.getBooleanValue();
+    },
+  };
+}
+/**
+ * The deserialization information for the current model
+ * @param RecipeReindexAcceptedResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRecipeReindexAcceptedResponse(
+  recipeReindexAcceptedResponse: Partial<RecipeReindexAcceptedResponse> | undefined = {}
+): Record<string, (node: ParseNode) => void> {
+  return {
+    message: (n) => {
+      recipeReindexAcceptedResponse.message = n.getStringValue();
+    },
+    queued: (n) => {
+      recipeReindexAcceptedResponse.queued = n.getBooleanValue();
     },
   };
 }
@@ -6820,6 +7191,34 @@ export interface ManagementBackfillSearchAcceptedResponse extends AdditionalData
    */
   message?: string | null;
 }
+export interface ManagementBackfillSearchRequest extends AdditionalDataHolder, Parsable {
+  /**
+   * The force property
+   */
+  force?: boolean | null;
+}
+export interface ManagementSearchStatusResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The activeIndexingJobs property
+   */
+  activeIndexingJobs?: number | null;
+  /**
+   * The demoMode property
+   */
+  demoMode?: boolean | null;
+  /**
+   * The enrichedRecipes property
+   */
+  enrichedRecipes?: number | null;
+  /**
+   * The searchableRecipes property
+   */
+  searchableRecipes?: number | null;
+  /**
+   * The totalReadyRecipes property
+   */
+  totalReadyRecipes?: number | null;
+}
 export interface ManagementTaskAcceptedResponse extends AdditionalDataHolder, Parsable {
   /**
    * The message property
@@ -7584,6 +7983,16 @@ export interface RecipePurgeResponse extends AdditionalDataHolder, Parsable {
    */
   purged?: boolean | null;
 }
+export interface RecipeReindexAcceptedResponse extends AdditionalDataHolder, Parsable {
+  /**
+   * The message property
+   */
+  message?: string | null;
+  /**
+   * The queued property
+   */
+  queued?: boolean | null;
+}
 export interface RecipeSearchCuisineOptionsDto extends AdditionalDataHolder, Parsable {
   /**
    * The all property
@@ -8222,6 +8631,63 @@ export function serializeBulkImportTriggerResponseDto(
 }
 /**
  * Serializes information the current object
+ * @param CaptureActivityItemDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCaptureActivityItemDto(
+  writer: SerializationWriter,
+  captureActivityItemDto: Partial<CaptureActivityItemDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!captureActivityItemDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('friendlyReason', captureActivityItemDto.friendlyReason);
+  writer.writeGuidValue('id', captureActivityItemDto.id);
+  writer.writeBooleanValue('isReady', captureActivityItemDto.isReady);
+  writer.writeBooleanValue('isSuspectedDuplicate', captureActivityItemDto.isSuspectedDuplicate);
+  writer.writeStringValue('previewText', captureActivityItemDto.previewText);
+  writer.writeGuidValue('recipeId', captureActivityItemDto.recipeId);
+  writer.writeNumberValue('retryCount', captureActivityItemDto.retryCount);
+  writer.writeEnumValue<CaptureActivityItemDto_sourceType>(
+    'sourceType',
+    captureActivityItemDto.sourceType
+  );
+  writer.writeStringValue('sourceWorkflowId', captureActivityItemDto.sourceWorkflowId);
+  writer.writeEnumValue<CaptureActivityItemDto_stage>('stage', captureActivityItemDto.stage);
+  writer.writeStringValue('stepLabel', captureActivityItemDto.stepLabel);
+  writer.writeStringValue('stepName', captureActivityItemDto.stepName);
+  writer.writeStringValue('title', captureActivityItemDto.title);
+  writer.writeDateValue('updatedAt', captureActivityItemDto.updatedAt);
+  writer.writeGuidValue('workflowInstanceId', captureActivityItemDto.workflowInstanceId);
+  writer.writeAdditionalData(captureActivityItemDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param CaptureActivityListResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCaptureActivityListResponse(
+  writer: SerializationWriter,
+  captureActivityListResponse: Partial<CaptureActivityListResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!captureActivityListResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeCollectionOfObjectValues<CaptureActivityItemDto>(
+    'items',
+    captureActivityListResponse.items,
+    serializeCaptureActivityItemDto
+  );
+  writer.writeAdditionalData(captureActivityListResponse.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param CaptureFailureClearResponse The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -8238,6 +8704,36 @@ export function serializeCaptureFailureClearResponse(
   writer.writeGuidValue('cleanupCommandId', captureFailureClearResponse.cleanupCommandId);
   writer.writeBooleanValue('cleared', captureFailureClearResponse.cleared);
   writer.writeAdditionalData(captureFailureClearResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param CaptureFailureDetailsDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCaptureFailureDetailsDto(
+  writer: SerializationWriter,
+  captureFailureDetailsDto: Partial<CaptureFailureDetailsDto> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!captureFailureDetailsDto || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('errorMessage', captureFailureDetailsDto.errorMessage);
+  writer.writeStringValue('failedStep', captureFailureDetailsDto.failedStep);
+  writer.writeStringValue('friendlyReason', captureFailureDetailsDto.friendlyReason);
+  writer.writeDateValue('lastFailedAt', captureFailureDetailsDto.lastFailedAt);
+  writer.writeGuidValue('recipeId', captureFailureDetailsDto.recipeId);
+  writer.writeNumberValue('retryCount', captureFailureDetailsDto.retryCount);
+  writer.writeEnumValue<CaptureFailureDetailsDto_sourceType>(
+    'sourceType',
+    captureFailureDetailsDto.sourceType
+  );
+  writer.writeStringValue('sourceWorkflowId', captureFailureDetailsDto.sourceWorkflowId);
+  writer.writeStringValue('stackTrace', captureFailureDetailsDto.stackTrace);
+  writer.writeGuidValue('workflowInstanceId', captureFailureDetailsDto.workflowInstanceId);
+  writer.writeAdditionalData(captureFailureDetailsDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -8260,6 +8756,7 @@ export function serializeCaptureFailureDto(
   writer.writeGuidValue('familyMemberId', captureFailureDto.familyMemberId);
   writer.writeStringValue('friendlyReason', captureFailureDto.friendlyReason);
   writer.writeGuidValue('id', captureFailureDto.id);
+  writer.writeBooleanValue('isReady', captureFailureDto.isReady);
   writer.writeDateValue('lastFailedAt', captureFailureDto.lastFailedAt);
   writer.writeStringValue('previewText', captureFailureDto.previewText);
   writer.writeGuidValue('recipeId', captureFailureDto.recipeId);
@@ -9508,6 +10005,46 @@ export function serializeManagementBackfillSearchAcceptedResponse(
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ManagementBackfillSearchRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeManagementBackfillSearchRequest(
+  writer: SerializationWriter,
+  managementBackfillSearchRequest: Partial<ManagementBackfillSearchRequest> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!managementBackfillSearchRequest || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeBooleanValue('force', managementBackfillSearchRequest.force ?? false);
+  writer.writeAdditionalData(managementBackfillSearchRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param ManagementSearchStatusResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeManagementSearchStatusResponse(
+  writer: SerializationWriter,
+  managementSearchStatusResponse: Partial<ManagementSearchStatusResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!managementSearchStatusResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeNumberValue('activeIndexingJobs', managementSearchStatusResponse.activeIndexingJobs);
+  writer.writeBooleanValue('demoMode', managementSearchStatusResponse.demoMode);
+  writer.writeNumberValue('enrichedRecipes', managementSearchStatusResponse.enrichedRecipes);
+  writer.writeNumberValue('searchableRecipes', managementSearchStatusResponse.searchableRecipes);
+  writer.writeNumberValue('totalReadyRecipes', managementSearchStatusResponse.totalReadyRecipes);
+  writer.writeAdditionalData(managementSearchStatusResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param ManagementTaskAcceptedResponse The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -10459,6 +10996,25 @@ export function serializeRecipePurgeResponse(
   }
   writer.writeBooleanValue('purged', recipePurgeResponse.purged);
   writer.writeAdditionalData(recipePurgeResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RecipeReindexAcceptedResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRecipeReindexAcceptedResponse(
+  writer: SerializationWriter,
+  recipeReindexAcceptedResponse: Partial<RecipeReindexAcceptedResponse> | undefined | null = {},
+  isSerializingDerivedType: boolean = false
+): void {
+  if (!recipeReindexAcceptedResponse || isSerializingDerivedType) {
+    return;
+  }
+  writer.writeStringValue('message', recipeReindexAcceptedResponse.message);
+  writer.writeBooleanValue('queued', recipeReindexAcceptedResponse.queued);
+  writer.writeAdditionalData(recipeReindexAcceptedResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12434,10 +12990,27 @@ export interface WorkflowTriggerResponseDto extends AdditionalDataHolder, Parsab
    */
   instanceId?: Guid | null;
 }
+export const CaptureActivityItemDto_sourceTypeObject = {
+  Url: 'url',
+  Photos: 'photos',
+  Description: 'description',
+} as const;
+export const CaptureActivityItemDto_stageObject = {
+  Failed: 'failed',
+  Preparing: 'preparing',
+  Indexing: 'indexing',
+  Enriching: 'enriching',
+  Enrichment_paused: 'enrichment_paused',
+} as const;
+export const CaptureFailureDetailsDto_sourceTypeObject = {
+  Url: 'url',
+  Photos: 'photos',
+  Description: 'description',
+} as const;
 export const CaptureFailureDto_sourceTypeObject = {
   Url: 'url',
   Photos: 'photos',
-  Describe: 'describe',
+  Description: 'description',
 } as const;
 export const CaptureFailureDto_statusObject = {
   Failed: 'failed',

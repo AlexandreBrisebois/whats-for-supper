@@ -81,6 +81,7 @@ import {
   regenerateHero,
   saveRecipeImportIssue,
   resolveRecipeImportIssue,
+  reindexRecipe,
   type RecipeImportIssueDraft,
   type Recipe,
 } from '@/lib/api/recipes';
@@ -209,6 +210,8 @@ export function RecipeDetailSheet({
     : recipe?.servings;
   const [loadError, setLoadError] = useState(false);
   const [moveError, setMoveError] = useState(false);
+  const [isReindexing, setIsReindexing] = useState(false);
+  const [reindexFeedback, setReindexFeedback] = useState<'queued' | 'error' | null>(null);
   const [readAttempt, setReadAttempt] = useState(0);
   const notesDraft = useRecipeNotesStore((state) => state.drafts[recipeId]);
   const notes = notesDraft?.text ?? '';
@@ -917,6 +920,20 @@ export function RecipeDetailSheet({
     }
   };
 
+  const handleReindexRecipe = async () => {
+    if (!recipe || isReindexing) return;
+    setIsReindexing(true);
+    setReindexFeedback(null);
+    try {
+      await reindexRecipe(recipe.id);
+      setReindexFeedback('queued');
+    } catch {
+      setReindexFeedback('error');
+    } finally {
+      setIsReindexing(false);
+    }
+  };
+
   const pollImportUntilTerminal = async (targetRecipeId: string, importId: string) => {
     if (watchedImportIdRef.current !== importId) return;
 
@@ -1228,6 +1245,8 @@ export function RecipeDetailSheet({
                         }
                       : undefined
                   }
+                  onReindex={recipe.isReady ? () => void handleReindexRecipe() : undefined}
+                  reindexing={isReindexing}
                   onMoveToBin={() => void handleMoveToBin()}
                   onReportImportIssue={openIssueReview}
                 />
@@ -1259,6 +1278,27 @@ export function RecipeDetailSheet({
             {t(
               'recipes.moveToBinError',
               'Could not move this recipe to the Recycle Bin. Try again.'
+            )}
+          </p>
+        )}
+        {reindexFeedback === 'queued' && (
+          <p
+            role="status"
+            data-testid="recipe-reindex-status"
+            className="mx-6 mt-4 rounded-2xl border border-garden-line bg-sage-50 px-4 py-3 text-sm font-bold text-garden-ink"
+          >
+            {t('recipes.reindexQueued', 'Queued for search reindex.')}
+          </p>
+        )}
+        {reindexFeedback === 'error' && (
+          <p
+            role="alert"
+            data-testid="recipe-reindex-error"
+            className="mx-6 mt-4 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm font-medium text-hearth-ink"
+          >
+            {t(
+              'recipes.reindexError',
+              'Could not queue search reindex for this recipe. Try again.'
             )}
           </p>
         )}

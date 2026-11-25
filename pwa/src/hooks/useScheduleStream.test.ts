@@ -51,6 +51,7 @@ const mockGetPending = vi.fn<
   () => { recipeId: string; name?: string; submittedAt: number } | undefined
 >(() => undefined);
 const mockRemovePending = vi.fn();
+const mockCaptureHydrate = vi.fn().mockResolvedValue(undefined);
 
 // libraryStore mock
 const mockPushNotification = vi.fn();
@@ -115,6 +116,7 @@ vi.mock('@/store/captureStore', () => ({
     getState: () => ({
       getPending: mockGetPending,
       removePending: mockRemovePending,
+      hydrate: mockCaptureHydrate,
     }),
   },
 }));
@@ -481,25 +483,17 @@ describe('fill_the_gap_invalidated event', () => {
 // ── recipe_ready event ───────────────────────────────────────────────────────
 
 describe('recipe_ready event', () => {
-  it('always calls markReady on gotoStore with recipeId', () => {
+  it('always calls markReady on gotoStore with recipeId and syncs captureStore without pushing a global toast', () => {
     const { source } = setupHook();
 
     source.emit('recipe_ready', { recipeId: 'recipe-xyz', name: 'Pasta', imageUrl: null });
 
     expect(mockMarkReady).toHaveBeenCalledWith('recipe-xyz');
-  });
-
-  it('does NOT call removePending or pushNotification when recipe is not in captureStore', () => {
-    mockGetPending.mockReturnValueOnce(undefined);
-    const { source } = setupHook();
-
-    source.emit('recipe_ready', { recipeId: 'recipe-xyz', name: 'Pasta', imageUrl: null });
-
-    expect(mockRemovePending).not.toHaveBeenCalled();
+    expect(mockCaptureHydrate).toHaveBeenCalled();
     expect(mockPushNotification).not.toHaveBeenCalled();
   });
 
-  it('calls removePending and pushNotification when recipe IS in captureStore', () => {
+  it('calls removePending and syncs captureStore when recipe IS in captureStore without pushing a global toast', () => {
     mockGetPending.mockReturnValueOnce({
       recipeId: 'recipe-xyz',
       name: 'My Recipe',
@@ -514,79 +508,51 @@ describe('recipe_ready event', () => {
     });
 
     expect(mockRemovePending).toHaveBeenCalledWith('recipe-xyz');
-    expect(mockPushNotification).toHaveBeenCalledWith({
-      recipeId: 'recipe-xyz',
-      name: 'Pasta Bake',
-      imageUrl: 'https://img.example.com/pasta.jpg',
-      type: 'ready',
-    });
+    expect(mockCaptureHydrate).toHaveBeenCalled();
+    expect(mockPushNotification).not.toHaveBeenCalled();
   });
+});
 
-  it('falls back to pending.name when SSE payload name is absent', () => {
-    mockGetPending.mockReturnValueOnce({
-      recipeId: 'recipe-xyz',
-      name: 'Pending Name',
-      submittedAt: Date.now(),
-    });
+// ── search-stage & step capture events ────────────────────────────────────────
+
+describe('search-stage and step progress events', () => {
+  it.each([
+    [
+      'recipe_searchable',
+      { recipeId: 'recipe-1', name: 'Lemon Pasta', isSuspectedDuplicate: false },
+    ],
+    ['recipe_enriched', { recipeId: 'recipe-1' }],
+    ['recipe_enrichment_failed', { recipeId: 'recipe-1' }],
+    [
+      'capture_step_updated',
+      {
+        workflowInstanceId: 'wf-1',
+        recipeId: 'recipe-1',
+        stepName: 'extract_recipe',
+        stepLabel: 'Extracting recipe',
+      },
+    ],
+  ])('hydrates captureStore on %s without launching global popups', (eventName, payload) => {
+    mockCaptureHydrate.mockClear();
     const { source } = setupHook();
 
-    source.emit('recipe_ready', { recipeId: 'recipe-xyz' });
+    source.emit(eventName, payload);
 
-    expect(mockPushNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Pending Name' })
-    );
-  });
-
-  it('forwards isSuspectedDuplicate flag from recipe_ready payload into libraryStore', () => {
-    mockGetPending.mockReturnValueOnce({
-      recipeId: 'recipe-dup',
-      name: 'Pending Pasta',
-      submittedAt: Date.now(),
-    });
-    const { source } = setupHook();
-
-    source.emit('recipe_ready', {
-      recipeId: 'recipe-dup',
-      name: 'Pasta Bake',
-      imageUrl: '/api/recipes/recipe-dup/hero',
-      isSuspectedDuplicate: true,
-    });
-
-    expect(mockPushNotification).toHaveBeenCalledWith({
-      recipeId: 'recipe-dup',
-      name: 'Pasta Bake',
-      imageUrl: '/api/recipes/recipe-dup/hero',
-      type: 'ready',
-      isSuspectedDuplicate: true,
-    });
+    expect(mockCaptureHydrate).toHaveBeenCalledTimes(1);
+    expect(mockPushNotification).not.toHaveBeenCalled();
   });
 });
 
 // ── recipe_failed event ──────────────────────────────────────────────────────
 
 describe('recipe_failed event', () => {
-  it('does NOT call removePending or pushNotification when recipe is not in captureStore', () => {
-    mockGetPending.mockReturnValueOnce(undefined);
-    const { source } = setupHook();
-
-    source.emit('recipe_failed', {
-      recipeId: 'recipe-fail',
-      workflowInstanceId: 'workflow-fail',
-      errorMessage: 'Timeout',
-      failedStep: 'image_generation',
-      partialData: null,
-    });
-
-    expect(mockRemovePending).not.toHaveBeenCalled();
-    expect(mockPushNotification).not.toHaveBeenCalled();
-  });
-
-  it('calls removePending and pushNotification with type failed when recipe IS in captureStore', () => {
+  it('syncs captureStore on recipe_failed without pushing global overlays', () => {
     mockGetPending.mockReturnValueOnce({
       recipeId: 'recipe-fail',
       name: 'My Dish',
       submittedAt: Date.now(),
     });
+    mockCaptureHydrate.mockClear();
     const { source } = setupHook();
 
     source.emit('recipe_failed', {
@@ -598,57 +564,8 @@ describe('recipe_failed event', () => {
     });
 
     expect(mockRemovePending).toHaveBeenCalledWith('recipe-fail');
-    expect(mockPushNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        recipeId: 'recipe-fail',
-        workflowInstanceId: 'workflow-fail',
-        type: 'failed',
-        errorMessage: 'Timeout',
-        failedStep: 'image_generation',
-      })
-    );
-  });
-
-  it('uses partialData.name when available for the notification name', () => {
-    mockGetPending.mockReturnValueOnce({
-      recipeId: 'recipe-fail',
-      name: 'Pending Name',
-      submittedAt: Date.now(),
-    });
-    const { source } = setupHook();
-
-    source.emit('recipe_failed', {
-      recipeId: 'recipe-fail',
-      workflowInstanceId: 'workflow-fail',
-      errorMessage: 'Error',
-      failedStep: 'synthesis',
-      partialData: { name: 'Partial Name' },
-    });
-
-    expect(mockPushNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Partial Name' })
-    );
-  });
-
-  it('falls back to pending.name when partialData has no name', () => {
-    mockGetPending.mockReturnValueOnce({
-      recipeId: 'recipe-fail',
-      name: 'Pending Name',
-      submittedAt: Date.now(),
-    });
-    const { source } = setupHook();
-
-    source.emit('recipe_failed', {
-      recipeId: 'recipe-fail',
-      workflowInstanceId: 'workflow-fail',
-      errorMessage: 'Error',
-      failedStep: 'synthesis',
-      partialData: null,
-    });
-
-    expect(mockPushNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Pending Name' })
-    );
+    expect(mockCaptureHydrate).toHaveBeenCalled();
+    expect(mockPushNotification).not.toHaveBeenCalled();
   });
 });
 

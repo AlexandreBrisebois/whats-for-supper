@@ -9,6 +9,7 @@ import { ROUTES } from '@/lib/constants/routes';
 import { useFamilyStore } from '@/store/familyStore';
 import { PreviewFeaturesSection } from '@/components/profile/PreviewFeaturesSection';
 import { UsualPortionsSection } from '@/components/profile/UsualPortionsSection';
+import { SearchIndexSection } from '@/components/profile/SearchIndexSection';
 
 interface SettingsPageContentProps {
   buildVersion?: string;
@@ -49,6 +50,8 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
         <FamilyManagement />
 
         <UsualPortionsSection />
+
+        <SearchIndexSection />
 
         <FailedCapturesSection />
 

@@ -285,8 +285,22 @@ export async function setupCommonRoutes(
     demoGeneration?: () => string;
     /** Complete this finite fixture after one snapshot; unrelated reconnects are not under test. */
     sseMode?: 'connected-once';
+    searchStatus?: {
+      totalReadyRecipes: number;
+      searchableRecipes: number;
+      enrichedRecipes: number;
+      activeIndexingJobs: number;
+      demoMode?: boolean;
+    };
   } = {}
 ) {
+  let searchStatusState = {
+    totalReadyRecipes: recoveryOptions.searchStatus?.totalReadyRecipes ?? 145,
+    searchableRecipes: recoveryOptions.searchStatus?.searchableRecipes ?? 142,
+    enrichedRecipes: recoveryOptions.searchStatus?.enrichedRecipes ?? 139,
+    activeIndexingJobs: recoveryOptions.searchStatus?.activeIndexingJobs ?? 0,
+    demoMode: recoveryOptions.searchStatus?.demoMode ?? Boolean(recoveryOptions.demoMode),
+  };
   let gotoItems: any[] = [];
   const browseRecipes = [
     builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, isReady: true, isDiscoverable: true }),
@@ -2841,12 +2855,63 @@ export async function setupCommonRoutes(
     });
   });
 
+  // GET /api/management/search-status
+  await page.route('**/api/management/search-status', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    await fulfill(route, {
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(searchStatusState),
+    });
+  });
+
   // POST /api/management/backfill-search
   await page.route('**/api/management/backfill-search', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    let force = false;
+    try {
+      const body = route.request().postDataJSON() as { force?: boolean } | null;
+      force = Boolean(body?.force);
+    } catch {
+      force = false;
+    }
+    const delta = force
+      ? searchStatusState.totalReadyRecipes
+      : Math.max(0, searchStatusState.totalReadyRecipes - searchStatusState.enrichedRecipes);
+    searchStatusState = {
+      ...searchStatusState,
+      activeIndexingJobs: searchStatusState.activeIndexingJobs + delta,
+    };
     await fulfill(route, {
       status: 202,
       contentType: 'application/json',
       body: JSON.stringify({ message: 'Search index backfill triggered in the background.' }),
+    });
+  });
+
+  // POST /api/recipes/{id}/reindex
+  await page.route('**/api/recipes/*/reindex', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const id = route.request().url().split('/api/recipes/')[1]?.split('/')[0];
+    const match = browseRecipes.find((r) => r.id === id);
+    if (!match) {
+      return fulfill(route, {
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Recipe not found.' }),
+      });
+    }
+    if (!match.isReady) {
+      return fulfill(route, {
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Recipe is not ready for search indexing.' }),
+      });
+    }
+    await fulfill(route, {
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'Recipe queued for search reindex.', queued: true }),
     });
   });
 
@@ -3164,6 +3229,19 @@ export async function setupCommonRoutes(
     } else await route.fallback();
   });
 
+  // GET /api/captures/activity
+  await page.route('**/api/captures/activity', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+    await fulfill(route, {
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { items: [] } }),
+    });
+  });
+
   // GET /api/captures/failures (Task 18)
   await page.route('**/api/captures/failures', async (route) => {
     if (route.request().method() !== 'GET') {
@@ -3174,6 +3252,34 @@ export async function setupCommonRoutes(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { items: [] } }),
+    });
+  });
+
+  // GET /api/captures/failures/*/details
+  await page.route('**/api/captures/failures/*/details', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+    const parts = new URL(route.request().url()).pathname.split('/');
+    const workflowInstanceId = parts[parts.length - 2] || MOCK_IDS.CAPTURE_FAILURE_URL;
+    await fulfill(route, {
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          workflowInstanceId,
+          recipeId: null,
+          sourceWorkflowId: 'url-import',
+          sourceType: 'url',
+          failedStep: 'extract_recipe',
+          friendlyReason: "Couldn't read enough recipe details from that web page.",
+          errorMessage: 'Upstream extraction timed out',
+          stackTrace: 'at ExtractRecipeProcessor.ExecuteAsync()',
+          retryCount: 0,
+          lastFailedAt: FIXED_E2E_TIMESTAMP,
+        },
+      }),
     });
   });
 

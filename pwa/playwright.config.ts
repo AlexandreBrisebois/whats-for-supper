@@ -44,7 +44,16 @@ export default defineConfig({
         ['json', { outputFile: 'test-results/results.json' }],
         ['github'],
       ]
-    : [['html', { open: 'on-failure' }], ['list']],
+    : [
+        [
+          'html',
+          {
+            open:
+              (process.env.PLAYWRIGHT_HTML_OPEN as 'always' | 'never' | 'on-failure') || 'never',
+          },
+        ],
+        ['list'],
+      ],
 
   use: {
     // All tests hit the local Next.js dev server

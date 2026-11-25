@@ -69,8 +69,14 @@ async function fixture(
   await page.goto('/profile/settings');
   await page.getByTestId('usual-portions-automatic').uncheck();
   await page.getByTestId('usual-portions-input').fill('4');
-  await page.getByTestId('save-usual-portions').click();
-  await expect(page.getByTestId('save-usual-portions')).toBeDisabled();
+  const savedPortions = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname === '/api/schedule/servings' &&
+      response.ok()
+  );
+  await page.getByTestId('usual-portions-input').blur();
+  await savedPortions;
   await page.goto('/planner');
   await page.getByTestId('at-the-table-mode').click();
   await page.getByTestId('portion-input-2026-05-08').fill('6');

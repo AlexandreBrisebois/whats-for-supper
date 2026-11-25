@@ -816,7 +816,40 @@ test.describe('Recipe import issue reporting', () => {
       });
     });
 
-    // 1. Entry via duplicate completion toast -> Keep both recipes
+    let sseReleased = false;
+    await page.route('**/api/captures/activity', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: sseReleased
+              ? [
+                  {
+                    id: newRecipeId,
+                    workflowInstanceId: null,
+                    recipeId: newRecipeId,
+                    stage: 'enriching',
+                    title: 'Weeknight Carbonara',
+                    sourceWorkflowId: 'url-import',
+                    sourceType: 'url',
+                    stepName: null,
+                    stepLabel: null,
+                    previewText: null,
+                    friendlyReason: null,
+                    retryCount: 0,
+                    isReady: true,
+                    isSuspectedDuplicate: true,
+                    updatedAt: '2026-11-24T12:00:00Z',
+                  },
+                ]
+              : [],
+          },
+        }),
+      })
+    );
+
+    // 1. Entry via Capture Activity Sheet suspected-duplicate link -> Keep both recipes
     await page.goto('/home');
     await page.waitForFunction(() => Boolean((window as any).__captureStore));
     await page.evaluate((id) => {
@@ -825,11 +858,15 @@ test.describe('Recipe import issue reporting', () => {
         name: 'Weeknight Carbonara',
       });
     }, newRecipeId);
+    sseReleased = true;
     releaseSse();
-    await expect(page.getByText('Possible duplicate · Tap to review')).toBeVisible({
-      timeout: 15_000,
-    });
-    await page.getByRole('button', { name: 'View Weeknight Carbonara' }).click();
+    const activityBar = page.getByTestId('capture-activity-bar');
+    await expect(activityBar).toContainText('Searchable · Still enriching', { timeout: 15_000 });
+    await activityBar.click();
+    await expect(page.getByTestId('capture-activity-sheet')).toBeVisible();
+    const dupLink = page.getByTestId(`activity-recipe-link-${newRecipeId}`);
+    await expect(dupLink).toContainText('Saved · Possible duplicate — tap to review');
+    await dupLink.click();
     await expect(page.getByTestId('paired-duplicate-review-sheet')).toBeVisible({
       timeout: 15_000,
     });

@@ -56,31 +56,36 @@ Mounting failed-capture management SHALL request GET `/api/captures/failures`. T
 
 ### Requirement: List active paused capture failures in update order
 
-A successful failure list SHALL include paused `url-import` and `recipe-import` workflows having a failed task, ordered by workflow update time descending. It SHALL exclude other workflow types and workflows without that paused-failed combination. Failure identity SHALL be the workflow-instance identity, distinct from an associated recipe identity.
+A successful failure list SHALL include paused or failed `url-import`, `recipe-import`, and `goto-synthesis` workflows having a failed task, ordered by workflow update time descending. It SHALL exclude other workflow types and workflows without a failed task. Failure identity SHALL be the workflow-instance identity, distinct from an associated recipe identity.
 
 #### Scenario: Eligible capture failures exist
 
-- **WHEN** multiple eligible capture workflows have distinct update times
-- **THEN** their records are returned newest workflow update first with id equal to workflowInstanceId
+- **WHEN** multiple eligible `url-import`, `recipe-import`, and `goto-synthesis` workflows have distinct update times and failed tasks
+- **THEN** their records are returned newest workflow update first with id equal to `workflowInstanceId` and `sourceType` reflecting `url`, `photos`, or `description`
 
 #### Scenario: Scheduled or unrelated work exists
 
-- **WHEN** work is pending or processing with a scheduled task, or a paused failed workflow has another workflow type
+- **WHEN** work is pending or processing with a scheduled task, or a paused or failed workflow has another workflow type
 - **THEN** that work is absent from active failed captures
 
 ### Requirement: Present friendly capture-failure guidance without raw diagnostics
 
-Each loaded failure row SHALL display its friendly reason, optional nonempty source preview, Retry and an accessible Clear failed capture action. List responses SHALL omit raw task error messages and stack traces. Acquisition failures SHALL receive generic import retry guidance rather than a diagnosis inferred from private errors. Saved URL captures whose import has not started SHALL instead explain that saved state and offer Retry.
+Each failure row SHALL display a step-specific friendly reason, optional preview, and one row with `RotateCcw` + `Retry`, a `48 × 48 CSS px` `Copy` icon, and a `48 × 48 CSS px` `Trash2` button. List responses SHALL omit raw errors and stack traces; `Copy` SHALL fetch diagnostics on demand, copy to the clipboard, and show neutral `Details copied` text without green styling or checkmarks. Saved unstarted URL captures SHALL explain that state and offer `Retry`.
 
 #### Scenario: Display a returned failure
 
-- **WHEN** a nonempty list is loaded with a failure's friendly reason and preview
-- **THEN** its row shows both values and Retry and Clear controls
+- **WHEN** a nonempty list is loaded with a failure's step-specific friendly reason and preview
+- **THEN** its row displays both text values and the single 3-control row (`Retry` with `RotateCcw`, `Copy` icon button, and `Trash2` icon button) without inline raw stack traces
 
 #### Scenario: Stored failure contains private diagnostics
 
 - **WHEN** an eligible failed task has a stored error and stack trace
-- **THEN** the response provides generic friendly guidance without those raw diagnostics
+- **THEN** `GET /api/captures/failures` and `GET /api/captures/activity` provide step-specific friendly guidance without those raw diagnostics
+
+#### Scenario: Copy technical diagnostics on demand
+
+- **WHEN** a person activates the `48 × 48 CSS px` `Copy` icon button on a failed capture row
+- **THEN** the client fetches diagnostic details via `GET /api/captures/failures/{id}/details`, copies the formatted step, error, stack trace, and workflow/recipe IDs to the clipboard, and surfaces a quiet neutral `Details copied` status line below the row without green styling or checkmarks
 
 ### Requirement: Address capture retry to the loaded workflow failure
 
@@ -127,31 +132,31 @@ For an eligible failed acquisition task, successful retry persistence SHALL queu
 
 ### Requirement: Confirm and lock failed-capture clearing
 
-Activating a row's Clear icon SHALL reveal an inline confirmation (`bg-white border-hearth-line`, never `window.confirm`) with localized consequence copy, `Keep` (`secondary`, left), and `Clear capture` (`danger` blush with trash icon, right) before sending `DELETE /api/captures/failures/{id}`. Activating `Keep` SHALL dismiss without sending a request. Accepting `Clear capture` SHALL disable Clear for that row until settled, without locking Retry or coordinating concurrent requests.
+Activating a row's trash icon SHALL open inline confirmation (`bg-white border-hearth-line`, never `window.confirm`) with consequence copy, `Cancel` left, and `Delete` (danger blush with trash icon, when `!isReady`) or `Dismiss` (danger blush, when `isReady`) right before `DELETE /api/captures/failures/{id}`. `Cancel` SHALL dismiss without sending a request; confirming SHALL disable confirmation controls while awaiting completion without locking `Retry`.
 
 #### Scenario: Cancel clear confirmation
 
-- **WHEN** a person activates a row's Clear trigger and then activates `Keep`
-- **THEN** the row returns to its normal `Retry` and Clear controls without invoking `window.confirm` and no `DELETE` request is sent
+- **WHEN** a person activates a row's trash trigger and then activates `Cancel`
+- **THEN** the row returns to its normal `Retry`, `Copy`, and `Trash2` controls without invoking `window.confirm` and no `DELETE` request is sent
 
 #### Scenario: Confirm clear and wait
 
-- **WHEN** a person activates `Clear capture` in the inline confirmation row
-- **THEN** `DELETE` targets the failure ID and that row's Clear confirmation controls are disabled while awaiting its result
+- **WHEN** a person activates `Delete` (or `Dismiss` for an already-published recipe) in the inline confirmation row
+- **THEN** `DELETE` targets the failure ID and that row's confirmation controls are disabled while awaiting its result
 
 ### Requirement: Apply clear acknowledgement to the loaded list
 
-When Clear resolves successfully, the mounted list SHALL remove that row and clear its action error. Removing the last row SHALL hide the section. The UI SHALL NOT wait for queued residue cleanup or observe its command before removing the row.
+When `Delete` or `Dismiss` resolves successfully, the mounted list SHALL remove that row and clear its action error. Removing the last row in Settings SHALL hide the section; removing the final item in the Capture Activity Sheet when no active or enriching items remain SHALL close the sheet back to `/home` without rendering an empty screen or waiting for queued cleanup.
 
 #### Scenario: Clear one of multiple rows
 
-- **WHEN** a clear request resolves successfully while other rows remain
+- **WHEN** a delete request resolves successfully while other rows remain
 - **THEN** only the targeted row is removed from the loaded list
 
 #### Scenario: Clear the final row
 
-- **WHEN** clear resolves successfully for the final loaded row
-- **THEN** the row and failed-capture section disappear without waiting for background cleanup
+- **WHEN** delete resolves successfully for the final loaded row
+- **THEN** Settings hides the failed-capture section, and the Capture Activity Sheet closes cleanly back to `/home` when no active or enriching items remain without waiting for background cleanup or displaying an empty `All caught up` view
 
 ### Requirement: Retain failed-capture rows after rejected clear
 
@@ -183,22 +188,22 @@ Successful clearing of an eligible failed capture SHALL remove its workflow and 
 
 ### Requirement: Protect usable recipe content during failed-capture cleanup
 
-Clear SHALL soft-delete associated unfinished recipe residue only when it is neither discoverable nor named with images or synthesized content. Queued cleanup SHALL recheck that same safety condition before removing recipe storage and the recipe record. Safe content SHALL be retained even though its failed workflow can be cleared. This SHALL NOT define manual issue resolution or ordinary Recycle Bin purge.
+Clear SHALL soft-delete associated unfinished recipe residue whenever `recipe.IsReady` is false and no human `readyToReview` report is preserved. Queued cleanup SHALL recheck that same condition before removing the recipe directory on disk and recipe record from the database, while retaining published (`IsReady == true`) and reviewed recipes.
 
 #### Scenario: Clear unfinished residue
 
-- **WHEN** clear succeeds for an associated recipe failing the usable-content safety condition
+- **WHEN** delete succeeds for an associated recipe with `IsReady == false` (even if partial ingredients, metadata, name, or images were persisted before failure)
 - **THEN** that recipe is soft-deleted with failed-capture clear provenance and discoverability false while its storage awaits cleanup
 
 #### Scenario: Cleanup still finds unfinished residue
 
-- **WHEN** the queued consumer executes and the associated recipe still fails the safety condition
-- **THEN** it removes any existing recipe directory recursively and removes the recipe record, recording the outcome when persistence succeeds
+- **WHEN** the queued consumer executes and the associated recipe still has `IsReady == false`
+- **THEN** it removes any existing recipe directory recursively and removes the recipe record from the database, recording the outcome when persistence succeeds
 
 #### Scenario: Content is usable at clear or cleanup
 
-- **WHEN** the associated recipe is discoverable or has a nonblank name with images or synthesized content
-- **THEN** clear retains that recipe and cleanup skips deleting it if the condition still holds when checked
+- **WHEN** the associated recipe has `IsReady == true` or a preserved `readyToReview` correction
+- **THEN** dismiss retains that recipe and cleanup skips deleting it if that condition holds when checked
 
 ### Requirement: Distinguish subsequent failure reads from stale mounted state
 
@@ -306,18 +311,27 @@ Retry of saved-but-not-started URL capture SHALL initialize acquisition on the e
 
 ### Requirement: Keep failed-capture controls readable and touch-accessible
 
-Failed-capture rows in Settings SHALL use sentence-case headings and preview text of at least `12 CSS px`, Family Cookbook contrast, and `>= 48 CSS px` touch targets. Each row SHALL place `Retry` (`flex-1` primary Hearth) on the left and the `48 × 48 CSS px` blush-danger Clear trash button on the trailing right; inline confirmation SHALL place `Keep` on the left and danger-blush `Clear capture` on the right.
+Failed-capture rows in the Capture Activity Sheet and Settings SHALL use sentence-case text `>= 12 CSS px`, Family Cookbook dual-mode contrast, and `>= 48 CSS px` touch targets. Each row SHALL render `RotateCcw` + `Retry` (`flex-1`), a `48 × 48 CSS px` `Copy` icon button, and a `48 × 48 CSS px` `Trash2` button; inline confirmation SHALL place `Cancel` left and `Trash2` + `Delete` (or `Dismiss` for `isReady`) right.
 
 #### Scenario: Household member reviews or clears a failed capture on mobile
 
-- **WHEN** Settings displays one or more paused capture failures on viewports down to `320 CSS px`
-- **THEN** section labels, friendly reasons, and preview snippets render at `>= 12 CSS px`, `Retry` fills the primary left span separated from the trailing `48 × 48 CSS px` Clear button, and activating Clear reveals `>= 48 CSS px` `Keep` (left) and `Clear capture` (right) controls without horizontal overflow
+- **WHEN** the Capture Activity Sheet or Settings displays one or more capture failures on viewports down to `320 CSS px`
+- **THEN** section labels, friendly reasons, and preview snippets render cleanly (`>= 12 CSS px`), the single row keeps `RotateCcw` + `Retry`, `Copy` (`48 × 48 CSS px`), and `Trash2` (`48 × 48 CSS px`) separated without overflow, and activating `Trash2` reveals `>= 48 CSS px` `Cancel` (left) and `Trash2` + `Delete`/`Dismiss` (right) controls
 
-### Requirement: Present active session failure banners with dual-mode contrast and localization
+### Requirement: Serve household capture activity feed
 
-Active session capture-failure banners (`RecipeFailureBanner`) SHALL render as Era 3 Hearth recovery cards (`bg-terracotta-50 border-hearth-line`, no `border-l-4` stripe or duplicate close icon), adapt to Standard AA and High Contrast AAA roles, show localized EN/FR copy without em-dashes, keep `Retry` (primary) and single `Dismiss` (secondary) targets at `>= 48 × 48 CSS px` with visible focus, and honor reduced motion.
+The system SHALL provide `GET /api/captures/activity` returning active, lexical-indexed-enriching, enrichment-paused, and failed capture workflows across `recipe-import`, `url-import`, and `goto-synthesis` for the household so Home and the Capture Activity Sheet survive reloads and sync across devices.
 
-#### Scenario: Active session failure banner renders in Standard and High Contrast modes
+#### Scenario: Reload or secondary household device hydrates activity
 
-- **WHEN** an active session `recipe_failed` banner is displayed under French or English locale in either `standard` or `high` contrast mode
-- **THEN** it renders as a single-dismiss Hearth recovery card without a left-border stripe or duplicate `X` button, its localized copy contains no em-dashes, its text, borders, and `Retry` / `Dismiss` controls meet AA (`standard`) or AAA (`high`) contrast ratios with `>= 48 × 48 CSS px` targets and visible `focus-visible` outlines, and entry/exit motion honors `prefers-reduced-motion: reduce`
+- **WHEN** one household device submits captures and another device or refreshed browser tab loads `/home`
+- **THEN** `GET /api/captures/activity` returns the current active, indexing, enriching, enrichment-paused, and failed items so Home displays the accurate Capture Activity Bar without relying on tab-local memory
+
+### Requirement: Retry paused search enrichment without destructive clear
+
+When a recipe is saved and lexically searchable (`IndexStatus == "ready"`) but vector enrichment failed (`EmbeddingStatus == "failed"`), the Capture Activity Sheet SHALL render a tappable Sunlight card (`bg-ochre-50 border-sunlight-line text-sunlight-ink`, `ChevronRight` to open the recipe) labeled `Searchable · Enrichment paused` with a single `RefreshCw` + `Retry enrichment` action (`>= 48 CSS px`), without trash or delete controls.
+
+#### Scenario: Enrichment fails after lexical index succeeds
+
+- **WHEN** `SearchIndexWorkflow` persists `IndexStatus == "ready"` and `EmbeddingStatus == "failed"`
+- **THEN** the Capture Activity Sheet displays the tappable `Searchable · Enrichment paused` card (`ChevronRight` to open the recipe) with `RefreshCw` + `Retry enrichment` (`>= 48 CSS px`) and omits destructive delete controls

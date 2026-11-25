@@ -2,6 +2,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeApi.Data;
+using RecipeApi.Dto;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
 using RecipeApi.Workflow;
@@ -267,10 +269,110 @@ public class SearchIndexWorkflowTests : IAsyncLifetime
         Assert.Null(doc.EmbeddingFingerprint);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_PublishesSearchableAndEnrichedEvents_InOrder()
+    {
+        var recipe = BuildRecipe("Garlic Butter Salmon");
+        await SeedDocumentAsync(recipe);
+        var publisher = new FakeScheduleEventPublisher();
+        var service = new SearchIndexWorkflow(
+            new RecipeApi.Services.SystemClock(),
+            _db,
+            new FakeEmbeddingProvider(),
+            null,
+            new NullSearchTelemetry(),
+            publisher: publisher);
+
+        var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe);
+        var task = new WorkflowTask
+        {
+            Payload = JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["recipeId"] = recipe.Id.ToString(),
+                ["fingerprint"] = fingerprint,
+            }),
+        };
+
+        await service.ExecuteAsync(task, CancellationToken.None);
+
+        Assert.Equal(["recipe_searchable", "recipe_enriched"], publisher.Events);
+        Assert.Equal(recipe.Id, Assert.Single(publisher.SearchableRecipeIds));
+        Assert.Equal(recipe.Id, Assert.Single(publisher.EnrichedRecipeIds));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PublishesSearchableThenEnrichmentFailed_WhenEmbeddingFails()
+    {
+        var recipe = BuildRecipe("Lemon Herb Chicken");
+        await SeedDocumentAsync(recipe);
+        var publisher = new FakeScheduleEventPublisher();
+        var service = new SearchIndexWorkflow(
+            new RecipeApi.Services.SystemClock(),
+            _db,
+            new FailingEmbeddingProvider(),
+            null,
+            new NullSearchTelemetry(),
+            publisher: publisher);
+
+        var task = new WorkflowTask
+        {
+            Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }),
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.ExecuteAsync(task, CancellationToken.None));
+
+        var doc = await _db.RecipeSearchDocuments.FindAsync(recipe.Id);
+        await _db.Entry(doc!).ReloadAsync();
+        Assert.Equal("ready", doc!.IndexStatus);
+        Assert.Equal("failed", doc.EmbeddingStatus);
+        Assert.Equal(["recipe_searchable", "recipe_enrichment_failed"], publisher.Events);
+        Assert.Equal(recipe.Id, Assert.Single(publisher.EnrichmentFailedRecipeIds));
+    }
+
     private sealed class EmptyEmbeddingProvider : IEmbeddingProvider
     {
         public Task<float[]> GenerateAsync(string text, CancellationToken ct = default) =>
             Task.FromResult(Array.Empty<float>());
+    }
+
+    private sealed class FakeScheduleEventPublisher : IScheduleEventPublisher
+    {
+        public List<string> Events { get; } = [];
+        public List<Guid> SearchableRecipeIds { get; } = [];
+        public List<Guid> EnrichedRecipeIds { get; } = [];
+        public List<Guid> EnrichmentFailedRecipeIds { get; } = [];
+
+        public Task PublishSlotUpdatedAsync(DateOnly date, ScheduleRecipeDto? recipe, int status, string? excludeConnectionId = null, NonCookingPlanDto? nonCooking = null, Guid? occurrenceId = null) => Task.CompletedTask;
+        public Task PublishWeekUpdatedAsync(ScheduleDays schedule, string? excludeConnectionId = null, int? echoSeq = null) => Task.CompletedTask;
+        public Task PublishVoteUpdatedAsync(Guid recipeId, int voteCount, string? excludeConnectionId = null) => Task.CompletedTask;
+        public Task PublishSmartDefaultsUpdatedAsync(int weekOffset, SmartDefaultsDto defaults, string? excludeConnectionId = null) => Task.CompletedTask;
+        public Task PublishFillTheGapInvalidatedAsync(int weekOffset, DateOnly weekStartDate, string? excludeConnectionId = null) => Task.CompletedTask;
+        public Task PublishAllSuggestionsInvalidatedAsync() => Task.CompletedTask;
+        public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null, bool isSuspectedDuplicate = false) => Task.CompletedTask;
+        public Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null) => Task.CompletedTask;
+        public Task PublishGroceryUpdatedAsync(int weekOffset, Dictionary<string, bool> groceryState, DateOnly weekStartDate, string? excludeConnectionId = null) => Task.CompletedTask;
+
+        public Task PublishRecipeSearchableAsync(Guid recipeId, string name, bool isSuspectedDuplicate = false, string? excludeConnectionId = null)
+        {
+            Events.Add("recipe_searchable");
+            SearchableRecipeIds.Add(recipeId);
+            return Task.CompletedTask;
+        }
+
+        public Task PublishRecipeEnrichedAsync(Guid recipeId, string? excludeConnectionId = null)
+        {
+            Events.Add("recipe_enriched");
+            EnrichedRecipeIds.Add(recipeId);
+            return Task.CompletedTask;
+        }
+
+        public Task PublishRecipeEnrichmentFailedAsync(Guid recipeId, string? excludeConnectionId = null)
+        {
+            Events.Add("recipe_enrichment_failed");
+            EnrichmentFailedRecipeIds.Add(recipeId);
+            return Task.CompletedTask;
+        }
     }
 
     // ── Test doubles ──────────────────────────────────────────────────────────

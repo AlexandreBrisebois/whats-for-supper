@@ -74,15 +74,74 @@ public class ManagementController(
     }
 
     /// <summary>
+    /// GET /api/management/search-status — return search index health counts across ready recipes.
+    /// </summary>
+    [HttpGet("search-status")]
+    public async Task<IActionResult> GetSearchStatus(CancellationToken ct)
+    {
+        var readyRecipes = db.Recipes
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(r => r.IsReady && r.DeletedAt == null);
+
+        var totalReadyRecipes = await readyRecipes.CountAsync(ct);
+
+        var sidecars =
+            from recipe in readyRecipes
+            join doc in db.RecipeSearchDocuments.AsNoTracking() on recipe.Id equals doc.RecipeId
+            select new { doc.IndexStatus, doc.EmbeddingStatus };
+
+        var searchableRecipes = await sidecars.CountAsync(d => d.IndexStatus == "ready", ct);
+        var enrichedRecipes = await sidecars.CountAsync(d => d.EmbeddingStatus == "ready", ct);
+        var activeIndexingJobs = await db.WorkflowInstances.AsNoTracking()
+            .CountAsync(i => i.WorkflowId == "index-recipe-search"
+                && (i.Status == WorkflowStatus.Pending || i.Status == WorkflowStatus.Processing), ct);
+
+        return Ok(new
+        {
+            totalReadyRecipes,
+            searchableRecipes,
+            enrichedRecipes,
+            activeIndexingJobs,
+            demoMode = demoModeOptions.Enabled,
+        });
+    }
+
+    /// <summary>
     /// POST /api/management/backfill-search — trigger a search index backfill.
     /// </summary>
     [HttpPost("backfill-search")]
     public async Task<IActionResult> BackfillSearch()
     {
+        var force = false;
+        if (Request.HasJsonContentType())
+        {
+            using var reader = new StreamReader(Request.Body);
+            var raw = await reader.ReadToEndAsync(HttpContext.RequestAborted);
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                try
+                {
+                    var body = JsonSerializer.Deserialize<BackfillSearchRequest>(raw, JsonDefaults.CamelCase);
+                    force = body?.Force == true;
+                }
+                catch (JsonException)
+                {
+                    return BadRequest(new { message = "Invalid JSON payload." });
+                }
+            }
+        }
+
+        var parameters = force
+            ? new Dictionary<string, string> { ["force"] = "true" }
+            : new Dictionary<string, string>();
+
         // Persist acceptance while the request still owns its mutation lease.
-        await orchestrator.TriggerAsync("search-reconciliation", []);
+        await orchestrator.TriggerAsync("search-reconciliation", parameters);
         return Accepted(new { message = "Search index backfill triggered in the background." });
     }
+
+    private sealed record BackfillSearchRequest(bool Force = false);
 
     /// <summary>
     /// GET /api/management/status — get the status of the most recent management workflow.

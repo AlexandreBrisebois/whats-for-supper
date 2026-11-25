@@ -58,6 +58,18 @@ public class SseEventPublisher : IScheduleEventPublisher
     public Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null, bool isSuspectedDuplicate = false)
         => PublishAndRefreshAsync("recipe_ready", new { recipeId, name, imageUrl, isSuspectedDuplicate }, excludeConnectionId);
 
+    public Task PublishRecipeSearchableAsync(Guid recipeId, string name, bool isSuspectedDuplicate = false, string? excludeConnectionId = null)
+        => PublishAndRefreshAsync("recipe_searchable", new { recipeId, name, isSuspectedDuplicate }, excludeConnectionId);
+
+    public Task PublishRecipeEnrichedAsync(Guid recipeId, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("recipe_enriched", new { recipeId }, excludeConnectionId);
+
+    public Task PublishRecipeEnrichmentFailedAsync(Guid recipeId, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("recipe_enrichment_failed", new { recipeId }, excludeConnectionId);
+
+    public Task PublishCaptureStepUpdatedAsync(Guid workflowInstanceId, Guid? recipeId, string stepName, string? stepLabel, string? excludeConnectionId = null)
+        => _manager.BroadcastAsync("capture_step_updated", new { workflowInstanceId, recipeId, stepName, stepLabel }, excludeConnectionId);
+
     public Task PublishRecipeFailedAsync(Guid recipeId, Guid workflowInstanceId, string errorMessage, string failedStep, object? partialData, string? excludeConnectionId = null)
         => PublishAndRefreshAsync("recipe_failed", new
         {

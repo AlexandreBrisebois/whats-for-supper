@@ -49,6 +49,8 @@ import {
 // @ts-ignore
 import { PurgeRequestBuilderRequestsMetadata, type PurgeRequestBuilder } from './purge/index';
 // @ts-ignore
+import { ReindexRequestBuilderRequestsMetadata, type ReindexRequestBuilder } from './reindex/index';
+// @ts-ignore
 import { RestoreRequestBuilderRequestsMetadata, type RestoreRequestBuilder } from './restore/index';
 // @ts-ignore
 import { ShareRequestBuilderRequestsMetadata, type ShareRequestBuilder } from './share/index';
@@ -139,6 +141,10 @@ export interface ItemRequestBuilder extends BaseRequestBuilder<ItemRequestBuilde
    * The purge property
    */
   get purge(): PurgeRequestBuilder;
+  /**
+   * The reindex property
+   */
+  get reindex(): ReindexRequestBuilder;
   /**
    * The restore property
    */
@@ -285,6 +291,9 @@ export const ItemRequestBuilderNavigationMetadata: Record<
   },
   purge: {
     requestsMetadata: PurgeRequestBuilderRequestsMetadata,
+  },
+  reindex: {
+    requestsMetadata: ReindexRequestBuilderRequestsMetadata,
   },
   restore: {
     requestsMetadata: RestoreRequestBuilderRequestsMetadata,

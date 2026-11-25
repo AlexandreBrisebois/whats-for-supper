@@ -13,6 +13,14 @@ public interface IScheduleEventPublisher
     Task PublishAllSuggestionsInvalidatedAsync();
     Task PublishDemoResetAsync(Guid generation) => Task.CompletedTask;
     Task PublishRecipeReadyAsync(Guid recipeId, string name, string? imageUrl, string? excludeConnectionId = null, bool isSuspectedDuplicate = false);
+    Task PublishRecipeSearchableAsync(Guid recipeId, string name, bool isSuspectedDuplicate = false, string? excludeConnectionId = null)
+        => Task.CompletedTask;
+    Task PublishRecipeEnrichedAsync(Guid recipeId, string? excludeConnectionId = null)
+        => Task.CompletedTask;
+    Task PublishRecipeEnrichmentFailedAsync(Guid recipeId, string? excludeConnectionId = null)
+        => Task.CompletedTask;
+    Task PublishCaptureStepUpdatedAsync(Guid workflowInstanceId, Guid? recipeId, string stepName, string? stepLabel, string? excludeConnectionId = null)
+        => Task.CompletedTask;
 
     /// <summary>
     /// Published when a workflow instance reaches <see cref="RecipeApi.Models.WorkflowStatus.Failed"/>

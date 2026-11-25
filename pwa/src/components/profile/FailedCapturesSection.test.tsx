@@ -10,11 +10,13 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 // ---------------------------------------------------------------------------
 
 const mockGetCaptureFailures = vi.fn();
+const mockGetCaptureFailureDetails = vi.fn();
 const mockRetryCaptureFailure = vi.fn();
 const mockClearCaptureFailure = vi.fn();
 
 vi.mock('@/lib/api/captures', () => ({
   getCaptureFailures: (...args: unknown[]) => mockGetCaptureFailures(...args),
+  getCaptureFailureDetails: (...args: unknown[]) => mockGetCaptureFailureDetails(...args),
   retryCaptureFailure: (...args: unknown[]) => mockRetryCaptureFailure(...args),
   clearCaptureFailure: (...args: unknown[]) => mockClearCaptureFailure(...args),
 }));
@@ -50,6 +52,7 @@ function buildFailure(overrides: Record<string, unknown> = {}) {
     failureCode: 'url_unreadable',
     status: 'failed',
     retryCount: 0,
+    isReady: false,
     createdAt: new Date().toISOString(),
     lastFailedAt: new Date().toISOString(),
     ...overrides,
@@ -63,12 +66,27 @@ describe('FailedCapturesSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetCaptureFailures.mockResolvedValue([]);
+    mockGetCaptureFailureDetails.mockResolvedValue({
+      workflowInstanceId: '880e8400-e29b-41d4-a716-446655440040',
+      recipeId: '990e8400-e29b-41d4-a716-446655440041',
+      sourceWorkflowId: 'url-import',
+      sourceType: 'url',
+      failedStep: 'extract_recipe',
+      friendlyReason: "We couldn't read the recipe page.",
+      errorMessage: 'Timeout',
+      stackTrace: 'at ExtractRecipe.cs:10',
+      retryCount: 0,
+      lastFailedAt: new Date().toISOString(),
+    });
     mockRetryCaptureFailure.mockResolvedValue({ queued: true });
     mockClearCaptureFailure.mockResolvedValue({
       cleared: true,
       cleanupCommandId: '770e8400-e29b-41d4-a716-446655440042',
     });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
   });
 
   it('hides the section when no failures are available', async () => {
@@ -146,9 +164,9 @@ describe('FailedCapturesSection', () => {
     expect(screen.queryByTestId('failed-captures-section')).toBeNull();
   });
 
-  it('uses inline confirmation (never window.confirm) with Keep left and Clear capture right, and resets on rejection', async () => {
+  it('uses inline confirmation (never window.confirm) with Cancel left and Delete/Dismiss right, and resets on rejection', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm');
-    const failure = buildFailure();
+    const failure = buildFailure({ isReady: false });
     mockGetCaptureFailures.mockResolvedValue([failure]);
 
     await act(async () => {
@@ -159,7 +177,7 @@ describe('FailedCapturesSection', () => {
       expect(screen.getByTestId(`failed-capture-${failure.id}`)).toBeInTheDocument();
     });
 
-    // Clicking Clear reveals inline confirm without invoking window.confirm
+    // Clicking Trash reveals inline confirm without invoking window.confirm
     fireEvent.click(screen.getByTestId(`action-clear-${failure.id}`));
     expect(confirmSpy).not.toHaveBeenCalled();
     expect(mockClearCaptureFailure).not.toHaveBeenCalled();
@@ -167,14 +185,16 @@ describe('FailedCapturesSection', () => {
     const confirmBox = screen.getByTestId(`clear-confirm-${failure.id}`);
     expect(confirmBox).toHaveClass('bg-white', 'border-hearth-line');
 
-    // Keep dismisses confirmation without deleting
-    const keepBtn = screen.getByTestId(`action-clear-keep-${failure.id}`);
+    // Cancel dismisses confirmation without deleting
+    const cancelBtn = screen.getByTestId(`action-clear-cancel-${failure.id}`);
     const confirmClearBtn = screen.getByTestId(`action-clear-confirm-${failure.id}`);
+    expect(cancelBtn).toHaveTextContent('Cancel');
+    expect(confirmClearBtn).toHaveTextContent('Delete');
     expect(
-      keepBtn.compareDocumentPosition(confirmClearBtn) & Node.DOCUMENT_POSITION_FOLLOWING
+      cancelBtn.compareDocumentPosition(confirmClearBtn) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
 
-    fireEvent.click(keepBtn);
+    fireEvent.click(cancelBtn);
     expect(screen.queryByTestId(`clear-confirm-${failure.id}`)).toBeNull();
     expect(mockClearCaptureFailure).not.toHaveBeenCalled();
 
@@ -187,7 +207,7 @@ describe('FailedCapturesSection', () => {
       expect(screen.getByTestId(`action-retry-error-${failure.id}`)).toBeInTheDocument();
     });
 
-    // Confirming Clear capture removes the row
+    // Confirming Delete removes the row
     fireEvent.click(screen.getByTestId(`action-clear-${failure.id}`));
     fireEvent.click(screen.getByTestId(`action-clear-confirm-${failure.id}`));
 
@@ -197,16 +217,17 @@ describe('FailedCapturesSection', () => {
     });
   });
 
-  it('uses Family Cookbook >= 48px controls, flex-1 Retry left, trailing 48x48 Clear right, and >= 12px copy', async () => {
-    const failure = buildFailure({ previewText: 'https://example.com/recipe' });
+  it('uses Family Cookbook >= 48px [Retry | Copy | Trash2] row, copies technical details neutrally, and zero checkmarks', async () => {
+    const failure = buildFailure({ previewText: 'https://example.com/recipe', isReady: true });
     mockGetCaptureFailures.mockResolvedValue([failure]);
 
     const { container } = render(<FailedCapturesSection />);
     const retry = await screen.findByTestId(`action-retry-${failure.id}`);
+    const copy = screen.getByTestId(`action-copy-${failure.id}`);
     const clear = screen.getByTestId(`action-clear-${failure.id}`);
 
     expect(retry).toHaveClass('min-h-12', 'flex-1', 'text-xs');
-    expect(retry).not.toHaveClass('text-[10px]', 'h-10');
+    expect(copy).toHaveClass('h-12', 'w-12');
     expect(clear).toHaveClass(
       'h-12',
       'w-12',
@@ -214,9 +235,15 @@ describe('FailedCapturesSection', () => {
       'bg-terracotta-50',
       'text-hearth-ink'
     );
-    expect(clear).not.toHaveClass('h-10', 'w-10');
-    expect(container.innerHTML).not.toContain('text-[10px]');
-    expect(container.innerHTML).not.toContain('text-charcoal/40');
-    expect(container.innerHTML).not.toContain('backdrop-blur-xl');
+    expect(container.textContent).not.toMatch(/[✓✔✅]/);
+
+    fireEvent.click(copy);
+    await waitFor(() => expect(mockGetCaptureFailureDetails).toHaveBeenCalledWith(failure.id));
+    expect(await screen.findByTestId(`failed-capture-copied-${failure.id}`)).toHaveTextContent(
+      'Details copied'
+    );
+
+    fireEvent.click(clear);
+    expect(screen.getByTestId(`action-clear-confirm-${failure.id}`)).toHaveTextContent('Dismiss');
   });
 });

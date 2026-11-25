@@ -153,9 +153,9 @@ test.describe('Bug Condition A — Glob/Predicate LIFO Bypass', () => {
 
     await page.getByRole('button', { name: /save & build recipe/i }).click();
 
-    // Immediate Save-and-Return-Home routes to /home with the non-blocking in-flight ribbon
+    // Immediate Save-and-Return-Home routes to /home with the non-blocking capture activity bar
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
-    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('capture-activity-bar')).toBeVisible({ timeout: 10_000 });
     expect(membershipWrites).toEqual([]);
   });
 });
@@ -345,9 +345,9 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
 
     await describeRequest;
 
-    // Immediate Save-and-Return-Home routes to /home with the in-flight ribbon instead of /profile/settings
+    // Immediate Save-and-Return-Home routes to /home with the activity bar instead of /profile/settings
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
-    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('capture-activity-bar')).toBeVisible({ timeout: 10_000 });
     expect(membershipWrites).toEqual([]);
 
     // Assert we have NOT been auto-navigated to settings
@@ -378,9 +378,9 @@ test.describe('Bug Condition C — GOTO Auto-Navigation', () => {
 
     await page.getByRole('button', { name: /save recipe/i }).click();
 
-    // Immediate Save-and-Return-Home routes to /home with the in-flight ribbon instead of /profile/settings
+    // Immediate Save-and-Return-Home routes to /home with the activity bar instead of /profile/settings
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
-    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('capture-activity-bar')).toBeVisible({ timeout: 10_000 });
     expect(membershipWrites).toEqual([]);
 
     // Assert we have NOT been auto-navigated to settings

@@ -74,10 +74,14 @@ test('four-portion preview keeps five saved portions and groceries unchanged', a
   await page.goto('/profile/settings');
   await page.getByTestId('usual-portions-automatic').uncheck();
   await page.getByTestId('usual-portions-input').fill('5');
-  await page.getByTestId('save-usual-portions').click();
-  await expect(
-    page.getByTestId('usual-portions-section').getByText('Saved', { exact: true })
-  ).toBeVisible();
+  const savedPortions = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname === '/api/schedule/servings' &&
+      response.ok()
+  );
+  await page.getByTestId('usual-portions-input').blur();
+  await savedPortions;
   await page.goto(`/recipes?open=${id}&addToDay=2&weekOffset=0&referenceWeekStartDate=2026-05-04`);
   await expect(page.getByTestId('recipe-ingredient-projection')).toContainText('500 g pasta');
   const saved = () =>

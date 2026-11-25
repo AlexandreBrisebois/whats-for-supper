@@ -17,13 +17,13 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
     public const string DeleteFailedCaptureResidueCommand = "DeleteFailedCaptureResidue";
 
     private static readonly HashSet<string> CaptureWorkflowIds =
-        new(StringComparer.OrdinalIgnoreCase) { "url-import", "recipe-import" };
+        new(StringComparer.OrdinalIgnoreCase) { "url-import", "recipe-import", "goto-synthesis" };
 
     public async Task<List<CaptureFailureDto>> GetActiveFailuresAsync(CancellationToken ct = default)
     {
         var instances = await db.WorkflowInstances
             .Include(i => i.Tasks)
-            .Where(i => i.Status == WorkflowStatus.Paused
+            .Where(i => (i.Status == WorkflowStatus.Paused || i.Status == WorkflowStatus.Failed)
                         && CaptureWorkflowIds.Contains(i.WorkflowId)
                         && i.Tasks.Any(t => t.Status == Models.TaskStatus.Failed))
             .OrderByDescending(i => i.UpdatedAt)
@@ -55,18 +55,195 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
                 FamilyMemberId = recipe?.AddedBy,
                 SourceWorkflowId = instance.WorkflowId,
                 SourceType = ResolveSourceType(instance.WorkflowId),
-                PreviewText = TryGetStringParameter(instance.Parameters, "url") ?? recipe?.SourceUrl,
-                FriendlyReason = (UrlCaptureInitialization.IsPending(instance) || RecipeFollowupInitialization.IsPending(instance))
-                    ? "Your recipe was saved, but its import has not started. Retry to start importing it."
-                    : CaptureFailureReasonMapper.ToFriendlyReason(null),
+                PreviewText = ResolvePreviewText(instance.WorkflowId, instance.Parameters, recipe),
+                FriendlyReason = ResolveFriendlyReason(instance, failedTask),
                 FailureCode = null,
                 FailedStep = failedTask?.TaskName,
                 Status = "failed",
                 RetryCount = failedTask?.RetryCount ?? 0,
+                IsReady = recipe?.IsReady ?? false,
                 CreatedAt = instance.CreatedAt,
                 LastFailedAt = failedTask?.UpdatedAt ?? instance.UpdatedAt,
             };
         }).ToList();
+    }
+
+    public async Task<CaptureFailureDetailsDto?> GetFailureDetailsAsync(Guid workflowInstanceId, CancellationToken ct = default)
+    {
+        var instance = await db.WorkflowInstances
+            .AsNoTracking()
+            .Include(i => i.Tasks)
+            .FirstOrDefaultAsync(i => i.Id == workflowInstanceId, ct);
+
+        if (instance is null || !IsFailedCapture(instance))
+            return null;
+
+        var failedTask = GetFailedTask(instance);
+        return new CaptureFailureDetailsDto
+        {
+            WorkflowInstanceId = instance.Id,
+            RecipeId = TryGetRecipeId(instance.Parameters),
+            SourceWorkflowId = instance.WorkflowId,
+            SourceType = ResolveSourceType(instance.WorkflowId),
+            FailedStep = failedTask?.TaskName,
+            FriendlyReason = ResolveFriendlyReason(instance, failedTask),
+            ErrorMessage = failedTask?.ErrorMessage,
+            StackTrace = failedTask?.StackTrace,
+            RetryCount = failedTask?.RetryCount ?? 0,
+            LastFailedAt = failedTask?.UpdatedAt ?? instance.UpdatedAt,
+        };
+    }
+
+    public async Task<List<CaptureActivityItemDto>> GetActivityAsync(CancellationToken ct = default)
+    {
+        var instances = await db.WorkflowInstances
+            .AsNoTracking()
+            .Include(i => i.Tasks)
+            .Where(i => CaptureWorkflowIds.Contains(i.WorkflowId)
+                        && i.Status != WorkflowStatus.Completed)
+            .OrderByDescending(i => i.UpdatedAt)
+            .ToListAsync(ct);
+
+        var workflowRecipeIds = instances
+            .Select(i => TryGetRecipeId(i.Parameters))
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToHashSet();
+
+        var searchDocs = await db.RecipeSearchDocuments
+            .AsNoTracking()
+            .Include(d => d.Recipe)
+            .Where(d => d.Recipe != null
+                        && d.Recipe.DeletedAt == null
+                        && d.Recipe.IsReady
+                        && (d.IndexStatus != "ready" || d.EmbeddingStatus != "ready"))
+            .OrderByDescending(d => d.Recipe!.UpdatedAt)
+            .ToListAsync(ct);
+
+        var allRecipeIds = workflowRecipeIds
+            .Concat(searchDocs.Select(d => d.RecipeId))
+            .Distinct()
+            .ToList();
+
+        var recipes = await db.Recipes
+            .AsNoTracking()
+            .Where(r => allRecipeIds.Contains(r.Id) && r.DeletedAt == null)
+            .ToDictionaryAsync(r => r.Id, ct);
+
+        var searchDocByRecipeId = searchDocs.ToDictionary(d => d.RecipeId);
+
+        var duplicateRecipeIds = (await db.RecipeImportReports
+            .AsNoTracking()
+            .Where(r => allRecipeIds.Contains(r.RecipeId))
+            .Select(r => new { r.RecipeId, r.Reasons })
+            .ToListAsync(ct))
+            .Where(r => r.Reasons.Contains("duplicate"))
+            .Select(r => r.RecipeId)
+            .ToHashSet();
+
+        var items = new List<CaptureActivityItemDto>();
+        var coveredRecipeIds = new HashSet<Guid>();
+
+        foreach (var instance in instances)
+        {
+            var recipeId = TryGetRecipeId(instance.Parameters);
+            Recipe? recipe = null;
+            if (recipeId.HasValue)
+                recipes.TryGetValue(recipeId.Value, out recipe);
+
+            var previewText = ResolvePreviewText(instance.WorkflowId, instance.Parameters, recipe);
+            var isReady = recipe?.IsReady ?? false;
+            var isDuplicate = recipeId.HasValue && duplicateRecipeIds.Contains(recipeId.Value);
+
+            if (IsFailedCapture(instance))
+            {
+                var failedTask = GetFailedTask(instance);
+                if (recipeId.HasValue) coveredRecipeIds.Add(recipeId.Value);
+                items.Add(new CaptureActivityItemDto
+                {
+                    Id = instance.Id,
+                    WorkflowInstanceId = instance.Id,
+                    RecipeId = recipeId,
+                    Stage = "failed",
+                    Title = ResolveTitle(recipe, previewText),
+                    SourceWorkflowId = instance.WorkflowId,
+                    SourceType = ResolveSourceType(instance.WorkflowId),
+                    StepName = failedTask?.TaskName,
+                    StepLabel = CaptureFailureReasonMapper.ToStepLabel(failedTask?.TaskName),
+                    PreviewText = previewText,
+                    FriendlyReason = ResolveFriendlyReason(instance, failedTask),
+                    RetryCount = failedTask?.RetryCount ?? 0,
+                    IsReady = isReady,
+                    IsSuspectedDuplicate = isDuplicate,
+                    UpdatedAt = failedTask?.UpdatedAt ?? instance.UpdatedAt,
+                });
+                continue;
+            }
+
+            if (instance.Status is WorkflowStatus.Pending or WorkflowStatus.Processing or WorkflowStatus.Paused)
+            {
+                var activeTask = GetActiveTask(instance);
+                searchDocByRecipeId.TryGetValue(recipeId ?? Guid.Empty, out var doc);
+                var stage = ResolveActiveStage(isReady, doc);
+                if (recipeId.HasValue) coveredRecipeIds.Add(recipeId.Value);
+                items.Add(new CaptureActivityItemDto
+                {
+                    Id = instance.Id,
+                    WorkflowInstanceId = instance.Id,
+                    RecipeId = recipeId,
+                    Stage = stage,
+                    Title = ResolveTitle(recipe, previewText),
+                    SourceWorkflowId = instance.WorkflowId,
+                    SourceType = ResolveSourceType(instance.WorkflowId),
+                    StepName = activeTask?.TaskName,
+                    StepLabel = CaptureFailureReasonMapper.ToStepLabel(activeTask?.TaskName),
+                    PreviewText = previewText,
+                    FriendlyReason = null,
+                    RetryCount = activeTask?.RetryCount ?? 0,
+                    IsReady = isReady,
+                    IsSuspectedDuplicate = isDuplicate,
+                    UpdatedAt = instance.UpdatedAt,
+                });
+            }
+        }
+
+        foreach (var doc in searchDocs)
+        {
+            if (coveredRecipeIds.Contains(doc.RecipeId) || doc.Recipe is null)
+                continue;
+
+            var stage = ResolveSearchDocumentStage(doc);
+            if (stage is null)
+                continue;
+
+            items.Add(new CaptureActivityItemDto
+            {
+                Id = doc.RecipeId,
+                WorkflowInstanceId = null,
+                RecipeId = doc.RecipeId,
+                Stage = stage,
+                Title = doc.Recipe.Name ?? string.Empty,
+                SourceWorkflowId = null,
+                SourceType = !string.IsNullOrWhiteSpace(doc.Recipe.SourceUrl)
+                    ? "url"
+                    : doc.Recipe.ImageCount > 0 ? "photos" : "description",
+                StepName = null,
+                StepLabel = null,
+                PreviewText = doc.Recipe.SourceUrl,
+                FriendlyReason = stage == "enrichment_paused"
+                    ? "Your recipe is saved and keyword-searchable, but smart search enrichment paused."
+                    : null,
+                RetryCount = 0,
+                IsReady = true,
+                IsSuspectedDuplicate = duplicateRecipeIds.Contains(doc.RecipeId),
+                UpdatedAt = doc.LastIndexedAt ?? doc.Recipe.UpdatedAt,
+            });
+        }
+
+        return items
+            .OrderBy(i => GetStagePriority(i.Stage))
+            .ThenByDescending(i => i.UpdatedAt)
+            .ToList();
     }
 
     public async Task<CaptureFailureRetryResult> RetryAsync(Guid workflowInstanceId, CancellationToken ct = default)
@@ -133,7 +310,7 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
                     .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(r => r.Id == recipeId.Value, ct);
 
-                if (recipe is not null && !ShouldRetainRecipe(recipe))
+                if (recipe is not null && !ShouldRetainRecipe(db, recipe))
                 {
                     recipe.DeletedAt ??= clock.UtcNow;
                     recipe.DeletedBy ??= requestedBy;
@@ -216,7 +393,7 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
     }
 
     private static bool IsFailedCapture(WorkflowInstance instance) =>
-        instance.Status == WorkflowStatus.Paused
+        (instance.Status == WorkflowStatus.Paused || instance.Status == WorkflowStatus.Failed)
         && CaptureWorkflowIds.Contains(instance.WorkflowId)
         && instance.Tasks.Any(t => t.Status == Models.TaskStatus.Failed);
 
@@ -226,15 +403,100 @@ public class CaptureFailureService(RecipeDbContext db, IClock clock, IWorkflowOr
             .OrderByDescending(t => t.UpdatedAt)
             .FirstOrDefault();
 
-    private static string ResolveSourceType(string workflowId) =>
-        workflowId.Equals("url-import", StringComparison.OrdinalIgnoreCase) ? "url" : "photos";
+    private static WorkflowTask? GetActiveTask(WorkflowInstance instance) =>
+        instance.Tasks
+            .Where(t => t.Status == Models.TaskStatus.Processing)
+            .OrderByDescending(t => t.UpdatedAt)
+            .FirstOrDefault()
+        ?? instance.Tasks
+            .Where(t => t.Status == Models.TaskStatus.Pending)
+            .OrderBy(t => t.CreatedAt)
+            .FirstOrDefault();
 
-    // Non-null persisted content also represents explicit human clears. Retain
-    // partial automated content conservatively rather than inventing authorship.
+    private static string ResolveSourceType(string workflowId) =>
+        workflowId.Equals("url-import", StringComparison.OrdinalIgnoreCase)
+            ? "url"
+            : workflowId.Equals("goto-synthesis", StringComparison.OrdinalIgnoreCase)
+                ? "description"
+                : "photos";
+
+    private static string? ResolvePreviewText(string workflowId, string? parameters, Recipe? recipe)
+    {
+        if (workflowId.Equals("goto-synthesis", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryGetStringParameter(parameters, "description")
+                   ?? (!IsPlaceholderRecipeName(recipe?.Name) ? recipe?.Name : null);
+        }
+
+        if (workflowId.Equals("url-import", StringComparison.OrdinalIgnoreCase))
+            return TryGetStringParameter(parameters, "url") ?? recipe?.SourceUrl;
+
+        return (!IsPlaceholderRecipeName(recipe?.Name) ? recipe?.Name : null)
+               ?? TryGetStringParameter(parameters, "url")
+               ?? recipe?.SourceUrl;
+    }
+
+    private static string ResolveTitle(Recipe? recipe, string? previewText)
+    {
+        if (recipe is not null && (recipe.IsReady || !IsPlaceholderRecipeName(recipe.Name)))
+            return recipe.Name!;
+
+        return previewText ?? recipe?.Name ?? string.Empty;
+    }
+
+    private static bool IsPlaceholderRecipeName(string? name) =>
+        string.IsNullOrWhiteSpace(name)
+        || name.Equals("Captured Recipe", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("Importing Recipe", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("Creating Recipe...", StringComparison.OrdinalIgnoreCase);
+
+    private static string ResolveFriendlyReason(WorkflowInstance instance, WorkflowTask? failedTask) =>
+        (UrlCaptureInitialization.IsPending(instance) || RecipeFollowupInitialization.IsPending(instance))
+            ? "Your recipe was saved, but its import has not started. Retry to start importing it."
+            : CaptureFailureReasonMapper.ToFriendlyReason(null, failedTask?.TaskName, instance.WorkflowId);
+
+    private static string ResolveActiveStage(bool isReady, RecipeSearchDocument? doc)
+    {
+        if (!isReady) return "preparing";
+        if (doc is not null)
+        {
+            return ResolveSearchDocumentStage(doc) ?? "indexing";
+        }
+        return "indexing";
+    }
+
+    private static string? ResolveSearchDocumentStage(RecipeSearchDocument doc)
+    {
+        if (doc.IndexStatus == "ready")
+        {
+            if (doc.EmbeddingStatus == "failed") return "enrichment_paused";
+            if (doc.EmbeddingStatus is "pending" or "indexing") return "enriching";
+            return null;
+        }
+        if (doc.IndexStatus is "pending" or "indexing")
+            return "indexing";
+
+        return null;
+    }
+
+    private static int GetStagePriority(string stage) => stage switch
+    {
+        "failed" => 0,
+        "preparing" => 1,
+        "indexing" => 2,
+        "enriching" => 3,
+        "enrichment_paused" => 4,
+        _ => 5,
+    };
+
+    // Non-null persisted content also represents explicit human clears.
     internal static bool HasRetainedRecipeContent(Recipe recipe) =>
         recipe.Ingredients is not null || recipe.RawMetadata is not null || recipe.StructuredContent is not null;
 
-    internal static bool ShouldRetainRecipe(Recipe recipe) =>
-        recipe.IsDiscoverable || HasRetainedRecipeContent(recipe)
-        || (!string.IsNullOrWhiteSpace(recipe.Name) && (recipe.ImageCount > 0 || recipe.IsSynthesized));
+    internal static bool ShouldRetainRecipe(Recipe recipe) => recipe.IsReady;
+
+    internal static bool ShouldRetainRecipe(RecipeDbContext db, Recipe recipe) =>
+        recipe.IsReady
+        || db.RecipeImportReports.AsNoTracking()
+            .Any(r => r.RecipeId == recipe.Id && r.Status == RecipeImportReportStatus.ReadyToReview);
 }

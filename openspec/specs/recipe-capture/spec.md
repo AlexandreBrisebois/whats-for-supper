@@ -138,39 +138,23 @@ When photo, web link, or description capture returns a valid recipe identity (`2
 
 ### Requirement: Present ambient in-flight capture status on Home
 
-While one or more background captures submitted in the active session remain pending completion or failure, Home SHALL display a non-blocking status ribbon stating the pending count, reassuring the person that they will be notified when ready, and offering a secondary action to start another capture. The ribbon SHALL use a Hearth pulsing indicator rather than voting-ochre or settled-garden fills and SHALL honor reduced motion.
+While household captures are preparing, indexing, enriching, or failed, `/home` SHALL show a tappable Capture Activity Bar beneath `QuickCaptureTrigger` (`Plus` icon, `Snap, paste, upload, or describe`, no `+ Add another`), leaving `/capture` untouched. Without failures it SHALL show a progress bar (or Garden `Searchable · Still enriching`); with failures it SHALL show a 2-line Hearth bar without a progress bar, opening the Capture Activity Sheet on tap.
 
 #### Scenario: Pending background capture displays ambient Home ribbon
 
-- **WHEN** a person views `/home` while one or more active-session captures have not yet emitted a ready or failed event
-- **THEN** Home renders an opaque neutral card with a Hearth pulsing indicator, localized pending-count copy, and a `>= 48 CSS px` secondary action linking to `/capture`
-- **AND** the Hearth pulse disables animation when `prefers-reduced-motion: reduce` is active
+- **WHEN** a person views `/home` while 1 or N parallel captures are preparing or indexing with no failures
+- **THEN** Home renders the Capture Activity Bar directly beneath `QuickCaptureTrigger` with no `+ Add another` button, displaying the single item or parallel summary with a Hearth progress bar (`motion-reduce:animate-none` when `prefers-reduced-motion: reduce` is active)
+- **AND** activating the bar opens the Capture Activity Sheet listing each parallel capture individually and making `Searchable` items tappable (`ChevronRight`) to open `/recipes?open=<recipeId>` (or `&reviewDuplicate=1` if suspected duplicate)
+
+#### Scenario: Failure prioritizes compact 2-line Hearth alert on Home
+
+- **WHEN** at least one capture failure exists alongside or without parallel active imports
+- **THEN** Home renders a compact 2-line Hearth recovery bar (`bg-white border-hearth-line`, `bg-terracotta-50` alert icon well, `text-hearth-ink` heading, no progress bar) that stays visually lighter than `QuickCaptureTrigger` above `TonightMenuCard`, and tapping it opens the Capture Activity Sheet
 
 #### Scenario: Ribbon disappears once pending captures settle
 
-- **WHEN** the last pending capture in the active session transitions to ready or failed
-- **THEN** the ambient in-flight status ribbon is removed from `/home`
-
-### Requirement: Present completion toast with duplicate-review prompt
-
-When a `recipe_ready` event arrives for an active-session pending recipe, the client SHALL display a `5000 ms` opaque Garden-bordered toast with a `>= 48 × 48 CSS px` dismiss control and no left-border stripe or `+N more` pill. Suspected duplicates SHALL prompt review and open paired comparison on tap.
-
-#### Scenario: Ordinary completion toast opens completed recipe
-
-- **WHEN** a `recipe_ready` event without a suspected-duplicate flag arrives for an active-session pending recipe
-- **THEN** the client renders an opaque white toast with a Garden border, localized ready copy, and `Tap to view recipe`
-- **AND** activating the toast body dismisses the toast and navigates to `/recipes?open=<recipeId>`
-
-#### Scenario: Suspected-duplicate completion toast opens paired review
-
-- **WHEN** a `recipe_ready` event flagged as a suspected duplicate arrives for an active-session pending recipe
-- **THEN** the toast subtitle displays localized `Possible duplicate · Tap to review` copy
-- **AND** activating the toast body dismisses the toast and navigates to `/recipes?open=<recipeId>&reviewDuplicate=1`
-
-#### Scenario: Explicit toast dismissal does not navigate
-
-- **WHEN** a person activates the `48 × 48 CSS px` dismiss button on the completion toast
-- **THEN** the notification is removed without navigating away from the current view
+- **WHEN** no capture workflows remain active, indexing, enriching, enrichment-paused, or failed
+- **THEN** the Capture Activity Bar is removed from `/home`
 
 ### Requirement: Display error feedback on capture failure
 
@@ -352,20 +336,6 @@ When finalization executes for an existing recipe that is not already ready and 
 - **WHEN** finalization is invoked for a missing recipe or one already ready and discoverable
 - **THEN** it does not publish a new ready event
 - **AND** the existing retained-PDF readiness behavior still applies to an already finalized PDF
-
-### Requirement: Persistent failure banner on workflow failure
-
-If the background import workflow fails all retry attempts, the API SHALL publish a `recipe_failed` SSE event. When received for a pending active-session recipe, the client SHALL render a persistent Hearth recovery banner (`bg-terracotta-50 border-hearth-line`, no `border-l-4` stripe or duplicate close icon) with an alert icon, em-dash-free localized title, and `>= 48 × 48 CSS px` primary Retry and single secondary Dismiss controls.
-
-#### Scenario: Display persistent failure banner on failed capture
-
-- **WHEN** a `recipe_failed` event is received matching a recipe pending from the active session
-- **THEN** the client removes the recipe from pending tracking and renders a persistent Hearth recovery card with localized EN/FR copy (without em-dashes), opaque High Contrast borders, the recipe name, and `>= 48 × 48 CSS px` Retry and single Dismiss buttons
-
-#### Scenario: Retry failed capture from banner
-
-- **WHEN** a person activates retry on the failure banner
-- **THEN** the client calls the capture failure retry endpoint and dismisses the failure notification upon successful queuing
 
 ### Requirement: Enter and cancel a description capture draft
 

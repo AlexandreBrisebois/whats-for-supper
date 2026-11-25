@@ -9,12 +9,30 @@ namespace RecipeApi.Controllers;
 [Route("api/captures")]
 public class CapturesController(CaptureFailureService captureFailureService) : ControllerBase
 {
+    /// <summary>GET /api/captures/activity — list household capture activity across active, search-stage, and failed states.</summary>
+    [HttpGet("activity")]
+    public async Task<IActionResult> GetActivity(CancellationToken ct)
+    {
+        var items = await captureFailureService.GetActivityAsync(ct);
+        return Ok(new { data = new { items } });
+    }
+
     /// <summary>GET /api/captures/failures — list active failed capture records.</summary>
     [HttpGet("failures")]
     public async Task<IActionResult> GetFailures(CancellationToken ct)
     {
         var items = await captureFailureService.GetActiveFailuresAsync(ct);
         return Ok(new { data = new { items } });
+    }
+
+    /// <summary>GET /api/captures/failures/{id}/details — fetch on-demand failure diagnostics.</summary>
+    [HttpGet("failures/{id:guid}/details")]
+    public async Task<IActionResult> GetFailureDetails(Guid id, CancellationToken ct)
+    {
+        var details = await captureFailureService.GetFailureDetailsAsync(id, ct);
+        return details is null
+            ? NotFound(new { message = "Capture failure not found." })
+            : Ok(new { data = details });
     }
 
     /// <summary>POST /api/captures/failures/{id}/retry — retry a failed capture.</summary>

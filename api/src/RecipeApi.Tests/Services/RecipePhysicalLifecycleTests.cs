@@ -18,7 +18,7 @@ public sealed class RecipePhysicalLifecycleTests
         await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var recipe = new Recipe { Id = Guid.NewGuid(), IsReady = true }; // Existing eligibility is not IsReady alone.
+        var recipe = new Recipe { Id = Guid.NewGuid(), IsReady = false }; // Unready failed capture stub is eligible for cleanup.
         var workflow = new WorkflowInstance { Id = Guid.NewGuid(), WorkflowId = "url-import", Status = WorkflowStatus.Paused };
         workflow.Tasks.Add(new WorkflowTask { TaskId = Guid.NewGuid(), InstanceId = workflow.Id, TaskName = "failed", ProcessorName = "ExtractRecipe", Status = RecipeApi.Models.TaskStatus.Failed });
         var command = new MaintenanceCommand { Id = Guid.NewGuid(), CommandType = CaptureFailureService.DeleteFailedCaptureResidueCommand,
@@ -77,19 +77,30 @@ public sealed class RecipePhysicalLifecycleTests
     }
 
     [Theory]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public async Task Maintenance_PreservesExistingDiscoverabilityOrNamedImageEligibility(bool discoverable, bool namedImage)
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Maintenance_RetainsReadyRecipes_AndPurgesUnreadyStubsEvenWithPartialContent(bool isReady)
     {
         await using var factory = await TestWebApplicationFactory.CreateAsync();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-        var recipe = new Recipe { Id = Guid.NewGuid(), IsDiscoverable = discoverable, Name = namedImage ? "Named" : null, ImageCount = namedImage ? 1 : 0 };
+        var recipe = new Recipe { Id = Guid.NewGuid(), IsReady = isReady, IsDiscoverable = isReady, Name = "Named", ImageCount = 1, Ingredients = "[\"salt\"]" };
         db.Recipes.Add(recipe);
         db.MaintenanceCommands.Add(new MaintenanceCommand { Id = Guid.NewGuid(), CommandType = CaptureFailureService.DeleteFailedCaptureResidueCommand,
             Status = "pending", Payload = JsonSerializer.Serialize(new { recipeId = recipe.Id }) });
         await db.SaveChangesAsync();
-        Assert.Equal(1, (await scope.ServiceProvider.GetRequiredService<ManagementService>().ProcessMaintenanceCommandsAsync()).Skipped);
-        Assert.NotNull(await db.Recipes.FindAsync(recipe.Id)); Assert.Empty(await db.RecipePhysicalDeletions.ToArrayAsync());
+        var outcome = await scope.ServiceProvider.GetRequiredService<ManagementService>().ProcessMaintenanceCommandsAsync();
+        if (isReady)
+        {
+            Assert.Equal(1, outcome.Skipped);
+            Assert.NotNull(await db.Recipes.FindAsync(recipe.Id));
+            Assert.Empty(await db.RecipePhysicalDeletions.ToArrayAsync());
+        }
+        else
+        {
+            Assert.Equal(1, outcome.Completed);
+            Assert.Null(await db.Recipes.IgnoreQueryFilters().FirstOrDefaultAsync(r => r.Id == recipe.Id));
+            Assert.Single(await db.RecipePhysicalDeletions.ToArrayAsync());
+        }
     }
 }

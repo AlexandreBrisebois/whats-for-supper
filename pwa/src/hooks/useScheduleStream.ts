@@ -7,7 +7,6 @@ import { useWeekStore } from '@/store/weekStore';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useGotoStore } from '@/store/gotoStore';
 import { useCaptureStore } from '@/store/captureStore';
-import { useLibraryStore } from '@/store/libraryStore';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useSearchPromotionStore } from '@/store/searchPromotionStore';
 import {
@@ -58,6 +57,7 @@ export function useScheduleStream() {
     source.onopen = () => {
       console.log('[SSE] Connection opened successfully');
       void useDiscoveryStore.getState().refreshSession();
+      void useCaptureStore.getState().hydrate();
     };
     source.onerror = (e) => console.error('[SSE] Connection error:', e);
     // Expose for E2E tests that need to trigger a reconnect after swapping the route mock.
@@ -95,6 +95,7 @@ export function useScheduleStream() {
     };
     const onResume = () => {
       void useDiscoveryStore.getState().refreshSession();
+      void useCaptureStore.getState().hydrate();
       useTodayStore.getState().invalidateCalendar();
       void useTodayStore.getState().sync();
       void useWeekStore.getState().sync();
@@ -233,55 +234,47 @@ export function useScheduleStream() {
     });
 
     // ── recipe_ready ───────────────────────────────────────────────────────
-    // Recipe synthesis workflow completed.
-    // If this recipe was submitted from this session (captureStore has it),
-    // remove it from the pending queue and push a 'ready' notification so
-    // LibraryToast can surface it to the user.
-    // Always notify the GOTO store so HomeCommandCenter can transition from
-    // pending to ready without polling.
+    // Recipe preparation finished; refresh household capture activity quietly
+    // on Home and mark the recipe ready for GOTO without floating popups.
     source.addEventListener('recipe_ready', (e: MessageEvent) => {
       console.log('[SSE] Received "recipe_ready" event');
-      const { recipeId, name, imageUrl, isSuspectedDuplicate } = JSON.parse(e.data);
+      const { recipeId } = JSON.parse(e.data);
       const captureStore = useCaptureStore.getState();
-      const pending = captureStore.getPending(recipeId);
-      if (pending) {
+      if (captureStore.getPending(recipeId)) {
         captureStore.removePending(recipeId);
-        useLibraryStore.getState().pushNotification({
-          recipeId,
-          name: name ?? pending.name ?? recipeId,
-          imageUrl,
-          type: 'ready',
-          ...(isSuspectedDuplicate === true ? { isSuspectedDuplicate: true } : {}),
-        });
       }
       useGotoStore.getState().markReady(recipeId);
+      void captureStore.hydrate();
+    });
+
+    // ── search-stage & capture step progress ───────────────────────────────
+    source.addEventListener('recipe_searchable', () => {
+      void useCaptureStore.getState().hydrate();
+    });
+
+    source.addEventListener('recipe_enriched', () => {
+      void useCaptureStore.getState().hydrate();
+    });
+
+    source.addEventListener('recipe_enrichment_failed', () => {
+      void useCaptureStore.getState().hydrate();
+    });
+
+    source.addEventListener('capture_step_updated', () => {
+      void useCaptureStore.getState().hydrate();
     });
 
     // ── recipe_failed ──────────────────────────────────────────────────────
-    // Recipe synthesis workflow failed (all retries exhausted).
-    // If this recipe was submitted from this session, remove it from the
-    // pending queue and push a 'failed' notification so RecipeFailureBanner
-    // can surface it to the user.
+    // Workflow failed; sync Home Capture Activity Bar & Sheet cleanly without
+    // launching global off-Home banners.
     source.addEventListener('recipe_failed', (e: MessageEvent) => {
       console.log('[SSE] Received "recipe_failed" event');
-      const { recipeId, workflowInstanceId, errorMessage, failedStep, partialData } = JSON.parse(
-        e.data
-      );
+      const { recipeId } = JSON.parse(e.data);
       const captureStore = useCaptureStore.getState();
-      const pending = captureStore.getPending(recipeId);
-      if (pending) {
+      if (captureStore.getPending(recipeId)) {
         captureStore.removePending(recipeId);
-        useLibraryStore.getState().pushNotification({
-          recipeId,
-          workflowInstanceId,
-          name: (partialData as { name?: string } | undefined)?.name ?? pending.name ?? recipeId,
-          imageUrl: (partialData as { imageUrl?: string } | undefined)?.imageUrl,
-          type: 'failed',
-          errorMessage,
-          failedStep,
-          partialData,
-        });
       }
+      void captureStore.hydrate();
     });
 
     // ── grocery_updated ────────────────────────────────────────────────────

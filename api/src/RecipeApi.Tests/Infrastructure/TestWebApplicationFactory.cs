@@ -239,6 +239,7 @@ public sealed class TestWebApplicationFactory : IAsyncDisposable
         builder.Services.AddSingleton<CronScheduleCalculator>();
         builder.Services.AddSingleton<DemoModeOptions>();
         builder.Services.AddScoped<ManagementService>();
+        builder.Services.AddSingleton<IRecipeSearchDocumentBuilder, RecipeSearchDocumentBuilder>();
         builder.Services.AddScoped<SearchIndexWorkflow>();
         if (_telemetry is not null)
             builder.Services.AddSingleton<ISearchTelemetry>(_telemetry);

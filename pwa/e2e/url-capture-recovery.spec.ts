@@ -146,7 +146,7 @@ test.describe('URL capture & recovery Family Cookbook dual-mode visual & a11y co
 
       await page.getByTestId('capture-url-save-btn').click();
       await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
-      await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
+      await expect(page.getByTestId('capture-activity-bar')).toBeVisible();
       await assertCookbookVisualA11y(page, { contrastLevel });
 
       await page.goto('/profile/settings');
@@ -168,7 +168,7 @@ test.describe('URL capture & recovery Family Cookbook dual-mode visual & a11y co
 
     await page.getByTestId('capture-url-save-btn').click();
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
-    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
+    await expect(page.getByTestId('capture-activity-bar')).toBeVisible();
     await assertCookbookVisualA11y(page, { contrastLevel: 'aaa' });
   });
 });

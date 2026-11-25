@@ -33,4 +33,13 @@ describe('home mobile sizing', () => {
 
     expect(screen.getByTestId('quick-capture-trigger')).toHaveClass('p-4', 'sm:p-6');
   });
+
+  it('renders the updated multi-mode subtitle and Plus icon instead of Photo or Link', () => {
+    render(<QuickCaptureTrigger />);
+
+    const trigger = screen.getByTestId('quick-capture-trigger');
+    expect(trigger).toHaveTextContent('Snap, paste, upload, or describe');
+    expect(trigger).not.toHaveTextContent('Photo or Link');
+    expect(screen.getByTestId('quick-capture-plus-icon')).toBeInTheDocument();
+  });
 });

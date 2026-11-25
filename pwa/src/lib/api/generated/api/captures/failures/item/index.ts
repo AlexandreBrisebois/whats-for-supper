@@ -12,6 +12,8 @@ import {
   type RecoveryBusyError,
 } from '../../../../models/index';
 // @ts-ignore
+import { DetailsRequestBuilderRequestsMetadata, type DetailsRequestBuilder } from './details/index';
+// @ts-ignore
 import { RetryRequestBuilderRequestsMetadata, type RetryRequestBuilder } from './retry/index';
 // @ts-ignore
 import {
@@ -146,6 +148,10 @@ export interface FailuresDeleteResponse extends AdditionalDataHolder, Parsable {
  */
 export interface FailuresItemRequestBuilder extends BaseRequestBuilder<FailuresItemRequestBuilder> {
   /**
+   * The details property
+   */
+  get details(): DetailsRequestBuilder;
+  /**
    * The retry property
    */
   get retry(): RetryRequestBuilder;
@@ -241,6 +247,9 @@ export const FailuresItemRequestBuilderNavigationMetadata: Record<
   Exclude<keyof FailuresItemRequestBuilder, KeysToExcludeForNavigationMetadata>,
   NavigationMetadata
 > = {
+  details: {
+    requestsMetadata: DetailsRequestBuilderRequestsMetadata,
+  },
   retry: {
     requestsMetadata: RetryRequestBuilderRequestsMetadata,
   },

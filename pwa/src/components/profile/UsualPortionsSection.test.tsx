@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { JsonParseNode } from '@microsoft/kiota-serialization-json';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupperServings } from '@/lib/api/generated/models';
 import { createSupperServingsFromDiscriminatorValue } from '@/lib/api/generated/models';
 
@@ -48,12 +48,13 @@ function deferred<T>() {
 }
 const automatic = () => screen.getByRole('checkbox', { name: 'Use family size' });
 const input = () => screen.getByRole('spinbutton', { name: 'Usual portions' });
-const commit = () => screen.getByRole('button', { name: 'Save usual portions' });
 const ready = async () => {
   await screen.findByRole('checkbox', { name: 'Use family size' });
   await waitFor(() => expect(automatic()).toBeEnabled());
 };
+
 beforeEach(() => {
+  vi.useRealTimers();
   sessionStorage.clear();
   read.mockReset().mockResolvedValue(portions());
   save.mockReset().mockResolvedValue(
@@ -72,8 +73,13 @@ beforeEach(() => {
   });
   useWeekStore.setState({ calendar: null, groceryRefresh: undefined });
 });
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('UsualPortionsSection', () => {
-  it('loads server automatic four independently of the cached roster count', async () => {
+  it('renders checked family count on left without a Save button or routine Saved banner', async () => {
     const pending = deferred<SupperServings>();
     read.mockReturnValueOnce(pending.promise);
     render(<UsualPortionsSection />);
@@ -82,15 +88,23 @@ describe('UsualPortionsSection', () => {
     await act(async () => pending.resolve(portions()));
     await ready();
     expect(automatic()).toBeChecked();
-    expect(input()).toHaveValue(4);
-    expect(commit()).toBeDisabled();
+    expect(screen.getByTestId('usual-portions-display')).toHaveTextContent('4 portions');
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('save-usual-portions')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
   });
-  it('saves explicit five with the captured version, reference and no date edits', async () => {
+
+  it('auto-saves explicit five on blur after unchecking with 72x48 input and unit label visible', async () => {
     render(<UsualPortionsSection />);
     await ready();
     fireEvent.click(automatic());
+    expect(input()).toHaveValue(4);
+    expect(input()).toHaveClass('w-[72px]', 'min-h-12');
+    expect(screen.getByText('portions')).toBeVisible();
+
     fireEvent.change(input(), { target: { value: '5' } });
-    fireEvent.click(commit());
+    fireEvent.blur(input());
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     const body = save.mock.calls[0][0];
     expect(body).toMatchObject({
@@ -100,33 +114,49 @@ describe('UsualPortionsSection', () => {
       days: [],
     });
     expect(String(body.referenceWeekStartDate)).toBe('2026-10-12');
-    await screen.findByText('Saved');
+    await waitFor(() => expect(input()).toHaveValue(5));
     expect(automatic()).not.toBeChecked();
-    expect(input()).toHaveValue(5);
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
   });
-  it('saves a source change when explicit and automatic counts are equal', async () => {
-    read.mockResolvedValue(portions({ defaultServingsSource: 'explicit' }));
+
+  it('auto-saves valid numeric input after debounce without requiring blur', async () => {
+    vi.useFakeTimers();
+    render(<UsualPortionsSection />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(automatic()).toBeEnabled();
+
+    fireEvent.click(automatic());
+    fireEvent.change(input(), { target: { value: '5' } });
+    expect(save).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+    });
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0][0]).toMatchObject({ defaultServings: 5 });
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
+  });
+
+  it('immediately saves defaultServings null when checking Use family size even when counts match', async () => {
+    read.mockResolvedValue(portions({ defaultServingsSource: 'explicit', defaultServings: 4 }));
     save.mockResolvedValue(portions({ version: 'family-ack' }));
     render(<UsualPortionsSection />);
     await ready();
-    fireEvent.click(automatic());
-    expect(commit()).toBeEnabled();
-    fireEvent.click(commit());
-    await waitFor(() => expect(save.mock.calls[0][0].defaultServings).toBeNull());
-    await screen.findByText('Saved');
-    expect(automatic()).toBeChecked();
+    expect(automatic()).not.toBeChecked();
     expect(input()).toHaveValue(4);
-  });
-  it('describes an unsaved automatic choice as pending rather than an unavailable family count', async () => {
-    read.mockResolvedValue(portions({ defaultServingsSource: 'explicit', defaultServings: 7 }));
-    render(<UsualPortionsSection />);
-    await ready();
+
     fireEvent.click(automatic());
-    expect(screen.getByText('Family size will be confirmed when you save.')).toBeVisible();
-    expect(
-      screen.queryByText('Family size is unavailable. You can set usual portions.')
-    ).not.toBeInTheDocument();
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][0].defaultServings).toBeNull();
+    await waitFor(() => expect(automatic()).toBeChecked());
+    expect(screen.getByTestId('usual-portions-display')).toHaveTextContent('4 portions');
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
   });
+
   it('retains explicit five after a lost acknowledgement and rejects family five as confirmation', async () => {
     save.mockRejectedValue(new Error('lost acknowledgement'));
     render(<UsualPortionsSection />);
@@ -134,18 +164,19 @@ describe('UsualPortionsSection', () => {
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
     read.mockResolvedValue(portions({ defaultServings: 5, version: 'other-family' }));
-    fireEvent.click(commit());
+    fireEvent.blur(input());
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     expect(
       screen.queryByRole('button', { name: 'Review current portions' })
     ).not.toBeInTheDocument();
-    await waitFor(() => expect(commit()).toBeEnabled());
+    await waitFor(() => expect(input()).toBeEnabled());
     expect(automatic()).not.toBeChecked();
     expect(input()).toHaveValue(5);
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();
     expect(save).toHaveBeenCalledTimes(1);
   });
-  it('confirms a lost explicit acknowledgement only after an authoritative matching read', async () => {
+
+  it('confirms a lost explicit acknowledgement silently after an authoritative matching read', async () => {
     save.mockRejectedValue(new Error('lost acknowledgement'));
     render(<UsualPortionsSection />);
     await ready();
@@ -154,32 +185,41 @@ describe('UsualPortionsSection', () => {
     read.mockResolvedValue(
       portions({ defaultServingsSource: 'explicit', defaultServings: 5, version: 'confirmed' })
     );
-    fireEvent.click(commit());
-    await screen.findByText('Saved');
-    expect(commit()).toBeDisabled();
+    fireEvent.blur(input());
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByTestId('usual-portions-recovery')).not.toBeInTheDocument()
+    );
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
     expect(save).toHaveBeenCalledTimes(1);
   });
-  it('requires a deliberate save after reviewing a lost automatic acknowledgement', async () => {
+
+  it('auto-reconciles a lost automatic acknowledgement silently and retries on conflict', async () => {
     read.mockResolvedValue(portions({ defaultServingsSource: 'explicit', defaultServings: 7 }));
     save
       .mockRejectedValueOnce(new Error('lost acknowledgement'))
       .mockResolvedValueOnce(portions({ version: 'automatic-confirmed' }));
     render(<UsualPortionsSection />);
     await ready();
+    read.mockResolvedValue(
+      portions({ defaultServingsSource: 'explicit', defaultServings: 7, version: 'conflict-v2' })
+    );
     fireEvent.click(automatic());
-    read.mockResolvedValue(portions({ version: 'automatic-maybe-saved' }));
-    fireEvent.click(commit());
-    await waitFor(() => expect(commit()).toBeEnabled());
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();
     expect(save).toHaveBeenCalledTimes(1);
-    fireEvent.click(commit());
-    await screen.findByText('Saved');
+    expect(screen.getByTestId('usual-portions-recovery')).toBeVisible();
+    // Toggling off and back on retries Use family size with the reconciled version.
+    fireEvent.click(automatic());
+    fireEvent.click(automatic());
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
     expect(save.mock.calls[1][0]).toMatchObject({
-      expectedVersion: 'automatic-maybe-saved',
+      expectedVersion: 'conflict-v2',
       defaultServings: null,
       days: [],
     });
   });
+
   it('shows an unconfirmed save as an Era 3 Hearth card with the current baseline and no Review gate', async () => {
     save.mockRejectedValue(new Error('lost acknowledgement'));
     render(<UsualPortionsSection />);
@@ -187,7 +227,7 @@ describe('UsualPortionsSection', () => {
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
     read.mockResolvedValue(portions({ defaultServings: 6, version: 'someone-else' }));
-    fireEvent.click(commit());
+    fireEvent.blur(input());
     const card = await screen.findByTestId('usual-portions-recovery');
     expect(card).toHaveClass('bg-terracotta-50', 'border-hearth-line');
     await waitFor(() =>
@@ -196,12 +236,12 @@ describe('UsualPortionsSection', () => {
     expect(
       screen.queryByRole('button', { name: 'Review current portions' })
     ).not.toBeInTheDocument();
-    expect(commit()).toHaveClass('min-h-12');
     expect(screen.getByTestId('usual-portions-section')).toHaveClass(
       'bg-white',
       'border-chrome-line'
     );
   });
+
   it('offers a single Retry portions button only when the automatic recovery read fails', async () => {
     save.mockRejectedValue(new Error('lost acknowledgement'));
     render(<UsualPortionsSection />);
@@ -209,15 +249,16 @@ describe('UsualPortionsSection', () => {
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
     read.mockRejectedValueOnce(new Error('read down'));
-    fireEvent.click(commit());
+    fireEvent.blur(input());
     const retry = await screen.findByRole('button', { name: 'Retry portions' });
-    expect(commit()).toBeDisabled();
     expect(input()).toHaveValue(5);
     read.mockResolvedValue(portions({ version: 'recovered' }));
     fireEvent.click(retry);
-    await waitFor(() => expect(commit()).toBeEnabled());
-    expect(screen.queryByRole('button', { name: 'Retry portions' })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Retry portions' })).not.toBeInTheDocument()
+    );
   });
+
   it('rereads automatic portions after membership changes without deriving from cached members', async () => {
     render(<UsualPortionsSection />);
     await ready();
@@ -230,30 +271,35 @@ describe('UsualPortionsSection', () => {
         ],
       })
     );
-    await waitFor(() => expect(input()).toHaveValue(5));
+    await waitFor(() =>
+      expect(screen.getByTestId('usual-portions-display')).toHaveTextContent('5 portions')
+    );
     expect(read).toHaveBeenCalledTimes(2);
     expect(save).not.toHaveBeenCalled();
   });
-  it('installs a changed baseline automatically on membership conflict and keeps the dirty draft saveable', async () => {
+
+  it('installs a changed baseline automatically on membership conflict and keeps the dirty draft saveable on blur', async () => {
     render(<UsualPortionsSection />);
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '7' } });
     read.mockResolvedValue(portions({ defaultServings: 5, version: 'changed-baseline' }));
     act(() => useFamilyStore.setState({ familyMembers: [{ id: 'member-b', name: 'Sam' }] }));
-    await waitFor(() => expect(commit()).toBeEnabled());
+    await waitFor(() =>
+      expect(screen.getByText('Current saved portions: 5 (Family size)')).toBeVisible()
+    );
     expect(
       screen.queryByRole('button', { name: 'Review current portions' })
     ).not.toBeInTheDocument();
     expect(input()).toHaveValue(7);
-    expect(screen.getByText('Current saved portions: 5 (Family size)')).toBeVisible();
-    fireEvent.click(commit());
+    fireEvent.blur(input());
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0][0]).toMatchObject({
       expectedVersion: 'changed-baseline',
       defaultServings: 7,
     });
   });
+
   it('keeps explicit seven usable despite roster error and preserves it across membership reads', async () => {
     useFamilyStore.setState({ error: 'Roster unavailable' });
     read.mockResolvedValue(portions({ defaultServingsSource: 'explicit', defaultServings: 7 }));
@@ -264,20 +310,26 @@ describe('UsualPortionsSection', () => {
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     expect(input()).toHaveValue(7);
     fireEvent.change(input(), { target: { value: '5' } });
-    expect(commit()).toBeEnabled();
+    fireEvent.blur(input());
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][0]).toMatchObject({ defaultServings: 5 });
   });
+
   it('shows an unavailable automatic count honestly and allows an explicit choice', async () => {
     read.mockResolvedValue(portions({ defaultServings: null }));
     render(<UsualPortionsSection />);
     await ready();
-    expect(input()).toHaveValue(null);
     expect(
       screen.getByText('Family size is unavailable. You can set usual portions.')
     ).toBeVisible();
     fireEvent.click(automatic());
+    expect(input()).toHaveValue(null);
     fireEvent.change(input(), { target: { value: '3' } });
-    expect(commit()).toBeEnabled();
+    fireEvent.blur(input());
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][0]).toMatchObject({ defaultServings: 3 });
   });
+
   it('renders a wire-null automatic count after actual generated Kiota deserialization', async () => {
     const parsed = new JsonParseNode({
       referenceWeekStartDate: '2026-10-12',
@@ -298,19 +350,24 @@ describe('UsualPortionsSection', () => {
     render(<UsualPortionsSection />);
     await ready();
     expect(automatic()).toBeChecked();
-    expect(input()).toHaveValue(null);
     expect(
       screen.getByText('Family size is unavailable. You can set usual portions.')
     ).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Retry portions' })).not.toBeInTheDocument();
   });
-  it('associates the actual invalid reason with the focused count field', async () => {
+
+  it('shows inline role="alert" for invalid input without sending a PUT', async () => {
     render(<UsualPortionsSection />);
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '0' } });
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent(/Enter a whole number from 1 to 2147483647/);
     expect(input()).toHaveAccessibleDescription(/Enter a whole number from 1 to 2147483647/);
+    fireEvent.blur(input());
+    expect(save).not.toHaveBeenCalled();
   });
+
   it('does not claim saved portions are available when both portions and roster reads fail', async () => {
     useFamilyStore.setState({ error: 'Roster unavailable' });
     read.mockRejectedValue(new Error('Portions unavailable'));
@@ -319,18 +376,22 @@ describe('UsualPortionsSection', () => {
     expect(screen.queryByText(/Saved portions are still available/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry family list' })).toBeEnabled();
   });
-  it.each(['0', '-1', '1.5', '2147483648'])(
-    'retains invalid explicit %s without writing',
+
+  it.each(['', '0', '-1', '1.5', '2147483648'])(
+    'retains invalid explicit %s with role="alert" and without writing',
     async (value) => {
       render(<UsualPortionsSection />);
       await ready();
       fireEvent.click(automatic());
       fireEvent.change(input(), { target: { value } });
-      expect(input()).toHaveValue(Number(value));
-      expect(commit()).toBeDisabled();
+      fireEvent.blur(input());
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        /Enter a whole number from 1 to 2147483647/
+      );
       expect(save).not.toHaveBeenCalled();
     }
   );
+
   it('ignores an older read that completes after a newer resume read', async () => {
     const older = deferred<SupperServings>();
     read
@@ -339,17 +400,18 @@ describe('UsualPortionsSection', () => {
     render(<UsualPortionsSection />);
     fireEvent.focus(window);
     await ready();
-    expect(input()).toHaveValue(6);
+    expect(screen.getByTestId('usual-portions-display')).toHaveTextContent('6 portions');
     await act(async () => older.resolve(portions()));
-    expect(input()).toHaveValue(6);
+    expect(screen.getByTestId('usual-portions-display')).toHaveTextContent('6 portions');
   });
+
   it('rejects a complete acknowledgement with the wrong source even when the count matches', async () => {
     save.mockResolvedValue(portions({ defaultServings: 5, version: 'wrong-source' }));
     render(<UsualPortionsSection />);
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
-    fireEvent.click(commit());
+    fireEvent.blur(input());
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     expect(
       screen.queryByRole('button', { name: 'Review current portions' })
@@ -358,6 +420,7 @@ describe('UsualPortionsSection', () => {
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();
     expect(save).toHaveBeenCalledTimes(1);
   });
+
   it('retries an unavailable portions read without interpreting the roster as a count', async () => {
     read.mockRejectedValueOnce(new Error('read failed'));
     render(<UsualPortionsSection />);
@@ -365,9 +428,10 @@ describe('UsualPortionsSection', () => {
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     fireEvent.click(retry);
     await ready();
-    expect(input()).toHaveValue(4);
+    expect(screen.getByTestId('usual-portions-display')).toHaveTextContent('4 portions');
     expect(save).not.toHaveBeenCalled();
   });
+
   it('uses the current calendar reference for authoritative week and resume rereads', async () => {
     render(<UsualPortionsSection />);
     await ready();
@@ -388,6 +452,7 @@ describe('UsualPortionsSection', () => {
     fireEvent.focus(window);
     await waitFor(() => expect(read).toHaveBeenCalledTimes(calls + 1));
   });
+
   it('keeps a newer draft when review confirms an earlier uncertain write', async () => {
     save.mockRejectedValue(new Error('lost acknowledgement'));
     render(<UsualPortionsSection />);
@@ -396,7 +461,7 @@ describe('UsualPortionsSection', () => {
     fireEvent.change(input(), { target: { value: '5' } });
     const pendingRead = deferred<SupperServings>();
     read.mockReturnValueOnce(pendingRead.promise);
-    fireEvent.click(commit());
+    fireEvent.blur(input());
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     fireEvent.change(input(), { target: { value: '6' } });
     await act(async () =>
@@ -408,11 +473,11 @@ describe('UsualPortionsSection', () => {
         })
       )
     );
-    await waitFor(() => expect(commit()).toBeEnabled());
     expect(input()).toHaveValue(6);
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();
     expect(save).toHaveBeenCalledTimes(1);
   });
+
   it('settles a pending save when the deployment reference changes and then rereads the new week', async () => {
     const pending = deferred<SupperServings>();
     save.mockReturnValueOnce(pending.promise);
@@ -420,7 +485,7 @@ describe('UsualPortionsSection', () => {
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
-    fireEvent.click(commit());
+    fireEvent.blur(input());
     read.mockResolvedValue(
       portions({
         defaultServingsSource: 'explicit',
@@ -449,7 +514,6 @@ describe('UsualPortionsSection', () => {
     );
     await waitFor(() => expect(input()).toBeEnabled());
     expect(input()).toHaveValue(5);
-    expect(commit()).toBeDisabled();
     expect(save).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(read).toHaveBeenLastCalledWith(0, '2026-10-19'));
   });

@@ -423,7 +423,8 @@ test.describe('Cost-safe demo exploration', () => {
     expect(posts).toEqual([]);
     await page.getByTestId('accept-bundle-btn').click();
     await expect(page).toHaveURL(/\/home/);
-    await expect(page.getByTestId('library-toast-card')).toBeVisible();
+    await expect(page.getByTestId('quick-capture-trigger')).toBeVisible();
+    await expect(page.getByTestId('library-toast-card')).toHaveCount(0);
     expect(posts).toEqual(['/api/recipes/import-bundle']);
     await expect(page.getByTestId('capture-gallery-input')).toHaveCount(0);
   });
@@ -522,7 +523,8 @@ test.describe('Cost-safe demo exploration', () => {
       await expect(page.getByTestId('bundle-preview-card')).toBeVisible();
       await page.getByTestId('accept-bundle-btn').click();
       await expect(page).toHaveURL(/\/home/);
-      await expect(page.getByTestId('library-toast-card')).toBeVisible();
+      await expect(page.getByTestId('quick-capture-trigger')).toBeVisible();
+      await expect(page.getByTestId('library-toast-card')).toHaveCount(0);
     } finally {
       release();
     }

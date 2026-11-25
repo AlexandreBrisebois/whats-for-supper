@@ -32,7 +32,7 @@ Settings SHALL configure usual portions. Explicit counts SHALL persist until cha
 
 #### Scenario: Change the usual portion count
 
-- **WHEN** usual changes from four to five and future Wednesday has override six
+- **WHEN** usual auto-saves from four to five and future Wednesday has override six
 - **THEN** future inherited dates use five, Wednesday retains six and past/Cooked/prepared snapshots do not change
 
 #### Scenario: Set portions before choosing food
@@ -42,14 +42,14 @@ Settings SHALL configure usual portions. Explicit counts SHALL persist until cha
 
 #### Scenario: Automatic family size then human choice
 
-- **WHEN** usual is unset for four family members, a member is added, and later a person explicitly sets seven
+- **WHEN** usual is unset for four family members, a member is added, and later a person unchecks `Use family size` and enters seven
 - **THEN** inherited editable dates first use four, then five, then seven
 - **AND** a subsequent membership change leaves seven in effect
 
 #### Scenario: Reset explicit usual to automatic
 
-- **WHEN** a person deliberately selects automatic family size in Settings and confirms the save
-- **THEN** inherited editable dates use the current positive member count, overrides remain, and the setting identifies its automatic source
+- **WHEN** a person checks `Use family size` in Settings
+- **THEN** Settings auto-saves `defaultServings: null`, inherited editable dates use the current positive member count, overrides remain, and the left-side readout displays `<count> portions`
 
 ### Requirement: Keep serving intent attached to dates through meal changes
 
@@ -335,17 +335,17 @@ Every existing positive saved usual count SHALL be preserved as explicit. Missin
 
 ### Requirement: Recover Settings portions saves explicitly
 
-Settings SHALL expose a labeled positive whole-number usual field and automatic-family toggle. Saving SHALL preserve concurrent changes cleanly: on conflict or uncertain acknowledgement, Settings SHALL automatically read current saved portions, keep the user's draft intact without claiming success, show the updated saved baseline inline without a manual Review gate, and keep ordinary grocery freshness semantics.
+Settings SHALL expose `Usual portions` as a compact single row without a `Save` button or routine saved banner: checked `Use family size` (right) shows `<count> portions` (left) and auto-saves immediately; unchecked renders a `72 × 48 CSS px` whole-number input plus `portions` unit label (left) and auto-saves valid integers silently on change/blur. On conflict or uncertain acknowledgement, Settings SHALL auto-read current saved portions, keep any draft, and recover without a manual Review gate.
 
 #### Scenario: Save explicit five then reopen
 
-- **WHEN** a person saves five and receives confirmed persistence
-- **THEN** Settings and inherited editable Planner dates show five, a fresh read agrees, and member changes do not alter it
+- **WHEN** a person unchecks `Use family size`, enters five in the left-side numeric box, and receives confirmed silent persistence (with no `Save` button or routine `"Saved"` notice)
+- **THEN** Settings and inherited editable Planner dates use five, a fresh read agrees, and member changes do not alter it
 
 #### Scenario: Save fails or competes with another update
 
 - **WHEN** usual validation fails, another member changes the baseline, or persistence cannot be confirmed
-- **THEN** Settings automatically reads current saved portions (offering a single Era 3 `Retry portions` `<Button>` only if that read fails) and displays the updated baseline inline inside a Hearth recovery card without a separate `Review current portions` gate so a valid draft can save directly via `Save usual portions`
+- **THEN** invalid input stays local with an inline `role="alert"` message without sending a PUT, while a conflict or persistence failure automatically reads current saved portions (offering a single Era 3 `Retry portions` `<Button>` only if that read fails) and recovers inline without a manual `Review current portions` gate
 
 ### Requirement: Correct portions of the current cooked supper explicitly
 

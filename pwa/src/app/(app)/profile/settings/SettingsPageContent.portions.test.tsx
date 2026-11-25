@@ -21,6 +21,9 @@ vi.mock('@/locales', () => ({
 vi.mock('@/components/profile/FamilyManagement', () => ({
   FamilyManagement: () => <div data-testid="family-management-stub" />,
 }));
+vi.mock('@/components/profile/SearchIndexSection', () => ({
+  SearchIndexSection: () => <div data-testid="search-index-stub" />,
+}));
 vi.mock('@/components/profile/FailedCapturesSection', () => ({
   FailedCapturesSection: () => <div data-testid="failed-captures-stub" />,
 }));
@@ -59,7 +62,6 @@ function deferred<T>() {
 
 const automatic = () => screen.getByRole('checkbox', { name: 'Use family size' });
 const input = () => screen.getByRole('spinbutton', { name: 'Usual portions' });
-const saveButton = () => screen.getByRole('button', { name: 'Save usual portions' });
 const ready = async () => {
   await screen.findByRole('checkbox', { name: 'Use family size' });
   await waitFor(() => expect(automatic()).toBeEnabled());
@@ -86,6 +88,16 @@ beforeEach(() => {
 });
 
 describe('Settings usual portions', () => {
+  it('mounts SearchIndexSection strictly below UsualPortionsSection', async () => {
+    render(<SettingsPageContent />);
+    await ready();
+    const portionsEl = screen.getByTestId('usual-portions-section');
+    const searchEl = screen.getByTestId('search-index-stub');
+    expect(
+      portionsEl.compareDocumentPosition(searchEl) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
   it('shows honest loading before an authoritative portions read resolves', async () => {
     const pending = deferred<SupperServings>();
     read.mockReturnValueOnce(pending.promise);
@@ -102,17 +114,17 @@ describe('Settings usual portions', () => {
     render(<SettingsPageContent />);
     await ready();
     expect(automatic()).toBeChecked();
-    expect(input()).toHaveValue(4);
-    expect(saveButton()).toBeDisabled();
+    expect(screen.getByTestId('usual-portions-display')).toHaveTextContent('4 portions');
+    expect(screen.queryByTestId('save-usual-portions')).not.toBeInTheDocument();
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('saves explicit five as a guarded default-only batch and reopens persisted explicit state', async () => {
+  it('saves explicit five silently as a guarded default-only batch and reopens persisted explicit state', async () => {
     const view = render(<SettingsPageContent />);
     await ready();
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
-    fireEvent.click(saveButton());
+    fireEvent.blur(input());
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     const body = save.mock.calls[0][0];
     expect(body).toMatchObject({
@@ -122,7 +134,7 @@ describe('Settings usual portions', () => {
       days: [],
     });
     expect(String(body.referenceWeekStartDate)).toBe('2026-10-12');
-    await waitFor(() => expect(saveButton()).toBeDisabled());
+    await waitFor(() => expect(input()).toHaveValue(5));
     view.unmount();
     read.mockResolvedValue(portions({ defaultServingsSource: 'explicit', defaultServings: 5 }));
     render(<SettingsPageContent />);
@@ -131,14 +143,12 @@ describe('Settings usual portions', () => {
     expect(input()).toHaveValue(5);
   });
 
-  it('saves explicit four to automatic four as a meaningful source change', async () => {
-    read.mockResolvedValue(portions({ defaultServingsSource: 'explicit' }));
+  it('saves explicit four to automatic four immediately as a meaningful source change', async () => {
+    read.mockResolvedValue(portions({ defaultServingsSource: 'explicit', defaultServings: 4 }));
     save.mockResolvedValue(portions({ version: 'automatic-version' }));
     render(<SettingsPageContent />);
     await ready();
     fireEvent.click(automatic());
-    expect(saveButton()).toBeEnabled();
-    fireEvent.click(saveButton());
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0][0]).toMatchObject({ defaultServings: null, days: [] });
   });
@@ -150,21 +160,20 @@ describe('Settings usual portions', () => {
     await ready();
     expect(input()).toHaveValue(7);
     fireEvent.change(input(), { target: { value: '5' } });
-    expect(saveButton()).toBeEnabled();
-    fireEvent.click(saveButton());
+    fireEvent.blur(input());
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0][0].defaultServings).toBe(5);
   });
 
   it.each(['0', '-1', '1.5', '2147483648'])(
-    'retains invalid explicit %s without writing',
+    'retains invalid explicit %s with role="alert" without writing',
     async (value) => {
       render(<SettingsPageContent />);
       await ready();
       fireEvent.click(automatic());
       fireEvent.change(input(), { target: { value } });
-      expect(input()).toHaveValue(Number(value));
-      expect(saveButton()).toBeDisabled();
+      fireEvent.blur(input());
+      expect(screen.getByRole('alert')).toBeVisible();
       expect(save).not.toHaveBeenCalled();
     }
   );
@@ -176,7 +185,7 @@ describe('Settings usual portions', () => {
     fireEvent.click(automatic());
     fireEvent.change(input(), { target: { value: '5' } });
     read.mockResolvedValue(portions({ defaultServings: 5, version: 'other-family-version' }));
-    fireEvent.click(saveButton());
+    fireEvent.blur(input());
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     expect(
@@ -184,7 +193,6 @@ describe('Settings usual portions', () => {
     ).not.toBeInTheDocument();
     expect(input()).toHaveValue(5);
     expect(automatic()).not.toBeChecked();
-    expect(input()).toHaveValue(5);
     expect(save).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();
   });

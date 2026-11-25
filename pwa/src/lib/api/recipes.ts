@@ -1031,3 +1031,16 @@ export async function createPdfRecipe(
     );
   return result.data.id;
 }
+
+export async function reindexRecipe(
+  recipeId: string
+): Promise<{ message: string; queued: boolean }> {
+  const response = await apiClient.api.recipes.byId(recipeId).reindex.post();
+  if (!response?.message) {
+    throw new Error('Could not queue recipe reindex.');
+  }
+  return {
+    message: response.message,
+    queued: Boolean(response.queued),
+  };
+}

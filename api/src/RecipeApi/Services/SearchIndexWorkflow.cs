@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Data;
+using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Workflow;
 
@@ -13,7 +14,8 @@ public class SearchIndexWorkflow(
     ILogger<SearchIndexWorkflow>? logger = null,
     ISearchTelemetry? telemetry = null,
     IRecipeSearchDocumentBuilder? documentBuilder = null,
-    DemoModeOptions? demoMode = null) : IWorkflowProcessor
+    DemoModeOptions? demoMode = null,
+    IScheduleEventPublisher? publisher = null) : IWorkflowProcessor
 {
     public string ProcessorName => "IndexRecipeSearch";
 
@@ -123,10 +125,12 @@ public class SearchIndexWorkflow(
             }
             doc.EmbeddingStatus = currentVector ? "ready" : "pending";
             await db.SaveChangesAsync(ct);
+            await PublishSearchableSafeAsync(recipe, ct);
             return;
         }
         doc.EmbeddingStatus = "indexing";
         await db.SaveChangesAsync(ct);
+        await PublishSearchableSafeAsync(recipe, ct);
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         telemetry?.Emit(SearchTelemetryEvents.IndexJobStarted, new()
@@ -156,6 +160,8 @@ public class SearchIndexWorkflow(
             else
                 doc.EmbeddingStatus = "pending";
             await db.SaveChangesAsync(ct);
+            if (doc.EmbeddingStatus == "ready")
+                await TryPublishSafeAsync(p => p.PublishRecipeEnrichedAsync(recipeId));
 
             sw.Stop();
             logger?.LogInformation("Indexed recipe {RecipeId} successfully", recipeId);
@@ -184,6 +190,7 @@ public class SearchIndexWorkflow(
             {
                 doc.EmbeddingStatus = "failed";
                 await db.SaveChangesAsync(ct);
+                await TryPublishSafeAsync(p => p.PublishRecipeEnrichmentFailedAsync(recipeId));
             }
             sw.Stop();
             logger?.LogError(ex, "Failed to index recipe {RecipeId}", recipeId);
@@ -195,6 +202,31 @@ public class SearchIndexWorkflow(
 
             // Re-throw to trigger WorkflowWorker retry mechanism
             throw;
+        }
+    }
+
+    private async Task PublishSearchableSafeAsync(Recipe recipe, CancellationToken ct)
+    {
+        if (publisher is null) return;
+        var isDuplicate = await db.RecipeImportReports
+            .AsNoTracking()
+            .Where(r => r.RecipeId == recipe.Id)
+            .Select(r => r.Reasons)
+            .ToListAsync(ct);
+        var hasDuplicate = isDuplicate.Any(reasons => reasons.Contains("duplicate"));
+        await TryPublishSafeAsync(p => p.PublishRecipeSearchableAsync(recipe.Id, recipe.Name ?? string.Empty, hasDuplicate));
+    }
+
+    private async Task TryPublishSafeAsync(Func<IScheduleEventPublisher, Task> publish)
+    {
+        if (publisher is null) return;
+        try
+        {
+            await publish(publisher);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "Failed to broadcast search-stage SSE event");
         }
     }
 

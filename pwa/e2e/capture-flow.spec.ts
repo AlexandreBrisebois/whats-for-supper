@@ -102,7 +102,7 @@ test.describe('Capture Flow', () => {
     await saveBtn.click();
 
     await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
-    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
+    await expect(page.getByTestId('capture-activity-bar')).toBeVisible();
   });
 
   test('large photo uploads show immediate upload feedback and a delayed overlay', async ({
@@ -154,7 +154,7 @@ test.describe('Capture Flow', () => {
 
     releaseUpload();
     await expect(page).toHaveURL(/\/home/, { timeout: 15_000 });
-    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
+    await expect(page.getByTestId('capture-activity-bar')).toBeVisible();
   });
 
   test('after successful capture, user can return to home', async ({ page }) => {
@@ -209,7 +209,7 @@ test.describe('Capture Flow', () => {
     expect(body.rating).toBe(3);
 
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
-    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
+    await expect(page.getByTestId('capture-activity-bar')).toBeVisible();
   });
 
   test('navigating with text param containing a URL should show the review form', async ({
@@ -649,7 +649,7 @@ test.describe('Browse Filters — GOTO pending state', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Phase 2 — SSE-driven notifications: LibraryToast and RecipeFailureBanner
+// Phase 2 — SSE-driven quiet Home activity & zero global popups
 // ---------------------------------------------------------------------------
 
 test.describe('Capture — SSE notifications (Phase 2)', () => {
@@ -678,10 +678,9 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     });
   });
 
-  // ── Recipe queued state ──────────────────────────────────────────────────
-  // (not "Captured!") because synthesis is async. The app automatically
-  // redirects home after 10 seconds.
-  test('photo submit shows recipe queued state and redirects home', async ({ page }) => {
+  test('photo submit shows recipe queued state on Home without legacy success screen', async ({
+    page,
+  }) => {
     await page.route('**/api/recipes', async (route) => {
       if (route.request().method() === 'POST') {
         await route.fulfill({
@@ -711,241 +710,78 @@ test.describe('Capture — SSE notifications (Phase 2)', () => {
     await page.getByTestId('capture-save-btn').click();
 
     await expect(page).toHaveURL(/\/home/, { timeout: 10_000 });
-    await expect(page.getByTestId('capture-in-flight-ribbon')).toBeVisible();
+    await expect(page.getByTestId('capture-activity-bar')).toBeVisible();
     await expect(page.getByTestId('capture-success-screen')).toHaveCount(0);
+    await expect(page.getByTestId('library-toast-card')).toHaveCount(0);
   });
 
-  // ── LibraryToast on recipe_ready ─────────────────────────────────────────
-  // When SSE fires `recipe_ready` for a recipe that was submitted in this
-  // session (captureStore has it), the LibraryToast appears at the top of
-  // the screen (inside notification-zone) with the recipe name and a "Tap to view recipe" hint.
-  //
-  // Strategy: navigate to /home, then push a 'ready' notification directly to
-  // libraryStore via window.__libraryStore (exposed in non-production builds).
-  // This tests the LibraryToast UI rendering when a recipe_ready notification arrives.
-  test('SSE recipe_ready → LibraryToast appears with recipe name', async ({ page }) => {
-    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
-    const recipeName = 'Test Lasagna';
-
-    const cookies = await page.context().cookies();
-    console.log('COOKIES BEFORE GOTO:', JSON.stringify(cookies, null, 2));
-
-    // Navigate to /home — the layout mounts LibraryToast
-    await page.goto('/home');
-
-    // Wait for the layout to mount and expose the store on window
-    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
-
-    // Push a 'ready' notification to libraryStore to simulate what the SSE
-    // recipe_ready handler would do when captureStore has the recipe.
-    await page.evaluate(
-      ({ id, name }) => {
-        (window as any).__libraryStore.getState().pushNotification({
-          recipeId: id,
-          name,
-          type: 'ready',
-        });
-      },
-      { id: recipeId, name: recipeName }
-    );
-
-    // The toast renders with role="status" and contains the recipe name
-    const toast = page.locator('[role="status"]').filter({ hasText: recipeName });
-    await expect(toast).toBeVisible({ timeout: 5_000 });
-    await expect(toast).toContainText(/is ready/i);
-    await expect(toast).toContainText('Tap to view recipe');
-
-    // Ensure it's in the top notification zone
-    await expect(page.getByTestId('notification-zone')).toContainText(recipeName);
-  });
-
-  test('LibraryToast tap opens the completed recipe and dismisses its notification', async ({
+  test('quiet Home readiness replaces global LibraryToast and RecipeFailureBanner overlays', async ({
     page,
   }) => {
     const recipeId = MOCK_IDS.RECIPE_LASAGNA;
-    const recipeName = 'Test Lasagna';
-
-    await page.setViewportSize({ width: 390, height: 1000 });
-    await page.goto('/home');
-    // Ensure page is hydrated
-    await expect(page.getByTestId('quick-capture-trigger')).toBeVisible({ timeout: 15_000 });
-    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 10_000 });
-
-    await page.evaluate(
-      ({ id, name }) => {
-        (window as any).__libraryStore.getState().pushNotification({
-          recipeId: id,
-          name,
-          type: 'ready',
-        });
-      },
-      { id: recipeId, name: recipeName }
+    const failureId = MOCK_IDS.CAPTURE_FAILURE_URL;
+    await page.route('**/api/captures/activity', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            items: [
+              {
+                id: failureId,
+                workflowInstanceId: failureId,
+                recipeId,
+                stage: 'failed',
+                title: 'Failed Lasagna',
+                sourceWorkflowId: 'url-import',
+                sourceType: 'url',
+                stepName: 'extract_recipe',
+                stepLabel: 'Extracting recipe',
+                previewText: 'https://example.com/lasagna',
+                friendlyReason: 'Couldn’t read enough recipe details from that web page.',
+                retryCount: 1,
+                isReady: false,
+                isSuspectedDuplicate: false,
+                updatedAt: '2026-11-24T12:00:00Z',
+              },
+              {
+                id: MOCK_IDS.RECIPE_SPAGHETTI,
+                workflowInstanceId: null,
+                recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+                stage: 'enriching',
+                title: 'Sunday Pasta',
+                sourceWorkflowId: 'url-import',
+                sourceType: 'url',
+                stepName: null,
+                stepLabel: null,
+                previewText: null,
+                friendlyReason: null,
+                retryCount: 0,
+                isReady: true,
+                isSuspectedDuplicate: false,
+                updatedAt: '2026-11-24T12:00:00Z',
+              },
+            ],
+          },
+        }),
+      })
     );
 
-    await expect(page.locator('[role="status"]').filter({ hasText: recipeName })).toBeVisible();
-    const toast = page.locator('[role="status"]').filter({ hasText: recipeName });
-    await expect(toast).toBeVisible();
-    await toast.getByRole('button', { name: `View ${recipeName}` }).click();
-
-    await expect(page).toHaveURL(new RegExp(`/recipes\\?open=${recipeId}`), { timeout: 15_000 });
-    await expect
-      .poll(() =>
-        page.evaluate((id) => {
-          return (window as any).__libraryStore
-            .getState()
-            .notifications.some(
-              (notification: { recipeId: string }) => notification.recipeId === id
-            );
-        }, recipeId)
-      )
-      .toBe(false);
-  });
-
-  test('LibraryToast X dismisses without opening the recipe', async ({ page }) => {
-    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
-    const recipeName = 'Test Lasagna';
-
-    await page.setViewportSize({ width: 390, height: 1000 });
     await page.goto('/home');
-    await expect(page.getByTestId('quick-capture-trigger')).toBeVisible({ timeout: 15_000 });
-    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 10_000 });
+    await expect(page.getByTestId('capture-activity-bar')).toBeVisible();
+    await expect(page.getByTestId('library-toast-card')).toHaveCount(0);
+    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toHaveCount(0);
 
-    await page.evaluate(
-      ({ id, name }) => {
-        (window as any).__libraryStore.getState().pushNotification({
-          recipeId: id,
-          name,
-          type: 'ready',
-        });
-      },
-      { id: recipeId, name: recipeName }
-    );
-
-    const toast = page.locator('[role="status"]').filter({ hasText: recipeName });
-    await expect(toast).toBeVisible();
-    await toast.getByRole('button', { name: 'Dismiss notification' }).click();
-
-    await expect(toast).toBeHidden();
-    await expect(page).toHaveURL(/\/home/);
-  });
-
-  test('LibraryToast auto-dismisses without navigation', async ({ page }) => {
-    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
-    const recipeName = 'Test Lasagna';
-
-    await page.goto('/home');
-    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 10_000 });
-    await page.evaluate(
-      ({ id, name }) => {
-        (window as any).__libraryStore.getState().pushNotification({
-          recipeId: id,
-          name,
-          type: 'ready',
-        });
-      },
-      { id: recipeId, name: recipeName }
-    );
-
-    const toast = page.locator('[role="status"]').filter({ hasText: recipeName });
-    await expect(toast).toBeVisible();
-    await expect(toast).toBeHidden({ timeout: 6_000 });
-    await expect(page).toHaveURL(/\/home/);
-  });
-
-  test('LibraryToast shows the newest ready notification and queued count', async ({ page }) => {
-    const olderRecipeName = 'Older Lasagna';
-    const newestRecipeName = 'Newest Pasta';
-
-    await page.goto('/home');
-    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 10_000 });
-
-    await page.evaluate(
-      ({ olderId, newerId, olderName, newerName }) => {
-        const store = (window as any).__libraryStore.getState();
-        store.pushNotification({ recipeId: olderId, name: olderName, type: 'ready' });
-        store.pushNotification({ recipeId: newerId, name: newerName, type: 'ready' });
-      },
-      {
-        olderId: MOCK_IDS.RECIPE_LASAGNA,
-        newerId: MOCK_IDS.RECIPE_SPAGHETTI,
-        olderName: olderRecipeName,
-        newerName: newestRecipeName,
-      }
-    );
-
-    const toast = page.locator('[role="status"]').filter({ hasText: newestRecipeName });
-    await expect(toast).toBeVisible();
-    await expect(toast).not.toContainText('+1 more');
-    await toast.getByRole('button', { name: `View ${newestRecipeName}` }).click();
-
-    await expect(page).toHaveURL(new RegExp(`/recipes\\?open=${MOCK_IDS.RECIPE_SPAGHETTI}`));
+    await page.getByTestId('capture-activity-bar').click();
+    await expect(page.getByTestId('capture-activity-sheet')).toBeVisible();
+    await expect(page.getByTestId(`failed-capture-${failureId}`)).toBeVisible();
     await expect(
-      page.locator('[role="status"]').filter({ hasText: olderRecipeName })
-    ).toBeVisible();
-  });
+      page.getByTestId(`activity-recipe-link-${MOCK_IDS.RECIPE_SPAGHETTI}`)
+    ).toHaveAttribute('href', `/recipes?open=${MOCK_IDS.RECIPE_SPAGHETTI}`);
 
-  // ── RecipeFailureBanner on recipe_failed ─────────────────────────────────
-  // When SSE fires `recipe_failed` for a recipe that was submitted in this
-  // session, the RecipeFailureBanner appears with a retry CTA.
-  //
-  // Strategy: navigate to /home, then push a 'failed' notification directly to
-  // libraryStore via window.__libraryStore (exposed in non-production builds).
-  test('SSE recipe_failed → RecipeFailureBanner appears with retry CTA', async ({ page }) => {
-    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
-    const recipeName = 'Test Lasagna';
-
-    // Navigate to /home — the layout mounts RecipeFailureBanner
-    await page.goto('/home');
-
-    // Wait for the layout to mount and expose the store on window
-    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
-
-    // Push a 'failed' notification to libraryStore to simulate what the SSE
-    // recipe_failed handler would do when captureStore has the recipe.
-    await page.evaluate(
-      ({ id, name }) => {
-        (window as any).__libraryStore.getState().pushNotification({
-          recipeId: id,
-          name,
-          type: 'failed',
-          errorMessage: 'AI extraction failed',
-          failedStep: 'recipe-extraction',
-        });
-      },
-      { id: recipeId, name: recipeName }
-    );
-
-    // Wait for the RecipeFailureBanner to appear in the notification zone
-    const banner = page.getByTestId(`recipe-failure-banner-${recipeId}`);
-    await expect(banner).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByTestId('notification-zone')).toContainText(recipeName);
-    await expect(banner).toContainText(/couldn't be saved/i);
-    await expect(banner).toContainText(/tap to try again/i);
-  });
-
-  test('RecipeFailureBanner dismiss action removes the failed notification', async ({ page }) => {
-    const recipeId = MOCK_IDS.RECIPE_LASAGNA;
-    const recipeName = 'Test Lasagna';
-
-    await page.goto('/home');
-    await page.waitForFunction(() => !!(window as any).__libraryStore, { timeout: 5_000 });
-
-    await page.evaluate(
-      ({ id, name }) => {
-        (window as any).__libraryStore.getState().pushNotification({
-          recipeId: id,
-          name,
-          type: 'failed',
-          errorMessage: 'AI extraction failed',
-          failedStep: 'recipe-extraction',
-        });
-      },
-      { id: recipeId, name: recipeName }
-    );
-
-    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toBeVisible();
-    await page.getByTestId(`recipe-failure-dismiss-${recipeId}`).click();
-    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).not.toBeVisible();
+    await page.goto('/recipes');
+    await expect(page.getByTestId('library-toast-card')).toHaveCount(0);
+    await expect(page.getByTestId(`recipe-failure-banner-${recipeId}`)).toHaveCount(0);
   });
 });
 
@@ -1007,45 +843,64 @@ test.describe('Capture Family Cookbook dual-mode visual & a11y contract', () => 
       await expect(page.getByTestId('capture-synthesize-btn')).toHaveCSS('opacity', '1');
       await assertCookbookVisualA11y(page, { contrastLevel });
 
-      await page.goto('/home');
-      await page.waitForFunction(() => Boolean((window as any).__libraryStore), {
-        timeout: 10_000,
-      });
-      await page.evaluate(
-        ({ readyId, failedId }) => {
-          const store = (window as any).__libraryStore.getState();
-          store.pushNotification({ recipeId: readyId, name: 'Sunday Pasta', type: 'ready' });
-          store.pushNotification({
-            recipeId: failedId,
-            name: 'Failed Lasagna',
-            type: 'failed',
-            errorMessage: 'Extraction timed out',
-            failedStep: 'recipe-extraction',
-          });
-        },
-        { readyId: MOCK_IDS.RECIPE_SPAGHETTI, failedId: MOCK_IDS.RECIPE_LASAGNA }
+      await page.route('**/api/captures/activity', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              items: [
+                {
+                  id: MOCK_IDS.CAPTURE_FAILURE_URL,
+                  workflowInstanceId: MOCK_IDS.CAPTURE_FAILURE_URL,
+                  recipeId: MOCK_IDS.RECIPE_LASAGNA,
+                  stage: 'failed',
+                  title: 'Failed Lasagna',
+                  sourceWorkflowId: 'url-import',
+                  sourceType: 'url',
+                  stepName: 'extract_recipe',
+                  stepLabel: 'Extracting recipe',
+                  previewText: 'https://example.com/lasagna',
+                  friendlyReason: 'Couldn’t extract the recipe details.',
+                  retryCount: 0,
+                  isReady: false,
+                  isSuspectedDuplicate: false,
+                  updatedAt: '2026-11-24T12:00:00Z',
+                },
+                {
+                  id: MOCK_IDS.RECIPE_SPAGHETTI,
+                  workflowInstanceId: null,
+                  recipeId: MOCK_IDS.RECIPE_SPAGHETTI,
+                  stage: 'enriching',
+                  title: 'Sunday Pasta',
+                  sourceWorkflowId: 'url-import',
+                  sourceType: 'url',
+                  stepName: null,
+                  stepLabel: null,
+                  previewText: null,
+                  friendlyReason: null,
+                  retryCount: 0,
+                  isReady: true,
+                  isSuspectedDuplicate: false,
+                  updatedAt: '2026-11-24T12:00:00Z',
+                },
+              ],
+            },
+          }),
+        })
       );
 
-      const toast = page.locator('[role="status"]').filter({ hasText: 'Sunday Pasta' });
-      const banner = page.getByTestId(`recipe-failure-banner-${MOCK_IDS.RECIPE_LASAGNA}`);
-      await expect(toast).toBeVisible();
-      await expect(banner).toBeVisible();
-      await expect(toast).toHaveCSS('opacity', '1');
-      await expect(banner).toHaveCSS('opacity', '1');
-
-      if (mode === 'high') {
-        const toastStyle = await toast.getByTestId('library-toast-card').evaluate((el) => {
-          const cs = getComputedStyle(el);
-          return {
-            backgroundColor: cs.backgroundColor,
-            backdropFilter: cs.backdropFilter,
-          };
-        });
-        expect(toastStyle.backgroundColor).toBe('rgb(255, 255, 255)');
-        expect(toastStyle.backdropFilter).toBe('none');
-      }
-
+      await page.goto('/home');
+      const bar = page.getByTestId('capture-activity-bar');
+      await expect(bar).toBeVisible();
       await assertCookbookVisualA11y(page, { contrastLevel });
+
+      await bar.click();
+      await expect(page.getByTestId('capture-activity-sheet')).toBeVisible();
+      await assertCookbookVisualA11y(page, {
+        contrastLevel,
+        rootSelector: '[data-testid="capture-activity-sheet"]',
+      });
     });
   }
 

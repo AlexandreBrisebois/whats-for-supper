@@ -1,12 +1,14 @@
 'use client';
 
-import { Camera, ChevronRight } from 'lucide-react';
+import { ChevronRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { ROUTES } from '@/lib/constants/routes';
+import { useLocale } from '@/components/common/LocaleProvider';
 import { t } from '@/locales';
 import { SuccessCard } from '@/components/ui/SuccessCard';
 
 export function QuickCaptureTrigger() {
+  const { locale } = useLocale();
   return (
     <Link
       href={ROUTES.CAPTURE}
@@ -15,14 +17,19 @@ export function QuickCaptureTrigger() {
     >
       <div className="flex items-center gap-3 sm:gap-5">
         <div className="flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-terracotta/10 text-hearth-ink transition-colors group-hover:bg-hearth-fill group-hover:text-white">
-          <Camera size={32} strokeWidth={2} />
+          <Plus
+            size={28}
+            strokeWidth={2.2}
+            data-testid="quick-capture-plus-icon"
+            aria-hidden="true"
+          />
         </div>
         <div className="flex flex-col">
           <span className="font-heading text-[1.05rem] sm:text-xl font-black tracking-tighter leading-none">
-            {t('home.captureRecipe', 'Capture a Recipe')}
+            {t('home.captureRecipe', 'Capture a Recipe', locale)}
           </span>
           <span className="text-ink-muted text-xs font-medium mt-1">
-            {t('home.photoOrLink', 'Photo or Link')}
+            {t('home.snapPasteUploadDescribe', 'Snap, paste, upload, or describe', locale)}
           </span>
         </div>
       </div>

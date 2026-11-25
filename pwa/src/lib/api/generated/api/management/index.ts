@@ -29,6 +29,11 @@ import {
   type RecoveryRequestBuilder,
 } from './recovery/index';
 // @ts-ignore
+import {
+  SearchStatusRequestBuilderRequestsMetadata,
+  type SearchStatusRequestBuilder,
+} from './searchStatus/index';
+// @ts-ignore
 import { SeedRequestBuilderRequestsMetadata, type SeedRequestBuilder } from './seed/index';
 // @ts-ignore
 import { StatusRequestBuilderRequestsMetadata, type StatusRequestBuilder } from './status/index';
@@ -68,6 +73,10 @@ export interface ManagementRequestBuilder extends BaseRequestBuilder<ManagementR
    */
   get recovery(): RecoveryRequestBuilder;
   /**
+   * The searchStatus property
+   */
+  get searchStatus(): SearchStatusRequestBuilder;
+  /**
    * The seed property
    */
   get seed(): SeedRequestBuilder;
@@ -104,6 +113,9 @@ export const ManagementRequestBuilderNavigationMetadata: Record<
   },
   recovery: {
     navigationMetadata: RecoveryRequestBuilderNavigationMetadata,
+  },
+  searchStatus: {
+    requestsMetadata: SearchStatusRequestBuilderRequestsMetadata,
   },
   seed: {
     requestsMetadata: SeedRequestBuilderRequestsMetadata,

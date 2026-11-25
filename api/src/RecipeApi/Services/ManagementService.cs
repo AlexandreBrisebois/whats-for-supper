@@ -534,7 +534,7 @@ public partial class ManagementService(
                 try
                 {
                     physical = await RecipePhysicalLifecycle.DeleteAsync(db, recipeId, "failed-capture", clock, recipesRoot,
-                        recipe => !CaptureFailureService.ShouldRetainRecipe(recipe),
+                        recipe => !CaptureFailureService.ShouldRetainRecipe(db, recipe),
                         () => Task.FromResult<bool?>(LocalRecipeStore.DeleteDirectory(ActiveRecipesRoot, recipeId)),
                         enlistRetirement: RetireWorkflow, command: command, ct: ct);
                 }

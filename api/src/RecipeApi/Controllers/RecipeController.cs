@@ -22,6 +22,8 @@ public class RecipeController(
     RecipePurgeService recipePurgeService,
     RecipeDbContext db,
     RecipeSearchFilterOptions filterOptions,
+    IWorkflowOrchestrator orchestrator,
+    IRecipeSearchDocumentBuilder searchDocumentBuilder,
     ILogger<RecipeController> logger) : ControllerBase
 {
     /// <summary>GET /api/recipes/search/filters — configured and materialized search vocabulary.</summary>
@@ -552,5 +554,56 @@ public class RecipeController(
             PurgeResult.NotFound => NotFound(new { message = "Recipe not found." }),
             _ => StatusCode(500)
         };
+    }
+
+    /// <summary>POST /api/recipes/{id}/reindex — queue search index refresh for a single ready recipe.</summary>
+    [HttpPost("{id:guid}/reindex")]
+    [SkipWrapping]
+    public async Task<IActionResult> Reindex(Guid id, CancellationToken ct)
+    {
+        var recipe = await db.Recipes
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(r => r.Id == id && r.DeletedAt == null, ct);
+
+        if (recipe is null)
+            return NotFound(new { message = "Recipe not found." });
+
+        if (!recipe.IsReady)
+            return Conflict(new { message = "Recipe is not ready for search indexing." });
+
+        var content = searchDocumentBuilder.Build(recipe);
+        var fingerprint = SearchFingerprintService.ComputeSourceFingerprint(recipe, content);
+        if (await SearchReconciliationWorkflow.HasActiveIndexAsync(db, recipe.Id, fingerprint, ct))
+            return Accepted(new { message = "Recipe search reindex already queued.", queued = false });
+
+        var sidecar = await db.RecipeSearchDocuments.FindAsync([recipe.Id], ct);
+        if (sidecar is null)
+        {
+            db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+            {
+                RecipeId = recipe.Id,
+                DocumentText = string.Empty,
+                SearchMetadata = "{}",
+                IndexStatus = "pending",
+                EmbeddingStatus = "pending",
+                EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2",
+                SchemaVersion = content.SchemaVersion,
+            });
+        }
+        else
+        {
+            sidecar.IndexStatus = "pending";
+            sidecar.EmbeddingStatus = "pending";
+        }
+
+        await db.SaveChangesAsync(ct);
+        await orchestrator.TriggerAsync("index-recipe-search", new Dictionary<string, string>
+        {
+            ["recipeId"] = recipe.Id.ToString(),
+            ["fingerprint"] = fingerprint,
+        });
+
+        return Accepted(new { message = "Recipe queued for search reindex.", queued = true });
     }
 }

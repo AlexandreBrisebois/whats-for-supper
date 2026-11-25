@@ -20,6 +20,7 @@ public sealed class SearchReconciliationWorkflow(
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
     {
         var cursor = ReadCursor(task.Payload);
+        var force = ReadForce(task.Payload);
         var recipes = await db.Recipes.IgnoreQueryFilters().AsNoTracking()
             .Where(r => r.IsReady && r.DeletedAt == null && (!cursor.HasValue || r.Id.CompareTo(cursor.Value) > 0))
             .OrderBy(r => r.Id).Take(BatchSize).ToListAsync(ct);
@@ -34,9 +35,12 @@ public sealed class SearchReconciliationWorkflow(
                 sidecar = new RecipeSearchDocument { RecipeId = recipe.Id, DocumentText = string.Empty, SearchMetadata = "{}", IndexStatus = "pending", EmbeddingStatus = "pending", EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2", SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion };
                 db.RecipeSearchDocuments.Add(sidecar);
             }
-            var needsIndex = sidecar.IndexStatus != "ready" || sidecar.SchemaVersion != content.SchemaVersion || sidecar.SourceFingerprint != fingerprint
+            var needsIndex = force
+                || sidecar.IndexStatus != "ready"
+                || sidecar.SchemaVersion != content.SchemaVersion
+                || sidecar.SourceFingerprint != fingerprint
                 || (demoMode?.Enabled != true && sidecar.EmbeddingStatus is "failed" or "pending");
-            if (needsIndex && !await HasActiveIndexAsync(recipe.Id, fingerprint, ct))
+            if (needsIndex && !await HasActiveIndexAsync(db, recipe.Id, fingerprint, ct))
             {
                 sidecar.IndexStatus = "pending";
                 sidecar.EmbeddingStatus = "pending";
@@ -46,12 +50,17 @@ public sealed class SearchReconciliationWorkflow(
             }
         }
         if (recipes.Count == BatchSize)
-            await orchestrator.TriggerAsync("search-reconciliation", new() { ["cursor"] = recipes[^1].Id.ToString() });
-        logger.LogInformation("Reconciled {Count} recipes; queued {Queued} index jobs.", recipes.Count, queued);
-        return new { scanned = recipes.Count, queued, cursor = recipes.LastOrDefault()?.Id };
+        {
+            var continuation = new Dictionary<string, string> { ["cursor"] = recipes[^1].Id.ToString() };
+            if (force)
+                continuation["force"] = "true";
+            await orchestrator.TriggerAsync("search-reconciliation", continuation);
+        }
+        logger.LogInformation("Reconciled {Count} recipes (force={Force}); queued {Queued} index jobs.", recipes.Count, force, queued);
+        return new { scanned = recipes.Count, queued, force, cursor = recipes.LastOrDefault()?.Id };
     }
 
-    private async Task<bool> HasActiveIndexAsync(Guid recipeId, string fingerprint, CancellationToken ct)
+    internal static async Task<bool> HasActiveIndexAsync(RecipeDbContext db, Guid recipeId, string fingerprint, CancellationToken ct)
     {
         var recipeToken = recipeId.ToString();
         if (db.Database.IsRelational())
@@ -83,5 +92,18 @@ public sealed class SearchReconciliationWorkflow(
         if (string.IsNullOrWhiteSpace(payload)) return null;
         using var json = JsonDocument.Parse(payload);
         return json.RootElement.TryGetProperty("cursor", out var value) && Guid.TryParse(value.GetString(), out var cursor) ? cursor : null;
+    }
+
+    private static bool ReadForce(string? payload)
+    {
+        if (string.IsNullOrWhiteSpace(payload)) return false;
+        using var json = JsonDocument.Parse(payload);
+        if (!json.RootElement.TryGetProperty("force", out var value)) return false;
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.String => bool.TryParse(value.GetString(), out var parsed) && parsed,
+            _ => false
+        };
     }
 }

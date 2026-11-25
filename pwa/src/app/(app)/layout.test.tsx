@@ -25,11 +25,11 @@ vi.mock('@/components/WeekStoreInitializer', () => ({
 }));
 
 vi.mock('@/components/capture/LibraryToast', () => ({
-  LibraryToast: () => null,
+  LibraryToast: () => <div data-testid="library-toast-mock" />,
 }));
 
 vi.mock('@/components/capture/RecipeFailureBanner', () => ({
-  RecipeFailureBanner: () => null,
+  RecipeFailureBanner: () => <div data-testid="recipe-failure-banner-mock" />,
 }));
 
 vi.mock('@/store/libraryStore', () => ({
@@ -103,5 +103,17 @@ describe('AppRouteLayout', () => {
     );
 
     expect(mocks.layoutProps).toMatchObject({ hideHeader: true, isFluid: true });
+  });
+
+  it('does not mount global LibraryToast or RecipeFailureBanner overlays in notification-zone', () => {
+    mocks.pathname = '/recipes';
+    render(
+      <AppRouteLayout>
+        <div>Recipes</div>
+      </AppRouteLayout>
+    );
+
+    expect(screen.queryByTestId('library-toast-mock')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('recipe-failure-banner-mock')).not.toBeInTheDocument();
   });
 });

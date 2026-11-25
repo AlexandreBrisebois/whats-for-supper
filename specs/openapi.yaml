@@ -1544,6 +1544,13 @@ components:
         message: { type: string }
         taskId: { type: string, format: uuid }
 
+    ManagementBackfillSearchRequest:
+      type: object
+      properties:
+        force:
+          type: boolean
+          default: false
+
     ManagementBackfillSearchAcceptedResponse:
       type: object
       required: [message]
@@ -1551,6 +1558,23 @@ components:
         message:
           type: string
           example: Search index backfill triggered in the background.
+
+    ManagementSearchStatusResponse:
+      type: object
+      required: [totalReadyRecipes, searchableRecipes, enrichedRecipes, activeIndexingJobs, demoMode]
+      properties:
+        totalReadyRecipes: { type: integer }
+        searchableRecipes: { type: integer }
+        enrichedRecipes: { type: integer }
+        activeIndexingJobs: { type: integer }
+        demoMode: { type: boolean }
+
+    RecipeReindexAcceptedResponse:
+      type: object
+      required: [message, queued]
+      properties:
+        message: { type: string }
+        queued: { type: boolean }
 
     # --- Import ---
     RecipeImportTriggerResponseDto:
@@ -1929,22 +1953,66 @@ components:
 
     CaptureFailureDto:
       type: object
-      required: [id, workflowInstanceId, sourceWorkflowId, sourceType, friendlyReason, status, retryCount, createdAt, lastFailedAt]
+      required: [id, workflowInstanceId, sourceWorkflowId, sourceType, friendlyReason, status, retryCount, isReady, createdAt, lastFailedAt]
       properties:
         id: { type: string, format: uuid }
         workflowInstanceId: { type: string, format: uuid }
         recipeId: { type: [string, 'null'], format: uuid }
         familyMemberId: { type: [string, 'null'], format: uuid }
         sourceWorkflowId: { type: string }
-        sourceType: { type: string, enum: [url, photos, describe] }
+        sourceType: { type: string, enum: [url, photos, description] }
         previewText: { type: [string, 'null'] }
         friendlyReason: { type: string }
         failureCode: { type: [string, 'null'] }
         failedStep: { type: [string, 'null'] }
         status: { type: string, enum: [failed] }
         retryCount: { type: integer }
+        isReady: { type: boolean }
         createdAt: { type: string, format: date-time }
         lastFailedAt: { type: string, format: date-time }
+
+    CaptureFailureDetailsDto:
+      type: object
+      required: [workflowInstanceId, sourceWorkflowId, sourceType, friendlyReason, retryCount, lastFailedAt]
+      properties:
+        workflowInstanceId: { type: string, format: uuid }
+        recipeId: { type: [string, 'null'], format: uuid }
+        sourceWorkflowId: { type: string }
+        sourceType: { type: string, enum: [url, photos, description] }
+        failedStep: { type: [string, 'null'] }
+        friendlyReason: { type: string }
+        errorMessage: { type: [string, 'null'] }
+        stackTrace: { type: [string, 'null'] }
+        retryCount: { type: integer }
+        lastFailedAt: { type: string, format: date-time }
+
+    CaptureActivityItemDto:
+      type: object
+      required: [id, stage, title, retryCount, isReady, isSuspectedDuplicate, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        workflowInstanceId: { type: [string, 'null'], format: uuid }
+        recipeId: { type: [string, 'null'], format: uuid }
+        stage: { type: string, enum: [failed, preparing, indexing, enriching, enrichment_paused] }
+        title: { type: string }
+        sourceWorkflowId: { type: [string, 'null'] }
+        sourceType: { type: [string, 'null'], enum: [url, photos, description] }
+        stepName: { type: [string, 'null'] }
+        stepLabel: { type: [string, 'null'] }
+        previewText: { type: [string, 'null'] }
+        friendlyReason: { type: [string, 'null'] }
+        retryCount: { type: integer }
+        isReady: { type: boolean }
+        isSuspectedDuplicate: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+
+    CaptureActivityListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CaptureActivityItemDto' }
 
     CaptureFailureListResponse:
       type: object
@@ -3621,6 +3689,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ManagementTaskAcceptedResponse' }
 
+  /api/recipes/{id}/reindex:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      parameters:
+        - $ref: '#/components/parameters/DemoGeneration'
+      summary: Queue search index refresh for a single ready recipe
+      operationId: reindexRecipe
+      tags: [Recipes]
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecipeReindexAcceptedResponse' }
+        '404':
+          description: Recipe not found
+        '409':
+          description: Recipe is not ready for search indexing
+        '412':
+          description: Demo generation is absent or stale; refresh authoritative state without replaying the old write
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoResetRequiredError' }
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+
   /api/recipes/recommendations:
     get:
       summary: Get recipe recommendations
@@ -4673,12 +4774,33 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ManagementTaskAcceptedResponse' }
 
+  /api/management/search-status:
+    get:
+      summary: Get search index health counts across ready recipes
+      operationId: getManagementSearchStatus
+      responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '200':
+          description: Search index health counts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagementSearchStatusResponse' }
+
   /api/management/backfill-search:
     post:
       parameters:
         - $ref: '#/components/parameters/DemoGeneration'
       summary: Trigger a search index backfill
       description: Persist search-reconciliation acceptance before returning 202 so dispatch remains inside the request's reset boundary.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ManagementBackfillSearchRequest' }
       responses:
         '500':
           description: Workflow acceptance failed; no successful acceptance is claimed
@@ -5323,6 +5445,24 @@ paths:
         '404':
           description: No ready GOTO recipes found
 
+  /api/captures/activity:
+    get:
+      summary: List household capture activity across active, indexing, enriching, enrichment-paused, and failed items
+      responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '200':
+          description: Ordered list of household capture activity items without raw diagnostics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/CaptureActivityListResponse' }
+
   /api/captures/failures:
     get:
       summary: List active failed capture records
@@ -5340,6 +5480,31 @@ paths:
                 type: object
                 properties:
                   data: { $ref: '#/components/schemas/CaptureFailureListResponse' }
+
+  /api/captures/failures/{id}/details:
+    get:
+      summary: Get on-demand technical diagnostics for a failed capture
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '503':
+          description: Online recovery coordination is busy; retry after Retry-After seconds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryBusyError' }
+        '200':
+          description: Technical failure diagnostics for copying or support inspection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/CaptureFailureDetailsDto' }
+        '404':
+          description: Failed capture not found
 
   /api/captures/failures/{id}/retry:
     post:

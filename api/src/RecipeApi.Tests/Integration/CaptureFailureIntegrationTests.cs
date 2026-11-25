@@ -101,12 +101,134 @@ public class CaptureFailureIntegrationTests : IAsyncLifetime
         Assert.True(task.ScheduledAt <= DateTimeOffset.UtcNow.AddSeconds(5));
     }
 
+    [Fact]
+    public async Task GetFailures_IncludesGotoSynthesisAndFailedWorkflowStatus_WithStepFriendlyReasonAndIsReady()
+    {
+        var unreadyStubId = await SeedPlaceholderRecipeAsync(isReady: false);
+        var publishedId = await SeedPlaceholderRecipeAsync(isReady: true);
+
+        var gotoInstanceId = await SeedWorkflowAsync(
+            workflowId: "goto-synthesis",
+            instanceStatus: WorkflowStatus.Failed,
+            taskStatus: RecipeApi.Models.TaskStatus.Failed,
+            recipeId: unreadyStubId,
+            taskName: "synthesize_recipe",
+            description: "Grandma's slow-simmered chili",
+            errorMessage: "OpenAI 504 gateway timeout raw trace");
+
+        var reimportInstanceId = await SeedWorkflowAsync(
+            workflowId: "url-import",
+            instanceStatus: WorkflowStatus.Paused,
+            taskStatus: RecipeApi.Models.TaskStatus.Failed,
+            recipeId: publishedId,
+            taskName: "extract_recipe",
+            errorMessage: "Secret internal stack error");
+
+        var response = await _client.GetAsync("/api/captures/failures");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.Contains(gotoInstanceId.ToString(), json);
+        Assert.Contains("description", json);
+        Assert.Contains("Grandma's slow-simmered chili", json);
+        Assert.DoesNotContain("OpenAI 504 gateway timeout raw trace", json);
+        Assert.DoesNotContain("Secret internal stack error", json);
+
+        using var doc = JsonDocument.Parse(json);
+        var items = doc.RootElement.GetProperty("data").GetProperty("items").EnumerateArray().ToList();
+        var gotoItem = Assert.Single(items, i => i.GetProperty("id").GetGuid() == gotoInstanceId);
+        Assert.False(gotoItem.GetProperty("isReady").GetBoolean());
+        Assert.Equal("description", gotoItem.GetProperty("sourceType").GetString());
+        Assert.Contains("write the recipe", gotoItem.GetProperty("friendlyReason").GetString()!, StringComparison.OrdinalIgnoreCase);
+
+        var reimportItem = Assert.Single(items, i => i.GetProperty("id").GetGuid() == reimportInstanceId);
+        Assert.True(reimportItem.GetProperty("isReady").GetBoolean());
+    }
+
+    [Fact]
+    public async Task GetFailureDetails_ReturnsOnDemandDiagnostics()
+    {
+        var recipeId = await SeedPlaceholderRecipeAsync();
+        var instanceId = await SeedWorkflowAsync(
+            workflowId: "goto-synthesis",
+            instanceStatus: WorkflowStatus.Failed,
+            taskStatus: RecipeApi.Models.TaskStatus.Failed,
+            recipeId: recipeId,
+            taskName: "generate_hero",
+            retryCount: 2,
+            errorMessage: "Detailed image generation timeout",
+            stackTrace: "at GenerateHeroProcessor.ExecuteAsync()");
+
+        var response = await _client.GetAsync($"/api/captures/failures/{instanceId}/details");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var data = doc.RootElement.GetProperty("data");
+        Assert.Equal(instanceId, data.GetProperty("workflowInstanceId").GetGuid());
+        Assert.Equal(recipeId, data.GetProperty("recipeId").GetGuid());
+        Assert.Equal("generate_hero", data.GetProperty("failedStep").GetString());
+        Assert.Equal("Detailed image generation timeout", data.GetProperty("errorMessage").GetString());
+        Assert.Equal("at GenerateHeroProcessor.ExecuteAsync()", data.GetProperty("stackTrace").GetString());
+        Assert.Equal(2, data.GetProperty("retryCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task GetActivity_ReturnsOrderedActiveEnrichingPausedAndFailedCaptures_WithoutRawDiagnostics()
+    {
+        var activeId = await SeedPlaceholderRecipeAsync(isReady: false);
+        var activeWorkflowId = await SeedWorkflowAsync(
+            workflowId: "recipe-import",
+            instanceStatus: WorkflowStatus.Processing,
+            taskStatus: RecipeApi.Models.TaskStatus.Pending,
+            recipeId: activeId,
+            taskName: "extract_recipe");
+
+        var pausedEnrichId = await SeedPlaceholderRecipeAsync(isReady: true);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+            db.RecipeSearchDocuments.Add(new RecipeSearchDocument
+            {
+                RecipeId = pausedEnrichId,
+                DocumentText = "lemon garlic pasta",
+                SearchMetadata = "{}",
+                IndexStatus = "ready",
+                EmbeddingStatus = "failed",
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var failedId = await SeedPlaceholderRecipeAsync(isReady: false);
+        var failedWorkflowId = await SeedWorkflowAsync(
+            workflowId: "goto-synthesis",
+            instanceStatus: WorkflowStatus.Failed,
+            taskStatus: RecipeApi.Models.TaskStatus.Failed,
+            recipeId: failedId,
+            taskName: "synthesize_recipe",
+            errorMessage: "Sensitive raw error");
+
+        var response = await _client.GetAsync("/api/captures/activity");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("Sensitive raw error", json);
+
+        using var doc = JsonDocument.Parse(json);
+        var items = doc.RootElement.GetProperty("data").GetProperty("items").EnumerateArray().ToList();
+        Assert.Equal(3, items.Count);
+        Assert.Equal("failed", items[0].GetProperty("stage").GetString());
+        Assert.Equal(failedWorkflowId, items[0].GetProperty("workflowInstanceId").GetGuid());
+        Assert.Equal("preparing", items[1].GetProperty("stage").GetString());
+        Assert.Equal(activeWorkflowId, items[1].GetProperty("workflowInstanceId").GetGuid());
+        Assert.Equal("enrichment_paused", items[2].GetProperty("stage").GetString());
+        Assert.Equal(pausedEnrichId, items[2].GetProperty("recipeId").GetGuid());
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ClearAndDeferredCleanup_PreserveSavedOriginalContentAndFeedback(bool clearContents)
+    public async Task ClearAndDeferredCleanup_RetainsPublishedRecipes_AndPurgesUnreadyStubsEvenWithPartialContent(bool isReady)
     {
-        var recipeId = await SeedPlaceholderRecipeAsync();
+        var recipeId = await SeedPlaceholderRecipeAsync(isReady: isReady);
         var instanceId = await SeedWorkflowAsync("url-import", WorkflowStatus.Paused, RecipeApi.Models.TaskStatus.Failed, recipeId: recipeId);
         var root = _factory.Services.GetRequiredService<RecipesRootResolver>().Root;
         var directory = Path.Combine(root, recipeId.ToString()); Directory.CreateDirectory(directory);
@@ -117,26 +239,35 @@ public class CaptureFailureIntegrationTests : IAsyncLifetime
             var db = services.GetRequiredService<RecipeDbContext>();
             db.RecipeImportReports.Add(new RecipeImportReport { RecipeId = recipeId, Reasons = ["steps"], Note = "My existing feedback", ReportedBy = _factory.DefaultFamilyMemberId });
             await db.SaveChangesAsync();
-            var saved = await services.GetRequiredService<RecipeService>().UpdateRecipe(recipeId, new RecipeApi.Dto.UpdateRecipeDto
+            await services.GetRequiredService<RecipeService>().UpdateRecipe(recipeId, new RecipeApi.Dto.UpdateRecipeDto
             {
-                Ingredients = clearContents ? [] : ["Salt as I prefer"],
-                RecipeInstructions = JsonSerializer.SerializeToElement(clearContents ? Array.Empty<object>() : [new { text = "Taste and adjust." }])
+                Ingredients = ["Salt as I prefer"],
+                RecipeInstructions = JsonSerializer.SerializeToElement(new[] { new { text = "Taste and adjust." } })
             });
-            Assert.Equal("My existing feedback", saved.Recipe.ImportIssue?.Note);
         }
         var response = await _client.DeleteAsync($"/api/captures/failures/{instanceId}");
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
-            Assert.Null((await db.Recipes.IgnoreQueryFilters().SingleAsync(recipe => recipe.Id == recipeId)).DeletedAt);
-            Assert.Equal("My existing feedback", (await db.RecipeImportReports.SingleAsync()).Note);
-            var result = await scope.ServiceProvider.GetRequiredService<ManagementService>().ProcessMaintenanceCommandsAsync();
-            Assert.Equal(1, result.Skipped);
-            Assert.True(await db.Recipes.IgnoreQueryFilters().AnyAsync(recipe => recipe.Id == recipeId));
-            Assert.True(await db.RecipeImportReports.AnyAsync(report => report.RecipeId == recipeId));
+            var recipe = await db.Recipes.IgnoreQueryFilters().SingleAsync(r => r.Id == recipeId);
+            if (isReady)
+            {
+                Assert.Null(recipe.DeletedAt);
+                var result = await scope.ServiceProvider.GetRequiredService<ManagementService>().ProcessMaintenanceCommandsAsync();
+                Assert.Equal(1, result.Skipped);
+                Assert.True(await db.Recipes.IgnoreQueryFilters().AnyAsync(r => r.Id == recipeId));
+                Assert.True(Directory.Exists(directory));
+            }
+            else
+            {
+                Assert.NotNull(recipe.DeletedAt);
+                var result = await scope.ServiceProvider.GetRequiredService<ManagementService>().ProcessMaintenanceCommandsAsync();
+                Assert.Equal(1, result.Completed);
+                Assert.False(await db.Recipes.IgnoreQueryFilters().AnyAsync(r => r.Id == recipeId));
+                Assert.False(Directory.Exists(directory));
+            }
         }
-        Assert.Equal("retained source", await File.ReadAllTextAsync(Path.Combine(directory, "original.txt")));
     }
 
     [Fact]
@@ -260,6 +391,7 @@ public class CaptureFailureIntegrationTests : IAsyncLifetime
             SourceUrl = "https://example.com/recipe",
             Rating = RecipeRating.Unknown,
             ImageCount = isReady ? 1 : 0,
+            IsReady = isReady,
             IsDiscoverable = isReady,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
@@ -275,21 +407,30 @@ public class CaptureFailureIntegrationTests : IAsyncLifetime
         RecipeApi.Models.TaskStatus taskStatus,
         Guid? recipeId = null,
         DateTimeOffset? scheduledAt = null,
-        int retryCount = 0)
+        int retryCount = 0,
+        string taskName = "extract_recipe",
+        string? description = null,
+        string? errorMessage = null,
+        string? stackTrace = null)
     {
         recipeId ??= await SeedPlaceholderRecipeAsync();
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<RecipeDbContext>();
+        var parameters = new Dictionary<string, string>
+        {
+            ["recipeId"] = recipeId.Value.ToString(),
+            ["url"] = "https://example.com/recipe",
+        };
+        if (description is not null)
+        {
+            parameters["description"] = description;
+        }
         var instance = new WorkflowInstance
         {
             Id = Guid.NewGuid(),
             WorkflowId = workflowId,
             Status = instanceStatus,
-            Parameters = JsonSerializer.Serialize(new Dictionary<string, string>
-            {
-                ["recipeId"] = recipeId.Value.ToString(),
-                ["url"] = "https://example.com/recipe",
-            }),
+            Parameters = JsonSerializer.Serialize(parameters),
             CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
             UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
         };
@@ -297,13 +438,13 @@ public class CaptureFailureIntegrationTests : IAsyncLifetime
         {
             TaskId = Guid.NewGuid(),
             InstanceId = instance.Id,
-            TaskName = "extract_recipe",
+            TaskName = taskName,
             ProcessorName = "ExtractRecipe",
             Status = taskStatus,
             ScheduledAt = scheduledAt,
             RetryCount = retryCount,
-            ErrorMessage = taskStatus == RecipeApi.Models.TaskStatus.Failed ? "Fatal extraction failure" : "Temporary failure",
-            StackTrace = taskStatus == RecipeApi.Models.TaskStatus.Failed ? "stack" : null,
+            ErrorMessage = errorMessage ?? (taskStatus == RecipeApi.Models.TaskStatus.Failed ? "Fatal extraction failure" : "Temporary failure"),
+            StackTrace = stackTrace ?? (taskStatus == RecipeApi.Models.TaskStatus.Failed ? "stack" : null),
             DependsOn = [],
             CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
             UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),

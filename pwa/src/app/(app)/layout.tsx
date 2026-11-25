@@ -7,8 +7,6 @@ import { t } from '@/locales';
 import { useLocale } from '@/components/common/LocaleProvider';
 import { useScheduleStream } from '@/hooks/useScheduleStream';
 import { WeekStoreInitializer } from '@/components/WeekStoreInitializer';
-import { LibraryToast } from '@/components/capture/LibraryToast';
-import { RecipeFailureBanner } from '@/components/capture/RecipeFailureBanner';
 import { useEffect } from 'react';
 import { useVisualViewportOffset } from '@/hooks/useVisualViewportOffset';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -84,8 +82,6 @@ export default function AppRouteLayout({ children }: { children: React.ReactNode
             className="fixed left-4 right-4 top-[calc(1rem+env(safe-area-inset-top))] z-[200] flex flex-col items-center gap-2 pointer-events-none"
           >
             <LanguageSwitchProposal />
-            <RecipeFailureBanner />
-            <LibraryToast />
             <ToastContainer />
           </div>
           <Layout

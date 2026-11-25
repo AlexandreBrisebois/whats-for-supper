@@ -6,8 +6,11 @@ import {
   createDemoResetRequiredErrorFromDiscriminatorValue,
   createManagementBackfillSearchAcceptedResponseFromDiscriminatorValue,
   createRecoveryBusyErrorFromDiscriminatorValue,
+  serializeManagementBackfillSearchAcceptedResponse,
+  serializeManagementBackfillSearchRequest,
   type DemoResetRequiredError,
   type ManagementBackfillSearchAcceptedResponse,
+  type ManagementBackfillSearchRequest,
   type RecoveryBusyError,
 } from '../../../models/index';
 // @ts-ignore
@@ -30,6 +33,7 @@ import {
 export interface BackfillSearchRequestBuilder extends BaseRequestBuilder<BackfillSearchRequestBuilder> {
   /**
    * Persist search-reconciliation acceptance before returning 202 so dispatch remains inside the request's reset boundary.
+   * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {Promise<ManagementBackfillSearchAcceptedResponse>}
    * @throws {DemoResetRequiredError} error when the service returns a 412 status code
@@ -37,14 +41,17 @@ export interface BackfillSearchRequestBuilder extends BaseRequestBuilder<Backfil
    * @throws {RecoveryBusyError} error when the service returns a 503 status code
    */
   post(
+    body: ManagementBackfillSearchRequest,
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): Promise<ManagementBackfillSearchAcceptedResponse | undefined>;
   /**
    * Persist search-reconciliation acceptance before returning 202 so dispatch remains inside the request's reset boundary.
+   * @param body The request body
    * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
    * @returns {RequestInformation}
    */
   toPostRequestInformation(
+    body: ManagementBackfillSearchRequest,
     requestConfiguration?: RequestConfiguration<object> | undefined
   ): RequestInformation;
 }
@@ -130,6 +137,9 @@ export const BackfillSearchRequestBuilderRequestsMetadata: RequestsMetadata = {
     },
     adapterMethodName: 'send',
     responseBodyFactory: createManagementBackfillSearchAcceptedResponseFromDiscriminatorValue,
+    requestBodyContentType: 'application/json',
+    requestBodySerializer: serializeManagementBackfillSearchRequest,
+    requestInformationContentSetMethod: 'setContentFromParsable',
   },
 };
 /* tslint:enable */

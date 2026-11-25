@@ -40,6 +40,9 @@ public class CaptureFailureDto
     [JsonPropertyName("retryCount")]
     public int RetryCount { get; set; }
 
+    [JsonPropertyName("isReady")]
+    public bool IsReady { get; set; }
+
     [JsonPropertyName("createdAt")]
     public DateTimeOffset CreatedAt { get; set; }
 

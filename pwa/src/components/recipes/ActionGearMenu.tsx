@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useId } from 'react';
-import { Ellipsis, Trash2, Pencil, Flag } from 'lucide-react';
+import { Ellipsis, Trash2, Pencil, Flag, RefreshCw } from 'lucide-react';
 import { t } from '@/locales';
 
 interface ActionGearMenuProps {
@@ -10,6 +10,8 @@ interface ActionGearMenuProps {
   onOriginalQuantities?: () => void;
   originalQuantitiesDisabled?: boolean;
   onResetView?: () => void;
+  onReindex?: () => void;
+  reindexing?: boolean;
   onMoveToBin: () => void;
   onReportImportIssue: () => void;
 }
@@ -20,6 +22,8 @@ export function ActionGearMenu({
   onOriginalQuantities,
   originalQuantitiesDisabled,
   onResetView,
+  onReindex,
+  reindexing,
   onMoveToBin,
   onReportImportIssue,
 }: ActionGearMenuProps) {
@@ -170,6 +174,22 @@ export function ActionGearMenu({
                   ? t('recipes.reviewIssue', 'Review issue')
                   : t('recipes.reportIssue', 'Report issue')}
               </button>
+              {onReindex && (
+                <button
+                  type="button"
+                  data-action-item
+                  data-testid="action-reindex-recipe"
+                  disabled={reindexing}
+                  onClick={() => {
+                    closeMenu();
+                    onReindex();
+                  }}
+                  className="flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-garden-ink transition hover:bg-charcoal/5 disabled:opacity-50"
+                >
+                  <RefreshCw size={16} aria-hidden="true" className="text-garden-ink" />
+                  {t('recipes.reindex', 'Reindex')}
+                </button>
+              )}
               <button
                 type="button"
                 data-action-item

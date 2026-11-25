@@ -87,12 +87,14 @@ for (const locale of ['en', 'fr'] as const)
       await page.goto('/profile/settings');
       await page.getByTestId('usual-portions-automatic').uncheck();
       await page.getByTestId('usual-portions-input').fill('4');
-      await page.getByTestId('save-usual-portions').click();
-      await expect(
-        page
-          .getByTestId('usual-portions-section')
-          .getByText(locale === 'fr' ? 'Enregistré' : 'Saved', { exact: true })
-      ).toBeVisible();
+      const savedPortions = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PUT' &&
+          new URL(response.url()).pathname === '/api/schedule/servings' &&
+          response.ok()
+      );
+      await page.getByTestId('usual-portions-input').blur();
+      await savedPortions;
 
       for (const [width, height] of [
         [390, 844],

@@ -23,11 +23,11 @@ const suites = {
     'recipe-detail-layout', 'recipe-ingredient-preview', 'quiet-portions-layout',
   ],
   household: [
-    'auth-flow', 'welcome-demo', 'bug-condition-exploration', 'capture-flow', 'demo-mode',
+    'auth-flow', 'welcome-demo', 'bug-condition-exploration', 'capture-activity-recovery', 'capture-flow', 'demo-mode',
     'demo-management-access', 'demo-reset',
     'identity-persistence', 'install-identity', 'member-creation', 'onboarding',
     'online-recovery', 'pdf-capture', 'profile', 'recipe-import-reporting',
-    'settings', 'telemetry-retirement', 'url-capture-recovery', 'utility-flows',
+    'settings', 'settings-portions-and-reindex', 'telemetry-retirement', 'url-capture-recovery', 'utility-flows',
   ],
 };
 
