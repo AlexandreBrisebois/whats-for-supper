@@ -126,7 +126,8 @@ public sealed partial class StructuredRecipeContentStore
             else if (request.Kind == "edit")
             {
                 RequireOriginal(current is not null && request.Input is not null);
-                input = ReadOriginal<UpdateRecipeDto>(request.Input!);
+                var raw = ReadOriginal<JsonElement>(request.Input!);
+                input = raw.Deserialize<UpdateRecipeDto>(OriginalJson) ?? throw new InvalidDataException("Original edit is absent.");
                 if (!request.HasServings)
                 {
                     RequireOriginal(input.Servings is null);
@@ -137,7 +138,7 @@ public sealed partial class StructuredRecipeContentStore
                 ValidateEditInput(input);
                 RequireOriginal(input.ExpectedContentRevision == current!.ContentRevision && result.Content.SourceRevision == current.SourceRevision);
                 var expectedSourceRevision = current.SourceRevision;
-                callerHash = Hash(new { Kind = "edit", expectedSourceRevision, Input = input });
+                callerHash = Hash(new { Kind = "edit", expectedSourceRevision, Input = raw });
                 var oldIds = current.IngredientLines.Select(x => x.Id).Concat(current.InstructionSections.Select(x => x.Id))
                     .Concat(current.InstructionSections.SelectMany(x => x.Steps).Select(x => x.Id)).ToHashSet();
                 var ids = new Queue<Guid>(result.Content.IngredientLines.Select(x => x.Id)

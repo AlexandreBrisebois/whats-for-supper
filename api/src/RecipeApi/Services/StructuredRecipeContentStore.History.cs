@@ -138,7 +138,8 @@ public sealed partial class StructuredRecipeContentStore
                 ValidateEditInput(input);
                 RequireOriginal(input.ExpectedContentRevision == request.ExpectedContentRevision);
                 var expectedSourceRevision = request.ExpectedSourceRevision;
-                inputHash = Hash(new { Kind = "edit", expectedSourceRevision, Input = input });
+                // Hash the validated original wire element so adding optional properties to UpdateRecipeDto does not alter historical hashes.
+                inputHash = Hash(new { Kind = "edit", expectedSourceRevision, Input = raw });
                 var oldIds = current!.IngredientLines.Select(x => x.Id).Concat(current.InstructionSections.Select(x => x.Id))
                     .Concat(current.InstructionSections.SelectMany(x => x.Steps).Select(x => x.Id)).ToHashSet();
                 var newIds = new Queue<Guid>(result.Content.IngredientLines.Select(x => x.Id)
