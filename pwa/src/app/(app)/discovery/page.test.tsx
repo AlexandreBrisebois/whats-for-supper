@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   getDiscoveryStack: vi.fn(),
   submitVote: vi.fn(),
   getVotingSession: vi.fn(),
+  readQuickVotesSettings: vi.fn(),
   getVotingLink: vi.fn(),
   selectFamilyMember: vi.fn(),
   familyState: {
@@ -68,6 +69,15 @@ vi.mock('@/lib/api/discovery', () => ({
   submitVote: (...args: unknown[]) => mocks.submitVote(...args),
   getVotingSession: (...args: unknown[]) => mocks.getVotingSession(...args),
 }));
+
+vi.mock('@/lib/api/quick-votes', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/lib/api/quick-votes')>('@/lib/api/quick-votes');
+  return {
+    ...actual,
+    readQuickVotesSettings: (...args: unknown[]) => mocks.readQuickVotesSettings(...args),
+  };
+});
 
 vi.mock('@/lib/imageUtils', () => ({
   getImageUrl: (path: string) => path,
@@ -147,6 +157,7 @@ describe('DiscoveryPage card order', () => {
     mocks.getCategories.mockReset();
     mocks.getDiscoveryStack.mockReset();
     mocks.submitVote.mockReset();
+    mocks.readQuickVotesSettings.mockReset().mockResolvedValue({ enabled: false, targetLikes: 16 });
     mocks.getVotingSession.mockResolvedValue({
       incarnationId: MOCK_IDS.MEMBER_TEST,
       revision: 0,
@@ -646,5 +657,215 @@ describe('DiscoveryPage card order', () => {
     await screen.findByTestId('discovery-empty-state');
     expect(screen.getByRole('button', { name: 'Capture a New Recipe' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Go to Planner' })).not.toBeInTheDocument();
+  });
+});
+
+describe('DiscoveryPage Quick Votes', () => {
+  const collectingSession = {
+    incarnationId: MOCK_IDS.MEMBER_TEST,
+    revision: 1,
+    roundId: MOCK_IDS.VOTING_ROUND,
+    weekStartDate: '2026-05-04',
+    phase: 'collecting',
+    requiredSlots: 3,
+    coveredSlots: 1,
+    candidateCount: 2,
+    smartDefaults: { weekStartDate: '2026-05-04', preSelectedRecipes: [] },
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    clearHandoffLock();
+    setPassThePhoneEnabled(false);
+    useUiStore.setState({ toasts: [] });
+    useDiscoveryStore.setState({
+      session: null,
+      sessionStatus: 'unknown',
+      hasPendingCards: false,
+      pendingCardsAvailable: false,
+      discoveryStack: [],
+      activeCategory: null,
+      fillTheGapVersion: 0,
+      allSuggestionsVersion: 0,
+      fillTheGapVersions: {},
+    });
+    mocks.push.mockReset();
+    mocks.selectFamilyMember.mockReset().mockResolvedValue(undefined);
+    mocks.familyState.selectedFamilyMemberId = MOCK_IDS.MEMBER_ALEX;
+    mocks.familyState._hasHydrated = true;
+    mocks.familyState.familyMembers = [
+      { id: MOCK_IDS.MEMBER_ALEX, name: 'Alex' },
+      { id: MOCK_IDS.MEMBER_JORDAN, name: 'Jordan' },
+      { id: MOCK_IDS.MEMBER_TEST, name: 'Sam' },
+    ];
+    mocks.getCategories.mockReset().mockResolvedValue(['Supper']);
+    mocks.getDiscoveryStack.mockReset().mockResolvedValue(ORDERED_RECIPES);
+    mocks.submitVote.mockReset().mockResolvedValue(undefined);
+    mocks.getVotingSession.mockReset().mockResolvedValue(collectingSession);
+    mocks.readQuickVotesSettings.mockReset().mockResolvedValue({ enabled: true, targetLikes: 2 });
+  });
+
+  it('keeps swiping counter-free and ignores dislikes toward the Quick Votes target', async () => {
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/\b\d+\s*\/\s*\d+\b/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/remaining|left/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('dislike-button'));
+    fireEvent.click(screen.getByTestId('dislike-button'));
+    expect(screen.queryByTestId('discovery-quick-votes-checkin')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('like-button'));
+    expect(screen.queryByTestId('discovery-quick-votes-checkin')).not.toBeInTheDocument();
+    expect(screen.getByText('Fourth ranked recipe')).toBeVisible();
+  });
+
+  it('presents calm check-in after targetLikes with Keep voting, Pass the phone, and Nudge family, hiding thumb buttons', async () => {
+    setPassThePhoneEnabled(true);
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+
+    fireEvent.click(screen.getByTestId('like-button'));
+    fireEvent.click(screen.getByTestId('like-button'));
+
+    const checkIn = await screen.findByTestId('discovery-quick-votes-checkin');
+    expect(checkIn).toBeVisible();
+    expect(checkIn).toHaveTextContent('Your picks are in!');
+    expect(checkIn).not.toHaveTextContent(/\d+/);
+    expect(screen.getByTestId('discovery-quick-votes-keep-voting')).toBeVisible();
+    expect(screen.getByTestId('discovery-pass-the-phone')).toBeVisible();
+    expect(screen.getByTestId('discovery-nudge-family')).toBeVisible();
+    expect(screen.queryByTestId('like-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dislike-button')).not.toBeInTheDocument();
+  });
+
+  it('omits Pass the phone and Nudge family when unavailable while keeping Keep voting usable', async () => {
+    setPassThePhoneEnabled(false);
+    mocks.getVotingSession.mockResolvedValue({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      phase: 'unowned',
+      roundId: null,
+      weekStartDate: null,
+      requiredSlots: null,
+      coveredSlots: null,
+      candidateCount: null,
+      smartDefaults: null,
+    });
+
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+
+    fireEvent.click(screen.getByTestId('like-button'));
+    fireEvent.click(screen.getByTestId('like-button'));
+
+    await screen.findByTestId('discovery-quick-votes-checkin');
+    expect(screen.getByTestId('discovery-quick-votes-keep-voting')).toBeVisible();
+    expect(screen.queryByTestId('discovery-pass-the-phone')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('discovery-nudge-family')).not.toBeInTheDocument();
+  });
+
+  it('repeats every targetLikes after Keep voting without refetching and starts fresh on remount', async () => {
+    const view = render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+    const initialStackCalls = mocks.getDiscoveryStack.mock.calls.length;
+
+    fireEvent.click(screen.getByTestId('like-button'));
+    fireEvent.click(screen.getByTestId('like-button'));
+    await screen.findByTestId('discovery-quick-votes-checkin');
+
+    fireEvent.click(screen.getByTestId('discovery-quick-votes-keep-voting'));
+    expect(screen.queryByTestId('discovery-quick-votes-checkin')).not.toBeInTheDocument();
+    expect(screen.getByText('Third ranked recipe')).toBeVisible();
+    expect(mocks.getDiscoveryStack).toHaveBeenCalledTimes(initialStackCalls);
+
+    fireEvent.click(screen.getByTestId('like-button'));
+    fireEvent.click(screen.getByTestId('like-button'));
+    await screen.findByTestId('discovery-quick-votes-checkin');
+
+    view.unmount();
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+    expect(screen.queryByTestId('discovery-quick-votes-checkin')).not.toBeInTheDocument();
+  });
+
+  it('prioritizes convergence ("Menu\'s in!") on target-reaching like and while viewing check-in', async () => {
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+
+    fireEvent.click(screen.getByTestId('like-button'));
+    fireEvent.click(screen.getByTestId('like-button'));
+    await screen.findByTestId('discovery-quick-votes-checkin');
+
+    await act(async () => {
+      useDiscoveryStore.getState().applySession(
+        {
+          ...collectingSession,
+          revision: 2,
+          phase: 'converged',
+          coveredSlots: 3,
+          candidateCount: 3,
+        } as never,
+        true
+      );
+    });
+
+    expect(await screen.findByTestId('discovery-converged')).toBeVisible();
+    expect(screen.queryByTestId('discovery-quick-votes-checkin')).not.toBeInTheDocument();
+  });
+
+  it("shows That's a wrap! when queue runs out before targetLikes and falls back silently on settings failure", async () => {
+    mocks.getDiscoveryStack.mockResolvedValueOnce([ORDERED_RECIPES[0]]).mockResolvedValue([]);
+    const firstView = render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+
+    fireEvent.click(screen.getByTestId('like-button'));
+    await screen.findByTestId('discovery-empty-state');
+    expect(screen.queryByTestId('discovery-quick-votes-checkin')).not.toBeInTheDocument();
+
+    firstView.unmount();
+    mocks.readQuickVotesSettings.mockRejectedValueOnce(new Error('Settings down'));
+    mocks.getDiscoveryStack.mockReset().mockResolvedValue(ORDERED_RECIPES);
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+    fireEvent.click(screen.getByTestId('like-button'));
+    fireEvent.click(screen.getByTestId('like-button'));
+    expect(screen.queryByTestId('discovery-quick-votes-checkin')).not.toBeInTheDocument();
+  });
+
+  it('transitions locked Pass the phone turn straight to Nice picks celebration on targetLikes and sets handoffTurnCompleted', async () => {
+    setPassThePhoneEnabled(true);
+    setHandoffLock({ originMemberId: MOCK_IDS.MEMBER_ALEX, participantName: 'Jordan' });
+    mocks.familyState.selectedFamilyMemberId = MOCK_IDS.MEMBER_JORDAN;
+
+    const view = render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+
+    fireEvent.click(screen.getByTestId('like-button'));
+    expect(screen.queryByTestId('discovery-kid-wrap-up')).not.toBeInTheDocument();
+    expect(
+      (useDiscoveryStore.getState() as { handoffTurnCompleted?: boolean }).handoffTurnCompleted
+    ).toBe(false);
+
+    fireEvent.click(screen.getByTestId('like-button'));
+
+    const wrapUp = await screen.findByTestId('discovery-kid-wrap-up');
+    expect(wrapUp).toBeVisible();
+    expect(wrapUp).toHaveTextContent('Nice picks, Jordan!');
+    expect(wrapUp.querySelectorAll('button')).toHaveLength(0);
+    expect(screen.queryByTestId('discovery-quick-votes-checkin')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('like-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dislike-button')).not.toBeInTheDocument();
+    expect(
+      (useDiscoveryStore.getState() as { handoffTurnCompleted?: boolean }).handoffTurnCompleted
+    ).toBe(true);
+
+    view.unmount();
+    expect(
+      (useDiscoveryStore.getState() as { handoffTurnCompleted?: boolean }).handoffTurnCompleted
+    ).toBe(false);
   });
 });

@@ -21,6 +21,9 @@ vi.mock('@/locales', () => ({
 vi.mock('@/components/profile/FamilyManagement', () => ({
   FamilyManagement: () => <div data-testid="family-management-stub" />,
 }));
+vi.mock('@/components/profile/QuickVotesSettingsSection', () => ({
+  QuickVotesSettingsSection: () => <div data-testid="quick-votes-stub" />,
+}));
 vi.mock('@/components/profile/SearchIndexSection', () => ({
   SearchIndexSection: () => <div data-testid="search-index-stub" />,
 }));

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { FamilyManagement } from '@/components/profile/FamilyManagement';
 import { PassThePhoneSettingsSection } from '@/components/profile/PassThePhoneSettingsSection';
+import { QuickVotesSettingsSection } from '@/components/profile/QuickVotesSettingsSection';
 import { FailedCapturesSection } from '@/components/profile/FailedCapturesSection';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
@@ -51,6 +52,8 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
         <FamilyManagement />
 
         <PassThePhoneSettingsSection />
+
+        <QuickVotesSettingsSection />
 
         <UsualPortionsSection />
 

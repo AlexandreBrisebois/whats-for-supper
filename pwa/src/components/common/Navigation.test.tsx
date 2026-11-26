@@ -99,6 +99,9 @@ describe('Navigation', () => {
       ...(Object.hasOwn(useDiscoveryStore.getState(), 'pendingCardsAvailable')
         ? { pendingCardsAvailable: false }
         : {}),
+      ...(Object.hasOwn(useDiscoveryStore.getState(), 'handoffTurnCompleted')
+        ? { handoffTurnCompleted: false }
+        : {}),
     } as any);
   });
 
@@ -521,5 +524,37 @@ describe('Navigation', () => {
       expect(screen.getByTestId('nav-item-home')).toBeInTheDocument();
     });
     expect(getHandoffLock()).toBeNull();
+  });
+
+  it('returns directly from Handoff Dock without exit modal when handoffTurnCompleted is true despite remaining cards', async () => {
+    const selectFamilyMember = vi.fn().mockResolvedValue(undefined);
+    useFamilyStore.setState({
+      selectedFamilyMemberId: 'member-jordan',
+      selectFamilyMember,
+    });
+    useDiscoveryStore.setState({
+      hasPendingCards: true,
+      discoveryStack: [{ id: 'recipe-1', name: 'Tacos' }] as any,
+      handoffTurnCompleted: true,
+    } as any);
+    setHandoffLock({ originMemberId: 'member-alex', participantName: 'Jordan' });
+    mocks.pathname = '/discovery';
+
+    render(
+      <LocaleProvider>
+        <Navigation />
+      </LocaleProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('handoff-dock-return'));
+
+    expect(screen.queryByTestId('handoff-exit-modal')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(selectFamilyMember).toHaveBeenCalledExactlyOnceWith('member-alex');
+    });
+    expect(getHandoffLock()).toBeNull();
+    expect(
+      (useDiscoveryStore.getState() as { handoffTurnCompleted?: boolean }).handoffTurnCompleted
+    ).toBe(false);
   });
 });

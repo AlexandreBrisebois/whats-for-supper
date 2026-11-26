@@ -584,6 +584,11 @@
       "kidWrapUpTitle": "Nice picks, {{name}}!",
       "convergedReturnAction": "Back to {{name}} & see matches",
       "welcomeBackToast": "Welcome back, {{origin}} — {{participant}}'s votes are saved."
+    },
+    "quickVotes": {
+      "title": "Your picks are in!",
+      "body": "Let's see what the rest of the family thinks. Come back anytime, or keep going.",
+      "keepVoting": "Keep voting"
     }
   },
   "recipes": {
@@ -913,6 +918,22 @@
       "howItWorksBody": "After you finish voting, pass your phone along — the rest of the app stays tucked away until they hand it back. For an OS-level lock, use iOS Guided Access or Android App Pinning.",
       "deviceScopeNote": "Only turns on for this device.",
       "singleMemberHint": "Add another family member above to use this."
+    },
+    "quickVotes": {
+      "title": "Quick Votes",
+      "subtitle": "Pause gently after a short batch of likes",
+      "likesTargetLabel": "Likes per turn",
+      "decreaseTarget": "Decrease likes per turn",
+      "increaseTarget": "Increase likes per turn",
+      "invalidTarget": "Enter a whole number of at least 1.",
+      "howItWorks": "How it works",
+      "hideDetails": "Hide details",
+      "howItWorksLead": "Take a calm pause after a handful of likes.",
+      "howItWorksBody": "Swiping stays counter-free, then gently checks in once you reach your target likes. It never blocks voting or loses saved votes. Keep going or come back anytime.",
+      "familyScopeNote": "Applies to everyone in the family.",
+      "loadError": "Unable to load Quick Votes settings right now.",
+      "saveError": "Could not save Quick Votes settings. Nothing was changed.",
+      "retry": "Retry"
     }
   },
   "previewFeatures": {

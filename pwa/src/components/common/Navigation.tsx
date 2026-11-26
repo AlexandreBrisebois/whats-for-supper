@@ -38,8 +38,14 @@ export function Navigation({ className = '' }: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { locale } = useLocale();
-  const { hasPendingCards, discoveryStack, session, setHasPendingCards, refreshSession } =
-    useDiscoveryStore();
+  const {
+    hasPendingCards,
+    discoveryStack,
+    session,
+    setHasPendingCards,
+    refreshSession,
+    handoffTurnCompleted,
+  } = useDiscoveryStore();
   const { familyMembers, selectedMember, selectFamilyMember } = useFamily();
   const handoffLock = useHandoffLock();
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -118,7 +124,8 @@ export function Navigation({ className = '' }: NavigationProps) {
     );
     const originName = originMember?.name ?? '';
     const activeName = handoffLock.participantName || selectedMember?.name || '';
-    const hasRemainingCards = discoveryStack.length > 0 || hasPendingCards;
+    const hasRemainingCards =
+      (discoveryStack.length > 0 || hasPendingCards) && !handoffTurnCompleted;
 
     const executeReturn = async () => {
       if (isReturning) return;
@@ -128,6 +135,7 @@ export function Navigation({ className = '' }: NavigationProps) {
         await waitForPendingVotes();
         await selectFamilyMember(handoffLock.originMemberId);
         useDiscoveryStore.getState().setStack([]);
+        useDiscoveryStore.getState().setHandoffTurnCompleted(false);
         clearHandoffLock();
         setShowExitConfirm(false);
         useUiStore.getState().addToast({

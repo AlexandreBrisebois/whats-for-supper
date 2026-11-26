@@ -584,6 +584,11 @@
       "kidWrapUpTitle": "Bons choix, {{name}} !",
       "convergedReturnAction": "Retour à {{name}} et voir les choix",
       "welcomeBackToast": "Bon retour, {{origin}} — les votes de {{participant}} sont enregistrés."
+    },
+    "quickVotes": {
+      "title": "Vos choix sont notés !",
+      "body": "Voyons ce que le reste de la famille en pense. Revenez quand vous voulez, ou continuez.",
+      "keepVoting": "Continuer à voter"
     }
   },
   "recipes": {
@@ -913,6 +918,22 @@
       "howItWorksBody": "Une fois vos votes terminés, passez votre téléphone — le reste de l’application reste caché jusqu’à ce qu’on vous le rende. Pour verrouiller l’appareil, utilisez l’Accès guidé iOS ou l’épinglage d’application Android.",
       "deviceScopeNote": "Activé uniquement sur cet appareil.",
       "singleMemberHint": "Ajoutez un autre membre de la famille ci-dessus pour l’utiliser."
+    },
+    "quickVotes": {
+      "title": "Votes rapides",
+      "subtitle": "Faites une douce pause après quelques coups de cœur",
+      "likesTargetLabel": "J'aime par tour",
+      "decreaseTarget": "Diminuer le nombre de j'aime par tour",
+      "increaseTarget": "Augmenter le nombre de j'aime par tour",
+      "invalidTarget": "Entrez un nombre entier d'au moins 1.",
+      "howItWorks": "Comment ça marche",
+      "hideDetails": "Masquer les détails",
+      "howItWorksLead": "Faites une pause sereine après quelques coups de cœur.",
+      "howItWorksBody": "Le défilement reste sans compteur, puis fait le point en douceur dès que vous atteignez votre objectif. Cela ne bloque jamais les votes ni ne les perd. Continuez ou revenez plus tard.",
+      "familyScopeNote": "S'applique à toute la famille.",
+      "loadError": "Impossible de charger les paramètres des votes rapides pour le moment.",
+      "saveError": "Impossible d'enregistrer les votes rapides. Rien n'a changé.",
+      "retry": "Réessayer"
     }
   },
   "previewFeatures": {

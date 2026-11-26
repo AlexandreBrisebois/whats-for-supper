@@ -1562,3 +1562,310 @@ test.describe('Pass the phone discovery handoff', () => {
     await expect(page.getByTestId('nav-item-home')).toHaveCount(0);
   });
 });
+
+test.describe('Quick Votes discovery cadence', () => {
+  async function setupQuickVotesScenario(
+    page: import('@playwright/test').Page,
+    options: {
+      stacks?: Record<string, ReturnType<typeof builders.recipe>[]>;
+      contrastMode?: 'standard' | 'high';
+      preferredLanguage?: 'en' | 'fr';
+    } = {}
+  ) {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    await setupCommonRoutes(page);
+
+    const members = [
+      builders.familyMember({ id: MOCK_IDS.MEMBER_ALEX, name: 'Alex' }),
+      builders.familyMember({ id: MOCK_IDS.MEMBER_JORDAN, name: 'Jordan' }),
+      builders.familyMember({ id: MOCK_IDS.MEMBER_TEST, name: 'Sam' }),
+    ].map((m) => ({
+      ...m,
+      contrastMode: options.contrastMode ?? 'standard',
+      preferredLanguage: options.preferredLanguage ?? 'en',
+    }));
+
+    const memberStacks: Record<string, ReturnType<typeof builders.recipe>[]> = {
+      [MOCK_IDS.MEMBER_ALEX]: [...ORDERED_SIX_RECIPE_STACK],
+      [MOCK_IDS.MEMBER_JORDAN]: [
+        builders.recipe({ id: MOCK_IDS.RECIPE_TACOS, name: 'Crispy Baked Tacos' }),
+        builders.recipe({ id: MOCK_IDS.RECIPE_CARBONARA, name: 'Classic Carbonara' }),
+        builders.recipe({ id: MOCK_IDS.RECIPE_GNOCCHI, name: 'Herb Butter Gnocchi' }),
+        builders.recipe({ id: MOCK_IDS.RECIPE_STIR_FRY, name: 'Weeknight Stir Fry' }),
+      ],
+      ...options.stacks,
+    };
+
+    const weekStartDate = builders.scheduleDays(1).weekStartDate;
+    const session = {
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate,
+      phase: 'collecting',
+      requiredSlots: 3,
+      coveredSlots: 1,
+      candidateCount: 1,
+      smartDefaults: {
+        familySize: 3,
+        consensusThreshold: 2,
+        consensusRecipesCount: 1,
+        weekOffset: 1,
+        weekStartDate,
+        preSelectedRecipes: [],
+        openSlots: [{ dayIndex: 5 }],
+      },
+    };
+
+    await page.route('**/api/family', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      await route.fulfill({ json: { data: members } });
+    });
+
+    await page.route('**/api/family/me', async (route) => {
+      const cookies = await page.context().cookies();
+      const memberId =
+        cookies.find((c) => c.name === 'x-family-member-id')?.value || MOCK_IDS.MEMBER_ALEX;
+      const member =
+        members.find((m) => m.id?.toLowerCase() === memberId.toLowerCase()) ?? members[0];
+      await route.fulfill({ json: { data: member } });
+    });
+
+    await page.route(
+      (url) => url.pathname === '/api/discovery/categories',
+      (route) => route.fulfill({ json: { data: ['Supper'] } })
+    );
+
+    await page.route(
+      (url) => url.pathname === '/api/discovery',
+      async (route) => {
+        const memberId = route.request().headers()['x-family-member-id'];
+        const stack = memberStacks[memberId ?? MOCK_IDS.MEMBER_ALEX] ?? [];
+        await route.fulfill({ json: { data: stack } });
+      }
+    );
+
+    await page.route(
+      (url) => url.pathname === '/api/discovery/session',
+      async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        await route.fulfill({ json: { data: session } });
+      }
+    );
+
+    await page.route('**/api/discovery/*/vote', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      const memberId = route.request().headers()['x-family-member-id'];
+      const recipeId = new URL(route.request().url()).pathname.split('/').at(-2) ?? '';
+      if (memberId && memberStacks[memberId]) {
+        memberStacks[memberId] = memberStacks[memberId].filter((r) => r.id !== recipeId);
+      }
+      await route.fulfill({ json: { success: true } });
+    });
+  }
+
+  test('persists family-wide Quick Votes in Settings, repeats calm check-in, and starts fresh on return', async ({
+    page,
+  }) => {
+    await setupQuickVotesScenario(page);
+
+    await page.goto('/profile/settings');
+    const quickVotesSwitch = page.getByTestId('quick-votes-switch');
+    await expect(quickVotesSwitch).toHaveAttribute('aria-checked', 'false');
+
+    const saveSwitchReq = page.waitForRequest(
+      (req) => req.method() === 'POST' && req.url().endsWith('/api/settings/quick_votes')
+    );
+    await quickVotesSwitch.click();
+    await saveSwitchReq;
+    await expect(quickVotesSwitch).toHaveAttribute('aria-checked', 'true');
+
+    const targetInput = page.getByTestId('quick-votes-target-input');
+    await expect(targetInput).toHaveValue('16');
+
+    const saveTargetReq = page.waitForRequest(
+      (req) =>
+        req.method() === 'POST' &&
+        req.url().endsWith('/api/settings/quick_votes') &&
+        req.postDataJSON()?.value?.targetLikes === 2
+    );
+    await targetInput.fill('2');
+    await targetInput.blur();
+    await saveTargetReq;
+
+    await page.reload();
+    await expect(page.getByTestId('quick-votes-switch')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByTestId('quick-votes-target-input')).toHaveValue('2');
+
+    await page.getByTestId('nav-item-discovery').click();
+    await expect(page).toHaveURL(/\/discovery$/);
+    await expect(page.getByText('Oldest ranked recipe')).toBeVisible();
+    await expect(page.getByRole('progressbar')).toHaveCount(0);
+
+    // Dislikes do not advance toward Quick Votes target
+    await page.getByTestId('dislike-button').click();
+    await expect(page.getByTestId('discovery-quick-votes-checkin')).toHaveCount(0);
+
+    // 2 likes trigger the calm check-in card with zero count
+    await page.getByTestId('like-button').click();
+    await expect(page.getByTestId('discovery-quick-votes-checkin')).toHaveCount(0);
+    await page.getByTestId('like-button').click();
+
+    const checkIn = page.getByTestId('discovery-quick-votes-checkin');
+    await expect(checkIn).toBeVisible();
+    await expect(checkIn).toContainText('Your picks are in!');
+    expect(await checkIn.textContent()).not.toMatch(/\d/);
+    await expect(page.getByTestId('discovery-nudge-family')).toBeVisible();
+
+    // Keep voting resumes immediately at next card and repeats after another 2 likes
+    await page.getByTestId('discovery-quick-votes-keep-voting').click();
+    await expect(checkIn).toHaveCount(0);
+    await expect(page.getByText('Fourth ranked recipe')).toBeVisible();
+
+    await page.getByTestId('like-button').click();
+    await expect(checkIn).toHaveCount(0);
+    await page.getByTestId('like-button').click();
+    await expect(checkIn).toBeVisible();
+
+    // Navigate away to Home and return to Discovery -> fresh turn immediately
+    await page.getByTestId('nav-item-home').click();
+    await expect(page).toHaveURL(/\/home$/);
+    await page.getByTestId('nav-item-discovery').click();
+    await expect(page).toHaveURL(/\/discovery$/);
+    await expect(page.getByText('Recently cooked recipe')).toBeVisible();
+    await expect(page.getByTestId('discovery-quick-votes-checkin')).toHaveCount(0);
+  });
+
+  test('completes locked Pass the phone turn on Quick Votes target with direct Handoff Dock return', async ({
+    page,
+  }) => {
+    await setupQuickVotesScenario(page);
+
+    await page.goto('/profile/settings');
+    await page.getByTestId('pass-the-phone-switch').click();
+
+    const saveSwitchReq = page.waitForRequest(
+      (req) => req.method() === 'POST' && req.url().endsWith('/api/settings/quick_votes')
+    );
+    await page.getByTestId('quick-votes-switch').click();
+    await saveSwitchReq;
+
+    const targetInput = page.getByTestId('quick-votes-target-input');
+    const saveTargetReq = page.waitForRequest(
+      (req) =>
+        req.method() === 'POST' &&
+        req.url().endsWith('/api/settings/quick_votes') &&
+        req.postDataJSON()?.value?.targetLikes === 2
+    );
+    await targetInput.fill('2');
+    await targetInput.blur();
+    await saveTargetReq;
+
+    await page.getByTestId('nav-item-discovery').click();
+    await expect(page.getByText('Oldest ranked recipe')).toBeVisible();
+
+    await page.getByTestId('like-button').click();
+    await page.getByTestId('like-button').click();
+    await expect(page.getByTestId('discovery-quick-votes-checkin')).toBeVisible();
+
+    await page.getByTestId('discovery-pass-the-phone').click();
+    await page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+    await page.getByTestId('discovery-handoff-confirm').click();
+
+    await expect(page.getByTestId('handoff-dock-turn')).toHaveText("Jordan's turn");
+    await expect(page.getByText('Crispy Baked Tacos')).toBeVisible();
+
+    await page.getByTestId('like-button').click();
+    await expect(page.getByTestId('discovery-kid-wrap-up')).toHaveCount(0);
+    await page.getByTestId('like-button').click();
+
+    const wrapUp = page.getByTestId('discovery-kid-wrap-up');
+    await expect(wrapUp).toBeVisible();
+    await expect(wrapUp).toContainText('Nice picks, Jordan!');
+    await expect(wrapUp.locator('button')).toHaveCount(0);
+    await expect(page.getByTestId('like-button')).toHaveCount(0);
+
+    await page.getByTestId('handoff-dock-return').click();
+    await expect(page.getByTestId('handoff-exit-modal')).toHaveCount(0);
+    await expect(page.getByTestId('nav-item-home')).toBeVisible();
+    await expect(page.getByTestId('toast')).toContainText(
+      "Welcome back, Alex — Jordan's votes are saved."
+    );
+  });
+
+  for (const locale of ['en', 'fr'] as const) {
+    for (const contrastMode of ['standard', 'high'] as const) {
+      const contrastLevel = contrastMode === 'high' ? 'aaa' : 'aa';
+
+      test.describe(`Quick Votes visual a11y (${locale}, ${contrastMode})`, () => {
+        test.use({ appLocale: locale });
+
+        test(`passes ${contrastLevel.toUpperCase()} contrast, targets, and 320px/200% reflow`, async ({
+          page,
+        }) => {
+          await page.setViewportSize({ width: 320, height: 740 });
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+
+          await setupQuickVotesScenario(page, {
+            contrastMode,
+            preferredLanguage: locale,
+          });
+
+          // 1. Settings Quick Votes card (expanded + How it works open) at 320px and 200% text scaling
+          await page.goto('/profile/settings');
+          await page.getByTestId('pass-the-phone-switch').click();
+
+          const saveSwitchReq = page.waitForRequest(
+            (req) => req.method() === 'POST' && req.url().endsWith('/api/settings/quick_votes')
+          );
+          await page.getByTestId('quick-votes-switch').click();
+          await saveSwitchReq;
+
+          const targetInput = page.getByTestId('quick-votes-target-input');
+          const saveTargetReq = page.waitForRequest(
+            (req) =>
+              req.method() === 'POST' &&
+              req.url().endsWith('/api/settings/quick_votes') &&
+              req.postDataJSON()?.value?.targetLikes === 2
+          );
+          await targetInput.fill('2');
+          await targetInput.blur();
+          await saveTargetReq;
+
+          await page.getByTestId('quick-votes-how-it-works-toggle').click();
+          await expect(page.getByTestId('quick-votes-how-it-works-body')).toBeVisible();
+          if (contrastMode === 'high') {
+            await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
+          }
+          await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[data-testid="quick-votes-settings"]',
+            contrastLevel,
+          });
+
+          // 2. Discovery "Your picks are in!" check-in card at 320px and 200% text scaling
+          await page.goto('/discovery');
+          await expect(page.getByText('Oldest ranked recipe')).toBeVisible();
+          await page.getByTestId('like-button').click();
+          await page.getByTestId('like-button').click();
+
+          const checkIn = page.getByTestId('discovery-quick-votes-checkin');
+          await expect(checkIn).toBeVisible();
+          await expect(page.getByTestId('discovery-quick-votes-keep-voting')).toBeVisible();
+          await expect(page.getByTestId('discovery-pass-the-phone')).toBeVisible();
+          await expect(page.getByTestId('discovery-nudge-family')).toBeVisible();
+
+          await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[data-testid="discovery-quick-votes-checkin"]',
+            contrastLevel,
+          });
+        });
+      });
+    }
+  }
+});

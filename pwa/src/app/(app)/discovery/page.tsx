@@ -7,8 +7,13 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion';
 import { DiscoveryCard } from '@/components/discovery/DiscoveryCard';
 import { PassThePhone } from '@/components/discovery/PassThePhone';
-import { RefreshCcw, Loader2, Star } from 'lucide-react';
+import { RefreshCcw, Loader2, Sparkles, Star } from 'lucide-react';
 import { getCategories, getDiscoveryStack, submitVote, DiscoveryRecipe } from '@/lib/api/discovery';
+import {
+  DEFAULT_QUICK_VOTES_SETTINGS,
+  readQuickVotesSettings,
+  type QuickVotesSettings,
+} from '@/lib/api/quick-votes';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useFamily } from '@/hooks/useFamily';
 import { useRouter } from 'next/navigation';
@@ -59,6 +64,11 @@ export default function DiscoveryPage() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [matchCount, setMatchCount] = useState(0);
+  const [quickVotes, setQuickVotes] = useState<QuickVotesSettings>(DEFAULT_QUICK_VOTES_SETTINGS);
+  const [quickVotesCheckInOpen, setQuickVotesCheckInOpen] = useState(false);
+  const [quickVotesKidCompleted, setQuickVotesKidCompleted] = useState(false);
+  const likesThisTurnRef = useRef(0);
+  const checkInHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const [isReturningFromConverged, setIsReturningFromConverged] = useState(false);
   const [convergedReturnError, setConvergedReturnError] = useState(false);
   const prevMemberIdRef = useRef<string | null>(selectedFamilyMemberId);
@@ -120,11 +130,36 @@ export default function DiscoveryPage() {
   }, [setActiveCategory]);
 
   useEffect(() => {
+    let active = true;
+    readQuickVotesSettings()
+      .then((settings) => {
+        if (active) setQuickVotes(settings);
+      })
+      .catch(() => {
+        if (active) setQuickVotes(DEFAULT_QUICK_VOTES_SETTINGS);
+      });
+    return () => {
+      active = false;
+      useDiscoveryStore.getState().setHandoffTurnCompleted(false);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (quickVotesCheckInOpen && !converged) {
+      checkInHeadingRef.current?.focus();
+    }
+  }, [quickVotesCheckInOpen, converged]);
+
+  useEffect(() => {
     if (!_hasHydrated || !selectedFamilyMemberId) return;
 
     if (prevMemberIdRef.current !== selectedFamilyMemberId) {
       prevMemberIdRef.current = selectedFamilyMemberId;
       memberTurnRef.current += 1;
+      likesThisTurnRef.current = 0;
+      setQuickVotesCheckInOpen(false);
+      setQuickVotesKidCompleted(false);
+      useDiscoveryStore.getState().setHandoffTurnCompleted(false);
       setMatchCount(0);
       useDiscoveryStore.getState().setStack([]);
       setIsLoading(true);
@@ -360,6 +395,9 @@ export default function DiscoveryPage() {
       setMatchCount((prev) => prev + 1);
     }
 
+    const nextLikesThisTurn = likesThisTurnRef.current + 1;
+    likesThisTurnRef.current = nextLikesThisTurn;
+
     // Background Vote
     const turnAtVote = memberTurnRef.current;
     const votePromise = submitVote(recipeId, 1)
@@ -380,6 +418,17 @@ export default function DiscoveryPage() {
 
     if (updatedRecipes.length === 0) {
       loadNextCategory();
+    } else if (
+      quickVotes.enabled &&
+      nextLikesThisTurn >= quickVotes.targetLikes &&
+      useDiscoveryStore.getState().session?.phase !== 'converged'
+    ) {
+      if (isLockedTurn) {
+        setQuickVotesKidCompleted(true);
+        useDiscoveryStore.getState().setHandoffTurnCompleted(true);
+      } else {
+        setQuickVotesCheckInOpen(true);
+      }
     }
   };
 
@@ -441,6 +490,8 @@ export default function DiscoveryPage() {
   );
 
   const handleCancelHandoffTarget = useCallback(() => {
+    setQuickVotesKidCompleted(false);
+    useDiscoveryStore.getState().setHandoffTurnCompleted(false);
     clearHandoffLock();
   }, []);
 
@@ -452,12 +503,21 @@ export default function DiscoveryPage() {
       fetchGenerationRef.current += 1;
       await selectFamilyMember(targetMember.id);
       memberTurnRef.current += 1;
+      likesThisTurnRef.current = 0;
+      setQuickVotesCheckInOpen(false);
+      setQuickVotesKidCompleted(false);
+      useDiscoveryStore.getState().setHandoffTurnCompleted(false);
       useDiscoveryStore.getState().setStack([]);
       setMatchCount(0);
       setHandoffLock({ originMemberId: originId, participantName: targetMember.name });
     },
     [handoffLock, selectedMember, selectedFamilyMemberId, selectFamilyMember]
   );
+
+  const handleKeepVoting = useCallback(() => {
+    likesThisTurnRef.current = 0;
+    setQuickVotesCheckInOpen(false);
+  }, []);
 
   // Only render the top 4 cards for performance and visual clarity
   const visibleRecipes = useMemo(() => {
@@ -585,10 +645,15 @@ export default function DiscoveryPage() {
     );
   }
 
+  const showingCheckIn = quickVotesCheckInOpen && !isLockedTurn && recipes.length > 0;
+  const showingKidWrapUp = isLockedTurn && (recipes.length === 0 || quickVotesKidCompleted);
+
   return (
     <div
       className={`flex flex-col items-center px-4 sm:px-6 pt-2 pb-12 min-h-[calc(100dvh-6rem)] relative ${
-        recipes.length > 0 ? 'h-content overflow-hidden' : 'overflow-y-auto'
+        recipes.length > 0 && !showingCheckIn && !showingKidWrapUp
+          ? 'h-content overflow-hidden'
+          : 'overflow-y-auto'
       }`}
     >
       {/* Centered Card Stack Container */}
@@ -596,14 +661,14 @@ export default function DiscoveryPage() {
         {/* Card Arena */}
         <div
           className={
-            recipes.length > 0
+            recipes.length > 0 && !showingCheckIn && !showingKidWrapUp
               ? 'relative z-10 w-full max-w-sm aspect-[3/4] md:aspect-auto md:h-[60vh] min-h-[400px]'
               : 'relative z-10 w-full max-w-sm py-4'
           }
         >
           {/* Micro-badge: "Just planned ✓" — shown inline at top of card stack, 2s auto-fade */}
           <AnimatePresence>
-            {showJustPlannedBadge && (
+            {showJustPlannedBadge && !showingCheckIn && !showingKidWrapUp && (
               <motion.div
                 key="just-planned-badge"
                 initial={{ opacity: 0, y: -8 }}
@@ -619,20 +684,68 @@ export default function DiscoveryPage() {
           </AnimatePresence>
 
           <AnimatePresence>
-            {recipes.length > 0 ? (
-              visibleRecipes.map((recipe, index) => {
-                return (
-                  <DiscoveryCard
-                    key={recipe.id}
-                    {...recipe}
-                    isFront={index === 0}
-                    stackIndex={index}
-                    onSwipeRight={() => handleSwipeRight(recipe.id)}
-                    onSwipeLeft={() => handleSwipeLeft(recipe.id)}
-                  />
-                );
-              })
-            ) : isLockedTurn ? (
+            {showingCheckIn ? (
+              <motion.div
+                key="quick-votes-checkin"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                data-testid="discovery-quick-votes-checkin"
+                className="flex w-full min-w-0 flex-col items-center justify-center rounded-[2.5rem] border border-chrome-line bg-white px-4 py-8 text-center shadow-card sm:px-6"
+              >
+                <div className="mb-4 flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-sunlight-line bg-ochre-100 text-sunlight-ink">
+                  <Sparkles size={28} aria-hidden="true" />
+                </div>
+                <h1
+                  ref={checkInHeadingRef}
+                  tabIndex={-1}
+                  className="max-w-full break-words font-heading text-2xl font-bold text-ink-body focus:outline-none"
+                >
+                  {t('discovery.quickVotes.title', 'Your picks are in!')}
+                </h1>
+                <p className="mt-2 mb-6 max-w-full break-words px-2 text-sm font-medium leading-relaxed text-ink-muted">
+                  {t(
+                    'discovery.quickVotes.body',
+                    "Let's see what the rest of the family thinks. Come back anytime, or keep going."
+                  )}
+                </p>
+
+                <div className="flex w-full min-w-0 flex-col gap-3">
+                  <button
+                    type="button"
+                    data-testid="discovery-quick-votes-keep-voting"
+                    onClick={handleKeepVoting}
+                    className="min-h-12 w-full min-w-0 break-words rounded-full bg-hearth-fill px-4 py-3.5 font-semibold text-cream-100 shadow-sm transition-all hover:bg-hearth-fill-hover active:scale-95 active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body sm:px-6"
+                  >
+                    {t('discovery.quickVotes.keepVoting', 'Keep voting')}
+                  </button>
+
+                  {(passThePhoneEnabled || isCurtainPending) &&
+                    !converged &&
+                    otherMembers.length > 0 &&
+                    currentMember && (
+                      <PassThePhone
+                        currentMember={currentMember}
+                        otherMembers={otherMembers}
+                        pendingTarget={pendingCurtainTarget}
+                        onSelectTarget={handleSelectHandoffTarget}
+                        onCancelTarget={handleCancelHandoffTarget}
+                        onConfirmHandoff={handleConfirmHandoff}
+                      />
+                    )}
+
+                  {ownsRound && (
+                    <button
+                      type="button"
+                      data-testid="discovery-nudge-family"
+                      onClick={() => setShowNudgeDialog(true)}
+                      className="min-h-12 w-full min-w-0 break-words rounded-full border border-garden-line bg-white px-4 py-3.5 font-semibold text-garden-ink transition-colors hover:bg-sage-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body sm:px-6"
+                    >
+                      {t('planner.nudgeFamily', 'Nudge family')}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            ) : showingKidWrapUp ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -648,6 +761,19 @@ export default function DiscoveryPage() {
                   })}
                 </h1>
               </motion.div>
+            ) : recipes.length > 0 ? (
+              visibleRecipes.map((recipe, index) => {
+                return (
+                  <DiscoveryCard
+                    key={recipe.id}
+                    {...recipe}
+                    isFront={index === 0}
+                    stackIndex={index}
+                    onSwipeRight={() => handleSwipeRight(recipe.id)}
+                    onSwipeLeft={() => handleSwipeLeft(recipe.id)}
+                  />
+                );
+              })
             ) : (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -726,20 +852,24 @@ export default function DiscoveryPage() {
 
       <FamilyNudgeDialog open={showNudgeDialog} onClose={closeNudgeDialog} />
 
-      {isCurtainPending && recipes.length > 0 && currentMember && (
-        <PassThePhone
-          currentMember={currentMember}
-          otherMembers={otherMembers}
-          pendingTarget={pendingCurtainTarget}
-          onSelectTarget={handleSelectHandoffTarget}
-          onCancelTarget={handleCancelHandoffTarget}
-          onConfirmHandoff={handleConfirmHandoff}
-          hideTrigger
-        />
-      )}
+      {isCurtainPending &&
+        recipes.length > 0 &&
+        !showingCheckIn &&
+        !showingKidWrapUp &&
+        currentMember && (
+          <PassThePhone
+            currentMember={currentMember}
+            otherMembers={otherMembers}
+            pendingTarget={pendingCurtainTarget}
+            onSelectTarget={handleSelectHandoffTarget}
+            onCancelTarget={handleCancelHandoffTarget}
+            onConfirmHandoff={handleConfirmHandoff}
+            hideTrigger
+          />
+        )}
 
       {/* Control Buttons (Thumb Zone) */}
-      {!(isLockedTurn && recipes.length === 0) && (
+      {!showingKidWrapUp && !showingCheckIn && (
         <div className="mt-10 flex w-full max-w-sm shrink-0 items-center justify-between px-8 pb-4">
           <button
             type="button"

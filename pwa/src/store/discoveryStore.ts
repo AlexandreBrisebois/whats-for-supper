@@ -60,6 +60,8 @@ interface DiscoveryState {
    */
   activeCategory: string | null;
   setActiveCategory: (category: string | null) => void;
+  handoffTurnCompleted: boolean;
+  setHandoffTurnCompleted: (completed: boolean) => void;
 }
 
 /**
@@ -198,4 +200,6 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
 
   activeCategory: null,
   setActiveCategory: (category) => set({ activeCategory: category }),
+  handoffTurnCompleted: false,
+  setHandoffTurnCompleted: (completed) => set({ handoffTurnCompleted: completed }),
 }));
