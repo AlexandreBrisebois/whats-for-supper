@@ -184,7 +184,9 @@ public sealed partial class StructuredRecipeContentStore
         string? existingRawMetadata = null,
         string? name = null,
         string? description = null,
-        string? sourceName = null)
+        string? sourceName = null,
+        bool syncTotalTime = false,
+        string? totalTime = null)
     {
         SchemaOrgRecipe? recipe = null;
         if (!string.IsNullOrWhiteSpace(existingRawMetadata))
@@ -207,6 +209,8 @@ public sealed partial class StructuredRecipeContentStore
             recipe.Name = name;
         if (description is not null)
             recipe.Description = string.IsNullOrWhiteSpace(description) ? null : description;
+        if (syncTotalTime)
+            recipe.TotalTime = string.IsNullOrWhiteSpace(totalTime) ? null : totalTime.Trim();
 
         if (!string.IsNullOrWhiteSpace(sourceName))
         {

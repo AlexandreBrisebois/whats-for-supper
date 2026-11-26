@@ -54,6 +54,22 @@ public class RecipeDtoSerializationTests
     }
 
     [Fact]
+    public void UpdateRecipeDto_TotalTime_TracksPresenceAcrossOmissionValueAndNull()
+    {
+        var omitted = JsonSerializer.Deserialize<UpdateRecipeDto>("""{"name":"Pasta"}""", JsonOptions)!;
+        Assert.False(omitted.HasTotalTime);
+        Assert.Null(omitted.TotalTime);
+
+        var set = JsonSerializer.Deserialize<UpdateRecipeDto>("""{"totalTime":"PT35M"}""", JsonOptions)!;
+        Assert.True(set.HasTotalTime);
+        Assert.Equal("PT35M", set.TotalTime);
+
+        var cleared = JsonSerializer.Deserialize<UpdateRecipeDto>("""{"totalTime":null}""", JsonOptions)!;
+        Assert.True(cleared.HasTotalTime);
+        Assert.Null(cleared.TotalTime);
+    }
+
+    [Fact]
     public void ImportedRecipeDto_SerializationRoundTrip_IncludesCuisineAndMealTypes()
     {
         var original = new ImportedRecipeDto

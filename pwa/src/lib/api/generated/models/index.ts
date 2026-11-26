@@ -6023,6 +6023,9 @@ export function deserializeIntoUpdateRecipeDto(
     servings: (n) => {
       updateRecipeDto.servings = n.getNumberValue();
     },
+    totalTime: (n) => {
+      updateRecipeDto.totalTime = n.getStringValue();
+    },
   };
 }
 /**
@@ -12162,6 +12165,7 @@ export function serializeUpdateRecipeDto(
   writer.writeNumberValue('rating', updateRecipeDto.rating);
   writer.writeObjectValue('recipeInstructions', updateRecipeDto.recipeInstructions);
   writer.writeNumberValue('servings', updateRecipeDto.servings);
+  writer.writeStringValue('totalTime', updateRecipeDto.totalTime);
   writer.writeAdditionalData(updateRecipeDto.additionalData);
 }
 /**
@@ -12753,6 +12757,10 @@ export interface UpdateRecipeDto extends AdditionalDataHolder, Parsable {
    * Number of servings made by the stored ingredients. Omission preserves the saved count, including unknown; supplied null is invalid. Does not change raw yield or ingredient quantities.
    */
   servings?: number | null;
+  /**
+   * Total preparation and cooking duration (e.g. ISO 8601 "PT35M"). Omission preserves the saved duration; empty string or null clears it.
+   */
+  totalTime?: string | null;
 }
 export type UpdateRecipeDto_mealTypes =
   (typeof UpdateRecipeDto_mealTypesObject)[keyof typeof UpdateRecipeDto_mealTypesObject];

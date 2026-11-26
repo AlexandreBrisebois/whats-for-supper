@@ -479,6 +479,7 @@ public class RecipeService(
             dto.Description is not null ||
             dto.Ingredients is not null ||
             dto.Notes is not null ||
+            dto.HasTotalTime ||
             dto.Rating.HasValue ||
             dto.IsDiscoverable.HasValue ||
             dto.CuisineType is not null ||
@@ -568,6 +569,9 @@ public class RecipeService(
         if (dto.Notes is not null)
             recipe.Notes = dto.Notes;
 
+        if (dto.HasTotalTime)
+            recipe.TotalTime = string.IsNullOrWhiteSpace(dto.TotalTime) ? null : dto.TotalTime.Trim();
+
         if (dto.IsDiscoverable.HasValue)
         {
             recipe.IsDiscoverable = dto.IsDiscoverable.Value;
@@ -602,7 +606,9 @@ public class RecipeService(
             dto.Rating.HasValue ? recipe.Rating : null,
             dto.Name is not null ? recipe.Name : null,
             dto.Description is not null ? recipe.Description : null,
-            dto.RecipeInstructions is not null ? dto.RecipeInstructions : null);
+            dto.RecipeInstructions is not null ? dto.RecipeInstructions : null,
+            hasTotalTime: dto.HasTotalTime,
+            totalTime: recipe.TotalTime);
 
         if (dto.IsDiscoverable.HasValue || dto.MealTypes is not null)
         {
@@ -622,7 +628,12 @@ public class RecipeService(
         {
             var existingDiskJson = await recipeStore.ReadRecipeJsonAsync(id) ?? recipe.RawMetadata;
             var schemaOrgJson = StructuredRecipeContentStore.ToSchemaOrgJson(
-                structuredContent, existingDiskJson, recipe.Name, recipe.Description);
+                structuredContent,
+                existingDiskJson,
+                recipe.Name,
+                recipe.Description,
+                syncTotalTime: dto.HasTotalTime,
+                totalTime: recipe.TotalTime);
             await recipeStore.WriteRecipeJsonAsync(id, schemaOrgJson);
         }
 

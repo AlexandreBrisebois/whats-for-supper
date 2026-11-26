@@ -87,7 +87,7 @@ import {
 } from '@/lib/api/recipes';
 import { t, tWithVars } from '@/locales';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
-import { formatRecipeTime } from '@/lib/duration';
+import { formatRecipeTime, minutesToIsoDuration, parseRecipeTimeMinutes } from '@/lib/duration';
 import { useUiStore } from '@/store/uiStore';
 import { useFamilyStore } from '@/store/familyStore';
 import { getImageUrl } from '@/lib/imageUtils';
@@ -245,6 +245,7 @@ export function RecipeDetailSheet({
     editorSession?.baseline.structured ?? recipe?.contentSchemaVersion === 2;
   const preparedDrafts = prepareIngredientDrafts(ingredientDrafts);
   const [draftCuisineType, setDraftCuisineType] = useState('');
+  const [draftTotalTime, setDraftTotalTime] = useState('');
   const [draftMealTypes, setDraftMealTypes] = useState<UpdateRecipeDto_mealTypes[]>([]);
   const [rating, setRating] = useState(0);
   const [isDiscoverable, setIsDiscoverable] = useState(false);
@@ -258,6 +259,7 @@ export function RecipeDetailSheet({
     name: draftName,
     description: draftDescription,
     servings: draftServings,
+    totalTime: draftTotalTime,
     cuisineType: draftCuisineType,
     mealTypes: draftMealTypes,
     ingredients: draftIngredients,
@@ -268,6 +270,7 @@ export function RecipeDetailSheet({
     setDraftName(fields.name);
     setDraftDescription(fields.description);
     setDraftServings(fields.servings);
+    setDraftTotalTime(fields.totalTime ?? '');
     setDraftCuisineType(fields.cuisineType);
     setDraftMealTypes(fields.mealTypes);
     setDraftIngredients(fields.ingredients);
@@ -359,6 +362,7 @@ export function RecipeDetailSheet({
       name: t('recipes.name', 'Name'),
       description: t('recipes.description', 'Description'),
       servings: t('recipes.originalServings', 'Original portions'),
+      totalTime: t('recipes.totalTimeLabel', 'Time (minutes)'),
       cuisineType: t('recipes.cuisineType', 'Cuisine'),
       mealTypes: t('recipes.mealTypes', 'Meal types'),
       ingredients: t('recipes.ingredients', 'Ingredients'),
@@ -421,6 +425,7 @@ export function RecipeDetailSheet({
     draftName,
     draftDescription,
     draftServings,
+    draftTotalTime,
     draftCuisineType,
     draftMealTypes,
     draftIngredients,
@@ -796,6 +801,14 @@ export function RecipeDetailSheet({
     Number(draftServings) <= 2147483647
       ? Number(draftServings)
       : null;
+  const trimmedTotalTime = draftTotalTime.trim();
+  const totalTimeInvalid =
+    trimmedTotalTime !== '' &&
+    (!/^[0-9]+$/.test(trimmedTotalTime) ||
+      Number(trimmedTotalTime) < 1 ||
+      Number(trimmedTotalTime) > 10080);
+  const parsedDraftTotalTimeMinutes =
+    trimmedTotalTime !== '' && !totalTimeInvalid ? Number(trimmedTotalTime) : null;
 
   const renderUnitOptions = (currentUnit: string) =>
     ingredientUnitOptions(currentUnit).map((unitOption) => (
@@ -812,12 +825,22 @@ export function RecipeDetailSheet({
     if (
       !recipe ||
       servingsInvalid ||
+      totalTimeInvalid ||
       saveNeedsRead ||
       (structuredEditing && (preparedDrafts.invalid || !draftRevision))
     )
       return;
     const savingVisit = saveVisitRef.current;
     const servingsUpdate = draftServings === '' ? {} : { servings: Number(draftServings) };
+    const initialTotalMinutes = parseRecipeTimeMinutes(recipe.totalTime);
+    const initialTotalTime =
+      initialTotalMinutes === null ? null : minutesToIsoDuration(initialTotalMinutes);
+    const nextTotalTime =
+      parsedDraftTotalTimeMinutes === null
+        ? null
+        : minutesToIsoDuration(parsedDraftTotalTimeMinutes);
+    const totalTimeChanged = nextTotalTime !== initialTotalTime;
+    const totalTimeUpdate = totalTimeChanged ? { totalTime: nextTotalTime } : {};
 
     const cleanedIngredients = draftIngredients
       .map((ingredient) => ingredient.trim())
@@ -829,6 +852,7 @@ export function RecipeDetailSheet({
     const nextRecipe: Recipe = {
       ...recipe,
       ...servingsUpdate,
+      ...(totalTimeChanged ? { totalTime: nextTotalTime ?? '' } : {}),
       name: draftName.trim(),
       description: draftDescription.trim(),
       ingredients: cleanedIngredients,
@@ -844,6 +868,7 @@ export function RecipeDetailSheet({
     try {
       const saved = await updateRecipe(recipe.id, {
         ...servingsUpdate,
+        ...totalTimeUpdate,
         name: nextRecipe.name,
         description: nextRecipe.description,
         ...(structuredEditing
@@ -1472,18 +1497,58 @@ export function RecipeDetailSheet({
               </div>
               {isEditing ? (
                 <div className="grid gap-3">
-                  <label className="grid gap-2">
-                    <span className="text-sm font-semibold text-ink-body">
-                      {t('recipes.cuisineType', 'Cuisine')}
-                    </span>
-                    <input
-                      data-testid="recipe-edit-cuisine-input"
-                      disabled={isSavingRecipe}
-                      value={draftCuisineType}
-                      onChange={(event) => setDraftCuisineType(event.target.value)}
-                      className="min-h-12 w-full px-4 py-2.5 rounded-xl border border-chrome-line bg-white text-ink-body focus:border-garden-line focus:outline-none text-sm transition-all duration-200"
-                    />
-                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="text-sm font-semibold text-ink-body">
+                        {t('recipes.cuisineType', 'Cuisine')}
+                      </span>
+                      <input
+                        data-testid="recipe-edit-cuisine-input"
+                        disabled={isSavingRecipe}
+                        value={draftCuisineType}
+                        onChange={(event) => setDraftCuisineType(event.target.value)}
+                        className="min-h-12 w-full px-4 py-2.5 rounded-xl border border-chrome-line bg-white text-ink-body focus:border-garden-line focus:outline-none text-sm transition-all duration-200"
+                      />
+                    </label>
+                    <div className="grid gap-2">
+                      <label className="grid gap-2">
+                        <span className="text-sm font-semibold text-ink-body">
+                          {t('recipes.totalTimeLabel', 'Time (minutes)')}
+                        </span>
+                        <input
+                          data-testid="recipe-edit-total-time-input"
+                          disabled={isSavingRecipe}
+                          type="text"
+                          inputMode="numeric"
+                          value={draftTotalTime}
+                          onChange={(event) => setDraftTotalTime(event.target.value)}
+                          aria-invalid={totalTimeInvalid || undefined}
+                          aria-describedby={
+                            totalTimeInvalid ? 'recipe-total-time-error' : undefined
+                          }
+                          placeholder="35"
+                          className="min-h-12 w-full px-4 py-2.5 rounded-xl border border-chrome-line bg-white text-ink-body focus:border-garden-line focus:outline-none text-sm transition-all duration-200"
+                        />
+                      </label>
+                      {totalTimeInvalid && (
+                        <p
+                          id="recipe-total-time-error"
+                          data-testid="recipe-edit-total-time-error"
+                          className="break-words text-sm text-hearth-ink"
+                        >
+                          {t(
+                            'recipes.totalTimeInvalid',
+                            'Enter a whole number of minutes from 1 to 10080.'
+                          )}
+                        </p>
+                      )}
+                      {!totalTimeInvalid && parsedDraftTotalTimeMinutes !== null && (
+                        <p className="text-xs text-ink-muted">
+                          {formatRecipeTime(minutesToIsoDuration(parsedDraftTotalTimeMinutes))}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                   <div className="grid gap-2">
                     <span className="text-sm font-semibold text-ink-body">
                       {t('recipes.mealTypes', 'Meal types')}
@@ -2633,6 +2698,7 @@ export function RecipeDetailSheet({
                     'name',
                     'description',
                     'servings',
+                    'totalTime',
                     'cuisineType',
                     'mealTypes',
                     'ingredients',
@@ -2661,6 +2727,7 @@ export function RecipeDetailSheet({
                 isSavingRecipe ||
                 saveNeedsRead ||
                 servingsInvalid ||
+                totalTimeInvalid ||
                 (structuredEditing && (preparedDrafts.invalid || !draftRevision)) ||
                 draftName.trim().length === 0 ||
                 draftMealTypes.length === 0

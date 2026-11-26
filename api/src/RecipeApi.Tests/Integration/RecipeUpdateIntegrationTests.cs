@@ -206,4 +206,77 @@ public class RecipeUpdateIntegrationTests : IAsyncLifetime
         Assert.Equal("420 calories", doc.RootElement.GetProperty("nutrition").GetProperty("calories").GetString());
         Assert.Equal("Crisp green salad", doc.RootElement.GetProperty("suggestedPairing").GetString());
     }
+
+    [Fact]
+    public async Task UpdateRecipe_TotalTime_UpdatesClearsAndPreservesAcrossDbInfoAndJson()
+    {
+        var recipeId = Guid.NewGuid();
+        const string initialRaw = """
+            {
+              "@context": "https://schema.org/",
+              "@type": "Recipe",
+              "name": "Quick Tacos",
+              "totalTime": "PT20M",
+              "recipeIngredient": ["200 g beef"],
+              "recipeInstructions": [
+                { "@type": "HowToSection", "name": "Cook", "itemListElement": [{ "@type": "HowToStep", "text": "Brown beef." }] }
+              ]
+            }
+            """;
+        var (content, evidence) = RecipeApi.Services.StructuredRecipeContentStore.FromSchemaOrg(
+            recipeId, initialRaw, null, null, Guid.NewGuid(), "source");
+        var webJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        _db.Recipes.Add(new Recipe
+        {
+            Id = recipeId,
+            Name = "Quick Tacos",
+            TotalTime = "PT20M",
+            RawMetadata = initialRaw,
+            StructuredContent = JsonSerializer.Serialize(content, webJson),
+            FoodMappingEvidence = evidence,
+            Ingredients = JsonSerializer.Serialize(content.IngredientLines.Select(RecipeApi.Services.StructuredRecipeContentStore.Render), webJson),
+            IsReady = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var store = _factory.Services.GetRequiredService<IRecipeStore>();
+        await store.WriteInfoAsync(new RecipeInfo { Id = recipeId, Name = "Quick Tacos", TotalTime = "PT20M", IsReady = true });
+        await store.WriteRecipeJsonAsync(recipeId, initialRaw);
+
+        // 1. Omitting totalTime preserves existing value
+        var omitResponse = await _client.PatchAsJsonAsync($"/api/recipes/{recipeId}", new { name = "Quick Beef Tacos" });
+        Assert.Equal(HttpStatusCode.OK, omitResponse.StatusCode);
+        _db.ChangeTracker.Clear();
+        Assert.Equal("PT20M", (await _db.Recipes.FindAsync(recipeId))!.TotalTime);
+        Assert.Equal("PT20M", (await store.ReadInfoAsync(recipeId))!.TotalTime);
+
+        // 2. Updating totalTime persists to DB, detail DTO, recipe.info, and recipe.json
+        var updateResponse = await _client.PatchAsJsonAsync($"/api/recipes/{recipeId}", new { totalTime = "PT45M" });
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        using (var updateBody = JsonDocument.Parse(await updateResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("PT45M", updateBody.RootElement.GetProperty("recipe").GetProperty("totalTime").GetString());
+        }
+        _db.ChangeTracker.Clear();
+        Assert.Equal("PT45M", (await _db.Recipes.FindAsync(recipeId))!.TotalTime);
+        Assert.Equal("PT45M", (await store.ReadInfoAsync(recipeId))!.TotalTime);
+        using (var diskDoc = JsonDocument.Parse((await store.ReadRecipeJsonAsync(recipeId))!))
+        {
+            Assert.Equal("PT45M", diskDoc.RootElement.GetProperty("totalTime").GetString());
+        }
+
+        // 3. Clearing totalTime with null clears DB, detail DTO, recipe.info, and recipe.json
+        var clearResponse = await _client.PatchAsJsonAsync($"/api/recipes/{recipeId}", new { totalTime = (string?)null });
+        Assert.Equal(HttpStatusCode.OK, clearResponse.StatusCode);
+        _db.ChangeTracker.Clear();
+        Assert.Null((await _db.Recipes.FindAsync(recipeId))!.TotalTime);
+        Assert.Null((await store.ReadInfoAsync(recipeId))!.TotalTime);
+        using (var diskDoc = JsonDocument.Parse((await store.ReadRecipeJsonAsync(recipeId))!))
+        {
+            Assert.True(!diskDoc.RootElement.TryGetProperty("totalTime", out var tt) || tt.ValueKind == JsonValueKind.Null);
+        }
+    }
 }

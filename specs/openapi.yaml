@@ -1110,6 +1110,9 @@ components:
           maximum: 2147483647
           description: Number of servings made by the stored ingredients. Omission preserves the saved count, including unknown; supplied null is invalid. Does not change raw yield or ingredient quantities.
         notes: { type: [string, 'null'] }
+        totalTime:
+          type: [string, 'null']
+          description: Total preparation and cooking duration (e.g. ISO 8601 "PT35M"). Omission preserves the saved duration; empty string or null clears it.
         rating: { type: [integer, 'null'], minimum: 0, maximum: 3 }
         isDiscoverable:
           type: [boolean, 'null']

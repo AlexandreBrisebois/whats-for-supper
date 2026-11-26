@@ -68,6 +68,12 @@ export function applyStructuredEditorPatch(
       recipe.isDiscoverable = input.isDiscoverable;
     }
     if (input.servings !== undefined) recipe.servings = input.servings;
+    if (Object.hasOwn(input, 'totalTime')) {
+      recipe.totalTime =
+        typeof input.totalTime === 'string' && input.totalTime.trim()
+          ? input.totalTime.trim()
+          : null;
+    }
     if (input.ingredientLines) {
       recipe.ingredientLines = input.ingredientLines.map((row: any) => {
         const old = current.ingredientLines.find((item: any) => item.id === row.id);

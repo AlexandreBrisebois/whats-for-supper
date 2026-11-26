@@ -59,6 +59,17 @@ public class UpdateRecipeDto
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
 
+    private string? totalTime;
+    [JsonIgnore]
+    public bool HasTotalTime { get; private set; }
+
+    [JsonPropertyName("totalTime")]
+    public string? TotalTime
+    {
+        get => totalTime;
+        set { totalTime = value; HasTotalTime = true; }
+    }
+
     /// <summary>0 = Unknown, 1 = Dislike, 2 = Like, 3 = Love</summary>
     [JsonPropertyName("rating")]
     public int? Rating { get; set; }

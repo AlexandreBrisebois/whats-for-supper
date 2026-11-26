@@ -1,6 +1,7 @@
 import type { Recipe } from '@/lib/api/recipes';
 import type { UpdateRecipeDto_mealTypes } from '@/lib/api/generated/models';
 import { normalizeGroceryQuantity } from '@/lib/api/grocery-quantities';
+import { parseRecipeTimeMinutes } from '@/lib/duration';
 import {
   ingredientDraft,
   withIngredientPackageDraft,
@@ -12,6 +13,7 @@ export interface EditorFields {
   name: string;
   description: string;
   servings: string;
+  totalTime?: string;
   cuisineType: string;
   mealTypes: UpdateRecipeDto_mealTypes[];
   ingredients: string[];
@@ -35,6 +37,7 @@ export type EditorField =
   | 'name'
   | 'description'
   | 'servings'
+  | 'totalTime'
   | 'cuisineType'
   | 'mealTypes'
   | 'ingredients'
@@ -43,6 +46,7 @@ export const editorFields: EditorField[] = [
   'name',
   'description',
   'servings',
+  'totalTime',
   'cuisineType',
   'mealTypes',
   'ingredients',
@@ -83,6 +87,7 @@ export function editorBaseline(
   recipe: Recipe,
   mealTypes: UpdateRecipeDto_mealTypes[]
 ): EditorBaseline {
+  const totalMinutes = parseRecipeTimeMinutes(recipe.totalTime);
   return {
     revision: recipe.contentRevision ?? null,
     structured: recipe.contentSchemaVersion === 2,
@@ -90,6 +95,7 @@ export function editorBaseline(
       name: recipe.name,
       description: recipe.description ?? '',
       servings: recipe.servings == null ? '' : String(recipe.servings),
+      totalTime: totalMinutes == null ? '' : String(totalMinutes),
       cuisineType: recipe.cuisineType ?? '',
       mealTypes,
       ingredients: recipe.ingredients ?? [],
@@ -100,6 +106,7 @@ export function editorBaseline(
 }
 
 function value(fields: EditorFields, field: EditorField, structured: boolean) {
+  if (field === 'totalTime') return fields.totalTime ?? '';
   return field === 'ingredients'
     ? structured
       ? fields.ingredientDrafts.map(comparisonDraft)
@@ -219,6 +226,7 @@ function validFields(value: unknown): value is EditorFields {
     ['name', 'description', 'servings', 'cuisineType'].every(
       (key) => typeof value[key] === 'string'
     ) &&
+    (value.totalTime === undefined || typeof value.totalTime === 'string') &&
     strings(value.mealTypes) &&
     strings(value.ingredients) &&
     (value.instructions === undefined || Array.isArray(value.instructions)) &&

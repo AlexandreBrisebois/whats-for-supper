@@ -696,6 +696,8 @@
     "importIssueReadyToReviewDescription": "Recette à vérifier",
     "importIssueReportedDescription": "Recette signalée",
     "cuisineType": "Cuisine",
+    "totalTimeLabel": "Temps (minutes)",
+    "totalTimeInvalid": "Saisissez un nombre entier de minutes de 1 à 10080.",
     "mealTypes": "Types de repas",
     "description": "Description",
     "ingredientAmount": "Quantité",

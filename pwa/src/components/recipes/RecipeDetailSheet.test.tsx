@@ -228,6 +228,56 @@ describe('RecipeDetailSheet', () => {
     await waitFor(() => expect(screen.queryByTestId('recipe-edit-servings-input')).toBeNull());
     expect(screen.getByTestId('recipe-servings')).toHaveTextContent('3 servings');
   });
+
+  it('edits, clears, and validates total cooking time in minutes', async () => {
+    mockGetRecipe.mockResolvedValue({ ...(await mockGetRecipe()), totalTime: 'PT30M' });
+    mockUpdateRecipe.mockResolvedValue(undefined);
+    render(<RecipeDetailSheet {...editProps} />);
+
+    fireEvent.click(await screen.findByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-edit-recipe'));
+
+    const timeInput = await screen.findByTestId('recipe-edit-total-time-input');
+    expect(timeInput).toHaveValue('30');
+    expect(timeInput).toHaveAccessibleName('Time (minutes)');
+
+    // Invalid input disables Save and shows error
+    fireEvent.change(timeInput, { target: { value: '0' } });
+    expect(timeInput).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByTestId('recipe-edit-total-time-error')).toHaveTextContent(
+      'Enter a whole number of minutes from 1 to 10080.'
+    );
+    expect(screen.getByTestId('recipe-save-edits')).toBeDisabled();
+
+    // Valid input saves as ISO 8601 and updates displayed Ready In badge
+    fireEvent.change(timeInput, { target: { value: '90' } });
+    expect(screen.getByTestId('recipe-save-edits')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await waitFor(() =>
+      expect(mockUpdateRecipe).toHaveBeenCalledWith(
+        editProps.recipeId,
+        expect.objectContaining({ totalTime: 'PT1H30M' })
+      )
+    );
+    await waitFor(() => expect(screen.queryByTestId('recipe-edit-total-time-input')).toBeNull());
+    expect(screen.getByTestId('recipe-ready-in')).toHaveTextContent(/1H 30 MINS/i);
+
+    // Clearing the input sends totalTime: null and hides Ready In badge
+    fireEvent.click(await screen.findByTestId('action-gear-menu'));
+    fireEvent.click(await screen.findByTestId('action-edit-recipe'));
+    const timeInputAgain = await screen.findByTestId('recipe-edit-total-time-input');
+    expect(timeInputAgain).toHaveValue('90');
+    fireEvent.change(timeInputAgain, { target: { value: '' } });
+    fireEvent.click(screen.getByTestId('recipe-save-edits'));
+    await waitFor(() =>
+      expect(mockUpdateRecipe).toHaveBeenCalledWith(
+        editProps.recipeId,
+        expect.objectContaining({ totalTime: null })
+      )
+    );
+    await waitFor(() => expect(screen.queryByTestId('recipe-edit-total-time-input')).toBeNull());
+    expect(screen.queryByTestId('recipe-ready-in')).toBeNull();
+  });
   it('resets a draft and validation when the recipe identity changes', async () => {
     const known = { ...(await mockGetRecipe()), servings: 4 };
     mockGetRecipe.mockResolvedValue(known);

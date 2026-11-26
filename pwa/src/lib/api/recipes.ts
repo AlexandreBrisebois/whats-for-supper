@@ -825,6 +825,7 @@ export async function updateRecipe(
     ingredients?: string[];
     recipeInstructions?: unknown[];
     notes?: string;
+    totalTime?: string | null;
     rating?: number;
     isDiscoverable?: boolean | null;
     cuisineType?: string | null;
@@ -846,6 +847,7 @@ export async function updateRecipe(
             createUntypedNodeFromDiscriminatorValue
           ),
     notes: updates.notes,
+    totalTime: updates.totalTime,
     rating: updates.rating,
     isDiscoverable: updates.isDiscoverable,
     cuisineType: updates.cuisineType,

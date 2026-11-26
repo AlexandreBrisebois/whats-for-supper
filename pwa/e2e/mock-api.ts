@@ -1423,8 +1423,17 @@ export async function setupCommonRoutes(
           status: 400,
           json: { message: 'Choose Supper in meal types before turning on Ask the Family.' },
         });
-      recipeUpdates.set(id, { ...recipeUpdates.get(id), ...changes });
-      await servingMock.recipeChanged(id, changes);
+      const normalizedChanges = Object.hasOwn(changes, 'totalTime')
+        ? {
+            ...changes,
+            totalTime:
+              typeof changes.totalTime === 'string' && changes.totalTime.trim()
+                ? changes.totalTime.trim()
+                : null,
+          }
+        : changes;
+      recipeUpdates.set(id, { ...recipeUpdates.get(id), ...normalizedChanges });
+      await servingMock.recipeChanged(id, normalizedChanges);
       await fulfill(route, {
         status: 200,
         contentType: 'application/json',
