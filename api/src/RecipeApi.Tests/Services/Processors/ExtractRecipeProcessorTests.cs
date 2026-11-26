@@ -242,4 +242,90 @@ public class ExtractRecipeProcessorTests : IDisposable
             "Family favorite.\n\nOptional add-on: Add shrimp (285 g); drain, rinse, pat dry, season with salt and pepper, cook in 1/2 tbsp oil for 2-3 min, and top bowls with shrimp.",
             updatedRecipe.Notes);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_GuidedIngredientOnlyRepair_AllowsChangedDescriptionsAndMembership()
+    {
+        var info = new RecipeInfo { Id = _recipeId, ImageCount = 2, Name = "One-Pan Chicken and Orzo" };
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(info, JsonDefaults.CamelCase));
+        await _storage.SaveAsync("recipes", $"{_recipeId}/original/0.jpg", "front image");
+        await _storage.SaveAsync("recipes", $"{_recipeId}/original/1.jpg", "back image");
+
+        var initialSchemaOrg = """
+            {
+              "@context": "https://schema.org/",
+              "@type": "Recipe",
+              "name": "One-Pan Chicken and Orzo",
+              "recipeYield": "4 portions",
+              "recipeIngredient": ["2 Chicken Breasts *", "270 g Chicken Thighs", "170 g Orzo"],
+              "recipeInstructions": [
+                {
+                  "@type": "HowToSection",
+                  "name": "1. Prep and cook chicken",
+                  "itemListElement": [{ "@type": "HowToStep", "text": "Cook chicken in 1/2 tbsp oil." }]
+                }
+              ]
+            }
+            """;
+        var (structuredContent, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+            _recipeId, initialSchemaOrg, null, null, Guid.NewGuid(), "source");
+
+        var existingRecipe = await _db.Recipes.SingleAsync(x => x.Id == _recipeId);
+        existingRecipe.Name = "One-Pan Chicken and Orzo";
+        existingRecipe.RawMetadata = initialSchemaOrg;
+        existingRecipe.StructuredContent = System.Text.Json.JsonSerializer.Serialize(structuredContent, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+        existingRecipe.FoodMappingEvidence = evidence;
+        existingRecipe.Servings = structuredContent.Servings;
+        _db.RecipeImportReports.Add(new RecipeImportReport
+        {
+            RecipeId = _recipeId,
+            Reasons = ["ingredients"],
+            Note = "Remove swap chicken thighs, strip asterisk, and include oil",
+            Status = RecipeImportReportStatus.Reimporting
+        });
+        await _db.SaveChangesAsync();
+
+        var repairedJsonResponse = """
+            {
+              "name": "One-Pan Chicken and Orzo",
+              "recipeYield": "2 portions",
+              "totalTime": "PT35M",
+              "recipeIngredient": ["2 Chicken Breasts", "170 g Orzo", "0.5 tbsp oil"],
+              "recipeInstructions": [
+                {
+                  "@type": "HowToSection",
+                  "name": "1. Prep and cook chicken",
+                  "itemListElement": [{ "@type": "HowToStep", "text": "Cook chicken in 1/2 tbsp oil." }]
+                }
+              ],
+              "notes": "Swap suggestion: Substitute chicken thighs (270 g) for chicken breasts."
+            }
+            """;
+        _chatClientMock.Setup(c => c.GetResponseAsync(
+            It.IsAny<IEnumerable<ChatMessage>>(),
+            It.IsAny<ChatOptions>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, repairedJsonResponse)));
+
+        await _agent.ExecuteAsync(new WorkflowTask
+        {
+            TaskId = Guid.NewGuid(),
+            Payload = $"{{\"recipeId\": \"{_recipeId}\", \"repairReasons\": \"ingredients\", \"repairNote\": \"Remove swap chicken thighs, strip asterisk, and include oil\"}}"
+        }, CancellationToken.None);
+
+        var updatedRecipe = await _db.Recipes.AsNoTracking().SingleAsync(x => x.Id == _recipeId);
+        var updatedContent = StructuredRecipeContentStore.Read(updatedRecipe)!;
+        Assert.Equal(2, updatedContent.Servings);
+        Assert.Contains(updatedContent.IngredientLines, l => l.Description == "Chicken Breasts");
+        Assert.Contains(updatedContent.IngredientLines, l => l.Description == "Orzo");
+        Assert.Contains(updatedContent.IngredientLines, l => l.Description == "oil");
+        Assert.DoesNotContain(updatedContent.IngredientLines, l => l.Description == "Chicken Thighs");
+        Assert.DoesNotContain(updatedContent.IngredientLines, l => l.Description.Contains('*'));
+
+        var savedJsonBytes = await _storage.LoadAsync("recipes", $"{_recipeId}/recipe.json");
+        Assert.NotNull(savedJsonBytes);
+        var savedJson = System.Text.Encoding.UTF8.GetString(savedJsonBytes);
+        Assert.Contains("Chicken Breasts", savedJson);
+        Assert.DoesNotContain("Chicken Thighs", savedJson);
+    }
 }

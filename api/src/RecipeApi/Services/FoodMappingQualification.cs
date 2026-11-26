@@ -88,18 +88,36 @@ public static class FoodMappingQualification
     {
         FoodVocabularyDefinitions.Require(export.RawMetadata is not null
             && export.Content.SourceRevision == StructuredRecipeContentStore.InspectSourceRevision(new Models.Recipe
-            { Id = export.RecipeId, RawMetadata = export.RawMetadata, SourceUrl = sourceUrl })
-            && priorContent.IngredientLines.Select(x => x.Id).SequenceEqual(export.Content.IngredientLines.Select(x => x.Id)));
+            { Id = export.RecipeId, RawMetadata = export.RawMetadata, SourceUrl = sourceUrl }));
+        var exportedById = export.Content.IngredientLines.ToDictionary(x => x.Id);
+        var priorById = priorContent.IngredientLines.ToDictionary(x => x.Id);
+        foreach (var old in priorContent.IngredientLines)
+        {
+            if (old.Provenance.Origin != "source" || old.Provenance.ProtectedFields.Count != 0)
+            {
+                FoodVocabularyDefinitions.Require(exportedById.TryGetValue(old.Id, out var line)
+                    && line.Shopping == old.Shopping
+                    && JsonSerializer.Serialize(line, Json) == JsonSerializer.Serialize(old, Json));
+            }
+        }
         foreach (var line in export.Content.IngredientLines)
         {
-            var old = priorContent.IngredientLines.Single(x => x.Id == line.Id);
-            FoodVocabularyDefinitions.Require(line.Shopping == old.Shopping);
-            if (old.Provenance.Origin != "source" || old.Provenance.ProtectedFields.Count != 0)
-                FoodVocabularyDefinitions.Require(JsonSerializer.Serialize(line, Json) == JsonSerializer.Serialize(old, Json));
+            if (line.Provenance.Origin == "source" && line.Provenance.ProtectedFields.Count == 0)
+            {
+                FoodVocabularyDefinitions.Require(line.Provenance.SourceRef == export.Content.SourceRevision);
+                if (priorById.TryGetValue(line.Id, out var old))
+                {
+                    FoodVocabularyDefinitions.Require(old.Provenance.Origin == "source"
+                        && old.Provenance.ProtectedFields.Count == 0
+                        && old.Provenance.SourceRef == priorContent.SourceRevision
+                        && line.Shopping == old.Shopping);
+                }
+            }
             else
-                FoodVocabularyDefinitions.Require(old.Provenance.SourceRef == priorContent.SourceRevision
-                    && line.Provenance.Origin == "source" && line.Provenance.ProtectedFields.Count == 0
-                    && line.Provenance.SourceRef == export.Content.SourceRevision);
+            {
+                FoodVocabularyDefinitions.Require(priorById.TryGetValue(line.Id, out var old)
+                    && (old.Provenance.Origin != "source" || old.Provenance.ProtectedFields.Count != 0));
+            }
         }
         return PrepareCore(export, authority, operationId, priorContent, priorEvidence, requalifyCapturedRepair: true);
     }

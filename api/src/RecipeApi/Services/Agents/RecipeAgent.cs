@@ -335,6 +335,7 @@ RULES:
         if (!report.Reasons.Contains("steps"))
         {
             prepared = StructuredRecipeContentStore.PreparePhotoIngredientRepair(observed, normalizedJson, Guid.NewGuid().ToString("N"));
+            prepared = prepared with { Content = CookingStepRelationshipProducer.Discover(prepared.Content, current) };
         }
         else
         {

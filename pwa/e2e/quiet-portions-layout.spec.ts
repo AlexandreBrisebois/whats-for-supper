@@ -182,9 +182,12 @@ for (const locale of ['en', 'fr'] as const) {
         await back.press('Enter');
         await expect(page.getByTestId('recipe-original-yield')).toHaveCount(0);
         await expect(page.getByTestId('recipe-servings')).toHaveText(defaultCount);
-        await page.getByTestId('recipe-family-notes-shortcut').click();
-        await expect(page.getByTestId('recipe-notes-input')).toBeFocused();
-        await expect(page.getByTestId('recipe-notes-input')).toBeInViewport();
+        await expect(page.getByTestId('recipe-family-notes-shortcut')).toHaveCount(0);
+        const notesInput = page.getByTestId('recipe-notes-input');
+        await notesInput.scrollIntoViewIfNeeded();
+        await notesInput.focus();
+        await expect(notesInput).toBeFocused();
+        await expect(notesInput).toBeInViewport();
         await expect(page.getByTestId('action-close-sheet')).toBeInViewport();
         metrics.push({ locale, scale, ...geometry });
       }

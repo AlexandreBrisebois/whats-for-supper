@@ -564,8 +564,10 @@ for (const locale of ['en', 'fr'] as const)
             path: info.outputPath(`${state}-${width}-${scale}-detail.png`),
             animations: 'disabled',
           });
-          await page.getByTestId('recipe-family-notes-shortcut').click();
-          await expect(page.getByTestId('recipe-notes-input')).toBeFocused();
+          const notesInput = page.getByTestId('recipe-notes-input');
+          await notesInput.scrollIntoViewIfNeeded();
+          await notesInput.focus();
+          await expect(notesInput).toBeFocused();
           await expect(page.getByTestId('action-close-sheet')).toBeInViewport();
           const contrast = {
             badge: await surfaceContrast(badge),

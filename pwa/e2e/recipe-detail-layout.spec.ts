@@ -307,11 +307,10 @@ for (const locale of ['en', 'fr'] as const)
     });
     test('keyboard notes focus has a clear two-pixel indicator', async ({ page }) => {
       await prepare(page, locale);
-      const shortcut = page.getByTestId('recipe-family-notes-shortcut');
       await page.keyboard.press('Tab');
-      await shortcut.focus();
-      await shortcut.press('Enter');
       const input = page.getByTestId('recipe-notes-input');
+      await input.scrollIntoViewIfNeeded();
+      await input.focus();
       await expect(input).toBeFocused();
       const focus = await input.evaluate((el) => ({
         width: parseFloat(getComputedStyle(el).outlineWidth),
@@ -360,12 +359,10 @@ for (const locale of ['en', 'fr'] as const)
       await page.evaluate(() => {
         document.documentElement.style.fontSize = '16px';
       });
-      const shortcut = page.getByTestId('recipe-family-notes-shortcut');
-      await shortcut.focus();
-      await shortcut.press('Enter');
       const input = page.getByTestId('recipe-notes-input');
-      await expect(input).toBeFocused();
       await input.scrollIntoViewIfNeeded();
+      await input.focus();
+      await expect(input).toBeFocused();
       const bottom = (await input.boundingBox())!;
       const footer = (await page.getByTestId('recipe-planning-actions').boundingBox())!;
       expect(bottom.y + bottom.height).toBeLessThanOrEqual(footer.y + 1);
@@ -591,10 +588,10 @@ for (const locale of ['en', 'fr'] as const)
           await page.screenshot({
             path: test.info().outputPath(`${width}x${height}-${locale}-${scale}-identity.png`),
           });
-          await page.getByTestId('recipe-family-notes-shortcut').click();
-          await expect(page.getByTestId('recipe-notes-input')).toBeFocused();
           const input = page.getByTestId('recipe-notes-input');
           await input.scrollIntoViewIfNeeded();
+          await input.focus();
+          await expect(input).toBeFocused();
           await page
             .getByTestId('recipe-detail-reading')
             .evaluate((el) => (el.scrollTop = el.scrollHeight));
@@ -863,9 +860,9 @@ for (const locale of ['en', 'fr'] as const)
         await page.keyboard.press('Escape');
         await expect(original).toBeFocused();
         const notesInput = page.getByTestId('recipe-notes-input');
-        await page.getByTestId('recipe-family-notes-shortcut').click();
-        await expect(notesInput).toBeFocused();
         await notesInput.scrollIntoViewIfNeeded();
+        await notesInput.focus();
+        await expect(notesInput).toBeFocused();
         await page.screenshot({ path: prefix + '-notes-focus.png' });
         metrics.push(await collect());
         if (phase === 'after') {

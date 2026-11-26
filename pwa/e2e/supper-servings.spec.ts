@@ -2646,11 +2646,7 @@ for (const appLocale of ['en', 'fr'] as const) {
         await expect(page.getByTestId('recipe-detail-sheet')).not.toContainText(
           appLocale === 'fr' ? 'Certaines quantités' : 'Some amounts need review'
         );
-        for (const affordance of [
-          'action-set-goto',
-          'recipe-family-notes-shortcut',
-          'action-view-original',
-        ]) {
+        for (const affordance of ['action-set-goto', 'action-view-original']) {
           const action = page.getByTestId('recipe-detail-sheet').getByTestId(affordance);
           await action.evaluate((element) => element.scrollIntoView({ block: 'center' }));
           await expect(action).toBeInViewport();

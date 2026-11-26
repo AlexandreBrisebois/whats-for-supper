@@ -484,8 +484,6 @@ export function RecipeDetailSheet({
   const [editError, setEditError] = useState<string | null>(null);
   const originalButtonRef = useRef<HTMLButtonElement>(null);
   const readingRef = useRef<HTMLDivElement>(null);
-  const notesSectionRef = useRef<HTMLElement>(null);
-  const notesInputRef = useRef<HTMLTextAreaElement>(null);
   const [failedHero, setFailedHero] = useState<string | null>(null);
   const [isUpdatingDiscovery, setIsUpdatingDiscovery] = useState(false);
   const [isSavingGoto, setIsSavingGoto] = useState(false);
@@ -1127,7 +1125,6 @@ export function RecipeDetailSheet({
     : t('recipes.cookThis', 'Cook This');
   const projectedSteps = projectedCookingSteps(displayedProjection);
   const steps = projectedSteps ?? parseRecipeSteps(recipe?.recipeInstructions);
-  const hasNotes = Boolean(notes.trim());
   const readyTime = formatRecipeTime(recipe?.totalTime);
   const hasDatedAction = Boolean(plannerDayLabel || planningEnabled || sourceDayLabel);
   const isConfirmedPlanned = Boolean(plannedDayLabel && onOpenPlannedDay);
@@ -1477,24 +1474,6 @@ export function RecipeDetailSheet({
                   {recipe.name}
                 </h2>
               )}
-              <div className="flex flex-wrap items-center gap-2">
-                {!isEditing && hasNotes && (
-                  <button
-                    type="button"
-                    data-testid="recipe-family-notes-shortcut"
-                    onClick={() => {
-                      const reading = readingRef.current;
-                      const section = notesSectionRef.current;
-                      if (reading && section)
-                        reading.scrollTo({ top: section.offsetTop - reading.offsetTop });
-                      notesInputRef.current?.focus({ preventScroll: true });
-                    }}
-                    className="min-h-12 rounded-xl px-3 py-2 text-sm font-semibold text-garden-ink underline underline-offset-4"
-                  >
-                    {t('recipes.familyNotes', 'Family notes')}
-                  </button>
-                )}
-              </div>
               {isEditing ? (
                 <div className="grid gap-3">
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -2472,7 +2451,6 @@ export function RecipeDetailSheet({
               />
             </section>
             <section
-              ref={notesSectionRef}
               tabIndex={-1}
               role="region"
               aria-label={t('recipes.familyNotes', 'Family notes')}
@@ -2504,7 +2482,6 @@ export function RecipeDetailSheet({
                   )}
                 </div>
                 <textarea
-                  ref={notesInputRef}
                   id="recipe-notes-input"
                   data-testid="recipe-notes-input"
                   aria-describedby={

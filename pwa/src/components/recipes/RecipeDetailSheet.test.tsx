@@ -2005,20 +2005,20 @@ describe('complete recipe reading', () => {
     fireEvent.click(screen.getByTestId('action-find-similar'));
     expect(props.onFindSimilar).toHaveBeenCalledWith(props.recipeId);
   });
-  it('jumps to saved notes with focus while keeping their content', async () => {
+  it('keeps saved notes directly visible without a top Family notes shortcut button', async () => {
     render(<RecipeDetailSheet {...props} />);
-    const shortcut = await screen.findByRole('button', { name: 'Family notes' });
-    fireEvent.click(shortcut);
-    expect(screen.getByTestId('recipe-notes-input')).toHaveFocus();
-    expect(screen.getByTestId('recipe-notes-input')).toHaveValue('Less chilli for children');
+    expect(await screen.findByTestId('recipe-notes-input')).toHaveValue('Less chilli for children');
+    expect(screen.queryByTestId('recipe-family-notes-shortcut')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Family notes' })).not.toBeInTheDocument();
     expect(mockUpdateRecipe).not.toHaveBeenCalled();
   });
-  it('offers directly writable empty notes without an Add button and retains a failed draft shortcut', async () => {
+  it('offers directly writable empty notes without an Add button and retains a failed draft without a top shortcut', async () => {
     const fixture = await mockGetRecipe();
     mockGetRecipe.mockResolvedValue({ ...fixture, notes: null });
     const view = render(<RecipeDetailSheet {...props} />);
     expect(await screen.findByTestId('recipe-notes-input')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Add a note' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('recipe-family-notes-shortcut')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Family notes' })).not.toBeInTheDocument();
     view.unmount();
     useRecipeNotesStore.setState({
@@ -2032,8 +2032,9 @@ describe('complete recipe reading', () => {
       },
     } as any);
     render(<RecipeDetailSheet {...props} />);
-    expect(await screen.findByRole('button', { name: 'Family notes' })).toBeVisible();
-    expect(screen.getByTestId('recipe-notes-input')).toHaveValue('Retained draft');
+    expect(await screen.findByTestId('recipe-notes-input')).toHaveValue('Retained draft');
+    expect(screen.queryByTestId('recipe-family-notes-shortcut')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Family notes' })).not.toBeInTheDocument();
     expect(screen.getByTestId('recipe-notes-retry')).toBeVisible();
   });
   it('opens originals as the active modal and restores source focus without closing detail', async () => {
