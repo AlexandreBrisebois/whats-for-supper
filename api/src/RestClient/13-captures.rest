@@ -1,0 +1,33 @@
+# CAPTURES — inspect capture activity, diagnostics, retry or clear failed captures.
+# See README.md for environments and labels.
+#
+# Copy the workflowInstanceId from request 1 or 2 into @failureId before running 3, 4 or 5.
+
+@failureId = 00000000-0000-0000-0000-000000000000
+
+### 1. READ ONLY — Capture activity (preparing, indexing, enriching, and failed)
+GET {{baseUrl}}/api/captures/activity
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### 2. READ ONLY — Active failed captures
+GET {{baseUrl}}/api/captures/failures
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### 3. READ ONLY — Failure diagnostics (error and stack trace)
+# @failureId is the workflowInstanceId from request 1 or 2.
+GET {{baseUrl}}/api/captures/failures/{{failureId}}/details
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### 4. START + AI — Retry a failed capture
+POST {{baseUrl}}/api/captures/failures/{{failureId}}/retry
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}
+
+### 5. DESTRUCTIVE — Clear a failed capture and queue residue cleanup
+# Returns 409 NOT_FAILED_CAPTURE if the workflow is not in a failed state with a failed task.
+DELETE {{baseUrl}}/api/captures/failures/{{failureId}}
+Accept: application/json
+X-Hearth-Secret: {{hearthSecret}}

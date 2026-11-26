@@ -43,6 +43,7 @@ Every request title starts with one of these:
 | See what search returns | `10-search.rest` |
 | Reimport a recipe, or investigate a failed reimport | `11-recipe-reimport.rest` |
 | Test the embedding provider directly (Google, not WFS) | `12-embeddings.rest` |
+| Check capture activity, inspect, retry or clear failed captures | `13-captures.rest` |
 
 ## Conventions
 
