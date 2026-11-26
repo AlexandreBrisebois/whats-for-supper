@@ -60,47 +60,47 @@ Extract a recipe from the HTML of a webpage and return a Schema.org/Recipe JSON 
 ## Schema Template (Follow Exactly)
 
 {
-  "@context": "https://schema.org/",
-  "@type": "Recipe",
-  "languageCode": "FR",
-  "name": "Recipe Title",
-  "recipeYield": "Total yield text",
-  "totalTime": "ISO8601 duration or null",
-  "recipeIngredient": ["Exact ingredient 1", "Exact ingredient 2"],
-  "supply": [
-    {
-      "@type": "HowToSupply",
-      "name": "Ingredient Name",
-      "requiredQuantity": {
-        "@type": "QuantitativeValue",
-        "value": 1.5,
-        "unitText": "tsp"
-      }
-    }
-  ],
-  "recipeInstructions": [
-    {
-      "@type": "HowToSection",
-      "name": "Section Name (or 'Principal')",
-      "itemListElement": [
-        {
-          "@type": "HowToStep",
-          "text": "REQUIRED: clean cooking action only — no author notes, captions, or commentary"
-        }
-      ]
-    }
-  ],
-  "nutrition": {
-    "@type": "NutritionInformation",
-    "calories": null,
-    "fatContent": null,
-    "saturatedFatContent": null,
-    "sodiumContent": null,
-    "carbohydrateContent": null,
-    "fiberContent": null,
-    "sugarContent": null,
-    "proteinContent": null
-  }
+"@context": "https://schema.org/",
+"@type": "Recipe",
+"languageCode": "FR",
+"name": "Recipe Title",
+"recipeYield": "Total yield text",
+"totalTime": "ISO8601 duration or null",
+"recipeIngredient": ["Exact ingredient 1", "Exact ingredient 2"],
+"supply": [
+{
+"@type": "HowToSupply",
+"name": "Ingredient Name",
+"requiredQuantity": {
+"@type": "QuantitativeValue",
+"value": 1.5,
+"unitText": "tsp"
+}
+}
+],
+"recipeInstructions": [
+{
+"@type": "HowToSection",
+"name": "Section Name (or 'Principal')",
+"itemListElement": [
+{
+"@type": "HowToStep",
+"text": "REQUIRED: clean cooking action only — no author notes, captions, or commentary"
+}
+]
+}
+],
+"nutrition": {
+"@type": "NutritionInformation",
+"calories": null,
+"fatContent": null,
+"saturatedFatContent": null,
+"sodiumContent": null,
+"carbohydrateContent": null,
+"fiberContent": null,
+"sugarContent": null,
+"proteinContent": null
+}
 }
 
 STRICT OUTPUT: Return ONLY valid JSON. No markdown. No preamble. No explanation.

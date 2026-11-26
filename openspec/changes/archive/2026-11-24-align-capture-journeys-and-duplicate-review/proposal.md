@@ -15,6 +15,7 @@ Deliver the unified Era 3 Family Cookbook Capture experience specified in `docs/
 5. **App-coherent upload, error, recovery, demo, and issue-review surfaces:** Align >800ms photo upload and PDF active saving copy to calm North Star language (`We’ll take you home as soon as they’re saved.` / `We’ll take you home as soon as your PDF is saved.`, with zero em-dashes), migrate `LibraryToast` and `RecipeFailureBanner` off `border-l-4` stripes and `+1 more` / duplicate `[×]` chrome, replace `FailedCapturesSection` `window.confirm()` with an inline `Keep` + danger-blush `Clear capture` confirmation and separated `Retry` / trailing `Trash` layout, upgrade `DemoAiActionGate` to a `48px` secondary-styled action, and migrate `RecipeImportIssueSheet` to Era 3 blush reason pills (without checkmarks) and full EN/FR localization.
 
 **Exclusions:**
+
 - No new database tables, columns, or `api/database/compatibility.sql` migrations (`recipe_import_reports` already supports `reasons = ['duplicate']` with nullable member/workflow references under `CurrentRecoveryHouseholdState`).
 - No new YAML workflow task nodes in `recipe-import.yaml`, `url-import.yaml`, or `goto-synthesis.yaml` (preserving `WorkflowProcessorHistory` and backup/recovery journal invariants).
 - No recipe "archive" state; duplicate cleanup reuses existing soft-delete (`Move to Bin` / `RecycleBinSheet`) and `DELETE /api/recipes/{id}/import-report`.

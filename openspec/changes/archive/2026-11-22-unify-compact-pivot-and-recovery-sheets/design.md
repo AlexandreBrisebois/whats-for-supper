@@ -3,10 +3,12 @@
 ## Context and Existing Ownership
 
 Visual authority for this change lives in the two Era 3 design boards created during exploration:
+
 - `docs/visual-language/designs/pivot-recovery-sheet-suite.svg`
 - `docs/visual-language/designs/pivot-recovery-journeys.svg`
 
 Current implementation owners and verified root causes:
+
 - `pwa/src/components/home/SkipRecoveryDialog.tsx`: Uses `px-6 pb-6`, `max-w-sm`, `rounded-[2.5rem]`, `p-8`, `mb-8`, `gap-6`, a `text-3xl` heading carrying the full recipe name + full date (wrapping to 5–6 lines), `p-5` option cards with redundant trailing icons (`Calendar` on card 1, duplicate `RefreshCw` on card 2) that narrow the text column to `~156px`, and a bottom `Go back` button. Total Step 2 height reaches `~808–860px`, clipping `Go back` below the fold on a Pixel 10 (`412 × 915 CSS px`). Step 1 also offers only `Take Out`, `Suggestions`, and `Search`, leaving a dead end for `Eating out` and `Made plans`.
 - `pwa/src/components/home/HomeCommandCenter.tsx`: Manages `RecoveryFlowState` (`closed`, `step1`, `quick_find`, `step2`). Currently `step2` only models `intent: 'order_in' | 'pick_else'`, calls `moveTomorrow(slot, 'order_in')` for Tomorrow, and calls status-only `POST /api/schedule/day/{date}/validate` (`{ status: 3 }`) for `next_week`/`drop`.
 - `pwa/src/components/planner/PlanningPivotSheet.tsx`: Shares the same oversized `p-8`, `mb-8`, `text-3xl`, `p-5` chrome across up to 5 options (`~840px` tall) and omits the planned recipe title in its header.
@@ -17,11 +19,11 @@ Current implementation owners and verified root causes:
 
 1. **Shared compact Era 3 sheet primitive (`PivotSheetShell`):**
    - Extract a lightweight shared UI shell (e.g., `pwa/src/components/ui/PivotSheetShell.tsx`) owning the scrim (`bg-charcoal/45 backdrop-blur-sm`), opaque `bg-cream border border-chrome-line rounded-[2rem] p-5` container, locked top-left title stack (`eyebrow` + `subtitle`), top-right `[← Back] [×]` `48px` action cluster, optional `4px` 2-step progress strip, and consistent `min-h` across Step 1 ↔ Step 2 (`min-h-[496px]` on `>= 375px` viewports, relaxing naturally below `360px` / `200%` text scale).
-   - *Tradeoff:* Using a floating `mx-4 mb-4` (`380px` on Pixel 10) rounded sheet instead of a full-width edge-to-edge drawer preserves WFS's warm cookbook card silhouette while reclaiming `+40px` of inner width (`340px` vs. `300px`) over the current `px-6 p-8` shell.
+   - _Tradeoff:_ Using a floating `mx-4 mb-4` (`380px` on Pixel 10) rounded sheet instead of a full-width edge-to-edge drawer preserves WFS's warm cookbook card silhouette while reclaiming `+40px` of inner width (`340px` vs. `300px`) over the current `px-6 p-8` shell.
 
 2. **Non-clickable terracotta editorial bar directly on cream (no meal card box):**
    - Render read-only recipe context (`Original meal · Saturday, November 21` + bold recipe title) directly on warm cream `#FDFCF0` beside a `3.5px` `bg-hearth-fill` bar above a `1px border-chrome-line` divider.
-   - *Alternative rejected:* Boxing the meal in a white bordered card (`bg-white border-chrome-line`) created a false click affordance directly above the three real action cards.
+   - _Alternative rejected:_ Boxing the meal in a white bordered card (`bg-white border-chrome-line`) created a false click affordance directly above the three real action cards.
 
 3. **Concise localized dates inside action buttons, full date in header context:**
    - Add `formatShortSupperPlanDate(date: string)` in `pwa/src/lib/planner/nonCooking.ts` using `Intl.DateTimeFormat(locale, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })` (`Sun, Nov 22` / `dim. 22 nov.`). Keep `formatSupperPlanDate(date)` (`Saturday, November 21`) in the non-clickable header so the full date remains visible while action cards never crowd or wrap awkwardly on English long dates (`Wed, Sep 23`).
@@ -30,12 +32,12 @@ Current implementation owners and verified root causes:
    - Place `Take Out`, `Eating out`, and `Made plans` in a 3-up `grid-cols-3` quick-tap row (`flex-wrap` / `grid-cols-1` fallback below `340px`) above `Suggestions` and `Search`.
    - `Take Out` and `Eating out` immediately invoke Step 2 in 1 tap (retaining `{ kind: 'order_in', customLabel: null }` or `{ kind: 'eating_out', customLabel: null }`).
    - `Made plans` toggles an inline `Tell the family the plan` input + `Next →` Hearth CTA directly inside Step 1 using the exact same `1–80` trimmed Unicode scalar-value validation rule as `NonCookingDaySheet`. Going back from Step 2 restores the typed draft in Step 1 so the user never loses what they typed.
-   - *Tradeoff:* Optional notes for `Take Out` / `Eating out` are intentionally omitted from Plan B Step 1 to keep the common path strictly 1-tap; users can add an optional note anytime via Tonight's `Edit supper plan` handoff.
+   - _Tradeoff:_ Optional notes for `Take Out` / `Eating out` are intentionally omitted from Plan B Step 1 to keep the common path strictly 1-tap; users can add an optional note anytime via Tonight's `Edit supper plan` handoff.
 
 5. **Atomic `sourceNonCooking` extension on `POST /api/schedule/move`:**
    - Add optional `sourceNonCooking: NonCookingPlanDto | null` to `MoveScheduleDto` in `specs/openapi.yaml` while preserving `sourceDisposition: 'order_in' | null` for backwards compatibility.
    - Server validation rules for `sourceNonCooking`: only valid when `intent === 'tomorrow'`; `kind` must be `order_in`, `eating_out`, or `custom` (`mystery` is rejected with `400`); `customLabel` is trimmed, required non-blank for `custom`, and capped at 80 Unicode scalar values (reusing the exact non-cooking normalization helper used by day validation). If both `sourceNonCooking` and `sourceDisposition` are sent, `sourceNonCooking` takes precedence (or rejected if conflicting; simplest invariant: `sourceNonCooking` is preferred and client sends only `sourceNonCooking` for new flows, keeping legacy `sourceDisposition: 'order_in'` working).
-   - *Alternative rejected:* Running `moveTomorrow` followed by a separate `saveNonCookingDay` HTTP call would introduce a two-request partial-failure window where the recipe moved to tomorrow while today became blank instead of `Eating out` / `Supper at Grandma's`.
+   - _Alternative rejected:_ Running `moveTomorrow` followed by a separate `saveNonCookingDay` HTTP call would introduce a two-request partial-failure window where the recipe moved to tomorrow while today became blank instead of `Eating out` / `Supper at Grandma's`.
 
 6. **Direct-to-Step-2 callers (`canGoBack` prop):**
    - Pass `canGoBack` (`true` on Home multi-step Plan B; `false` on Planner and Recipes direct-to-Step-2 confirmation where `×` already dismisses the dialog).
@@ -44,6 +46,7 @@ Current implementation owners and verified root causes:
 ## First Observable Slice
 
 The smallest end-to-end slice exercising every seam:
+
 1. Update `MoveScheduleDto` in `specs/openapi.yaml` with `sourceNonCooking`, regenerate Kiota client (`pwa/src/lib/api/generated/`), update MSW move handler (`pwa/src/mocks/`), and implement atomic `sourceNonCooking` persistence + validation in `ScheduleService.cs` with xUnit coverage.
 2. Build `PivotSheetShell` and migrate `SkipRecoveryDialog` (Steps 1 & 2, inline `Made plans`, terracotta-bar meal context, concise action dates, Hearth-highlighted `Move to <date>`, top-right `[← Back] [×]`) wired into `HomeCommandCenter` for `order_in`, `eating_out`, and `custom` plans.
 3. Migrate sibling sheets `PlanningPivotSheet` (with planned recipe headline and 5 compact actions) and `NonCookingDaySheet` (Era 3 opaque shell, `48px` controls, optional top-right `← Back`), then verify all three sheets in Vitest and Playwright (`412 × 915` Pixel 10 zero-scroll, `320px`/`200%` reflow, and `assertCookbookVisualA11y` in Standard AA and High Contrast AAA).

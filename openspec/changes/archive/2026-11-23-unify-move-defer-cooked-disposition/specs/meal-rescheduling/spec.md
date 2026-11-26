@@ -31,7 +31,7 @@ When a household member triggers Save for Next Week on a `Cooked` meal (`status 
 #### Scenario: Bilingual prompt copy stays truthful to persisted effects
 
 - **WHEN** the cooked-move prompt renders in English or French
-- **THEN** the subtitle asks *"This meal is marked cooked. How should we move it?"* (or its French equivalent), the choices present **Cook it next week** (*"Move as planned and clear cooked status"*) and **Already cooked** (*"Keep it marked cooked (prepped ahead or frozen)"*), and neither option claims ingredients are excluded from groceries
+- **THEN** the subtitle asks _"This meal is marked cooked. How should we move it?"_ (or its French equivalent), the choices present **Cook it next week** (_"Move as planned and clear cooked status"_) and **Already cooked** (_"Keep it marked cooked (prepped ahead or frozen)"_), and neither option claims ingredients are excluded from groceries
 
 ## MODIFIED Requirements
 

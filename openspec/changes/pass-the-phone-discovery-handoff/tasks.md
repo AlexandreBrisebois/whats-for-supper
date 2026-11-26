@@ -39,6 +39,7 @@ No API, OpenAPI, generated-client or database change. Every slice is PWA-only an
   - Setting the session to `converged` during the curtain renders `discovery-celebration-card`.
 
   Run the 1.1 command and record the intended failures.
+
 - [ ] 3.2 Green: implement the pending-vote wait, the failure/retry state and the counter reset. Rerun the 1.1 command green, plus `task test:unit -- src/app/(app)/discovery/page.test.tsx` for existing Discovery regressions.
 - [ ] 3.3 Acceptance: extend `pwa/e2e/discovery.spec.ts` with `Pass the phone right after a swipe`. Delay the `POST` vote route by 500 ms, like as Alex, then immediately hand off to Jordan. Assert the vote request header is Alex, and Jordan's stack request follows that vote's response. Run `task test:e2e -- e2e/discovery.spec.ts`.
 

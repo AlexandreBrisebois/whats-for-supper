@@ -4,7 +4,7 @@
 
 On a Pixel 10 phone (`412 × 915 CSS px`), the Plan B recovery dialog (`pwa/src/components/home/SkipRecoveryDialog.tsx`) expands past `808px` in height due to `p-8` outer padding, a 5-line `text-3xl` recipe+date heading, redundant right-side icons that squeeze button text onto two lines, and a bottom-positioned `Go back` button—pushing `Go back` below the fold and forcing users to scroll just to reverse a choice. Sibling sheets (`pwa/src/components/planner/PlanningPivotSheet.tsx` and `pwa/src/components/planner/NonCookingDaySheet.tsx`) share the same oversized vertical chrome (with `NonCookingDaySheet` still using an Era 2 translucent shell and `44px` close button).
 
-In addition, Plan B Step 1 creates a product dead end: when a household's supper plan changes to **Eating out** or **We made plans** (e.g., *"Supper at Grandma's"*), Step 1 only offers `Take Out`, `Suggestions`, and `Search`, forcing users to abandon Plan B and make multiple edits in Planner.
+In addition, Plan B Step 1 creates a product dead end: when a household's supper plan changes to **Eating out** or **We made plans** (e.g., _"Supper at Grandma's"_), Step 1 only offers `Take Out`, `Suggestions`, and `Search`, forcing users to abandon Plan B and make multiple edits in Planner.
 
 ## Outcome and Scope
 

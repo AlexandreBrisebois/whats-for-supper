@@ -5,6 +5,7 @@
 Refer to `proposal.md` for motivation, confirmed decisions, and scope, and `specs/meal-rescheduling/spec.md` for normative requirements.
 
 ### Current Behavior and Regression Cause (Source-Observed)
+
 - **Controller** (`api/src/RecipeApi/Controllers/ScheduleController.cs`): exposes both `POST /api/schedule/move` (`MoveRecipe`) and `POST /api/schedule/defer` (`DeferRecipe`).
 - **Service** (`api/src/RecipeApi/Services/ScheduleService.cs` and `api/src/RecipeApi/Services/ScheduleService.Tomorrow.cs`):
   - `MoveScheduleEventAsync` dispatches four paths: `intent == "tomorrow"` (`MoveTomorrowAsync`), cross-week `targetWeekOffset != weekOffset` (`MoveCrossWeekAsync`), same-week `intent == "push"`, and default same-week `SwapInternalAsync`.
@@ -20,6 +21,7 @@ Refer to `proposal.md` for motivation, confirmed decisions, and scope, and `spec
 ## Decisions and Tradeoffs
 
 ### 1. Unify `defer` into `POST /api/schedule/move` (`intent: "defer"`) and retire legacy branches
+
 - **Decision**: Consolidate all schedule movement under `POST /api/schedule/move` with three explicit intents: `"swap"` (default, same-week), `"tomorrow"`, and `"defer"`. Remove `POST /api/schedule/defer`, `DeferScheduleDto.cs`, `MoveCrossWeekAsync`, and legacy same-week `intent: "push"`.
 - **Why**: Eliminates the split-endpoint drift that caused Planner's regression, removes two zero-caller legacy branches, and gives `"defer"` the stronger `MoveScheduleResultDto` + `refreshComplete` contract already proven by `"tomorrow"`.
 - **Alternative considered**: Keep `/api/schedule/defer` separate and only repoint Planner `handlePlanLater` to it. Rejected by user preference to maintain one cohesive movement API while preserving `"swap"` and `"tomorrow"` intact.
@@ -31,6 +33,7 @@ Refer to `proposal.md` for motivation, confirmed decisions, and scope, and `spec
   - `cookedDisposition` is allowed only on `intent: "defer"` (`"reset"` or `"preserve"`; rejected with `400` on other intents or unknown values).
 
 ### 2. Request and response DTO shape (`MoveScheduleDto` & `MoveScheduleResultDto`)
+
 - **Decision**:
   - Extend `MoveScheduleDto` (`api/src/RecipeApi/Dto/MoveScheduleDto.cs`):
     - Make `ToIndex` nullable (`int? ToIndex = null`) since `"defer"` discovers its own first open date rather than taking a day index (`"swap"` and `"tomorrow"` still require `ToIndex` in `0..6`, returning `400` otherwise).
@@ -43,6 +46,7 @@ Refer to `proposal.md` for motivation, confirmed decisions, and scope, and `spec
 - **Why**: Single request/response schema in `specs/openapi.yaml` and generated Kiota client (`pwa/src/lib/api/generated/`), zero ambiguity for spillover checks (`scheduledWeekOffset > source.weekOffset + 1`), and consistent partial-success handling (`refreshComplete`).
 
 ### 3. Cooked-meal disposition semantics: preserve on same-week drag, ask on defer
+
 - **Decision**:
   - Same-week `"swap"` (`SwapInternalAsync`) remains unchanged: `Status`, `Prepared*` metadata, and `LastCookedDate` stay attached to the occurrence with no UI prompt.
   - `"tomorrow"` (`MoveTomorrowAsync`) remains unchanged: rejects `Cooked` entries in source or displaced chain with `409`.
@@ -53,24 +57,27 @@ Refer to `proposal.md` for motivation, confirmed decisions, and scope, and `spec
 - **Why**: Supports both the primary bugfix (clearing accidental/overdue cooked state when deferring) and the meal-prep/freezer use case (moving an already-cooked meal to next week without erasing its preparation receipt or last-cooked history).
 
 ### 4. Planner Save for Next Week UX and shared `deferToFollowingWeek` caller
+
 - **Decision**:
   - Update `deferToFollowingWeek` in `pwa/src/lib/planner/slotAssignment.ts` to call `apiClient.api.schedule.move.post` with `intent: 'defer'`, `sourceDate`, `weekOffset`, `fromIndex`, `targetWeekOffset: source.weekOffset + 1`, `recipeId`, optional `sourceNonCooking`, and optional `cookedDisposition`. Validate `data.moved === true`, `destinationDate`, and `scheduledWeekOffset`. When `data.refreshComplete === false`, surface the warning toast/feedback without inviting retry.
   - Replace `handlePlanLater` in `pwa/src/app/(app)/planner/page.tsx` so it uses `deferToFollowingWeek`:
     - If `day.status !== 2` (uncooked): invoke `deferToFollowingWeek` immediately, show destination confirmation (including spillover message when `scheduledWeekOffset > currentWeekOffset + 1`), refresh the selected week (and Today if week 0 & today), and surface actionable feedback on failure or incomplete refresh.
     - If `day.status === 2` (`Cooked`): close `PlanningPivotSheet` and open a dedicated compact confirmation sheet (`CookedDeferConfirmSheet` in `pwa/src/components/planner/CookedDeferConfirmSheet.tsx`, reusing `PivotSheetShell` and `SheetMealContext`) with Option 3 bilingual copy:
-      - **Subtitle**: *"This meal is marked cooked. How should we move it?"* (`Ce repas est marqué cuisiné. Comment souhaitez-vous le déplacer ?`)
-      - **Primary (`reset`)**: **Cook it next week** — *"Move as planned and clear cooked status"* (`Cuisiner la semaine prochaine` — *Déplace comme prévu et efface le statut cuisiné*)
-      - **Secondary (`preserve`)**: **Already cooked** — *"Keep it marked cooked (prepped ahead or frozen)"* (`Déjà cuisiné` — *Garde le statut cuisiné (préparé d'avance ou congelé)*)
+      - **Subtitle**: _"This meal is marked cooked. How should we move it?"_ (`Ce repas est marqué cuisiné. Comment souhaitez-vous le déplacer ?`)
+      - **Primary (`reset`)**: **Cook it next week** — _"Move as planned and clear cooked status"_ (`Cuisiner la semaine prochaine` — _Déplace comme prévu et efface le statut cuisiné_)
+      - **Secondary (`preserve`)**: **Already cooked** — _"Keep it marked cooked (prepped ahead or frozen)"_ (`Déjà cuisiné` — _Garde le statut cuisiné (préparé d'avance ou congelé)_)
       - Dismissing cancels cleanly with zero network requests.
 
 ## First Observable Slice
 
 The first vertical tracer bullet exercises the full seam for the reported regression:
+
 - **Scenario**: A `Cooked` (prepared) meal in Planner week 0 is deferred via `POST /api/schedule/move` (`intent: "defer"`, `cookedDisposition: "reset"`).
 - **Layers exercised**: `specs/openapi.yaml` → Kiota client (`task gen:client`) → `ScheduleController.MoveRecipe` → `ScheduleService.MoveDeferAsync` → PostgreSQL (`CalendarEvents`, `WeeklyPlans`, `Recipes.LastCookedDate`, `SupperServings`) → `pwa/e2e/mock-api.ts` → `slotAssignment.ts` (`deferToFollowingWeek`) → Planner `CookedDeferConfirmSheet` + `handlePlanLater`.
 - **Observable outcome**: Source slot clears, destination Monday (or next open slot) receives the meal as `Status = Planned` with `preparation == null`, `Recipe.LastCookedDate` recalculates from remaining `Cooked` entries, both affected weeks recompute groceries and publish snapshots, and `200 MoveScheduleResultDto` returns `moved: true`, `destinationDate`, `scheduledWeekOffset`, and `refreshComplete: true`.
 
 Subsequent slices build directly on this working path:
+
 1. `cookedDisposition: "preserve"` end-to-end (retaining `Cooked`, `Prepared*`, and `LastCookedDate`) + `CookedDeferConfirmSheet` secondary choice.
 2. Spillover, `sourceNonCooking`, conflict (`404`/`409`/`400`), and `refreshComplete: false` recovery across Planner, Home, and replacement recovery.
 3. Removal of `/api/schedule/defer`, `MoveCrossWeekAsync`, legacy `intent: "push"`, and updating all affected backend, unit, mock, and Playwright tests.
@@ -104,18 +111,18 @@ Subsequent slices build directly on this working path:
 ## Correctness Properties (Testable Invariants)
 
 1. **Cooked reset invariant (`intent: "defer"`, `cookedDisposition` omitted or `"reset"`)**:
-   - *Precondition*: Source `(sourceDate, recipeId)` exists with `Status == Cooked` (with or without explicit `Prepared*` receipt).
-   - *Invariant*: After commit, destination entry has `Status == Planned`, all six `Prepared*` fields are `null`, `Recipe.LastCookedDate` equals the max remaining `Cooked` occurrence (or `null` if none remain), and source date has no recipe.
-   - *Tests*: PostgreSQL integration test in `PreparedSupperPostgresTests.Lifecycle.cs` + `ScheduleServiceTests.cs` + Playwright/Vitest mock tests.
+   - _Precondition_: Source `(sourceDate, recipeId)` exists with `Status == Cooked` (with or without explicit `Prepared*` receipt).
+   - _Invariant_: After commit, destination entry has `Status == Planned`, all six `Prepared*` fields are `null`, `Recipe.LastCookedDate` equals the max remaining `Cooked` occurrence (or `null` if none remain), and source date has no recipe.
+   - _Tests_: PostgreSQL integration test in `PreparedSupperPostgresTests.Lifecycle.cs` + `ScheduleServiceTests.cs` + Playwright/Vitest mock tests.
 2. **Cooked preserve invariant (`intent: "defer"`, `cookedDisposition == "preserve"`)**:
-   - *Precondition*: Source `(sourceDate, recipeId)` exists with `Status == Cooked` and explicit `Prepared*` receipt.
-   - *Invariant*: After commit, destination entry retains `Status == Cooked`, identical `PreparedOn`, `PreparedAtUtc`, `PreparedServings`, `PreparedOriginalServings`, `PreparationPlanToken`, `PreparationServingVersion`, and unchanged `Recipe.LastCookedDate`.
-   - *Tests*: PostgreSQL integration test in `PreparedSupperPostgresTests.History.cs` / `Lifecycle.cs` + `ScheduleServiceTests.cs` + Vitest/Playwright tests.
+   - _Precondition_: Source `(sourceDate, recipeId)` exists with `Status == Cooked` and explicit `Prepared*` receipt.
+   - _Invariant_: After commit, destination entry retains `Status == Cooked`, identical `PreparedOn`, `PreparedAtUtc`, `PreparedServings`, `PreparedOriginalServings`, `PreparationPlanToken`, `PreparationServingVersion`, and unchanged `Recipe.LastCookedDate`.
+   - _Tests_: PostgreSQL integration test in `PreparedSupperPostgresTests.History.cs` / `Lifecycle.cs` + `ScheduleServiceTests.cs` + Vitest/Playwright tests.
 3. **Same-week swap preservation invariant (`intent: "swap"`)**:
-   - *Precondition*: `Cooked` / prepared source moved to another day in the same week (occupied or empty).
-   - *Invariant*: `Status`, `Prepared*` receipt, and `Recipe.LastCookedDate` remain unchanged on the moved occurrence.
-   - *Tests*: Retained PostgreSQL integration tests in `PreparedSupperPostgresTests.History.cs` and `PreparedSupperPostgresTests.Lifecycle.cs`.
+   - _Precondition_: `Cooked` / prepared source moved to another day in the same week (occupied or empty).
+   - _Invariant_: `Status`, `Prepared*` receipt, and `Recipe.LastCookedDate` remain unchanged on the moved occurrence.
+   - _Tests_: Retained PostgreSQL integration tests in `PreparedSupperPostgresTests.History.cs` and `PreparedSupperPostgresTests.Lifecycle.cs`.
 4. **Spillover & non-displacement invariant (`intent: "defer"`)**:
-   - *Precondition*: Target week (and optionally following week) has all 7 dates occupied by recipes or non-cooking plans.
-   - *Invariant*: No existing destination-week entry changes date or content; deferred recipe lands on the first empty date in a later week with `scheduledWeekOffset` matching that week and spillover indicated in `message`.
-   - *Tests*: `DeploymentCalendarPostgresTests.cs`, `SupperServingsPostgresTests.MovementAcceptance.cs`, `slotAssignment.test.ts`.
+   - _Precondition_: Target week (and optionally following week) has all 7 dates occupied by recipes or non-cooking plans.
+   - _Invariant_: No existing destination-week entry changes date or content; deferred recipe lands on the first empty date in a later week with `scheduledWeekOffset` matching that week and spillover indicated in `message`.
+   - _Tests_: `DeploymentCalendarPostgresTests.cs`, `SupperServingsPostgresTests.MovementAcceptance.cs`, `slotAssignment.test.ts`.

@@ -11,7 +11,7 @@ Commands below run from the repository root. `PAGE_TEST` =
 
 ## 1. Pivot → Quick Find on the overlay reducer (first observable slice)
 
-**Outcome and scenarios:** Choosing Quick Find from the pivot opens Quick Find in the same interaction, and selection still completes or recovers as before. `meal-assignment`: *Choose Quick Find for an empty day*, *Search from the pivot*, *Quick Find selection completes*, *Assignment path rejects*. Design D1, D2.
+**Outcome and scenarios:** Choosing Quick Find from the pivot opens Quick Find in the same interaction, and selection still completes or recovers as before. `meal-assignment`: _Choose Quick Find for an empty day_, _Search from the pivot_, _Quick Find selection completes_, _Assignment path rejects_. Design D1, D2.
 **Owners and boundaries:** New `pwa/src/lib/planner/plannerOverlay.ts` (pure reducer + `usePlannerOverlay`). `pwa/src/app/(app)/planner/page.tsx`: only `pivot` and `quickFind` move to the union in this slice. Other surfaces keep their `useState`s until group 2.
 **Dependencies and prerequisites:** 0.1.
 **Acceptance boundary:** Vitest page tests use the existing component mocks. Playwright runs against `pwa/e2e/mock-api.ts` unchanged. No API, client or mock change.
@@ -23,7 +23,7 @@ Commands below run from the repository root. `PAGE_TEST` =
 
 ## 2. Remaining overlays on the union
 
-**Outcome and scenarios:** Non-cooking (with Back), cooked-defer, nudge, recipe detail (day card and `detailRecipe` deep link) and replace-recovery behave as today, now with only one overlay open at a time. A stale non-cooking save never closes a newer sheet. `meal-assignment`: *Occupied Quick Find target*, *Dismiss the recovery choice*, *Replacement is still pending*, *Replacement resolves*. Design D1, D3, D4, D6.
+**Outcome and scenarios:** Non-cooking (with Back), cooked-defer, nudge, recipe detail (day card and `detailRecipe` deep link) and replace-recovery behave as today, now with only one overlay open at a time. A stale non-cooking save never closes a newer sheet. `meal-assignment`: _Occupied Quick Find target_, _Dismiss the recovery choice_, _Replacement is still pending_, _Replacement resolves_. Design D1, D3, D4, D6.
 **Owners and boundaries:** `plannerOverlay.ts`, `page.tsx`. `useReplacementRecovery` receives `slot`/`recipe` from the `replaceRecovery` variant, and its own interface is unchanged. Detail-verification state stays in the page (D6).
 **Dependencies and prerequisites:** Group 1.
 **Acceptance boundary:** As in group 1, plus `pwa/e2e/planner-non-cooking-days.spec.ts` and `pwa/e2e/recipe-recovery.spec.ts`.

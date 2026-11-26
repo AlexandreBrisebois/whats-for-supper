@@ -5,6 +5,7 @@
 Moving a `Cooked` meal to next week from Planner's **Save for Next Week** action leaves the meal marked `Cooked` with its preparation receipt and `Recipe.LastCookedDate` intact.
 
 Source inspection established the root cause:
+
 - Planner's `handlePlanLater` (`pwa/src/app/(app)/planner/page.tsx`) is the only remaining UI caller of cross-week `POST /api/schedule/move` (`MoveCrossWeekAsync` in `api/src/RecipeApi/Services/ScheduleService.cs`), which only updates `CalendarEvent.Date` and silently no-ops if the target week is full.
 - Meanwhile, `POST /api/schedule/defer` (`DeferRecipeAsync` in `api/src/RecipeApi/Services/ScheduleService.cs`) already implements exact-source lookup, indefinite spillover into later weeks, resetting `Cooked` to `Planned`, clearing preparation metadata, and recalculating `Recipe.LastCookedDate`—and is already used by Home and replacement recovery via `deferToFollowingWeek` (`pwa/src/lib/planner/slotAssignment.ts`).
 - Having two overlapping schedule movement endpoints (`POST /api/schedule/move` and `POST /api/schedule/defer`) with four divergent backend branches caused this drift and leaves dead legacy paths (`MoveCrossWeekAsync` and legacy same-week `intent: "push"`).
@@ -12,6 +13,7 @@ Source inspection established the root cause:
 ## Outcome and Scope
 
 ### Observable Outcome
+
 1. **Unified movement contract**: `POST /api/schedule/move` becomes the single schedule movement operation with three explicit intents:
    - `intent: "swap"` (default, same-week drag and keyboard reorder) — preserves meal status, preparation receipt, and `LastCookedDate` without prompting.
    - `intent: "tomorrow"` (contiguous next-day chain push) — preserved unchanged, including `sourceNonCooking` support and `409` rejection of `Cooked` or `AwaitingConsensus` entries.
@@ -20,18 +22,20 @@ Source inspection established the root cause:
    - All Next Week callers (Planner **Save for Next Week**, Home, and replacement recovery) route through `deferToFollowingWeek` → `POST /api/schedule/move` (`intent: "defer"`).
    - Uncooked meals (`status !== 2`) defer immediately with zero extra taps.
    - `Cooked` meals (`status === 2`) open a compact two-choice sheet (reusing `PivotSheetShell` and `SheetMealContext`) asking how to move the meal:
-     - **Subtitle**: *"This meal is marked cooked. How should we move it?"*
-     - **Cook it next week** (`cookedDisposition: "reset"`, primary) — *"Move as planned and clear cooked status"* (FR: **Cuisiner la semaine prochaine** — *Déplace comme prévu et efface le statut cuisiné*)
-     - **Already cooked** (`cookedDisposition: "preserve"`, secondary) — *"Keep it marked cooked (prepped ahead or frozen)"* (FR: **Déjà cuisiné** — *Garde le statut cuisiné (préparé d'avance ou congelé)*)
+     - **Subtitle**: _"This meal is marked cooked. How should we move it?"_
+     - **Cook it next week** (`cookedDisposition: "reset"`, primary) — _"Move as planned and clear cooked status"_ (FR: **Cuisiner la semaine prochaine** — _Déplace comme prévu et efface le statut cuisiné_)
+     - **Already cooked** (`cookedDisposition: "preserve"`, secondary) — _"Keep it marked cooked (prepped ahead or frozen)"_ (FR: **Déjà cuisiné** — _Garde le statut cuisiné (préparé d'avance ou congelé)_)
      - Dismissing/cancelling performs no mutation.
 
 ### Nearby Behavior That Must Remain Working
+
 - Same-week Planner drag-and-drop and keyboard Arrow Up/Down swap (`intent: "swap"`) continue to preserve `Status` (including `Cooked` and `Locked`), `Prepared*` metadata, non-cooking entries, and `LastCookedDate` with no prompt.
 - Tomorrow push (`intent: "tomorrow"`) continues to shift contiguous occupied supper chains across weeks, support `sourceNonCooking` / legacy `sourceDisposition: "order_in"`, and reject `Cooked` or `AwaitingConsensus` entries in the source or chain with `409`.
 - `GroceryRecomputeService` behavior is unchanged (it continues to include recipe-backed entries in a week regardless of status, honoring frozen `PreparedServings` when preserved; UI copy makes no claim about excluding ingredients from groceries).
 - Guarded/unguarded date deletion, Sunday displacement on assign, and overdue finalization remain unchanged.
 
 ### Exclusions & Follow-Up References
+
 - No changes to `GroceryRecomputeService` or `SupperProjectionInputs`.
 - Note for sync/archive: `openspec/specs/tonight-meal-decisions/spec.md` (requirement `Mark Order In before planned-recipe disposition`) and `openspec/specs/household-live-updates/spec.md` (requirement `Attempt incremental schedule publication after supported saves`) contain non-owned phrasing references to `POST /api/schedule/defer` and legacy cross-week movement; if desired during implementation or archive, those references can be reconciled in a follow-up delta.
 

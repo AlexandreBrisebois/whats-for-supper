@@ -679,10 +679,13 @@ describe('RecipeDetailSheet', () => {
       />
     );
 
-    expect(await screen.findByLabelText('Recipe ready for review')).toHaveClass(
-      'shrink-0',
-      'whitespace-nowrap'
-    );
+    const readyTrigger = await screen.findByLabelText('Recipe ready for review');
+    expect(readyTrigger).toHaveClass('h-12', 'w-12', 'bg-sage-50', 'text-garden-ink');
+    expect(screen.getByTestId('recipe-detail-hero')).toContainElement(readyTrigger);
+    expect(screen.getByTestId('recipe-detail-toolbar')).not.toContainElement(readyTrigger);
+    expect(
+      within(readyTrigger).getByTestId('recipe-import-issue-status-readyToReview')
+    ).toBeVisible();
     fireEvent.click(screen.getByTestId('action-gear-menu'));
     fireEvent.click(screen.getByRole('button', { name: 'Review issue' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mark as resolved' }));
@@ -823,11 +826,47 @@ describe('RecipeDetailSheet', () => {
       />
     );
 
-    expect(
-      await screen.findByText(
-        'We couldn’t re-import this recipe. Your report is saved. Add or change a detail, then Save to try again.'
-      )
-    ).toHaveAttribute('role', 'status');
+    const failureMessage = await screen.findByText(
+      'We couldn’t re-import this recipe. Your report is saved. Add or change a detail, then Save to try again.'
+    );
+    expect(failureMessage).toHaveAttribute('role', 'status');
+    expect(screen.getByTestId('recipe-detail-reading')).toContainElement(failureMessage);
+    expect(screen.getByTestId('recipe-detail-toolbar')).not.toContainElement(failureMessage);
+  });
+
+  it('renders reported status as a hero icon button, opens review on click, and hides while editing', async () => {
+    mockGetRecipe.mockResolvedValue({
+      ...(await mockGetRecipe()),
+      importIssue: {
+        reasons: ['ingredients'],
+        note: null,
+        status: 'reported',
+      },
+    });
+    render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    const trigger = await screen.findByTestId('detail-import-issue-trigger');
+    expect(trigger).toHaveAttribute('aria-label', 'Recipe reported');
+    expect(trigger).toHaveClass('h-12', 'w-12', 'bg-terracotta-50', 'text-hearth-ink');
+    expect(screen.getByTestId('recipe-detail-hero')).toContainElement(trigger);
+    expect(screen.getByTestId('recipe-detail-toolbar')).not.toContainElement(trigger);
+    expect(within(trigger).getByTestId('recipe-import-issue-status-reported')).toBeVisible();
+
+    fireEvent.click(trigger);
+    expect(screen.getByRole('dialog', { name: 'Review issue' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Close review issue' }));
+
+    fireEvent.click(screen.getByTestId('action-gear-menu'));
+    fireEvent.click(screen.getByTestId('action-edit-recipe'));
+    expect(screen.queryByTestId('detail-import-issue-trigger')).toBeNull();
   });
 
   it('starts ID-addressable polling only from an accepted report Save response', async () => {

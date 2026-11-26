@@ -9,14 +9,14 @@
 ## Decisions and Tradeoffs
 
 1. **Compact flipped `UsualPortionsSection` (`0px` height shift, silent auto-save):**
-   - *Decision:* Render a single `min-h-12` row inside `UsualPortionsSection`: portions on the **left** (`<count> portions` plain text when checked; `72×48px` numeric `<input>` followed by `portions` when unchecked), and `Use family size` checkbox on the **right**. Remove the Save button and routine `"Saved"` banners.
-   - *Tradeoff:* Checking/unchecking fires `saveSupperServings` immediately; custom numeric edits debounce (~450ms) and flush on blur. Invalid inputs stay client-side with an inline `role="alert"` rather than sending an invalid PUT.
+   - _Decision:_ Render a single `min-h-12` row inside `UsualPortionsSection`: portions on the **left** (`<count> portions` plain text when checked; `72×48px` numeric `<input>` followed by `portions` when unchecked), and `Use family size` checkbox on the **right**. Remove the Save button and routine `"Saved"` banners.
+   - _Tradeoff:_ Checking/unchecking fires `saveSupperServings` immediately; custom numeric edits debounce (~450ms) and flush on blur. Invalid inputs stay client-side with an inline `role="alert"` rather than sending an invalid PUT.
 2. **Place `SearchIndexSection` strictly below `UsualPortionsSection` in `/profile/settings` (R2):**
-   - *Decision:* Keep library-wide reindexing out of `/capture` and `/home`; mount `SearchIndexSection` directly below `UsualPortionsSection` in `SettingsPageContent.tsx`. Show `Searchable` vs. `Enriched` counts (`GET /api/management/search-status`), plain wrapped breakdown text (`139 smart-search · 3 keyword-only · 3 not indexed`), `RefreshCw` + `Index missing recipes`, and inline-confirmed `RotateCcw` + `Rebuild full search index` (`Cancel` / `Rebuild all`).
-   - *Tradeoff:* Separating missing-only (`force: false`) from inline-confirmed full rebuild (`force: true`) protects embedding quota while still letting operators force-refresh the entire library.
+   - _Decision:_ Keep library-wide reindexing out of `/capture` and `/home`; mount `SearchIndexSection` directly below `UsualPortionsSection` in `SettingsPageContent.tsx`. Show `Searchable` vs. `Enriched` counts (`GET /api/management/search-status`), plain wrapped breakdown text (`139 smart-search · 3 keyword-only · 3 not indexed`), `RefreshCw` + `Index missing recipes`, and inline-confirmed `RotateCcw` + `Rebuild full search index` (`Cancel` / `Rebuild all`).
+   - _Tradeoff:_ Separating missing-only (`force: false`) from inline-confirmed full rebuild (`force: true`) protects embedding quota while still letting operators force-refresh the entire library.
 3. **Contextual single-recipe `Reindex` in `RecipeDetailSheet` `•••` (R3):**
-   - *Decision:* Add `RefreshCw` + `Reindex` inside `ActionGearMenu` (`RecipeDetailSheet.tsx`'s `•••` overflow menu), backed by `POST /api/recipes/{id}/reindex` (computing `SearchFingerprintService.ComputeSourceFingerprint` and triggering `index-recipe-search` if no equivalent Pending/Processing job is active).
-   - *Tradeoff:* Keeps `RecipeDetailSheet`'s top Lucide icon toolbar (`UtensilsCrossed`, `Star`, `Share2`, `Ellipsis`, `X`) untouched while giving users a 2-tap targeted fix for a single recipe.
+   - _Decision:_ Add `RefreshCw` + `Reindex` inside `ActionGearMenu` (`RecipeDetailSheet.tsx`'s `•••` overflow menu), backed by `POST /api/recipes/{id}/reindex` (computing `SearchFingerprintService.ComputeSourceFingerprint` and triggering `index-recipe-search` if no equivalent Pending/Processing job is active).
+   - _Tradeoff:_ Keeps `RecipeDetailSheet`'s top Lucide icon toolbar (`UtensilsCrossed`, `Star`, `Share2`, `Ellipsis`, `X`) untouched while giving users a 2-tap targeted fix for a single recipe.
 
 ## First Observable Slice
 

@@ -53,6 +53,7 @@ import {
   Clock,
   ArrowRightLeft,
   Check,
+  Flag,
   Minus,
   Plus,
   Save,
@@ -92,7 +93,6 @@ import { useUiStore } from '@/store/uiStore';
 import { useFamilyStore } from '@/store/familyStore';
 import { getImageUrl } from '@/lib/imageUtils';
 import { ActionGearMenu } from './ActionGearMenu';
-import { RecipeImportIssueBadge } from './RecipeImportIssueBadge';
 import { RecipeImportIssueSheet } from './RecipeImportIssueSheet';
 import { PairedDuplicateReviewSheet } from './PairedDuplicateReviewSheet';
 import { RecipeRatingControl } from './RecipeRatingControl';
@@ -1175,16 +1175,6 @@ export function RecipeDetailSheet({
               </button>
             )}
             <p className="sr-only">{t('recipes.detailTitle', 'Recipe detail')}</p>
-            {recipe?.importIssue && (
-              <button
-                type="button"
-                data-testid="detail-import-issue-trigger"
-                onClick={openIssueReview}
-                className="inline-flex min-h-[48px] items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
-              >
-                <RecipeImportIssueBadge status={recipe.importIssue.status} variant="compact" />
-              </button>
-            )}
           </div>
           <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-[8px]">
             {!isLoading && recipe && !isEditing && (
@@ -1285,11 +1275,6 @@ export function RecipeDetailSheet({
               <X size={18} />
             </button>
           </div>
-          {recipe?.importIssue?.reimportFailureMessage && (
-            <p role="status" className="basis-full text-sm font-bold text-hearth-ink">
-              {recipe.importIssue.reimportFailureMessage}
-            </p>
-          )}
         </div>
 
         {moveError && (
@@ -1408,6 +1393,40 @@ export function RecipeDetailSheet({
                   {tWithVars('common.readyIn', 'Ready in {{time}}', { time: readyTime })}
                 </span>
               )}
+              {!isEditing &&
+                recipe.importIssue &&
+                (() => {
+                  const ready = recipe.importIssue.status === 'readyToReview';
+                  const accessibleLabel = ready
+                    ? t('recipes.importIssueReadyToReviewDescription', 'Recipe ready for review')
+                    : t('recipes.importIssueReportedDescription', 'Recipe reported');
+
+                  return (
+                    <button
+                      type="button"
+                      data-testid="detail-import-issue-trigger"
+                      aria-label={accessibleLabel}
+                      title={accessibleLabel}
+                      onClick={openIssueReview}
+                      className={`absolute top-4 right-4 inline-flex h-12 w-12 items-center justify-center rounded-full border shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body ${
+                        ready
+                          ? 'bg-sage-50 border-garden-line text-garden-ink hover:bg-sage-100'
+                          : 'bg-terracotta-50 border-hearth-line text-hearth-ink hover:bg-terracotta-100'
+                      }`}
+                    >
+                      <span
+                        data-testid={`recipe-import-issue-status-${recipe.importIssue.status}`}
+                        className="inline-flex items-center justify-center"
+                      >
+                        {ready ? (
+                          <Check size={20} aria-hidden="true" />
+                        ) : (
+                          <Flag size={18} aria-hidden="true" />
+                        )}
+                      </span>
+                    </button>
+                  );
+                })()}
               {isEditing && (
                 <DemoAiActionGate className="absolute inset-x-4 bottom-4">
                   <input
@@ -1445,6 +1464,14 @@ export function RecipeDetailSheet({
             </div>
 
             <div className="mb-5 flex flex-col gap-3">
+              {recipe.importIssue?.reimportFailureMessage && (
+                <p
+                  role="status"
+                  className="rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm font-bold text-hearth-ink"
+                >
+                  {recipe.importIssue.reimportFailureMessage}
+                </p>
+              )}
               {shareError && (
                 <p
                   data-testid="recipe-share-error"

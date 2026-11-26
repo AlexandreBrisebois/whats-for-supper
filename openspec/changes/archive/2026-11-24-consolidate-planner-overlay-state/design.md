@@ -7,15 +7,15 @@ The proposal covers motivation and scope. Observed in
 
 **Overlay surfaces and their current state owners**
 
-| Surface (component) | Current state | Opened from | Leads to |
-| --- | --- | --- | --- |
-| Planning pivot (`PlanningPivotSheet`) | `showPivot`, `selectedDayIndex` | day card `onPivot`; `planDate` deep link (status 3 days, 0 ms timer) | Quick Find, non-cooking, cooked-defer, close |
-| Quick Find (`QuickFindModal`) | `showQuickFind`, `selectedDayIndex`, `pendingQuickFindDayIndex` | pivot `onQuickFind` (240 ms timer) | replace-recovery (occupied day), close |
-| Non-cooking day (`NonCookingDaySheet`) | `nonCookingTarget` (+ `activeNonCookingDate` ref) | pivot `onNoCooking` | Back → pivot for `fromPivotDayIndex`; close on save/clear |
-| Cooked defer (`CookedDeferConfirmSheet`) | `pendingCookedDefer`, `cookedDeferSubmitting` | `handlePlanLater` for status 2 | close after `executePlanLater` |
-| Family nudge (`FamilyNudgeDialog`) | `showNudgeDialog` | `handleNudgeFamily` | close |
-| Recipe detail (`RecipeDetailSheet`) | `openDetailRecipeId`, `detailSource` | day card `onViewRecipe`; `detailRecipe` deep link; recovery dismissed unsaved | close; navigate to planned day |
-| Replace recovery (`SkipRecoveryDialog` via `useReplacementRecovery`) | `pendingRecovery` | `handleQuickFindSelect` on an occupied day | detail (unsaved close) or close |
+| Surface (component)                                                  | Current state                                                   | Opened from                                                                   | Leads to                                                  |
+| -------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Planning pivot (`PlanningPivotSheet`)                                | `showPivot`, `selectedDayIndex`                                 | day card `onPivot`; `planDate` deep link (status 3 days, 0 ms timer)          | Quick Find, non-cooking, cooked-defer, close              |
+| Quick Find (`QuickFindModal`)                                        | `showQuickFind`, `selectedDayIndex`, `pendingQuickFindDayIndex` | pivot `onQuickFind` (240 ms timer)                                            | replace-recovery (occupied day), close                    |
+| Non-cooking day (`NonCookingDaySheet`)                               | `nonCookingTarget` (+ `activeNonCookingDate` ref)               | pivot `onNoCooking`                                                           | Back → pivot for `fromPivotDayIndex`; close on save/clear |
+| Cooked defer (`CookedDeferConfirmSheet`)                             | `pendingCookedDefer`, `cookedDeferSubmitting`                   | `handlePlanLater` for status 2                                                | close after `executePlanLater`                            |
+| Family nudge (`FamilyNudgeDialog`)                                   | `showNudgeDialog`                                               | `handleNudgeFamily`                                                           | close                                                     |
+| Recipe detail (`RecipeDetailSheet`)                                  | `openDetailRecipeId`, `detailSource`                            | day card `onViewRecipe`; `detailRecipe` deep link; recovery dismissed unsaved | close; navigate to planned day                            |
+| Replace recovery (`SkipRecoveryDialog` via `useReplacementRecovery`) | `pendingRecovery`                                               | `handleQuickFindSelect` on an occupied day                                    | detail (unsaved close) or close                           |
 
 Facts that matter:
 
@@ -51,7 +51,7 @@ type PlannerOverlay =
   | { kind: 'none' }
   | { kind: 'pivot'; dayIndex: number }
   | { kind: 'quickFind'; dayIndex: number }
-  | { kind: 'nonCooking'; target: NonCookingTarget }   // includes fromPivotDayIndex
+  | { kind: 'nonCooking'; target: NonCookingTarget } // includes fromPivotDayIndex
   | { kind: 'cookedDefer'; slot: PlannerSlot; submitting: boolean }
   | { kind: 'nudge' }
   | { kind: 'detail'; recipeId: string; source: DetailSource | null }
@@ -65,15 +65,15 @@ type PlannerOverlay =
 `setCookedDeferSubmitting`, `openNudge`, `openDetail`, `openReplaceRecovery`,
 `close`, `closeIfCurrent`).
 
-- *Opening replaces.* Any `open*` action replaces whatever is open. This matches
+- _Opening replaces._ Any `open*` action replaces whatever is open. This matches
   today's sequential flows and makes the invariant "at most one open" structural.
-- *`selectedDayIndex` disappears.* The day index travels in the variant (`pivot`,
+- _`selectedDayIndex` disappears._ The day index travels in the variant (`pivot`,
   `quickFind`, `replaceRecovery.slot.dayIndex`). `handleSearchPath` reads it from
   the `pivot` variant, the only place it is called from.
-- *Alternative considered: keep `useState`s but put them in a custom hook.* That
+- _Alternative considered: keep `useState`s but put them in a custom hook._ That
   is smaller, but it keeps the impossible combinations and the reset
   duplication. It only moves the problem. Rejected.
-- *Alternative considered: a state-machine library (XState).* It adds a
+- _Alternative considered: a state-machine library (XState)._ It adds a
   dependency for seven states with flat transitions. A plain reducer meets the
   outcome. Rejected (mission: avoid speculative frameworks).
 
