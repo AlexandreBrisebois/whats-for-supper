@@ -1,13 +1,28 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { clearHandoffLock, getHandoffLock, setHandoffLock } from '@/lib/discovery/passThePhone';
 
 const mocks = vi.hoisted(() => ({
   pathname: '/home',
+  replace: vi.fn(),
   layoutProps: null as null | Record<string, unknown>,
+  familyMembers: [
+    { id: 'member-alex', name: 'Alex' },
+    { id: 'member-jordan', name: 'Jordan' },
+  ],
+  hasLoaded: true,
 }));
 
 vi.mock('next/navigation', () => ({
   usePathname: () => mocks.pathname,
+  useRouter: () => ({ replace: (...args: unknown[]) => mocks.replace(...args) }),
+}));
+
+vi.mock('@/hooks/useFamily', () => ({
+  useFamily: () => ({
+    familyMembers: mocks.familyMembers,
+    hasLoaded: mocks.hasLoaded,
+  }),
 }));
 
 vi.mock('@/locales', () => ({
@@ -58,6 +73,18 @@ vi.mock('@/components/common/Layout', () => ({
 import AppRouteLayout from './layout';
 
 describe('AppRouteLayout', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    clearHandoffLock();
+    mocks.replace.mockReset();
+    mocks.pathname = '/home';
+    mocks.familyMembers = [
+      { id: 'member-alex', name: 'Alex' },
+      { id: 'member-jordan', name: 'Jordan' },
+    ];
+    mocks.hasLoaded = true;
+  });
+
   it('uses the fluid shell on the home route', () => {
     mocks.pathname = '/home';
     mocks.layoutProps = null;
@@ -115,5 +142,38 @@ describe('AppRouteLayout', () => {
 
     expect(screen.queryByTestId('library-toast-mock')).not.toBeInTheDocument();
     expect(screen.queryByTestId('recipe-failure-banner-mock')).not.toBeInTheDocument();
+  });
+
+  it('redirects stray routes back to /discovery while handoff lock is active', () => {
+    setHandoffLock({ originMemberId: 'member-alex', participantName: 'Jordan' });
+    mocks.pathname = '/planner';
+
+    render(
+      <AppRouteLayout>
+        <div>Planner</div>
+      </AppRouteLayout>
+    );
+
+    expect(mocks.replace).toHaveBeenCalledExactlyOnceWith('/discovery');
+    expect(getHandoffLock()).toEqual({
+      originMemberId: 'member-alex',
+      participantName: 'Jordan',
+    });
+  });
+
+  it('clears lock and routes to /profile when locked origin member no longer exists', () => {
+    setHandoffLock({ originMemberId: 'deleted-origin', participantName: 'Jordan' });
+    mocks.pathname = '/discovery';
+    mocks.familyMembers = [{ id: 'member-jordan', name: 'Jordan' }];
+    mocks.hasLoaded = true;
+
+    render(
+      <AppRouteLayout>
+        <div>Discovery</div>
+      </AppRouteLayout>
+    );
+
+    expect(getHandoffLock()).toBeNull();
+    expect(mocks.replace).toHaveBeenCalledExactlyOnceWith('/profile');
   });
 });

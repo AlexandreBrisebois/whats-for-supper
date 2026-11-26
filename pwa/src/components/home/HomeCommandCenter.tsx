@@ -9,6 +9,7 @@ import { CaptureActivityBar } from './CaptureActivityBar';
 import { TonightMenuCard, TonightCardBase } from './TonightMenuCard';
 import { TonightPivotCard } from './TonightPivotCard';
 import { SkipRecoveryDialog } from './SkipRecoveryDialog';
+import { PlanningDayChooser } from '../recipes/PlanningDayChooser';
 import { QuickFindModal } from '../planner/QuickFindModal';
 import { CooksMode } from '../planner/CooksMode';
 import { AnimatePresence } from 'framer-motion';
@@ -23,6 +24,7 @@ import {
   deferToFollowingWeek,
   disposeReplacementOriginal,
   getPlannerSlot,
+  type AssignmentRecipe,
   type PlannerSlot,
 } from '@/lib/planner/slotAssignment';
 import {
@@ -180,6 +182,10 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
   const [replacementFeedback, setReplacementFeedback] = useState<ReplacementFeedback | null>(null);
   const reviewOnAbandon = useRef(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
+  const [dayChooserState, setDayChooserState] = useState<{
+    recipe: AssignmentRecipe;
+    reference: string;
+  } | null>(null);
 
   const startAction = async (kind: 'step1' | 'quick_find') => {
     try {
@@ -312,6 +318,13 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     }
   }, [router, saveRecoveryRecipe, sync]);
 
+  const needsAbandonConfirm = (session: ReplacementSession | null) =>
+    Boolean(
+      session &&
+      !session.saved &&
+      (session.disposed || session.dispositionUnknown || session.saveUnknown)
+    );
+
   const closeRecovery = () => {
     reviewOnAbandon.current = false;
     if (recoverySubmissionRef.current) return;
@@ -320,10 +333,12 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
       setReplacementFeedback(null);
       void sync();
     }
-    if (replacementSession.current) {
+    if (needsAbandonConfirm(replacementSession.current)) {
       setConfirmAbandon(true);
       return;
     }
+    replacementSession.current = null;
+    setReplacementFeedback(null);
     setRecoveryFlow({ kind: 'closed' });
   };
   const abandonReplacement = () => {
@@ -332,10 +347,12 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
     setReplacementFeedback(null);
     setRecoveryFlow({ kind: 'closed' });
     void sync();
-    if (reviewOnAbandon.current)
+    if (reviewOnAbandon.current) {
+      const dayIndexParam = actionContext ? `dayIndex=${calendarDayIndex(actionContext)}&` : '';
       router.push(
-        `${ROUTES.PLANNER}?weekOffset=0&referenceWeekStartDate=${actionContext?.referenceWeekStartDate}`
+        `${ROUTES.PLANNER}?${dayIndexParam}weekOffset=0&referenceWeekStartDate=${actionContext?.referenceWeekStartDate ?? ''}`
       );
+    }
     reviewOnAbandon.current = false;
   };
 
@@ -980,14 +997,39 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           }}
           onAbandon={abandonReplacement}
           onReviewPlan={() => {
-            if (replacementSession.current && !replacementSession.current.saved) {
+            if (needsAbandonConfirm(replacementSession.current)) {
               reviewOnAbandon.current = true;
               setConfirmAbandon(true);
-            } else
-              router.push(
-                `${ROUTES.PLANNER}?weekOffset=0&referenceWeekStartDate=${actionContext?.referenceWeekStartDate}`
-              );
+              return;
+            }
+            const dayIndexParam = actionContext
+              ? `dayIndex=${calendarDayIndex(actionContext)}&`
+              : '';
+            const refParam = actionContext?.referenceWeekStartDate ?? '';
+            replacementSession.current = null;
+            setReplacementFeedback(null);
+            setRecoveryFlow({ kind: 'closed' });
+            router.push(
+              `${ROUTES.PLANNER}?${dayIndexParam}weekOffset=0&referenceWeekStartDate=${refParam}`
+            );
           }}
+          onChooseAnotherDay={
+            recoveryFlow.kind === 'step2' && recoveryFlow.intent === 'pick_else' && actionContext
+              ? () => {
+                  const retained: AssignmentRecipe = {
+                    id: recoveryFlow.pendingRecipe.id,
+                    name: recoveryFlow.pendingRecipe.name ?? null,
+                    image: recoveryFlow.pendingRecipe.image ?? '',
+                  };
+                  const reference = actionContext.referenceWeekStartDate;
+                  replacementSession.current = null;
+                  setReplacementFeedback(null);
+                  setConfirmAbandon(false);
+                  setRecoveryFlow({ kind: 'closed' });
+                  setDayChooserState({ recipe: retained, reference });
+                }
+              : undefined
+          }
           onClose={closeRecovery}
           onBack={() => {
             if (!replacementSession.current && !recoverySubmissionRef.current)
@@ -1016,6 +1058,21 @@ export function HomeCommandCenter({ todaysRecipe, todayStatus }: HomeCommandCent
           />
         )}
       </AnimatePresence>
+
+      {dayChooserState && (
+        <PlanningDayChooser
+          reference={dayChooserState.reference}
+          weekOffset={0}
+          onClose={() => setDayChooserState(null)}
+          onSelect={(slot) => {
+            const recipeId = dayChooserState.recipe.id;
+            setDayChooserState(null);
+            router.push(
+              `/recipes?open=${encodeURIComponent(recipeId)}&addToDay=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate ?? dayChooserState.reference}`
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

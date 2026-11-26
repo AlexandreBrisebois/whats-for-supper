@@ -2583,4 +2583,90 @@ describe('dated ingredient projection', () => {
       within(instructions).getByText('Toss with 400 g pasta and salt to taste.')
     ).toBeVisible();
   });
+
+  it('places prepared and neutral status banners above the hero in the scrollable reading region while keeping alert tone in the planning dock', async () => {
+    const onRetryTarget = vi.fn();
+    const onSecondaryPlanningAction = vi.fn();
+
+    const { rerender } = render(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        planningEnabled
+        planningMessage="Prepared on Thu, Nov 26"
+        planningMessageTone="prepared"
+        planningActionLabel="Plan for another day"
+        onRetryTarget={onRetryTarget}
+        secondaryPlanningActionLabel="Open Thu, Nov 26 in Planner"
+        onSecondaryPlanningAction={onSecondaryPlanningAction}
+        secondaryPlanningTestId="action-open-day-in-planner"
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    const reading = await screen.findByTestId('recipe-detail-reading');
+    const hero = screen.getByTestId('recipe-detail-hero');
+    const planningActions = screen.getByTestId('recipe-planning-actions');
+    const preparedBanner = within(reading).getByTestId('recipe-planning-status-banner');
+    expect(preparedBanner).toHaveAttribute('role', 'status');
+    expect(preparedBanner).toHaveTextContent('Prepared on Thu, Nov 26');
+    expect(preparedBanner).toHaveClass('border-garden-line', 'bg-sage-50', 'text-garden-ink');
+    expect(
+      Boolean(preparedBanner.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+    expect(within(planningActions).queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    const primary = screen.getByTestId('action-add-to-day');
+    const secondary = screen.getByTestId('action-open-day-in-planner');
+    expect(primary).toHaveTextContent('Plan for another day');
+    expect(secondary).toHaveTextContent('Open Thu, Nov 26 in Planner');
+    fireEvent.click(primary);
+    fireEvent.click(secondary);
+    expect(onRetryTarget).toHaveBeenCalledOnce();
+    expect(onSecondaryPlanningAction).toHaveBeenCalledOnce();
+
+    rerender(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        planningEnabled
+        planningMessage="Your household is still voting on Thu, Nov 26."
+        planningMessageTone="status"
+        planningActionLabel="Open voting in Planner"
+        onRetryTarget={onRetryTarget}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    const votingBanner = within(reading).getByTestId('recipe-planning-status-banner');
+    expect(votingBanner).toHaveAttribute('role', 'status');
+    expect(votingBanner).toHaveTextContent('Your household is still voting on Thu, Nov 26.');
+    expect(votingBanner).toHaveClass('border-chrome-line', 'bg-white', 'text-ink-body');
+    expect(within(planningActions).queryByRole('status')).not.toBeInTheDocument();
+
+    rerender(
+      <RecipeDetailSheet
+        recipeId="550e8400-e29b-41d4-a716-446655440111"
+        plannerDayLabel={null}
+        planningEnabled
+        planningMessage="Your plan changed. Review the selected day in Planner."
+        planningMessageTone="alert"
+        planningActionLabel="Review plan"
+        onRetryTarget={onRetryTarget}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    const alert = await within(planningActions).findByRole('alert');
+    expect(alert).toHaveTextContent('Your plan changed. Review the selected day in Planner.');
+    expect(alert).toHaveClass('border-hearth-line', 'bg-terracotta-50', 'text-hearth-ink');
+    expect(screen.queryByTestId('recipe-planning-status-banner')).not.toBeInTheDocument();
+  });
 });

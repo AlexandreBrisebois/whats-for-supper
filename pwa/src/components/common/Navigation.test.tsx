@@ -43,6 +43,14 @@ import { LocaleProvider, useLocale } from '@/components/common/LocaleProvider';
 import { setLocale } from '@/locales';
 import { usePlannerStore } from '@/store/plannerStore';
 import { useDiscoveryStore } from '@/store/discoveryStore';
+import { useFamilyStore } from '@/store/familyStore';
+import { useUiStore } from '@/store/uiStore';
+import {
+  clearHandoffLock,
+  getHandoffLock,
+  setHandoffLock,
+  trackPendingVote,
+} from '@/lib/discovery/passThePhone';
 import { Navigation } from './Navigation';
 
 const sessionFor = (phase: 'unowned' | 'collecting' | 'converged', revision = 1) =>
@@ -66,7 +74,18 @@ describe('Navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
+    clearHandoffLock();
     setLocale('en');
+    useUiStore.setState({ toasts: [] });
+    useFamilyStore.setState({
+      familyMembers: [
+        { id: 'member-alex', name: 'Alex' },
+        { id: 'member-jordan', name: 'Jordan' },
+      ],
+      selectedFamilyMemberId: 'member-alex',
+      hasLoaded: true,
+    });
     mocks.push = vi.fn();
     mocks.pathname = '/recipes';
     mocks.getCategories.mockResolvedValue([]);
@@ -333,5 +352,174 @@ describe('Navigation', () => {
     expect(screen.getByRole('link', { name: 'Découverte' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Plan' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Profil' })).toBeInTheDocument();
+  });
+
+  it('renders quiet Handoff Dock when locked and returns directly to origin when queue is empty', async () => {
+    const selectFamilyMember = vi.fn().mockResolvedValue(undefined);
+    useFamilyStore.setState({
+      selectedFamilyMemberId: 'member-jordan',
+      selectFamilyMember,
+    });
+    setHandoffLock({ originMemberId: 'member-alex', participantName: 'Jordan' });
+    mocks.pathname = '/discovery';
+
+    render(
+      <LocaleProvider>
+        <Navigation />
+      </LocaleProvider>
+    );
+
+    expect(screen.queryByTestId('nav-item-home')).not.toBeInTheDocument();
+    expect(screen.getByTestId('handoff-dock-turn')).toHaveTextContent("Jordan's turn");
+    const returnBtn = screen.getByTestId('handoff-dock-return');
+    expect(returnBtn).toHaveTextContent('← Back to Alex');
+    expect(returnBtn).toHaveClass('text-ink-muted', 'min-h-12');
+
+    fireEvent.click(returnBtn);
+
+    await waitFor(() => {
+      expect(selectFamilyMember).toHaveBeenCalledExactlyOnceWith('member-alex');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-item-home')).toBeInTheDocument();
+    });
+    expect(useUiStore.getState().toasts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'success',
+          message: "Welcome back, Alex — Jordan's votes are saved.",
+        }),
+      ])
+    );
+  });
+
+  it('opens mid-stack confirmation modal on Handoff Dock exit when cards remain and supports Keep voting vs Back to Alex', async () => {
+    const selectFamilyMember = vi.fn().mockResolvedValue(undefined);
+    useFamilyStore.setState({
+      selectedFamilyMemberId: 'member-jordan',
+      selectFamilyMember,
+    });
+    useDiscoveryStore.setState({
+      hasPendingCards: true,
+      discoveryStack: [{ id: 'recipe-1', name: 'Tacos' }] as any,
+    });
+    setHandoffLock({ originMemberId: 'member-alex', participantName: 'Jordan' });
+    mocks.pathname = '/discovery';
+
+    render(
+      <LocaleProvider>
+        <Navigation />
+      </LocaleProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('handoff-dock-return'));
+
+    const modal = await screen.findByTestId('handoff-exit-modal');
+    expect(modal).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Return to Alex?' })).toBeVisible();
+    expect(modal).toHaveTextContent("Jordan's votes so far are saved.");
+
+    const keepVotingBtn = screen.getByTestId('handoff-exit-cancel');
+    expect(keepVotingBtn).toHaveClass('bg-white', 'border-chrome-line', 'text-ink-body');
+    fireEvent.click(keepVotingBtn);
+    expect(screen.queryByTestId('handoff-exit-modal')).not.toBeInTheDocument();
+    expect(selectFamilyMember).not.toHaveBeenCalled();
+    expect(screen.getByTestId('handoff-dock-turn')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('handoff-dock-return'));
+    const confirmBtn = await screen.findByTestId('handoff-exit-confirm');
+    expect(confirmBtn).toHaveClass('bg-hearth-fill', 'text-cream-100');
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(selectFamilyMember).toHaveBeenCalledExactlyOnceWith('member-alex');
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-item-home')).toBeInTheDocument();
+    });
+    expect(useUiStore.getState().toasts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'success',
+          message: "Welcome back, Alex — Jordan's votes are saved.",
+        }),
+      ])
+    );
+  });
+
+  it('waits for pending votes before calling selectFamilyMember on Handoff Dock return', async () => {
+    let resolveVote!: () => void;
+    const votePromise = new Promise<void>((resolve) => {
+      resolveVote = resolve;
+    });
+    trackPendingVote(votePromise);
+
+    const selectFamilyMember = vi.fn().mockResolvedValue(undefined);
+    useFamilyStore.setState({
+      selectedFamilyMemberId: 'member-jordan',
+      selectFamilyMember,
+    });
+    setHandoffLock({ originMemberId: 'member-alex', participantName: 'Jordan' });
+    mocks.pathname = '/discovery';
+
+    render(
+      <LocaleProvider>
+        <Navigation />
+      </LocaleProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('handoff-dock-return'));
+    await Promise.resolve();
+    expect(selectFamilyMember).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveVote();
+    });
+
+    await waitFor(() => {
+      expect(selectFamilyMember).toHaveBeenCalledExactlyOnceWith('member-alex');
+    });
+    expect(getHandoffLock()).toBeNull();
+  });
+
+  it('keeps lock and shows Hearth error with retry if selectFamilyMember rejects on empty-queue dock return', async () => {
+    const selectFamilyMember = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('cookie failed'))
+      .mockResolvedValueOnce(undefined);
+    useFamilyStore.setState({
+      selectedFamilyMemberId: 'member-jordan',
+      selectFamilyMember,
+    });
+    setHandoffLock({ originMemberId: 'member-alex', participantName: 'Jordan' });
+    mocks.pathname = '/discovery';
+
+    render(
+      <LocaleProvider>
+        <Navigation />
+      </LocaleProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('handoff-dock-return'));
+
+    const alert = await screen.findByTestId('handoff-exit-error');
+    expect(alert).toHaveAttribute('role', 'alert');
+    expect(alert).toHaveClass('bg-terracotta-50', 'border-hearth-line', 'text-hearth-ink');
+    expect(alert).toHaveTextContent("Couldn't switch to Alex just now.");
+    expect(alert).toHaveTextContent('Jordan is still selected.');
+    expect(getHandoffLock()).toEqual({ originMemberId: 'member-alex', participantName: 'Jordan' });
+
+    const retryBtn = screen.getByTestId('handoff-exit-confirm');
+    expect(retryBtn).toHaveTextContent('Try again');
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(selectFamilyMember).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-item-home')).toBeInTheDocument();
+    });
+    expect(getHandoffLock()).toBeNull();
   });
 });

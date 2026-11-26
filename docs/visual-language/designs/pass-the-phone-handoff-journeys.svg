@@ -1,0 +1,275 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1060" viewBox="0 0 1440 1060" role="img" aria-labelledby="jr-title jr-desc">
+  <title id="jr-title">Pass the Phone Discovery Handoff Journeys (Zero Dead Ends · Era 3)</title>
+  <desc id="jr-desc">End-to-end household journey map covering Settings opt-in and primary couch handoff for kids aged 4 to 12, sibling turn via 1-tap parent return and converged return, early kid exit with confirmation and reload/deleted-origin safety, and fast last-swipe vote attribution with selection/return failure recovery.</desc>
+
+  <defs>
+    <filter id="cardShadow" x="-8%" y="-8%" width="116%" height="122%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#28231F" flood-opacity="0.07"/>
+    </filter>
+    <marker id="arrowHearth" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#B85542"/>
+    </marker>
+    <marker id="arrowGarden" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#4E6E52"/>
+    </marker>
+    <marker id="arrowMuted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#6E645B"/>
+    </marker>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="1060" fill="#FDFCF0"/>
+
+  <!-- HEADER -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · End-to-End Journeys</text>
+  <rect x="1086" y="24" width="314" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1243" y="42.5" font-size="12" font-weight="600" fill="#4E6E52" text-anchor="middle">4 Household Journeys · Zero Dead Ends</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Pass the Phone Journeys — Opt-In, Kid Turn (4–12) &amp; Calm Return</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">Clean voting screens for everyone, one-device opt-in, pure celebration wrap-up, single dock exit, and calm closure.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 1 · SETTINGS OPT-IN -> WRAP-UP -> CURTAIN -> LOCKED KID -> BACK-->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 158)">
+    <rect x="0" y="0" width="1360" height="208" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="14" width="316" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="178" y="31.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">Journey 1 · Parent Opt-In &amp; Primary Couch Handoff</text>
+    <text x="1340" y="31.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">Default OFF · 2+ members · Voting view stays 100% clean</text>
+
+    <!-- Node 1: Settings -->
+    <g transform="translate(20, 52)">
+      <rect x="0" y="0" width="224" height="136" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">1. SETTINGS (OPT-IN)</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Pass the phone [ON]</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">Below Manage Family</text>
+      <text x="16" y="85" font-size="12" fill="#6E645B">• This device only (local)</text>
+      <text x="16" y="102" font-size="12" fill="#6E645B">• Collapsible “How it works”</text>
+      <text x="16" y="122" font-size="12" font-weight="600" fill="#4E6E52">flyout explains lock boundary</text>
+    </g>
+
+    <line x1="244" y1="120" x2="274" y2="120" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 2: Parent Wrap-up -->
+    <g transform="translate(278, 52)">
+      <rect x="0" y="0" width="244" height="136" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">2. PARENT FINISHES</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">“That’s a wrap!”</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">Tap “Pass the phone ⌄”</text>
+      <text x="16" y="88" font-size="12" fill="#28231F">Reused MemberPickerList</text>
+      <text x="16" y="105" font-size="12" fill="#6E645B">• Scrollable for large families</text>
+      <text x="16" y="122" font-size="12" fill="#6E645B">• Zero voted/done cues</text>
+    </g>
+
+    <line x1="522" y1="120" x2="552" y2="120" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 3: Curtain -->
+    <g transform="translate(556, 52)">
+      <rect x="0" y="0" width="234" height="136" rx="18" fill="#FDFCF0" stroke="#FFE666" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#856400">3. HANDOFF CURTAIN</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">“Hand phone to Maya”</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">Hides Alex’s state &amp; nav</text>
+      <rect x="16" y="82" width="202" height="34" rx="17" fill="#B85542"/>
+      <text x="117" y="103.5" font-size="13" font-weight="700" fill="#FDFCF0" text-anchor="middle">Let’s go, Maya!</text>
+    </g>
+
+    <line x1="790" y1="120" x2="820" y2="120" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <!-- Node 4: Kid Locked Turn -->
+    <g transform="translate(824, 52)">
+      <rect x="0" y="0" width="248" height="136" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">4. KID LOCKED IN DISCOVERY</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Maya votes (clean UI)</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">Quiet dock: Maya’s turn | ← Back</text>
+      <text x="16" y="88" font-size="12" fill="#28231F">Card: “Nice picks, Maya!” (no CTA)</text>
+      <text x="16" y="105" font-size="12" font-weight="600" fill="#4E6E52">Parent taps dock “← Back to Alex”</text>
+      <text x="16" y="122" font-size="12" fill="#6E645B">(instant return when queue is done)</text>
+    </g>
+
+    <line x1="1072" y1="120" x2="1102" y2="120" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <!-- Node 5: Closure Toast -->
+    <g transform="translate(1106, 52)">
+      <rect x="0" y="0" width="234" height="136" rx="18" fill="#F1F3EB" stroke="#4E6E52" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#324D36">5. CALM CLOSURE</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Welcome back, Alex</text>
+      <text x="16" y="68" font-size="12.5" font-weight="600" fill="#4E6E52">“Maya’s votes are saved.”</text>
+      <text x="16" y="90" font-size="12" fill="#28231F">• 5-tab dock restored</text>
+      <text x="16" y="107" font-size="12" fill="#28231F">• Auto-dismissing (~5s) toast</text>
+      <text x="16" y="124" font-size="12" fill="#6E645B">• Put phone down calmly</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 2 · SIBLING TURN (VIA PARENT) & CONVERGED CELEBRATION RETURN   -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 384)">
+    <rect x="0" y="0" width="1360" height="208" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="14" width="358" height="26" rx="13" fill="#FFF3B0" stroke="#FFE666" stroke-width="1"/>
+    <text x="199" y="31.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">Journey 2 · Sibling Turn (via Parent) &amp; Converged Return</text>
+    <text x="1340" y="31.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">No adult dropdown on kid wrap-up · Converged Planner opens as Alex</text>
+
+    <g transform="translate(20, 52)">
+      <rect x="0" y="0" width="290" height="136" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">NEXT SIBLING IN ROOM</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Dock: ← Back to Alex (1 tap)</text>
+      <text x="16" y="69" font-size="12" fill="#6E645B">Maya celebrates “Nice picks, Maya!”;</text>
+      <text x="16" y="86" font-size="12" fill="#6E645B">Alex taps dock &amp; gets saved toast.</text>
+      <text x="16" y="105" font-size="12" font-weight="600" fill="#4E6E52">Alex taps “Pass the phone ⌄” → Léo</text>
+      <text x="16" y="122" font-size="12" fill="#6E645B">Zero duplicate exit buttons</text>
+    </g>
+
+    <line x1="310" y1="120" x2="344" y2="120" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <g transform="translate(348, 52)">
+      <rect x="0" y="0" width="290" height="136" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#856400">LÉO’S CURTAIN &amp; LOCKED TURN</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">“Hand the phone to Léo”</text>
+      <text x="16" y="69" font-size="12" fill="#6E645B">• Léo taps “Let’s go, Léo!”</text>
+      <text x="16" y="87" font-size="12" fill="#6E645B">• Origin locked to Alex</text>
+      <text x="16" y="105" font-size="12" fill="#28231F">• Dock: Léo’s turn | ← Back to Alex</text>
+      <text x="16" y="122" font-size="12" fill="#4E6E52">• Clean voting cards for Léo</text>
+    </g>
+
+    <line x1="638" y1="120" x2="672" y2="120" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <g transform="translate(676, 52)">
+      <rect x="0" y="0" width="318" height="136" rx="18" fill="#4E6E52" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#FDFCF0">CONVERGED DURING KID TURN</text>
+      <text x="16" y="48" font-size="16" font-weight="800" fill="#FFFFFF" class="heading">SuccessCard: “Menu’s in!”</text>
+      <text x="16" y="68" font-size="12" fill="#FDFCF0">Léo’s final swipe completes the week</text>
+      <rect x="16" y="84" width="286" height="36" rx="14" fill="#FFFFFF"/>
+      <text x="159" y="106.5" font-size="12.5" font-weight="700" fill="#4E6E52" text-anchor="middle">Back to Alex &amp; see matches</text>
+    </g>
+
+    <line x1="994" y1="120" x2="1028" y2="120" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <g transform="translate(1032, 52)">
+      <rect x="0" y="0" width="308" height="136" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">RESOLVED · PLANNER AS ALEX</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Unlocks &amp; opens Planner</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">1. Settles Léo’s last vote</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">2. Selects Alex &amp; clears lock</text>
+      <text x="16" y="104" font-size="12" fill="#4E6E52">3. Toast: “Léo’s votes are saved.”</text>
+      <text x="16" y="122" font-size="12" fill="#6E645B">4. Opens /planner with 5-tab dock</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 3 · EARLY EXIT, RELOAD PERSISTENCE & DELETED-ORIGIN SAFETY     -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 610)">
+    <rect x="0" y="0" width="1360" height="208" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="14" width="366" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="203" y="31.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Journey 3 · Early Exit, Reload Safety &amp; Deleted Origin</text>
+    <text x="1340" y="31.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">Zero accidental exits · Zero stuck locks</text>
+
+    <g transform="translate(20, 52)">
+      <rect x="0" y="0" width="306" height="136" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">KID STOPS MID-STACK</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Tap quiet “← Back to Alex”</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">Borderless muted control on dock</text>
+      <text x="16" y="88" font-size="12" fill="#28231F">Opens “Return to Alex?” modal:</text>
+      <text x="16" y="106" font-size="12" fill="#6E645B">• [Keep voting] → closes modal</text>
+      <text x="16" y="123" font-size="12" font-weight="600" fill="#A44A37">• [Back to Alex] → settles &amp; returns</text>
+    </g>
+
+    <line x1="326" y1="120" x2="364" y2="120" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <g transform="translate(368, 52)">
+      <rect x="0" y="0" width="304" height="136" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">PAGE RELOAD OR STRAY URL</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Lock persists in session</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">• Refreshing /discovery keeps</text>
+      <text x="24" y="84" font-size="12" fill="#6E645B">Maya selected + Handoff Dock</text>
+      <text x="16" y="104" font-size="12" fill="#28231F">• Navigating to /planner or</text>
+      <text x="24" y="120" font-size="12" fill="#28231F">/profile redirects to /discovery</text>
+    </g>
+
+    <line x1="672" y1="120" x2="710" y2="120" stroke="#6E645B" stroke-width="2" marker-end="url(#arrowMuted)"/>
+
+    <g transform="translate(714, 52)">
+      <rect x="0" y="0" width="304" height="136" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#6E645B">EDGE: ORIGIN MEMBER MISSING</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Graceful self-heal</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">If Alex was deleted from another</text>
+      <text x="16" y="84" font-size="12" fill="#6E645B">device while phone was locked:</text>
+      <text x="16" y="104" font-size="12" font-weight="600" fill="#4E6E52">• Clears lock automatically</text>
+      <text x="16" y="121" font-size="12" font-weight="600" fill="#4E6E52">• Restores 5-tab dock &amp; Profile</text>
+    </g>
+
+    <line x1="1018" y1="120" x2="1056" y2="120" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <g transform="translate(1060, 52)">
+      <rect x="0" y="0" width="280" height="136" rx="18" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#324D36">OUTCOME</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Alex’s queue preserved</text>
+      <text x="16" y="69" font-size="12" fill="#28231F">• Maya’s partial votes saved</text>
+      <text x="16" y="87" font-size="12" fill="#28231F">• Maya’s unvoted cards wait</text>
+      <text x="16" y="105" font-size="12" fill="#4E6E52">• Toast confirms saved votes</text>
+      <text x="16" y="122" font-size="12" fill="#6E645B">• Never trapped in locked mode</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- JOURNEY 4 · FAST LAST-SWIPE ATTRIBUTION & FAILURE RECOVERY             -->
+  <!-- ====================================================================== -->
+  <g transform="translate(40, 836)">
+    <rect x="0" y="0" width="1360" height="204" rx="26" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="14" width="366" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="203" y="31.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">Journey 4 · Fast Last-Swipe Attribution &amp; Error Recovery</text>
+    <text x="1340" y="31.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">Votes stay with swiper · Network failure never drops turn or reveals wrong queue</text>
+
+    <g transform="translate(20, 52)">
+      <rect x="0" y="0" width="306" height="132" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#856400">RAPID FINAL SWIPE</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">POST vote still in flight</text>
+      <text x="16" y="68" font-size="12" fill="#6E645B">Alex swipes last card → immediately</text>
+      <text x="16" y="84" font-size="12" fill="#6E645B">opens Pass the phone → Maya confirms</text>
+      <text x="16" y="104" font-size="12" font-weight="600" fill="#4E6E52">Curtain holds busy until</text>
+      <text x="16" y="120" font-size="12" font-weight="600" fill="#4E6E52">pendingVotesRef empties</text>
+    </g>
+
+    <line x1="326" y1="118" x2="364" y2="118" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <g transform="translate(368, 52)">
+      <rect x="0" y="0" width="304" height="132" rx="18" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">SAFE VOTE ATTRIBUTION</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Headers never cross</text>
+      <text x="16" y="68" font-size="12" fill="#28231F">• Vote header = Alex (always)</text>
+      <text x="16" y="86" font-size="12" fill="#28231F">• Failed vote never replays as Maya</text>
+      <text x="16" y="104" font-size="12" fill="#6E645B">• fetchGenerationRef blocks stale</text>
+      <text x="24" y="120" font-size="12" fill="#6E645B">error refetches after switch</text>
+    </g>
+
+    <line x1="672" y1="118" x2="710" y2="118" stroke="#B85542" stroke-width="2" marker-end="url(#arrowHearth)"/>
+
+    <g transform="translate(714, 52)">
+      <rect x="0" y="0" width="304" height="132" rx="18" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.2" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#A44A37">SWITCH OR RETURN FAILS</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Hearth Inline Recovery</text>
+      <text x="16" y="68" font-size="12" fill="#A44A37">“Couldn’t switch to Maya just now.</text>
+      <text x="16" y="84" font-size="12" fill="#A44A37">Alex is still selected.”</text>
+      <text x="16" y="104" font-size="12" font-weight="600" fill="#28231F">• [Try again] retries cookie switch</text>
+      <text x="16" y="120" font-size="12" font-weight="600" fill="#28231F">• [Cancel] restores prior state</text>
+    </g>
+
+    <line x1="1018" y1="118" x2="1056" y2="118" stroke="#4E6E52" stroke-width="2" marker-end="url(#arrowGarden)"/>
+
+    <g transform="translate(1060, 52)">
+      <rect x="0" y="0" width="280" height="132" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.4" filter="url(#cardShadow)"/>
+      <text x="16" y="24" font-size="12" font-weight="700" fill="#4E6E52">INVARIANT PRESERVED</text>
+      <text x="16" y="48" font-size="15.5" font-weight="800" fill="#28231F" class="heading">Zero Dead Ends</text>
+      <text x="16" y="69" font-size="12" fill="#28231F">• No wrong-member cards shown</text>
+      <text x="16" y="87" font-size="12" fill="#28231F">• No lost votes or silent drops</text>
+      <text x="16" y="105" font-size="12" fill="#28231F">• Parent never stuck in kid mode</text>
+      <text x="16" y="122" font-size="12" fill="#4E6E52">• Retry or Cancel always works</text>
+    </g>
+  </g>
+</svg>

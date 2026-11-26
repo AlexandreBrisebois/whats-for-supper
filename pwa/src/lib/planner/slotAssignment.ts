@@ -3,7 +3,11 @@ import type { OriginalDisposition, ReplacementAction } from './replacementSessio
 import { t } from '@/locales';
 import { nonCookingLabel } from './nonCooking';
 import { useUiStore } from '@/store/uiStore';
-import type { NonCookingPlanDto, MoveScheduleResultDto } from '@/lib/api/generated/models/index';
+import type {
+  NonCookingPlanDto,
+  MoveScheduleResultDto,
+  SupperPreparation,
+} from '@/lib/api/generated/models/index';
 import { civilDate, readCalendar, weekOffsetFor } from '@/lib/deployment-calendar';
 import { DateOnly } from '@microsoft/kiota-abstractions';
 import { apiClient } from '@/lib/api/api-client';
@@ -27,6 +31,8 @@ export type PlannerSlot = {
   date: string;
   recipe: ReturnType<typeof normalizeScheduleRecipe>;
   status?: number;
+  isPast?: boolean;
+  preparation?: SupperPreparation | null;
   nonCooking?: NonCookingPlanDto | null;
   removalToken?: string | null;
 };
@@ -61,6 +67,8 @@ export async function getPlannerSlot(
     date: day.date,
     recipe: normalizeScheduleRecipe(day.recipe),
     status: day.status ?? undefined,
+    isPast: day.date < calendar.today,
+    preparation: day.preparation ?? null,
     removalToken: day.removalToken,
     nonCooking: day.nonCooking?.kind ? day.nonCooking : null,
   };

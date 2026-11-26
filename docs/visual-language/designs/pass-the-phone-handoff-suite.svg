@@ -1,0 +1,444 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2360" viewBox="0 0 1440 2360" role="img" aria-labelledby="suite-title suite-desc">
+  <title id="suite-title">Pass the Phone Discovery Handoff Visual Design Suite (Era 3)</title>
+  <desc id="suite-desc">Complete Era 3 Family Cookbook visual design specification for pass-the-phone-discovery-handoff: per-device Settings switch with collapsed/expanded How it works flyout, parent wrap-up with reused scrollable MemberPickerList, full-screen handoff curtain with switching and Hearth error recovery, kid locked clean voting screen with Handoff Dock and exit confirmation, kid wrap-up with multi-kid passing, converged return with Garden closure toast, French 320px reflow, and High Contrast AAA.</desc>
+
+  <defs>
+    <filter id="sheetShadow" x="-12%" y="-10%" width="124%" height="126%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#28231F" flood-opacity="0.18"/>
+    </filter>
+    <filter id="softShadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#28231F" flood-opacity="0.07"/>
+    </filter>
+    <linearGradient id="gardenCardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4E6E52"/>
+      <stop offset="100%" stop-color="#3D5940"/>
+    </linearGradient>
+    <linearGradient id="foodPhotoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D97E54"/>
+      <stop offset="55%" stop-color="#B85542"/>
+      <stop offset="100%" stop-color="#524A43"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .heading { font-family: Outfit, Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+  </style>
+
+  <!-- Canvas -->
+  <rect x="0" y="0" width="1440" height="2360" fill="#FDFCF0"/>
+
+  <!-- ====================================================================== -->
+  <!-- HEADER                                                                 -->
+  <!-- ====================================================================== -->
+  <text x="40" y="44" font-size="14" font-weight="700" fill="#A44A37">WFS / Shared Table · Family Cookbook Era 3 · Pass the Phone Discovery Handoff</text>
+  <rect x="1036" y="24" width="364" height="28" rx="14" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+  <text x="1218" y="42.5" font-size="12" font-weight="600" fill="#4E6E52" text-anchor="middle">Settings Opt-In · Handoff Dock · Zero Dead Ends</text>
+
+  <text x="40" y="88" font-size="32" font-weight="800" fill="#28231F" class="heading">Pass the Phone — Visual Design &amp; Locked Kid Turn Suite</text>
+  <text x="40" y="116" font-size="15" font-weight="400" fill="#6E645B">Per-device Settings toggle with inline flyout, 100% clean voting cards, reused scrollable chooser, locked Handoff Dock, and calm welcome-back closure.</text>
+  <line x1="40" y1="136" x2="1400" y2="136" stroke="#E5DFD7" stroke-width="1"/>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 1 · /profile/settings OPT-IN + FLYOUT                          -->
+  <!-- ====================================================================== -->
+  <text x="40" y="168" font-size="18" font-weight="700" fill="#28231F" class="heading">1. /profile/settings — Compact Per-Device Opt-In (Below Manage Family) &amp; "How it works" Flyout</text>
+
+  <!-- Frame 1A: Collapsed Default -->
+  <g transform="translate(40, 188)">
+    <rect x="0" y="0" width="668" height="584" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="290" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="165" y="33.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">State A · Compact Card (Default OFF / ON)</text>
+    <text x="648" y="33.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">No endless scroll</text>
+
+    <!-- Phone frame -->
+    <rect x="20" y="56" width="380" height="508" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+    <path d="M 48 56 H 372 Q 400 56 400 76 V 80 H 20 V 76 Q 20 56 48 56 Z" fill="#B85542" opacity="0.92"/>
+    <text x="38" y="72" font-size="12" font-weight="600" fill="#FFFFFF">5:18</text>
+    <text x="210" y="72" font-size="12" font-weight="500" fill="#FDFCF0" text-anchor="middle">/profile/settings</text>
+
+    <!-- Manage Family Preview Above -->
+    <rect x="38" y="96" width="344" height="82" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="58" y="122" font-size="12" font-weight="700" fill="#A44A37">Manage Family</text>
+    <text x="58" y="144" font-size="14" font-weight="700" fill="#28231F" class="heading">Alex · Maya · Léo · Sam</text>
+    <text x="58" y="164" font-size="12" fill="#6E645B">Add kids or household members above</text>
+
+    <!-- NEW: Pass the phone compact card -->
+    <rect x="38" y="196" width="344" height="148" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="58" y="232" font-size="18" font-weight="800" fill="#28231F" class="heading">Pass the phone</text>
+    <text x="58" y="254" font-size="13" font-weight="500" fill="#6E645B">Vote together on this device</text>
+
+    <!-- 56x32 Garden role="switch" (ON) -->
+    <rect x="304" y="218" width="56" height="32" rx="16" fill="#4E6E52"/>
+    <circle cx="344" cy="234" r="12" fill="#FFFFFF"/>
+
+    <line x1="58" y1="276" x2="362" y2="276" stroke="#E5DFD7" stroke-width="1"/>
+
+    <!-- >= 48px Disclosure Trigger -->
+    <rect x="46" y="286" width="328" height="48" rx="14" fill="#FFFFFF"/>
+    <text x="58" y="315" font-size="13.5" font-weight="700" fill="#4E6E52">How it works</text>
+    <path d="M342 307 L348 313 L354 307" fill="none" stroke="#4E6E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Usual Portions Preview Below -->
+    <rect x="38" y="362" width="344" height="92" rx="20" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="58" y="394" font-size="16" font-weight="800" fill="#28231F" class="heading">Usual portions</text>
+    <text x="58" y="416" font-size="12.5" fill="#6E645B">4 portions · Use family size (below)</text>
+
+    <!-- Quiet indicator for single-member households -->
+    <rect x="38" y="470" width="344" height="52" rx="14" fill="#FFF3B0" stroke="#FFE666" stroke-width="1"/>
+    <text x="52" y="492" font-size="12" font-weight="700" fill="#856400">If &lt; 2 members:</text>
+    <text x="52" y="510" font-size="12" fill="#856400">“Add another family member above to use this.”</text>
+
+    <!-- Right-side annotation column -->
+    <g transform="translate(418, 56)">
+      <rect x="0" y="0" width="230" height="508" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="30" font-size="14" font-weight="800" fill="#28231F" class="heading">Settings Contract</text>
+      <text x="16" y="58" font-size="12" font-weight="700" fill="#4E6E52">1. Placement &amp; Default</text>
+      <text x="16" y="76" font-size="12" fill="#6E645B">• Directly below Manage Family</text>
+      <text x="16" y="93" font-size="12" fill="#6E645B">• Default OFF (personal phones</text>
+      <text x="24" y="109" font-size="12" fill="#6E645B">stay completely uncluttered)</text>
+      <text x="16" y="128" font-size="12" fill="#6E645B">• Stored per-device in</text>
+      <text x="24" y="144" font-size="12" fill="#6E645B">localStorage (zero API change)</text>
+
+      <line x1="16" y1="164" x2="214" y2="164" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="190" font-size="12" font-weight="700" fill="#28231F">2. Switch Grammar</text>
+      <text x="16" y="208" font-size="12" fill="#6E645B">• 56×32px pill role="switch"</text>
+      <text x="16" y="225" font-size="12" fill="#6E645B">• bg-garden-fill (#4E6E52) ON</text>
+      <text x="16" y="242" font-size="12" fill="#6E645B">• bg-charcoal-200 (#E5DFD7) OFF</text>
+      <text x="16" y="259" font-size="12" fill="#6E645B">• Full-row &gt;= 48px target</text>
+
+      <line x1="16" y1="278" x2="214" y2="278" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="304" font-size="12" font-weight="700" fill="#A44A37">3. Collapsed by Default</text>
+      <text x="16" y="322" font-size="12" fill="#6E645B">• Matches PreviewFeatures &amp;</text>
+      <text x="24" y="338" font-size="12" fill="#6E645B">TonightMenuCard ChevronDown</text>
+      <text x="16" y="356" font-size="12" fill="#6E645B">• Keeps Settings scannable</text>
+    </g>
+  </g>
+
+  <!-- Frame 1B: Expanded "How it works" Flyout -->
+  <g transform="translate(732, 188)">
+    <rect x="0" y="0" width="668" height="584" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="20" y="16" width="290" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="165" y="33.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">State B · "How it works" Flyout Expanded</text>
+    <text x="648" y="33.5" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">Full context beside switch</text>
+
+    <!-- Phone frame -->
+    <rect x="20" y="56" width="380" height="508" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+    <path d="M 48 56 H 372 Q 400 56 400 76 V 80 H 20 V 76 Q 20 56 48 56 Z" fill="#B85542" opacity="0.92"/>
+    <text x="38" y="72" font-size="12" font-weight="600" fill="#FFFFFF">5:18</text>
+    <text x="210" y="72" font-size="12" font-weight="500" fill="#FDFCF0" text-anchor="middle">/profile/settings</text>
+
+    <!-- Expanded Card -->
+    <rect x="38" y="96" width="344" height="334" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="58" y="132" font-size="18" font-weight="800" fill="#28231F" class="heading">Pass the phone</text>
+    <text x="58" y="154" font-size="13" font-weight="500" fill="#6E645B">Vote together on this device</text>
+    <rect x="304" y="118" width="56" height="32" rx="16" fill="#4E6E52"/>
+    <circle cx="344" cy="134" r="12" fill="#FFFFFF"/>
+
+    <line x1="58" y1="176" x2="362" y2="176" stroke="#E5DFD7" stroke-width="1"/>
+
+    <text x="58" y="206" font-size="13.5" font-weight="700" fill="#4E6E52">Hide details</text>
+    <path d="M342 205 L348 199 L354 205" fill="none" stroke="#4E6E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Tier 3 Recessed Cream Well (warm, plain household voice) -->
+    <rect x="54" y="224" width="312" height="186" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="72" y="254" font-size="13" font-weight="700" fill="#28231F">Let the kids help pick supper</text>
+    <text x="72" y="272" font-size="13" font-weight="700" fill="#28231F">from your phone.</text>
+
+    <text x="72" y="302" font-size="12.5" fill="#6E645B">After you finish voting, pass your phone</text>
+    <text x="72" y="320" font-size="12.5" fill="#6E645B">along — the rest of the app stays tucked</text>
+    <text x="72" y="338" font-size="12.5" fill="#6E645B">away until they hand it back.</text>
+
+    <text x="72" y="370" font-size="12" font-weight="600" fill="#4E6E52">Only turns on for this device.</text>
+
+    <!-- Usual Portions Preview Below -->
+    <rect x="38" y="448" width="344" height="92" rx="20" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="58" y="480" font-size="16" font-weight="800" fill="#28231F" class="heading">Usual portions</text>
+    <text x="58" y="502" font-size="12.5" fill="#6E645B">4 portions · Use family size (below)</text>
+
+    <!-- Right-side annotation -->
+    <g transform="translate(418, 56)">
+      <rect x="0" y="0" width="230" height="508" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="30" font-size="14" font-weight="800" fill="#28231F" class="heading">Warm, Honest Guidance</text>
+      <text x="16" y="58" font-size="12" font-weight="700" fill="#4E6E52">• Shared Table Voice</text>
+      <text x="16" y="76" font-size="12" fill="#6E645B">Two warm sentences instead</text>
+      <text x="16" y="93" font-size="12" fill="#6E645B">of a 4-bullet policy manual.</text>
+
+      <line x1="16" y1="114" x2="214" y2="114" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="140" font-size="12" font-weight="700" fill="#28231F">• Calm Device Scope</text>
+      <text x="16" y="158" font-size="12" fill="#6E645B">Notes “Only turns on for</text>
+      <text x="16" y="175" font-size="12" fill="#6E645B">this device” in plain words.</text>
+
+      <line x1="16" y1="196" x2="214" y2="196" stroke="#E5DFD7" stroke-width="1"/>
+      <text x="16" y="222" font-size="12" font-weight="700" fill="#A44A37">• Tier 3 Well &amp; ARIA</text>
+      <text x="16" y="240" font-size="12" fill="#6E645B">bg-cream (#FDFCF0) well;</text>
+      <text x="16" y="257" font-size="12" fill="#6E645B">aria-expanded + aria-controls</text>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 2 · PARENT WRAP-UP + REUSED DROPDOWN + HANDOFF CURTAIN         -->
+  <!-- ====================================================================== -->
+  <text x="40" y="814" font-size="18" font-weight="700" fill="#28231F" class="heading">2. Parent Wrap-Up (“That’s a wrap!”) + Reused Scrollable Member Dropdown + Full-Screen Handoff Curtain</text>
+
+  <!-- Frame 2A: Parent Wrap-Up + Open Scrollable Dropdown -->
+  <g transform="translate(40, 834)">
+    <rect x="0" y="0" width="436" height="632" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="18" y="14" width="284" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="160" y="31.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">2A · Parent Wrap-Up &amp; Reused Dropdown</text>
+
+    <rect x="28" y="54" width="380" height="558" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+    <!-- Empty State Card (normal flow, no fixed height clip) -->
+    <rect x="46" y="72" width="344" height="466" rx="34" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <circle cx="218" cy="112" r="24" fill="#FFF3B0"/>
+    <path d="M210 112 A8 8 0 1 1 224 117 M210 106 V112 H216" fill="none" stroke="#856400" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="218" y="156" font-size="20" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">That’s a wrap!</text>
+    <text x="218" y="176" font-size="12.5" fill="#6E645B" text-anchor="middle">You’ve seen everything for now.</text>
+
+    <!-- Primary Hearth CTA (1 only) -->
+    <rect x="64" y="194" width="308" height="48" rx="24" fill="#B85542"/>
+    <text x="218" y="223" font-size="14" font-weight="700" fill="#FDFCF0" text-anchor="middle">Capture a New Recipe</text>
+
+    <!-- Garden Tonal Pass the phone toggle -->
+    <rect x="64" y="252" width="308" height="48" rx="24" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1.2"/>
+    <text x="196" y="281" font-size="14" font-weight="700" fill="#4E6E52" text-anchor="middle">Pass the phone</text>
+    <path d="M336 279 L342 273 L348 279" fill="none" stroke="#4E6E52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Reused Scrollable MemberPickerList (from ProfileDropdown) -->
+    <rect x="64" y="308" width="308" height="170" rx="20" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <!-- Row 1: Sam -->
+    <rect x="74" y="316" width="276" height="46" rx="14" fill="#FFFFFF"/>
+    <text x="90" y="344" font-size="14" font-weight="600" fill="#28231F">Sam</text>
+    <!-- Row 2: Maya (hover/focus preview) -->
+    <rect x="74" y="366" width="276" height="46" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="90" y="394" font-size="14" font-weight="600" fill="#28231F">Maya</text>
+    <!-- Row 3: Léo -->
+    <rect x="74" y="416" width="276" height="46" rx="14" fill="#FFFFFF"/>
+    <text x="90" y="444" font-size="14" font-weight="600" fill="#28231F">Léo</text>
+    <!-- Scrollbar thumb for large families -->
+    <rect x="358" y="320" width="5" height="68" rx="2.5" fill="#CFC6BC"/>
+    <text x="218" y="472" font-size="12" fill="#6E645B" text-anchor="middle">Scrolls cleanly for large families · No status cues</text>
+
+    <!-- Nudge + Refresh below (Nudge uses Garden outline for household participation) -->
+    <rect x="64" y="486" width="149" height="42" rx="21" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+    <text x="138" y="511" font-size="12.5" font-weight="600" fill="#4E6E52" text-anchor="middle">Nudge family</text>
+    <rect x="223" y="486" width="149" height="42" rx="21" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="297" y="511" font-size="12.5" font-weight="600" fill="#28231F" text-anchor="middle">Refresh Feed</text>
+
+    <!-- Normal 5-tab dock preview -->
+    <rect x="28" y="556" width="380" height="56" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="218" y="589" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">Home · Recipes · [Vote] · Planner · Profile</text>
+  </g>
+
+  <!-- Frame 2B: Full-Screen Handoff Curtain -->
+  <g transform="translate(502, 834)">
+    <rect x="0" y="0" width="436" height="632" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="18" y="14" width="266" height="26" rx="13" fill="#FFF3B0" stroke="#FFE666" stroke-width="1"/>
+    <text x="151" y="31.5" font-size="12" font-weight="700" fill="#856400" text-anchor="middle">2B · Full-Screen Handoff Curtain</text>
+
+    <!-- Full-screen bg-cream z-[70] covering dock & cards -->
+    <rect x="28" y="54" width="380" height="558" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+    <text x="218" y="82" font-size="12" font-weight="600" fill="#6E645B" text-anchor="middle">fixed inset-0 z-[70] · hides cards &amp; nav dock</text>
+
+    <!-- Tier 1 White Card -->
+    <rect x="48" y="150" width="340" height="362" rx="36" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+
+    <!-- Sunlight Ochre Medallion -->
+    <circle cx="218" cy="214" r="34" fill="#FFF3B0" stroke="#FFE666" stroke-width="1.5"/>
+    <rect x="208" y="198" width="20" height="32" rx="4" fill="none" stroke="#856400" stroke-width="2.2"/>
+    <line x1="215" y1="224" x2="221" y2="224" stroke="#856400" stroke-width="2.2" stroke-linecap="round"/>
+
+    <text x="218" y="286" font-size="26" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">Hand the phone</text>
+    <text x="218" y="318" font-size="26" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">to Maya</text>
+
+    <!-- Primary Hearth CTA (playful & short for kids 4-12) -->
+    <rect x="72" y="362" width="292" height="56" rx="28" fill="#B85542"/>
+    <text x="218" y="395" font-size="15" font-weight="700" fill="#FDFCF0" text-anchor="middle">Let’s go, Maya!</text>
+
+    <!-- Secondary Neutral Chrome Cancel -->
+    <rect x="72" y="432" width="292" height="48" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="218" y="461" font-size="14" font-weight="600" fill="#28231F" text-anchor="middle">Cancel</text>
+
+    <text x="218" y="572" font-size="12" fill="#6E645B" text-anchor="middle">Cancel returns to Alex’s screen unchanged.</text>
+    <text x="218" y="590" font-size="12" fill="#6E645B" text-anchor="middle">Respects prefers-reduced-motion (opacity only).</text>
+  </g>
+
+  <!-- Frame 2C: Busy Wait & Selection Error Recovery -->
+  <g transform="translate(964, 834)">
+    <rect x="0" y="0" width="436" height="632" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="18" y="14" width="274" height="26" rx="13" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1"/>
+    <text x="155" y="31.5" font-size="12" font-weight="700" fill="#A44A37" text-anchor="middle">2C · Busy Wait &amp; Hearth Error Recovery</text>
+
+    <!-- Switching Busy Panel -->
+    <rect x="24" y="56" width="388" height="218" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="44" y="88" font-size="14" font-weight="800" fill="#28231F" class="heading">Switching state (settling pending votes)</text>
+    <text x="44" y="110" font-size="12.5" fill="#6E645B">Holds until Alex’s pendingVotesRef is empty,</text>
+    <text x="44" y="128" font-size="12.5" fill="#6E645B">clears stack &amp; matchCount, then switches member.</text>
+    <rect x="44" y="148" width="348" height="56" rx="28" fill="#B85542" opacity="0.88"/>
+    <circle cx="96" cy="176" r="10" fill="none" stroke="#FDFCF0" stroke-width="2.2" stroke-dasharray="40 16"/>
+    <text x="226" y="181" font-size="14.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">Getting Maya’s cards ready…</text>
+    <text x="44" y="226" font-size="12" fill="#4E6E52">• Dimensionally stable (56px height preserved)</text>
+    <text x="44" y="244" font-size="12" fill="#4E6E52">• Disabled + aria-busy="true" prevents double tap</text>
+
+    <!-- Selection Failure Recovery Panel -->
+    <rect x="24" y="294" width="388" height="318" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="44" y="328" font-size="15" font-weight="800" fill="#28231F" class="heading">If selectFamilyMember rejects</text>
+    <text x="44" y="348" font-size="12.5" fill="#6E645B">Curtain stays closed — no queue revealed.</text>
+
+    <!-- Era 3 Hearth Error Card -->
+    <rect x="44" y="366" width="348" height="72" rx="16" fill="#F9ECE9" stroke="#E6B3A9" stroke-width="1.2"/>
+    <text x="62" y="396" font-size="13" font-weight="700" fill="#A44A37">Couldn’t switch to Maya just now.</text>
+    <text x="62" y="416" font-size="12.5" fill="#A44A37">Alex is still selected.</text>
+
+    <!-- Primary Retry + Neutral Chrome Cancel -->
+    <rect x="44" y="456" width="348" height="56" rx="28" fill="#B85542"/>
+    <text x="218" y="489" font-size="15" font-weight="700" fill="#FDFCF0" text-anchor="middle">Try again</text>
+    <rect x="44" y="524" width="348" height="48" rx="24" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="218" y="553" font-size="14" font-weight="600" fill="#28231F" text-anchor="middle">Cancel (return to Alex)</text>
+    <text x="218" y="594" font-size="12" fill="#6E645B" text-anchor="middle">Cancel restores Alex’s queue safely.</text>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 3 · KID LOCKED TURN + HANDOFF DOCK + WRAP-UP + CLOSURE TOAST   -->
+  <!-- ====================================================================== -->
+  <text x="40" y="1502" font-size="18" font-weight="700" fill="#28231F" class="heading">3. Locked Kid Turn (4–12) — Clean Voting Screen, Quiet Handoff Dock, Celebration Wrap-Up &amp; Calm Return</text>
+
+  <!-- Frame 3A: Kid's Clean Voting Screen + Quiet Handoff Dock -->
+  <g transform="translate(40, 1522)">
+    <rect x="0" y="0" width="436" height="564" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="18" y="14" width="308" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="172" y="31.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">3A · Clean Voting Screen + Quiet Handoff Dock</text>
+
+    <rect x="28" y="54" width="380" height="492" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+    <!-- Clean DiscoveryCard -->
+    <rect x="52" y="72" width="332" height="284" rx="34" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2" filter="url(#softShadow)"/>
+    <path d="M 86 72 H 350 Q 384 72 384 106 V 248 H 52 V 106 Q 52 72 86 72 Z" fill="url(#foodPhotoGrad)"/>
+    <rect x="70" y="206" width="118" height="28" rx="14" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="129" y="224" font-size="12" font-weight="600" fill="#28231F" text-anchor="middle">Ready in 25m</text>
+    <text x="72" y="288" font-size="21" font-weight="800" fill="#28231F" class="heading">Crispy Baked Tacos</text>
+    <text x="72" y="312" font-size="13" fill="#6E645B">Zero extra controls on the voting screen</text>
+
+    <!-- 80px Thumb Buttons -->
+    <circle cx="144" cy="408" r="32" fill="#FFFFFF" stroke="#E6B3A9" stroke-width="1.5" filter="url(#softShadow)"/>
+    <text x="144" y="416" font-size="22" font-weight="700" fill="#A44A37" text-anchor="middle">✕</text>
+    <circle cx="292" cy="408" r="32" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.5" filter="url(#softShadow)"/>
+    <text x="292" y="416" font-size="24" font-weight="700" fill="#4E6E52" text-anchor="middle">♥</text>
+
+    <!-- Quiet Borderless Handoff Dock (.glass-nav slot) -->
+    <rect x="28" y="470" width="380" height="76" rx="22" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="50" y="513" font-size="14" font-weight="700" fill="#28231F">Maya’s turn</text>
+    <text x="386" y="513" font-size="13.5" font-weight="600" fill="#6E645B" text-anchor="end">← Back to Alex</text>
+  </g>
+
+  <!-- Frame 3B: Pure Celebration Kid's Wrap-Up + Mid-Stack Exit Confirm Inset -->
+  <g transform="translate(502, 1522)">
+    <rect x="0" y="0" width="436" height="564" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="18" y="14" width="318" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="177" y="31.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">3B · Kid’s Celebration &amp; Dock Exit</text>
+
+    <rect x="28" y="54" width="380" height="332" rx="28" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2" filter="url(#sheetShadow)"/>
+    <rect x="48" y="72" width="340" height="240" rx="30" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <!-- Sunlight Star Medallion (non-text accent #E1AD01) -->
+    <circle cx="218" cy="154" r="36" fill="#FFF3B0" stroke="#FFE666" stroke-width="1.5"/>
+    <polygon points="218,134 224.1,146.9 238,149 228,158.8 230.4,172.6 218,166.1 205.6,172.6 208,158.8 198,149 211.9,146.9" fill="#E1AD01"/>
+    <text x="218" y="228" font-size="26" font-weight="800" fill="#28231F" text-anchor="middle" class="heading">Nice picks, Maya!</text>
+    <text x="218" y="292" font-size="12" fill="#4E6E52" text-anchor="middle">Pure celebration · Dock exits directly once finished</text>
+
+    <rect x="28" y="330" width="380" height="56" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="50" y="363" font-size="13" font-weight="700" fill="#28231F">Maya’s turn</text>
+    <text x="386" y="363" font-size="13" font-weight="600" fill="#6E645B" text-anchor="end">← Back to Alex</text>
+
+    <!-- Dock Exit Confirmation Dialog Inset (when cards remain) -->
+    <rect x="28" y="404" width="380" height="142" rx="24" fill="#FDFCF0" stroke="#6E645B" stroke-width="1.2" filter="url(#softShadow)"/>
+    <text x="48" y="434" font-size="15" font-weight="800" fill="#28231F" class="heading">Mid-Stack Dock Exit: Return to Alex?</text>
+    <text x="48" y="456" font-size="12.5" fill="#6E645B">Maya’s votes so far are saved.</text>
+    <rect x="48" y="476" width="164" height="48" rx="16" fill="#B85542"/>
+    <text x="130" y="505" font-size="13.5" font-weight="700" fill="#FDFCF0" text-anchor="middle">Back to Alex</text>
+    <rect x="224" y="476" width="164" height="48" rx="16" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="306" y="505" font-size="13.5" font-weight="600" fill="#28231F" text-anchor="middle">Keep voting</text>
+  </g>
+
+  <!-- Frame 3C: Converged Return + Calm Closure Toast -->
+  <g transform="translate(964, 1522)">
+    <rect x="0" y="0" width="436" height="564" rx="28" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="18" y="14" width="318" height="26" rx="13" fill="#F1F3EB" stroke="#C7CFB0" stroke-width="1"/>
+    <text x="177" y="31.5" font-size="12" font-weight="700" fill="#4E6E52" text-anchor="middle">3C · Converged Return &amp; Calm Closure Toast</text>
+
+    <!-- Converged SuccessCard while locked -->
+    <rect x="28" y="54" width="380" height="246" rx="34" fill="url(#gardenCardGrad)" filter="url(#sheetShadow)"/>
+    <circle cx="218" cy="112" r="26" fill="#FFFFFF" opacity="0.22"/>
+    <path d="M206 112 L215 121 L231 103" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="218" y="172" font-size="30" font-weight="900" fill="#FFFFFF" text-anchor="middle" class="heading">Menu’s in!</text>
+    <rect x="64" y="206" width="308" height="50" rx="18" fill="#FFFFFF" stroke="#C7CFB0" stroke-width="1.2"/>
+    <text x="218" y="236" font-size="14" font-weight="700" fill="#4E6E52" text-anchor="middle">Back to Alex &amp; see matches</text>
+
+    <!-- Calm Closure Toast on Parent Return -->
+    <text x="28" y="336" font-size="14.5" font-weight="800" fill="#28231F" class="heading">On return to parent (auto-dismisses ~5s)</text>
+    <rect x="28" y="352" width="380" height="72" rx="20" fill="#F1F3EB" stroke="#4E6E52" stroke-width="1.4" filter="url(#softShadow)"/>
+    <circle cx="58" cy="388" r="14" fill="#4E6E52"/>
+    <path d="M52 388 L56 392 L64 384" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="84" y="384" font-size="13.5" font-weight="700" fill="#324D36">Welcome back, Alex</text>
+    <text x="84" y="404" font-size="12.5" font-weight="600" fill="#4E6E52">Maya’s votes are saved.</text>
+
+    <!-- Restored 5-tab dock -->
+    <rect x="28" y="446" width="380" height="100" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="46" y="476" font-size="13" font-weight="700" fill="#28231F">Normal 5-tab dock restored</text>
+    <text x="46" y="498" font-size="12" fill="#6E645B">• Selected member = Alex (origin)</text>
+    <text x="46" y="516" font-size="12" fill="#6E645B">• Handoff lock cleared from sessionStorage</text>
+    <text x="46" y="534" font-size="12" fill="#4E6E52">• Pass to next sibling from Alex’s wrap-up if needed</text>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- SECTION 4 · FRENCH 320px REFLOW + HIGH CONTRAST AAA + CHECKLIST        -->
+  <!-- ====================================================================== -->
+  <text x="40" y="2118" font-size="18" font-weight="700" fill="#28231F" class="heading">4. Bilingual 320px Reflow (FR) &amp; High Contrast AAA (`data-contrast="high"`)</text>
+
+  <!-- 320px FR Reflow Card -->
+  <g transform="translate(40, 2138)">
+    <rect x="0" y="0" width="440" height="196" rx="22" fill="#FAF8F5" stroke="#E5DFD7" stroke-width="1"/>
+    <rect x="18" y="14" width="220" height="24" rx="12" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1"/>
+    <text x="128" y="30" font-size="12" font-weight="700" fill="#28231F" text-anchor="middle">FR · 320px / 200% Text Reflow</text>
+
+    <rect x="20" y="50" width="320" height="132" rx="18" fill="#FDFCF0" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="36" y="76" font-size="13" font-weight="700" fill="#28231F">Passez le téléphone à Maya</text>
+    <rect x="36" y="88" width="288" height="40" rx="20" fill="#B85542"/>
+    <text x="180" y="113" font-size="13" font-weight="700" fill="#FDFCF0" text-anchor="middle">C’est parti, Maya !</text>
+    <text x="36" y="158" font-size="12" font-weight="700" fill="#28231F">Tour de Maya</text>
+    <text x="322" y="158" font-size="12" font-weight="600" fill="#6E645B" text-anchor="end">← Retour à Alex</text>
+
+    <text x="354" y="82" font-size="12" font-weight="700" fill="#4E6E52">Zero clip</text>
+    <text x="354" y="102" font-size="12" fill="#6E645B">Wraps cleanly</text>
+    <text x="354" y="120" font-size="12" fill="#6E645B">scrollWidth</text>
+    <text x="354" y="138" font-size="12" fill="#6E645B">&lt;= clientWidth</text>
+  </g>
+
+  <!-- High Contrast AAA Adaptation -->
+  <g transform="translate(500, 2138)">
+    <rect x="0" y="0" width="460" height="196" rx="22" fill="#FAF8F5" stroke="#6E645B" stroke-width="1.2"/>
+    <rect x="18" y="14" width="256" height="24" rx="12" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.2"/>
+    <text x="146" y="30" font-size="12" font-weight="700" fill="#191512" text-anchor="middle">High Contrast AAA (`data-contrast="high"`)</text>
+
+    <rect x="20" y="50" width="420" height="62" rx="16" fill="#FFFFFF" stroke="#6E645B" stroke-width="1.5"/>
+    <rect x="34" y="61" width="186" height="40" rx="20" fill="#7B3829"/>
+    <text x="127" y="86" font-size="13" font-weight="700" fill="#FDFCF0" text-anchor="middle">Let’s go, Maya!</text>
+    <rect x="232" y="61" width="194" height="40" rx="20" fill="#FFFFFF" stroke="#324D36" stroke-width="1.5"/>
+    <text x="329" y="86" font-size="13" font-weight="700" fill="#324D36" text-anchor="middle">Nudge family (Garden)</text>
+
+    <!-- Opaque AAA Handoff Dock -->
+    <rect x="20" y="124" width="420" height="58" rx="16" fill="#FDFCF0" stroke="#6E645B" stroke-width="1.5"/>
+    <text x="40" y="158" font-size="13" font-weight="700" fill="#191512">Maya’s turn (opaque dock)</text>
+    <text x="422" y="158" font-size="13" font-weight="700" fill="#524A43" text-anchor="end">← Back to Alex</text>
+  </g>
+
+  <!-- Era 3 Ratchet & A11y Checklist -->
+  <g transform="translate(980, 2138)">
+    <rect x="0" y="0" width="420" height="196" rx="22" fill="#FFFFFF" stroke="#E5DFD7" stroke-width="1.2"/>
+    <text x="20" y="34" font-size="15" font-weight="800" fill="#28231F" class="heading">Era 3 Contract &amp; Zero-Dead-Ends</text>
+    <text x="20" y="60" font-size="12.5" fill="#4E6E52">✓ Dual-mode tokens only (AA &gt;= 4.5:1 / AAA &gt;= 7:1)</text>
+    <text x="20" y="82" font-size="12.5" fill="#4E6E52">✓ Min 12px type floor · Outfit + Inter only</text>
+    <text x="20" y="104" font-size="12.5" fill="#4E6E52">✓ Touch targets &gt;= 48×48 CSS px · outline-ink-body</text>
+    <text x="20" y="126" font-size="12.5" fill="#4E6E52">✓ Reuses MemberPickerList + Navigation + ToastContainer</text>
+    <text x="20" y="148" font-size="12.5" fill="#4E6E52">✓ No completion/count cues on chooser</text>
+    <text x="20" y="170" font-size="12.5" fill="#4E6E52">✓ Deleted origin or offline switch recovers safely</text>
+  </g>
+</svg>

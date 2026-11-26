@@ -12,7 +12,15 @@ import { useDiscoveryStore } from '@/store/discoveryStore';
 import { getCategories } from '@/lib/api/discovery';
 import { absoluteMonday } from '@/lib/deployment-calendar';
 import { usePlannerStore } from '@/store/plannerStore';
-import { t } from '@/locales';
+import { useFamily } from '@/hooks/useFamily';
+import { useUiStore } from '@/store/uiStore';
+import {
+  clearHandoffLock,
+  useHandoffLock,
+  waitForPendingVotes,
+} from '@/lib/discovery/passThePhone';
+import { Modal } from './Modal';
+import { t, tWithVars } from '@/locales';
 import { useLocale } from './LocaleProvider';
 
 interface NavItem {
@@ -30,7 +38,13 @@ export function Navigation({ className = '' }: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { locale } = useLocale();
-  const { hasPendingCards, session, setHasPendingCards, refreshSession } = useDiscoveryStore();
+  const { hasPendingCards, discoveryStack, session, setHasPendingCards, refreshSession } =
+    useDiscoveryStore();
+  const { familyMembers, selectedMember, selectFamilyMember } = useFamily();
+  const handoffLock = useHandoffLock();
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [isReturning, setIsReturning] = useState(false);
+  const [returnError, setReturnError] = useState(false);
 
   const converged = session?.phase === 'converged' && Boolean(session.roundId);
   const convergedMonday = converged ? absoluteMonday(session?.weekStartDate) : null;
@@ -85,7 +99,9 @@ export function Navigation({ className = '' }: NavigationProps) {
       const [categoriesResult] = await Promise.allSettled([getCategories(), refreshSession()]);
       if (!active) return;
       if (categoriesResult.status === 'fulfilled') {
-        setHasPendingCards(categoriesResult.value.length > 0);
+        if (pathname !== ROUTES.DISCOVERY) {
+          setHasPendingCards(categoriesResult.value.length > 0);
+        }
       } else {
         console.warn('Failed to background check discovery status');
       }
@@ -94,7 +110,196 @@ export function Navigation({ className = '' }: NavigationProps) {
     return () => {
       active = false;
     };
-  }, [setHasPendingCards, refreshSession]);
+  }, [setHasPendingCards, refreshSession, pathname]);
+
+  if (handoffLock) {
+    const originMember = familyMembers.find(
+      (m) => m.id.toLowerCase() === handoffLock.originMemberId.toLowerCase()
+    );
+    const originName = originMember?.name ?? '';
+    const activeName = handoffLock.participantName || selectedMember?.name || '';
+    const hasRemainingCards = discoveryStack.length > 0 || hasPendingCards;
+
+    const executeReturn = async () => {
+      if (isReturning) return;
+      setIsReturning(true);
+      setReturnError(false);
+      try {
+        await waitForPendingVotes();
+        await selectFamilyMember(handoffLock.originMemberId);
+        useDiscoveryStore.getState().setStack([]);
+        clearHandoffLock();
+        setShowExitConfirm(false);
+        useUiStore.getState().addToast({
+          type: 'success',
+          message: tWithVars(
+            'discovery.passThePhone.welcomeBackToast',
+            "Welcome back, {{origin}} — {{participant}}'s votes are saved.",
+            { origin: originName, participant: activeName },
+            locale
+          ),
+        });
+      } catch {
+        setReturnError(true);
+        setShowExitConfirm(true);
+      } finally {
+        setIsReturning(false);
+      }
+    };
+
+    const handleDockReturnClick = () => {
+      if (hasRemainingCards) {
+        setReturnError(false);
+        setShowExitConfirm(true);
+      } else {
+        void executeReturn();
+      }
+    };
+
+    return (
+      <>
+        <nav
+          data-testid="app-bottom-navigation"
+          aria-label={tWithVars(
+            'discovery.passThePhone.dockTurn',
+            "{{name}}'s turn",
+            { name: activeName },
+            locale
+          )}
+          className={[
+            'fixed bottom-0 left-0 right-0 z-30 flex items-center justify-center pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-1 glass-nav',
+            className,
+          ].join(' ')}
+        >
+          <div
+            data-testid="handoff-dock"
+            className="flex w-full max-w-md flex-wrap items-center justify-between gap-2 px-5 py-1"
+          >
+            <span data-testid="handoff-dock-turn" className="text-sm font-bold text-ink-body">
+              {tWithVars(
+                'discovery.passThePhone.dockTurn',
+                "{{name}}'s turn",
+                { name: activeName },
+                locale
+              )}
+            </span>
+            <button
+              type="button"
+              data-testid="handoff-dock-return"
+              disabled={isReturning}
+              aria-busy={isReturning}
+              onClick={handleDockReturnClick}
+              aria-label={tWithVars(
+                'discovery.passThePhone.dockReturnAria',
+                'Back to {{name}}',
+                { name: originName },
+                locale
+              )}
+              className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full px-3 text-sm font-semibold text-ink-muted transition-colors hover:text-ink-body disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
+            >
+              {tWithVars(
+                'discovery.passThePhone.dockReturn',
+                '← Back to {{name}}',
+                { name: originName },
+                locale
+              )}
+            </button>
+          </div>
+        </nav>
+
+        <Modal
+          isOpen={showExitConfirm}
+          onClose={() => {
+            if (!isReturning) {
+              setShowExitConfirm(false);
+              setReturnError(false);
+            }
+          }}
+          title={tWithVars(
+            'discovery.passThePhone.exitConfirmTitle',
+            'Return to {{name}}?',
+            { name: originName },
+            locale
+          )}
+        >
+          <div data-testid="handoff-exit-modal" className="space-y-4">
+            <p className="text-sm text-ink-muted">
+              {tWithVars(
+                'discovery.passThePhone.exitConfirmBody',
+                "{{name}}'s votes so far are saved.",
+                { name: activeName },
+                locale
+              )}
+            </p>
+
+            {returnError && (
+              <div
+                role="alert"
+                data-testid="handoff-exit-error"
+                className="rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-3 text-sm text-hearth-ink"
+              >
+                <p className="font-bold">
+                  {tWithVars(
+                    'discovery.passThePhone.switchError',
+                    "Couldn't switch to {{name}} just now.",
+                    { name: originName },
+                    locale
+                  )}
+                </p>
+                <p className="mt-0.5">
+                  {tWithVars(
+                    'discovery.passThePhone.stillSelected',
+                    '{{name}} is still selected.',
+                    { name: activeName },
+                    locale
+                  )}
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3 pt-1 sm:flex-row">
+              <button
+                type="button"
+                disabled={isReturning}
+                aria-busy={isReturning}
+                data-testid="handoff-exit-confirm"
+                onClick={() => void executeReturn()}
+                className="min-h-12 w-full min-w-0 break-words rounded-2xl bg-hearth-fill px-4 py-3 text-sm font-bold text-cream-100 transition-colors hover:bg-hearth-fill-hover active:bg-hearth-fill-active disabled:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body sm:flex-1"
+              >
+                {isReturning
+                  ? tWithVars(
+                      'discovery.passThePhone.returningBusy',
+                      'Returning to {{name}}…',
+                      { name: originName },
+                      locale
+                    )
+                  : returnError
+                    ? t('discovery.passThePhone.tryAgain', 'Try again', locale)
+                    : tWithVars(
+                        'discovery.passThePhone.exitConfirmAction',
+                        'Back to {{name}}',
+                        { name: originName },
+                        locale
+                      )}
+              </button>
+              <button
+                type="button"
+                disabled={isReturning}
+                data-testid="handoff-exit-cancel"
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  setReturnError(false);
+                }}
+                className="min-h-12 w-full min-w-0 break-words rounded-2xl border border-chrome-line bg-white px-4 py-3 text-sm font-semibold text-ink-body transition-colors hover:bg-charcoal-50 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body sm:flex-1"
+              >
+                {t('discovery.passThePhone.exitKeepVoting', 'Keep voting', locale)}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      </>
+    );
+  }
 
   return (
     <nav

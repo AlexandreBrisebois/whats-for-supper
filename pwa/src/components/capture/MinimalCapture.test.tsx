@@ -654,4 +654,67 @@ describe('MinimalCapture — Family Cookbook dual-mode contrast & accessibility'
       'fr:capture.pasteRecipeLink:'
     );
   });
+
+  it('commits to photo capture when photos exist, surfaces the + cue and sticky save dock, and restores journeys when cleared', () => {
+    const createSpy = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation((file: Blob | MediaSource) => `blob:${(file as File).name}`);
+    try {
+      const view = render(<MinimalCapture />);
+
+      // Empty state: all three secondary actions visible; no + badge or sticky save dock
+      expect(screen.getByTestId('capture-secondary-action-link')).toBeInTheDocument();
+      expect(screen.getByTestId('capture-secondary-action-describe')).toBeInTheDocument();
+      expect(screen.getByTestId('capture-secondary-action-import')).toBeInTheDocument();
+      expect(screen.queryByTestId('capture-take-photo-plus-badge')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('capture-add-photo-tile')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('capture-save-dock')).not.toBeInTheDocument();
+      expect(screen.getByTestId('capture-take-photo-btn')).toHaveAttribute(
+        'aria-label',
+        'Take a photo'
+      );
+      expect(screen.getByTestId('capture-pick-gallery-btn')).toHaveTextContent('Pick from Gallery');
+
+      // Photo added: secondary journeys hidden, + badge & addFromGallery cue shown, sticky dock active
+      mockCaptureImages = [new File(['a'], 'a.jpg', { type: 'image/jpeg' })];
+      view.rerender(<MinimalCapture />);
+
+      expect(screen.queryByTestId('capture-secondary-action-link')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('capture-secondary-action-describe')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('capture-secondary-action-import')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('capture-take-photo-plus-badge')).not.toBeInTheDocument();
+      expect(screen.getByTestId('capture-take-photo-btn')).toHaveAttribute(
+        'aria-label',
+        'Take another photo'
+      );
+      expect(screen.getByTestId('capture-pick-gallery-btn')).toHaveTextContent('Add from Gallery');
+
+      const dock = screen.getByTestId('capture-save-dock');
+      expect(dock.className).toContain('fixed');
+      expect(dock.className).toContain('bottom-0');
+      expect(screen.getByTestId('capture-save-btn')).toBeInTheDocument();
+
+      const addTile = screen.getByTestId('capture-add-photo-tile');
+      expect(addTile).toHaveTextContent('Add photo');
+      expect(addTile).toHaveAttribute('aria-label', 'Take another photo');
+      const cameraInput = document.querySelector(
+        'input[type="file"][capture="environment"]'
+      ) as HTMLInputElement;
+      const cameraClickSpy = vi.spyOn(cameraInput, 'click');
+      fireEvent.click(addTile);
+      expect(cameraClickSpy).toHaveBeenCalledTimes(1);
+      cameraClickSpy.mockRestore();
+
+      // Clearing photos restores the other journeys
+      mockCaptureImages = [];
+      view.rerender(<MinimalCapture />);
+      expect(screen.getByTestId('capture-secondary-action-link')).toBeInTheDocument();
+      expect(screen.getByTestId('capture-secondary-action-describe')).toBeInTheDocument();
+      expect(screen.getByTestId('capture-secondary-action-import')).toBeInTheDocument();
+      expect(screen.queryByTestId('capture-add-photo-tile')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('capture-save-dock')).not.toBeInTheDocument();
+    } finally {
+      createSpy.mockRestore();
+    }
+  });
 });

@@ -185,8 +185,8 @@ Committed portions SHALL remain saved if grocery refresh fails; confirmed persis
 
 #### Scenario: Updated shopping list notice clears automatically on grocery interaction
 
-- **WHEN** refreshed groceries display the calm Garden `Shopping list updated` notice and the person interacts with a grocery item, extra, or aisle control
-- **THEN** the notice clears automatically without requiring a manual dismiss tap while retaining a `>= 48 CSS px` close control for assistive or explicit dismissal
+- **WHEN** refreshed groceries require more of a previously checked item and the person opens groceries
+- **THEN** a calm non-shifting `Shopping list updated` toast (`ToastContainer`) is shown once per reset version, clears automatically on the next grocery item, extra, or aisle interaction, and retains an explicit `>= 48 CSS px` dismiss control and auto-dismiss without pushing the checklist header downward
 
 ### Requirement: Preserve confirmed prepared portions
 

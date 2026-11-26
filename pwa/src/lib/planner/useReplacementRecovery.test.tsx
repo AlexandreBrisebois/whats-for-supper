@@ -30,10 +30,18 @@ const occupied = { date: '2026-05-06', status: 3, nonCooking: { kind: 'custom' }
 function mount() {
   const onClosed = vi.fn();
   const onReview = vi.fn();
+  const onChooseAnotherDay = vi.fn();
   const view = renderHook(() =>
-    useReplacementRecovery({ slot, recipe, onClosed, onSaved: vi.fn(), onReview })
+    useReplacementRecovery({
+      slot,
+      recipe,
+      onClosed,
+      onSaved: vi.fn(),
+      onReview,
+      onChooseAnotherDay,
+    })
   );
-  return { ...view, onClosed, onReview };
+  return { ...view, onClosed, onReview, onChooseAnotherDay };
 }
 
 beforeEach(() => {
@@ -42,7 +50,7 @@ beforeEach(() => {
 });
 
 describe('useReplacementRecovery close', () => {
-  it('closes immediately without an abandon gate when the plan conflicted before any change committed', async () => {
+  it('closes immediately with dismiss reason when the plan conflicted before any change committed', async () => {
     mocks.dispose.mockRejectedValue({ responseStatusCode: 409 });
     const { result, onClosed } = mount();
     await act(async () => {
@@ -52,9 +60,10 @@ describe('useReplacementRecovery close', () => {
     act(() => result.current.close());
     expect(result.current.confirmAbandon).toBe(false);
     expect(onClosed).toHaveBeenCalledTimes(1);
+    expect(onClosed).toHaveBeenCalledWith(false, 'dismiss');
   });
 
-  it('routes Review plan straight to review when nothing committed', async () => {
+  it('routes Review plan straight to review with review departure reason when nothing committed', async () => {
     mocks.dispose.mockRejectedValue({ responseStatusCode: 409 });
     const { result, onClosed, onReview } = mount();
     await act(async () => {
@@ -63,10 +72,24 @@ describe('useReplacementRecovery close', () => {
     act(() => result.current.review());
     expect(result.current.confirmAbandon).toBe(false);
     expect(onClosed).toHaveBeenCalledTimes(1);
+    expect(onClosed).toHaveBeenCalledWith(false, 'review');
     expect(onReview).toHaveBeenCalledTimes(1);
   });
 
-  it('still confirms abandonment once the original was removed but the new meal is unsaved', async () => {
+  it('routes Choose another day straight to onChooseAnotherDay with chooseDay departure reason when nothing committed', async () => {
+    mocks.dispose.mockRejectedValue({ responseStatusCode: 409 });
+    const { result, onClosed, onChooseAnotherDay } = mount();
+    await act(async () => {
+      await result.current.act('drop');
+    });
+    act(() => result.current.chooseAnotherDay());
+    expect(result.current.confirmAbandon).toBe(false);
+    expect(onClosed).toHaveBeenCalledTimes(1);
+    expect(onClosed).toHaveBeenCalledWith(false, 'chooseDay');
+    expect(onChooseAnotherDay).toHaveBeenCalledTimes(1);
+  });
+
+  it('still confirms abandonment once the original was removed and passes departure reason on abandon', async () => {
     mocks.dispose.mockResolvedValue({
       action: 'drop',
       recipeName: 'Birthday',
@@ -74,14 +97,18 @@ describe('useReplacementRecovery close', () => {
     });
     mocks.assign.mockRejectedValue(new Error('offline'));
     mocks.getSchedule.mockRejectedValue(new Error('offline'));
-    const { result, onClosed } = mount();
+    const { result, onClosed, onReview } = mount();
     await act(async () => {
       await result.current.act('drop');
     });
     await waitFor(() => expect(result.current.feedback?.phase).toBe('unknown'));
-    act(() => result.current.close());
+    act(() => result.current.review());
     expect(result.current.confirmAbandon).toBe(true);
     expect(onClosed).not.toHaveBeenCalled();
+
+    act(() => result.current.abandon());
+    expect(onClosed).toHaveBeenCalledWith(false, 'review');
+    expect(onReview).toHaveBeenCalledTimes(1);
   });
 
   it('still confirms abandonment when the original removal could not be confirmed', async () => {

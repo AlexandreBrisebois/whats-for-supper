@@ -53,7 +53,13 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/locales', () => ({
+  getLocale: () => 'en',
   t: (_key: string, fallback: string) => fallback,
+  tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
+    Object.entries(vars).reduce(
+      (acc, [name, val]) => acc.replaceAll(`{{${name}}}`, String(val)),
+      fallback
+    ),
 }));
 
 vi.mock('@/lib/imageUtils', () => ({
@@ -138,6 +144,9 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
     onClose,
     replacement,
     onRetryReplacement,
+    onReviewPlan,
+    onChooseAnotherDay,
+    confirmAbandon,
     searchError,
     onRetrySearch,
     backupIntent,
@@ -148,6 +157,9 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
     onClose: () => void;
     replacement?: any;
     onRetryReplacement?: () => void;
+    onReviewPlan?: () => void;
+    onChooseAnotherDay?: () => void;
+    confirmAbandon?: boolean;
     searchError?: string | null;
     onRetrySearch?: () => void;
     backupIntent?: any;
@@ -156,10 +168,21 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
       {backupIntent && (
         <span data-testid="recovery-backup-intent">{JSON.stringify(backupIntent)}</span>
       )}
-      {replacement && <p>{replacement.message}</p>}
+      {confirmAbandon && <span data-testid="recovery-confirm-abandon">Confirm abandon</span>}
+      {replacement && <p data-testid="replacement-feedback">{replacement.message}</p>}
       {replacement && (
         <button data-testid="retry-replacement" onClick={onRetryReplacement}>
           Retry
+        </button>
+      )}
+      {replacement?.phase === 'conflict' && !replacement.original && onChooseAnotherDay && (
+        <button data-testid="recovery-choose-another-day" onClick={onChooseAnotherDay}>
+          Choose a day for this meal
+        </button>
+      )}
+      {replacement?.phase === 'conflict' && onReviewPlan && (
+        <button data-testid="recovery-review-plan" onClick={onReviewPlan}>
+          Review plan
         </button>
       )}
       {searchError && (
@@ -1578,5 +1601,41 @@ it('captures the same assigned identity for Home ingredients and Cook', async ()
   fireEvent.click(screen.getByTestId('cook-mode-btn'));
   expect(await screen.findByTestId('home-cooking-context')).toHaveTextContent(
     screen.getByTestId('home-ingredient-context').textContent!
+  );
+});
+
+it('handles pre-commit conflict without abandon gate, opens PlanningDayChooser, and hands off the retained recipe to Recipes', async () => {
+  vi.clearAllMocks();
+  mocks.currentRecipe = { id: 'original', name: 'Original Pasta', image: '' };
+  mocks.todayStatus = 0;
+  mocks.nonCooking = null;
+  mocks.movePost.mockRejectedValueOnce({ responseStatusCode: 409 });
+  mocks.readSchedule.mockResolvedValue({
+    calendar: fixtureCalendar(),
+    days: Array.from({ length: 7 }, (_, i) => ({
+      date: new Date(Date.parse('2026-05-04T00:00:00Z') + i * 86400000).toISOString().slice(0, 10),
+      status: 0,
+      recipe: null,
+    })),
+  });
+
+  render(<HomeCommandCenter todaysRecipe={mocks.currentRecipe} todayStatus={0} />);
+  fireEvent.click(screen.getByTestId('skip-btn'));
+  fireEvent.click(screen.getByTestId('recovery-action-pick-else'));
+  fireEvent.click(screen.getByTestId('quick-find-select'));
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+  });
+
+  const chooseBtn = await screen.findByTestId('recovery-choose-another-day');
+  expect(screen.queryByTestId('recovery-confirm-abandon')).not.toBeInTheDocument();
+
+  fireEvent.click(chooseBtn);
+  expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
+  expect(screen.queryByTestId('recovery-confirm-abandon')).not.toBeInTheDocument();
+
+  fireEvent.click(await screen.findByTestId('planning-day-4'));
+  expect(mocks.push).toHaveBeenCalledWith(
+    '/recipes?open=replacement-recipe&addToDay=4&weekOffset=0&referenceWeekStartDate=2026-05-04'
   );
 });

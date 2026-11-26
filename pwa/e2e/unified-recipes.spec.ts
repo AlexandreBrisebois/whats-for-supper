@@ -2,6 +2,7 @@ import { swipeCurrentStackCard } from './helpers/stack-swipe';
 import type { ScheduleDays } from '../src/lib/api/generated/models';
 import { test, expect, type Page } from './fixtures';
 import { MOCK_IDS, builders, setupCommonRoutes, mockNonCookingSchedule } from './mock-api';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 
 async function prepareNavigationMember(
   page: import('@playwright/test').Page,
@@ -2522,4 +2523,113 @@ test('Planner detail visible Similar starts results without reopening detail or 
     expect.objectContaining({ similarToRecipeId: MOCK_IDS.RECIPE_LASAGNA })
   );
   expect(mutations).toEqual([]);
+});
+
+test('RecipeDetailSheet separates cooked vs voting states, plans another day, focuses Planner, and passes AA/AAA', async ({
+  page,
+}) => {
+  await prepareNavigationMember(page);
+  const schedule = builders.scheduleDays() as unknown as ScheduleDays;
+  schedule.days![1].status = 2;
+  schedule.days![1].recipe = builders.scheduleRecipe({
+    id: MOCK_IDS.RECIPE_CHICKEN,
+    name: 'Cooked Chicken',
+  });
+  (schedule.days![1] as Record<string, unknown>).preparation = {
+    preparedOn: '2026-05-03',
+    preparedAtUtc: '2026-05-03T22:00:00Z',
+  };
+  schedule.days![2].status = 4;
+  schedule.days![2].recipe = builders.scheduleRecipe({
+    id: MOCK_IDS.RECIPE_CARBONARA,
+    name: 'Voting Carbonara',
+  });
+  await mockNonCookingSchedule(page, schedule);
+
+  await page.goto(
+    `/recipes?addToDay=1&weekOffset=0&referenceWeekStartDate=2026-05-04&open=${MOCK_IDS.RECIPE_LASAGNA}`
+  );
+  const sheet = page.getByTestId('recipe-detail-sheet');
+  const reading = page.getByTestId('recipe-detail-reading');
+  const planningActions = page.getByTestId('recipe-planning-actions');
+  const preparedBanner = reading.getByTestId('recipe-planning-status-banner');
+  await expect(preparedBanner).toHaveAttribute('role', 'status');
+  await expect(preparedBanner).toContainText('Prepared on Sun, May 3');
+  await expect(planningActions.getByRole('status')).toHaveCount(0);
+  await expect(planningActions.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByTestId('action-add-to-day')).toHaveText('Plan for another day');
+  await expect(page.getByTestId('action-open-day-in-planner')).toHaveText(
+    'Open Tue, May 5 in Planner'
+  );
+  await expect(page.getByTestId('action-change-day')).toHaveCount(0);
+
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-planning-status-banner"]',
+    contrastLevel: 'aa',
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-planning-actions"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-planning-status-banner"]',
+    contrastLevel: 'aaa',
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-planning-actions"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+  });
+
+  await page.getByTestId('action-add-to-day').click();
+  await expect(page.getByTestId('planning-day-chooser')).toBeVisible();
+  await page.getByTestId('planning-day-4').click();
+  await expect(page.getByTestId('action-add-to-day')).toContainText('May 8');
+
+  await page.goto(
+    `/recipes?addToDay=2&weekOffset=0&referenceWeekStartDate=2026-05-04&open=${MOCK_IDS.RECIPE_LASAGNA}`
+  );
+  const votingBanner = reading.getByTestId('recipe-planning-status-banner');
+  await expect(votingBanner).toHaveAttribute('role', 'status');
+  await expect(votingBanner).toContainText('Your household is still voting on Wed, May 6.');
+  await expect(planningActions.getByRole('status')).toHaveCount(0);
+  await expect(planningActions.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByTestId('action-add-to-day')).toHaveText('Open voting in Planner');
+  await expect(page.getByTestId('action-plan-another-day')).toHaveText('Plan for another day');
+
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-planning-status-banner"]',
+    contrastLevel: 'aa',
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-planning-actions"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-planning-status-banner"]',
+    contrastLevel: 'aaa',
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recipe-planning-actions"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+  });
+
+  await page.getByTestId('action-add-to-day').click();
+  await expect(page).toHaveURL(
+    /\/planner\?dayIndex=2&weekOffset=0&referenceWeekStartDate=2026-05-04/
+  );
+  await expect(page.getByTestId('planner-planning-confirmation')).toHaveCount(0);
+  await expect(page.getByTestId('day-card-2')).toHaveAttribute('data-review-highlight', 'true');
+  await expect(page.getByTestId('day-card-2')).toBeFocused();
 });

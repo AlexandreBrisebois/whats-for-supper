@@ -86,6 +86,10 @@ A recipe already planned for the current calendar week leaves Discovery immediat
 
 Turning **Ask the Family** off keeps a recipe off until you turn it on. Turning it on returns an eligible recipe immediately, but Dreaming may pause it again if recently cooked. Select **Supper** in the recipe's meal types to qualify it for supper voting, including lunch or breakfast recipes your household eats for supper. These controls do not remove recipes from your library.
 
+### Voting on one phone
+
+If kids or other family members vote on your phone, turn on **Pass the phone** in **Settings** (just below **Manage Family**). It only turns on for that device. After you finish your stack on **Discovery**, tap **Pass the phone**, choose who votes next, and confirm the handoff screen before handing over the phone. While it is their turn, bottom navigation tucks away into a quiet turn bar so they stay inside Discovery until you tap **← Back to …** to return to your profile and save their votes.
+
 Discovery saves you from the "I don't know, what do _you_ want?" loop that ends in cereal.
 
 ---

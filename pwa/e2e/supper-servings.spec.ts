@@ -581,20 +581,19 @@ test('saved portions return before refresh, then 600 g and one quiet check-reset
 }) => {
   const { schedule, writes } = await fixture(page);
   await expect(page.getByTestId('grocery-portions-updating')).not.toBeVisible({ timeout: 10000 });
-  await expect(page.getByTestId('grocery-portions-summary')).toHaveText(
-    /Shopping list updated. Items needing more are unchecked./
-  );
-  const notice = page.getByTestId('grocery-portions-summary');
-  await expect(notice).toHaveClass(/bg-sage-50/);
+  const notice = page
+    .getByTestId('toast')
+    .filter({ hasText: /Shopping list updated\. Items needing more are unchecked\./ });
+  await expect(notice).toBeVisible();
   await assertCookbookVisualA11y(page, {
-    rootSelector: '[data-testid="grocery-portions-summary"]',
+    rootSelector: '[data-testid="toast"]',
     contrastLevel: 'aa',
   });
   await page.evaluate(() => {
     document.documentElement.dataset.contrast = 'high';
   });
   await assertCookbookVisualA11y(page, {
-    rootSelector: '[data-testid="grocery-portions-summary"]',
+    rootSelector: '[data-testid="toast"]',
     contrastLevel: 'aaa',
   });
   await page.evaluate(() => {
@@ -1841,7 +1840,9 @@ for (const completeness of ['absent', 'null', 'false'] as const) {
       quantity: scalarQuantity(600),
       quantityComplete: true,
     });
-    await expect(page.getByTestId('grocery-portions-summary')).toHaveCount(0);
+    await expect(
+      page.getByTestId('toast').filter({ hasText: /Shopping list updated/ })
+    ).toHaveCount(0);
     const show = async () => {
       const aisle = page.getByRole('button', { name: /Pantry/ });
       if ((await aisle.getAttribute('aria-expanded')) === 'false') await aisle.click();
@@ -1925,14 +1926,14 @@ test('dismissed grocery notices stay quiet across two absolute weeks and remount
       await route.fulfill({ json: { data: schedule } });
     }
   );
-  const summary = page.getByTestId('grocery-portions-summary');
+  const summary = page.getByTestId('toast').filter({ hasText: /Shopping list updated/ });
   const open = async () => {
     await expect(page.getByTestId('at-the-table-mode')).toBeVisible();
     await page.getByTestId('grocery-tab').click();
   };
   const dismiss = async () => {
     await expect(summary).toBeVisible();
-    await summary.getByRole('button', { name: 'Dismiss' }).click();
+    await summary.getByRole('button', { name: 'Dismiss notification' }).click();
     await expect(summary).toHaveCount(0);
   };
   await page.goto('/planner');
@@ -1966,10 +1967,10 @@ test('actual reset events stay quiet on replay and return after a repeated input
   page,
 }) => {
   const { schedule, control } = await fixture(page);
-  const summary = page.getByTestId('grocery-portions-summary');
+  const summary = page.getByTestId('toast').filter({ hasText: /Shopping list updated/ });
   await expect(summary).toBeVisible();
   const first = schedule.groceryRefresh.resetSummaryVersion;
-  await summary.getByRole('button', { name: 'Dismiss' }).click();
+  await summary.getByRole('button', { name: 'Dismiss notification' }).click();
   await expect(summary).toHaveCount(0);
   const aisle = page.getByRole('button', { name: /Pantry/ });
   if ((await aisle.getAttribute('aria-expanded')) === 'false') await aisle.click();
@@ -2537,6 +2538,11 @@ for (const appLocale of ['en', 'fr'] as const) {
         await expect(page.getByTestId('grocery-portions-updating')).toHaveCount(0, {
           timeout: 10000,
         });
+        await expect(
+          page.getByTestId('toast').filter({
+            hasText: appLocale === 'fr' ? /Liste de courses mise à jour/ : /Shopping list updated/,
+          })
+        ).toHaveCount(1);
         await openPantry();
         await expect(
           page.getByTestId('grocery-item-quantity-hint').filter({ hasText: '600' })
@@ -2544,7 +2550,6 @@ for (const appLocale of ['en', 'fr'] as const) {
         await expect(
           page.getByTestId('grocery-item-quantity-hint').filter({ hasText: '600' })
         ).toBeVisible();
-        await expect(page.getByTestId('grocery-portions-summary')).toHaveCount(1);
         const scaled = await read();
         expect(groceryChecked(scaled)).toBe(false);
         expect(scaled.groceryExtras.find((extra: any) => extra.name === 'unrelated').checked).toBe(
@@ -2553,7 +2558,7 @@ for (const appLocale of ['en', 'fr'] as const) {
         await capture(
           'shopping',
           'grocery-checklist',
-          '[data-testid="grocery-portions-summary"], [data-testid="grocery-item-quantity-hint"]',
+          '[data-testid="grocery-item-quantity-hint"]',
           'grocery-item-quantity-hint'
         );
         await page
@@ -2594,7 +2599,7 @@ for (const appLocale of ['en', 'fr'] as const) {
         await page.goto('/planner');
         await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
         await expect(page.getByTestId('day-card-4')).toContainText(
-          appLocale === 'fr' ? 'Déjà préparé' : 'Already prepared'
+          appLocale === 'fr' ? 'Préparé' : 'Prepared'
         );
         await capture(
           'prepared',

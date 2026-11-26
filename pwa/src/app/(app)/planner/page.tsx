@@ -56,14 +56,22 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { SolarLoader } from '@/components/ui/SolarLoader';
 import { CooksMode } from '@/components/planner/CooksMode';
 import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
+import { PlanningDayChooser } from '@/components/recipes/PlanningDayChooser';
+import { NonCookingReplacementConfirmation } from '@/components/recipes/NonCookingReplacementConfirmation';
 import { getImageUrl } from '@/lib/imageUtils';
 import { GroceryList } from '@/components/planner/GroceryList';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useTodayStore } from '@/store/todayStore';
 import { useUiStore } from '@/store/uiStore';
 import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
-import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
-import { deferToFollowingWeek, type PlannerSlot } from '@/lib/planner/slotAssignment';
+import { formatShortSupperPlanDate, formatSupperPlanDate } from '@/lib/planner/nonCooking';
+import {
+  assignRecipeToEmptySlot,
+  deferToFollowingWeek,
+  type AssignmentRecipe,
+  type PlannerSlot,
+} from '@/lib/planner/slotAssignment';
+import { rememberPlanningResult } from '@/lib/planner/planningResult';
 import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
 import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
 import { usePlannerDrag } from '@/components/planner/usePlannerDrag';
@@ -81,6 +89,7 @@ export default function PlannerPage() {
   const { currentWeekOffset, activeTab, setWeekOffset, setActiveTab, setGroceryState } =
     usePlannerStore();
   const schedule = useWeekStore((s) => s.schedule);
+  const weekCalendarReference = useWeekStore((s) => s.calendar?.referenceWeekStartDate);
   const isLoading = useWeekStore((s) => s.isLoading);
   const status = useWeekStore((s) => s.status);
   const weekStartDate = useWeekStore((s) => s.weekStartDate);
@@ -141,6 +150,8 @@ export default function PlannerPage() {
     openNudge,
     openDetail,
     openReplaceRecovery,
+    openChooseDay,
+    openNonCookingReplacement,
     close: closeOverlay,
     closeIfCurrent,
   } = usePlannerOverlay();
@@ -153,11 +164,15 @@ export default function PlannerPage() {
   const openDetailRecipeId = overlay.kind === 'detail' ? overlay.recipeId : null;
   const detailSource = overlay.kind === 'detail' ? overlay.source : null;
   const pendingRecovery = overlay.kind === 'replaceRecovery' ? overlay : null;
+  const chooseDayTarget = overlay.kind === 'chooseDay' ? overlay : null;
+  const nonCookingReplacement = overlay.kind === 'nonCookingReplacement' ? overlay : null;
   const isDetailOverlay = (current: PlannerOverlay) => current.kind === 'detail';
   const [verifiedDetail, setVerifiedDetail] = useState<string | null>(null);
   const [detailReview, setDetailReview] = useState<{
     identity: string;
-    kind: 'review' | 'retry' | 'completed';
+    kind: 'review' | 'retry' | 'completed' | 'voting';
+    isPast?: boolean;
+    preparedOn?: string;
   } | null>(null);
   const [detailReadAttempt, setDetailReadAttempt] = useState(0);
   const currentDetailDay = detailSource ? schedule[detailSource.dayIndex] : undefined;
@@ -217,8 +232,12 @@ export default function PlannerPage() {
               day.recipe?.id === recipeId &&
               (!source.occurrenceId || day.occurrenceId === source.occurrenceId) &&
               (day.status === 2 || day.status === 4)
-                ? 'completed'
+                ? day.status === 2
+                  ? 'completed'
+                  : 'voting'
                 : 'review',
+            isPast: Boolean(returnedCalendar?.today && source.date < returnedCalendar.today),
+            preparedOn: day?.preparation?.preparedOn?.toString() || undefined,
           });
         }
       })
@@ -252,7 +271,18 @@ export default function PlannerPage() {
         (source.occurrenceId && day.occurrenceId !== source.occurrenceId)
       ) {
         setVerifiedDetail(null);
-        setDetailReview({ identity: identity!, kind: 'review' });
+        setDetailReview({
+          identity: identity!,
+          kind:
+            day?.date === source.date &&
+            day.recipe?.id === recipeId &&
+            (!source.occurrenceId || day.occurrenceId === source.occurrenceId) &&
+            (day.status === 2 || day.status === 4)
+              ? day.status === 2
+                ? 'completed'
+                : 'voting'
+              : 'review',
+        });
         return;
       }
       closeIfCurrent(isDetailOverlay);
@@ -384,6 +414,74 @@ export default function PlannerPage() {
     dismiss: dismissConfirmation,
   } = usePlanningConfirmation({ searchParams, currentWeekOffset, referenceWeekStartDate, router });
 
+  const [reviewDay, setReviewDay] = useState<number | null>(null);
+  const [reviewSeq, setReviewSeq] = useState(0);
+  const [reviewFadedSeq, setReviewFadedSeq] = useState<number | null>(null);
+  const consumedReviewTarget = useRef<string | null>(null);
+  const reviewDayParam = searchParams.get('dayIndex');
+  const reviewSuccessParam = searchParams.get('success');
+  const reviewContext = `${currentWeekOffset}/${referenceWeekStartDate ?? ''}/${reviewDayParam ?? ''}/${reviewSuccessParam ?? ''}`;
+  const [previousReviewContext, setPreviousReviewContext] = useState(reviewContext);
+  if (previousReviewContext !== reviewContext) {
+    setPreviousReviewContext(reviewContext);
+    setReviewDay(null);
+  }
+
+  useEffect(() => {
+    consumedReviewTarget.current = null;
+  }, [reviewContext]);
+
+  useEffect(() => {
+    if (reviewDay === null) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const fade = reduced ? undefined : window.setTimeout(() => setReviewFadedSeq(reviewSeq), 2500);
+    const clear = window.setTimeout(() => setReviewDay(null), 3000);
+    return () => {
+      if (fade !== undefined) window.clearTimeout(fade);
+      window.clearTimeout(clear);
+    };
+  }, [reviewDay, reviewSeq]);
+
+  useEffect(() => {
+    if (reviewSuccessParam || reviewDayParam === null || !/^\d+$/.test(reviewDayParam)) return;
+    const parsedDay = Number.parseInt(reviewDayParam, 10);
+    if (!Number.isInteger(parsedDay) || parsedDay < 0 || parsedDay > 6) return;
+    if (isLoading || schedule.length !== 7) return;
+    const weekOffsetParam = searchParams.get('weekOffset');
+    const requestedOffset = weekOffsetParam === null ? 0 : Number.parseInt(weekOffsetParam, 10);
+    if (Number.isFinite(requestedOffset) && requestedOffset !== currentWeekOffset) return;
+    if (
+      referenceWeekStartDate &&
+      weekCalendarReference &&
+      weekCalendarReference !== referenceWeekStartDate
+    )
+      return;
+    const reviewKey = `${currentWeekOffset}/${referenceWeekStartDate ?? weekCalendarReference ?? ''}/${parsedDay}`;
+    if (consumedReviewTarget.current === reviewKey) return;
+    const card = document.getElementById(`day-card-${parsedDay}`);
+    if (!card) return;
+    consumedReviewTarget.current = reviewKey;
+    // Focus and ring highlight synchronize after the matching week renders.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReviewDay(parsedDay);
+    setReviewSeq((seq) => seq + 1);
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    card.scrollIntoView?.({
+      behavior: reduced ? 'auto' : 'smooth',
+      block: 'center',
+    });
+    card.focus?.();
+  }, [
+    reviewSuccessParam,
+    reviewDayParam,
+    isLoading,
+    schedule.length,
+    searchParams,
+    currentWeekOffset,
+    referenceWeekStartDate,
+    weekCalendarReference,
+  ]);
+
   const navigateToWeekOffset = (nextWeekOffset: number) => {
     const params = new URLSearchParams(searchParams.toString());
     if (nextWeekOffset === 0) {
@@ -471,8 +569,9 @@ export default function PlannerPage() {
   const recovery = useReplacementRecovery({
     slot: pendingRecovery?.slot,
     recipe: pendingRecovery?.recipe,
-    onClosed: (saved) => {
-      if (!saved && pendingRecovery) openDetail(pendingRecovery.recipe.id, null);
+    onClosed: (saved, reason) => {
+      if (!saved && reason === 'dismiss' && pendingRecovery)
+        openDetail(pendingRecovery.recipe.id, null);
       else closeIfCurrent((current) => current.kind === 'replaceRecovery');
     },
     onSaved: async () => {
@@ -486,9 +585,19 @@ export default function PlannerPage() {
     onReview: () => {
       if (!pendingRecovery) return;
       const { slot } = pendingRecovery;
+      consumedReviewTarget.current = null;
       router.push(
         `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
       );
+    },
+    onChooseAnotherDay: () => {
+      if (!pendingRecovery) return;
+      const reference =
+        pendingRecovery.slot.referenceWeekStartDate ??
+        useWeekStore.getState().calendar?.referenceWeekStartDate ??
+        referenceWeekStartDate;
+      if (!reference) return;
+      openChooseDay(pendingRecovery.recipe, reference, pendingRecovery.slot.weekOffset);
     },
     observed: (day) => {
       const slot = pendingRecovery?.slot;
@@ -504,6 +613,121 @@ export default function PlannerPage() {
         useTodayStore.getState().applyServerUpdate(update);
     },
   });
+
+  const detailRecipeForChooser: AssignmentRecipe | null = openDetailRecipeId
+    ? {
+        id: openDetailRecipeId,
+        name:
+          schedule[detailSource?.dayIndex ?? -1]?.recipe?.id === openDetailRecipeId
+            ? (schedule[detailSource!.dayIndex].recipe?.name ?? null)
+            : null,
+        image:
+          schedule[detailSource?.dayIndex ?? -1]?.recipe?.id === openDetailRecipeId
+            ? (schedule[detailSource!.dayIndex].recipe?.image ?? '')
+            : '',
+      }
+    : null;
+
+  const openDetailDayChooser = () => {
+    if (!detailSource || !detailRecipeForChooser) return;
+    const reference =
+      detailSource.reference ||
+      useWeekStore.getState().calendar?.referenceWeekStartDate ||
+      referenceWeekStartDate;
+    if (!reference) return;
+    openChooseDay(detailRecipeForChooser, reference, detailSource.weekOffset);
+  };
+
+  const handleChooseDaySelect = async (slot: PlannerSlot, retainedRecipe: AssignmentRecipe) => {
+    if (slot.status === 2 || slot.status === 4) {
+      useUiStore.getState().addToast({
+        type: 'error',
+        message:
+          slot.status === 2
+            ? slot.preparation?.preparedOn
+              ? tWithVars('recipes.alreadyCookedOn', 'Prepared on {{date}}', {
+                  date: formatShortSupperPlanDate(slot.preparation.preparedOn.toString()),
+                })
+              : tWithVars('recipes.preparedForDate', 'Prepared for {{date}}', {
+                  date: formatShortSupperPlanDate(slot.date),
+                })
+            : tWithVars('recipes.votingOpenOn', 'Your household is still voting on {{date}}.', {
+                date: formatShortSupperPlanDate(slot.date),
+              }),
+      });
+      closeIfCurrent((current) => current.kind === 'chooseDay');
+      return;
+    }
+    if (slot.nonCooking) {
+      openNonCookingReplacement(slot, retainedRecipe);
+      return;
+    }
+    if (slot.recipe?.id === retainedRecipe.id) {
+      closeIfCurrent((current) => current.kind === 'chooseDay');
+      router.push(
+        `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+      );
+      return;
+    }
+    if (slot.recipe) {
+      openReplaceRecovery(
+        {
+          weekOffset: slot.weekOffset,
+          referenceWeekStartDate: slot.referenceWeekStartDate,
+          dayIndex: slot.dayIndex,
+          date: slot.date,
+          recipe: slot.recipe,
+          removalToken: slot.removalToken,
+        },
+        retainedRecipe
+      );
+      return;
+    }
+    if (
+      (slot.status !== 0 && slot.status !== 1 && slot.status !== undefined) ||
+      slot.removalToken
+    ) {
+      useUiStore.getState().addToast({
+        type: 'error',
+        message: t('recipes.planChanged', 'Your plan changed. Review the selected day in Planner.'),
+      });
+      closeIfCurrent((current) => current.kind === 'chooseDay');
+      return;
+    }
+    try {
+      await assignRecipeToEmptySlot(
+        slot.weekOffset,
+        slot.dayIndex,
+        retainedRecipe,
+        slot.referenceWeekStartDate
+      );
+      if (slot.referenceWeekStartDate) {
+        rememberPlanningResult({
+          weekOffset: slot.weekOffset,
+          dayIndex: slot.dayIndex,
+          date: slot.date,
+          referenceWeekStartDate: slot.referenceWeekStartDate,
+          recipeId: retainedRecipe.id,
+          recipeName: retainedRecipe.name ?? '',
+        });
+      }
+      await useWeekStore.getState().init(slot.weekOffset, slot.referenceWeekStartDate);
+      closeIfCurrent((current) => current.kind === 'chooseDay');
+      router.push(
+        `/planner?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+      );
+    } catch {
+      await useWeekStore
+        .getState()
+        .init(slot.weekOffset, slot.referenceWeekStartDate)
+        .catch(() => {});
+      useUiStore.getState().addToast({
+        type: 'error',
+        message: t('recipes.planChanged', 'Your plan changed. Review the selected day in Planner.'),
+      });
+      closeIfCurrent((current) => current.kind === 'chooseDay');
+    }
+  };
 
   const handleSearchPath = () => {
     if (pivot === null) return;
@@ -611,60 +835,6 @@ export default function PlannerPage() {
 
   return (
     <div className="flex flex-col cookbook-bg pb-6">
-      {visibleConfirmation && (
-        <div
-          role={
-            visibleConfirmation.kind === 'replacement'
-              ? 'status'
-              : visibleConfirmation.kind === 'refreshing'
-                ? 'status'
-                : 'alert'
-          }
-          data-testid="planner-planning-confirmation"
-          className={cn(
-            'relative z-10 mx-4 flex flex-wrap items-center gap-3 rounded-2xl border p-4 text-ink-body shadow-sm',
-            visibleConfirmation.kind === 'replacement'
-              ? 'border-garden-line bg-sage-50'
-              : 'border-hearth-line bg-terracotta-50'
-          )}
-        >
-          <p className="min-w-0 flex-1">{visibleConfirmation.message}</p>
-          {visibleConfirmation.kind === 'refresh-failed' ||
-          visibleConfirmation.kind === 'refreshing' ? (
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              data-testid="planner-confirmation-refresh"
-              onFocus={(event) => {
-                if (event.currentTarget.matches(':focus-visible'))
-                  event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
-              }}
-              aria-disabled={visibleConfirmation.kind === 'refreshing'}
-              aria-busy={visibleConfirmation.kind === 'refreshing'}
-              className="min-w-12"
-              onClick={retryConfirmation}
-            >
-              {t('common.refresh', 'Refresh')}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              data-testid="planner-confirmation-dismiss"
-              onFocus={(event) => {
-                if (event.currentTarget.matches(':focus-visible'))
-                  event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
-              }}
-              className="min-w-12"
-              onClick={dismissConfirmation}
-            >
-              {t('common.close', 'Close')}
-            </Button>
-          )}
-        </div>
-      )}
       {/* Animated Blobs */}
       <div className="blob blob-terracotta -top-20 -left-20 animate-[pulse_8s_infinite]" />
       <div className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]" />
@@ -802,6 +972,68 @@ export default function PlannerPage() {
         </div>
       </header>
 
+      {visibleConfirmation && (
+        <div
+          className={cn(
+            'relative z-10 mx-auto mt-3 mb-1 w-full px-4 sm:px-6',
+            isWide ? 'max-w-[1400px]' : 'max-w-[27rem] sm:max-w-sm md:max-w-2xl'
+          )}
+        >
+          <div
+            role={
+              visibleConfirmation.kind === 'replacement'
+                ? 'status'
+                : visibleConfirmation.kind === 'refreshing'
+                  ? 'status'
+                  : 'alert'
+            }
+            data-testid="planner-planning-confirmation"
+            className={cn(
+              'flex flex-wrap items-center gap-3 rounded-2xl border p-4 text-ink-body shadow-sm',
+              visibleConfirmation.kind === 'replacement'
+                ? 'border-garden-line bg-sage-50'
+                : 'border-hearth-line bg-terracotta-50'
+            )}
+          >
+            <p className="min-w-0 flex-1">{visibleConfirmation.message}</p>
+            {visibleConfirmation.kind === 'refresh-failed' ||
+            visibleConfirmation.kind === 'refreshing' ? (
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                data-testid="planner-confirmation-refresh"
+                onFocus={(event) => {
+                  if (event.currentTarget.matches(':focus-visible'))
+                    event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
+                }}
+                aria-disabled={visibleConfirmation.kind === 'refreshing'}
+                aria-busy={visibleConfirmation.kind === 'refreshing'}
+                className="min-w-12"
+                onClick={retryConfirmation}
+              >
+                {t('common.refresh', 'Refresh')}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                data-testid="planner-confirmation-dismiss"
+                onFocus={(event) => {
+                  if (event.currentTarget.matches(':focus-visible'))
+                    event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
+                }}
+                className="min-w-12"
+                onClick={dismissConfirmation}
+              >
+                {t('common.close', 'Close')}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main
         className={cn(
@@ -824,7 +1056,7 @@ export default function PlannerPage() {
             </motion.div>
           ) : activeTab === 'grocery' && !isWide ? (
             <motion.div
-              key="grocery"
+              key={`grocery-${currentWeekOffset}`}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -910,6 +1142,8 @@ export default function PlannerPage() {
                       index={index}
                       successDay={pendingResult ? null : successDay}
                       successFading={successFading}
+                      reviewDay={pendingResult ? null : reviewDay}
+                      reviewFading={reviewDay !== null && reviewFadedSeq === reviewSeq}
                       onPivot={() => openPivot(index)}
                       onViewRecipe={(recipeId) => {
                         const reference = useWeekStore.getState().calendar?.referenceWeekStartDate;
@@ -1158,7 +1392,9 @@ export default function PlannerPage() {
             detailReview?.identity !== detailIdentity
           }
           planningNeedsCheck={
-            detailReview?.identity === detailIdentity && detailReview.kind !== 'completed'
+            detailReview?.identity === detailIdentity &&
+            detailReview.kind !== 'completed' &&
+            detailReview.kind !== 'voting'
           }
           plannedDayLabel={
             verifiedDetail === detailIdentity && detailSource
@@ -1168,50 +1404,141 @@ export default function PlannerPage() {
           onOpenPlannedDay={
             verifiedDetail === detailIdentity ? () => void openPlannedDay() : undefined
           }
+          planningMessageTone={
+            detailReview?.identity === detailIdentity && detailReview.kind === 'completed'
+              ? 'prepared'
+              : detailReview?.identity === detailIdentity && detailReview.kind === 'voting'
+                ? 'status'
+                : 'alert'
+          }
           planningMessage={
-            detailReview?.identity === detailIdentity
+            detailReview?.identity === detailIdentity && detailSource
               ? detailReview.kind === 'completed'
-                ? t(
-                    'recipes.reviewBeforePlanning',
-                    'Review this completed or voting supper in Planner.'
-                  )
-                : detailReview.kind === 'review'
-                  ? t(
-                      'recipes.planChanged',
-                      'Your plan changed. Review the selected day in Planner.'
+                ? detailReview.isPast
+                  ? undefined
+                  : detailReview.preparedOn
+                    ? tWithVars('recipes.alreadyCookedOn', 'Prepared on {{date}}', {
+                        date: formatShortSupperPlanDate(detailReview.preparedOn),
+                      })
+                    : tWithVars('recipes.preparedForDate', 'Prepared for {{date}}', {
+                        date: formatShortSupperPlanDate(detailSource.date),
+                      })
+                : detailReview.kind === 'voting'
+                  ? tWithVars(
+                      'recipes.votingOpenOn',
+                      'Your household is still voting on {{date}}.',
+                      {
+                        date: formatShortSupperPlanDate(detailSource.date),
+                      }
                     )
-                  : t(
-                      'recipes.checkPlanFailed',
-                      'Could not confirm this meal. Retry check before saving.'
-                    )
+                  : detailReview.kind === 'review'
+                    ? t(
+                        'recipes.planChanged',
+                        'Your plan changed. Review the selected day in Planner.'
+                      )
+                    : t(
+                        'recipes.checkPlanFailed',
+                        'Could not confirm this meal. Retry check before saving.'
+                      )
               : undefined
           }
           planningActionLabel={
             detailReview?.identity === detailIdentity
-              ? detailReview.kind !== 'retry'
-                ? t('recipes.reviewPlan', 'Review plan')
-                : t('recipes.retryPlanCheck', 'Retry check')
+              ? detailReview.kind === 'completed'
+                ? t('recipes.planAnotherDay', 'Plan for another day')
+                : detailReview.kind === 'voting'
+                  ? t('recipes.openVotingInPlanner', 'Open voting in Planner')
+                  : detailReview.kind === 'review'
+                    ? t('recipes.reviewPlan', 'Review plan')
+                    : t('recipes.retryPlanCheck', 'Retry check')
               : undefined
           }
           onRetryTarget={
             detailReview?.identity === detailIdentity && detailSource
-              ? detailReview.kind !== 'retry'
+              ? detailReview.kind === 'completed'
+                ? openDetailDayChooser
+                : detailReview.kind === 'voting' || detailReview.kind === 'review'
+                  ? () => {
+                      closeIfCurrent(isDetailOverlay);
+                      router.push(
+                        `/planner?dayIndex=${detailSource.dayIndex}&weekOffset=${detailSource.weekOffset}&referenceWeekStartDate=${detailSource.reference}`
+                      );
+                    }
+                  : () => {
+                      setDetailReview(null);
+                      setDetailReadAttempt((value) => value + 1);
+                    }
+              : undefined
+          }
+          secondaryPlanningActionLabel={
+            detailReview?.identity === detailIdentity && detailSource
+              ? detailReview.kind === 'completed'
+                ? tWithVars('recipes.openDayInPlanner', 'Open {{date}} in Planner', {
+                    date: formatShortSupperPlanDate(detailSource.date),
+                  })
+                : detailReview.kind === 'voting'
+                  ? t('recipes.planAnotherDay', 'Plan for another day')
+                  : undefined
+              : undefined
+          }
+          secondaryPlanningTestId={
+            detailReview?.identity === detailIdentity
+              ? detailReview.kind === 'completed'
+                ? 'action-open-day-in-planner'
+                : detailReview.kind === 'voting'
+                  ? 'action-plan-another-day'
+                  : undefined
+              : undefined
+          }
+          onSecondaryPlanningAction={
+            detailReview?.identity === detailIdentity && detailSource
+              ? detailReview.kind === 'completed'
                 ? () => {
                     closeIfCurrent(isDetailOverlay);
                     router.push(
                       `/planner?dayIndex=${detailSource.dayIndex}&weekOffset=${detailSource.weekOffset}&referenceWeekStartDate=${detailSource.reference}`
                     );
                   }
-                : () => {
-                    setDetailReview(null);
-                    setDetailReadAttempt((value) => value + 1);
-                  }
+                : detailReview.kind === 'voting'
+                  ? openDetailDayChooser
+                  : undefined
               : undefined
           }
           onClose={() => closeIfCurrent(isDetailOverlay)}
           onUseForDay={async () => {}}
           onFindSimilar={(recipeId) => {
             router.push(`/recipes?similarTo=${recipeId}`);
+          }}
+        />
+      )}
+
+      {chooseDayTarget && (
+        <PlanningDayChooser
+          reference={chooseDayTarget.reference}
+          weekOffset={chooseDayTarget.weekOffset}
+          onClose={() => closeIfCurrent((current) => current.kind === 'chooseDay')}
+          onSelect={(slot) => void handleChooseDaySelect(slot, chooseDayTarget.recipe)}
+        />
+      )}
+
+      {nonCookingReplacement && (
+        <NonCookingReplacementConfirmation
+          slot={nonCookingReplacement.slot}
+          recipe={nonCookingReplacement.recipe}
+          onClose={() => closeIfCurrent((current) => current.kind === 'nonCookingReplacement')}
+          onSaved={async () => {
+            const { slot } = nonCookingReplacement;
+            await useWeekStore.getState().init(slot.weekOffset, slot.referenceWeekStartDate);
+            router.push(
+              `/planner?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+            );
+          }}
+          onReview={() => {
+            const { slot } = nonCookingReplacement;
+            closeIfCurrent((current) => current.kind === 'nonCookingReplacement');
+            router.push(
+              `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
+            );
           }}
         />
       )}
@@ -1230,6 +1557,7 @@ export default function PlannerPage() {
             onAbandon={recovery.abandon}
             onRetryReplacement={recovery.retry}
             onReviewPlan={recovery.review}
+            onChooseAnotherDay={recovery.chooseAnotherDay}
             onClose={recovery.close}
             onBack={recovery.close}
             onAction={recovery.act}
@@ -1245,6 +1573,8 @@ const PlannerDayCard = memo(function PlannerDayCard({
   index,
   successDay,
   successFading,
+  reviewDay,
+  reviewFading,
   onPivot,
   onViewRecipe,
   startDrag,
@@ -1258,6 +1588,8 @@ const PlannerDayCard = memo(function PlannerDayCard({
   index: number;
   successDay: number | null;
   successFading: boolean;
+  reviewDay: number | null;
+  reviewFading: boolean;
   onPivot: () => void;
   onViewRecipe: (recipeId: string) => void;
   startDrag: (from: number, event: PointerEvent) => void;
@@ -1316,6 +1648,7 @@ const PlannerDayCard = memo(function PlannerDayCard({
       data-date={day.date}
       data-drag-source={isDragSource}
       data-drop-target={isDropTarget}
+      data-review-highlight={reviewDay === index && successDay !== index ? 'true' : undefined}
       id={`day-card-${index}`}
       tabIndex={-1}
     >
@@ -1396,6 +1729,12 @@ const PlannerDayCard = memo(function PlannerDayCard({
               cn(
                 'ring-4 ring-offset-4 transition-shadow duration-500 motion-reduce:transition-none',
                 successFading ? 'ring-transparent ring-offset-transparent' : 'ring-sage'
+              ),
+            reviewDay === index &&
+              successDay !== index &&
+              cn(
+                'ring-4 ring-offset-4 transition-shadow duration-500 motion-reduce:transition-none',
+                reviewFading ? 'ring-transparent ring-offset-transparent' : 'ring-hearth-line'
               )
           )}
           data-testid="planner-meal"
@@ -1493,33 +1832,38 @@ const PlannerDayCard = memo(function PlannerDayCard({
                       >
                         {day.recipe.name}
                       </h4>
-                      {day.preparation && <PreparationStatus preparation={day.preparation} />}
-                      {(() => {
-                        const count = day._voteCount ?? day.recipe?.voteCount ?? null;
-                        const isUnanimous = day._unanimousVote;
-                        const hasVotes = count != null && count > 0;
-                        return (
-                          <span
-                            data-testid="vote-count"
-                            className={cn(
-                              'text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
-                              hasVotes
-                                ? isUnanimous
-                                  ? 'bg-sage-50 text-garden-ink'
-                                  : 'bg-ochre-50 text-sunlight-ink'
-                                : 'bg-charcoal-100 text-ink-muted'
-                            )}
-                          >
-                            {hasVotes
-                              ? tWithVars(
-                                  count === 1 ? 'planner.votedOne' : 'planner.votedOther',
-                                  '{{count}} voted',
-                                  { count }
-                                )
-                              : t('planner.chosen', 'Chosen')}
-                          </span>
-                        );
-                      })()}
+                      {day.preparation && !isPast ? (
+                        <div className="mt-0.5">
+                          <PreparationStatus preparation={day.preparation} variant="compact" />
+                        </div>
+                      ) : (
+                        (() => {
+                          const count = day._voteCount ?? day.recipe?.voteCount ?? null;
+                          const isUnanimous = day._unanimousVote;
+                          const hasVotes = count != null && count > 0;
+                          return (
+                            <span
+                              data-testid="vote-count"
+                              className={cn(
+                                'text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
+                                hasVotes
+                                  ? isUnanimous
+                                    ? 'bg-sage-50 text-garden-ink'
+                                    : 'bg-ochre-50 text-sunlight-ink'
+                                  : 'bg-charcoal-100 text-ink-muted'
+                              )}
+                            >
+                              {hasVotes
+                                ? tWithVars(
+                                    count === 1 ? 'planner.votedOne' : 'planner.votedOther',
+                                    '{{count}} voted',
+                                    { count }
+                                  )
+                                : t('planner.chosen', 'Chosen')}
+                            </span>
+                          );
+                        })()
+                      )}
                     </div>
                   </button>
                 </div>

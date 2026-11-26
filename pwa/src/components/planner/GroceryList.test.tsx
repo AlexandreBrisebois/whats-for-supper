@@ -26,6 +26,7 @@ const {
   mockUpdateExtra,
   mockDeleteExtra,
   mockAddToast,
+  mockRemoveToast,
 } = vi.hoisted(() => ({
   mockLocale: { value: 'en' as 'en' | 'fr' },
   mockReadSchedule: vi.fn(),
@@ -37,6 +38,7 @@ const {
   mockUpdateExtra: vi.fn(),
   mockDeleteExtra: vi.fn(),
   mockAddToast: vi.fn(),
+  mockRemoveToast: vi.fn(),
 }));
 
 vi.mock('@/lib/api/planner', () => ({ getSchedule: mockReadSchedule }));
@@ -91,8 +93,17 @@ vi.mock('@/lib/api/grocery-extras', () => ({
 }));
 
 vi.mock('@/store/uiStore', () => ({
-  useUiStore: (selector: (state: { addToast: typeof mockAddToast }) => unknown) =>
-    selector({ addToast: mockAddToast }),
+  useUiStore: Object.assign(
+    (
+      selector: (state: {
+        addToast: typeof mockAddToast;
+        removeToast: typeof mockRemoveToast;
+      }) => unknown
+    ) => selector({ addToast: mockAddToast, removeToast: mockRemoveToast }),
+    {
+      getState: () => ({ addToast: mockAddToast, removeToast: mockRemoveToast }),
+    }
+  ),
 }));
 
 // ── aisleOrder mock — pin to a single section so tests are deterministic ──────
@@ -309,6 +320,9 @@ beforeEach(() => {
   mockUpdateExtra.mockReset();
   mockDeleteExtra.mockReset();
   mockAddToast.mockReset();
+  let toastSeq = 0;
+  mockAddToast.mockImplementation(() => `toast-${++toastSeq}`);
+  mockRemoveToast.mockReset();
   mockLocale.value = 'en';
 });
 
@@ -324,81 +338,61 @@ describe('quiet reset notices across absolute weeks', () => {
       },
     });
 
-  it('remembers each week after A dismiss, B dismiss and reopening A, but shows a new A reset', () => {
+  it('announces each week reset once as a toast after A, B and reopening A, but fires a new A reset', () => {
     sessionStorage.clear();
     showWeek('2025-01-06', 'reset-A');
     let view = renderList();
-    fireEvent.click(
-      within(screen.getByTestId('grocery-portions-summary')).getByRole('button', {
-        name: 'Dismiss',
-      })
-    );
     expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+    expect(mockAddToast).toHaveBeenCalledTimes(1);
+    expect(mockAddToast).toHaveBeenLastCalledWith({
+      type: 'success',
+      message: 'Shopping list updated. Items needing more are unchecked.',
+    });
+    expect(sessionStorage.getItem('serving-grocery-summary:2025-01-06')).toBe('reset-A');
     view.unmount();
     showWeek('2025-01-13', 'reset-B');
     view = renderList();
-    fireEvent.click(
-      within(screen.getByTestId('grocery-portions-summary')).getByRole('button', {
-        name: 'Dismiss',
-      })
-    );
+    expect(mockAddToast).toHaveBeenCalledTimes(2);
     view.unmount();
     showWeek('2025-01-06', 'reset-A');
     view = renderList();
-    expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+    expect(mockAddToast).toHaveBeenCalledTimes(2);
     act(() => showWeek('2025-01-06', 'reset-A-new'));
-    expect(screen.getByTestId('grocery-portions-summary')).toBeVisible();
-    fireEvent.click(
-      within(screen.getByTestId('grocery-portions-summary')).getByRole('button', {
-        name: 'Dismiss',
-      })
-    );
+    expect(mockAddToast).toHaveBeenCalledTimes(3);
     view.unmount();
     showWeek('2025-01-06', 'reset-A-new');
     renderList();
-    expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+    expect(mockAddToast).toHaveBeenCalledTimes(3);
   });
 
-  it('renders the updated notice as a calm Garden status with a 48px explicit Dismiss', () => {
-    sessionStorage.clear();
-    showWeek('2025-01-06', 'garden-style');
-    renderList();
-    const notice = screen.getByTestId('grocery-portions-summary');
-    expect(notice).toHaveClass('bg-sage-50', 'border-garden-line');
-    expect(within(notice).getByRole('button', { name: 'Dismiss' })).toHaveClass(
-      'h-12',
-      'w-12',
-      'min-h-12',
-      'min-w-12'
-    );
-  });
-
-  it('clears the updated notice automatically when a grocery row is checked', () => {
+  it('clears the active reset toast automatically when a grocery row is checked', () => {
     sessionStorage.clear();
     showWeek('2025-01-06', 'auto-clear-row');
     renderList();
-    expect(screen.getByTestId('grocery-portions-summary')).toBeVisible();
-    fireEvent.click(screen.getByRole('checkbox', { name: /tomato/i }));
+    expect(mockAddToast).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: /tomato/i }));
+    expect(mockRemoveToast).toHaveBeenCalledWith('toast-1');
     expect(sessionStorage.getItem('serving-grocery-summary:2025-01-06')).toBe('auto-clear-row');
   });
 
-  it('clears the updated notice automatically when an aisle is toggled', () => {
+  it('clears the active reset toast automatically when an aisle is toggled', () => {
     sessionStorage.clear();
     showWeek('2025-01-06', 'auto-clear-aisle');
     renderList();
-    expect(screen.getByTestId('grocery-portions-summary')).toBeVisible();
+    expect(mockAddToast).toHaveBeenCalledTimes(1);
     fireEvent.click(document.querySelector('button[aria-controls^="aisle-items"]')!);
-    expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+    expect(mockRemoveToast).toHaveBeenCalledWith('toast-1');
   });
 
-  it('shows updating as Garden status and a failed refresh as a Hearth alert with a primary Retry', () => {
+  it('shows updating as Garden status and a failed refresh as a Hearth alert with a primary Retry and top spacing', () => {
     useWeekStore.setState({
       weekStartDate: '2025-01-06',
       groceryRefresh: { status: 'updating', version: 'u1' },
     });
     const view = renderList();
     expect(screen.getByTestId('grocery-portions-updating')).toHaveClass(
+      'mt-3',
       'bg-sage-50',
       'border-garden-line'
     );
@@ -410,7 +404,7 @@ describe('quiet reset notices across absolute weeks', () => {
     renderList();
     const alert = screen.getByTestId('grocery-portions-failed');
     expect(alert).toHaveAttribute('role', 'alert');
-    expect(alert).toHaveClass('bg-terracotta-50', 'border-hearth-line');
+    expect(alert).toHaveClass('mt-3', 'bg-terracotta-50', 'border-hearth-line');
     expect(within(alert).getByRole('button', { name: 'Retry' })).toHaveClass('min-h-12');
   });
 
@@ -421,29 +415,46 @@ describe('quiet reset notices across absolute weeks', () => {
     try {
       showWeek('2025-01-06', 'denied-read');
       expect(() => renderList()).not.toThrow();
-      expect(screen.getByTestId('grocery-portions-summary')).toBeVisible();
+      expect(mockAddToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Shopping list updated. Items needing more are unchecked.',
+      });
     } finally {
       storage.mockRestore();
     }
   });
 
-  it('dismisses locally when writing notice acknowledgements is denied', () => {
-    showWeek('2025-01-06', 'denied-write');
-    renderList();
+  it('acknowledges locally and clears the toast when writing notice acknowledgements is denied', () => {
     const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('storage denied');
     });
     try {
-      fireEvent.click(
-        within(screen.getByTestId('grocery-portions-summary')).getByRole('button', {
-          name: 'Dismiss',
-        })
-      );
-      expect(screen.queryByTestId('grocery-portions-summary')).not.toBeInTheDocument();
+      showWeek('2025-01-06', 'denied-write');
+      renderList();
+      expect(mockAddToast).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole('checkbox', { name: /tomato/i }));
+      expect(mockRemoveToast).toHaveBeenCalledWith('toast-1');
       expect(screen.getByRole('checkbox', { name: /tomato/i })).toBeVisible();
     } finally {
       storage.mockRestore();
     }
+  });
+
+  it('does not fire a toast or mark a newer week acknowledged when the store weekOffset mismatches the prop', () => {
+    sessionStorage.clear();
+    useWeekStore.setState({
+      weekOffset: 1,
+      weekStartDate: '2025-01-13',
+      groceryRefresh: {
+        status: 'current',
+        version: 'week-1',
+        appliedVersion: 'week-1',
+        resetSummaryVersion: 'reset-1',
+      },
+    });
+    renderList();
+    expect(mockAddToast).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('serving-grocery-summary:2025-01-13')).toBeNull();
   });
 });
 

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect, useId } from 'react';
-import { ChevronDown, Check, UserCircle } from 'lucide-react';
+import { useState, useRef, useId } from 'react';
+import { ChevronDown, UserCircle } from 'lucide-react';
 import { useFamily } from '@/hooks/useFamily';
+import { MemberPickerList } from '@/components/identity/MemberPickerList';
 import { t } from '@/locales';
 
 interface ProfileDropdownProps {
@@ -13,21 +14,8 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
   const { familyMembers, selectedMember, isLoading } = useFamily();
   const [isOpen, setIsOpen] = useState(false);
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
   const triggerRef = useRef<HTMLButtonElement>(null);
   const choicesId = useId();
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   if (isLoading) {
     return (
@@ -42,15 +30,9 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
     );
   }
 
-  const handleSelect = (id: string) => {
-    onSelect(id);
-    setIsOpen(false);
-  };
-
   return (
     <div
       className="relative w-full"
-      ref={dropdownRef}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && isOpen) {
           event.preventDefault();
@@ -97,44 +79,21 @@ export function ProfileDropdown({ onSelect }: ProfileDropdownProps) {
 
       {isOpen && (
         <div className="relative z-10 mt-3 w-full">
-          <ul
+          <MemberPickerList
             id={choicesId}
-            aria-label={t('profile.activeMember', 'Active member')}
-            data-testid="profile-dropdown-menu"
-            className="max-h-[min(60dvh,24rem)] overflow-y-auto overscroll-contain scroll-py-2 rounded-3xl bg-white/90 backdrop-blur-2xl border border-chrome-line shadow-2xl p-[8px] flex flex-col gap-1"
-          >
-            {familyMembers?.map((member) => (
-              <li key={member.id}>
-                <button
-                  aria-current={
-                    String(member.id).toLowerCase() === String(selectedMember?.id).toLowerCase()
-                      ? 'true'
-                      : undefined
-                  }
-                  type="button"
-                  onClick={() => handleSelect(member.id)}
-                  data-testid={`profile-dropdown-option-${member.id}`}
-                  className={`flex min-h-12 w-full items-center justify-between gap-[12px] px-[12px] py-[16px] rounded-2xl text-left scroll-mb-[calc(8rem+env(safe-area-inset-bottom))] focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-hearth-ink ${
-                    String(member.id).toLowerCase() === String(selectedMember?.id).toLowerCase()
-                      ? 'bg-terracotta-50 text-hearth-ink'
-                      : 'text-ink-body hover:bg-cream'
-                  }`}
-                >
-                  <span className="min-w-0 break-words font-inter font-semibold">
-                    {member.name}
-                  </span>
-                  {String(member.id).toLowerCase() === String(selectedMember?.id).toLowerCase() && (
-                    <>
-                      <span className="sr-only">
-                        {t('profile.currentMember', 'Current family member')}
-                      </span>
-                      <Check aria-hidden="true" className="h-5 w-5 shrink-0 text-hearth-ink" />
-                    </>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
+            ariaLabel={t('profile.activeMember', 'Active member')}
+            members={familyMembers ?? []}
+            selectedMemberId={selectedMember?.id}
+            onSelect={(member) => {
+              onSelect(member.id);
+              setIsOpen(false);
+            }}
+            onDismiss={() => setIsOpen(false)}
+            outsideClickIgnoreRef={triggerRef}
+            returnFocusRef={triggerRef}
+            listTestId="profile-dropdown-menu"
+            getOptionTestId={(member) => `profile-dropdown-option-${member.id}`}
+          />
         </div>
       )}
     </div>

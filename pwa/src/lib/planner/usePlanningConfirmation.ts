@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { ReadonlyURLSearchParams, useRouter } from 'next/navigation';
 import { getSchedule } from '@/lib/api/planner';
 import { t, tWithVars } from '@/locales';
+import { useUiStore } from '@/store/uiStore';
 import { useWeekStore } from '@/store/weekStore';
 import { formatSupperPlanDate } from './nonCooking';
 import { readPlanningResult, retirePlanningResult } from './planningResult';
@@ -74,24 +75,6 @@ export function usePlanningConfirmation({
     params.delete('success');
     router.replace(`/planner${params.size ? `?${params}` : ''}`, { scroll: false });
   };
-  // Routine replacement receipts are calm and clear themselves; spillover and
-  // failure/changed states stay until a person acts.
-  const routineConfirmationIdentity =
-    planningConfirmation?.kind === 'replacement' && !planningConfirmation.persistent
-      ? planningConfirmation.identity
-      : null;
-  useEffect(() => {
-    if (!routineConfirmationIdentity) return;
-    const timer = window.setTimeout(() => {
-      setPlanningConfirmation((current) =>
-        current?.identity === routineConfirmationIdentity ? null : current
-      );
-      clearSuccessUrl();
-    }, 5000);
-    return () => window.clearTimeout(timer);
-    // clearSuccessUrl reads the latest search params when the timer fires.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routineConfirmationIdentity, confirmationContext]);
 
   useEffect(() => {
     const result = readPlanningResult();
@@ -144,11 +127,27 @@ export function usePlanningConfirmation({
         // Delivery consumes this receipt. Renders, reloads and old URLs cannot replay it.
         retirePlanningResult(result);
         if (result.original) {
-          confirm(
-            'replacement',
-            [message, describeOriginalDisposition(result.original)].filter(Boolean).join(' '),
-            result.original.spillover === true
+          const weekDates = new Set((fresh.days ?? []).map((d) => d.date).filter(Boolean));
+          const isOffScreenMove = Boolean(
+            result.original.spillover ||
+            (result.original.destinationDate && !weekDates.has(result.original.destinationDate))
           );
+          if (isOffScreenMove) {
+            confirm(
+              'replacement',
+              [message, describeOriginalDisposition(result.original)].filter(Boolean).join(' '),
+              true
+            );
+          } else {
+            useUiStore.getState().addToast({
+              type: 'success',
+              message: describeOriginalDisposition(result.original) || message,
+            });
+            setPlanningConfirmation(null);
+            const params = new URLSearchParams(confirmationQuery);
+            params.delete('success');
+            router.replace(`/planner${params.size ? `?${params}` : ''}`, { scroll: false });
+          }
         } else {
           setPlanningConfirmation(null);
           const params = new URLSearchParams(confirmationQuery);

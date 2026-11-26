@@ -1,7 +1,7 @@
 'use client';
 
 import { Layout } from '@/components/common/Layout';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ROUTES } from '@/lib/constants/routes';
 import { t } from '@/locales';
 import { useLocale } from '@/components/common/LocaleProvider';
@@ -16,14 +16,39 @@ import { LanguageSwitchProposal } from '@/components/common/LanguageSwitchPropos
 import { FeatureFlagProvider } from '@/components/featureFlags/FeatureFlagProvider';
 import { DemoResetBoundary } from '@/components/demo/DemoResetBoundary';
 import { DemoModeProvider } from '@/components/demo/DemoModeProvider';
+import { useFamily } from '@/hooks/useFamily';
+import { clearHandoffLock, useHandoffLock } from '@/lib/discovery/passThePhone';
 
 export default function AppRouteLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { locale } = useLocale();
   const visualViewportOffset = useVisualViewportOffset();
+  const handoffLock = useHandoffLock();
+  const { familyMembers, hasLoaded } = useFamily();
 
   // Mount SSE stream once at layout level — survives page navigation within the app shell
   useScheduleStream();
+
+  // Enforce locked Pass the phone Discovery navigation & self-heal missing origin
+  useEffect(() => {
+    if (!handoffLock) return;
+    if (hasLoaded) {
+      const originExists = familyMembers.some(
+        (m) => m.id.toLowerCase() === handoffLock.originMemberId.toLowerCase()
+      );
+      if (!originExists) {
+        clearHandoffLock();
+        if (pathname !== ROUTES.PROFILE) {
+          router.replace(ROUTES.PROFILE);
+        }
+        return;
+      }
+    }
+    if (pathname !== ROUTES.DISCOVERY) {
+      router.replace(ROUTES.DISCOVERY);
+    }
+  }, [handoffLock, hasLoaded, familyMembers, pathname, router]);
 
   // Expose stores on window for E2E test access (Playwright page.evaluate).
   useEffect(() => {

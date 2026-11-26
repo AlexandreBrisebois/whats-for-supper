@@ -361,3 +361,89 @@ it('retains recovery pending, step and feedback behavior until dismissal', async
     view.unmount();
   }
 });
+
+it('shows dated unsaved pre-commit conflict details, Not saved yet label, and meal-preserving actions', () => {
+  const onChooseAnotherDay = vi.fn();
+  const onReviewPlan = vi.fn();
+
+  render(
+    <SkipRecoveryDialog
+      isOpen
+      step={2}
+      source={{
+        weekOffset: 0,
+        dayIndex: 3,
+        date: '2026-11-26',
+        referenceWeekStartDate: '2026-11-23',
+        recipe: { id: 'orig', name: 'Tacos', image: '' },
+      }}
+      replacement={{
+        phase: 'conflict',
+        message: 'Your plan changed. Review it before replacing this meal.',
+        recipeName: 'Pasta',
+      }}
+      onChooseAnotherDay={onChooseAnotherDay}
+      onReviewPlan={onReviewPlan}
+      onClose={vi.fn()}
+      onBack={vi.fn()}
+      onAction={vi.fn()}
+    />
+  );
+
+  expect(screen.getByTestId('replacement-feedback')).toHaveTextContent(
+    'Your plan on Thu, Nov 26 changed before anything was saved.'
+  );
+  expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+  expect(screen.queryByText('Your new meal')).not.toBeInTheDocument();
+  expect(screen.getByText('Pasta')).toBeInTheDocument();
+
+  const chooseBtn = screen.getByTestId('recovery-choose-another-day');
+  const reviewBtn = screen.getByTestId('recovery-review-plan');
+  expect(chooseBtn).toHaveTextContent('Choose a day for this meal');
+  expect(reviewBtn).toHaveTextContent('Open Thu, Nov 26 in Planner');
+
+  fireEvent.click(chooseBtn);
+  fireEvent.click(reviewBtn);
+  expect(onChooseAnotherDay).toHaveBeenCalledOnce();
+  expect(onReviewPlan).toHaveBeenCalledOnce();
+});
+
+it('keeps original disposition details and hides Choose a day for post-disposition conflicts', () => {
+  render(
+    <SkipRecoveryDialog
+      isOpen
+      step={2}
+      source={{
+        weekOffset: 0,
+        dayIndex: 3,
+        date: '2026-11-26',
+        referenceWeekStartDate: '2026-11-23',
+        recipe: { id: 'orig', name: 'Tacos', image: '' },
+      }}
+      replacement={{
+        phase: 'conflict',
+        message: 'Your plan changed. Review it before replacing this meal.',
+        recipeName: 'Pasta',
+        original: {
+          action: 'drop',
+          recipeName: 'Tacos',
+          sourceDate: '2026-11-26',
+        },
+      }}
+      onChooseAnotherDay={vi.fn()}
+      onReviewPlan={vi.fn()}
+      onClose={vi.fn()}
+      onBack={vi.fn()}
+      onAction={vi.fn()}
+    />
+  );
+
+  expect(screen.getByTestId('replacement-feedback')).toHaveTextContent(
+    'Your plan changed. Review it before replacing this meal.'
+  );
+  expect(screen.getByText(/Tacos was removed from Thursday, November 26/i)).toBeInTheDocument();
+  expect(screen.queryByTestId('recovery-choose-another-day')).not.toBeInTheDocument();
+  expect(screen.getByTestId('recovery-review-plan')).toHaveTextContent(
+    'Open Thu, Nov 26 in Planner'
+  );
+});

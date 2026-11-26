@@ -86,12 +86,17 @@ Browser acceptance tooling SHALL expose a reusable Playwright verification helpe
 
 ### Requirement: Style inline decision, recovery, and status surfaces with Family Cookbook tokens
 
-Inline decision panels, conflict recovery cards, and status or error banners SHALL use opaque Family Cookbook surfaces (`bg-white` with `border-chrome-line` or Hearth blush/border), shared `Button` variants, sentence-case `font-heading` headings, `>= 48 CSS px` interactive targets, and visible `ink-body` focus outlines.
+Inline decision, recovery, and status banners SHALL use opaque Family Cookbook surfaces, shared `Button` variants, sentence-case `font-heading` headings, `>= 48 CSS px` targets, and `ink-body` focus outlines. Transient confirmations SHALL use non-shifting `ToastContainer` toasts; persistent/actionable inline banners SHALL sit below sticky headers with `mt-3 mb-1` clearance.
 
 #### Scenario: Neutral, hearth, and garden surface roles distinguish outcome states
 
 - **WHEN** a Tier 1 inline decision, conflict recovery, or status surface renders for confirmation, pending progress, or failure recovery
 - **THEN** neutral decision containers use opaque `bg-white` with `border-chrome-line`, quiet status notices use tonal Garden styling, and alert or conflict recovery cards use Hearth tint and border tokens with shared `Button` actions
+
+#### Scenario: Transient confirmations use ToastContainer and inline banners clear headers vertically
+
+- **WHEN** a transient confirmation fires or a persistent/actionable inline banner renders in Planner, Grocery Checklist, or Recipes (`planning-mode-banner`)
+- **THEN** transient confirmations appear in the non-shifting `ToastContainer` with a `>= 48 × 48 CSS px` dismiss control passing `'aa'` and `'aaa'` contrast, and inline banners render below sticky headers with `mt-3 mb-1` vertical clearance rather than touching header borders or top bars
 
 #### Scenario: Interactive targets and focus outlines satisfy Standard AA and High Contrast AAA
 

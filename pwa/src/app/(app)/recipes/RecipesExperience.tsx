@@ -10,7 +10,7 @@ import { useReplacementRecovery } from '@/lib/planner/useReplacementRecovery';
 import { useUiStore } from '@/store/uiStore';
 
 import { rememberPlanningResult } from '@/lib/planner/planningResult';
-import { formatSupperPlanDate } from '@/lib/planner/nonCooking';
+import { formatShortSupperPlanDate, formatSupperPlanDate } from '@/lib/planner/nonCooking';
 import { subscribeIngredientProjectionInvalidation } from '@/lib/ingredient-projection-invalidation';
 import {
   absoluteMonday,
@@ -674,6 +674,11 @@ function RecipesContent() {
     slot: PlannerSlot;
     recipe: AssignmentRecipe;
   } | null>(null);
+  const [recoveryDayChooser, setRecoveryDayChooser] = useState<{
+    recipe: AssignmentRecipe;
+    reference: string;
+    weekOffset: number;
+  } | null>(null);
 
   // Ref to track whether a prefetch is already in flight (avoid duplicate requests)
   const prefetchInFlightRef = useRef(false);
@@ -1200,8 +1205,9 @@ function RecipesContent() {
   const planningDayLabel = visibleTarget
     ? formatSupperPlanDate(visibleTarget.date)
     : urlPlanningDayLabel;
-  const targetReview =
-    !targetChecking && (visibleTarget?.status === 2 || visibleTarget?.status === 4);
+  const targetCompleted = !targetChecking && visibleTarget?.status === 2;
+  const targetVoting = !targetChecking && visibleTarget?.status === 4;
+  const targetReview = targetCompleted || targetVoting;
   const identicalTarget = !!visibleTarget?.recipe?.id && visibleTarget.recipe.id === detailRecipeId;
   const confirmedPlannedTarget =
     identicalTarget &&
@@ -1522,8 +1528,9 @@ function RecipesContent() {
   const recovery = useReplacementRecovery({
     slot: pendingRecovery?.slot,
     recipe: pendingRecovery?.recipe,
-    onClosed: (saved) => {
-      if (!saved && pendingRecovery) setDetailRecipeId(pendingRecovery.recipe.id);
+    onClosed: (saved, reason) => {
+      if (!saved && reason === 'dismiss' && pendingRecovery)
+        setDetailRecipeId(pendingRecovery.recipe.id);
       setPendingRecovery(null);
     },
     onSaved: async () => {
@@ -1539,6 +1546,16 @@ function RecipesContent() {
       router.push(
         `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
       );
+    },
+    onChooseAnotherDay: () => {
+      if (!pendingRecovery) return;
+      const reference = pendingRecovery.slot.referenceWeekStartDate ?? targetReferenceForChooser;
+      if (!reference) return;
+      setRecoveryDayChooser({
+        recipe: pendingRecovery.recipe,
+        reference,
+        weekOffset: pendingRecovery.slot.weekOffset,
+      });
     },
   });
 
@@ -1664,7 +1681,7 @@ function RecipesContent() {
       {addToDay !== null && weekOffset !== null && (
         <div
           data-testid="planning-mode-banner"
-          className="relative z-10 mx-4 sm:mx-6 flex min-h-12 flex-wrap items-center gap-2 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-0 text-ink-body shadow-sm"
+          className="relative z-10 mx-4 sm:mx-6 mt-3 mb-1 flex min-h-12 flex-wrap items-center gap-2 rounded-2xl border border-hearth-line bg-terracotta-50 px-4 py-0 text-ink-body shadow-sm"
         >
           <p className="min-w-0 flex-1 py-1 font-heading text-sm font-bold text-hearth-ink">
             {urlPlanningDayLabel
@@ -2351,6 +2368,22 @@ function RecipesContent() {
           )}
       </div>
 
+      {recoveryDayChooser && (
+        <PlanningDayChooser
+          reference={recoveryDayChooser.reference}
+          weekOffset={recoveryDayChooser.weekOffset}
+          onClose={() => {
+            const recipeId = recoveryDayChooser.recipe.id;
+            setRecoveryDayChooser(null);
+            setDetailRecipeId(recipeId);
+          }}
+          onSelect={(slot) => {
+            setChosenDetailTarget({ entry: entryContextKey, slot });
+            setDetailRecipeId(recoveryDayChooser.recipe.id);
+            setRecoveryDayChooser(null);
+          }}
+        />
+      )}
       {showDayChooser === detailTargetKey && targetReferenceForChooser && (
         <PlanningDayChooser
           reference={targetReferenceForChooser}
@@ -2449,31 +2482,57 @@ function RecipesContent() {
           planningLoading={
             !originalSourceReview && (targetChecking || (!visibleTarget && !targetReadError))
           }
+          planningMessageTone={
+            !originalSourceReview && !targetReadError && targetCompleted
+              ? 'prepared'
+              : !originalSourceReview && !targetReadError && targetVoting
+                ? 'status'
+                : 'alert'
+          }
           planningMessage={
             originalSourceReview
               ? undefined
               : (targetReadError ??
-                (targetReview
-                  ? t(
-                      'recipes.reviewBeforePlanning',
-                      'Review this completed or voting supper in Planner.'
-                    )
-                  : undefined))
+                (targetCompleted && visibleTarget
+                  ? visibleTarget.isPast
+                    ? undefined
+                    : visibleTarget.preparation?.preparedOn
+                      ? tWithVars('recipes.alreadyCookedOn', 'Prepared on {{date}}', {
+                          date: formatShortSupperPlanDate(
+                            visibleTarget.preparation.preparedOn.toString()
+                          ),
+                        })
+                      : tWithVars('recipes.preparedForDate', 'Prepared for {{date}}', {
+                          date: formatShortSupperPlanDate(visibleTarget.date),
+                        })
+                  : targetVoting && visibleTarget
+                    ? tWithVars(
+                        'recipes.votingOpenOn',
+                        'Your household is still voting on {{date}}.',
+                        {
+                          date: formatShortSupperPlanDate(visibleTarget.date),
+                        }
+                      )
+                    : undefined))
           }
           planningActionLabel={
             originalSourceReview
               ? undefined
               : targetReadError
                 ? t('recipes.retryPlanCheck', 'Retry check')
-                : targetReview
-                  ? t('recipes.reviewPlan', 'Review plan')
-                  : undefined
+                : targetCompleted
+                  ? t('recipes.planAnotherDay', 'Plan for another day')
+                  : targetVoting
+                    ? t('recipes.openVotingInPlanner', 'Open voting in Planner')
+                    : undefined
           }
           changeDayDisabled={targetChecking}
           onChangeDay={
             originalSourceReview ||
             assignmentNeedsCheck ||
             identicalTarget ||
+            targetCompleted ||
+            targetVoting ||
             !targetReferenceForChooser
               ? undefined
               : () => setShowDayChooser(detailTargetKey)
@@ -2488,6 +2547,41 @@ function RecipesContent() {
                   );
                   setTargetReadAttempt((value) => value + 1);
                 }
+              : !originalSourceReview && targetCompleted && visibleTarget
+                ? targetReferenceForChooser
+                  ? () => setShowDayChooser(detailTargetKey)
+                  : undefined
+                : !originalSourceReview && targetVoting && visibleTarget
+                  ? () => reviewDetailTarget(visibleTarget)
+                  : undefined
+          }
+          secondaryPlanningActionLabel={
+            !originalSourceReview && !targetReadError && visibleTarget
+              ? targetCompleted
+                ? tWithVars('recipes.openDayInPlanner', 'Open {{date}} in Planner', {
+                    date: formatShortSupperPlanDate(visibleTarget.date),
+                  })
+                : targetVoting
+                  ? t('recipes.planAnotherDay', 'Plan for another day')
+                  : undefined
+              : undefined
+          }
+          secondaryPlanningTestId={
+            !originalSourceReview && !targetReadError && visibleTarget
+              ? targetCompleted
+                ? 'action-open-day-in-planner'
+                : targetVoting
+                  ? 'action-plan-another-day'
+                  : undefined
+              : undefined
+          }
+          onSecondaryPlanningAction={
+            !originalSourceReview && !targetReadError && visibleTarget
+              ? targetCompleted
+                ? () => reviewDetailTarget(visibleTarget)
+                : targetVoting && targetReferenceForChooser
+                  ? () => setShowDayChooser(detailTargetKey)
+                  : undefined
               : undefined
           }
           onBeginPlanning={
@@ -2541,6 +2635,7 @@ function RecipesContent() {
           onAbandon={recovery.abandon}
           onRetryReplacement={recovery.retry}
           onReviewPlan={recovery.review}
+          onChooseAnotherDay={recovery.chooseAnotherDay}
           onClose={recovery.close}
           onBack={recovery.close}
           onAction={recovery.act}

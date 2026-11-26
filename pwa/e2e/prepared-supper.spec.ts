@@ -130,7 +130,7 @@ test('prepares only captured Friday with six portions and Tuesday actual date; p
   await page.getByTestId('action-close-sheet').click();
   await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
   await page.reload();
-  await expect(page.getByTestId('day-card-4')).toContainText('Already prepared');
+  await expect(page.getByTestId('day-card-4')).toContainText('Prepared');
   await page.getByTestId('day-card-4').getByTestId('edit-recipe-button').click();
   await expect(page.getByTestId('recipe-detail-sheet')).toContainText('Prepared');
   await page.getByTestId('action-cooks-mode').click();
@@ -166,7 +166,7 @@ for (const fault of ['lost reply', 'publication failure'] as const) {
     expect(posts).toBe(1);
     const day = (await read(page)).days[4];
     expect(day.preparation).toMatchObject({ preparedOn: '2026-05-05', servings: 6 });
-    await expect(page.getByTestId('day-card-4')).toContainText('Already prepared');
+    await expect(page.getByTestId('day-card-4')).toContainText('Prepared');
   });
 }
 
@@ -337,7 +337,7 @@ test('planned-day Home, Planner, detail and table retain frozen prepared context
   await expect(page.getByRole('button', { name: 'Mark recipe as cooked' })).toHaveCount(0);
   await page.getByTestId('close-cooks-mode').click();
   await page.goto('/planner');
-  await expect(page.getByTestId('day-card-4')).toContainText('Already prepared');
+  await expect(page.getByTestId('day-card-4')).toContainText('Prepared');
   await page.getByTestId('at-the-table-mode').click();
   const preparedRow = page.getByTestId('portion-row-2026-05-08');
   await expect(preparedRow.getByTestId('portion-input-2026-05-08')).toHaveCount(0);
@@ -545,7 +545,7 @@ for (const appLocale of ['en', 'fr'] as const) {
         await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
         await page.getByTestId('day-card-4').scrollIntoViewIfNeeded();
         await expect(page.getByTestId('day-card-4')).toContainText(
-          appLocale === 'fr' ? 'Déjà préparé' : 'Already prepared'
+          appLocale === 'fr' ? 'Préparé' : 'Prepared'
         );
         await capture('planner', 'day-card-4');
         await page.getByTestId('day-card-4').getByTestId('edit-recipe-button').click();

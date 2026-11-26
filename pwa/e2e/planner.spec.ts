@@ -2313,7 +2313,7 @@ test.describe('Quick Replace relative next week', () => {
       await expect(
         page.getByText(
           failure === 'defer'
-            ? 'Your plan changed. Review it before replacing this meal.'
+            ? /Your plan on .* changed before anything was saved/
             : "Your original meal was updated. Your new meal wasn't saved."
         )
       ).toBeVisible();

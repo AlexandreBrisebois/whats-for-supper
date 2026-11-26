@@ -11,6 +11,8 @@ Normative visual reference for What's For Supper (WFS). Organized in three coher
 - [Design · Home No-Cook Card Suite (Cookbook Bookmark)](visual-language/designs/cookbook-bookmark-no-cook-suite.svg)
 - [Design · Unified Compact Pivot & Recovery Sheet Suite](visual-language/designs/pivot-recovery-sheet-suite.svg)
 - [Design · Household Pivot & Recovery Journeys](visual-language/designs/pivot-recovery-journeys.svg)
+- [Design · Pass the Phone Discovery Handoff Suite](visual-language/designs/pass-the-phone-handoff-suite.svg)
+- [Design · Pass the Phone Handoff Journeys](visual-language/designs/pass-the-phone-handoff-journeys.svg)
 
 ![Board 01: Era 3 dual-mode Standard AA / High Contrast AAA neutral and brand semantic roles (Hearth, Sunlight, cooled herb Garden), Outfit and Inter type scale, context-paired Ready in pills, 48px targets, outline-ink-body focus ring, bottom navigation with three-state Discovery medallion, and shipped Lucide icons.](visual-language/01-foundations-roles-and-type.svg)
 

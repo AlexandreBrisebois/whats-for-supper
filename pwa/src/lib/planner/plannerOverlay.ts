@@ -38,7 +38,9 @@ export type PlannerOverlay =
   | { kind: 'cookedDefer'; slot: PlannerSlot; submitting: boolean }
   | { kind: 'nudge' }
   | { kind: 'detail'; recipeId: string; source: DetailSource | null }
-  | { kind: 'replaceRecovery'; slot: RecoverySlot; recipe: AssignmentRecipe };
+  | { kind: 'replaceRecovery'; slot: RecoverySlot; recipe: AssignmentRecipe }
+  | { kind: 'chooseDay'; recipe: AssignmentRecipe; reference: string; weekOffset: number }
+  | { kind: 'nonCookingReplacement'; slot: PlannerSlot; recipe: AssignmentRecipe };
 
 export type PlannerOverlayAction =
   | { type: 'openPivot'; dayIndex: number }
@@ -50,6 +52,8 @@ export type PlannerOverlayAction =
   | { type: 'openNudge' }
   | { type: 'openDetail'; recipeId: string; source: DetailSource | null }
   | { type: 'openReplaceRecovery'; slot: RecoverySlot; recipe: AssignmentRecipe }
+  | { type: 'openChooseDay'; recipe: AssignmentRecipe; reference: string; weekOffset: number }
+  | { type: 'openNonCookingReplacement'; slot: PlannerSlot; recipe: AssignmentRecipe }
   | { type: 'close' }
   | { type: 'closeIfCurrent'; isCurrent: (overlay: PlannerOverlay) => boolean };
 
@@ -86,6 +90,15 @@ export function plannerOverlayReducer(
       return { kind: 'detail', recipeId: action.recipeId, source: action.source };
     case 'openReplaceRecovery':
       return { kind: 'replaceRecovery', slot: action.slot, recipe: action.recipe };
+    case 'openChooseDay':
+      return {
+        kind: 'chooseDay',
+        recipe: action.recipe,
+        reference: action.reference,
+        weekOffset: action.weekOffset,
+      };
+    case 'openNonCookingReplacement':
+      return { kind: 'nonCookingReplacement', slot: action.slot, recipe: action.recipe };
     case 'close':
       if (state.kind === 'cookedDefer' && state.submitting) return state;
       return state.kind === 'none' ? state : closedOverlay;
@@ -111,6 +124,10 @@ export function usePlannerOverlay() {
         dispatch({ type: 'openDetail', recipeId, source }),
       openReplaceRecovery: (slot: RecoverySlot, recipe: AssignmentRecipe) =>
         dispatch({ type: 'openReplaceRecovery', slot, recipe }),
+      openChooseDay: (recipe: AssignmentRecipe, reference: string, weekOffset: number) =>
+        dispatch({ type: 'openChooseDay', recipe, reference, weekOffset }),
+      openNonCookingReplacement: (slot: PlannerSlot, recipe: AssignmentRecipe) =>
+        dispatch({ type: 'openNonCookingReplacement', slot, recipe }),
       close: () => dispatch({ type: 'close' }),
       closeIfCurrent: (isCurrent: (overlay: PlannerOverlay) => boolean) =>
         dispatch({ type: 'closeIfCurrent', isCurrent }),

@@ -4,6 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MOCK_IDS } from '@/testing/mock-ids';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { usePlannerStore } from '@/store/plannerStore';
+import { useUiStore } from '@/store/uiStore';
+import {
+  clearHandoffLock,
+  getHandoffLock,
+  setHandoffLock,
+  setPassThePhoneEnabled,
+} from '@/lib/discovery/passThePhone';
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -12,6 +19,16 @@ const mocks = vi.hoisted(() => ({
   submitVote: vi.fn(),
   getVotingSession: vi.fn(),
   getVotingLink: vi.fn(),
+  selectFamilyMember: vi.fn(),
+  familyState: {
+    selectedFamilyMemberId: '550e8400-e29b-41d4-a716-446655440001' as string | null,
+    _hasHydrated: true,
+    familyMembers: [
+      { id: '550e8400-e29b-41d4-a716-446655440001', name: 'Alex' },
+      { id: '550e8400-e29b-41d4-a716-446655440002', name: 'Jordan' },
+      { id: '550e8400-e29b-41d4-a716-446655440003', name: 'Sam' },
+    ],
+  },
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -33,7 +50,16 @@ vi.mock('framer-motion', () => ({
 }));
 
 vi.mock('@/hooks/useFamily', () => ({
-  useFamily: () => ({ selectedFamilyMemberId: MOCK_IDS.MEMBER_ALEX, _hasHydrated: true }),
+  useFamily: () => ({
+    selectedFamilyMemberId: mocks.familyState.selectedFamilyMemberId,
+    _hasHydrated: mocks.familyState._hasHydrated,
+    familyMembers: mocks.familyState.familyMembers,
+    selectedMember:
+      mocks.familyState.familyMembers.find(
+        (m) => m.id === mocks.familyState.selectedFamilyMemberId
+      ) ?? null,
+    selectFamilyMember: (...args: unknown[]) => mocks.selectFamilyMember(...args),
+  }),
 }));
 
 vi.mock('@/lib/api/discovery', () => ({
@@ -49,7 +75,11 @@ vi.mock('@/lib/imageUtils', () => ({
 
 vi.mock('@/locales', () => ({
   t: (_key: string, fallback: string) => fallback,
-  tWithVars: (_key: string, fallback: string) => fallback,
+  tWithVars: (_key: string, fallback: string, vars: Record<string, string | number>) =>
+    Object.entries(vars ?? {}).reduce(
+      (acc, [k, v]) => acc.replace(`{{${k}}}`, String(v)),
+      fallback
+    ),
 }));
 
 vi.mock('@/components/discovery/DiscoveryCard', () => ({
@@ -99,7 +129,20 @@ const ORDERED_RECIPES = [
 
 describe('DiscoveryPage card order', () => {
   beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    clearHandoffLock();
+    setPassThePhoneEnabled(false);
+    useUiStore.setState({ toasts: [] });
     mocks.push.mockReset();
+    mocks.selectFamilyMember.mockReset().mockResolvedValue(undefined);
+    mocks.familyState.selectedFamilyMemberId = MOCK_IDS.MEMBER_ALEX;
+    mocks.familyState._hasHydrated = true;
+    mocks.familyState.familyMembers = [
+      { id: MOCK_IDS.MEMBER_ALEX, name: 'Alex' },
+      { id: MOCK_IDS.MEMBER_JORDAN, name: 'Jordan' },
+      { id: MOCK_IDS.MEMBER_TEST, name: 'Sam' },
+    ];
     usePlannerStore.setState({ activeTab: 'grocery' });
     mocks.getCategories.mockReset();
     mocks.getDiscoveryStack.mockReset();
@@ -237,7 +280,8 @@ describe('DiscoveryPage card order', () => {
     render(<DiscoveryPage />);
     await screen.findByTestId('discovery-empty-state');
     expect(screen.getByRole('button', { name: 'Capture a New Recipe' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Refresh Feed' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Refresh recipe suggestions' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Refresh Feed' })).not.toBeInTheDocument();
     expect(mocks.getVotingLink).not.toHaveBeenCalled();
     fireEvent.click(screen.getByTestId('discovery-nudge-family'));
     await screen.findByText('http://example.com/discovery');
@@ -339,5 +383,268 @@ describe('DiscoveryPage card order', () => {
     const primaryCta = emptyState.querySelector('button');
     expect(primaryCta).toHaveClass('bg-hearth-fill', 'text-cream-100', 'min-h-12');
     expect(primaryCta).not.toHaveClass('bg-ochre', 'hover:bg-ochre-dark');
+  });
+
+  it('hides Pass the phone when opt-in is OFF or cards remain, and shows it with Garden-outlined Nudge family when opt-in is ON and queue is empty', async () => {
+    mocks.getDiscoveryStack.mockResolvedValue([]);
+    mocks.getVotingSession.mockResolvedValue({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate: '2026-05-04',
+      phase: 'collecting',
+      requiredSlots: 3,
+      coveredSlots: 0,
+      candidateCount: 0,
+      smartDefaults: { weekStartDate: '2026-05-04', preSelectedRecipes: [] },
+    });
+
+    const view = render(<DiscoveryPage />);
+    await screen.findByTestId('discovery-empty-state');
+    expect(screen.queryByTestId('discovery-pass-the-phone')).not.toBeInTheDocument();
+
+    await act(async () => {
+      setPassThePhoneEnabled(true);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('discovery-pass-the-phone')).toBeVisible();
+    });
+
+    const nudgeBtn = screen.getByTestId('discovery-nudge-family');
+    expect(nudgeBtn).toHaveClass('bg-white', 'border-garden-line', 'text-garden-ink');
+    expect(nudgeBtn).not.toHaveClass('border-hearth-line');
+
+    view.unmount();
+
+    mocks.getDiscoveryStack.mockResolvedValue(ORDERED_RECIPES);
+    render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+    expect(screen.queryByTestId('discovery-pass-the-phone')).not.toBeInTheDocument();
+  });
+
+  it('renders pure celebration card with zero buttons during a locked turn when queue is empty', async () => {
+    setPassThePhoneEnabled(true);
+    mocks.familyState.selectedFamilyMemberId = MOCK_IDS.MEMBER_JORDAN;
+    setHandoffLock({ originMemberId: MOCK_IDS.MEMBER_ALEX, participantName: 'Jordan' });
+    mocks.getDiscoveryStack.mockResolvedValue([]);
+    mocks.getVotingSession.mockResolvedValue({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate: '2026-05-04',
+      phase: 'collecting',
+      requiredSlots: 3,
+      coveredSlots: 0,
+      candidateCount: 0,
+      smartDefaults: { weekStartDate: '2026-05-04', preSelectedRecipes: [] },
+    });
+
+    render(<DiscoveryPage />);
+    const wrapUp = await screen.findByTestId('discovery-kid-wrap-up');
+    expect(wrapUp).toHaveTextContent('Nice picks, Jordan!');
+    expect(wrapUp.querySelectorAll('button')).toHaveLength(0);
+    expect(screen.queryByTestId('discovery-pass-the-phone')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('discovery-nudge-family')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('like-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dislike-button')).not.toBeInTheDocument();
+  });
+
+  it('supports passing to a second sibling (Sam) after returning from Jordan to Alex', async () => {
+    setPassThePhoneEnabled(true);
+    mocks.selectFamilyMember.mockImplementation(async (id: string) => {
+      mocks.familyState.selectedFamilyMemberId = id;
+    });
+    mocks.getDiscoveryStack.mockResolvedValue([]);
+    mocks.getVotingSession.mockResolvedValue({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate: '2026-05-04',
+      phase: 'collecting',
+      requiredSlots: 3,
+      coveredSlots: 0,
+      candidateCount: 0,
+      smartDefaults: { weekStartDate: '2026-05-04', preSelectedRecipes: [] },
+    });
+
+    const view = render(<DiscoveryPage />);
+    await screen.findByTestId('discovery-pass-the-phone');
+
+    // Hand off to Jordan
+    fireEvent.click(screen.getByTestId('discovery-pass-the-phone'));
+    fireEvent.click(screen.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('discovery-handoff-confirm'));
+    });
+
+    await waitFor(() => expect(getHandoffLock()?.participantName).toBe('Jordan'));
+    view.rerender(<DiscoveryPage />);
+    expect(await screen.findByTestId('discovery-kid-wrap-up')).toHaveTextContent(
+      'Nice picks, Jordan!'
+    );
+
+    // Simulate returning to Alex and passing to Sam
+    await act(async () => {
+      clearHandoffLock();
+      mocks.familyState.selectedFamilyMemberId = MOCK_IDS.MEMBER_ALEX;
+    });
+    view.rerender(<DiscoveryPage />);
+
+    fireEvent.click(await screen.findByTestId('discovery-pass-the-phone'));
+    fireEvent.click(screen.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_TEST}`));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('discovery-handoff-confirm'));
+    });
+
+    expect(mocks.selectFamilyMember).toHaveBeenLastCalledWith(MOCK_IDS.MEMBER_TEST);
+    expect(getHandoffLock()).toEqual({
+      originMemberId: MOCK_IDS.MEMBER_ALEX,
+      participantName: 'Sam',
+    });
+
+    view.rerender(<DiscoveryPage />);
+
+    expect(await screen.findByTestId('discovery-kid-wrap-up')).toHaveTextContent(
+      'Nice picks, Sam!'
+    );
+  });
+
+  it('unlocks back to origin and adds closure toast before opening Planner when converged during a locked turn', async () => {
+    setPassThePhoneEnabled(true);
+    mocks.familyState.selectedFamilyMemberId = MOCK_IDS.MEMBER_JORDAN;
+    setHandoffLock({ originMemberId: MOCK_IDS.MEMBER_ALEX, participantName: 'Jordan' });
+    mocks.getVotingSession.mockResolvedValue({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate: '2026-05-04',
+      phase: 'converged',
+      requiredSlots: 3,
+      coveredSlots: 3,
+      candidateCount: 3,
+      smartDefaults: { weekStartDate: '2026-05-04', preSelectedRecipes: [] },
+    });
+
+    render(<DiscoveryPage />);
+    await screen.findByRole('heading', { name: "Menu's in!", level: 1 });
+
+    const action = screen.getByTestId('discovery-see-matches');
+    expect(action).toHaveTextContent('Back to Alex & see matches');
+
+    fireEvent.click(action);
+
+    await waitFor(() => {
+      expect(mocks.selectFamilyMember).toHaveBeenCalledExactlyOnceWith(MOCK_IDS.MEMBER_ALEX);
+    });
+    expect(getHandoffLock()).toBeNull();
+    expect(useUiStore.getState().toasts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'success',
+          message: "Welcome back, Alex — Jordan's votes are saved.",
+        }),
+      ])
+    );
+    expect(usePlannerStore.getState().activeTab).toBe('planner');
+    expect(mocks.push).toHaveBeenCalledExactlyOnceWith(
+      '/planner?weekOffset=0&referenceWeekStartDate=2026-05-04'
+    );
+  });
+
+  it('waits for pending last-card vote to settle before switching member and never replays failed vote', async () => {
+    setPassThePhoneEnabled(true);
+    let rejectVote!: (err: Error) => void;
+    mocks.submitVote.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectVote = reject;
+        })
+    );
+    mocks.getDiscoveryStack.mockResolvedValueOnce([ORDERED_RECIPES[0]]).mockResolvedValue([]);
+
+    const view = render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+
+    fireEvent.click(screen.getByTestId('like-button'));
+    await screen.findByTestId('discovery-empty-state');
+    fireEvent.click(screen.getByTestId('discovery-pass-the-phone'));
+    fireEvent.click(screen.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`));
+    expect(getHandoffLock()).toEqual({
+      originMemberId: MOCK_IDS.MEMBER_ALEX,
+      participantName: 'Jordan',
+      pendingTargetMemberId: MOCK_IDS.MEMBER_JORDAN,
+    });
+    fireEvent.click(screen.getByTestId('discovery-handoff-confirm'));
+
+    await Promise.resolve();
+    expect(mocks.selectFamilyMember).not.toHaveBeenCalled();
+    expect(getHandoffLock()?.pendingTargetMemberId).toBe(MOCK_IDS.MEMBER_JORDAN);
+
+    const stackCallsBeforeSwitch = mocks.getDiscoveryStack.mock.calls.length;
+    await act(async () => {
+      rejectVote(new Error('vote failed'));
+    });
+
+    await waitFor(() => {
+      expect(mocks.selectFamilyMember).toHaveBeenCalledExactlyOnceWith(MOCK_IDS.MEMBER_JORDAN);
+    });
+    expect(mocks.submitVote).toHaveBeenCalledTimes(1);
+    expect(getHandoffLock()).toEqual({
+      originMemberId: MOCK_IDS.MEMBER_ALEX,
+      participantName: 'Jordan',
+    });
+
+    await act(async () => {
+      mocks.familyState.selectedFamilyMemberId = MOCK_IDS.MEMBER_JORDAN;
+    });
+    view.rerender(<DiscoveryPage />);
+    await screen.findByTestId('discovery-kid-wrap-up');
+    expect(mocks.getDiscoveryStack.mock.calls.length).toBe(stackCallsBeforeSwitch + 1);
+  });
+
+  it('resets local matchCount across Alex -> Jordan -> Alex turns', async () => {
+    setPassThePhoneEnabled(true);
+    mocks.selectFamilyMember.mockImplementation(async (id: string) => {
+      mocks.familyState.selectedFamilyMemberId = id;
+    });
+    mocks.getDiscoveryStack
+      .mockResolvedValueOnce([{ ...ORDERED_RECIPES[0], hasFamilyInterest: true }])
+      .mockResolvedValue([]);
+    mocks.getVotingSession.mockResolvedValue({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate: '2026-05-04',
+      phase: 'collecting',
+      requiredSlots: 3,
+      coveredSlots: 1,
+      candidateCount: 1,
+      smartDefaults: { weekStartDate: '2026-05-04', preSelectedRecipes: [] },
+    });
+
+    const view = render(<DiscoveryPage />);
+    await screen.findByText('Oldest ranked recipe');
+    fireEvent.click(screen.getByTestId('like-button'));
+    await screen.findByTestId('discovery-empty-state');
+    expect(screen.getByRole('button', { name: 'Go to Planner' })).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('discovery-pass-the-phone'));
+    fireEvent.click(screen.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('discovery-handoff-confirm'));
+    });
+
+    view.rerender(<DiscoveryPage />);
+    await screen.findByTestId('discovery-kid-wrap-up');
+
+    await act(async () => {
+      clearHandoffLock();
+      mocks.familyState.selectedFamilyMemberId = MOCK_IDS.MEMBER_ALEX;
+    });
+    view.rerender(<DiscoveryPage />);
+
+    await screen.findByTestId('discovery-empty-state');
+    expect(screen.getByRole('button', { name: 'Capture a New Recipe' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Go to Planner' })).not.toBeInTheDocument();
   });
 });

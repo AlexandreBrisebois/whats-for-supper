@@ -988,6 +988,7 @@ describe('RecipesPage', () => {
     });
     expect(screen.getByTestId('planning-mode-banner')).toHaveTextContent('Choosing for');
     expect(screen.getByTestId('planning-mode-banner')).toHaveClass(
+      'mt-3',
       'border-hearth-line',
       'bg-terracotta-50'
     );
@@ -1186,15 +1187,24 @@ describe('RecipesPage', () => {
         render(<UnifiedRecipesPage />);
       });
       const planAction = await screen.findByTestId('action-add-to-day');
-      await waitFor(() =>
-        expect(planAction).toHaveTextContent(status === 2 || status === 4 ? 'Review plan' : 'May 6')
-      );
+      const expectedLabel =
+        status === 2 ? 'Plan for another day' : status === 4 ? 'Open voting in Planner' : 'May 6';
+      await waitFor(() => expect(planAction).toHaveTextContent(expectedLabel));
       fireEvent.click(planAction);
       if (status === 1)
         expect(await screen.findByTestId('recovery-dialog-title')).toBeInTheDocument();
-      else if (status === 2 || status === 4) {
-        await waitFor(() =>
-          expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('Review plan')
+      else if (status === 2) {
+        expect(await screen.findByRole('status')).toHaveTextContent('Prepared for Wed, May 6');
+        expect(screen.getByTestId('action-open-day-in-planner')).toHaveTextContent(
+          'Open Wed, May 6 in Planner'
+        );
+        expect(screen.queryByTestId('recovery-dialog-title')).not.toBeInTheDocument();
+      } else if (status === 4) {
+        expect(await screen.findByRole('status')).toHaveTextContent(
+          'Your household is still voting on Wed, May 6.'
+        );
+        expect(screen.getByTestId('action-plan-another-day')).toHaveTextContent(
+          'Plan for another day'
         );
         expect(screen.queryByTestId('recovery-dialog-title')).not.toBeInTheDocument();
       } else {
@@ -1345,13 +1355,20 @@ describe('RecipesPage', () => {
     expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
   });
   it.each([2, 4])(
-    'reviews a same-recipe status %i target without date arrows',
+    'shows calm status guidance and omits date arrows for a same-recipe status %i target',
     async (mealStatus) => {
       const base = await mocks.getSchedule();
       mocks.getSchedule.mockResolvedValue({
         ...base,
         days: base.days.map((day: any, i: number) =>
-          i === 2 ? { ...day, recipe: makeRecipeDetail(), status: mealStatus } : day
+          i === 2
+            ? {
+                ...day,
+                recipe: makeRecipeDetail(),
+                status: mealStatus,
+                ...(mealStatus === 2 ? { preparation: { preparedOn: '2026-05-05' } } : {}),
+              }
+            : day
         ),
       });
       mocks.setSearchParams(
@@ -1360,15 +1377,68 @@ describe('RecipesPage', () => {
       await act(async () => {
         render(<UnifiedRecipesPage />);
       });
-      await waitFor(() =>
-        expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('Review plan')
-      );
+      if (mealStatus === 2) {
+        await waitFor(() =>
+          expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('Plan for another day')
+        );
+        expect(screen.getByRole('status')).toHaveTextContent('Prepared on Tue, May 5');
+        expect(screen.getByTestId('action-open-day-in-planner')).toHaveTextContent(
+          'Open Wed, May 6 in Planner'
+        );
+      } else {
+        await waitFor(() =>
+          expect(screen.getByTestId('action-add-to-day')).toHaveTextContent(
+            'Open voting in Planner'
+          )
+        );
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'Your household is still voting on Wed, May 6.'
+        );
+        expect(screen.getByTestId('action-plan-another-day')).toHaveTextContent(
+          'Plan for another day'
+        );
+      }
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
       expect(screen.queryByTestId('action-planned')).not.toBeInTheDocument();
       expect(screen.queryByTestId('action-change-day')).not.toBeInTheDocument();
       expect(screen.getByTestId('action-cooks-mode')).toBeEnabled();
       expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
     }
   );
+
+  it('hides the prepared banner in RecipeDetailSheet once past the planned meal date while preserving recovery actions', async () => {
+    const base = await mocks.getSchedule();
+    mocks.getSchedule.mockResolvedValue({
+      ...base,
+      calendar: {
+        ...base.calendar,
+        today: '2026-05-07',
+      },
+      days: base.days.map((day: any, i: number) =>
+        i === 2
+          ? {
+              ...day,
+              recipe: makeRecipeDetail(),
+              status: 2,
+              preparation: { preparedOn: '2026-05-05', preparedAtUtc: '2026-05-05T22:00:00Z' },
+            }
+          : day
+      ),
+    });
+    mocks.setSearchParams(
+      'addToDay=2&weekOffset=0&referenceWeekStartDate=2026-05-04&open=11111111-1111-1111-1111-111111111111'
+    );
+    await act(async () => {
+      render(<UnifiedRecipesPage />);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('Plan for another day')
+    );
+    expect(screen.getByTestId('action-open-day-in-planner')).toHaveTextContent(
+      'Open Wed, May 6 in Planner'
+    );
+    expect(screen.queryByTestId('recipe-planning-status-banner')).not.toBeInTheDocument();
+  });
   it('retires a chosen identical target when the existing schedule signal changes', async () => {
     const base = await mocks.getSchedule();
     const assigned = {
@@ -2178,9 +2248,21 @@ describe('RecipesPage', () => {
       fireEvent.click(screen.getByTestId('action-change-day'));
       fireEvent.click(await screen.findByTestId('planning-day-2'));
       await waitFor(() =>
-        expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('Review plan')
+        expect(screen.getByTestId('action-add-to-day')).toHaveTextContent(
+          status === 2 ? 'Plan for another day' : 'Open voting in Planner'
+        )
       );
-      fireEvent.click(screen.getByTestId('action-add-to-day'));
+      if (status === 4) {
+        fireEvent.click(screen.getByTestId('action-add-to-day'));
+        expect(mocks.push).toHaveBeenCalledWith(
+          '/planner?dayIndex=2&weekOffset=0&referenceWeekStartDate=2026-05-04'
+        );
+      } else {
+        fireEvent.click(screen.getByTestId('action-open-day-in-planner'));
+        expect(mocks.push).toHaveBeenCalledWith(
+          '/planner?dayIndex=2&weekOffset=0&referenceWeekStartDate=2026-05-04'
+        );
+      }
       expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
     }
   );
@@ -2632,5 +2714,92 @@ describe('RecipesPage', () => {
       );
       expect(fallbackInput).toHaveValue('');
     });
+  });
+
+  describe('meal-preserving PlanningDayChooser recovery', () => {
+    it('preserves the chosen recipe when choosing another day from a pre-commit SkipRecoveryDialog conflict without flashing detail', async () => {
+      const base = await mocks.getSchedule();
+      mocks.getSchedule.mockResolvedValue({
+        ...base,
+        days: base.days.map((day: any, index: number) =>
+          index === 2
+            ? {
+                ...day,
+                recipe: { id: '22222222-2222-2222-2222-222222222222', name: 'Existing supper' },
+                status: 0,
+              }
+            : day
+        ),
+      });
+      mocks.movePost.mockRejectedValueOnce({ responseStatusCode: 409 });
+      mocks.setSearchParams(
+        'addToDay=2&weekOffset=0&referenceWeekStartDate=2026-05-04&open=11111111-1111-1111-1111-111111111111'
+      );
+      await act(async () => {
+        render(<UnifiedRecipesPage />);
+      });
+
+      const addBtn = await screen.findByTestId('action-add-to-day');
+      await waitFor(() => expect(addBtn).toHaveTextContent('May 6'));
+      fireEvent.click(addBtn);
+
+      expect(await screen.findByTestId('recovery-dialog-title')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('recovery-action-tomorrow'));
+
+      const chooseBtn = await screen.findByTestId('recovery-choose-another-day');
+      expect(screen.getByTestId('replacement-feedback')).toHaveTextContent(
+        'Your plan on Wed, May 6 changed before anything was saved.'
+      );
+      fireEvent.click(chooseBtn);
+
+      expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
+      expect(screen.queryByTestId('recipe-detail-sheet')).not.toBeInTheDocument();
+
+      fireEvent.click(await screen.findByTestId('planning-day-4'));
+      expect(await screen.findByTestId('recipe-detail-sheet')).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 8')
+      );
+      expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
+    });
+
+    it.each([2, 4])(
+      'opens PlanningDayChooser with the retained recipe when activating Plan for another day on status %i',
+      async (mealStatus) => {
+        const base = await mocks.getSchedule();
+        mocks.getSchedule.mockResolvedValue({
+          ...base,
+          days: base.days.map((day: any, index: number) =>
+            index === 2
+              ? {
+                  ...day,
+                  status: mealStatus,
+                  recipe: { id: '22222222-2222-2222-2222-222222222222', name: 'Locked supper' },
+                }
+              : day
+          ),
+        });
+        mocks.setSearchParams(
+          'addToDay=2&weekOffset=0&referenceWeekStartDate=2026-05-04&open=11111111-1111-1111-1111-111111111111'
+        );
+        await act(async () => {
+          render(<UnifiedRecipesPage />);
+        });
+
+        const planAnotherBtn =
+          mealStatus === 2
+            ? await screen.findByTestId('action-add-to-day')
+            : await screen.findByTestId('action-plan-another-day');
+        await waitFor(() => expect(planAnotherBtn).toHaveTextContent('Plan for another day'));
+        fireEvent.click(planAnotherBtn);
+
+        expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
+        fireEvent.click(await screen.findByTestId('planning-day-4'));
+        await waitFor(() =>
+          expect(screen.getByTestId('action-add-to-day')).toHaveTextContent('May 8')
+        );
+        expect(mocks.assignRecipeToDay).not.toHaveBeenCalled();
+      }
+    );
   });
 });

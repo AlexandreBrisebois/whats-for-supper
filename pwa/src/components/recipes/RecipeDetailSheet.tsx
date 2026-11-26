@@ -151,11 +151,15 @@ interface RecipeDetailSheetProps {
   planningEnabled?: boolean;
   planningLoading?: boolean;
   planningMessage?: string;
+  planningMessageTone?: 'prepared' | 'status' | 'alert';
   planningActionLabel?: string;
   onChangeDay?: () => void;
   changeDayDisabled?: boolean;
   onBeginPlanning?: () => void;
   onRetryTarget?: () => void;
+  secondaryPlanningActionLabel?: string;
+  onSecondaryPlanningAction?: () => void;
+  secondaryPlanningTestId?: string;
   sourceDayLabel?: string;
   plannedDayLabel?: string;
   onOpenPlannedDay?: () => void;
@@ -174,11 +178,15 @@ export function RecipeDetailSheet({
   planningEnabled = false,
   planningLoading = false,
   planningMessage,
+  planningMessageTone,
   planningActionLabel,
   onChangeDay,
   changeDayDisabled = false,
   onBeginPlanning,
   onRetryTarget,
+  secondaryPlanningActionLabel,
+  onSecondaryPlanningAction,
+  secondaryPlanningTestId,
   sourceDayLabel,
   plannedDayLabel,
   onOpenPlannedDay,
@@ -1129,6 +1137,8 @@ export function RecipeDetailSheet({
   const hasDatedAction = Boolean(plannerDayLabel || planningEnabled || sourceDayLabel);
   const isConfirmedPlanned = Boolean(plannedDayLabel && onOpenPlannedDay);
   const departureBlocked = isSavingAction || planningLoading || planningNeedsCheck;
+  const messageTone = planningMessageTone ?? (onRetryTarget ? 'alert' : 'status');
+  const isScrollableStatusBanner = Boolean(planningMessage) && messageTone !== 'alert';
   const mealTypesForDisplay = (recipe?.mealTypes ?? []).filter(Boolean);
 
   return (
@@ -1338,6 +1348,23 @@ export function RecipeDetailSheet({
             data-testid="recipe-detail-reading"
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[20px] pb-[32px] pt-[20px] md:px-8"
           >
+            {!isEditing && isScrollableStatusBanner && (
+              <p
+                role="status"
+                data-testid="recipe-planning-status-banner"
+                className={cn(
+                  'mb-4 flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium',
+                  messageTone === 'prepared'
+                    ? 'border-garden-line bg-sage-50 text-garden-ink'
+                    : 'border-chrome-line bg-white text-ink-body'
+                )}
+              >
+                {messageTone === 'prepared' && (
+                  <Check size={16} strokeWidth={2.5} aria-hidden="true" className="shrink-0" />
+                )}
+                <span>{planningMessage}</span>
+              </p>
+            )}
             <div
               data-testid="recipe-detail-hero"
               className={`relative mb-6 overflow-hidden rounded-3xl bg-charcoal/5 ${recipe.imageUrl && failedHero !== recipe.imageUrl ? 'h-56 md:h-72' : 'h-40'}`}
@@ -2773,26 +2800,31 @@ export function RecipeDetailSheet({
                 {actionError}
               </p>
             )}
-            {planningMessage && (
+            {planningMessage && messageTone === 'alert' && (
               <p
-                role={onRetryTarget ? 'alert' : 'status'}
-                className={`mb-2 rounded-xl border px-3 py-2 text-sm font-medium ${
-                  onRetryTarget
-                    ? 'border-hearth-line bg-terracotta-50 text-hearth-ink'
-                    : 'border-chrome-line bg-white text-ink-body'
-                }`}
+                role="alert"
+                className="mb-2 rounded-xl border border-hearth-line bg-terracotta-50 px-3 py-2 text-sm font-medium text-hearth-ink"
               >
                 {planningMessage}
               </p>
             )}
-            <div data-testid="recipe-dated-planning-actions" className="flex items-stretch gap-2">
+            <div
+              data-testid="recipe-dated-planning-actions"
+              className={cn(
+                'flex items-stretch gap-2',
+                !isConfirmedPlanned &&
+                  secondaryPlanningActionLabel &&
+                  onSecondaryPlanningAction &&
+                  'flex-col sm:flex-row'
+              )}
+            >
               {onBeginPlanning && (
                 <button
                   type="button"
                   data-testid="action-begin-planning"
                   onClick={onBeginPlanning}
                   disabled={departureBlocked}
-                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-hearth-fill px-[16px] py-[12px] text-sm font-semibold text-white hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-hearth-fill px-[16px] py-[12px] text-center text-sm font-semibold text-white whitespace-normal break-words hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
                 >
                   {t('recipes.plan', 'Plan')}
                 </button>
@@ -2808,7 +2840,7 @@ export function RecipeDetailSheet({
                     'Planned for {{day}}. Open Planner',
                     { day: plannedDayLabel! }
                   )}
-                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl border border-chrome-line bg-white px-[16px] py-[12px] text-sm font-semibold text-ink-body shadow-sm hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl border border-chrome-line bg-white px-[16px] py-[12px] text-center text-sm font-semibold text-ink-body whitespace-normal break-words shadow-sm hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
                 >
                   <span className="min-w-0 break-words">
                     {tWithVars('recipes.plannedForDay', 'Planned for {{day}}', {
@@ -2822,7 +2854,7 @@ export function RecipeDetailSheet({
                   data-testid="action-add-to-day"
                   onClick={() => (onRetryTarget ? onRetryTarget() : void handleUseRecipe())}
                   disabled={isSavingAction || planningLoading}
-                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-hearth-fill px-[16px] py-[12px] text-sm font-semibold text-white hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-hearth-fill px-[16px] py-[12px] text-center text-sm font-semibold text-white whitespace-normal break-words hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
                 >
                   <span className="min-w-0 break-words">
                     {isSavingAction
@@ -2840,13 +2872,26 @@ export function RecipeDetailSheet({
                   data-testid="action-add-to-day"
                   onClick={onRetryTarget}
                   disabled={isSavingAction || planningLoading}
-                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-hearth-fill px-[16px] py-[12px] text-sm font-semibold text-white hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl bg-hearth-fill px-[16px] py-[12px] text-center text-sm font-semibold text-white whitespace-normal break-words hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
                 >
-                  {planningLoading
-                    ? t('common.loading', 'Loading…')
-                    : (planningActionLabel ?? t('recipes.retryPlanCheck', 'Retry check'))}
+                  <span className="min-w-0 break-words">
+                    {planningLoading
+                      ? t('common.loading', 'Loading…')
+                      : (planningActionLabel ?? t('recipes.retryPlanCheck', 'Retry check'))}
+                  </span>
                 </button>
               ) : null}
+              {!isConfirmedPlanned && secondaryPlanningActionLabel && onSecondaryPlanningAction && (
+                <button
+                  type="button"
+                  data-testid={secondaryPlanningTestId ?? 'action-secondary-planning'}
+                  onClick={onSecondaryPlanningAction}
+                  disabled={isSavingAction || planningLoading || departureBlocked}
+                  className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center rounded-xl border border-chrome-line bg-white px-[16px] py-[12px] text-center text-sm font-semibold text-ink-body whitespace-normal break-words shadow-sm hover:bg-charcoal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-60"
+                >
+                  <span className="min-w-0 break-words">{secondaryPlanningActionLabel}</span>
+                </button>
+              )}
               {!isConfirmedPlanned && onChangeDay && (
                 <button
                   type="button"

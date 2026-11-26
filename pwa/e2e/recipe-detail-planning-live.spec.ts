@@ -326,7 +326,7 @@ test('real dated detail saves through generated client and a second client prese
           destinationIndex
         );
       } else {
-        await expect(page.getByTestId('planner-planning-confirmation')).toBeVisible();
+        await expect(page.getByTestId('toast')).toBeVisible();
         expect((await readWeek(1)).days[index].recipe.id).toBe(other);
         const date = `2026-10-${12 + index}`;
         await proveObserver(date, other, 1, index);
@@ -542,7 +542,7 @@ test('real dated detail saves through generated client and a second client prese
     expect(new URL((await guardedDelete).url()).searchParams.get('expectedPlanToken')).toBe(
       originalNonCooking.removalToken
     );
-    await expect(page.getByTestId('planner-planning-confirmation')).toContainText('November 12');
+    await expect(page.getByTestId('toast')).toContainText('November 12');
     const replacedNonCooking = (await readWeek(5)).days[3];
     expect(replacedNonCooking.recipe.id).toBe(recipeId);
     expect(replacedNonCooking.nonCooking ?? null).toBeNull();

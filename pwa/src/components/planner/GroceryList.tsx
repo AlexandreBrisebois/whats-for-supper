@@ -146,19 +146,17 @@ export function GroceryList({
   const servingRefresh = useWeekStore((s) => s.groceryRefresh);
   const summary = servingRefresh?.resetSummaryVersion;
   const weekStartDate = useWeekStore((state) => state.weekStartDate);
+  const storeWeekOffset = useWeekStore((state) => state.weekOffset);
   const noticeKey = weekStartDate ? `serving-grocery-summary:${weekStartDate}` : null;
-  const [dismissedSummaries, setDismissedSummaries] = useState<Record<string, string>>({});
-  let dismissedSummary: string | null = dismissedSummaries[weekStartDate ?? ''] ?? null;
-  if (!dismissedSummary && noticeKey && typeof window !== 'undefined') {
-    try {
-      dismissedSummary = sessionStorage.getItem(noticeKey);
-    } catch {
-      /* Storage is optional; the list and local dismissal remain usable. */
-    }
-  }
+  const announcedSummariesRef = useRef<Record<string, string>>({});
+  const activeSummaryToastIdRef = useRef<string | null>(null);
   const dismissPortionsSummary = () => {
-    if (!summary || summary === dismissedSummary) return;
-    setDismissedSummaries((previous) => ({ ...previous, [weekStartDate ?? '']: summary }));
+    if (activeSummaryToastIdRef.current) {
+      useUiStore.getState().removeToast(activeSummaryToastIdRef.current);
+      activeSummaryToastIdRef.current = null;
+    }
+    if (!summary) return;
+    announcedSummariesRef.current[weekStartDate ?? ''] = summary;
     if (noticeKey) {
       try {
         sessionStorage.setItem(noticeKey, summary);
@@ -167,6 +165,34 @@ export function GroceryList({
       }
     }
   };
+  useEffect(() => {
+    if (!summary || storeWeekOffset !== weekOffset) return;
+    const weekKey = weekStartDate ?? '';
+    let acknowledged: string | null = announcedSummariesRef.current[weekKey] ?? null;
+    if (!acknowledged && noticeKey && typeof window !== 'undefined') {
+      try {
+        acknowledged = sessionStorage.getItem(noticeKey);
+      } catch {
+        /* Storage is optional; the list and local dismissal remain usable. */
+      }
+    }
+    if (summary === acknowledged) return;
+    if (activeSummaryToastIdRef.current) {
+      useUiStore.getState().removeToast(activeSummaryToastIdRef.current);
+    }
+    activeSummaryToastIdRef.current = useUiStore.getState().addToast({
+      type: 'success',
+      message: t('portions.increased', 'Shopping list updated. Items needing more are unchecked.'),
+    });
+    announcedSummariesRef.current[weekKey] = summary;
+    if (noticeKey) {
+      try {
+        sessionStorage.setItem(noticeKey, summary);
+      } catch {
+        /* Preserve the local acknowledgement when storage is unavailable. */
+      }
+    }
+  }, [summary, weekStartDate, noticeKey, storeWeekOffset, weekOffset]);
   const [refreshError, setRefreshError] = useState(false);
   const retryPortions = async () => {
     setRefreshError(false);
@@ -971,7 +997,7 @@ export function GroceryList({
       {servingRefresh?.status === 'updating' && (
         <p
           role="status"
-          className="mx-4 mb-3 rounded-2xl border border-garden-line bg-sage-50 p-4 text-ink-body"
+          className="mx-4 mt-3 mb-1 rounded-2xl border border-garden-line bg-sage-50 p-4 text-ink-body"
           data-testid="grocery-portions-updating"
         >
           {t('portions.updating', 'Updating your shopping list…')}
@@ -980,7 +1006,7 @@ export function GroceryList({
       {(servingRefresh?.status === 'failed' || refreshError) && (
         <div
           role="alert"
-          className="mx-4 mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 p-4 text-ink-body"
+          className="mx-4 mt-3 mb-1 flex flex-wrap items-center gap-3 rounded-2xl border border-hearth-line bg-terracotta-50 p-4 text-ink-body"
           data-testid="grocery-portions-failed"
         >
           <p className="min-w-0 flex-1">
@@ -989,25 +1015,6 @@ export function GroceryList({
           <Button variant="primary" size="md" onClick={() => void retryPortions()}>
             {t('portions.retry', 'Retry')}
           </Button>
-        </div>
-      )}
-      {summary && summary !== dismissedSummary && (
-        <div
-          role="status"
-          className="mx-4 mb-3 flex items-center gap-3 rounded-2xl border border-garden-line bg-sage-50 p-4 text-ink-body"
-          data-testid="grocery-portions-summary"
-        >
-          <p className="min-w-0 flex-1">
-            {t('portions.increased', 'Shopping list updated. Items needing more are unchecked.')}
-          </p>
-          <button
-            type="button"
-            className="inline-flex h-12 w-12 min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full border border-garden-line bg-white text-lg text-garden-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
-            aria-label={t('portions.dismiss', 'Dismiss')}
-            onClick={dismissPortionsSummary}
-          >
-            ×
-          </button>
         </div>
       )}
       {/* Content */}

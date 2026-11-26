@@ -728,7 +728,7 @@ For an unplanned target, recipe selection SHALL show the proposed destination wi
 
 ### Requirement: Preserve completed replacement stages across callers
 
-Home, Planner, and recipe-selection recovery SHALL retain captured context, suppress pending duplicates, avoid repeating completed movement/removal, and reconcile unknown outcomes before writes. Recovery and non-cooking confirmation dialogs SHALL use Era 3 `<Button>` actions presenting at most one primary pull-forward action plus Cancel without a nested abandon prompt before any irreversible step.
+Home, Planner, and recipe-selection recovery SHALL retain context, suppress duplicates, avoid repeating completed moves/removals, and reconcile unknown outcomes before writes. Recovery and non-cooking dialogs SHALL use Era 3 `<Button>` actions with at most one primary action plus Cancel and no pre-commit abandon prompt. Pre-commit conflicts SHALL name the date, state nothing was saved, mark the recipe unsaved, and offer choosing a day or opening that day in Planner.
 
 #### Scenario: Original moved but replacement rejected
 
@@ -755,33 +755,43 @@ Home, Planner, and recipe-selection recovery SHALL retain captured context, supp
 - **WHEN** non-cooking replacement confirmation renders initially or encounters a retryable failure before any mutation commits
 - **THEN** the Era 3 dialog presents at most one primary pull-forward `<Button>` (`Replace supper plan`, `Retry save`, or `Retry check`) plus `Cancel` without displaying a competing `Review plan` button during transient retry or a nested confirm-abandon step prior to any committed change
 
+#### Scenario: Pre-commit changed-plan conflict preserves the chosen meal
+
+- **WHEN** replacement recovery encounters a changed-plan conflict before any original disposition or new save has committed
+- **THEN** recovery names the affected date, states that nothing was saved, labels the chosen recipe as unsaved rather than already saved, offers a primary action to choose a day for that recipe with a fresh week schedule while retaining the recipe, and offers a secondary dated action to open that day in Planner without a nested abandon prompt
+
 ### Requirement: Confirm completed planning without inventing work
 
-Ordinary single-day planning completion SHALL rely on Planner navigation, scroll-into-view, and card highlighting without a separate toast notification. Replacement/spillover receipts retain an accessible `>= 48 CSS px` close control, routine planning confirmations auto-dismiss gracefully in calm Garden styling without requiring a manual Close tap, and refresh-failed or changed-plan banners use Era 3 Hearth alert styling with `<Button>` recovery.
+Ordinary single-day planning completion SHALL use Planner navigation, scroll-into-view, and the highlight ring with no toast or banner. Same-week replacements and drops SHALL show a concise non-shifting disposition toast via `ToastContainer` and clear `success`. Off-screen moves/spillover SHALL keep a persistent Garden banner (`>= 48 CSS px` `Close`) below the sticky `<header>` with `mt-3 mb-1`; refresh-failed or changed states SHALL show a persistent Hearth alert there.
 
 #### Scenario: Ordinary single-day completion omits toast
 
 - **WHEN** Curry is saved to Wednesday without displacing another meal and Planner finishes refreshing Wednesday
 - **THEN** Wednesday displays Curry in view with its highlight ring and no redundant confirmation toast appears
 
+#### Scenario: Same-week replacement or drop uses a concise toast without an inline banner
+
+- **WHEN** a replacement moves the original meal to another day in the same displayed week or removes it from the plan
+- **THEN** Planner emits a concise non-shifting success toast naming the disposition side effect without repeating the newly planned meal, clears the `success` URL parameter, and renders no `planner-planning-confirmation` banner
+
 #### Scenario: Replacement and deferred original complete
 
-- **WHEN** Curry is saved to Wednesday and Lasagna was deferred past a full next week to the following Monday
-- **THEN** Planner confirms Curry's Wednesday date and Lasagna's actual Monday date in calm Garden styling, explains the full-week spillover, and provides an accessible close control
+- **WHEN** Curry is saved to Wednesday and Lasagna was moved to an off-screen week or deferred past a full next week to the following Monday
+- **THEN** Planner confirms Curry's Wednesday date and Lasagna's actual destination date in a persistent calm Garden banner below the sticky Planner `<header>` with `mt-3 mb-1` vertical clearance, explains full-week spillover when applicable, and keeps an accessible `Close` control until dismissed
 
 #### Scenario: Refresh failure uses Hearth alert styling rather than green confirmation styling
 
 - **WHEN** Planner return reconciliation encounters a `refresh-failed` or `changed` plan outcome
-- **THEN** the banner uses Era 3 Hearth alert tokens (`bg-terracotta-50 border-hearth-line`) with an Era 3 `<Button>` (`Refresh` or close) rather than calm sage confirmation styling
+- **THEN** the persistent banner renders below the sticky Planner `<header>` with `mt-3 mb-1` vertical clearance using Era 3 Hearth alert tokens (`bg-terracotta-50 border-hearth-line`) and an Era 3 `<Button>` (`Refresh` or `Close`) rather than calm sage confirmation styling
 
 ### Requirement: Avoid reassigning an identical dated meal
 
-A confirmed identical recipe at the selected ordinary supper SHALL show Planned for that date and navigate to its Planner destination without assignment. The Planned state SHALL have no change arrows or direct plan-changing controls. Cooked or AwaitingConsensus targets SHALL retain review in Planner rather than reset completion or consensus. A missing, failed or changed target read SHALL not establish Planned.
+A confirmed identical recipe at the selected ordinary supper SHALL show Planned for that date and navigate to Planner without assignment, change arrows, or plan-changing controls. Cooked and AwaitingConsensus targets SHALL present distinct dated calm status guidance instead of an error banner, and offer dated Planner review or choosing another day without resetting completion or consensus. A missing, failed, or changed target read SHALL not establish Planned.
 
 #### Scenario: Same recipe or completed target
 
 - **WHEN** the target already has the chosen recipe, or is Cooked or AwaitingConsensus
-- **THEN** an ordinary confirmed match offers Planned navigation; completed or consensus state offers its existing applicable review without mutation
+- **THEN** an ordinary confirmed match offers Planned navigation; Cooked presents dated already-cooked status with primary another-day planning and secondary dated Planner navigation, while AwaitingConsensus presents dated voting-open status with primary voting review in Planner and secondary another-day planning, both without mutation
 - **AND** no change arrow is attached to a confirmed saved occurrence or repurposed as movement/navigation
 
 #### Scenario: Navigate to the captured planned date
@@ -868,3 +878,17 @@ Planner SHALL reconcile a matching captured planning return independently of whe
 
 - **WHEN** the user dismisses confirmed replacement/spillover feedback
 - **THEN** no write or acceptance step occurs and the old receipt does not reappear
+
+### Requirement: Focus the targeted day when opening Planner for review
+
+When Planner opens with a valid `dayIndex` matching its `weekOffset` and `referenceWeekStartDate` without a planning-success receipt, Planner SHALL scroll to and briefly focus and highlight that day card once the week renders without showing a save-success confirmation or mutating the schedule. Navigating from a Planner replacement conflict SHALL close recovery without reopening recipe detail.
+
+#### Scenario: Open Planner for a conflicted or locked supper day
+
+- **WHEN** Planner opens with `dayIndex`, `weekOffset`, and `referenceWeekStartDate` and no `success` receipt
+- **THEN** Planner displays the matching week, scrolls `day-card-<dayIndex>` into view, focuses and briefly highlights it, and does not show a save-success confirmation banner
+
+#### Scenario: Review from a Planner replacement conflict does not flash recipe detail
+
+- **WHEN** a person activates the dated Planner review action from a changed-plan conflict opened inside Planner
+- **THEN** replacement recovery closes without reopening recipe detail for that recipe and focuses the targeted day in Planner

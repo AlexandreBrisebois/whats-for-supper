@@ -11,6 +11,7 @@ import {
   PenLine,
   Globe,
   ArrowLeft,
+  Plus,
 } from 'lucide-react';
 import { useCapture, type CaptureRating } from '@/hooks/useCapture';
 import { usePdfCaptureStore } from '@/store/pdfCaptureStore';
@@ -101,7 +102,6 @@ export default function MinimalCapture({
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const recipeFileInputRef = useRef<HTMLInputElement>(null);
   const bundlePickerRequested = useRef(false);
-  const saveAreaRef = useRef<HTMLDivElement>(null);
   const photoSubmitLockRef = useRef(false);
   const photoUploadOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -272,15 +272,6 @@ export default function MinimalCapture({
       clearTimeout(timer);
     };
   }, [describeName]);
-
-  useEffect(() => {
-    if (images.length > 0) {
-      const timer = setTimeout(() => {
-        saveAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [images.length]);
 
   useEffect(() => {
     if (!isPhotoSubmitPending) {
@@ -924,6 +915,8 @@ export default function MinimalCapture({
     </>
   );
 
+  const hasPhotos = !preparedOnly && images.length > 0;
+
   return (
     <div className="flex flex-col gap-6">
       {/* ── URL Capturing Overlay ─────────────────────────────────────────────── */}
@@ -982,7 +975,7 @@ export default function MinimalCapture({
 
       {/* ── Camera / Gallery — hidden when describe or url review is active ───────────── */}
       {(preparedOnly || (!showDescribe && !showUrlReview)) && !parsedBundle && (
-        <div className="flex flex-col gap-8">
+        <div className={hasPhotos ? 'flex flex-col gap-6' : 'flex flex-col gap-8'}>
           {(preparedOnly || !pdfSelection) && (
             <CaptureHeader
               title={t('capture.addRecipe', 'Add a recipe', locale)}
@@ -997,7 +990,9 @@ export default function MinimalCapture({
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`flex flex-col items-center gap-6 rounded-[3rem] p-12 text-center transition-all duration-300 motion-reduce:transition-none border-2 border-dashed ${
+              className={`flex flex-col items-center text-center transition-all duration-300 motion-reduce:transition-none border-2 border-dashed ${
+                hasPhotos ? 'gap-3 rounded-[2.5rem] p-6' : 'gap-6 rounded-[3rem] p-12'
+              } ${
                 isDragging
                   ? 'bg-terracotta-50 border-hearth-fill scale-[1.02] motion-reduce:scale-100 shadow-xl'
                   : 'bg-terracotta-50/40 border-hearth-line hover:bg-terracotta-50/70'
@@ -1007,10 +1002,16 @@ export default function MinimalCapture({
                 type="button"
                 data-testid="capture-take-photo-btn"
                 onClick={handleCapture}
-                aria-label={t('capture.takePhoto', 'Take a photo', locale)}
-                className="flex h-28 w-28 items-center justify-center rounded-full bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-cream-100 shadow-xl ring-4 ring-white active:scale-95 motion-reduce:active:scale-100 transition-transform focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
+                aria-label={
+                  hasPhotos
+                    ? t('capture.takeAnotherPhoto', 'Take another photo', locale)
+                    : t('capture.takePhoto', 'Take a photo', locale)
+                }
+                className={`flex items-center justify-center rounded-full bg-hearth-fill hover:bg-hearth-fill-hover active:bg-hearth-fill-active text-cream-100 shadow-xl ring-4 ring-white active:scale-95 motion-reduce:active:scale-100 transition-transform focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body ${
+                  hasPhotos ? 'h-20 w-20' : 'h-28 w-28'
+                }`}
               >
-                <Camera size={40} strokeWidth={2} aria-hidden="true" />
+                <Camera size={hasPhotos ? 30 : 40} strokeWidth={2} aria-hidden="true" />
               </button>
 
               <button
@@ -1020,7 +1021,9 @@ export default function MinimalCapture({
                 className="inline-flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-hearth-ink transition-colors hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
               >
                 <ImageIcon size={16} aria-hidden="true" />
-                {t('capture.pickFromGallery', 'Pick from Gallery', locale)}
+                {hasPhotos
+                  ? t('capture.addFromGallery', 'Add from Gallery', locale)
+                  : t('capture.pickFromGallery', 'Pick from Gallery', locale)}
               </button>
 
               <input
@@ -1051,43 +1054,45 @@ export default function MinimalCapture({
             </div>
           )}
 
-          <div className="flex flex-col gap-3 rounded-[2rem] border border-chrome-line bg-white p-5 shadow-sm">
-            {!preparedOnly && (
-              <>
-                <button
-                  type="button"
-                  data-testid="capture-secondary-action-link"
-                  onClick={() => {
-                    setShowUrlReview(true);
-                    setUrlInput('');
-                    setBundleImportError(null);
-                  }}
-                  className={secondaryActionBtnClass}
-                >
-                  <Globe size={16} aria-hidden="true" />
-                  {t('capture.pasteRecipeLink', 'Paste recipe link', locale)}
-                </button>
+          {(preparedOnly || images.length === 0) && (
+            <div className="flex flex-col gap-3 rounded-[2rem] border border-chrome-line bg-white p-5 shadow-sm">
+              {!preparedOnly && (
+                <>
+                  <button
+                    type="button"
+                    data-testid="capture-secondary-action-link"
+                    onClick={() => {
+                      setShowUrlReview(true);
+                      setUrlInput('');
+                      setBundleImportError(null);
+                    }}
+                    className={secondaryActionBtnClass}
+                  >
+                    <Globe size={16} aria-hidden="true" />
+                    {t('capture.pasteRecipeLink', 'Paste recipe link', locale)}
+                  </button>
 
-                <button
-                  type="button"
-                  data-testid="capture-secondary-action-describe"
-                  onClick={() => {
-                    setShowDescribe(true);
-                    setBundleImportError(null);
-                  }}
-                  className={secondaryActionBtnClass}
-                >
-                  <PenLine size={16} aria-hidden="true" />
-                  {t('capture.describeRecipe', 'Describe a recipe', locale)}
-                </button>
-              </>
-            )}
-            {recipeFileImport}
-          </div>
+                  <button
+                    type="button"
+                    data-testid="capture-secondary-action-describe"
+                    onClick={() => {
+                      setShowDescribe(true);
+                      setBundleImportError(null);
+                    }}
+                    className={secondaryActionBtnClass}
+                  >
+                    <PenLine size={16} aria-hidden="true" />
+                    {t('capture.describeRecipe', 'Describe a recipe', locale)}
+                  </button>
+                </>
+              )}
+              {recipeFileImport}
+            </div>
+          )}
 
           {/* Preview Area */}
-          {!preparedOnly && images.length > 0 && (
-            <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500 motion-reduce:animate-none">
+          {hasPhotos && (
+            <div className="flex flex-col gap-6 pb-28 animate-in slide-in-from-bottom-4 duration-500 motion-reduce:animate-none">
               <div className="flex items-center justify-between px-2">
                 <h3
                   data-testid="capture-photos-count"
@@ -1177,6 +1182,18 @@ export default function MinimalCapture({
                     </div>
                   );
                 })}
+                <button
+                  type="button"
+                  data-testid="capture-add-photo-tile"
+                  onClick={handleCapture}
+                  aria-label={t('capture.takeAnotherPhoto', 'Take another photo', locale)}
+                  className="flex h-28 w-28 flex-shrink-0 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-hearth-line bg-terracotta-50/40 px-2 text-center text-hearth-ink transition-all hover:bg-terracotta-50/80 active:scale-95 motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body"
+                >
+                  <Plus size={24} strokeWidth={2.25} aria-hidden="true" />
+                  <span className="text-xs font-semibold leading-tight">
+                    {t('capture.addPhoto', 'Add photo', locale)}
+                  </span>
+                </button>
               </div>
 
               {/* Appreciation & Notes */}
@@ -1197,25 +1214,18 @@ export default function MinimalCapture({
                 </div>
               </div>
 
-              <div ref={saveAreaRef}>
-                <Button
-                  variant="primary"
-                  fullWidth
-                  size="lg"
-                  data-testid="capture-save-btn"
-                  isLoading={isSubmitting || isPhotoSubmitPending}
-                  loadingText={t('capture.uploadingPhotos', 'Uploading Photos...', locale)}
-                  onClick={handleSave}
-                  disabled={isSubmitting || isPhotoSubmitPending}
-                  className="mt-4 rounded-[2rem] py-6 text-lg font-bold"
+              {error && (
+                <p
+                  role="alert"
+                  className={`${alertClass} text-center animate-in shake duration-300 motion-reduce:animate-none`}
                 >
-                  {t('capture.saveRecipe', 'Save Recipe', locale)}
-                </Button>
-              </div>
+                  {error}
+                </p>
+              )}
             </div>
           )}
 
-          {error && (
+          {!hasPhotos && error && (
             <p
               role="alert"
               className={`${alertClass} text-center animate-in shake duration-300 motion-reduce:animate-none`}
@@ -1419,6 +1429,28 @@ export default function MinimalCapture({
           >
             {t('capture.saveAndBuild', 'Save & build recipe', locale)}
           </Button>
+        </div>
+      )}
+      {hasPhotos && !showDescribe && !showUrlReview && !parsedBundle && (
+        <div
+          data-testid="capture-save-dock"
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-chrome-line bg-cream px-4 sm:px-6 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none"
+        >
+          <div className="mx-auto w-full max-w-md">
+            <Button
+              variant="primary"
+              fullWidth
+              size="lg"
+              data-testid="capture-save-btn"
+              isLoading={isSubmitting || isPhotoSubmitPending}
+              loadingText={t('capture.uploadingPhotos', 'Uploading Photos...', locale)}
+              onClick={handleSave}
+              disabled={isSubmitting || isPhotoSubmitPending}
+              className="rounded-[2rem] py-5 text-lg font-bold"
+            >
+              {t('capture.saveRecipe', 'Save Recipe', locale)}
+            </Button>
+          </div>
         </div>
       )}
       {duplicateRecipeId && (

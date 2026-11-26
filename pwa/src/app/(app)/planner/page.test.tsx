@@ -308,7 +308,11 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
     planningNeedsCheck,
     planningActionLabel,
     planningMessage,
+    planningMessageTone,
     onRetryTarget,
+    secondaryPlanningActionLabel,
+    onSecondaryPlanningAction,
+    secondaryPlanningTestId,
     onFindSimilar,
     onClose,
   }: {
@@ -321,7 +325,11 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
     planningNeedsCheck?: boolean;
     planningActionLabel?: string;
     planningMessage?: string;
+    planningMessageTone?: 'prepared' | 'status' | 'alert';
     onRetryTarget?: () => void;
+    secondaryPlanningActionLabel?: string;
+    onSecondaryPlanningAction?: () => void;
+    secondaryPlanningTestId?: string;
     onFindSimilar?: (recipeId: string) => void;
     onClose: () => void;
   }) => (
@@ -330,6 +338,7 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
       data-recipe-id={recipeId}
       data-planning-loading={String(!!planningLoading)}
       data-planning-needs-check={String(!!planningNeedsCheck)}
+      data-planning-message-tone={planningMessageTone ?? (onRetryTarget ? 'alert' : 'status')}
     >
       <span>{sourceDayLabel}</span>
       <span data-testid="mock-ingredient-context">{JSON.stringify(ingredientContext)}</span>
@@ -342,6 +351,14 @@ vi.mock('@/components/recipes/RecipeDetailSheet', () => ({
       {onRetryTarget && (
         <button data-testid="mock-review-plan" onClick={onRetryTarget}>
           {planningActionLabel}
+        </button>
+      )}
+      {secondaryPlanningActionLabel && onSecondaryPlanningAction && (
+        <button
+          data-testid={secondaryPlanningTestId ?? 'mock-secondary-planning-action'}
+          onClick={onSecondaryPlanningAction}
+        >
+          {secondaryPlanningActionLabel}
         </button>
       )}
       <button data-testid="mock-find-similar" onClick={() => onFindSimilar?.(recipeId)}>
@@ -365,16 +382,41 @@ vi.mock('@/components/home/SkipRecoveryDialog', () => ({
     onAction,
     replacement,
     onRetryReplacement,
+    onReviewPlan,
+    onChooseAnotherDay,
+    onClose,
   }: {
-    replacement?: { message: string };
+    replacement?: { message: string; phase?: string };
     onRetryReplacement?: () => void;
+    onReviewPlan?: () => void;
+    onChooseAnotherDay?: () => void;
+    onClose?: () => void;
     onAction: (action: 'tomorrow' | 'next_week' | 'drop') => void;
   }) => (
-    <div>
-      {replacement && <p data-testid="mock-replacement-feedback">{replacement.message}</p>}
+    <div data-testid="mock-skip-recovery">
+      {replacement && (
+        <p data-testid="mock-replacement-feedback" data-phase={replacement.phase}>
+          {replacement.message}
+        </p>
+      )}
       <button data-testid="mock-retry-replacement" onClick={onRetryReplacement}>
         Retry
       </button>
+      {onChooseAnotherDay && (
+        <button data-testid="mock-recovery-choose-another-day" onClick={onChooseAnotherDay}>
+          Choose a day for this meal
+        </button>
+      )}
+      {onReviewPlan && (
+        <button data-testid="mock-recovery-review-plan" onClick={onReviewPlan}>
+          Review plan
+        </button>
+      )}
+      {onClose && (
+        <button data-testid="mock-recovery-close" onClick={onClose}>
+          Close
+        </button>
+      )}
       <button data-testid="mock-recovery-next-week" onClick={() => onAction('next_week')}>
         Save for Next Week
       </button>
@@ -674,23 +716,65 @@ describe('Planner result trust', () => {
     expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
     noWrites();
   });
-  it('renders a routine replacement confirmation as a calm Garden status that dismisses itself after five seconds', async () => {
+  it('shows a routine drop replacement as a concise toast without an inline banner', async () => {
     remember({ original: { action: 'drop', recipeName: 'Lasagna', sourceDate: receipt.date } });
+    renderPlanner(0);
+    await waitFor(() =>
+      expect(mocks.addToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Lasagna was removed from Monday, May 11. The recipe remains in your library.',
+      })
+    );
+    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('wfs.planning-result')).toBeNull();
+    expect(mocks.replace).toHaveBeenCalledWith(
+      '/planner?dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-11',
+      { scroll: false }
+    );
+    noWrites();
+  });
+  it('shows a same-week replacement move as a concise toast without repeating the new plan', async () => {
+    remember({
+      original: {
+        action: 'tomorrow',
+        recipeName: 'Lasagna',
+        sourceDate: receipt.date,
+        destinationDate: '2026-05-12',
+      },
+    });
+    renderPlanner(0);
+    await waitFor(() =>
+      expect(mocks.addToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Lasagna moved to Tuesday, May 12.',
+      })
+    );
+    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('wfs.planning-result')).toBeNull();
+    noWrites();
+  });
+  it('keeps off-screen cross-week replacement persistent below the sticky header with top spacing', async () => {
+    remember({
+      original: {
+        action: 'next_week',
+        recipeName: 'Lasagna',
+        sourceDate: receipt.date,
+        destinationDate: '2026-05-18',
+      },
+    });
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderPlanner(0);
     const card = await screen.findByTestId('planner-planning-confirmation');
     expect(card).toHaveAttribute('role', 'status');
     expect(card).toHaveClass('bg-sage-50', 'border-garden-line');
+    expect(card.parentElement).toHaveClass('mt-3');
+    const header = document.querySelector('header')!;
+    expect(header.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(4900);
+      await vi.advanceTimersByTimeAsync(6000);
     });
     expect(screen.getByTestId('planner-planning-confirmation')).toBeInTheDocument();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(200);
-    });
-    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
-    expect(sessionStorage.getItem('wfs.planning-result')).toBeNull();
-    noWrites();
+    expect(mocks.addToast).not.toHaveBeenCalled();
   });
   it('keeps spillover receipts persistent with a 48px Close control and Garden styling', async () => {
     remember({
@@ -727,10 +811,18 @@ describe('Planner result trust', () => {
     expect(screen.getByTestId('planner-confirmation-refresh')).toHaveAccessibleName('Refresh');
   });
   it('retires replacement feedback on context departure without replay on Back', async () => {
-    remember({ original: { action: 'drop', recipeName: 'Lasagna', sourceDate: receipt.date } });
+    remember({
+      original: {
+        action: 'next_week',
+        recipeName: 'Lasagna',
+        sourceDate: receipt.date,
+        destinationDate: '2026-05-25',
+        spillover: true,
+      },
+    });
     const view = renderPlanner(0);
     expect(await screen.findByTestId('planner-planning-confirmation')).toHaveTextContent(
-      'was removed'
+      'moved to Monday, May 25'
     );
     mocks.setSearchParams('weekOffset=1&referenceWeekStartDate=2026-05-11');
     mocks.setPlannerState({ ...mocks.getPlannerState(), currentWeekOffset: 1 });
@@ -2066,11 +2158,42 @@ describe('PlannerPage voting action row', () => {
       'true'
     );
     expect(await screen.findByTestId('mock-review-plan')).toHaveTextContent('Review plan');
+    expect(screen.getByTestId('mock-recipe-detail-sheet')).toHaveAttribute(
+      'data-planning-message-tone',
+      'alert'
+    );
   });
 
-  it.each([2, 4])(
-    'reviews a confirmed status %i occurrence without a false Planned claim',
-    async (mealStatus) => {
+  it.each([
+    {
+      mealStatus: 2,
+      preparedOn: '2026-05-03',
+      expectedMessage: 'Prepared on Sun, May 3',
+      expectedTone: 'prepared',
+      expectedPrimary: 'Plan for another day',
+      expectedSecondary: 'Open Mon, May 4 in Planner',
+      secondaryTestId: 'action-open-day-in-planner',
+    },
+    {
+      mealStatus: 4,
+      preparedOn: undefined,
+      expectedMessage: 'Your household is still voting on Mon, May 4.',
+      expectedTone: 'status',
+      expectedPrimary: 'Open voting in Planner',
+      expectedSecondary: 'Plan for another day',
+      secondaryTestId: 'action-plan-another-day',
+    },
+  ])(
+    'shows distinct calm status messaging and actions for status $mealStatus without a false Planned claim',
+    async ({
+      mealStatus,
+      preparedOn,
+      expectedMessage,
+      expectedTone,
+      expectedPrimary,
+      expectedSecondary,
+      secondaryTestId,
+    }) => {
       mocks.setPlannerState({
         currentWeekOffset: 0,
         activeTab: 'planner',
@@ -2080,6 +2203,9 @@ describe('PlannerPage voting action row', () => {
       });
       const days = makeAssignedSchedule('2026-05-10', 0);
       days[0].status = mealStatus;
+      if (preparedOn) {
+        (days[0] as { preparation?: { preparedOn: string } }).preparation = { preparedOn };
+      }
       mocks.setWeekState({
         calendar: { referenceWeekStartDate: '2026-05-04' },
         schedule: days,
@@ -2106,9 +2232,12 @@ describe('PlannerPage voting action row', () => {
       });
       render(<PlannerPage />);
       fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
-      expect(await screen.findByTestId('mock-review-plan')).toHaveTextContent('Review plan');
-      expect(screen.getByTestId('mock-planning-message')).toHaveTextContent(
-        'Review this completed or voting supper in Planner.'
+      expect(await screen.findByTestId('mock-review-plan')).toHaveTextContent(expectedPrimary);
+      expect(screen.getByTestId(secondaryTestId)).toHaveTextContent(expectedSecondary);
+      expect(screen.getByTestId('mock-planning-message')).toHaveTextContent(expectedMessage);
+      expect(screen.getByTestId('mock-recipe-detail-sheet')).toHaveAttribute(
+        'data-planning-message-tone',
+        expectedTone
       );
       expect(screen.queryByTestId('mock-planned')).not.toBeInTheDocument();
       expect(screen.getByTestId('mock-recipe-detail-sheet')).toHaveAttribute(
@@ -2118,6 +2247,52 @@ describe('PlannerPage voting action row', () => {
       expect(mocks.assignRecipe).not.toHaveBeenCalled();
     }
   );
+
+  it('hides the prepared notification in RecipeDetailSheet once past the planned meal date while preserving recovery actions', async () => {
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    const days = makeAssignedSchedule('2026-05-10', 0);
+    days[0].status = 2;
+    (days[0] as { preparation?: { preparedOn: string } }).preparation = {
+      preparedOn: '2026-05-03',
+    };
+    mocks.setWeekState({
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: days,
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+    });
+    mocks.getSchedule.mockResolvedValue({
+      calendar: {
+        timeZone: 'UTC',
+        today: '2026-05-05',
+        capturedAtUtc: '2026-05-05T12:00:00Z',
+        currentWeekStartDate: '2026-05-04',
+        referenceWeekStartDate: '2026-05-04',
+        nextDayAtUtc: '2026-05-06T00:00:00Z',
+      },
+      days,
+    });
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
+    expect(await screen.findByTestId('mock-review-plan')).toHaveTextContent('Plan for another day');
+    expect(screen.getByTestId('action-open-day-in-planner')).toHaveTextContent(
+      'Open Mon, May 4 in Planner'
+    );
+    expect(screen.queryByTestId('mock-planning-message')).not.toBeInTheDocument();
+  });
 
   it('ignores a late Planned click read after detail closes', async () => {
     mocks.setPlannerState({
@@ -3082,5 +3257,268 @@ describe('Planner presentation composition', () => {
     expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-embedded', 'false');
     expect(screen.getByTestId('mock-grocery')).toHaveAttribute('data-week', '1');
     expect(mocks.getPlannerState().activeTab).toBe('grocery');
+  });
+});
+
+describe('Planner meal-preserving PlanningDayChooser recovery', () => {
+  const calendarFixture = {
+    timeZone: 'UTC',
+    today: '2026-05-04',
+    capturedAtUtc: '2026-05-04T12:00:00Z',
+    currentWeekStartDate: '2026-05-04',
+    referenceWeekStartDate: '2026-05-04',
+    nextDayAtUtc: '2026-05-05T00:00:00Z',
+  };
+
+  function setupPlannerWeek(overrideDays?: (days: any[]) => any[]) {
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    const days = overrideDays
+      ? overrideDays(makeAssignedSchedule('2026-05-10', 0))
+      : makeAssignedSchedule('2026-05-10', 0);
+    mocks.setWeekState({
+      weekOffset: 0,
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: days,
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+      applySnapshot: mocks.applySnapshot,
+      applySlotUpdate: vi.fn(),
+    });
+    mocks.getSchedule.mockResolvedValue({
+      calendar: calendarFixture,
+      days,
+    });
+    return days;
+  }
+
+  it('opens PlanningDayChooser from a pre-commit SkipRecoveryDialog conflict and assigns to an open day', async () => {
+    setupPlannerWeek();
+    mocks.resolveOccupiedSlot.mockRejectedValueOnce({ responseStatusCode: 409 });
+    mocks.guardedAssign.mockResolvedValueOnce(undefined);
+
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('change-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+    fireEvent.click(screen.getByTestId('mock-quick-find-select'));
+    fireEvent.click(screen.getByTestId('mock-recovery-drop'));
+
+    expect(await screen.findByTestId('mock-replacement-feedback')).toHaveAttribute(
+      'data-phase',
+      'conflict'
+    );
+    fireEvent.click(screen.getByTestId('mock-recovery-choose-another-day'));
+    expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
+    expect(screen.queryByTestId('mock-recipe-detail-sheet')).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByTestId('planning-day-3'));
+    await waitFor(() =>
+      expect(mocks.guardedAssign).toHaveBeenCalledWith(
+        0,
+        3,
+        expect.objectContaining({ id: '22222222-2222-2222-2222-222222222222' }),
+        '2026-05-04',
+        true
+      )
+    );
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/planner?success=1&dayIndex=3&weekOffset=0&referenceWeekStartDate=2026-05-04'
+      )
+    );
+  });
+
+  it('routes PlanningDayChooser selection to replace, non-cooking confirmation, or locked feedback without mutation', async () => {
+    setupPlannerWeek((days) => {
+      days[0].status = 2; // Cooked source
+      days[1].recipe = {
+        id: '33333333-3333-3333-3333-333333333333',
+        name: 'Other Meal',
+        image: '',
+      };
+      days[2].status = 3;
+      days[2].nonCooking = { kind: 'order_in', customLabel: null };
+      days[4].status = 4;
+      days[4].recipe = {
+        id: '44444444-4444-4444-4444-444444444444',
+        name: 'Voting Meal',
+        image: '',
+      };
+      return days;
+    });
+
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
+    const planAnotherBtn = await screen.findByTestId('mock-review-plan');
+    expect(planAnotherBtn).toHaveTextContent('Plan for another day');
+
+    // Locked target stays blocked with dated feedback
+    fireEvent.click(planAnotherBtn);
+    expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
+    fireEvent.click(await screen.findByTestId('planning-day-4'));
+    expect(mocks.addToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: expect.stringContaining('Fri, May 8'),
+      })
+    );
+    expect(mocks.guardedAssign).not.toHaveBeenCalled();
+
+    // Non-cooking target opens NonCookingReplacementConfirmation
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
+    fireEvent.click(await screen.findByTestId('mock-review-plan'));
+    fireEvent.click(await screen.findByTestId('planning-day-2'));
+    expect(await screen.findByTestId('non-cooking-confirmation')).toBeInTheDocument();
+
+    // Occupied recipe target opens SkipRecoveryDialog
+    fireEvent.click(screen.getByTestId('non-cooking-cancel'));
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('edit-recipe-button'));
+    fireEvent.click(await screen.findByTestId('mock-review-plan'));
+    fireEvent.click(await screen.findByTestId('planning-day-1'));
+    expect(await screen.findByTestId('mock-skip-recovery')).toBeInTheDocument();
+  });
+});
+
+describe('Planner review landing without false success receipt', () => {
+  it('scrolls to, focuses, and highlights day-card-<dayIndex> without a success banner when opening with ?dayIndex= and no success=1', async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    mocks.setSearchParams('dayIndex=3&weekOffset=0&referenceWeekStartDate=2026-05-04');
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      weekOffset: 0,
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: makeAssignedSchedule('2026-05-10', 0),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+      applySnapshot: mocks.applySnapshot,
+      applySlotUpdate: vi.fn(),
+    });
+
+    render(<PlannerPage />);
+
+    const card = screen.getByTestId('day-card-3');
+    await waitFor(() => expect(card).toHaveAttribute('data-review-highlight', 'true'));
+    expect(card).toHaveFocus();
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(screen.queryByTestId('planner-planning-confirmation')).not.toBeInTheDocument();
+  });
+
+  it('closes SkipRecoveryDialog on Review plan without reopening RecipeDetailSheet', async () => {
+    mocks.setSearchParams('');
+    mocks.setPlannerState({
+      currentWeekOffset: 0,
+      activeTab: 'planner',
+      setWeekOffset: mocks.setWeekOffset,
+      setActiveTab: mocks.setActiveTab,
+      setGroceryState: mocks.setGroceryState,
+    });
+    mocks.setWeekState({
+      weekOffset: 0,
+      calendar: { referenceWeekStartDate: '2026-05-04' },
+      schedule: makeAssignedSchedule('2026-05-10', 0),
+      isLoading: false,
+      status: 0,
+      groceryItems: [],
+      init: mocks.weekInit,
+      openVoting: mocks.openVoting,
+      lockWeek: mocks.lockWeek,
+      assignRecipe: mocks.assignRecipe,
+      removeRecipe: mocks.removeRecipe,
+      reorderLocally: mocks.reorderLocally,
+      applySnapshot: mocks.applySnapshot,
+      applySlotUpdate: vi.fn(),
+    });
+    mocks.resolveOccupiedSlot.mockRejectedValueOnce({ responseStatusCode: 409 });
+
+    render(<PlannerPage />);
+    fireEvent.click(within(screen.getByTestId('day-card-0')).getByTestId('change-recipe-button'));
+    fireEvent.click(screen.getByTestId('mock-pivot-quick-find'));
+    fireEvent.click(screen.getByTestId('mock-quick-find-select'));
+    fireEvent.click(screen.getByTestId('mock-recovery-drop'));
+
+    expect(await screen.findByTestId('mock-replacement-feedback')).toHaveAttribute(
+      'data-phase',
+      'conflict'
+    );
+    fireEvent.click(screen.getByTestId('mock-recovery-review-plan'));
+
+    expect(screen.queryByTestId('mock-skip-recovery')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mock-recipe-detail-sheet')).not.toBeInTheDocument();
+    expect(mocks.push).toHaveBeenCalledWith(
+      '/planner?dayIndex=0&weekOffset=0&referenceWeekStartDate=2026-05-04'
+    );
+  });
+});
+
+describe('Planner compact prepared pill lifecycle', () => {
+  it('shows Prepared without vote/chosen on today/future prepared rows and switches back to vote/chosen on past rows', () => {
+    setCalendar('2026-05-13');
+    const view = renderPlanner(0, '2026-05-17');
+    const schedule = mocks.getWeekState().schedule;
+    for (const [index, voteCount] of [
+      [0, 2],
+      [2, 0],
+      [4, 3],
+    ] as const) {
+      schedule[index] = {
+        ...schedule[index],
+        status: 2,
+        recipe: {
+          id: `00000000-0000-0000-0000-00000000000${index + 1}`,
+          name: `Meal ${index}`,
+          image: '',
+          voteCount,
+        },
+        preparation: { preparedOn: '2026-05-12' as any, servings: 4 },
+      };
+    }
+    view.rerender(<PlannerPage />);
+
+    // Past prepared row (Monday, May 11 < today May 13): switches back to vote/chosen, hides Prepared
+    const pastRow = screen.getByTestId('day-card-0');
+    expect(pastRow).toHaveAttribute('data-temporal', 'past');
+    expect(within(pastRow).queryByTestId('preparation-status')).not.toBeInTheDocument();
+    expect(within(pastRow).getByTestId('vote-count')).toHaveTextContent('2 voted');
+
+    // Today prepared row (Wednesday, May 13): shows compact Prepared pill without weekday or vote-count
+    const todayRow = screen.getByTestId('day-card-2');
+    expect(todayRow).toHaveAttribute('data-temporal', 'today');
+    expect(within(todayRow).getByTestId('preparation-status').textContent).toBe('Prepared');
+    expect(within(todayRow).queryByTestId('vote-count')).not.toBeInTheDocument();
+
+    // Future prepared row (Friday, May 15): shows compact Prepared pill without weekday or vote-count
+    const futureRow = screen.getByTestId('day-card-4');
+    expect(futureRow).toHaveAttribute('data-temporal', 'neutral');
+    expect(within(futureRow).getByTestId('preparation-status').textContent).toBe('Prepared');
+    expect(within(futureRow).queryByTestId('vote-count')).not.toBeInTheDocument();
   });
 });

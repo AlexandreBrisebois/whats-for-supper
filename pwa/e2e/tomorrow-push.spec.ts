@@ -220,8 +220,13 @@ for (const entry of ['Home', 'Planner', 'Search', 'Browse'] as const) {
     if (entry === 'Home') {
       await expect(page.getByText(/completed meal or changed plan blocks/)).toBeVisible();
     } else {
-      await expect(page.getByTestId('replacement-feedback')).toContainText('Your plan changed');
-      await expect(page.getByTestId('recovery-review-plan')).toBeVisible();
+      await expect(page.getByTestId('replacement-feedback')).toContainText(
+        /Your plan on .* changed before anything was saved/
+      );
+      await expect(page.getByTestId('recovery-choose-another-day')).toBeVisible();
+      await expect(page.getByTestId('recovery-review-plan')).toContainText(
+        'Open Sun, Oct 11 in Planner'
+      );
       await expect(page.getByTestId('recovery-retry-save')).toHaveCount(0);
       await expect(page.getByTestId('recovery-retry-check')).toHaveCount(0);
     }

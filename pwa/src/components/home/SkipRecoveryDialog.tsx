@@ -45,6 +45,7 @@ interface SkipRecoveryDialogProps {
   replacement?: ReplacementFeedback | null;
   onRetryReplacement?: () => void;
   onReviewPlan?: () => void;
+  onChooseAnotherDay?: () => void;
   confirmAbandon?: boolean;
   onCancelAbandon?: () => void;
   onAbandon?: () => void;
@@ -74,6 +75,7 @@ function SkipRecoveryDialogContent({
   replacement,
   onRetryReplacement,
   onReviewPlan,
+  onChooseAnotherDay,
   confirmAbandon,
   onCancelAbandon,
   onAbandon,
@@ -112,6 +114,10 @@ function SkipRecoveryDialogContent({
     ? new Date(Date.parse(`${source.date}T00:00:00Z`) + 86400000).toISOString().slice(0, 10)
     : '';
   const shortFollowingDate = followingDateIso ? formatShortSupperPlanDate(followingDateIso) : '';
+  const isPreCommitConflict = replacement?.phase === 'conflict' && !replacement.original;
+  const isUnsavedRecovery = replacement
+    ? ['conflict', 'retry', 'unknown', 'disposition_unknown'].includes(replacement.phase)
+    : false;
 
   const replacementTitle = confirmAbandon
     ? t('planning.replacement.leaveTitle', 'Leave this replacement?')
@@ -229,7 +235,18 @@ function SkipRecoveryDialogContent({
                       'planning.replacement.leaveUnsaved',
                       'Your new meal is not saved. Completed changes to your original meal will remain.'
                     )
-                : replacement.message}
+                : isPreCommitConflict
+                  ? shortSourceDate
+                    ? tWithVars(
+                        'planning.replacement.conflictWithDate',
+                        'Your plan on {{date}} changed before anything was saved.',
+                        { date: shortSourceDate }
+                      )
+                    : t(
+                        'planning.replacement.conflictNoDate',
+                        'Nothing was saved yet. Choose another day or open Planner to see what changed.'
+                      )
+                  : replacement.message}
             </p>
             {replacement.original && (
               <div className="flex items-stretch gap-3">
@@ -247,7 +264,9 @@ function SkipRecoveryDialogContent({
                 <Utensils size={18} className="shrink-0 text-hearth-ink" aria-hidden="true" />
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-ink-muted">
-                    {t('planning.replacement.newMeal', 'Your new meal')}
+                    {isUnsavedRecovery
+                      ? t('planning.replacement.notSavedYet', 'Not saved yet')
+                      : t('planning.replacement.newMeal', 'Your new meal')}
                   </p>
                   <p className="mt-0.5 break-words font-heading text-base font-semibold text-ink-body">
                     {replacement.recipeName}
@@ -290,9 +309,29 @@ function SkipRecoveryDialogContent({
                           : t('planning.replacement.retryCheck', 'Retry check')}
                     </Button>
                   )}
+                  {isPreCommitConflict && onChooseAnotherDay && (
+                    <Button
+                      className="max-w-full whitespace-normal break-words text-center"
+                      onClick={onChooseAnotherDay}
+                      data-testid="recovery-choose-another-day"
+                    >
+                      {t('planning.replacement.chooseAnotherDay', 'Choose a day for this meal')}
+                    </Button>
+                  )}
                   {['conflict', 'disposition_unknown'].includes(replacement.phase) && (
-                    <Button onClick={onReviewPlan} data-testid="recovery-review-plan">
-                      {t('planning.replacement.review', 'Review plan')}
+                    <Button
+                      variant={isPreCommitConflict && onChooseAnotherDay ? 'secondary' : 'primary'}
+                      className="max-w-full whitespace-normal break-words text-center"
+                      onClick={onReviewPlan}
+                      data-testid="recovery-review-plan"
+                    >
+                      {replacement.phase === 'conflict' && shortSourceDate
+                        ? tWithVars(
+                            'planning.replacement.openDayInPlanner',
+                            'Open {{date}} in Planner',
+                            { date: shortSourceDate }
+                          )
+                        : t('planning.replacement.review', 'Review plan')}
                     </Button>
                   )}
                 </div>

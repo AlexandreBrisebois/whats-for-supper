@@ -67,7 +67,7 @@ test('confirmed 204 removal continues replacement after grocery follow-up fails'
   );
   await page.getByTestId('recovery-action-drop').click();
   expect((await removed).status()).toBe(204);
-  await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 13');
+  await expect(page.getByTestId('toast')).toContainText('May 13');
   await expect(page.getByTestId('recovery-retry-save')).toHaveCount(0);
   const saved = await readRecovery(page, 1);
   expect(saved.days[2].recipe.id).toBe(id);
@@ -350,7 +350,7 @@ for (const stage of ['remove', 'assign', 'defer', 'move'] as const) {
       const destination = await readRecovery(page, stage === 'move' ? 1 : 2);
       expect(destination.days[stage === 'move' ? 3 : 0].recipe.id).toBe(MOCK_IDS.RECIPE_CHICKEN);
     } else {
-      await expect(page.getByTestId('planner-planning-confirmation')).toContainText('May 13');
+      await expect(page.getByTestId('toast')).toContainText('May 13');
       expect((await readRecovery(page, 1)).days[2].recipe.id).toBe(id);
       expect(writes.filter((path) => path === '/api/schedule/assign')).toHaveLength(1);
     }
@@ -409,7 +409,11 @@ test('Home Drop protects the opening snapshot when the same original becomes Coo
   );
   await page.getByTestId('recovery-action-drop').click();
   expect((await deletion).status()).toBe(409);
-  await expect(page.getByTestId('replacement-feedback')).toContainText('Your plan changed');
+  await expect(page.getByTestId('replacement-feedback')).toContainText(
+    /Your plan on .* changed before anything was saved/
+  );
+  await expect(page.getByTestId('recovery-choose-another-day')).toBeVisible();
+  await expect(page.getByTestId('recovery-review-plan')).toContainText(/Open .* in Planner/);
   expect(assigns).toBe(0);
   expect((await readRecovery(page, 0)).days[0]).toMatchObject({
     status: 2,
@@ -548,4 +552,93 @@ test('detail error and auto-reconcile conflict recovery pass Era 3 AA, AAA, and 
   await page.getByTestId('recipe-save-edits').click();
   await expect(page.getByTestId('recipe-detail-name')).toHaveText('Local draft pasta');
   expect(currentRecipe.cuisineType).toBe('French-Fusion');
+});
+
+test('pre-commit conflict clarifies unsaved date, preserves meal via PlanningDayChooser, focuses Planner without false success, and passes AA/AAA', async ({
+  page,
+}) => {
+  await page.goto('/recipes');
+  const assign = async (recipeId: string) =>
+    page.evaluate(async (recipeId) => {
+      const response = await fetch('/api/schedule/assign?referenceWeekStartDate=2026-05-04', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekOffset: 1, dayIndex: 2, recipeId }),
+      });
+      if (!response.ok) throw new Error('Could not seed supper');
+    }, recipeId);
+
+  await assign(MOCK_IDS.RECIPE_CHICKEN);
+  await page.goto(`/recipes?addToDay=2&weekOffset=1&referenceWeekStartDate=2026-05-04&open=${id}`);
+  await page.getByTestId('action-add-to-day').click();
+  await expect(page.getByTestId('recovery-action-drop')).toBeVisible();
+
+  await assign(MOCK_IDS.RECIPE_CARBONARA);
+  await page.getByTestId('recovery-action-drop').click();
+
+  await expect(page.getByTestId('replacement-feedback')).toContainText(
+    'Your plan on Wed, May 13 changed before anything was saved.'
+  );
+  await expect(page.getByTestId('recovery-dialog-panel')).toContainText('Not saved yet');
+  await expect(page.getByTestId('recovery-dialog-panel')).not.toContainText('Your new meal');
+  await expect(page.getByTestId('recovery-choose-another-day')).toHaveText(
+    'Choose a day for this meal'
+  );
+  await expect(page.getByTestId('recovery-review-plan')).toHaveText('Open Wed, May 13 in Planner');
+
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recovery-dialog-panel"]',
+    contrastLevel: 'aa',
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.contrast = 'high';
+  });
+  await assertCookbookVisualA11y(page, {
+    rootSelector: '[data-testid="recovery-dialog-panel"]',
+    contrastLevel: 'aaa',
+  });
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.contrast;
+  });
+
+  await page.getByTestId('recovery-choose-another-day').click();
+  await expect(page.getByTestId('planning-day-chooser')).toBeVisible();
+  await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+  await page.getByTestId('planning-day-4').click();
+  await expect(page.getByTestId('recipe-detail-sheet')).toBeVisible();
+  await expect(page.getByTestId('action-add-to-day')).toContainText('May 15');
+
+  // Now verify Planner conflict -> Open <Day> in Planner closes cleanly without flashing detail and focuses day-card-2
+  await page.route('**/api/schedule/fill-the-gap**', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    await route.fulfill({
+      status: 200,
+      json: { data: [builders.scheduleRecipe({ id, name: 'Recovery pasta' })] },
+    });
+  });
+  await page.goto('/planner?weekOffset=1&referenceWeekStartDate=2026-05-04');
+  await expect(page.getByTestId('day-card-2').getByTestId('change-recipe-button')).toBeVisible();
+  await page.getByTestId('day-card-2').getByTestId('change-recipe-button').click();
+  await page.getByTestId('pivot-quick-find').click();
+  await page.getByTestId('quick-find-select').first().click();
+  await expect(page.getByTestId('recovery-action-drop')).toBeVisible();
+
+  await page.route('**/api/schedule/day/**/remove**', async (route) => {
+    if (route.request().method() === 'DELETE') {
+      await route.fulfill({ status: 409, json: { message: 'Conflict' } });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.getByTestId('recovery-action-drop').click();
+  await expect(page.getByTestId('recovery-review-plan')).toHaveText('Open Wed, May 13 in Planner');
+  await page.getByTestId('recovery-review-plan').click();
+
+  await expect(page).toHaveURL(
+    /\/planner\?dayIndex=2&weekOffset=1&referenceWeekStartDate=2026-05-04/
+  );
+  await expect(page.getByTestId('recipe-detail-sheet')).toHaveCount(0);
+  await expect(page.getByTestId('planner-planning-confirmation')).toHaveCount(0);
+  await expect(page.getByTestId('day-card-2')).toHaveAttribute('data-review-highlight', 'true');
+  await expect(page.getByTestId('day-card-2')).toBeFocused();
 });

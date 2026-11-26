@@ -284,7 +284,9 @@ test('common occupied swap uses destination counts and selectively unchecks a kn
     expect.arrayContaining([expect.objectContaining({ name: 'unrelated', checked: true })])
   );
   await page.getByTestId('grocery-tab').click();
-  await expect(page.getByTestId('grocery-portions-summary')).toBeVisible();
+  await expect(
+    page.getByTestId('toast').filter({ hasText: /Shopping list updated/ })
+  ).toBeVisible();
 });
 
 test('common new assignment contributes 400 plus 600 and later checks survive unchanged refresh', async ({

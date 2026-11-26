@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { assertCookbookVisualA11y } from './visual-a11y-contract';
 import {
   MOCK_IDS,
   builders,
@@ -522,7 +523,8 @@ test.describe('Discovery Flow', () => {
     await page.goto('/discovery');
     await expect(page.getByTestId('discovery-empty-state')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Capture a New Recipe' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Refresh Feed' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refresh recipe suggestions' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refresh Feed' })).toHaveCount(0);
     await expect(page.getByTestId('planner-nudge-dialog')).toHaveCount(0);
     await page.getByTestId('discovery-nudge-family').click();
     await expect(page.getByRole('dialog', { name: 'Nudge the family' })).toBeVisible();
@@ -1113,3 +1115,450 @@ for (const locale of ['en', 'fr'] as const) {
     }
   });
 }
+
+test.describe('Pass the phone discovery handoff', () => {
+  const THREE_MEMBERS = [
+    builders.familyMember({ id: MOCK_IDS.MEMBER_ALEX, name: 'Alex' }),
+    builders.familyMember({ id: MOCK_IDS.MEMBER_JORDAN, name: 'Jordan' }),
+    builders.familyMember({ id: MOCK_IDS.MEMBER_TEST, name: 'Sam' }),
+  ];
+
+  async function setupPassThePhoneScenario(
+    page: import('@playwright/test').Page,
+    options: {
+      stacks?: Record<string, ReturnType<typeof builders.recipe>[]>;
+      sessionPhase?: 'collecting' | 'converged';
+      voteDelayMs?: number;
+      convergeOnVote?: boolean;
+      contrastMode?: 'standard' | 'high';
+      preferredLanguage?: 'en' | 'fr';
+    } = {}
+  ) {
+    const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+    await page
+      .context()
+      .addCookies([{ name: 'x-family-member-id', value: MOCK_IDS.MEMBER_ALEX, url: baseUrl }]);
+
+    await setupCommonRoutes(page);
+
+    const members = THREE_MEMBERS.map((m) => ({
+      ...m,
+      contrastMode: options.contrastMode ?? 'standard',
+      preferredLanguage: options.preferredLanguage ?? 'en',
+    }));
+
+    const memberStacks: Record<string, ReturnType<typeof builders.recipe>[]> = {
+      [MOCK_IDS.MEMBER_ALEX]: [
+        builders.recipe({ id: MOCK_IDS.RECIPE_LASAGNA, name: 'Weeknight Lasagna' }),
+      ],
+      [MOCK_IDS.MEMBER_JORDAN]: [
+        builders.recipe({ id: MOCK_IDS.RECIPE_TACOS, name: 'Crispy Baked Tacos' }),
+      ],
+      [MOCK_IDS.MEMBER_TEST]: [
+        builders.recipe({ id: MOCK_IDS.RECIPE_CARBONARA, name: 'Classic Carbonara' }),
+      ],
+      ...options.stacks,
+    };
+
+    const voteHeaders: Array<{ recipeId: string; memberId: string | undefined }> = [];
+    const stackRequests: Array<{ memberId: string | undefined }> = [];
+    const eventLog: string[] = [];
+    const weekStartDate = builders.scheduleDays(1).weekStartDate;
+    let sessionPhase: 'collecting' | 'converged' = options.sessionPhase ?? 'collecting';
+
+    const buildSession = () => ({
+      incarnationId: MOCK_IDS.MEMBER_TEST,
+      revision: sessionPhase === 'converged' ? 2 : 1,
+      roundId: MOCK_IDS.VOTING_ROUND,
+      weekStartDate,
+      phase: sessionPhase,
+      requiredSlots: 3,
+      coveredSlots: sessionPhase === 'converged' ? 3 : 1,
+      candidateCount: sessionPhase === 'converged' ? 3 : 1,
+      smartDefaults: {
+        familySize: 3,
+        consensusThreshold: 2,
+        consensusRecipesCount: sessionPhase === 'converged' ? 3 : 1,
+        weekOffset: 1,
+        weekStartDate,
+        preSelectedRecipes: [],
+        openSlots: sessionPhase === 'converged' ? [] : [{ dayIndex: 5 }],
+      },
+    });
+
+    await page.route('**/api/family', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      await route.fulfill({ json: { data: members } });
+    });
+
+    await page.route('**/api/family/me', async (route) => {
+      const cookies = await page.context().cookies();
+      const memberId =
+        cookies.find((c) => c.name === 'x-family-member-id')?.value || MOCK_IDS.MEMBER_ALEX;
+      const member =
+        members.find((m) => m.id?.toLowerCase() === memberId.toLowerCase()) ?? members[0];
+      await route.fulfill({ json: { data: member } });
+    });
+
+    await page.route(
+      (url) => url.pathname === '/api/discovery/categories',
+      (route) => route.fulfill({ json: { data: ['Supper'] } })
+    );
+
+    await page.route(
+      (url) => url.pathname === '/api/discovery',
+      async (route) => {
+        const memberId = route.request().headers()['x-family-member-id'];
+        stackRequests.push({ memberId });
+        eventLog.push(`stack:${memberId}`);
+        const stack = memberStacks[memberId ?? MOCK_IDS.MEMBER_ALEX] ?? [];
+        await route.fulfill({ json: { data: stack } });
+      }
+    );
+
+    await page.route(
+      (url) => url.pathname === '/api/discovery/session',
+      async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        await route.fulfill({ json: { data: buildSession() } });
+      }
+    );
+
+    await page.route('**/api/discovery/*/vote', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      const memberId = route.request().headers()['x-family-member-id'];
+      const recipeId = new URL(route.request().url()).pathname.split('/').at(-2) ?? '';
+      voteHeaders.push({ recipeId, memberId });
+      if (options.voteDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, options.voteDelayMs));
+      }
+      if (memberId && memberStacks[memberId]) {
+        memberStacks[memberId] = memberStacks[memberId].filter((r) => r.id !== recipeId);
+      }
+      if (options.convergeOnVote && memberId === MOCK_IDS.MEMBER_JORDAN) {
+        sessionPhase = 'converged';
+      }
+      eventLog.push(`vote:settled:${memberId}`);
+      await route.fulfill({ json: { success: true } });
+    });
+
+    return { voteHeaders, stackRequests, eventLog };
+  }
+
+  test('Pass the phone from exhausted queue and hand back', async ({ page }) => {
+    const { voteHeaders, stackRequests } = await setupPassThePhoneScenario(page);
+
+    await page.goto('/profile/settings');
+    const optInSwitch = page.getByTestId('pass-the-phone-switch');
+    await expect(optInSwitch).toHaveAttribute('aria-checked', 'false');
+    await optInSwitch.click();
+    await expect(optInSwitch).toHaveAttribute('aria-checked', 'true');
+
+    await page.getByTestId('nav-item-discovery').click();
+    await expect(page).toHaveURL(/\/discovery$/);
+    await expect(page.getByText('Weeknight Lasagna')).toBeVisible();
+    await expect(page.getByTestId('discovery-pass-the-phone')).toHaveCount(0);
+
+    await page.getByTestId('like-button').click();
+    await expect(page.getByTestId('discovery-empty-state')).toBeVisible();
+    await expect(page.getByTestId('discovery-pass-the-phone')).toBeVisible();
+    await expect(page.getByTestId('discovery-nudge-family')).toHaveClass(/border-garden-line/);
+
+    await page.getByTestId('discovery-pass-the-phone').click();
+    await page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+
+    const curtain = page.getByTestId('discovery-handoff-curtain');
+    await expect(curtain).toBeVisible();
+    await expect(curtain.getByRole('heading', { name: 'Hand the phone to Jordan' })).toBeVisible();
+    await expect(page.getByTestId('discovery-handoff-confirm')).toHaveText("Let's go, Jordan!");
+
+    const jordanStackPromise = page.waitForRequest(
+      (req) =>
+        new URL(req.url()).pathname === '/api/discovery' &&
+        req.headers()['x-family-member-id'] === MOCK_IDS.MEMBER_JORDAN
+    );
+    await page.getByTestId('discovery-handoff-confirm').click();
+    await jordanStackPromise;
+
+    await expect(page.getByText('Crispy Baked Tacos')).toBeVisible();
+    await expect(page.getByTestId('discovery-pass-the-phone')).toHaveCount(0);
+    await expect(page.getByTestId('nav-item-home')).toHaveCount(0);
+    await expect(page.getByTestId('handoff-dock-turn')).toHaveText("Jordan's turn");
+    await expect(page.getByTestId('handoff-dock-return')).toHaveText('← Back to Alex');
+
+    await page.getByTestId('like-button').click();
+    expect(
+      voteHeaders.some(
+        (v) => v.recipeId === MOCK_IDS.RECIPE_TACOS && v.memberId === MOCK_IDS.MEMBER_JORDAN
+      )
+    ).toBe(true);
+
+    const kidWrapUp = page.getByTestId('discovery-kid-wrap-up');
+    await expect(kidWrapUp).toBeVisible();
+    await expect(kidWrapUp.getByRole('heading', { name: 'Nice picks, Jordan!' })).toBeVisible();
+    await expect(kidWrapUp.locator('button')).toHaveCount(0);
+
+    await page.getByTestId('handoff-dock-return').click();
+    await expect(page.getByTestId('nav-item-home')).toBeVisible();
+    await expect(page.getByTestId('discovery-empty-state')).toBeVisible();
+    await expect(page.getByTestId('toast')).toContainText(
+      "Welcome back, Alex — Jordan's votes are saved."
+    );
+
+    await page.reload();
+    await expect(page.getByTestId('nav-item-home')).toBeVisible();
+    await expect(page.getByTestId('discovery-empty-state')).toBeVisible();
+    await expect(page.getByTestId('handoff-dock')).toHaveCount(0);
+    expect(stackRequests.at(-1)?.memberId).toBe(MOCK_IDS.MEMBER_ALEX);
+  });
+
+  test('Pass the phone Escape, cancel curtain, mid-stack confirmation, and sibling turn', async ({
+    page,
+  }) => {
+    await setupPassThePhoneScenario(page, {
+      stacks: {
+        [MOCK_IDS.MEMBER_ALEX]: [],
+      },
+    });
+
+    await page.goto('/discovery');
+    await page.evaluate(() => {
+      localStorage.setItem('wfs.passThePhone.enabled', 'true');
+      window.dispatchEvent(new StorageEvent('storage', { key: 'wfs.passThePhone.enabled' }));
+    });
+
+    const passTrigger = page.getByTestId('discovery-pass-the-phone');
+    await expect(passTrigger).toBeVisible();
+
+    // Escape closes dropdown and returns focus to trigger
+    await passTrigger.click();
+    const firstOption = page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`);
+    await firstOption.focus();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('discovery-pass-the-phone-menu')).toHaveCount(0);
+    await expect(passTrigger).toBeFocused();
+
+    // Cancel curtain returns to Alex's wrap-up without switching, and curtain is already locked
+    await passTrigger.click();
+    await page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+    await expect(page.getByTestId('discovery-handoff-curtain')).toBeVisible();
+    await expect(page.getByTestId('nav-item-home')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('discovery-handoff-curtain')).toBeVisible();
+    await expect(page.getByTestId('nav-item-home')).toHaveCount(0);
+    await page.getByTestId('discovery-handoff-cancel').click();
+    await expect(page.getByTestId('discovery-handoff-curtain')).toHaveCount(0);
+    await expect(page.getByTestId('nav-item-home')).toBeVisible();
+    await expect(page.getByTestId('discovery-empty-state')).toBeVisible();
+
+    // Confirm Jordan, test Keep voting, then confirmed mid-stack exit
+    await passTrigger.click();
+    await page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+    await page.getByTestId('discovery-handoff-confirm').click();
+    await expect(page.getByText('Crispy Baked Tacos')).toBeVisible();
+
+    await page.getByTestId('handoff-dock-return').click();
+    await expect(page.getByTestId('handoff-exit-modal')).toBeVisible();
+    await page.getByTestId('handoff-exit-cancel').click();
+    await expect(page.getByTestId('handoff-exit-modal')).toHaveCount(0);
+    await expect(page.getByTestId('handoff-dock-turn')).toHaveText("Jordan's turn");
+
+    await page.getByTestId('handoff-dock-return').click();
+    await page.getByTestId('handoff-exit-confirm').click();
+    await expect(page.getByTestId('nav-item-home')).toBeVisible();
+    await expect(page.getByTestId('toast')).toContainText(
+      "Welcome back, Alex — Jordan's votes are saved."
+    );
+
+    // Sibling turn: Alex -> Sam -> Alex
+    await page.getByTestId('discovery-pass-the-phone').click();
+    await page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_TEST}`).click();
+    await expect(page.getByTestId('discovery-handoff-confirm')).toHaveText("Let's go, Sam!");
+    await page.getByTestId('discovery-handoff-confirm').click();
+    await expect(page.getByText('Classic Carbonara')).toBeVisible();
+    await expect(page.getByTestId('handoff-dock-turn')).toHaveText("Sam's turn");
+
+    await page.getByTestId('like-button').click();
+    await expect(page.getByTestId('discovery-kid-wrap-up')).toHaveText('Nice picks, Sam!');
+    await page.getByTestId('handoff-dock-return').click();
+    await expect(page.getByTestId('nav-item-home')).toBeVisible();
+    await expect(page.getByTestId('discovery-empty-state')).toBeVisible();
+  });
+
+  test('Pass the phone converged return unlocks to origin before opening Planner', async ({
+    page,
+  }) => {
+    await setupPassThePhoneScenario(page, {
+      stacks: { [MOCK_IDS.MEMBER_ALEX]: [] },
+      convergeOnVote: true,
+    });
+
+    await page.goto('/discovery');
+    await page.evaluate(() => {
+      localStorage.setItem('wfs.passThePhone.enabled', 'true');
+      window.dispatchEvent(new StorageEvent('storage', { key: 'wfs.passThePhone.enabled' }));
+    });
+
+    await page.getByTestId('discovery-pass-the-phone').click();
+    await page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+    await page.getByTestId('discovery-handoff-confirm').click();
+    await expect(page.getByText('Crispy Baked Tacos')).toBeVisible();
+
+    await page.getByTestId('like-button').click();
+    const convergedAction = page.getByTestId('discovery-see-matches');
+    await expect(convergedAction).toHaveText('Back to Alex & see matches');
+
+    const plannerSchedulePromise = page.waitForRequest(
+      (req) =>
+        new URL(req.url()).pathname.includes('/api/schedule') &&
+        req.headers()['x-family-member-id'] === MOCK_IDS.MEMBER_ALEX
+    );
+    await convergedAction.click();
+    await plannerSchedulePromise;
+
+    await expect(page).toHaveURL(/\/planner/);
+    await expect(page.getByTestId('nav-item-home')).toBeVisible();
+    await expect(page.getByTestId('toast')).toContainText(
+      "Welcome back, Alex — Jordan's votes are saved."
+    );
+  });
+
+  for (const locale of ['en', 'fr'] as const) {
+    for (const contrastMode of ['standard', 'high'] as const) {
+      const contrastLevel = contrastMode === 'high' ? 'aaa' : 'aa';
+
+      test.describe(`Pass the phone visual a11y (${locale}, ${contrastMode})`, () => {
+        test.use({ appLocale: locale });
+
+        test(`passes ${contrastLevel.toUpperCase()} contrast, targets, and 320px/200% reflow`, async ({
+          page,
+        }) => {
+          await page.setViewportSize({ width: 320, height: 740 });
+          await page.emulateMedia({ reducedMotion: 'reduce' });
+
+          await setupPassThePhoneScenario(page, {
+            stacks: { [MOCK_IDS.MEMBER_ALEX]: [] },
+            contrastMode,
+            preferredLanguage: locale,
+          });
+
+          // 1. Settings flyout at 320px and 200% text scaling
+          await page.goto('/profile/settings');
+          await page.getByTestId('pass-the-phone-switch').click();
+          await page.getByTestId('pass-the-phone-how-it-works-toggle').click();
+          await expect(page.getByTestId('pass-the-phone-how-it-works-body')).toBeVisible();
+          if (contrastMode === 'high') {
+            await expect(page.locator('html')).toHaveAttribute('data-contrast', 'high');
+          }
+          await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[data-testid="pass-the-phone-settings"]',
+            contrastLevel,
+          });
+
+          // 2. Parent wrap-up + open dropdown at 320px and 200% text scaling
+          await page.goto('/discovery');
+          await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+          await page.getByTestId('discovery-pass-the-phone').click();
+          await expect(page.getByTestId('discovery-pass-the-phone-menu')).toBeVisible();
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[data-testid="discovery-empty-state"]',
+            contrastLevel,
+          });
+
+          // 3. Minimal handoff curtain
+          await page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+          await expect(page.getByTestId('discovery-handoff-curtain')).toBeVisible();
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[data-testid="discovery-handoff-curtain"]',
+            contrastLevel,
+          });
+
+          // 4. Quiet Handoff Dock + mid-stack exit confirmation modal
+          await page.getByTestId('discovery-handoff-confirm').click();
+          await expect(page.getByText('Crispy Baked Tacos')).toBeVisible();
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[data-testid="handoff-dock"]',
+            contrastLevel,
+          });
+
+          await page.getByTestId('handoff-dock-return').click();
+          await expect(page.getByTestId('handoff-exit-modal')).toBeVisible();
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[role="dialog"]',
+            contrastLevel,
+          });
+          await page.getByTestId('handoff-exit-cancel').click();
+
+          // 5. Kid celebration wrap-up
+          await page.getByTestId('like-button').click();
+          await expect(page.getByTestId('discovery-kid-wrap-up')).toBeVisible();
+          await assertCookbookVisualA11y(page, {
+            rootSelector: '[data-testid="discovery-kid-wrap-up"]',
+            contrastLevel,
+          });
+        });
+      });
+    }
+  }
+
+  test('Pass the phone right after last swipe settles outgoing vote before incoming stack', async ({
+    page,
+  }) => {
+    const { voteHeaders, eventLog } = await setupPassThePhoneScenario(page, {
+      voteDelayMs: 500,
+    });
+
+    await page.goto('/discovery');
+    await page.evaluate(() => {
+      localStorage.setItem('wfs.passThePhone.enabled', 'true');
+      window.dispatchEvent(new StorageEvent('storage', { key: 'wfs.passThePhone.enabled' }));
+    });
+    await expect(page.getByText('Weeknight Lasagna')).toBeVisible();
+
+    await page.getByTestId('like-button').click();
+    await page.getByTestId('discovery-pass-the-phone').click();
+    await page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+    await page.getByTestId('discovery-handoff-confirm').click();
+
+    await expect(page.getByText('Crispy Baked Tacos')).toBeVisible();
+    expect(voteHeaders).toEqual([
+      { recipeId: MOCK_IDS.RECIPE_LASAGNA, memberId: MOCK_IDS.MEMBER_ALEX },
+    ]);
+
+    const settledIdx = eventLog.indexOf(`vote:settled:${MOCK_IDS.MEMBER_ALEX}`);
+    const jordanStackIdx = eventLog.indexOf(`stack:${MOCK_IDS.MEMBER_JORDAN}`);
+    expect(settledIdx).toBeGreaterThan(-1);
+    expect(jordanStackIdx).toBeGreaterThan(settledIdx);
+  });
+
+  test('Reload preserves locked Handoff Dock and redirects stray routes back to /discovery', async ({
+    page,
+  }) => {
+    await setupPassThePhoneScenario(page, {
+      stacks: { [MOCK_IDS.MEMBER_ALEX]: [] },
+    });
+
+    await page.goto('/discovery');
+    await page.evaluate(() => {
+      localStorage.setItem('wfs.passThePhone.enabled', 'true');
+      window.dispatchEvent(new StorageEvent('storage', { key: 'wfs.passThePhone.enabled' }));
+    });
+
+    await page.getByTestId('discovery-pass-the-phone').click();
+    await page.getByTestId(`pass-the-phone-option-${MOCK_IDS.MEMBER_JORDAN}`).click();
+    await page.getByTestId('discovery-handoff-confirm').click();
+    await expect(page.getByText('Crispy Baked Tacos')).toBeVisible();
+
+    await page.reload();
+    await expect(page).toHaveURL(/\/discovery$/);
+    await expect(page.getByTestId('handoff-dock-turn')).toHaveText("Jordan's turn");
+    await expect(page.getByTestId('nav-item-home')).toHaveCount(0);
+    await expect(page.getByText('Crispy Baked Tacos')).toBeVisible();
+
+    await page.goto('/planner');
+    await expect(page).toHaveURL(/\/discovery$/);
+    await expect(page.getByTestId('handoff-dock-turn')).toHaveText("Jordan's turn");
+    await expect(page.getByTestId('nav-item-home')).toHaveCount(0);
+  });
+});

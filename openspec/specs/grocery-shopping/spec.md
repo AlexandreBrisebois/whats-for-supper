@@ -1297,12 +1297,17 @@ Known compatible partial totals SHALL appear once as known/incomplete subtotals 
 
 ### Requirement: Keep grocery increase feedback quiet
 
-An update that unchecks increased requirements SHALL give one brief localized list-level explanation. Rows SHALL show their updated totals without extra delta amounts or persistent more-needed labels. Unchanged recomputation or repeated reading SHALL not repeat the explanation. Existing freshness and error feedback SHALL remain separate from successful-update feedback.
+An update that unchecks increased requirements SHALL show one brief localized explanation as a non-shifting `ToastContainer` toast once per reset version per week (guarded when `useWeekStore.weekOffset` mismatches `weekOffset`), auto-clearing on grocery interaction. Rows SHALL show updated totals without delta or more-needed labels; repeated reads SHALL not replay it. Inline `updating` and `failed`/`Retry` banners SHALL sit below the header with `mt-3 mb-1` clearance.
 
 #### Scenario: Several requirements increase together
 
 - **WHEN** one plan update increases pasta and tomatoes
 - **THEN** both updated totals are displayed with affected checks cleared, and one explanation covers the update rather than separate row notices
+
+#### Scenario: Reset explanation renders as a deduplicated toast without firing for a mismatched week
+
+- **WHEN** a week's reset version is displayed in groceries, acknowledged, or encountered while `GroceryList` is closing or mismatched to another week's store offset
+- **THEN** the explanation is shown once as a toast for the matching week, clears automatically on grocery interaction, does not replay for the same week/version, and does not fire prematurely for a mismatched `weekOffset`
 
 ### Requirement: Disclose contributor recipe titles independently of shopping actions
 

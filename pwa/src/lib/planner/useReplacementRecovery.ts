@@ -19,13 +19,16 @@ import {
 import { rememberPlanningResult } from './planningResult';
 import { t } from '@/locales';
 
+export type ReplacementDepartureReason = 'dismiss' | 'saved' | 'review' | 'chooseDay';
+
 /** Caller adapters own navigation/store refresh; this hook owns only the mounted two-stage recovery. */
 export function useReplacementRecovery(options: {
   slot?: PlannerSlot;
   recipe?: AssignmentRecipe;
-  onClosed: (saved?: boolean) => void;
+  onClosed: (saved?: boolean, reason?: ReplacementDepartureReason) => void;
   onSaved: () => Promise<unknown>;
   onReview: () => void;
+  onChooseAnotherDay?: () => void;
   observed?: (day: ScheduleDayDto) => void;
 }) {
   const sessionRef = useRef<ReplacementSession | null>(null);
@@ -34,7 +37,7 @@ export function useReplacementRecovery(options: {
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<ReplacementFeedback | null>(null);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
-  const reviewOnDeparture = useRef(false);
+  const departureReasonRef = useRef<'dismiss' | 'review' | 'chooseDay'>('dismiss');
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -93,7 +96,7 @@ export function useReplacementRecovery(options: {
       if (active()) {
         sessionRef.current = null;
         setFeedback(null);
-        options.onClosed(true);
+        options.onClosed(true, 'saved');
       }
     } catch {
       if (active())
@@ -121,7 +124,7 @@ export function useReplacementRecovery(options: {
     );
     await retry();
   };
-  const close = (review = false) => {
+  const close = (reason: 'dismiss' | 'review' | 'chooseDay' = 'dismiss') => {
     if (submitting.current) return;
     const session = sessionRef.current;
     // Only completed or uncertain changes need an explicit abandon choice. Before
@@ -131,14 +134,15 @@ export function useReplacementRecovery(options: {
       !session.saved &&
       (session.disposed || session.dispositionUnknown || session.saveUnknown)
     ) {
-      reviewOnDeparture.current = review;
+      departureReasonRef.current = reason;
       setConfirmAbandon(true);
       return;
     }
     sessionRef.current = null;
     setFeedback(null);
-    options.onClosed();
-    if (review) options.onReview();
+    options.onClosed(false, reason);
+    if (reason === 'review') options.onReview();
+    else if (reason === 'chooseDay') options.onChooseAnotherDay?.();
   };
   return {
     pending,
@@ -146,16 +150,23 @@ export function useReplacementRecovery(options: {
     confirmAbandon,
     act,
     retry,
-    close: () => close(),
-    review: () => close(true),
-    cancelAbandon: () => setConfirmAbandon(false),
+    close: () => close('dismiss'),
+    review: () => close('review'),
+    chooseAnotherDay: () => close('chooseDay'),
+    cancelAbandon: () => {
+      departureReasonRef.current = 'dismiss';
+      setConfirmAbandon(false);
+    },
     abandon: () => {
       if (submitting.current) return;
+      const reason = departureReasonRef.current;
+      departureReasonRef.current = 'dismiss';
       sessionRef.current = null;
       setFeedback(null);
       setConfirmAbandon(false);
-      options.onClosed();
-      if (reviewOnDeparture.current) options.onReview();
+      options.onClosed(false, reason);
+      if (reason === 'review') options.onReview();
+      else if (reason === 'chooseDay') options.onChooseAnotherDay?.();
     },
   };
 }

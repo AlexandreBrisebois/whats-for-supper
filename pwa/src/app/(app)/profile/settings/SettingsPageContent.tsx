@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { FamilyManagement } from '@/components/profile/FamilyManagement';
+import { PassThePhoneSettingsSection } from '@/components/profile/PassThePhoneSettingsSection';
 import { FailedCapturesSection } from '@/components/profile/FailedCapturesSection';
 import { t } from '@/locales';
 import { ROUTES } from '@/lib/constants/routes';
@@ -48,6 +49,8 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
 
       <div className="flex min-w-0 flex-col gap-8">
         <FamilyManagement />
+
+        <PassThePhoneSettingsSection />
 
         <UsualPortionsSection />
 
