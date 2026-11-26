@@ -244,7 +244,7 @@ RULES:
                 && report is { Status: RecipeImportReportStatus.Reimporting }
                 && report.Reasons.Any(r => r is "ingredients" or "steps"))
             {
-                await PersistGuidedRepairAsync(recipeId, existingSnapshot, report, normalizedJson, finalRecipe.TotalTime, authority, operation, effectiveClock, ct);
+                await PersistGuidedRepairAsync(recipeId, existingSnapshot, report, normalizedJson, finalRecipe.TotalTime, finalRecipe.Notes, authority, operation, effectiveClock, ct);
                 return;
             }
         }
@@ -321,6 +321,7 @@ RULES:
         RecipeImportReport report,
         string normalizedJson,
         string? extractedTotalTime,
+        string? extractedNotes,
         FoodVocabularyAuthority? authority,
         Guid operation,
         IClock effectiveClock,
@@ -370,6 +371,7 @@ RULES:
             {
                 entity.TotalTime = extractedTotalTime.Trim();
             }
+            entity.Notes = MergeExtractedNotes(entity.Notes, extractedNotes);
             entity.RawMetadata = schemaOrgJson;
             entity.StructuredContent = JsonSerializer.Serialize(finalContent, WebJson);
             entity.FoodMappingEvidence = finalEvidence;

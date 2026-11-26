@@ -167,4 +167,79 @@ public class ExtractRecipeProcessorTests : IDisposable
         Assert.Equal("PT35M", updatedInfo.TotalTime);
         Assert.Equal("Kids loved this.\n\nSwap suggestion: Substitute chicken thighs (270 g) or organic chicken breasts (2).", updatedInfo.Notes);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_GuidedRepair_MergesCustomizationNotesWithoutOverwritingUserNotes()
+    {
+        // Arrange: an already-structured recipe undergoing a guided repair
+        var info = new RecipeInfo { Id = _recipeId, ImageCount = 2, Name = "Parmesan Pan-Fried Gnocchi", Notes = "Family favorite." };
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(info, JsonDefaults.CamelCase));
+        await _storage.SaveAsync("recipes", $"{_recipeId}/original/0.jpg", "front image");
+        await _storage.SaveAsync("recipes", $"{_recipeId}/original/1.jpg", "back image");
+
+        var initialSchemaOrg = """
+            {
+              "@context": "https://schema.org/",
+              "@type": "Recipe",
+              "name": "Parmesan Pan-Fried Gnocchi",
+              "recipeYield": "2 portions",
+              "recipeIngredient": ["350 g Gnocchi", "56 g Baby Spinach"],
+              "recipeInstructions": [
+                {
+                  "@type": "HowToSection",
+                  "name": "1. Prep veggies and sauce",
+                  "itemListElement": [{ "@type": "HowToStep", "text": "Chop spinach." }]
+                }
+              ]
+            }
+            """;
+        var (structuredContent, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
+            _recipeId, initialSchemaOrg, null, null, Guid.NewGuid(), "source");
+
+        var existingRecipe = await _db.Recipes.SingleAsync(x => x.Id == _recipeId);
+        existingRecipe.Name = "Parmesan Pan-Fried Gnocchi";
+        existingRecipe.Notes = "Family favorite.";
+        existingRecipe.RawMetadata = initialSchemaOrg;
+        existingRecipe.StructuredContent = System.Text.Json.JsonSerializer.Serialize(structuredContent, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+        existingRecipe.FoodMappingEvidence = evidence;
+        existingRecipe.Servings = structuredContent.Servings;
+        _db.RecipeImportReports.Add(new RecipeImportReport
+        {
+            RecipeId = _recipeId,
+            Reasons = ["ingredients", "steps"],
+            Status = RecipeImportReportStatus.Reimporting
+        });
+        await _db.SaveChangesAsync();
+
+        var repairedJsonResponse = """
+            {
+              "name": "Parmesan Pan-Fried Gnocchi",
+              "recipeYield": "2 portions",
+              "totalTime": "PT30M",
+              "recipeIngredient": ["350 g Gnocchi", "56 g Baby Spinach"],
+              "recipeInstructions": [
+                {
+                  "@type": "HowToSection",
+                  "name": "1. Prep veggies and sauce",
+                  "itemListElement": [{ "@type": "HowToStep", "text": "Chop spinach." }]
+                }
+              ],
+              "notes": "Optional add-on: Add shrimp (285 g); drain, rinse, pat dry, season with salt and pepper, cook in 1/2 tbsp oil for 2-3 min, and top bowls with shrimp."
+            }
+            """;
+        _chatClientMock.Setup(c => c.GetResponseAsync(
+            It.IsAny<IEnumerable<ChatMessage>>(),
+            It.IsAny<ChatOptions>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, repairedJsonResponse)));
+
+        // Act
+        await _agent.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\": \"{_recipeId}\"}}" }, CancellationToken.None);
+
+        // Assert
+        var updatedRecipe = await _db.Recipes.AsNoTracking().SingleAsync(x => x.Id == _recipeId);
+        Assert.Equal(
+            "Family favorite.\n\nOptional add-on: Add shrimp (285 g); drain, rinse, pat dry, season with salt and pepper, cook in 1/2 tbsp oil for 2-3 min, and top bowls with shrimp.",
+            updatedRecipe.Notes);
+    }
 }

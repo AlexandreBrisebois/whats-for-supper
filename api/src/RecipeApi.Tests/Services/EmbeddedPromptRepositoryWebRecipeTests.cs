@@ -132,4 +132,20 @@ public class EmbeddedPromptRepositoryWebRecipeTests
         Assert.Contains("OPTIONAL SWAPS / CUSTOMIZATIONS", prompt, StringComparison.Ordinal);
         Assert.Contains("\"notes\": null", prompt, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void RecipeExtraction_Prompt_HandlesAddOnsAndInlineCustomizationOverridesInNotesOnly()
+    {
+        var repo = new EmbeddedPromptRepository();
+
+        var prompt = repo.GetPrompt(PromptType.RecipeExtraction);
+
+        Assert.Contains("+ Add", prompt, StringComparison.Ordinal);
+        Assert.Contains("CUSTOMIZABLE WITH", prompt, StringComparison.Ordinal);
+        Assert.Contains("→", prompt, StringComparison.Ordinal);
+        Assert.Contains("recipeInstructions", prompt, StringComparison.Ordinal);
+        Assert.Contains("selected serving basis", prompt, StringComparison.Ordinal);
+        Assert.Contains("COOKING TIME", prompt, StringComparison.Ordinal);
+        Assert.Contains("TEMPS DE CUISSON", prompt, StringComparison.Ordinal);
+    }
 }
