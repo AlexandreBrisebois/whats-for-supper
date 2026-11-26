@@ -41,6 +41,9 @@ public class SchemaOrgRecipe
     [JsonPropertyName("suggestedPairing")]
     public string? SuggestedPairing { get; set; }
 
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? AdditionalProperties { get; set; }
 }

@@ -6,14 +6,16 @@ EXTRACTION PROTOCOL (STRICT):
 1. LANGUAGE LOCK: Use the code "FR" or "EN". All text (name, ingredients, instructions) MUST remain in the card's original language. Zero translation.
 2. DATA SOVEREIGNTY: Only extract what is visible. Do not add ingredients or 'improve' the dish.
 3. TABLE EXTRACTION:
-   - Select one coherent ingredient basis. For multiple serving columns (e.g. 2P / 4P), choose the smallest explicitly labelled serving count, regardless of left-to-right order. A 4 / 2 layout uses the column labelled 2, never a mixture.
+   - Select one coherent ingredient basis. For multiple serving columns or inline pipe-separated serving pairs (e.g. `2P / 4P`, `170 g | 340 g`, `2 | 4`) keyed by column headings or a serving legend (such as `2-serving | 4-serving`), choose the smallest explicitly labelled serving count, regardless of left-to-right order. A 4 / 2 layout uses the column labelled 2, never a mixture.
    - Countable utensil or person symbols used as column headings can explicitly label serving counts: a two-utensil heading means 2 servings; a three-utensil heading means 3. Do not infer servings from decorative photographs or plates.
-   - For alternatives with an explicit base/doubling note, use that base: “Portions: 2 ou 4” with “Double pour 4 portions” means the printed base is 2 portions. Keep its 2 chicken breasts and 225 g Brussels sprouts; do not double them.
+   - For alternatives with an explicit base/doubling note, use that base: “Portions: 2 ou 4” with “Double pour 4 portions” means the printed base is 2 portions. Keep its 2 chicken breasts and 225 g Brussels sprouts; do not double them. Similarly, scaling callouts (such as `"For 6 servings, triple the amounts in the 2-serving recipe"`) do not change the selected base.
    - A single “Portions: 4” card stays 4 portions, retaining 510 g beef and 340 g pasta. Never reduce every recipe to two servings.
    - recipeYield MUST describe the selected ingredient basis (e.g. "2 portions" or "4 portions"). Never add a separate numeric servings field.
    - With visible unresolved alternatives and no identifiable base or labelled columns, retain the visible yield text (e.g. "2 or 4") without claiming a single count. Missing or unreadable evidence means recipeYield: null. Do not guess from ingredient mass, calories, time or household size.
    - Extract quantities verbatim. No math. No superscripts.
+   - INLINE STEP QUANTITIES: When steps list dual-serving measurements inline (e.g. `½ tbsp (1 tbsp) oil`, `3 cups (5 cups) warm water`) and you recover pantry or step quantities for `recipeIngredient` and `supply`, use only the amount matching the selected serving basis, never the parenthetical alternate serving amount.
    - PANTRY ITEMS: Scan the entire image for food ingredients and pantry staples explicitly required by the recipe, including oil, salt, pepper, and water. Include them in recipeIngredient even when listed outside the main ingredient table or without quantities. Exclude cookware, utensils, appliances, serving containers, and cleaning supplies from ingredient arrays. Preserve equipment mentions in the cooking instructions.
+   - OPTIONAL SWAPS / CUSTOMIZATIONS: Exclude optional swap or substitution callout items (e.g. `Customized Protein` or `Swap` boxes like `Chicken Thighs` or `Organic Chicken Breasts` shown alongside the default protein) from `recipeIngredient` and `supply` so only the default base recipe's ingredients are listed. Instead, summarize those optional swaps and any swap cooking guidance as a concise suggestion in `notes` in the card's original language.
 4. CONTENT FIDELITY: DO NOT summarize, paraphrase, or skip any text. Extract 100% of the instructions and ingredients in full detail. No compression allowed.
    - STEP STRUCTURE: Each instruction section has two parts: (a) a bold or numbered heading — this becomes `HowToSection.name`; (b) a body paragraph below it — this becomes `HowToStep.text`. Extract the FULL body paragraph as `text`. NEVER use the heading text as `text`. NEVER output a `HowToStep` with null or missing `text`.
    - NO SECTIONS ON CARD: If the instructions have no sub-headings, group all steps under a single `HowToSection` whose `name` is the nearest visible section label (e.g. "Instructions", "Preparation", or equivalent in the card's language). Each numbered or bulleted item becomes one `HowToStep` with its full sentence(s) as `text`.
@@ -34,8 +36,9 @@ EXTRACTION PROTOCOL (STRICT):
      - Exclude equipment and non-food consumables, including pots, strainers, grills, peelers, graters, bowls, and paper towels.
      - If a complete, faithful structured ingredient list cannot be produced, return supply: null rather than a partial or unrelated list. Keep recipeIngredient complete.
    - Language Fidelity: You MUST maintain the original language of the card for all content (name, ingredients, instructions).
-   - Crucial: Strip all superscripts (e.g., "1.5^2P" -> "1.5").
-   - Time: Convert to ISO 8601 (e.g., "PT30M").
+   - Crucial: Strip all superscripts and footnote markers (`*`, `**`) from quantities and ingredient names (e.g., "1.5^2P" -> "1.5", "Chicken Breasts *" -> "Chicken Breasts").
+   - totalTime: Scan ALL provided images (including front cover titles, badges, and metadata next to tags like "Family Friendly" even when there is no "Total time:" label or clock icon). Convert to ISO 8601 (e.g., "PT35M", "PT1H15M"). If only separate prep and cook times are shown, sum them into totalTime; if a time range is shown (e.g., 30–35 min), use the upper bound. Use null only when no time is printed anywhere.
+   - notes: Optional concise suggestion string in the card's original language capturing optional protein/ingredient swaps or substitution callouts (e.g., "Swap suggestion: You can substitute chicken thighs (270 g) or organic chicken breasts (2) for the chicken breasts, prepping and cooking them the same way."). Use null when no swap or substitution suggestion is present on the card.
 
 EXAMPLES (study these before extracting):
 
@@ -93,6 +96,7 @@ EXAMPLES (study these before extracting):
    ]
    }
    ],
+   "notes": null,
    "nutrition": null
    }
 

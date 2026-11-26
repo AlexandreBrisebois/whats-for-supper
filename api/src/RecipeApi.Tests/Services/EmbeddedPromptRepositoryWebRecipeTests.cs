@@ -119,4 +119,17 @@ public class EmbeddedPromptRepositoryWebRecipeTests
         Assert.Contains("7. SCHEMA TEMPLATE", prompt, StringComparison.Ordinal);
         Assert.Contains("JSON number", prompt, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void RecipeExtraction_Prompt_SupportsAllMealKitLayoutsTotalTimeAndSwapNotes()
+    {
+        var repo = new EmbeddedPromptRepository();
+
+        var prompt = repo.GetPrompt(PromptType.RecipeExtraction);
+
+        Assert.Contains("Scan ALL provided images", prompt, StringComparison.Ordinal);
+        Assert.Contains("170 g | 340 g", prompt, StringComparison.Ordinal);
+        Assert.Contains("OPTIONAL SWAPS / CUSTOMIZATIONS", prompt, StringComparison.Ordinal);
+        Assert.Contains("\"notes\": null", prompt, StringComparison.Ordinal);
+    }
 }

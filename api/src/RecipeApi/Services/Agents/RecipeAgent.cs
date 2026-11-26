@@ -96,12 +96,12 @@ public class RecipeAgent(
 
     private string GetRefinementPrompt() => @"
 Role: High-Fidelity JSON Verifier.
-Task: Fix errors or omissions (like missing pantry items) in the previous response.
+Task: Fix errors or omissions (like missing pantry items or cooking time) in the previous response.
 
 RULES:
 1. NO COMPRESSION: You MUST return the ENTIRE recipe JSON. Do not summarize instructions.
 2. FIDELITY: Ensure text and quantities match the card exactly.
-3. COMPLETENESS: Ensure all pantry items and all instruction steps are present.
+3. COMPLETENESS: Ensure totalTime (if visible on any image), all pantry items, and all instruction steps are present.
 4. If the previous JSON is already perfect and complete, return exactly ""NO CHANGES"".
 ";
 
@@ -244,12 +244,17 @@ RULES:
                 && report is { Status: RecipeImportReportStatus.Reimporting }
                 && report.Reasons.Any(r => r is "ingredients" or "steps"))
             {
-                await PersistGuidedRepairAsync(recipeId, existingSnapshot, report, normalizedJson, authority, operation, effectiveClock, ct);
+                await PersistGuidedRepairAsync(recipeId, existingSnapshot, report, normalizedJson, finalRecipe.TotalTime, authority, operation, effectiveClock, ct);
                 return;
             }
         }
 
         info.Name = finalRecipe.Name;
+        if (!string.IsNullOrWhiteSpace(finalRecipe.TotalTime))
+        {
+            info.TotalTime = finalRecipe.TotalTime.Trim();
+        }
+        info.Notes = MergeExtractedNotes(info.Notes, finalRecipe.Notes);
         await GenerateCandidateDescriptionAsync(recipeId, normalizedJson, info, imageBytesList, ct);
 
         var (content, evidence) = StructuredRecipeContentStore.FromSchemaOrg(
@@ -267,6 +272,8 @@ RULES:
             {
                 entity.Name = finalRecipe.Name;
                 if (!string.IsNullOrWhiteSpace(info.Description)) entity.Description = info.Description;
+                if (!string.IsNullOrWhiteSpace(finalRecipe.TotalTime)) entity.TotalTime = finalRecipe.TotalTime.Trim();
+                entity.Notes = MergeExtractedNotes(entity.Notes, finalRecipe.Notes);
                 entity.RawMetadata = schemaOrgJson;
                 entity.StructuredContent = JsonSerializer.Serialize(content, WebJson);
                 entity.FoodMappingEvidence = evidence;
@@ -313,6 +320,7 @@ RULES:
         Recipe existingSnapshot,
         RecipeImportReport report,
         string normalizedJson,
+        string? extractedTotalTime,
         FoodVocabularyAuthority? authority,
         Guid operation,
         IClock effectiveClock,
@@ -358,6 +366,10 @@ RULES:
         var entity = await db!.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, ct);
         if (entity is not null)
         {
+            if (string.IsNullOrWhiteSpace(entity.TotalTime) && !string.IsNullOrWhiteSpace(extractedTotalTime))
+            {
+                entity.TotalTime = extractedTotalTime.Trim();
+            }
             entity.RawMetadata = schemaOrgJson;
             entity.StructuredContent = JsonSerializer.Serialize(finalContent, WebJson);
             entity.FoodMappingEvidence = finalEvidence;
@@ -368,6 +380,16 @@ RULES:
         }
         if (transaction is not null) await transaction.CommitAsync(ct);
         logger.LogInformation("Saved guided repair Schema.org recipe for {RecipeId}", recipeId);
+    }
+
+    private static string? MergeExtractedNotes(string? existingNotes, string? extractedNotes)
+    {
+        if (string.IsNullOrWhiteSpace(extractedNotes)) return existingNotes;
+        var trimmedExtracted = extractedNotes.Trim();
+        if (string.IsNullOrWhiteSpace(existingNotes)) return trimmedExtracted;
+        var trimmedExisting = existingNotes.Trim();
+        if (trimmedExisting.Contains(trimmedExtracted, StringComparison.OrdinalIgnoreCase)) return existingNotes;
+        return $"{trimmedExisting}\n\n{trimmedExtracted}";
     }
 
     private static string BuildUserReportedFocus(string? repairReasons, string? repairNote)

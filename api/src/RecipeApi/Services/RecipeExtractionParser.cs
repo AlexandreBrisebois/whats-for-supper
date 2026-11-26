@@ -30,6 +30,7 @@ public static class RecipeExtractionParser
                 var optionalString = new OptionalStringConverter();
                 info.Properties.Single(p => p.Name == "recipeYield").CustomConverter = optionalString;
                 info.Properties.Single(p => p.Name == "totalTime").CustomConverter = optionalString;
+                info.Properties.Single(p => p.Name == "notes").CustomConverter = optionalString;
             }
         });
         var options = new JsonSerializerOptions(JsonDefaults.CaseInsensitive) { TypeInfoResolver = resolver };

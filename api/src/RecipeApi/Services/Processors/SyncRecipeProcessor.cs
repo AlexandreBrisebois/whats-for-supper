@@ -79,6 +79,20 @@ public class SyncRecipeProcessor(
                 var tracked = await db.Recipes.SingleAsync(x => x.Id == recipeId, ct);
                 if (tracked.StructuredContent is null)
                 {
+                    if (string.IsNullOrWhiteSpace(tracked.TotalTime) &&
+                        parsedDoc.RootElement.TryGetProperty("totalTime", out var timeProp) &&
+                        timeProp.ValueKind == JsonValueKind.String &&
+                        !string.IsNullOrWhiteSpace(timeProp.GetString()))
+                    {
+                        tracked.TotalTime = timeProp.GetString()!.Trim();
+                    }
+                    if (string.IsNullOrWhiteSpace(tracked.Notes) &&
+                        parsedDoc.RootElement.TryGetProperty("notes", out var notesProp) &&
+                        notesProp.ValueKind == JsonValueKind.String &&
+                        !string.IsNullOrWhiteSpace(notesProp.GetString()))
+                    {
+                        tracked.Notes = notesProp.GetString()!.Trim();
+                    }
                     tracked.RawMetadata = StructuredRecipeContentStore.ToSchemaOrgJson(content, rawJson, tracked.Name, tracked.Description);
                     tracked.StructuredContent = JsonSerializer.Serialize(content, new JsonSerializerOptions(JsonSerializerDefaults.Web));
                     tracked.FoodMappingEvidence = evidence;

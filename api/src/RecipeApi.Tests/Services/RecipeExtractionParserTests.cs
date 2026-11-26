@@ -179,4 +179,21 @@ public class RecipeExtractionParserTests
         Assert.Equal("480", result.Recipe.Nutrition!.Calories);
         Assert.Equal("35 g", result.Recipe.Nutrition.ProteinContent);
     }
+
+    [Theory]
+    [InlineData("\"Swap suggestion: chicken thighs\"", "Swap suggestion: chicken thighs")]
+    [InlineData("2", null)]
+    [InlineData("[]", null)]
+    [InlineData("{}", null)]
+    [InlineData("true", null)]
+    [InlineData("null", null)]
+    public void OptionalNotes_PreservesStringsAndToleratesMalformedValues(string notesJson, string? expectedNotes)
+    {
+        var result = RecipeExtractionParser.ParseAndNormalize($$"""
+            {"name":"One-Pan Chicken and Orzo","notes":{{notesJson}},"recipeIngredient":["170 g Orzo"],"recipeInstructions":["Cook orzo."]}
+            """);
+
+        Assert.True(result.IsSemanticallyComplete);
+        Assert.Equal(expectedNotes, result.Recipe!.Notes);
+    }
 }

@@ -18,6 +18,7 @@ public class ExtractRecipeProcessorTests : IDisposable
     private readonly Mock<IChatClient> _chatClientMock;
     private readonly InMemoryStorageProvider _storage;
     private readonly RecipeRepository _recipeRepository;
+    private readonly RecipeDbContext _db;
     private readonly RecipeAgent _agent;
     private readonly Guid _recipeId = Guid.NewGuid();
 
@@ -38,9 +39,9 @@ public class ExtractRecipeProcessorTests : IDisposable
         var dbOptions = new DbContextOptionsBuilder<RecipeDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        var db = new RecipeDbContext(dbOptions);
-        db.Recipes.Add(new Recipe { Id = _recipeId, Name = "Pending" });
-        db.SaveChanges();
+        _db = new RecipeDbContext(dbOptions);
+        _db.Recipes.Add(new Recipe { Id = _recipeId, Name = "Pending" });
+        _db.SaveChanges();
 
         _agent = new RecipeAgent(
             _chatClientMock.Object,
@@ -48,9 +49,9 @@ public class ExtractRecipeProcessorTests : IDisposable
             mockConfig.Object,
             new Mock<ILogger<RecipeAgent>>().Object,
             "ExtractRecipe",
-            db,
+            _db,
             recipeRepository: _recipeRepository,
-            vocabulary: TestPublicationStore.Vocabulary(db, _recipeRepository.StorageProvider, new SystemClock()));
+            vocabulary: TestPublicationStore.Vocabulary(_db, _recipeRepository.StorageProvider, new SystemClock()));
     }
 
     public void Dispose()
@@ -117,5 +118,53 @@ public class ExtractRecipeProcessorTests : IDisposable
 
         // Act & Assert
         await Assert.ThrowsAsync<FileNotFoundException>(() => _agent.ExecuteAsync(task, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PersistsTotalTimeAndAppendsSwapNotesWithoutOverwritingUserNotes()
+    {
+        // Arrange
+        var info = new RecipeInfo { Id = _recipeId, ImageCount = 2, Notes = "Kids loved this." };
+        await _storage.SaveAsync("recipes", $"{_recipeId}/recipe.info", System.Text.Json.JsonSerializer.Serialize(info, JsonDefaults.CamelCase));
+        await _storage.SaveAsync("recipes", $"{_recipeId}/original/0.jpg", "front image");
+        await _storage.SaveAsync("recipes", $"{_recipeId}/original/1.jpg", "back image");
+
+        var existingRecipe = await _db.Recipes.SingleAsync(x => x.Id == _recipeId);
+        existingRecipe.Notes = "Kids loved this.";
+        await _db.SaveChangesAsync();
+
+        var jsonResponse = """
+            {
+              "name": "One-Pan Chicken and Orzo",
+              "recipeYield": "2 portions",
+              "totalTime": "PT35M",
+              "recipeIngredient": ["2 Chicken Breasts", "170 g Orzo"],
+              "recipeInstructions": [
+                {
+                  "@type": "HowToSection",
+                  "name": "1. Prep and cook chicken",
+                  "itemListElement": [{ "@type": "HowToStep", "text": "Cook chicken for 4-6 min." }]
+                }
+              ],
+              "notes": "Swap suggestion: Substitute chicken thighs (270 g) or organic chicken breasts (2)."
+            }
+            """;
+        _chatClientMock.Setup(c => c.GetResponseAsync(
+            It.IsAny<IEnumerable<ChatMessage>>(),
+            It.IsAny<ChatOptions>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, jsonResponse)));
+
+        // Act
+        await _agent.ExecuteAsync(new WorkflowTask { Payload = $"{{\"recipeId\": \"{_recipeId}\"}}" }, CancellationToken.None);
+
+        // Assert
+        var updatedRecipe = await _db.Recipes.AsNoTracking().SingleAsync(x => x.Id == _recipeId);
+        Assert.Equal("PT35M", updatedRecipe.TotalTime);
+        Assert.Equal("Kids loved this.\n\nSwap suggestion: Substitute chicken thighs (270 g) or organic chicken breasts (2).", updatedRecipe.Notes);
+
+        var updatedInfo = await _recipeRepository.GetInfoAsync(_recipeId, CancellationToken.None);
+        Assert.Equal("PT35M", updatedInfo.TotalTime);
+        Assert.Equal("Kids loved this.\n\nSwap suggestion: Substitute chicken thighs (270 g) or organic chicken breasts (2).", updatedInfo.Notes);
     }
 }
