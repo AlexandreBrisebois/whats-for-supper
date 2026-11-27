@@ -13,7 +13,10 @@ A recipe is **ready** when the full capture-to-import pipeline has completed for
 3. `GenerateHero` — hero image created
 4. `SyncRecipe` — `recipe.json` imported to DB (name, ingredients, metadata)
 5. `CategorizeIngredients` — LLM normalises ingredient names to grocery sections
-6. `RecipeReady` — validates Name is set and `ImageCount > 0` → **ready**
+6. `CategorizeRecipe` — classifies cuisine, meal types, vegetarian confirmation
+7. `RecipeReady` — persists `IsReady = true`, updates `recipe.info`, emits `recipe_ready`
+8. `CompleteRecipeImportReport` — closes any linked import report
+9. `QueueRecipeSearchIndex` — enqueues background search document/embedding indexing
 
 **Describe path (goto-synthesis):**
 
@@ -22,34 +25,37 @@ A recipe is **ready** when the full capture-to-import pipeline has completed for
 3. `GenerateHero` — hero image created
 4. `SyncRecipe` — `recipe.json` imported to DB (name, ingredients, metadata)
 5. `CategorizeIngredients` — LLM normalises ingredient names to grocery sections
-6. `RecipeReady` — validates Name is set and `IsSynthesized = true` → **ready**
+6. `CategorizeRecipe` — classifies cuisine, meal types, vegetarian confirmation
+7. `RecipeReady` — persists `IsReady = true`, updates `recipe.info`, emits `recipe_ready`
+8. `QueueRecipeSearchIndex` — enqueues background search document/embedding indexing
 
 **URL import path:**
 
 1. User shares a recipe URL → DB row stub created, `recipe.info` written
-2. `FetchUrl` — downloads page, extracts schema.org JSON-LD
-3. `GenerateHero` — hero image created
-4. `SyncRecipe` — extracted metadata imported to DB
-5. `CategorizeIngredients` — LLM normalises ingredient names to grocery sections
-6. `RecipeReady` — validates readiness → **ready**
+2. `FetchUrlContent` — downloads page, extracts schema.org JSON-LD / readable content
+3. `ExtractRecipe` — AI normalises extracted content into `recipe.json`
+4. `GenerateHero` — hero image created
+5. `SyncRecipe` — extracted metadata imported to DB
+6. `CategorizeIngredients` — LLM normalises ingredient names to grocery sections
+7. `CategorizeRecipe` — classifies cuisine, meal types, vegetarian confirmation
+8. `RecipeReady` — persists `IsReady = true`, updates `recipe.info`, emits `recipe_ready`
+9. `CompleteRecipeImportReport` — closes any linked import report
+10. `QueueRecipeSearchIndex` — enqueues background search document/embedding indexing
 
-## Computed rule
+## Persisted readiness
 
-The ready state is computed on every call to `GET /api/recipes/{id}/status`. It is **not stored** in the database.
-
-```
-Photo-upload:  Name != null/empty  AND  ImageCount > 0
-Describe:      Name != null/empty  AND  IsSynthesized = true
-URL import:    Name != null/empty  AND  ImageCount > 0
-```
+`RecipeReadyProcessor` sets `recipes.is_ready = true` in PostgreSQL (along with `IsDiscoverable`, `RotationSource`, duplicate checks, and `recipe.info`'s `isReady`), and `GET /api/recipes/{id}/status` (`RecipeService.GetRecipeStatus`) reads `recipe.IsReady` directly.
 
 ## Full flow — capture to ready
 
 All three import workflows share the same enrichment tail that runs **after** the recipe is synced to the database:
 
 ```
-→ CategorizeIngredients   (LLM: normalise ingredient names into grocery sections)
-→ RecipeReady             (validates readiness gate, emits SSE recipe_ready)
+→ CategorizeIngredients      (LLM: normalise ingredient names into grocery sections)
+→ CategorizeRecipe           (classify cuisine, meal types, vegetarian facts)
+→ RecipeReady                (persists IsReady = true, updates recipe.info, emits SSE recipe_ready)
+→ CompleteRecipeImportReport (recipe-import and url-import)
+→ QueueRecipeSearchIndex     (enqueues search-index workflow)
 ```
 
 `recipe-description-regeneration` does not run `CategorizeIngredients` or
@@ -79,7 +85,7 @@ flowchart TD
     H1 --> H2[GenerateHero\nhero image created]
     H2 --> H3[SyncRecipe\nrecipe.json imported to DB]
 
-    I --> I1[FetchUrl\ndownload + extract schema.org JSON]
+    I --> I1[FetchUrlContent → ExtractRecipe\ndownload + extract recipe.json]
     I1 --> I2[GenerateHero\nhero image created]
     I2 --> I3[SyncRecipe\nrecipe.json imported to DB]
 
@@ -87,33 +93,29 @@ flowchart TD
     H3 --> TAIL
     I3 --> TAIL
 
-    TAIL --> T1[CategorizeIngredients\nLLM: normalise ingredients\nto grocery sections]
-    T1 --> T3[RecipeReady\nName set AND ImageCount > 0 OR IsSynthesized]
+    TAIL --> T1[CategorizeIngredients → CategorizeRecipe]
+    T1 --> T3[RecipeReady\npersists IsReady = true + recipe.info]
+    T3 --> T4[CompleteRecipeImportReport → QueueRecipeSearchIndex]
 
-    T3 --> R([Status: ready\nSSE: recipe_ready emitted])
+    T4 --> R([Status: ready\nSSE: recipe_ready emitted])
 ```
 
 ## RecipeReadyProcessor
 
 `api/src/RecipeApi/Services/Processors/RecipeReadyProcessor.cs`
 
-The final step in all import workflows. It validates the upstream work is complete and logs a warning if not. It does **not** mutate any fields — `ImageCount` is set at upload time, `IsSynthesized` is set by `RecipeAgent.DoSynthesizeRecipeAsync`.
+Sets `recipe.IsReady = true`, updates `IsDiscoverable` / `RotationSource`, checks for suspected duplicates, writes `isReady` to `recipe.info`, and emits `recipe_ready`.
 
 ## Status query
 
-`GET /api/recipes/{id}/status` → `RecipeService.GetRecipeStatus()`
-
-```csharp
-var isReady = (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.ImageCount > 0)
-           || (!string.IsNullOrWhiteSpace(recipe.Name) && recipe.IsSynthesized);
-var status = isReady ? "ready" : "pending";
-```
-
-Returns `RecipeStatusDto { Id, Name, Status, ImageCount, IsSynthesized }`.
+`GET /api/recipes/{id}/status` → `RecipeService.GetRecipeStatus()` reads `recipe.IsReady` directly and returns `RecipeStatusDto { Id, Name, Status, ImageCount, IsSynthesized }`.
 
 ## Enrichment processors
 
-| Processor               | Workflow(s)                               | What it writes                                              |
-| ----------------------- | ----------------------------------------- | ----------------------------------------------------------- |
-| `CategorizeIngredients` | recipe-import, url-import, goto-synthesis | Grocery section per ingredient into `ingredient_categories` |
-| `RecipeReady`           | recipe-import, url-import, goto-synthesis | Emits `recipe_ready` SSE event                              |
+| Processor                    | Workflow(s)                               | What it writes                                              |
+| ---------------------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| `CategorizeIngredients`      | recipe-import, url-import, goto-synthesis | Grocery section per ingredient into `ingredient_categories` |
+| `CategorizeRecipe`           | recipe-import, url-import, goto-synthesis | Cuisine, meal types, and vegetarian classification          |
+| `RecipeReady`                | recipe-import, url-import, goto-synthesis | Sets `IsReady = true`, updates `recipe.info`, emits SSE     |
+| `CompleteRecipeImportReport` | recipe-import, url-import                 | Resolves open import report if triggered from repair        |
+| `QueueRecipeSearchIndex`     | recipe-import, url-import, goto-synthesis | Enqueues background `index-recipe-search` workflow          |

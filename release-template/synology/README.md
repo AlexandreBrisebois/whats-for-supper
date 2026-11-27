@@ -9,11 +9,9 @@ or an advanced configuration. The main audience is **home server owners**.
 [Synology Container Manager](#synology-container-manager) is one optional deployment
 method; other Linux Docker Compose hosts use the same application bundle.
 
-Use the instructions and files from the same release. This development branch
-includes unreleased scenario overlays; existing ZIPs may still bundle the connector
-in the base file. The source `.env.example` version is a packaging placeholder.
-The `release-template/synology/` directory name remains for compatibility with
-existing paths and links.
+Use the instructions and files from the same release. The source `.env.example`
+version is a packaging placeholder. The `release-template/synology/` directory
+name remains for compatibility with existing paths and links.
 
 ## Verify the download
 
@@ -38,7 +36,8 @@ For guided setup, use the quick start above and keep the default tunnel choice.
 
 You need a home server with a working Docker Engine and Docker Compose deployment
 method, persistent storage, and permission to create project files and directories.
-You also need the values documented in `.env.example`, including a Gemini API key,
+You also need the values documented in `.env.example`, including a Google Gemini
+API key with billing/supported model access (no model-free mode is supported),
 the application's required secrets, and a Cloudflare Tunnel token if using the
 bundled connector. An existing independent tunnel keeps its token in its own
 project. Choose a setup below before starting the app.
@@ -127,9 +126,12 @@ when recreating services. Verify actual permissions and capacity for your NAS mo
 ### Other Docker Compose hosts
 
 Use the Docker Compose commands above with host-appropriate filesystem ownership
-and security controls. Do not copy Synology File Station permissions to Linux
-or other platforms. This guide documents a general Compose workflow, not a
-claim that every CPU architecture, OS, or host has been qualified.
+and security controls. The API container runs as non-root UID `1654`, so on
+Linux ensure `data/app` is owned by or writable by UID `1654` (for example,
+`sudo chown -R 1654:1654 data/app` with `chmod 755 data`). Do not copy Synology
+File Station permissions to Linux or other platforms. This guide documents a
+general Compose workflow, not a claim that every CPU architecture, OS, or host
+has been qualified.
 
 ## Optional localhost-only diagnostics port
 
@@ -259,9 +261,10 @@ your household lives elsewhere. Ten common examples:
 | Wellington / Auckland | `Pacific/Auckland`   |
 
 The table provides examples, not a complete list; use the IANA identifier for
-your own location. The Compose configuration retains `UTC` as a compatibility
-fallback **only if this setting is missing or empty**. A fresh installation
-using the supplied `.env.example` defaults to Toronto.
+your own location. `compose.yaml` falls back to `America/Toronto` when
+`Calendar__TimeZone` is missing or empty, while the API application itself
+falls back to `UTC` if launched without Compose. A fresh installation using the
+supplied `.env.example` defaults to `America/Toronto`.
 
 Invalid explicit values stop API startup and identify `Calendar:TimeZone` /
 `Calendar__TimeZone` in the container log. After changing the value in
@@ -280,3 +283,18 @@ response: `data.calendar.timeZone`, `today`, `currentWeekStartDate`,
 `referenceWeekStartDate`, `nextDayAtUtc` and `data.weekStartDate` establish
 the API calendar. Verify those values rather than relying on the server or
 browser clock.
+
+## Environment variables
+
+See `.env.example` for all required and optional runtime variables wired into
+`compose.yaml` (AI models/endpoint/tokens, `IMPORT_TARGET_LANGUAGE`, search/embedding
+tuning, `Calendar__TimeZone`, weekly-interest/cooldown/Dreaming schedules,
+demo-mode resets, and `Recovery__*` exact-recovery settings), and
+[`DEPLOY.md`](../../DEPLOY.md#environment-variable-reference) for the full
+application reference.
+
+- Runtime `.env` changes take effect when you recreate the affected containers
+  (`docker compose up -d` — restarting alone does not reload `.env`).
+- `NEXT_PUBLIC_*` PWA settings (such as `NEXT_PUBLIC_DEFAULT_LOCALE` and
+  `NEXT_PUBLIC_AISLE_ORDER`) are baked into the published PWA image at build time
+  and cannot be changed via runtime `.env` in prebuilt release bundles.

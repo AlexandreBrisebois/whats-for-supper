@@ -2,8 +2,10 @@ using System.Text.Json;
 using Google.GenAI;
 using Google.GenAI.Types;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
+using RecipeApi.Services.Ai;
 using RecipeApi.Workflow;
 
 namespace RecipeApi.Services.Agents;
@@ -11,23 +13,24 @@ namespace RecipeApi.Services.Agents;
 public class RecipeHeroAgent : IWorkflowProcessor
 {
     private readonly IRecipeStore recipeStore;
-    private readonly IConfiguration configuration;
     private readonly ILogger<RecipeHeroAgent> logger;
     private readonly IHttpClientFactory? httpClientFactory;
     private readonly DemoModeOptions _demoMode;
+    private readonly GeminiOptions _geminiOptions;
 
     [ActivatorUtilitiesConstructor]
     public RecipeHeroAgent(
         IRecipeStore recipeStore,
         IConfiguration configuration,
         ILogger<RecipeHeroAgent> logger,
-        IHttpClientFactory? httpClientFactory = null)
+        IHttpClientFactory? httpClientFactory = null,
+        IOptions<GeminiOptions>? geminiOptions = null)
     {
         this.recipeStore = recipeStore;
-        this.configuration = configuration;
         this.logger = logger;
         this.httpClientFactory = httpClientFactory;
         _demoMode = new(configuration);
+        _geminiOptions = geminiOptions?.Value ?? GeminiOptions.FromConfiguration(configuration);
     }
 
     public string ProcessorName => "GenerateHero";
@@ -82,15 +85,9 @@ public class RecipeHeroAgent : IWorkflowProcessor
         return recipeId;
     }
 
-    private string GetApiKey() =>
-        System.Environment.GetEnvironmentVariable("GEMINI_API_KEY")
-        ?? configuration["GEMINI_API_KEY"]
-        ?? string.Empty;
+    private string GetApiKey() => _geminiOptions.ApiKey;
 
-    private string GetModelId() =>
-        System.Environment.GetEnvironmentVariable("GEMINI_MODEL_ID_HERO")
-        ?? configuration["GEMINI_MODEL_ID_HERO"]
-        ?? "models/gemini-3-pro-image-preview";
+    private string GetModelId() => _geminiOptions.ImageModelId;
 
     public async Task CreateHeroImageAsync(Guid recipeId, bool force = false, CancellationToken ct = default)
     {

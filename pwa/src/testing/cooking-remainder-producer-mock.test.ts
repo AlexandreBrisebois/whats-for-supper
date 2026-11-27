@@ -131,7 +131,7 @@ it('ordinary method-sensitive PATCH publishes proof to subsequent GET and previe
   );
   expect(preview.body.instructionProjection.validatedUses).toBe(2);
   expect(preview.body.instructionProjection.sections[0].steps[1].text).toContain(
-    'remaining (3/2 tbsp)'
+    'remaining (1 1/2 tbsp)'
   );
   expect((await call('**/api/recipes/*', 'PATCH', '', input)).status).toBe(409);
   expect(

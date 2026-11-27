@@ -305,26 +305,27 @@ Capture failure handling is operational/maintenance work. It belongs in Settings
 
 ### Flow
 
+Failed and active captures are backed by `WorkflowInstances` via `CaptureFailureService` (`CapturesController.cs`), surfacing both in the Home **Capture activity** bar/sheet (`GET /api/captures/activity`) and in **Settings → Failed Captures**:
+
 ```mermaid
 flowchart TD
-    A[Capture / import attempt fails] --> B[Workflow maps failure to friendly reason]
-    B --> C[capture_failures row persisted in DB — status: failed]
-    C --> D[User opens Settings]
+    A[Capture / import attempt fails] --> B[CaptureFailureService maps workflow error to friendly reason]
+    B --> C[Failed workflow instance queried from WorkflowInstances]
+    C --> D[User opens Home Capture activity sheet or Settings]
     D --> E[Failed Captures section shows queue]
     E --> F[Each row shows source type + friendly reason — data-testid=failed-capture-id]
     F --> G[User taps Retry — data-testid=action-retry-id]
-    G --> H{status already retrying?}
+    G --> H{Workflow already running?}
     H -->|Yes| I[HTTP 409 — ALREADY_RETRYING — data-testid=action-retry-error-id]
-    H -->|No| J[Atomic CAS: set status = retrying]
-    J --> K[Re-enqueue original capture workflow from stored retry_payload]
-    K --> L{Workflow outcome}
-    L -->|Success| M[status = resolved — removed from active list]
-    L -->|Failure| N[retry_count incremented, reason updated, status back to failed]
+    H -->|No| J[Re-enqueue capture workflow from persisted workflow payload]
+    J --> K{Workflow outcome}
+    K -->|Success| L[Removed from failed captures list]
+    K -->|Failure| M[Updated friendly reason shown; user can Retry or Delete via DELETE /api/captures/failures/id]
 ```
 
 ### Retry idempotency
 
-The `retrying` guard is an atomic compare-and-set in the database — not a read-then-write. Two simultaneous taps of the Retry button cannot double-enqueue the same workflow.
+`CaptureFailureService` prevents duplicate retries while a workflow instance is already pending or processing, and `DELETE /api/captures/failures/{id}` clears failed items no longer needed.
 
 ### Friendly copy examples
 

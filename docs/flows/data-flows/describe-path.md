@@ -31,7 +31,7 @@ sequenceDiagram
     Svc->>Orch: TriggerAsync("goto-synthesis",\n  { recipeId, description })
     Note over Orch,Wf: Non-fatal — recipe exists even if trigger fails
 
-    Orch->>Wf: SynthesizeRecipe → GenerateHero\n→ SyncRecipe → RecipeReady
+    Orch->>Wf: SynthesizeRecipe → GenerateHero\n→ SyncRecipe → CategorizeIngredients\n→ CategorizeRecipe → RecipeReady\n→ QueueRecipeSearchIndex
 
     Wf->>DB: IsSynthesized = true (set by SynthesizeRecipe processor)
     Wf->>Disk: recipe.json written (SyncRecipe processor)
@@ -49,7 +49,7 @@ sequenceDiagram
 | `IsSynthesized` | After synthesis        | `false` → `true` once `RecipeAgent.DoSynthesizeRecipeAsync` succeeds |
 | `recipe.info`   | At creation            | Written immediately with all identity fields                         |
 | `recipe.json`   | After synthesis        | Written by SyncRecipe processor                                      |
-| Status          | After RecipeReady runs | `pending` → `ready` (gated on `IsSynthesized`, not `ImageCount`)     |
+| Status          | After RecipeReady runs | `pending` → `ready` (`RecipeReadyProcessor` sets `IsReady = true` on `Recipe` and `recipe.info`) |
 
 ## Header injection
 

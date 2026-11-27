@@ -1,6 +1,6 @@
 # Visual Language Session History (Oct–Nov 2026 Archive)
 
-This archive retains chronological design-checkpoint logs, historical source snapshots, and per-session browser/DV observations moved out of the [current visual language reference](../visual-language-reference.md). It is historical context only; runtime owners, OpenSpec specifications, and the current reference govern active implementation.
+This archive retains chronological design-checkpoint logs, historical source snapshots, and per-session browser/DV observations moved out of the [current visual language reference](../design/visual-language-reference.md). It is historical context only; runtime owners, OpenSpec specifications, and the current reference govern active implementation.
 
 ## Archived 25 October 2026 SVG Boards
 
@@ -13,10 +13,10 @@ This archive retains chronological design-checkpoint logs, historical source sna
 
 **Creative revision: 27 October 2026.** Alex reported that the implemented Home cards lost their refinement and cookbook feel; dark text on yellow was explicitly rejected for that Home direction. The planned-card and pivot cookbook treatments were implemented locally in Sessions 5–6 and reconciled in Session 7. The pre-refinement Home source snapshot was `e4d5be7e`; the original composition reference is its parent `a4d360558d35c2f79e9cca08a9d31638d8d25569`.
 
-User-supplied composition anchors retained under `docs/visual-language/references/`:
+User-supplied composition anchors (originally referenced under `docs/visual-language/references/`, not tracked in this checkout):
 
-- [Screenshot_20261026-212933.png](../visual-language/references/Screenshot_20261026-212933.png) — portrait-shaped white card on cream, dominant nearly square photograph, deeply rounded image/card corners, substantial soft elevation, bold recipe title, and subtle blush duration pill.
-- [Screenshot_20261026-212918.png](../visual-language/references/Screenshot_20261026-212918.png) — rounded frame, shadow, and bold title with a wider image, one primary CTA, and a compact row of two secondary actions (its historical yellow primary and faint `Order In` label were not reinstated).
+- `Screenshot_20261026-212933.png` — portrait-shaped white card on cream, dominant nearly square photograph, deeply rounded image/card corners, substantial soft elevation, bold recipe title, and subtle blush duration pill.
+- `Screenshot_20261026-212918.png` — rounded frame, shadow, and bold title with a wider image, one primary CTA, and a compact row of two secondary actions (its historical yellow primary and faint `Order In` label were not reinstated).
 
 **Sessions 5–7 observations:** matched light/dark photo renders restored the planned card's near-square image, soft elevation, prominent title, blush duration, and quiet outlined `Change plan`, with text-style ingredient disclosure. The pivot retained a wider 5:4 photograph, one primary, and compact icon-bearing secondary choices; French Home used "Recherche". Empty/failed images used a modest warm icon. Local photo-filled comparison artifact was stored under `.task/home-card-session7/final-photo-review.png`. See [2026-10-27 Home meal card design](../../openspec/changes/archive/2026-10-27-home-meal-card-visual-hierarchy/design.md) and [tasks](../../openspec/changes/archive/2026-10-27-home-meal-card-visual-hierarchy/tasks.md).
 

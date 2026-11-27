@@ -1,3 +1,4 @@
+import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { clearHandoffLock, getHandoffLock, setHandoffLock } from '@/lib/discovery/passThePhone';
@@ -39,14 +40,6 @@ vi.mock('@/components/WeekStoreInitializer', () => ({
   WeekStoreInitializer: () => null,
 }));
 
-vi.mock('@/components/capture/LibraryToast', () => ({
-  LibraryToast: () => <div data-testid="library-toast-mock" />,
-}));
-
-vi.mock('@/components/capture/RecipeFailureBanner', () => ({
-  RecipeFailureBanner: () => <div data-testid="recipe-failure-banner-mock" />,
-}));
-
 vi.mock('@/store/libraryStore', () => ({
   useLibraryStore: {},
 }));
@@ -56,7 +49,11 @@ vi.mock('@/store/captureStore', () => ({
 }));
 
 vi.mock('next/link', () => ({
-  default: ({ children, href, ...rest }: any) => (
+  default: ({
+    children,
+    href,
+    ...rest
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children?: ReactNode }) => (
     <a href={href} {...rest}>
       {children}
     </a>
@@ -64,7 +61,7 @@ vi.mock('next/link', () => ({
 }));
 
 vi.mock('@/components/common/Layout', () => ({
-  Layout: ({ children, ...props }: any) => {
+  Layout: ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
     mocks.layoutProps = props;
     return <div data-testid="app-layout">{children}</div>;
   },
@@ -140,8 +137,9 @@ describe('AppRouteLayout', () => {
       </AppRouteLayout>
     );
 
-    expect(screen.queryByTestId('library-toast-mock')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('recipe-failure-banner-mock')).not.toBeInTheDocument();
+    expect(screen.getByTestId('notification-zone')).toBeInTheDocument();
+    expect(screen.queryByTestId('library-toast-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/^recipe-failure-banner-/)).not.toBeInTheDocument();
   });
 
   it('redirects stray routes back to /discovery while handoff lock is active', () => {

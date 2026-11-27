@@ -61,7 +61,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     Assert.Equal(phase == "uncertain" ? 0 : 2, projection.GetProperty("validatedUses").GetInt32());
                     Assert.Equal(phase == "uncertain" ? 2 : 0, projection.GetProperty("uncertainUses").GetInt32());
                     Assert.Equal(before.InstructionSections[0].Steps[0].Text, projection.GetProperty("sections")[0].GetProperty("steps")[0].GetProperty("text").GetString());
-                    if (phase != "uncertain") Assert.Equal(target == 6 ? "Finish with 3/2 tbsp oil." : target == 4 ? "Finish with 1 tbsp oil." : "Finish with 1/2 tbsp oil.", projection.GetProperty("sections")[0].GetProperty("steps")[1].GetProperty("text").GetString());
+                    if (phase != "uncertain") Assert.Equal(target == 6 ? "Finish with 1 1/2 tbsp oil." : target == 4 ? "Finish with 1 tbsp oil." : "Finish with 1/2 tbsp oil.", projection.GetProperty("sections")[0].GetProperty("steps")[1].GetProperty("text").GetString());
                 }
                 Assert.Equal(before.InstructionSections[0].Steps.Select(x => (x.Id, x.Text)), current.InstructionSections[0].Steps.Select(x => (x.Id, x.Text)));
                 Assert.Equal(before.InstructionSections[0].Steps[0].Bindings[0].GetProperty("id").GetGuid(), current.InstructionSections[0].Steps[0].Bindings[0].GetProperty("id").GetGuid());

@@ -1,6 +1,8 @@
 # Get a Gemini API key
 
-What's for Supper uses Gemini for recipe-related AI features. You'll need one API key to get started.
+What's for Supper requires a Google Gemini API key for recipe extraction, hero
+illustrations, and search embeddings (there is no model-free version). You'll
+need one API key to get started.
 
 1. Open [Google AI Studio — API keys](https://aistudio.google.com/app/apikey) and sign in with your Google account.
 2. Select **Create API key**. Choose or create a Google Cloud project when prompted.

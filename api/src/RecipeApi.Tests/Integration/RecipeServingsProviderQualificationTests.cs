@@ -28,7 +28,7 @@ public class RecipeServingsProviderQualificationTests(ITestOutputHelper output)
         var root = TomorrowPushPostgresTests.Root();
         var evidence = Path.Combine(root, ".task", "servings", "provider"); Directory.CreateDirectory(evidence);
         var configuration = new ConfigurationManager(); configuration.AddEnvironmentVariables();
-        var model = configuration["GEMINI_MODEL_ID"] ?? "gemini-3-flash-preview";
+        var model = configuration["GEMINI_MODEL_ID"] ?? "gemini-3.8-flash";
         var endpoint = configuration["GEMINI_ENDPOINT"] ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
         var key = configuration["GEMINI_API_KEY"] ?? throw new InvalidOperationException("GEMINI_API_KEY required for explicit provider qualification.");
         var prompts = new EmbeddedPromptRepository();

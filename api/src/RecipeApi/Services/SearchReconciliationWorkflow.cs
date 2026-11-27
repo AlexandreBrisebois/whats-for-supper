@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RecipeApi.Data;
 using RecipeApi.Models;
+using RecipeApi.Services.Ai;
 using RecipeApi.Workflow;
 
 namespace RecipeApi.Services;
@@ -12,9 +14,11 @@ public sealed class SearchReconciliationWorkflow(
     IWorkflowOrchestrator orchestrator,
     IRecipeSearchDocumentBuilder builder,
     ILogger<SearchReconciliationWorkflow> logger,
-    DemoModeOptions? demoMode = null) : IWorkflowProcessor
+    DemoModeOptions? demoMode = null,
+    IOptions<GeminiOptions>? geminiOptions = null) : IWorkflowProcessor
 {
     private const int BatchSize = 50;
+    private readonly GeminiOptions _geminiOptions = geminiOptions?.Value ?? GeminiOptions.FromConfiguration();
     public string ProcessorName => "ReconcileRecipeSearch";
 
     public async Task<object?> ExecuteAsync(WorkflowTask task, CancellationToken ct)
@@ -32,7 +36,7 @@ public sealed class SearchReconciliationWorkflow(
             var sidecar = await db.RecipeSearchDocuments.FindAsync([recipe.Id], ct);
             if (sidecar is null)
             {
-                sidecar = new RecipeSearchDocument { RecipeId = recipe.Id, DocumentText = string.Empty, SearchMetadata = "{}", IndexStatus = "pending", EmbeddingStatus = "pending", EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2", SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion };
+                sidecar = new RecipeSearchDocument { RecipeId = recipe.Id, DocumentText = string.Empty, SearchMetadata = "{}", IndexStatus = "pending", EmbeddingStatus = "pending", EmbeddingModel = _geminiOptions.EmbeddingModelId, SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion };
                 db.RecipeSearchDocuments.Add(sidecar);
             }
             var needsIndex = force

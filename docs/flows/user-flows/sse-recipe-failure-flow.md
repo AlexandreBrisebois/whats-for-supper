@@ -1,5 +1,7 @@
 # Flow: Recipe Processing Failure → Persistent Recovery Banner
 
+> **Superseded by Home Capture Activity Bar & Sheet + Settings Failed Captures:** Global `RecipeFailureBanner` (`libraryStore.pushNotification`) is no longer mounted in `AppLayout`. On `recipe_failed`, `useScheduleStream.ts` calls `captureStore.hydrate()`, surfacing failures in Home's `CaptureActivityBar` / `CaptureActivitySheet` (`GET /api/captures/activity`) and in **Settings → Failed Captures** (`CapturesController.cs`).
+
 **Trigger:** SSE `recipe_failed` event — fires ONLY when a workflow instance reaches `WorkflowStatus.Failed` (all retries exhausted). Does NOT fire on transient 429s, network hiccups, or individual task retries.
 **Reviewed by:** The Mère-Designer
 

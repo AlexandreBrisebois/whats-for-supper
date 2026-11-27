@@ -3315,9 +3315,11 @@ describe('Planner meal-preserving PlanningDayChooser recovery', () => {
     fireEvent.click(screen.getByTestId('mock-quick-find-select'));
     fireEvent.click(screen.getByTestId('mock-recovery-drop'));
 
-    expect(await screen.findByTestId('mock-replacement-feedback')).toHaveAttribute(
-      'data-phase',
-      'conflict'
+    await waitFor(() =>
+      expect(screen.getByTestId('mock-replacement-feedback')).toHaveAttribute(
+        'data-phase',
+        'conflict'
+      )
     );
     fireEvent.click(screen.getByTestId('mock-recovery-choose-another-day'));
     expect(await screen.findByTestId('planning-day-chooser')).toBeInTheDocument();
@@ -3465,9 +3467,11 @@ describe('Planner review landing without false success receipt', () => {
     fireEvent.click(screen.getByTestId('mock-quick-find-select'));
     fireEvent.click(screen.getByTestId('mock-recovery-drop'));
 
-    expect(await screen.findByTestId('mock-replacement-feedback')).toHaveAttribute(
-      'data-phase',
-      'conflict'
+    await waitFor(() =>
+      expect(screen.getByTestId('mock-replacement-feedback')).toHaveAttribute(
+        'data-phase',
+        'conflict'
+      )
     );
     fireEvent.click(screen.getByTestId('mock-recovery-review-plan'));
 

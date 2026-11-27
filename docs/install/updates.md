@@ -1,14 +1,12 @@
 # Updating What's for Supper
 
-> Unreleased development templates: this branch contains the scenario overlays.
-> Existing published ZIPs may use the legacy bundled layout. Follow the files and
-> documentation for the exact verified release; do not combine individual files
-> from this branch with a published installation.
+Follow the files and documentation for the exact verified release; do not mix
+files from different releases.
 
 Updates are **manual**. Don't enable unattended image updates for this stack.
 
 1. Read the target release notes and verify compatibility. Back up **both PostgreSQL and the complete `data/app` recipe-asset tree** as a consistent recovery set. Test the restore procedure. Store a nonempty backup manifest or report file separately; merely confirming a backup exists is not enough.
-2. Download the target release's installation ZIP. Keep your existing installation directory, `.env`, and `data/` intact.
+2. Download the target release's installation ZIP and its `.sha256` checksum, verify the digest with a trusted host tool, and keep your existing installation directory, `.env`, and `data/` intact.
 3. From the installed project directory, run:
 
    ```sh

@@ -65,7 +65,7 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                 Assert.Equal(total == "1/2" ? 2 : 0, instructions.GetProperty("uncertainUses").GetInt32());
                 var text = instructions.GetProperty("sections")[0].GetProperty("steps")[1].GetProperty("text").GetString();
                 Assert.Equal(total == "1/2" ? before.InstructionSections[0].Steps[1].Text :
-                    $"Use the remaining ({(total == "2" ? "3/2" : "3")} tbsp) oil; cook 20 minutes at 180 °C.", text);
+                    $"Use the remaining ({(total == "2" ? "1 1/2" : "3")} tbsp) oil; cook 20 minutes at 180 °C.", text);
                 Assert.Equal(before.InstructionSections[0].Steps.Select(x => x.Id), current.InstructionSections[0].Steps.Select(x => x.Id));
                 Assert.Equal(before.InstructionSections[0].Steps.Select(x => x.Text), current.InstructionSections[0].Steps.Select(x => x.Text));
                 Assert.True(JsonElement.DeepEquals(before.InstructionSections[0].Steps[1].Bindings[0].GetProperty("payload"), current.InstructionSections[0].Steps[1].Bindings[0].GetProperty("payload")));

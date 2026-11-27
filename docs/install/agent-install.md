@@ -1,9 +1,7 @@
 # Agent installation instructions
 
-> Unreleased development templates: this branch contains the scenario overlays.
-> Existing published ZIPs may use the legacy bundled layout. Follow the files and
-> documentation for the exact verified release; do not combine individual files
-> from this branch with a published installation.
+Follow the files and documentation for the exact verified release ZIP; do not
+combine files from different releases.
 
 Use the same release templates and [Cloudflare reference](cloudflare.md) as human
 installations. Do not generate another app stack or copy live secrets into chat,
@@ -12,15 +10,15 @@ follow the user's scope and obtain deployment/route authorization when required.
 
 ## Help with the recommended installation first
 
-Follow the [quick start](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/docs/install/quick-start.md) in source, or the root `README.md` in a
-release ZIP. For a fresh home server installation, keep the default bundled
-tunnel. If setup asks for a tunnel choice, the human presses Enter. Only open
-shared-tunnel and migration instructions when the user already has that setup
-or explicitly asks for it. Synology is an optional platform-specific path.
+Follow [quick-start.md](quick-start.md) (or the root `README.md` inside an
+extracted release ZIP). For a fresh home server installation, keep the default
+bundled tunnel. If setup asks for a tunnel choice, the human presses Enter. Only
+open shared-tunnel and migration instructions when the user already has that
+setup or explicitly asks for it. Synology is an optional platform-specific path.
 
 Before running a bundle script, identify the exact official release and verify
-its ZIP against the matching checksum using trusted host tools. Follow the
-[download verification reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md).
+its ZIP against the matching `.sha256` checksum using trusted host tools (see the
+[home server installation guide](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md#verify-the-download)).
 Missing or mismatched integrity evidence stops the installation handoff.
 
 Give one next action at a time, say where to perform it, and explain what success
@@ -58,15 +56,30 @@ its private `.env` holds its token. Do not copy that token into app projects.
 
 The interactive `setup.sh` serves humans. Hand secret entry and state-changing
 operations to a local human session outside agent capture/transcription. A human
-may use the helper or a private local editor. Never put real credentials in chat,
-command-line arguments or generated artifacts. Do not source `.env` as shell code.
-Hidden prompts do not establish complete process-list confidentiality: the current
-helper passes secret values to `awk -v`. Account for that inherited limitation
-before local configuration. Do not claim that setup exit zero proves startup.
+may use the helper or copy `.env.example` to `.env` (`chmod 600 .env`) in a
+private local editor. Never put real credentials in chat, command-line arguments
+or generated artifacts. Do not source `.env` as shell code. Hidden prompts do
+not establish complete process-list confidentiality: the current helper passes
+secret values to `awk -v`. Account for that inherited limitation before local
+configuration. Do not claim that setup exit zero proves startup.
 
-Read-only machine status is proposed in issue #327 and is not implemented here.
-These helpers do not parse status flags. Establish command support from trusted
-matching release documentation; never probe an older helper with new flags.
+For manual/non-interactive `.env` preparation by the human, the required keys in
+`.env` are:
+- `POSTGRES_PASSWORD` (random hex or strong password)
+- `HEARTH_SECRET` (shared household passphrase or generated hex)
+- `GEMINI_API_KEY` (required Google Gemini API key; no model-free mode exists)
+- `ELEVATED_ACTIONS_PIN` (numeric PIN, at least 6 digits)
+- `COMPOSE_FILE` (`compose.yaml:compose.tunnel.yaml` or `compose.yaml:compose.shared-tunnel.yaml`)
+- Scenario-specific: `CLOUDFLARE_TUNNEL_TOKEN` (bundled mode) or `WFS_PROXY_NETWORK` + `WFS_PROXY_ALIAS` (shared mode)
+
+Ensure `data/app` and `data/postgres` exist before starting. Because the chiseled
+.NET API container runs as non-root UID `1654`, `data/` must be traversable
+(`chmod 755 data`) and `data/app` must be writable by UID `1654` on Linux
+(`sudo chown -R 1654:1654 data/app`), or have `Everyone` Read/Write on `data/app`
+only on Synology File Station.
+
+The installation helpers do not parse status flags; verify running containers
+and configuration from matching release documentation.
 
 ## Prepare a reviewable result
 

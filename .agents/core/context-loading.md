@@ -17,7 +17,7 @@ do not re-read it merely because another document links to it.
 | [Network topology](network-topology.md)                 | Network, deployment, cookies or SSE origin work; verify against current configuration                         |
 | [Home E2E reference](../../.kiro/steering/home-e2e.md)  | Home SSR/Playwright investigation only                                                                        |
 | HANDOVER via `task agent:status`                        | Resuming work or resolving active-state ambiguity                                                             |
-| JOURNAL, ADRs or a specific archived spec               | A current question requires historical rationale                                                              |
+| `openspec/changes/archive/` or Git history | A current question requires historical rationale |
 | A specific skill or prompt                              | Explicitly invoked, or its specialized procedure is needed for the selected task                              |
 
 Links are navigation, not recursive loading instructions. No skill is a mandatory

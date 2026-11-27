@@ -32,9 +32,9 @@ artifact must be verified against the retained additive schema before release.
 
 ## Backfill and coverage
 
-Trigger `POST /api/management/backfill-search` only in an approved environment.
+Trigger `POST /api/management/backfill-search` (optionally with `{ "force": true }` to reindex even unchanged documents) only in an approved environment, and inspect `GET /api/management/search-status` for `totalReadyRecipes`, `searchableRecipes`, `enrichedRecipes`, and `activeIndexingJobs`.
 It dispatches the resumable reconciliation workflow; it is not a migration or
-recipe re-import. Track eligible recipes, ready canonical documents, and ready
+recipe re-import. Track eligible recipes, ready search documents, and ready
 compatible embeddings from `recipe_search_completed` telemetry. Investigate stalled
 workflow tasks, failed indexing telemetry, and configuration/model mismatch before
 cutover. Coverage is incomplete until the recorded ready-document numerator covers

@@ -40,12 +40,12 @@ public sealed class StructuredPackageProjectionTests
     }
 
     [Theory]
-    [InlineData("1/3", "1/2")][InlineData("2–3", "3–9/2")][InlineData("0", "0")]
-    public void PackageProjectionKeepsFractionRangeAndZeroCountsExactWithoutPurchaseRounding(string count, string projected)
+    [InlineData("1/3", "1/2", "1/2")][InlineData("2–3", "3–9/2", "3–4 1/2")][InlineData("0", "0", "0")]
+    public void PackageProjectionKeepsFractionRangeAndZeroCountsExactWithoutPurchaseRounding(string count, string projected, string display)
     {
         var (recipe, _) = Source(count);
         var line = Assert.Single(SupperIngredientProjection.Read(recipe, 6));
-        Assert.Equal($"{projected} cans tomatoes (400 g / cans; net)", line.DisplayText);
+        Assert.Equal($"{display} cans tomatoes (400 g / cans; net)", line.DisplayText);
         Assert.Equal(QuantityMath.Parse(projected), line.GroceryObservation.Quantity);
     }
 

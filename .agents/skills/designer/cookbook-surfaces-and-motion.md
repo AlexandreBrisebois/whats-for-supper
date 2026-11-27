@@ -1,6 +1,6 @@
 # Family Cookbook Surfaces, Layout, and Motion
 
-Normative surface, card/sheet anatomy, touch-target, focus, and motion rules for What's For Supper (WFS). Load alongside [visual-identity.md](visual-identity.md) and the [visual language reference](../../../docs/visual-language-reference.md).
+Normative surface, card/sheet anatomy, touch-target, focus, and motion rules for What's For Supper (WFS). Load alongside [visual-identity.md](visual-identity.md) and the [visual language reference](../../../docs/design/visual-language-reference.md).
 
 ## 1. Canvas & Opaque Surface Ladder
 

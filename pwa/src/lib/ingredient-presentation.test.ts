@@ -14,6 +14,58 @@ describe('server-owned package presentation', () => {
       } as Parameters<typeof ingredientProjectionText>[0] & { displayText: string })
     ).toBe('1/3 cans tomatoes (400 g / cans; net)');
   });
+  it('reduces improper and unreduced fractions to whole or mixed numbers for kitchen measuring', () => {
+    expect(
+      ingredientProjectionText({
+        originalText: '1 cup flour',
+        displayText: '4/2 cups flour',
+        quantity: 2,
+        unitText: 'cups',
+        name: 'flour',
+        status: 'scaled',
+      })
+    ).toBe('2 cups flour');
+    expect(
+      ingredientProjectionText({
+        originalText: '1 cup flour',
+        displayText: '6/4 cups flour',
+        quantity: 1.5,
+        unitText: 'cups',
+        name: 'flour',
+        status: 'scaled',
+      })
+    ).toBe('1 1/2 cups flour');
+    expect(
+      ingredientProjectionText({
+        originalText: '1 cup flour',
+        displayText: '3/2 cups flour',
+        quantity: 1.5,
+        unitText: 'cups',
+        name: 'flour',
+        status: 'scaled',
+      })
+    ).toBe('1 1/2 cups flour');
+    expect(
+      ingredientProjectionText({
+        originalText: '2–3 cloves garlic',
+        displayText: '10/3–5 cloves garlic',
+        quantity: null,
+        unitText: 'cloves',
+        name: 'garlic',
+        status: 'scaled',
+      })
+    ).toBe('3 1/3–5 cloves garlic');
+    expect(
+      ingredientProjectionText({
+        originalText: '2 cans tomatoes (400 g / cans; net)',
+        displayText: '10/3 cans tomatoes (400 g / cans; net)',
+        quantity: 10 / 3,
+        unitText: 'cans',
+        name: 'tomatoes',
+        status: 'scaled',
+      })
+    ).toBe('3 1/3 cans tomatoes (400 g / cans; net)');
+  });
   it('keeps the existing presentation fallback for a line without derived text', () => {
     expect(
       ingredientProjectionText({

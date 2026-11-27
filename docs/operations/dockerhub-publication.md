@@ -18,7 +18,7 @@ The command fetches remote state, prints the target tag and commit, and asks for
 
 ## What the tag publishes
 
-Pushing the tag starts the GitHub-hosted multi-platform Docker Hub workflow. Stable tags must point to a commit reachable from `main`; beta tags can point to their source branch. The workflow publishes immutable `linux/amd64` and `linux/arm64` images at one derived version:
+Pushing the tag starts the GitHub-hosted multi-platform Docker Hub workflow. Stable tags must point to a commit reachable from `main`; beta tags can point to their source branch. After running source-validation and container smoke checks, the workflow publishes immutable `linux/amd64` and `linux/arm64` images at one derived version and attaches a matching installation ZIP (`whats-for-supper-install-<version>.zip`) plus `.sha256` checksum to the GitHub Release:
 
 - `brisebois/whats-for-supper-api:<version>`
 - `brisebois/whats-for-supper-pwa:<version>`

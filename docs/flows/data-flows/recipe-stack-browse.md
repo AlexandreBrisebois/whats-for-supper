@@ -28,9 +28,7 @@ On mount, the PWA fetches a lightweight summary to provide immediate context to 
 Recipes are fetched in pages using a specific sort order designed for rediscovery.
 
 - **Endpoint**: `GET /api/recipes?order=explore&page=N&limit=20`
-- **Sort Logic**: `lastCookedDate ASC NULLS FIRST`
-  1. `NULL` lastCookedDate (Never cooked)
-  2. Earliest `lastCookedDate` (Oldest cooked)
+- **Sort Logic**: Incorporates weekly household interest alongside `lastCookedDate ASC NULLS FIRST` (never cooked / oldest cooked), paginated deterministically with `historyGeneration`.
 - **Exclusions**: Always excludes soft-deleted recipes (`deletedAt IS NULL`).
 
 ## Paging & Pre-fetching Flow
@@ -66,15 +64,11 @@ The `browseStackStore` (Zustand) manages the lifecycle of the stack data:
 | `recipes`      | The currently loaded set of `RecipeDto` objects.           |
 | `currentIndex` | The 0-based pointer to the front card.                     |
 | `totalCount`   | The total number of recipes in the library (from summary). |
+| `currentPage`  | The last fetched page number.                              |
 | `isLoading`    | Prevents redundant background fetches during pre-fetching. |
+| `hasMorePages` | Whether additional pages remain to fetch.                  |
 
-### Optimistic Updates
-
-When a user toggles "Discoverable" from the stack:
-
-1. The store updates the local `RecipeDto` immediately.
-2. A `PATCH /api/recipes/{id}` request is sent in the background.
-3. If the request fails, the store reverts the local state to its previous value.
+Discoverable toggling is handled through the recipe mutation flow rather than inside `browseStackStore` directly.
 
 ## Performance Optimizations
 

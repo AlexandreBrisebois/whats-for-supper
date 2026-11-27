@@ -380,6 +380,33 @@ function amountText(amount: any, numerator: number, denominator: number) {
     ? scalar(amount.value)
     : `${scalar(amount.min)}–${scalar(amount.max)}`;
 }
+function mixedRationalText(n: bigint, d: bigint) {
+  const whole = n / d;
+  const rem = n % d;
+  if (rem === 0n) return String(whole);
+  if (whole === 0n) return `${rem}/${d}`;
+  return `${whole} ${rem}/${d}`;
+}
+function mixedAmountText(amount: any, numerator: number, denominator: number) {
+  const scalar = (q: any) => {
+    let n = BigInt(q.n) * BigInt(numerator),
+      d = BigInt(q.d) * BigInt(denominator);
+    let a = n,
+      b = d;
+    while (b) {
+      const next = a % b;
+      a = b;
+      b = next;
+    }
+    n /= a;
+    d /= a;
+    if (n.toString().length > 38 || d.toString().length > 38) throw new Error('Unresolved amount');
+    return mixedRationalText(n, d);
+  };
+  return amount.kind === 'scalar'
+    ? scalar(amount.value)
+    : `${scalar(amount.min)}–${scalar(amount.max)}`;
+}
 // Exact terminating decimal for an existing annotation only; other role formatting stays unchanged.
 function annotationAmountText(text: string) {
   if (!/^\d+\/\d+$/.test(text)) return text;
@@ -391,7 +418,7 @@ function annotationAmountText(text: string) {
     digits += String(remainder / d);
     remainder %= d;
   }
-  return remainder === 0n ? `${n / d}.${digits}` : text;
+  return remainder === 0n ? `${n / d}.${digits}` : mixedRationalText(n, d);
 }
 export function declaredPackageSuffix(pack: any) {
   return pack
@@ -458,12 +485,12 @@ export function structuredIngredientLines(
       ...(row.package
         ? {
             displayText: exact
-              ? structuredIngredientText(row, amountText(exact, 1, 1))
+              ? structuredIngredientText(row, mixedAmountText(exact, 1, 1))
               : structuredIngredientText(row),
           }
         : target != null && exact != null
           ? {
-              displayText: [amountText(exact, 1, 1), row.unit?.text, row.shopping.name]
+              displayText: [mixedAmountText(exact, 1, 1), row.unit?.text, row.shopping.name]
                 .filter((value) => value != null)
                 .join(' '),
             }
@@ -536,7 +563,7 @@ export function cookingProjection(recipe: any, target: number | null) {
               ? annotationAmountText(
                   amountText(amount, fixed ? 1 : target!, fixed ? 1 : recipe.servings)
                 )
-              : amountText(amount, fixed ? 1 : target!, fixed ? 1 : recipe.servings),
+              : mixedAmountText(amount, fixed ? 1 : target!, fixed ? 1 : recipe.servings),
             row.unit?.text,
           ]
             .filter(Boolean)

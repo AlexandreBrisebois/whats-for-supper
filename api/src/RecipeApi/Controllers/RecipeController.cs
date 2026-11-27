@@ -2,11 +2,13 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
 using RecipeApi.Services;
+using RecipeApi.Services.Ai;
 
 namespace RecipeApi.Controllers;
 
@@ -24,8 +26,10 @@ public class RecipeController(
     RecipeSearchFilterOptions filterOptions,
     IWorkflowOrchestrator orchestrator,
     IRecipeSearchDocumentBuilder searchDocumentBuilder,
-    ILogger<RecipeController> logger) : ControllerBase
+    ILogger<RecipeController> logger,
+    IOptions<GeminiOptions>? geminiOptions = null) : ControllerBase
 {
+    private readonly GeminiOptions _geminiOptions = geminiOptions?.Value ?? GeminiOptions.FromConfiguration();
     /// <summary>GET /api/recipes/search/filters — configured and materialized search vocabulary.</summary>
     [HttpGet("search/filters")]
     [SkipWrapping]
@@ -587,7 +591,7 @@ public class RecipeController(
                 SearchMetadata = "{}",
                 IndexStatus = "pending",
                 EmbeddingStatus = "pending",
-                EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2",
+                EmbeddingModel = _geminiOptions.EmbeddingModelId,
                 SchemaVersion = content.SchemaVersion,
             });
         }

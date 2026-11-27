@@ -1,93 +1,29 @@
 'use client';
-import { PreparationStatus } from '@/components/planner/PreparationStatus';
 
-import { portionsReturnPath } from '@/lib/planner/portionsNavigation';
-import { useSupperServingsEditor } from '@/components/planner/useSupperServingsEditor';
-import { useReplacementRecovery } from '@/lib/planner/useReplacementRecovery';
-import { usePlanningConfirmation } from '@/lib/planner/usePlanningConfirmation';
-import {
-  isNonCookingTarget,
-  usePlannerOverlay,
-  type PlannerOverlay,
-} from '@/lib/planner/plannerOverlay';
-
-import React, { useEffect, useState, useMemo, useRef, memo } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Users,
-  Share2,
-  Check,
-  Calendar,
-  ShoppingCart,
-  Ban,
-  Sparkles,
-  UtensilsCrossed,
-  BookOpen,
-  ArrowRightLeft,
-} from 'lucide-react';
-
-import { usePlannerStore } from '@/store/plannerStore';
-import { useWeekStore } from '@/store/weekStore';
-import type { UILocalScheduleDay } from '@/store/weekStore';
-import {
-  lockSchedule,
-  assignRecipeToDay,
-  openVoting,
-  saveNonCookingDay,
-  getSchedule,
-  removeRecipeFromDay,
-  normalizeScheduleRecipe,
-} from '@/lib/api/planner';
-import { DateOnly } from '@microsoft/kiota-abstractions';
-import { Button } from '@/components/ui/button';
-import { NonCookingDaySheet } from '@/components/planner/NonCookingDaySheet';
-import { NonCookingIcon } from '@/components/planner/NonCookingIcon';
-import { nonCookingLabel, nonCookingNote } from '@/lib/planner/nonCooking';
-import { PlanningPivotSheet } from '@/components/planner/PlanningPivotSheet';
-import { CookedDeferConfirmSheet } from '@/components/planner/CookedDeferConfirmSheet';
-import { cn } from '@/lib/utils';
-import { getLocale, t, tWithVars } from '@/locales';
-import { QuickFindModal } from '@/components/planner/QuickFindModal';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { SolarLoader } from '@/components/ui/SolarLoader';
-import { CooksMode } from '@/components/planner/CooksMode';
-import { RecipeDetailSheet } from '@/components/recipes/RecipeDetailSheet';
-import { PlanningDayChooser } from '@/components/recipes/PlanningDayChooser';
-import { NonCookingReplacementConfirmation } from '@/components/recipes/NonCookingReplacementConfirmation';
-import { getImageUrl } from '@/lib/imageUtils';
-import { GroceryList } from '@/components/planner/GroceryList';
-import { useDiscoveryStore } from '@/store/discoveryStore';
-import { useTodayStore } from '@/store/todayStore';
-import { useUiStore } from '@/store/uiStore';
-import { SkipRecoveryDialog } from '@/components/home/SkipRecoveryDialog';
-import { formatShortSupperPlanDate, formatSupperPlanDate } from '@/lib/planner/nonCooking';
-import {
-  assignRecipeToEmptySlot,
-  deferToFollowingWeek,
-  type AssignmentRecipe,
-  type PlannerSlot,
-} from '@/lib/planner/slotAssignment';
-import { rememberPlanningResult } from '@/lib/planner/planningResult';
-import { FamilyNudgeDialog } from '@/components/discovery/FamilyNudgeDialog';
-import { PlannerDragHandle } from '@/components/planner/PlannerDragHandle';
 import { usePlannerDrag } from '@/components/planner/usePlannerDrag';
+import { useSupperServingsEditor } from '@/components/planner/useSupperServingsEditor';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import {
-  absoluteMonday,
-  calendarAnchorIsFresh,
-  calendarTime,
-  civilDate,
-  readCalendar,
-} from '@/lib/deployment-calendar';
+import { calendarAnchorIsFresh, readCalendar } from '@/lib/deployment-calendar';
+import { usePlannerOverlay } from '@/lib/planner/plannerOverlay';
+import { portionsReturnPath } from '@/lib/planner/portionsNavigation';
+import { usePlanningConfirmation } from '@/lib/planner/usePlanningConfirmation';
+import { usePlannerStore } from '@/store/plannerStore';
+import { useTodayStore } from '@/store/todayStore';
+import { useWeekStore } from '@/store/weekStore';
+import { PlannerConfirmationBanner, PlannerHeader } from './_components/PlannerHeader';
+import { PlannerOverlays } from './_components/PlannerOverlays';
+import { PlannerWeekPanel } from './_components/PlannerWeekPanel';
+import { usePlannerCalendarAndQuery } from './_components/usePlannerCalendarAndQuery';
+import { usePlannerReplacementActions } from './_components/usePlannerReplacementActions';
+import { usePlannerSlotActions } from './_components/usePlannerSlotActions';
 
 export default function PlannerPage() {
   const router = useRouter();
-  const { currentWeekOffset, activeTab, setWeekOffset, setActiveTab, setGroceryState } =
-    usePlannerStore();
+  const searchParams = useSearchParams();
+  const isWide = useMediaQuery('(min-width: 1024px)');
+  const { currentWeekOffset, activeTab, setWeekOffset, setActiveTab } = usePlannerStore();
+
   const schedule = useWeekStore((s) => s.schedule);
   const weekCalendarReference = useWeekStore((s) => s.calendar?.referenceWeekStartDate);
   const isLoading = useWeekStore((s) => s.isLoading);
@@ -96,49 +32,17 @@ export default function PlannerPage() {
   const votingRoundId = useWeekStore((s) => s.votingRoundId);
   const groceryItems = useWeekStore((s) => s.groceryItems);
   const groceryExtras = useWeekStore((s) => s.groceryExtras);
+
   const calendar = useTodayStore((s) => s.calendar);
   const calendarAnchor = useTodayStore((s) => s.calendarAnchor);
-  const calendarVersion = useTodayStore((s) => s.calendarVersion);
-  const ensureCalendar = useTodayStore((s) => s.ensureCalendar);
-  const [, expireCalendar] = useState(0);
-  const authoritativeToday = calendarAnchorIsFresh(calendarAnchor)
+  const snapshotToday = calendarAnchorIsFresh(calendarAnchor)
     ? (readCalendar(calendar)?.today ?? null)
     : null;
 
-  useEffect(() => {
-    const refresh = () => {
-      void ensureCalendar().catch(() => {});
-    };
-    if (!calendar || !calendarAnchor || !calendarAnchorIsFresh(calendarAnchor)) {
-      refresh();
-      return;
-    }
-    // One timer for the shared monotonic anchor. Replacements retire the old timer;
-    // a failed refresh leaves retained meals usable with neutral date presentation.
-    const remaining =
-      calendarAnchor.expiresAfterMs - (calendarTime.elapsed() - calendarAnchor.receivedAtElapsed);
-    const timer = window.setTimeout(
-      () => {
-        expireCalendar((revision) => revision + 1);
-        refresh();
-      },
-      Math.max(0, Math.ceil(remaining))
-    );
-    return () => window.clearTimeout(timer);
-  }, [calendar, calendarAnchor, calendarVersion, ensureCalendar]);
-  const { setHasPendingCards, session: votingSession } = useDiscoveryStore();
-  const isVotingOpen = status === 1;
-  // Only confirmed household convergence for the loaded round and week; never inferred
-  // from this member having no cards left.
-  const isConvergedWeek =
-    isVotingOpen &&
-    votingSession?.phase === 'converged' &&
-    Boolean(votingRoundId && votingSession.roundId === votingRoundId) &&
-    absoluteMonday(votingSession.weekStartDate) === weekStartDate;
-  const hasPendingSuggestions = schedule.some(
-    (day) => day.status !== 3 && day._isPending && Boolean(day.recipe?.id)
-  );
-  const isLocked = status === 2;
+  const planDate = searchParams.get('planDate');
+  const referenceWeekStartDate = searchParams.get('referenceWeekStartDate') ?? undefined;
+  const portionReturn = portionsReturnPath(searchParams.get('returnTo'));
+
   const {
     overlay,
     openPivot,
@@ -155,255 +59,56 @@ export default function PlannerPage() {
     close: closeOverlay,
     closeIfCurrent,
   } = usePlannerOverlay();
-  const pivot = overlay.kind === 'pivot' ? overlay : null;
-  const quickFindDayIndex = overlay.kind === 'quickFind' ? overlay.dayIndex : null;
-  const nonCookingTarget = overlay.kind === 'nonCooking' ? overlay.target : null;
-  const pendingCookedDefer = overlay.kind === 'cookedDefer' ? overlay.slot : null;
-  const cookedDeferSubmitting = overlay.kind === 'cookedDefer' && overlay.submitting;
-  const showNudgeDialog = overlay.kind === 'nudge';
-  const openDetailRecipeId = overlay.kind === 'detail' ? overlay.recipeId : null;
-  const detailSource = overlay.kind === 'detail' ? overlay.source : null;
-  const pendingRecovery = overlay.kind === 'replaceRecovery' ? overlay : null;
-  const chooseDayTarget = overlay.kind === 'chooseDay' ? overlay : null;
-  const nonCookingReplacement = overlay.kind === 'nonCookingReplacement' ? overlay : null;
-  const isDetailOverlay = (current: PlannerOverlay) => current.kind === 'detail';
-  const [verifiedDetail, setVerifiedDetail] = useState<string | null>(null);
-  const [detailReview, setDetailReview] = useState<{
-    identity: string;
-    kind: 'review' | 'retry' | 'completed' | 'voting';
-    isPast?: boolean;
-    preparedOn?: string;
-  } | null>(null);
-  const [detailReadAttempt, setDetailReadAttempt] = useState(0);
-  const currentDetailDay = detailSource ? schedule[detailSource.dayIndex] : undefined;
-  const detailDayVersion = JSON.stringify([
-    currentDetailDay?.date,
-    currentDetailDay?.recipe?.id,
-    currentDetailDay?.occurrenceId,
-    currentDetailDay?.status,
-    calendarVersion,
-  ]);
-  const detailIdentity =
-    detailSource && openDetailRecipeId
-      ? JSON.stringify([openDetailRecipeId, detailSource, detailDayVersion])
-      : null;
-  const activeDetailIdentity = useRef<string | null>(detailIdentity);
-  React.useLayoutEffect(() => {
-    activeDetailIdentity.current = detailIdentity;
-    return () => {
-      if (activeDetailIdentity.current === detailIdentity) activeDetailIdentity.current = null;
-    };
-  }, [detailIdentity]);
-  useEffect(() => {
-    if (
-      !detailSource ||
-      !openDetailRecipeId ||
-      detailSource.context !== 'assigned' ||
-      !detailSource.reference
-    )
-      return;
-    let active = true;
-    const source = detailSource;
-    const recipeId = openDetailRecipeId;
-    const identity = detailIdentity;
-    void getSchedule(source.weekOffset, source.reference)
-      .then((result) => {
-        if (!active || !identity) return;
-        const returnedCalendar = readCalendar(result?.calendar);
-        const day = result?.days?.[source.dayIndex];
-        const expectedTime =
-          Date.parse(`${source.reference}T00:00:00Z`) +
-          (source.weekOffset * 7 + source.dayIndex) * 86400000;
-        if (
-          source.dayIndex >= 0 &&
-          Date.parse(`${source.date}T00:00:00Z`) === expectedTime &&
-          returnedCalendar?.referenceWeekStartDate === source.reference &&
-          day?.date === source.date &&
-          day.recipe?.id === recipeId &&
-          (day.status === 0 || day.status === 1) &&
-          (!source.occurrenceId || day.occurrenceId === source.occurrenceId)
-        ) {
-          setVerifiedDetail(identity);
-        } else {
-          setDetailReview({
-            identity,
-            kind:
-              day?.date === source.date &&
-              day.recipe?.id === recipeId &&
-              (!source.occurrenceId || day.occurrenceId === source.occurrenceId) &&
-              (day.status === 2 || day.status === 4)
-                ? day.status === 2
-                  ? 'completed'
-                  : 'voting'
-                : 'review',
-            isPast: Boolean(returnedCalendar?.today && source.date < returnedCalendar.today),
-            preparedOn: day?.preparation?.preparedOn?.toString() || undefined,
-          });
-        }
-      })
-      .catch(() => {
-        if (active && identity) setDetailReview({ identity, kind: 'retry' });
-      });
-    return () => {
-      active = false;
-    };
-  }, [detailIdentity, detailSource, openDetailRecipeId, detailReadAttempt]);
-  const openPlannedDay = async () => {
-    const source = detailSource;
-    const recipeId = openDetailRecipeId;
-    const identity = detailIdentity;
-    if (!source || !recipeId || verifiedDetail !== identity) return;
-    try {
-      const result = await getSchedule(source.weekOffset, source.reference);
-      if (activeDetailIdentity.current !== identity) return;
-      const returnedCalendar = readCalendar(result?.calendar);
-      const day = result?.days?.[source.dayIndex];
-      const expectedTime =
-        Date.parse(`${source.reference}T00:00:00Z`) +
-        (source.weekOffset * 7 + source.dayIndex) * 86400000;
-      if (
-        source.dayIndex < 0 ||
-        Date.parse(`${source.date}T00:00:00Z`) !== expectedTime ||
-        returnedCalendar?.referenceWeekStartDate !== source.reference ||
-        day?.date !== source.date ||
-        day.recipe?.id !== recipeId ||
-        (day.status !== 0 && day.status !== 1) ||
-        (source.occurrenceId && day.occurrenceId !== source.occurrenceId)
-      ) {
-        setVerifiedDetail(null);
-        setDetailReview({
-          identity: identity!,
-          kind:
-            day?.date === source.date &&
-            day.recipe?.id === recipeId &&
-            (!source.occurrenceId || day.occurrenceId === source.occurrenceId) &&
-            (day.status === 2 || day.status === 4)
-              ? day.status === 2
-                ? 'completed'
-                : 'voting'
-              : 'review',
-        });
-        return;
-      }
-      closeIfCurrent(isDetailOverlay);
-      router.push(
-        `/planner?dayIndex=${source.dayIndex}&weekOffset=${source.weekOffset}&referenceWeekStartDate=${source.reference}`
-      );
-    } catch {
-      if (activeDetailIdentity.current === identity) {
-        setVerifiedDetail(null);
-        setDetailReview({ identity: identity!, kind: 'retry' });
-      }
-    }
-  };
 
-  const searchParams = useSearchParams();
-  const planDate = searchParams.get('planDate');
-  const referenceWeekStartDate = searchParams.get('referenceWeekStartDate') ?? undefined;
-  const portionReturn = portionsReturnPath(searchParams.get('returnTo'));
-  const portions = useSupperServingsEditor(
+  const {
+    editing: portionsEditing,
+    strip: portionsStrip,
+    rows: portionsRows,
+    requestDeparture: requestPortionsDeparture,
+    open: openPortions,
+  } = useSupperServingsEditor(
     currentWeekOffset,
     referenceWeekStartDate,
     schedule,
     portionReturn ? () => router.replace(portionReturn) : undefined,
-    authoritativeToday
+    snapshotToday
   );
-  const portionEntry = searchParams.get('portions') === 'true' ? searchParams.toString() : null;
-  const enteredPortions = useRef<string | null>(null);
-  useEffect(() => {
-    if (!portionEntry) {
-      enteredPortions.current = null;
-      return;
-    }
-    if (enteredPortions.current === portionEntry || !schedule.some((day) => day.date === planDate))
-      return;
-    let active = true;
-    void Promise.resolve().then(() => {
-      if (!active || enteredPortions.current === portionEntry) return;
-      enteredPortions.current = portionEntry;
-      void portions.open();
-    });
-    return () => {
-      active = false;
-    };
-    // The captured query owns this single entry; ordinary editor state updates do not reopen it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [portionEntry, schedule, planDate]);
-  const detailEntry = searchParams.get('detailRecipe');
-  const enteredDetail = useRef<string | null>(null);
-  useEffect(() => {
-    if (!detailEntry) {
-      enteredDetail.current = null;
-      return;
-    }
-    if (enteredDetail.current === detailEntry || !planDate) return;
-    const day = schedule.find((item) => item.date === planDate);
-    if (!day) return;
-    let active = true;
-    void Promise.resolve().then(() => {
-      if (!active || enteredDetail.current === detailEntry) return;
-      enteredDetail.current = detailEntry;
-      openDetail(detailEntry, {
-        date: planDate,
-        dayIndex: schedule.findIndex((item) => item.date === planDate),
-        reference: referenceWeekStartDate ?? '',
-        weekOffset: currentWeekOffset,
-        occurrenceId: searchParams.get('detailOccurrence') ?? undefined,
-        context: searchParams.get('detailContext') === 'proposed' ? 'proposed' : 'assigned',
-      });
-    });
-    return () => {
-      active = false;
-    };
-  }, [
-    detailEntry,
+
+  const {
+    authoritativeToday,
+    calendarVersion,
+    isVotingOpen,
+    isConvergedWeek,
+    hasPendingSuggestions,
+    canOpenVoting,
+    prevOffset,
+    reviewDay,
+    reviewFading,
+    clearConsumedReviewTarget,
+    navigateToWeekOffset,
+    handlePrevWeek,
+    handleNextWeek,
+  } = usePlannerCalendarAndQuery({
+    currentWeekOffset,
+    setWeekOffset,
+    setActiveTab,
     schedule,
+    weekCalendarReference,
+    isLoading,
+    status,
+    weekStartDate,
+    votingRoundId,
     planDate,
     referenceWeekStartDate,
-    currentWeekOffset,
     searchParams,
+    router,
+    openPivot,
     openDetail,
-  ]);
-  const openedPlanDate = useRef<string | null>(null);
-  const [prevOffset, setPrevOffset] = useState(currentWeekOffset);
+    openPortions,
+    requestPortionsDeparture,
+  });
+
   const { preview: dragPreview, start: startDrag } = usePlannerDrag(currentWeekOffset, activeTab);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const isWide = useMediaQuery('(min-width: 1024px)');
-
-  useEffect(() => {
-    setHasPendingCards(isVotingOpen);
-  }, [isVotingOpen, setHasPendingCards]);
-
-  useEffect(() => {
-    const weekOffsetParam = searchParams.get('weekOffset');
-    const parsed = weekOffsetParam === null ? 0 : Number.parseInt(weekOffsetParam, 10);
-    if (!Number.isFinite(parsed)) return;
-    if (parsed === currentWeekOffset) return;
-
-    setWeekOffset(parsed);
-  }, [searchParams, currentWeekOffset, setWeekOffset]);
-
-  useEffect(() => {
-    useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
-  }, [currentWeekOffset, referenceWeekStartDate]);
-
-  useEffect(() => {
-    if (!planDate) {
-      openedPlanDate.current = null;
-      return;
-    }
-    if (isLoading || currentWeekOffset !== 0 || openedPlanDate.current === planDate) return;
-    const day = schedule.find((item) => item.date === planDate);
-    if (!day || day.status !== 3 || day.recipe?.id) return;
-    openedPlanDate.current = planDate;
-    setActiveTab('planner');
-    openPivot(schedule.indexOf(day));
-  }, [planDate, isLoading, currentWeekOffset, schedule, setActiveTab, openPivot]);
-
-  // Update prevOffset during render for animation direction (not in effect to avoid lint warning)
-  if (currentWeekOffset !== prevOffset) {
-    setPrevOffset(currentWeekOffset);
-  }
 
   const {
     visibleConfirmation,
@@ -412,426 +117,52 @@ export default function PlannerPage() {
     successFading,
     retry: retryConfirmation,
     dismiss: dismissConfirmation,
-  } = usePlanningConfirmation({ searchParams, currentWeekOffset, referenceWeekStartDate, router });
-
-  const [reviewDay, setReviewDay] = useState<number | null>(null);
-  const [reviewSeq, setReviewSeq] = useState(0);
-  const [reviewFadedSeq, setReviewFadedSeq] = useState<number | null>(null);
-  const consumedReviewTarget = useRef<string | null>(null);
-  const reviewDayParam = searchParams.get('dayIndex');
-  const reviewSuccessParam = searchParams.get('success');
-  const reviewContext = `${currentWeekOffset}/${referenceWeekStartDate ?? ''}/${reviewDayParam ?? ''}/${reviewSuccessParam ?? ''}`;
-  const [previousReviewContext, setPreviousReviewContext] = useState(reviewContext);
-  if (previousReviewContext !== reviewContext) {
-    setPreviousReviewContext(reviewContext);
-    setReviewDay(null);
-  }
-
-  useEffect(() => {
-    consumedReviewTarget.current = null;
-  }, [reviewContext]);
-
-  useEffect(() => {
-    if (reviewDay === null) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const fade = reduced ? undefined : window.setTimeout(() => setReviewFadedSeq(reviewSeq), 2500);
-    const clear = window.setTimeout(() => setReviewDay(null), 3000);
-    return () => {
-      if (fade !== undefined) window.clearTimeout(fade);
-      window.clearTimeout(clear);
-    };
-  }, [reviewDay, reviewSeq]);
-
-  useEffect(() => {
-    if (reviewSuccessParam || reviewDayParam === null || !/^\d+$/.test(reviewDayParam)) return;
-    const parsedDay = Number.parseInt(reviewDayParam, 10);
-    if (!Number.isInteger(parsedDay) || parsedDay < 0 || parsedDay > 6) return;
-    if (isLoading || schedule.length !== 7) return;
-    const weekOffsetParam = searchParams.get('weekOffset');
-    const requestedOffset = weekOffsetParam === null ? 0 : Number.parseInt(weekOffsetParam, 10);
-    if (Number.isFinite(requestedOffset) && requestedOffset !== currentWeekOffset) return;
-    if (
-      referenceWeekStartDate &&
-      weekCalendarReference &&
-      weekCalendarReference !== referenceWeekStartDate
-    )
-      return;
-    const reviewKey = `${currentWeekOffset}/${referenceWeekStartDate ?? weekCalendarReference ?? ''}/${parsedDay}`;
-    if (consumedReviewTarget.current === reviewKey) return;
-    const card = document.getElementById(`day-card-${parsedDay}`);
-    if (!card) return;
-    consumedReviewTarget.current = reviewKey;
-    // Focus and ring highlight synchronize after the matching week renders.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setReviewDay(parsedDay);
-    setReviewSeq((seq) => seq + 1);
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    card.scrollIntoView?.({
-      behavior: reduced ? 'auto' : 'smooth',
-      block: 'center',
-    });
-    card.focus?.();
-  }, [
-    reviewSuccessParam,
-    reviewDayParam,
-    isLoading,
-    schedule.length,
+  } = usePlanningConfirmation({
     searchParams,
     currentWeekOffset,
     referenceWeekStartDate,
-    weekCalendarReference,
-  ]);
-
-  const navigateToWeekOffset = (nextWeekOffset: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (nextWeekOffset === 0) {
-      params.delete('weekOffset');
-    } else {
-      params.set('weekOffset', nextWeekOffset.toString());
-    }
-    const query = params.toString();
-    portions.requestDeparture(() => router.replace(query ? `/planner?${query}` : '/planner'));
-  };
-
-  const handlePrevWeek = () => navigateToWeekOffset(currentWeekOffset - 1);
-  const handleNextWeek = () => navigateToWeekOffset(currentWeekOffset + 1);
-
-  const handleCloseVoting = async () => {
-    try {
-      await useWeekStore.getState().closeVoting();
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
-    } catch (error: any) {
-      console.warn('Failed to close voting:', error?.message || error);
-    }
-  };
-
-  const handleNudgeFamily = openNudge;
-  // The dialog keeps its Escape listener through its exit animation; never close a newer overlay.
-  const closeNudgeDialog = React.useCallback(
-    () => closeIfCurrent((current) => current.kind === 'nudge'),
-    [closeIfCurrent]
-  );
-
-  // Quick Find can call back during its exit animation; never close a newer overlay.
-  const closeQuickFind = () => closeIfCurrent((current) => current.kind === 'quickFind');
-
-  const handleQuickFindSelect = async (recipe: any) => {
-    const selectedDayIndex = quickFindDayIndex;
-    if (selectedDayIndex === null) return;
-    const selectedDay = schedule[selectedDayIndex];
-    const nextRecipe = {
-      id: recipe.id,
-      name: recipe.name ?? null,
-      image: recipe.image ?? '',
-    };
-
-    if (selectedDay?.recipe?.id && selectedDay.date) {
-      openReplaceRecovery(
-        {
-          weekOffset: currentWeekOffset,
-          referenceWeekStartDate: useWeekStore.getState().calendar?.referenceWeekStartDate,
-          dayIndex: selectedDayIndex,
-          date: selectedDay.date,
-          recipe: selectedDay.recipe,
-          removalToken: selectedDay.removalToken,
-        },
-        nextRecipe
-      );
-      return;
-    }
-
-    try {
-      await useWeekStore.getState().assignRecipe(selectedDayIndex, {
-        id: nextRecipe.id,
-        name: nextRecipe.name,
-        image: nextRecipe.image,
-      });
-
-      // Propagate to todayStore if this is today's slot
-      const assignedDate = schedule[selectedDayIndex]?.date;
-      if (currentWeekOffset === 0 && assignedDate === useTodayStore.getState().calendar?.today) {
-        useTodayStore
-          .getState()
-          .applyServerUpdate({ date: assignedDate, recipe: nextRecipe, status: 0 });
-      }
-
-      closeQuickFind();
-    } catch {
-      await useWeekStore.getState().init(currentWeekOffset, referenceWeekStartDate);
-      useUiStore.getState().addToast({
-        type: 'error',
-        message: 'That recipe could not be added. Your plan was refreshed; please try again.',
-      });
-    }
-  };
-
-  const recovery = useReplacementRecovery({
-    slot: pendingRecovery?.slot,
-    recipe: pendingRecovery?.recipe,
-    onClosed: (saved, reason) => {
-      if (!saved && reason === 'dismiss' && pendingRecovery)
-        openDetail(pendingRecovery.recipe.id, null);
-      else closeIfCurrent((current) => current.kind === 'replaceRecovery');
-    },
-    onSaved: async () => {
-      if (!pendingRecovery) return;
-      const { slot } = pendingRecovery;
-      await useWeekStore.getState().init(slot.weekOffset, slot.referenceWeekStartDate);
-      router.push(
-        `/planner?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
-      );
-    },
-    onReview: () => {
-      if (!pendingRecovery) return;
-      const { slot } = pendingRecovery;
-      consumedReviewTarget.current = null;
-      router.push(
-        `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
-      );
-    },
-    onChooseAnotherDay: () => {
-      if (!pendingRecovery) return;
-      const reference =
-        pendingRecovery.slot.referenceWeekStartDate ??
-        useWeekStore.getState().calendar?.referenceWeekStartDate ??
-        referenceWeekStartDate;
-      if (!reference) return;
-      openChooseDay(pendingRecovery.recipe, reference, pendingRecovery.slot.weekOffset);
-    },
-    observed: (day) => {
-      const slot = pendingRecovery?.slot;
-      if (!slot) return;
-      const update = {
-        date: slot.date,
-        recipe: normalizeScheduleRecipe(day.recipe),
-        status: day.status ?? 0,
-        nonCooking: day.nonCooking,
-      };
-      useWeekStore.getState().applySlotUpdate(update);
-      if (slot.date === useTodayStore.getState().calendar?.today)
-        useTodayStore.getState().applyServerUpdate(update);
-    },
+    router,
   });
 
-  const detailRecipeForChooser: AssignmentRecipe | null = openDetailRecipeId
-    ? {
-        id: openDetailRecipeId,
-        name:
-          schedule[detailSource?.dayIndex ?? -1]?.recipe?.id === openDetailRecipeId
-            ? (schedule[detailSource!.dayIndex].recipe?.name ?? null)
-            : null,
-        image:
-          schedule[detailSource?.dayIndex ?? -1]?.recipe?.id === openDetailRecipeId
-            ? (schedule[detailSource!.dayIndex].recipe?.image ?? '')
-            : '',
-      }
-    : null;
+  const pivotDayIndex = overlay.kind === 'pivot' ? overlay.dayIndex : null;
+  const quickFindDayIndex = overlay.kind === 'quickFind' ? overlay.dayIndex : null;
+  const pendingRecovery = overlay.kind === 'replaceRecovery' ? overlay : null;
 
-  const openDetailDayChooser = () => {
-    if (!detailSource || !detailRecipeForChooser) return;
-    const reference =
-      detailSource.reference ||
-      useWeekStore.getState().calendar?.referenceWeekStartDate ||
-      referenceWeekStartDate;
-    if (!reference) return;
-    openChooseDay(detailRecipeForChooser, reference, detailSource.weekOffset);
-  };
+  const {
+    showSuccess,
+    handleCloseVoting,
+    closeNudgeDialog,
+    closeQuickFind,
+    handleQuickFindSelect,
+    handleSearchPath,
+    handleAskFamily,
+    handleRemoveRecipe,
+    executePlanLater,
+    handlePlanLater,
+  } = usePlannerSlotActions({
+    currentWeekOffset,
+    referenceWeekStartDate,
+    schedule,
+    pivotDayIndex,
+    quickFindDayIndex,
+    openReplaceRecovery,
+    openCookedDefer,
+    closeOverlay,
+    closeIfCurrent,
+    router,
+  });
 
-  const handleChooseDaySelect = async (slot: PlannerSlot, retainedRecipe: AssignmentRecipe) => {
-    if (slot.status === 2 || slot.status === 4) {
-      useUiStore.getState().addToast({
-        type: 'error',
-        message:
-          slot.status === 2
-            ? slot.preparation?.preparedOn
-              ? tWithVars('recipes.alreadyCookedOn', 'Prepared on {{date}}', {
-                  date: formatShortSupperPlanDate(slot.preparation.preparedOn.toString()),
-                })
-              : tWithVars('recipes.preparedForDate', 'Prepared for {{date}}', {
-                  date: formatShortSupperPlanDate(slot.date),
-                })
-            : tWithVars('recipes.votingOpenOn', 'Your household is still voting on {{date}}.', {
-                date: formatShortSupperPlanDate(slot.date),
-              }),
-      });
-      closeIfCurrent((current) => current.kind === 'chooseDay');
-      return;
-    }
-    if (slot.nonCooking) {
-      openNonCookingReplacement(slot, retainedRecipe);
-      return;
-    }
-    if (slot.recipe?.id === retainedRecipe.id) {
-      closeIfCurrent((current) => current.kind === 'chooseDay');
-      router.push(
-        `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
-      );
-      return;
-    }
-    if (slot.recipe) {
-      openReplaceRecovery(
-        {
-          weekOffset: slot.weekOffset,
-          referenceWeekStartDate: slot.referenceWeekStartDate,
-          dayIndex: slot.dayIndex,
-          date: slot.date,
-          recipe: slot.recipe,
-          removalToken: slot.removalToken,
-        },
-        retainedRecipe
-      );
-      return;
-    }
-    if (
-      (slot.status !== 0 && slot.status !== 1 && slot.status !== undefined) ||
-      slot.removalToken
-    ) {
-      useUiStore.getState().addToast({
-        type: 'error',
-        message: t('recipes.planChanged', 'Your plan changed. Review the selected day in Planner.'),
-      });
-      closeIfCurrent((current) => current.kind === 'chooseDay');
-      return;
-    }
-    try {
-      await assignRecipeToEmptySlot(
-        slot.weekOffset,
-        slot.dayIndex,
-        retainedRecipe,
-        slot.referenceWeekStartDate
-      );
-      if (slot.referenceWeekStartDate) {
-        rememberPlanningResult({
-          weekOffset: slot.weekOffset,
-          dayIndex: slot.dayIndex,
-          date: slot.date,
-          referenceWeekStartDate: slot.referenceWeekStartDate,
-          recipeId: retainedRecipe.id,
-          recipeName: retainedRecipe.name ?? '',
-        });
-      }
-      await useWeekStore.getState().init(slot.weekOffset, slot.referenceWeekStartDate);
-      closeIfCurrent((current) => current.kind === 'chooseDay');
-      router.push(
-        `/planner?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
-      );
-    } catch {
-      await useWeekStore
-        .getState()
-        .init(slot.weekOffset, slot.referenceWeekStartDate)
-        .catch(() => {});
-      useUiStore.getState().addToast({
-        type: 'error',
-        message: t('recipes.planChanged', 'Your plan changed. Review the selected day in Planner.'),
-      });
-      closeIfCurrent((current) => current.kind === 'chooseDay');
-    }
-  };
-
-  const handleSearchPath = () => {
-    if (pivot === null) return;
-    const dayIndex = pivot.dayIndex;
-    router.push(
-      `/recipes?addToDay=${dayIndex}&weekOffset=${currentWeekOffset}&referenceWeekStartDate=${useWeekStore.getState().calendar?.referenceWeekStartDate ?? ''}`
-    );
-  };
-
-  const handleAskFamily = async () => {
-    try {
-      await useWeekStore.getState().openVoting();
-      closeIfCurrent((current) => current.kind === 'pivot');
-    } catch (error: any) {
-      console.warn('Failed to open voting:', error?.message || error);
-    }
-  };
-
-  const handleRemoveRecipe = async () => {
-    if (pivot === null) return;
-    const dayIndex = pivot.dayIndex;
-    const date = schedule[dayIndex].date;
-    if (!date) return;
-    closeOverlay();
-    useWeekStore.getState().removeRecipe(dayIndex, date);
-  };
-
-  const executePlanLater = async (slot: PlannerSlot, cookedDisposition?: 'reset' | 'preserve') => {
-    let result;
-    try {
-      result = await deferToFollowingWeek(
-        slot,
-        undefined,
-        cookedDisposition ? { cookedDisposition } : undefined
-      );
-    } catch (error) {
-      const status = (error as { responseStatusCode?: number })?.responseStatusCode;
-      useUiStore.getState().addToast({
-        type: 'error',
-        message:
-          status === 404 || status === 409
-            ? 'That meal changed. Your plan was refreshed; review it before trying again.'
-            : 'Could not move that meal right now. Review your plan before trying again.',
-      });
-      await Promise.allSettled([
-        useWeekStore.getState().init(slot.weekOffset, referenceWeekStartDate),
-      ]);
-      return;
-    }
-
-    let viewRefreshFailed = false;
-    try {
-      await useWeekStore.getState().init(slot.weekOffset, referenceWeekStartDate);
-      if (slot.weekOffset === 0 && slot.date === useTodayStore.getState().calendar?.today) {
-        await useTodayStore.getState().sync();
-      }
-    } catch {
-      viewRefreshFailed = true;
-    }
-
-    if (result.data.refreshComplete !== false) {
-      if (viewRefreshFailed) {
-        useUiStore.getState().addToast({
-          type: 'warning',
-          message: 'Meal moved. Some updates could not refresh. Refresh your plan to check it.',
-        });
-      } else if (result.data.message) {
-        useUiStore.getState().addToast(result.data.message);
-      }
-    }
-  };
-
-  const handlePlanLater = async (dayIndex: number) => {
-    const day = schedule[dayIndex];
-    const recipeId = day?.recipe?.id;
-    if (!recipeId || !day?.date) return;
-
-    closeOverlay();
-
-    const slot: PlannerSlot = {
-      weekOffset: currentWeekOffset,
-      referenceWeekStartDate: useWeekStore.getState().calendar?.referenceWeekStartDate,
-      dayIndex,
-      date: day.date,
-      recipe: day.recipe ?? null,
-      status: day.status,
-      removalToken: day.removalToken,
-      nonCooking: day.nonCooking,
-    };
-
-    if (day.status === 2) {
-      openCookedDefer(slot);
-      return;
-    }
-
-    await executePlanLater(slot);
-  };
-
-  const isFinalized = isLocked;
-  const weekIsPast = useMemo(() => {
-    if (schedule.length < 7) return false;
-    return (schedule[6].date ?? '') < (useTodayStore.getState().calendar?.today ?? '');
-  }, [schedule]);
-  const canOpenVoting = !weekIsPast && (status === 0 || status === 2);
+  const { recovery, handleChooseDaySelect } = usePlannerReplacementActions({
+    pendingRecovery,
+    referenceWeekStartDate,
+    clearConsumedReviewTarget,
+    openDetail,
+    openChooseDay,
+    openNonCookingReplacement,
+    openReplaceRecovery,
+    closeIfCurrent,
+    router,
+  });
 
   return (
     <div className="flex flex-col cookbook-bg pb-6">
@@ -840,1080 +171,84 @@ export default function PlannerPage() {
       <div className="blob blob-sage top-1/2 -right-40 animate-[pulse_10s_infinite] [animation-delay:1s]" />
       <div className="blob blob-ochre -bottom-20 left-1/4 animate-[pulse_12s_infinite] [animation-delay:2s]" />
 
-      {/* Header Section */}
-      <header className="sticky top-0 z-30 px-4 pt-2 pb-2 sm:px-6 sm:pt-3 sm:pb-2 glass-nav">
-        <div
-          className={cn(
-            'mx-auto w-full transition-all duration-500',
-            isWide ? 'max-w-[1400px]' : 'max-w-[27rem] sm:max-w-sm md:max-w-2xl'
-          )}
-        >
-          {/* Tab Switcher */}
-          {!isWide && (
-            <div className="flex bg-charcoal/5 p-1.5 rounded-[1.5rem] relative">
-              <button
-                onClick={() => setActiveTab('planner')}
-                data-testid="planner-tab"
-                className={cn(
-                  'flex-1 min-h-12 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-semibold transition-all z-10',
-                  activeTab === 'planner' ? 'bg-white text-ink-body shadow-sm' : 'text-ink-muted'
-                )}
-              >
-                <Calendar size={14} /> {t('planner.planner', 'Planner')}
-              </button>
-              <button
-                onClick={() => portions.requestDeparture(() => setActiveTab('grocery'))}
-                data-testid="grocery-tab"
-                className={cn(
-                  'flex-1 min-h-12 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-semibold transition-all z-10',
-                  activeTab === 'grocery' ? 'bg-white text-ink-body shadow-sm' : 'text-ink-muted'
-                )}
-              >
-                <ShoppingCart size={14} /> {t('planner.groceryList', 'Grocery list')}
-              </button>
-            </div>
-          )}
+      <PlannerHeader
+        isWide={isWide}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        requestPortionsDeparture={requestPortionsDeparture}
+        currentWeekOffset={currentWeekOffset}
+        schedule={schedule}
+        isVotingOpen={isVotingOpen}
+        isConvergedWeek={isConvergedWeek}
+        onPrevWeek={handlePrevWeek}
+        onNextWeek={handleNextWeek}
+        onNavigateToWeekOffset={navigateToWeekOffset}
+      />
 
-          {/* Week Navigator */}
-          <div className="mt-3 flex items-start justify-between gap-3">
-            <button
-              data-testid="prev-week"
-              onClick={handlePrevWeek}
-              className="p-3 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
-              aria-label="Previous week"
-              title="Previous week"
-            >
-              <ChevronLeft className="text-ink-muted" />
-            </button>
+      <PlannerConfirmationBanner
+        isWide={isWide}
+        visibleConfirmation={visibleConfirmation}
+        onRetry={retryConfirmation}
+        onDismiss={dismissConfirmation}
+      />
 
-            <div className="min-w-0 flex-1 text-center">
-              <span
-                className="font-heading text-sm leading-5 font-semibold tracking-normal text-ink-muted text-center flex-1"
-                data-testid="week-range"
-              >
-                {currentWeekOffset === 0
-                  ? t('planner.thisWeek', 'This week')
-                  : currentWeekOffset === 1
-                    ? t('planner.nextWeek', 'Next week')
-                    : tWithVars('planner.weekX', `Week ${currentWeekOffset}`, {
-                        count: currentWeekOffset,
-                      })}
-              </span>
-              <h2 className="text-lg font-heading font-bold text-ink-body flex items-center justify-center">
-                {isVotingOpen && (
-                  <span className="relative flex h-2 w-2 mr-2">
-                    {!isConvergedWeek && (
-                      <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-ochre-600 opacity-75"></span>
-                    )}
-                    <span
-                      className={cn(
-                        'relative inline-flex rounded-full h-2 w-2',
-                        isConvergedWeek ? 'bg-garden-fill' : 'bg-ochre-600'
-                      )}
-                    ></span>
-                  </span>
-                )}
-                {schedule.length >= 7
-                  ? (() => {
-                      const start = new Date(schedule[0].date ?? '');
-                      const end = new Date(schedule[6].date ?? '');
-                      const isFrench = getLocale() === 'fr';
-                      const monthFormat = new Intl.DateTimeFormat(isFrench ? 'fr-CA' : 'en-CA', {
-                        month: 'short',
-                        timeZone: 'UTC',
-                      });
-                      const startMonth = monthFormat.format(start);
-                      const endMonth = monthFormat.format(end);
-                      const startDate = start.getUTCDate();
-                      const endDate = end.getUTCDate();
+      <PlannerWeekPanel
+        isWide={isWide}
+        isLoading={isLoading}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        currentWeekOffset={currentWeekOffset}
+        prevOffset={prevOffset}
+        schedule={schedule}
+        groceryItems={groceryItems}
+        groceryExtras={groceryExtras}
+        portionsEditing={portionsEditing}
+        portionsStrip={portionsStrip}
+        portionsRows={portionsRows}
+        isVotingOpen={isVotingOpen}
+        canOpenVoting={canOpenVoting}
+        isConvergedWeek={isConvergedWeek}
+        hasPendingSuggestions={hasPendingSuggestions}
+        onAskFamily={handleAskFamily}
+        onNudgeFamily={openNudge}
+        onCloseVoting={handleCloseVoting}
+        hasPendingResult={Boolean(pendingResult)}
+        successDay={successDay}
+        successFading={successFading}
+        reviewDay={reviewDay}
+        reviewFading={reviewFading}
+        onOpenPivot={openPivot}
+        onOpenDetail={openDetail}
+        dragPreview={dragPreview}
+        startDrag={startDrag}
+        authoritativeToday={authoritativeToday}
+        showSuccess={showSuccess}
+      />
 
-                      if (isFrench) {
-                        return startMonth === endMonth
-                          ? `${startDate} — ${endDate} ${endMonth}`
-                          : `${startDate} ${startMonth} — ${endDate} ${endMonth}`;
-                      }
-                      if (startMonth === endMonth) {
-                        return `${startMonth} ${startDate} — ${endDate}`;
-                      }
-                      return `${startMonth} ${startDate} — ${endMonth} ${endDate}`;
-                    })()
-                  : t('messages.loading', 'Loading...')}
-              </h2>
-              {currentWeekOffset !== 0 && (
-                <button
-                  type="button"
-                  data-testid="planner-this-week-pill"
-                  onClick={() => navigateToWeekOffset(0)}
-                  className="mx-auto mt-2 inline-flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-full border border-hearth-line bg-white px-4 text-xs font-semibold text-hearth-ink shadow-sm transition-all hover:bg-terracotta-50 active:scale-95"
-                  aria-label={t('planner.backToThisWeek', 'Back to this week')}
-                  title={t('planner.backToThisWeek', 'Back to this week')}
-                >
-                  {currentWeekOffset > 0 && (
-                    <ChevronLeft size={12} strokeWidth={3} aria-hidden="true" />
-                  )}
-                  {t('planner.backToThisWeek', 'Back to this week')}
-                  {currentWeekOffset < 0 && (
-                    <ChevronRight size={12} strokeWidth={3} aria-hidden="true" />
-                  )}
-                </button>
-              )}
-            </div>
-
-            <button
-              data-testid="next-week"
-              onClick={handleNextWeek}
-              className="p-3 rounded-full hover:bg-charcoal/5 active:scale-90 transition-all"
-              aria-label="Next week"
-              title="Next week"
-            >
-              <ChevronRight className="text-ink-muted" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {visibleConfirmation && (
-        <div
-          className={cn(
-            'relative z-10 mx-auto mt-3 mb-1 w-full px-4 sm:px-6',
-            isWide ? 'max-w-[1400px]' : 'max-w-[27rem] sm:max-w-sm md:max-w-2xl'
-          )}
-        >
-          <div
-            role={
-              visibleConfirmation.kind === 'replacement'
-                ? 'status'
-                : visibleConfirmation.kind === 'refreshing'
-                  ? 'status'
-                  : 'alert'
-            }
-            data-testid="planner-planning-confirmation"
-            className={cn(
-              'flex flex-wrap items-center gap-3 rounded-2xl border p-4 text-ink-body shadow-sm',
-              visibleConfirmation.kind === 'replacement'
-                ? 'border-garden-line bg-sage-50'
-                : 'border-hearth-line bg-terracotta-50'
-            )}
-          >
-            <p className="min-w-0 flex-1">{visibleConfirmation.message}</p>
-            {visibleConfirmation.kind === 'refresh-failed' ||
-            visibleConfirmation.kind === 'refreshing' ? (
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                data-testid="planner-confirmation-refresh"
-                onFocus={(event) => {
-                  if (event.currentTarget.matches(':focus-visible'))
-                    event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
-                }}
-                aria-disabled={visibleConfirmation.kind === 'refreshing'}
-                aria-busy={visibleConfirmation.kind === 'refreshing'}
-                className="min-w-12"
-                onClick={retryConfirmation}
-              >
-                {t('common.refresh', 'Refresh')}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                data-testid="planner-confirmation-dismiss"
-                onFocus={(event) => {
-                  if (event.currentTarget.matches(':focus-visible'))
-                    event.currentTarget.scrollIntoView({ block: 'center', behavior: 'instant' });
-                }}
-                className="min-w-12"
-                onClick={dismissConfirmation}
-              >
-                {t('common.close', 'Close')}
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <main
-        className={cn(
-          'px-4 sm:px-6 py-2 sm:py-3 overflow-x-hidden w-full transition-all duration-500',
-          isWide
-            ? 'max-w-[1400px] mx-auto grid grid-cols-[1fr_420px] gap-8 items-start'
-            : 'max-w-[27rem] sm:max-w-sm md:max-w-2xl mx-auto'
-        )}
-      >
-        {isLoading && schedule.length === 0 ? (
-          <motion.div
-            key="loading"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-20"
-          >
-            <SolarLoader label={t('planner.curatingWeek', 'Curating your week...')} />
-          </motion.div>
-        ) : activeTab === 'grocery' && !isWide ? (
-          <motion.div
-            key={`grocery-${currentWeekOffset}`}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            <GroceryList
-              weekOffset={currentWeekOffset}
-              items={groceryItems ?? []}
-              extras={groceryExtras ?? []}
-              onClose={() => setActiveTab('planner')}
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="planner"
-            initial={{ opacity: 0, x: currentWeekOffset > prevOffset ? 50 : -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          >
-            <div className="flex flex-wrap items-start gap-x-1">
-              {portions.strip}
-              {(isVotingOpen || canOpenVoting) && (
-                <div
-                  data-testid="planner-action-row"
-                  className="mb-4 flex grow basis-auto flex-wrap items-center justify-end gap-1.5"
-                >
-                  {/* Left Slot: Secondary Actions */}
-                  <div className="flex max-w-full justify-start" />
-
-                  {/* Right Slot: Primary Actions */}
-                  <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-                    {canOpenVoting && (
-                      <button
-                        onClick={handleAskFamily}
-                        data-testid="ask-family-cta"
-                        className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full bg-garden-fill hover:bg-garden-fill-deep px-4 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
-                      >
-                        <Users size={14} />
-                        {t('planner.askFamily', 'Ask the Family')}
-                      </button>
-                    )}
-                    {isVotingOpen && !isConvergedWeek && (
-                      <button
-                        onClick={handleNudgeFamily}
-                        data-testid="nudge-family-cta"
-                        className="flex min-h-12 min-w-12 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-garden-fill hover:bg-garden-fill-deep px-3 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
-                      >
-                        <Share2 size={14} />
-                        {t('planner.nudge', 'Nudge')}
-                      </button>
-                    )}
-                    {isVotingOpen && (
-                      <button
-                        onClick={handleCloseVoting}
-                        data-testid="close-voting-btn"
-                        className={cn(
-                          'flex min-h-12 min-w-12 max-w-full items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all active:scale-95',
-                          !isConvergedWeek && 'whitespace-nowrap',
-                          isConvergedWeek
-                            ? 'bg-garden-fill hover:bg-garden-fill-deep text-white py-2 text-center leading-tight'
-                            : 'border border-hearth-line bg-white text-hearth-ink hover:bg-hearth-fill-hover active:bg-hearth-fill-active hover:text-white active:text-white'
-                        )}
-                      >
-                        {isConvergedWeek ? <Check size={14} /> : <Ban size={14} />}
-                        {isConvergedWeek && hasPendingSuggestions
-                          ? t('planner.saveMenuAndCloseVoting', 'Save menu & close voting')
-                          : t('planner.closeVoting', 'Close Voting')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {portions.editing ? (
-              portions.rows
-            ) : (
-              <div className="w-full space-y-3.5" data-testid="reorder-group">
-                {schedule.map((day, index) => (
-                  <PlannerDayCard
-                    key={day.date ?? index}
-                    day={day}
-                    index={index}
-                    successDay={pendingResult ? null : successDay}
-                    successFading={successFading}
-                    reviewDay={pendingResult ? null : reviewDay}
-                    reviewFading={reviewDay !== null && reviewFadedSeq === reviewSeq}
-                    onPivot={() => openPivot(index)}
-                    onViewRecipe={(recipeId) => {
-                      const reference = useWeekStore.getState().calendar?.referenceWeekStartDate;
-                      openDetail(
-                        recipeId,
-                        day.date && reference
-                          ? {
-                              date: day.date,
-                              dayIndex: index,
-                              occurrenceId: !day._isPending
-                                ? (day.occurrenceId as string)
-                                : undefined,
-                              context: day._isPending ? 'proposed' : 'assigned',
-                              reference,
-                              weekOffset: currentWeekOffset,
-                            }
-                          : null
-                      );
-                    }}
-                    startDrag={startDrag}
-                    isDragSource={dragPreview?.from === index}
-                    isDropTarget={dragPreview?.target === index && dragPreview.from !== index}
-                    isWide={isWide}
-                    isToday={civilDate(day.date) !== null && day.date === authoritativeToday}
-                    isPast={
-                      !!authoritativeToday &&
-                      civilDate(day.date) !== null &&
-                      day.date! < authoritativeToday
-                    }
-                  />
-                ))}
-              </div>
-            )}
-            {dragPreview &&
-              createPortal(
-                <div
-                  data-testid="planner-drag-preview"
-                  aria-hidden="true"
-                  className="fixed z-[999] pointer-events-none rounded-2xl border-2 border-sage-700 bg-white p-4 shadow-xl text-ink-body font-bold"
-                  style={{ left: dragPreview.x, top: dragPreview.y, width: dragPreview.width }}
-                >
-                  {dragPreview.snapshot[dragPreview.from].recipe?.name}
-                  {dragPreview.target !== null && dragPreview.target !== dragPreview.from && (
-                    <span
-                      data-testid="planner-drop-feedback"
-                      className="block mt-2 text-xs font-bold text-garden-ink"
-                    >
-                      {dragPreview.snapshot[dragPreview.target].recipe?.id ||
-                      dragPreview.snapshot[dragPreview.target].status === 3
-                        ? t('planner.swapMeals', 'Swap meals')
-                        : t('planner.moveHere', 'Move here')}
-                    </span>
-                  )}
-                </div>,
-                document.body
-              )}
-          </motion.div>
-        )}
-
-        {isWide && (
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="sticky top-[72px] h-[calc(100vh-285px)] rounded-[2.5rem] overflow-hidden border border-white/20 shadow-2xl glass flex flex-col"
-          >
-            <GroceryList
-              weekOffset={currentWeekOffset}
-              items={groceryItems ?? []}
-              extras={groceryExtras ?? []}
-              isEmbedded
-            />
-          </motion.div>
-        )}
-      </main>
-
-      {showSuccess && (
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-24 left-6 right-6 z-50 bg-garden-fill text-white p-6 rounded-3xl shadow-2xl flex items-center gap-4"
-        >
-          <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-            <Check size={24} />
-          </div>
-          <div className="flex flex-col">
-            <h4
-              data-testid="planner-week-finalized"
-              className="font-heading text-lg font-black tracking-tight leading-none"
-            >
-              {t('planner.weekFinalized', 'Menu saved!')}
-            </h4>
-            <p className="text-xs font-medium text-cream-100 mt-1">
-              {t(
-                'planner.discoveryVotesPurged',
-                "Votes have been recorded and reset, we're ready for the next family voting session."
-              )}
-            </p>
-          </div>
-        </motion.div>
-      )}
-
-      {nonCookingTarget && (
-        <NonCookingDaySheet
-          key={`${nonCookingTarget.weekOffset}:${nonCookingTarget.date}`}
-          date={nonCookingTarget.date}
-          plan={nonCookingTarget.plan}
-          onBack={nonCookingTarget.fromPivotDayIndex !== undefined ? backToPivot : undefined}
-          onClose={closeOverlay}
-          onSave={async (plan) => {
-            const target = nonCookingTarget;
-            try {
-              await saveNonCookingDay(target.date, plan);
-            } catch (failure) {
-              const refreshed = await getSchedule(
-                target.weekOffset,
-                target.referenceWeekStartDate
-              ).catch(() => undefined);
-              if (refreshed && useWeekStore.getState().weekOffset === target.weekOffset)
-                useWeekStore.getState().applySnapshot(refreshed);
-              throw failure;
-            }
-            const refreshed = await getSchedule(target.weekOffset, target.referenceWeekStartDate);
-            if (refreshed && useWeekStore.getState().weekOffset === target.weekOffset)
-              useWeekStore.getState().applySnapshot(refreshed);
-            closeIfCurrent((current) => isNonCookingTarget(current, target));
-          }}
-          onClear={
-            nonCookingTarget.existing
-              ? async () => {
-                  const target = nonCookingTarget;
-                  await removeRecipeFromDay(target.date);
-                  const refreshed = await getSchedule(
-                    target.weekOffset,
-                    target.referenceWeekStartDate
-                  );
-                  if (refreshed && useWeekStore.getState().weekOffset === target.weekOffset)
-                    useWeekStore.getState().applySnapshot(refreshed);
-                  closeIfCurrent((current) => isNonCookingTarget(current, target));
-                }
-              : undefined
-          }
-        />
-      )}
-      <PlanningPivotSheet
-        date={pivot !== null ? (schedule[pivot.dayIndex]?.date ?? undefined) : undefined}
-        recipeName={
-          pivot !== null && schedule[pivot.dayIndex]?.status !== 3
-            ? (schedule[pivot.dayIndex]?.recipe?.name ?? null)
-            : null
-        }
-        isNonCooking={pivot !== null && schedule[pivot.dayIndex]?.status === 3}
-        onNoCooking={
-          pivot !== null &&
-          currentWeekOffset >= 0 &&
-          (!schedule[pivot.dayIndex]?.recipe?.id || schedule[pivot.dayIndex]?._isPending)
-            ? () => {
-                const pivotDayIndex = pivot.dayIndex;
-                const day = schedule[pivotDayIndex];
-                if (!day?.date) return;
-                openNonCooking({
-                  date: day.date,
-                  weekOffset: currentWeekOffset,
-                  referenceWeekStartDate: useWeekStore.getState().calendar?.referenceWeekStartDate,
-                  plan: day.nonCooking,
-                  existing: day.status === 3,
-                  fromPivotDayIndex: pivotDayIndex,
-                });
-              }
-            : undefined
-        }
-        isOpen={pivot !== null}
-        onClose={closeOverlay}
-        dayIndex={pivot?.dayIndex ?? 0}
-        onQuickFind={() => {
-          if (pivot === null) return;
-          openQuickFind(pivot.dayIndex);
-        }}
+      <PlannerOverlays
+        overlay={overlay}
+        currentWeekOffset={currentWeekOffset}
+        referenceWeekStartDate={referenceWeekStartDate}
+        schedule={schedule}
+        calendarVersion={calendarVersion}
+        router={router}
+        openQuickFind={openQuickFind}
+        openNonCooking={openNonCooking}
+        backToPivot={backToPivot}
+        setCookedDeferSubmitting={setCookedDeferSubmitting}
+        openChooseDay={openChooseDay}
+        closeOverlay={closeOverlay}
+        closeIfCurrent={closeIfCurrent}
+        closeNudgeDialog={closeNudgeDialog}
+        closeQuickFind={closeQuickFind}
+        onQuickFindSelect={handleQuickFindSelect}
         onSearchLibrary={handleSearchPath}
         onRemoveRecipe={handleRemoveRecipe}
-        onPlanLater={
-          pivot !== null && schedule[pivot.dayIndex]?.status !== 3
-            ? () => handlePlanLater(pivot.dayIndex)
-            : undefined
-        }
-        hasRecipe={
-          !!(
-            pivot !== null &&
-            (schedule[pivot.dayIndex]?.recipe?.id || schedule[pivot.dayIndex]?.status === 3)
-          )
-        }
+        onPlanLater={handlePlanLater}
+        onExecutePlanLater={executePlanLater}
+        onChooseDaySelect={handleChooseDaySelect}
+        recovery={recovery}
       />
-
-      <CookedDeferConfirmSheet
-        isOpen={pendingCookedDefer !== null}
-        date={pendingCookedDefer?.date}
-        recipeName={pendingCookedDefer?.recipe?.name ?? null}
-        pending={cookedDeferSubmitting}
-        onClose={closeOverlay}
-        onSelect={async (disposition) => {
-          if (!pendingCookedDefer || cookedDeferSubmitting) return;
-          const slot = pendingCookedDefer;
-          setCookedDeferSubmitting(true);
-          try {
-            await executePlanLater(slot, disposition);
-          } finally {
-            setCookedDeferSubmitting(false);
-            closeIfCurrent((current) => current.kind === 'cookedDefer' && current.slot === slot);
-          }
-        }}
-      />
-
-      <FamilyNudgeDialog open={showNudgeDialog} onClose={closeNudgeDialog} />
-
-      <AnimatePresence>
-        {quickFindDayIndex !== null && (
-          <QuickFindModal
-            referenceWeekStartDate={useWeekStore.getState().calendar?.referenceWeekStartDate}
-            onClose={closeQuickFind}
-            onSelect={handleQuickFindSelect}
-            weekOffset={currentWeekOffset}
-            dayIndex={quickFindDayIndex}
-          />
-        )}
-      </AnimatePresence>
-
-      {openDetailRecipeId && (
-        <RecipeDetailSheet
-          ingredientContext={
-            detailSource
-              ? detailSource.context === 'proposed'
-                ? { context: 'proposed', supperDate: detailSource.date }
-                : {
-                    context: 'assigned',
-                    supperDate: detailSource.date,
-                    occurrenceId: detailSource.occurrenceId ?? '',
-                  }
-              : undefined
-          }
-          recipeId={openDetailRecipeId}
-          plannerDayLabel={null}
-          sourceDayLabel={detailSource ? formatSupperPlanDate(detailSource.date) : undefined}
-          planningLoading={
-            detailSource?.context === 'assigned' &&
-            verifiedDetail !== detailIdentity &&
-            detailReview?.identity !== detailIdentity
-          }
-          planningNeedsCheck={
-            detailReview?.identity === detailIdentity &&
-            detailReview.kind !== 'completed' &&
-            detailReview.kind !== 'voting'
-          }
-          plannedDayLabel={
-            verifiedDetail === detailIdentity && detailSource
-              ? formatSupperPlanDate(detailSource.date)
-              : undefined
-          }
-          onOpenPlannedDay={
-            verifiedDetail === detailIdentity ? () => void openPlannedDay() : undefined
-          }
-          planningMessageTone={
-            detailReview?.identity === detailIdentity && detailReview.kind === 'completed'
-              ? 'prepared'
-              : detailReview?.identity === detailIdentity && detailReview.kind === 'voting'
-                ? 'status'
-                : 'alert'
-          }
-          planningMessage={
-            detailReview?.identity === detailIdentity && detailSource
-              ? detailReview.kind === 'completed'
-                ? detailReview.isPast
-                  ? undefined
-                  : detailReview.preparedOn
-                    ? tWithVars('recipes.alreadyCookedOn', 'Prepared on {{date}}', {
-                        date: formatShortSupperPlanDate(detailReview.preparedOn),
-                      })
-                    : tWithVars('recipes.preparedForDate', 'Prepared for {{date}}', {
-                        date: formatShortSupperPlanDate(detailSource.date),
-                      })
-                : detailReview.kind === 'voting'
-                  ? tWithVars(
-                      'recipes.votingOpenOn',
-                      'Your household is still voting on {{date}}.',
-                      {
-                        date: formatShortSupperPlanDate(detailSource.date),
-                      }
-                    )
-                  : detailReview.kind === 'review'
-                    ? t(
-                        'recipes.planChanged',
-                        'Your plan changed. Review the selected day in Planner.'
-                      )
-                    : t(
-                        'recipes.checkPlanFailed',
-                        'Could not confirm this meal. Retry check before saving.'
-                      )
-              : undefined
-          }
-          planningActionLabel={
-            detailReview?.identity === detailIdentity
-              ? detailReview.kind === 'completed'
-                ? t('recipes.planAnotherDay', 'Plan for another day')
-                : detailReview.kind === 'voting'
-                  ? t('recipes.openVotingInPlanner', 'Open voting in Planner')
-                  : detailReview.kind === 'review'
-                    ? t('recipes.reviewPlan', 'Review plan')
-                    : t('recipes.retryPlanCheck', 'Retry check')
-              : undefined
-          }
-          onRetryTarget={
-            detailReview?.identity === detailIdentity && detailSource
-              ? detailReview.kind === 'completed'
-                ? openDetailDayChooser
-                : detailReview.kind === 'voting' || detailReview.kind === 'review'
-                  ? () => {
-                      closeIfCurrent(isDetailOverlay);
-                      router.push(
-                        `/planner?dayIndex=${detailSource.dayIndex}&weekOffset=${detailSource.weekOffset}&referenceWeekStartDate=${detailSource.reference}`
-                      );
-                    }
-                  : () => {
-                      setDetailReview(null);
-                      setDetailReadAttempt((value) => value + 1);
-                    }
-              : undefined
-          }
-          secondaryPlanningActionLabel={
-            detailReview?.identity === detailIdentity && detailSource
-              ? detailReview.kind === 'completed'
-                ? tWithVars('recipes.openDayInPlanner', 'Open {{date}} in Planner', {
-                    date: formatShortSupperPlanDate(detailSource.date),
-                  })
-                : detailReview.kind === 'voting'
-                  ? t('recipes.planAnotherDay', 'Plan for another day')
-                  : undefined
-              : undefined
-          }
-          secondaryPlanningTestId={
-            detailReview?.identity === detailIdentity
-              ? detailReview.kind === 'completed'
-                ? 'action-open-day-in-planner'
-                : detailReview.kind === 'voting'
-                  ? 'action-plan-another-day'
-                  : undefined
-              : undefined
-          }
-          onSecondaryPlanningAction={
-            detailReview?.identity === detailIdentity && detailSource
-              ? detailReview.kind === 'completed'
-                ? () => {
-                    closeIfCurrent(isDetailOverlay);
-                    router.push(
-                      `/planner?dayIndex=${detailSource.dayIndex}&weekOffset=${detailSource.weekOffset}&referenceWeekStartDate=${detailSource.reference}`
-                    );
-                  }
-                : detailReview.kind === 'voting'
-                  ? openDetailDayChooser
-                  : undefined
-              : undefined
-          }
-          onClose={() => closeIfCurrent(isDetailOverlay)}
-          onUseForDay={async () => {}}
-          onFindSimilar={(recipeId) => {
-            router.push(`/recipes?similarTo=${recipeId}`);
-          }}
-        />
-      )}
-
-      {chooseDayTarget && (
-        <PlanningDayChooser
-          reference={chooseDayTarget.reference}
-          weekOffset={chooseDayTarget.weekOffset}
-          onClose={() => closeIfCurrent((current) => current.kind === 'chooseDay')}
-          onSelect={(slot) => void handleChooseDaySelect(slot, chooseDayTarget.recipe)}
-        />
-      )}
-
-      {nonCookingReplacement && (
-        <NonCookingReplacementConfirmation
-          slot={nonCookingReplacement.slot}
-          recipe={nonCookingReplacement.recipe}
-          onClose={() => closeIfCurrent((current) => current.kind === 'nonCookingReplacement')}
-          onSaved={async () => {
-            const { slot } = nonCookingReplacement;
-            await useWeekStore.getState().init(slot.weekOffset, slot.referenceWeekStartDate);
-            router.push(
-              `/planner?success=1&dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
-            );
-          }}
-          onReview={() => {
-            const { slot } = nonCookingReplacement;
-            closeIfCurrent((current) => current.kind === 'nonCookingReplacement');
-            router.push(
-              `/planner?dayIndex=${slot.dayIndex}&weekOffset=${slot.weekOffset}&referenceWeekStartDate=${slot.referenceWeekStartDate}`
-            );
-          }}
-        />
-      )}
-
-      <AnimatePresence>
-        {pendingRecovery && (
-          <SkipRecoveryDialog
-            pending={recovery.pending}
-            isOpen={true}
-            step={2}
-            canGoBack={false}
-            source={pendingRecovery.slot}
-            replacement={recovery.feedback}
-            confirmAbandon={recovery.confirmAbandon}
-            onCancelAbandon={recovery.cancelAbandon}
-            onAbandon={recovery.abandon}
-            onRetryReplacement={recovery.retry}
-            onReviewPlan={recovery.review}
-            onChooseAnotherDay={recovery.chooseAnotherDay}
-            onClose={recovery.close}
-            onBack={recovery.close}
-            onAction={recovery.act}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
-
-const PlannerDayCard = memo(function PlannerDayCard({
-  day,
-  index,
-  successDay,
-  successFading,
-  reviewDay,
-  reviewFading,
-  onPivot,
-  onViewRecipe,
-  startDrag,
-  isDragSource,
-  isDropTarget,
-  isWide,
-  isToday,
-  isPast,
-}: {
-  day: UILocalScheduleDay;
-  index: number;
-  successDay: number | null;
-  successFading: boolean;
-  reviewDay: number | null;
-  reviewFading: boolean;
-  onPivot: () => void;
-  onViewRecipe: (recipeId: string) => void;
-  startDrag: (from: number, event: PointerEvent) => void;
-  isDragSource: boolean;
-  isDropTarget: boolean;
-  isWide: boolean;
-  isToday: boolean;
-  isPast: boolean;
-}) {
-  const focusFrame = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (focusFrame.current !== null) cancelAnimationFrame(focusFrame.current);
-    },
-    []
-  );
-  const startRecipeDrag = React.useCallback(
-    (event: PointerEvent) => startDrag(index, event),
-    [startDrag, index]
-  );
-  const moveBySlot = React.useCallback(
-    (direction: -1 | 1) => {
-      if (usePlannerStore.getState().isDragActive) return;
-      const snapshot = useWeekStore.getState().schedule;
-      const from = snapshot.findIndex((item) => item._uiId === day._uiId);
-      const to = from + direction;
-      if (from < 0 || to < 0 || to >= snapshot.length || !snapshot[from].recipe?.id) return;
-      const focusOwner = document.activeElement;
-      useWeekStore.getState().reorderLocally(from, to, snapshot);
-      useWeekStore.getState().commitMove(from, to, snapshot);
-      if (focusFrame.current !== null) cancelAnimationFrame(focusFrame.current);
-      focusFrame.current = requestAnimationFrame(() => {
-        focusFrame.current = null;
-        // A removed source handle leaves focus on body. Otherwise a newer focus
-        // choice belongs to the user and must not be overridden by this move.
-        if (
-          document.activeElement !== focusOwner &&
-          (focusOwner?.isConnected || document.activeElement !== document.body)
-        )
-          return;
-        document
-          .querySelector<HTMLElement>(
-            `[data-testid="day-card-${to}"] [data-testid="planner-drag-handle"]`
-          )
-          ?.focus();
-      });
-    },
-    [day._uiId]
-  );
-
-  return (
-    <div
-      className="w-full"
-      data-temporal={isToday ? 'today' : isPast ? 'past' : 'neutral'}
-      data-testid={`day-card-${index}`}
-      data-date={day.date}
-      data-drag-source={isDragSource}
-      data-drop-target={isDropTarget}
-      data-review-highlight={reviewDay === index && successDay !== index ? 'true' : undefined}
-      id={`day-card-${index}`}
-      tabIndex={-1}
-    >
-      {isToday && (
-        <div className="mb-1 flex flex-wrap items-center gap-2">
-          <p
-            data-testid="planner-today-label"
-            className="min-w-0 max-w-full text-sm leading-5 font-semibold text-hearth-ink break-words"
-          >
-            {t('planner.today', 'Today')}
-          </p>
-          <span
-            data-testid="planner-today-separator"
-            aria-hidden="true"
-            className="h-px min-w-4 flex-1 bg-terracotta/15"
-          />
-        </div>
-      )}
-      <div className="flex items-stretch gap-2 w-full">
-        <div
-          data-testid="planner-date"
-          aria-current={isToday ? 'date' : undefined}
-          data-drop-target={isDropTarget}
-          className={cn(
-            'relative flex flex-col items-center justify-center w-10 shrink-0 rounded-xl',
-            isDropTarget && 'bg-sage/20 outline outline-2 outline-sage-700'
-          )}
-        >
-          {isDropTarget && (
-            <ChevronRight
-              data-testid="planner-drop-arrow"
-              aria-hidden="true"
-              size={8}
-              strokeWidth={3}
-              className="absolute -right-2 top-1/2 -translate-y-1/2 text-garden-ink"
-            />
-          )}
-          <div
-            data-testid="planner-date-marker"
-            className="w-full flex flex-col items-center justify-center rounded-xl py-2"
-          >
-            <span className="max-w-full break-all text-center text-xs font-semibold tracking-normal text-ink-muted leading-none mb-1">
-              {day.date
-                ? new Intl.DateTimeFormat(getLocale() === 'fr' ? 'fr-CA' : 'en-CA', {
-                    weekday: 'short',
-                    timeZone: 'UTC',
-                  }).format(new Date(day.date))
-                : day.day}
-            </span>
-            <span className="max-w-full break-all text-center text-lg font-heading font-extrabold text-ink-body leading-none">
-              {(() => {
-                if (!day.date) return '';
-                const d = new Date(day.date);
-                return d.getUTCDate();
-              })()}
-            </span>
-            <span className="max-w-full break-all text-center text-xs font-semibold tracking-normal text-ink-muted leading-none mt-1">
-              {(() => {
-                if (!day.date) return '';
-                const d = new Date(day.date);
-                return d.toLocaleDateString(getLocale() === 'fr' ? 'fr-CA' : 'en-CA', {
-                  month: 'short',
-                  timeZone: 'UTC',
-                });
-              })()}
-            </span>
-          </div>
-        </div>
-        <div
-          className={cn(
-            'flex-1 min-w-0 rounded-2xl relative group border',
-            isPast ? 'bg-cream shadow-none' : 'glass shadow-sm',
-            isDragSource
-              ? 'outline outline-1 outline-dashed outline-ink-body/70'
-              : 'border-white/20',
-            isDropTarget && 'outline outline-2 outline-sage-700',
-            successDay === index &&
-              cn(
-                'ring-4 ring-offset-4 transition-shadow duration-500 motion-reduce:transition-none',
-                successFading ? 'ring-transparent ring-offset-transparent' : 'ring-sage'
-              ),
-            reviewDay === index &&
-              successDay !== index &&
-              cn(
-                'ring-4 ring-offset-4 transition-shadow duration-500 motion-reduce:transition-none',
-                reviewFading ? 'ring-transparent ring-offset-transparent' : 'ring-hearth-line'
-              )
-          )}
-          data-testid="planner-meal"
-        >
-          {isDragSource && (
-            <span className="absolute -top-2.5 left-2 z-20 rounded-full bg-cream px-2 text-xs font-bold text-ink-body">
-              {t('planner.moveSource', 'Moving from this day')}
-            </span>
-          )}
-          <motion.div
-            whileTap={{ scale: 0.98 }}
-            className={cn(
-              'flex items-stretch px-4 relative z-10 max-[360px]:flex-col max-[360px]:gap-2',
-              isWide ? 'py-2 min-h-[64px]' : 'py-2.5 min-h-[72px]'
-            )}
-          >
-            <div className="flex-1 min-w-0">
-              {day.status === 3 ? (
-                <button
-                  onClick={onPivot}
-                  data-testid="ordered-in-indicator"
-                  className={cn(
-                    'flex items-center gap-3 w-full text-left',
-                    isPast
-                      ? 'hover:bg-sage/10 transition-colors'
-                      : 'hover:opacity-80 transition-opacity'
-                  )}
-                >
-                  <div className="h-10 w-10 rounded-xl bg-sage/10 text-garden-ink flex items-center justify-center flex-shrink-0">
-                    <NonCookingIcon kind={day.nonCooking?.kind} />
-                  </div>
-                  <div className="min-w-0 flex flex-col gap-0.5">
-                    <span
-                      data-testid="non-cooking-indicator"
-                      title={nonCookingLabel(day.nonCooking)}
-                      className={cn(
-                        'line-clamp-2 text-sm font-bold',
-                        isPast ? 'text-ink-muted' : 'text-ink-muted'
-                      )}
-                    >
-                      {nonCookingLabel(day.nonCooking)}
-                    </span>
-                    {day.nonCooking?.kind === 'mystery' ? (
-                      <span className="text-xs font-medium text-ink-muted">
-                        {t('planner.mysteryNightHint', 'We’ll figure out supper that day.')}
-                      </span>
-                    ) : nonCookingNote(day.nonCooking) ? (
-                      <span
-                        data-testid="non-cooking-note"
-                        title={nonCookingNote(day.nonCooking) ?? undefined}
-                        className="line-clamp-2 break-words text-xs text-ink-muted font-medium"
-                      >
-                        {nonCookingNote(day.nonCooking)}
-                      </span>
-                    ) : null}
-                  </div>
-                </button>
-              ) : day.recipe?.id ? (
-                <div className="flex items-stretch">
-                  {day.recipe.image && (
-                    <div
-                      className={cn(
-                        'relative rounded-xl overflow-hidden mr-2.5 bg-charcoal/5 flex-shrink-0 self-center',
-                        isWide ? 'h-10 w-10' : 'h-12 w-12'
-                      )}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={getImageUrl(day.recipe.image)}
-                        alt={day.recipe.name || 'Recipe'}
-                        className="absolute inset-0 h-full w-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (day.recipe?.id) {
-                        onViewRecipe(day.recipe.id);
-                      }
-                    }}
-                    className="flex flex-1 min-w-0 items-center text-left rounded-2xl px-1 py-0.5 active:bg-ochre/5 transition-colors"
-                    data-testid="edit-recipe-button"
-                  >
-                    <div className="flex w-full flex-col justify-center gap-0.5">
-                      <h4
-                        className={cn(
-                          'font-bold text-ink-body line-clamp-2',
-                          isWide ? 'text-sm leading-tight' : 'text-base leading-tight'
-                        )}
-                        data-testid="recipe-name"
-                      >
-                        {day.recipe.name}
-                      </h4>
-                      {day.preparation && !isPast ? (
-                        <div className="mt-0.5">
-                          <PreparationStatus preparation={day.preparation} variant="compact" />
-                        </div>
-                      ) : (
-                        (() => {
-                          const count = day._voteCount ?? day.recipe?.voteCount ?? null;
-                          const isUnanimous = day._unanimousVote;
-                          const hasVotes = count != null && count > 0;
-                          return (
-                            <span
-                              data-testid="vote-count"
-                              className={cn(
-                                'text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap inline-block w-fit mt-0.5',
-                                hasVotes
-                                  ? isUnanimous
-                                    ? 'bg-sage-50 text-garden-ink'
-                                    : 'bg-ochre-50 text-sunlight-ink'
-                                  : 'bg-charcoal-100 text-ink-muted'
-                              )}
-                            >
-                              {hasVotes
-                                ? tWithVars(
-                                    count === 1 ? 'planner.votedOne' : 'planner.votedOther',
-                                    '{{count}} voted',
-                                    { count }
-                                  )
-                                : t('planner.chosen', 'Chosen')}
-                            </span>
-                          );
-                        })()
-                      )}
-                    </div>
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-stretch w-full">
-                  <button
-                    onClick={onPivot}
-                    data-testid="plan-meal-button"
-                    className="flex items-center flex-1 min-h-[44px] text-left group rounded-2xl px-1 py-0.5 active:bg-terracotta/10 transition-colors"
-                  >
-                    <div className="h-10 w-10 rounded-xl border border-dashed border-hearth-line flex items-center justify-center mr-3 group-hover:bg-terracotta/10 group-hover:border-hearth-line transition-colors">
-                      <Plus
-                        className="text-hearth-ink group-hover:text-hearth-ink transition-colors"
-                        size={18}
-                      />
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <span
-                        className={cn(
-                          'font-bold text-hearth-ink group-hover:text-hearth-ink transition-colors',
-                          isWide ? 'text-xs' : 'text-sm'
-                        )}
-                      >
-                        {t('planner.planSupper', 'Plan supper')}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-            {((day.status !== 3 && day.recipe?.id) || isDragSource) && (
-              <div className="ml-2 pl-2 border-l border-charcoal/8 flex items-center gap-2 self-stretch max-[360px]:self-end max-[360px]:border-l-0">
-                {day.recipe?.id && !day._isPending && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPivot();
-                    }}
-                    className="h-9 w-9 rounded-xl bg-ochre-50 text-sunlight-ink flex items-center justify-center active:scale-90 transition-transform"
-                    data-testid="change-recipe-button"
-                    title={t('planner.choosePathTitle', 'Change this recipe')}
-                    aria-label={t('planner.choosePathTitle', 'Change this recipe')}
-                  >
-                    <ArrowRightLeft size={18} />
-                  </motion.button>
-                )}
-                <PlannerDragHandle start={startRecipeDrag} moveBySlot={moveBySlot} />
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </div>
-    </div>
-  );
-});

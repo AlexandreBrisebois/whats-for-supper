@@ -285,7 +285,7 @@ impact expand checks; CI, release and full-repository gates remain broader safet
 ## Evidence and meaningful handoffs
 
 Record changed paths, actual checks and content identity with the selected task
-when durable evidence is needed, before final verification. Keep durable rationale in `specs/decisions/` when a decision needs
+when durable evidence is needed, before final verification. Keep durable rationale in `openspec/changes/` when a decision needs
 preserving; implementation facts belong with code/config references. Synchronize
 only affected contracts, configuration documentation and task records within scope.
 Static reconciliation alone is not database or live endpoint parity.
@@ -296,8 +296,10 @@ Task/spec; Worktree/branch; Authorized scope and source; Current checkpoint;
 Verification evidence and content identity; Blocker or next action.
 Check stale evidence against current files when resuming. Keep the active checkpoint
 concise, linking task-owned history/evidence instead of copying cumulative transcripts;
-HANDOVER supplies context, not authority. [JOURNAL](../../JOURNAL.md) is
-frozen historical evidence after its salvage pass; do not append session results.
+HANDOVER supplies context, not authority. Historical session rationale lives
+in `openspec/changes/archive/` and Git history;
+agents must not modify `specs/` or `openspec/` specification files unless
+explicitly asked by the user.
 There is no mandatory multi-file turn-end bookkeeping or automatic cleanup skill.
 Useful repeatable tooling may be proposed within scope; temporary scripts do not
 need automatic promotion into the repository.

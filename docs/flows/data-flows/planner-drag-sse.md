@@ -82,6 +82,7 @@ Flaws:
 
 ```ts
 localMoveSeq: number; // incremented before every moveRecipe API call
+pendingMoveSeqs: number[]; // tracks in-flight moves across out-of-order HTTP settlements
 confirmedMoveSeq: number; // contiguous sequence settled by local HTTP completion
 ```
 

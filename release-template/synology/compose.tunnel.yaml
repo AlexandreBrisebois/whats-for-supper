@@ -1,7 +1,7 @@
 # One remotely managed tunnel for this deployment.
 services:
   cloudflared:
-    image: cloudflare/cloudflared:2026.9.1
+    image: cloudflare/cloudflared:2026.11.1
     restart: unless-stopped
     command:
       - tunnel

@@ -1,5 +1,7 @@
 # Flow: Capture Async Feedback — Honest Queued → Ready States
 
+> **Superseded by Home Capture Activity Bar & Sheet:** Global `LibraryToast`, `RecipeFailureBanner`, and the Capture nav dot (`captureStore.hasPending` / `addPending` / `removePending`) have been retired. `captureStore` now manages `activityItems` hydrated from `GET /api/captures/activity` and updated live via `capture_step_updated`, `recipe_ready`, `recipe_failed`, `recipe_searchable`, `recipe_enriched`, and `recipe_enrichment_failed` SSE events, rendered on Home via `CaptureActivityBar` and `CaptureActivitySheet`.
+
 **Triggers:** Recipe submit (immediate queued state), SSE `recipe_ready` / `recipe_failed` (resolution)
 **Reviewed by:** The Mère-Designer
 

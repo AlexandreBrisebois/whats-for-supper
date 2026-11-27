@@ -10,5 +10,5 @@ internal static class DeclaredPackagePresentation
     internal static string? Key(RecipePackageDto? package) => package is null ? null : JsonSerializer.Serialize(package);
 
     internal static string Append(string text, RecipePackageDto? package) => package is null ? text
-        : $"{text} ({StructuredRecipeContentStore.Format(package.Capacity.Amount)} {package.Capacity.Unit.Text} / {package.CountUnit.Text}; {package.Basis})";
+        : $"{text} ({StructuredRecipeContentStore.FormatRaw(package.Capacity.Amount)} {package.Capacity.Unit.Text} / {package.CountUnit.Text}; {package.Basis})";
 }

@@ -6,12 +6,12 @@
 >
 > - `todayStore` owns all today-scoped recipe and status state — `HomeCommandCenter` holds no local state for these.
 > - Optimistic writes go through `todayStore.assignRecipe()`, which sets `currentRecipe` and `optimisticWriteAt` synchronously before firing the network call.
-> - `router.refresh()` is **not** called from any action handler. Re-hydration happens via background `sync()` with a 10-second optimistic write protection window.
+> - `router.refresh()` is **not** called from any action handler. Re-hydration happens via background `sync()` with a 20-second optimistic write protection window.
 > - The "Race path" (grey card flash) is historical — it was resolved in `863451d` and is now fully superseded by the todayStore architecture.
 >
 > Historical context (pre-fix race condition) is preserved in the [Historical Race Path](#historical-race-path) section below.
 
-ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../../specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md)
+Historical ADR 033 (`033-recipe-readiness-as-recipe-domain-concern.md`, in Git history).
 
 ---
 
@@ -98,8 +98,8 @@ sequenceDiagram
 | User selects recipe                   | User               | —                                                                                     |
 | `todayStore.assignRecipe(recipe)`     | HCC / Planner      | `currentRecipe` populated, `optimisticWriteAt` set — Menu Card shown immediately ✅   |
 | `POST /api/schedule/assign` fires     | Store (background) | Request in flight                                                                     |
-| `POST /api/schedule/assign` completes | Store              | `optimisticWriteAt` remains set for 10-second protection window                       |
-| `sync()` runs (background)            | Store              | Skips `currentRecipe` update if within 10-second window; updates after window expires |
+| `POST /api/schedule/assign` completes | Store              | `optimisticWriteAt` remains set for 20-second protection window                       |
+| `sync()` runs (background)            | Store              | Skips `currentRecipe` update if within 20-second window; updates after window expires |
 
 ---
 
@@ -110,8 +110,8 @@ sequenceDiagram
 | `optimisticWriteAt` | Elapsed since write | Sync behaviour                             |
 | ------------------- | ------------------- | ------------------------------------------ |
 | `null`              | —                   | Always update `currentRecipe` from server  |
-| set                 | < 10 000 ms         | Skip update — protect the optimistic write |
-| set                 | ≥ 10 000 ms         | Update `currentRecipe` from server         |
+| set                 | < 20 000 ms         | Skip update — protect the optimistic write |
+| set                 | ≥ 20 000 ms         | Update `currentRecipe` from server         |
 
 This replaces the old `router.refresh()` + `pendingConfirmRef` pattern. There is no longer a gap between the optimistic write and the server confirmation during which a background fetch could clobber the recipe.
 
@@ -126,7 +126,7 @@ This replaces the old `router.refresh()` + `pendingConfirmRef` pattern. There is
 | Page reload after "Make This Tonight" → menu card still shown      | `home-goto.spec.ts`   |
 | Planner assignment for today → home reflects without navigation    | `home-recipe.spec.ts` |
 | Page reload after "Take Out" → pivot card not shown                | `home-recipe.spec.ts` |
-| Optimistic recipe survives background sync within 10-second window | `home-race.spec.ts`   |
+| Optimistic recipe survives background sync within 20-second window | `home-race.spec.ts`   |
 
 ---
 
@@ -144,5 +144,3 @@ Before `home-command-center-hardening`, the flow used `router.refresh()` as the 
 The `pendingConfirmRef` was introduced as a guard to suppress the stale-data flash, but it was fragile and did not cover all race paths.
 
 This entire mechanism is replaced by `todayStore`. `router.refresh()` no longer appears in any action handler. The `pendingConfirmRef` has been removed.
-
-Build prompt (historical): [`specs/05_BUILD_PROMPTS/home-recipe-selection-race-fix.md`](../../../specs/05_ARCHIVE/build-prompts/phase-12-no-menu-done/home-recipe-selection-race-fix.md).

@@ -55,7 +55,7 @@ This makes `init(null)` a no-op for `currentRecipe` when the store already has d
 
 ## Clock pinning in E2E tests
 
-Tests pin `page.clock.setFixedTime('2026-05-04T12:00:00Z')`. All date comparisons in the browser use `new Date()`, which respects the pinned clock. `getTodayString()` returns `'2026-05-04'` in both the SSE handler and the store — matching the date in the mock SSE payload.
+Tests pin `page.clock.setFixedTime('2026-05-04T12:00:00Z')` and provide the deployment calendar (`calendar.today` from `DeploymentCalendar`), which `todayStore` uses as its authoritative civil date. `init(...)` also accepts optional `nonCooking`, `calendar`, `occurrenceId`, and `preparation` fields.
 
 **Never use `new Date()` in test files.** Use `currentMonday()` / `toDateStr()` from `mock-api.ts`, which derive from the pinned date.
 

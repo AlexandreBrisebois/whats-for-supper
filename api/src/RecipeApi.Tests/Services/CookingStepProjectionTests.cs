@@ -97,4 +97,19 @@ public sealed class CookingStepProjectionTests
         var content = Content("Add 200 g.", Use(4, 9, "200 g", payload: new { })) with { Servings = null };
         Assert.Equal("Add 200 g.", CookingStepProjection.Read(content, 8).Sections[0].Steps[0].Text);
     }
+
+    [Theory]
+    [InlineData(4, 6, "Add 1 1/2 cup flour.")]
+    [InlineData(2, 4, "Add 2 cup flour.")]
+    public void ProjectedStepQuantitiesReduceWholeAndMixedFractions(int basis, int target, string expected)
+    {
+        var content = new StructuredRecipeContent(2, "content", "source", basis,
+            [new RecipeIngredientLineDto { Id = RowId, Description = "flour", Amount = QuantityMath.Parse("1"),
+                AmountText = "1", Unit = new("cup", null), Scaling = "proportional", Package = null,
+                Shopping = new("flour", null, null), Provenance = new("human", null, []) }],
+            [new(Guid.NewGuid(), "Batter", [new(StepId, "Add 1 cup flour.", "text", [Use(4, 9, "1 cup", payload: new { })])])]);
+        var projected = CookingStepProjection.Read(content, target);
+        Assert.Equal(expected, projected.Sections[0].Steps[0].Text);
+        Assert.Equal(1, projected.ValidatedUses);
+    }
 }

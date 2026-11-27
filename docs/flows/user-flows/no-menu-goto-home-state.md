@@ -8,13 +8,13 @@
 >
 > - `todayStore` is the single source of truth for today's recipe and status.
 > - The primary action button is labelled **"Make This Tonight"** (prop name `onConfirmGoto` is unchanged).
-> - Empty state shows an ochre CTA pill in the footer: **"Add your family's GOTO recipe"**.
+> - Empty state explains Go-To recipes and links to Search; the legacy Go-To settings card and ochre CTA pill are retired.
 > - `router.refresh()` is no longer called from any action handler.
-> - Background sync uses a 10-second optimistic write protection window.
+> - Background sync uses a 20-second optimistic write protection window.
 >
 > Historical context (Phase 13 stale-cache model) is preserved in the [Historical Model](#historical-model--phase-13-stale-cache) section below.
 
-ADR: [033-recipe-readiness-as-recipe-domain-concern.md](../../specs/decisions/033-recipe-readiness-as-recipe-domain-concern.md)
+Historical ADR 033 (`033-recipe-readiness-as-recipe-domain-concern.md`, in Git history).
 
 ---
 
@@ -66,17 +66,17 @@ sequenceDiagram
         note over HCC: useEffect on mount
         HCC->>Store: init(todaysRecipe, todayStatus)
         note over Store: sets currentRecipe + status; clears optimisticWriteAt
-        HCC->>Backend: GET /api/settings/family_goto
-        Backend-->>HCC: { description, recipeId }
+        HCC->>Backend: GET /api/goto/active
+        Backend-->>HCC: { recipeId, description, ... }
         HCC->>Store: sync()  ← background, non-blocking
         Store->>Backend: GET /api/schedule?weekOffset=0
         Backend-->>Store: ScheduleDays
-        note over Store: reconciles — skips if optimisticWriteAt within 10 s
+        note over Store: reconciles — skips if optimisticWriteAt within 20 s
         Store->>HCC: (Zustand subscription) currentRecipe, status updated
     end
 
     HCC->>PivotCard: render — empty state (currentRecipe = null, status = 0)
-    PivotCard->>User: "What's for Supper?" header, ochre CTA in footer
+    PivotCard->>User: "What's for Supper?" header, empty pivot footer
 ```
 
 ### Pivot card render condition
@@ -126,7 +126,7 @@ When `gotoRecipeStatus === 'ready'`:
 - Header: **"Tonight's Menu"**
 - Prep-time badge: shown
 - Primary button: **"Make This Tonight"** (ochre, dominant)
-- Secondary buttons: **"Quick Find"** (ghost, `border border-indigo/30 bg-transparent`) and **"Order In"** (ghost, `border border-charcoal/20 bg-transparent`)
+- Secondary buttons: **"Quick Find"** (ghost, `border border-indigo/30 bg-transparent`) and **"Take Out"** (ghost, `border border-charcoal/20 bg-transparent`)
 
 The prop name `onConfirmGoto` is preserved across all callers — only the UI label changed.
 
@@ -151,7 +151,7 @@ sequenceDiagram
     HCC->>MenuCard: TonightMenuCard renders immediately ✅
     Store->>Backend: POST /api/schedule/assign  ← background, non-blocking
     Backend-->>Store: 200 OK
-    note over Store: optimisticWriteAt remains set for 10-second protection window
+    note over Store: optimisticWriteAt remains set for 20-second protection window
 ```
 
 No `router.refresh()` is called. The menu card appears immediately via the Zustand subscription.
@@ -170,7 +170,7 @@ When `gotoRecipeStatus === 'pending'`:
 | `'ready'`                   | non-null       | ✅ Enabled — "Make This Tonight"                  |
 | `'pending'`                 | non-null       | ❌ Disabled — spinner shown                       |
 | `null` (fetch not complete) | non-null       | ❌ Disabled — loading                             |
-| any                         | null           | Footer CTA only — "Add your family's GOTO recipe" |
+| any                         | null           | Short Go-To explanation + Search handoff          |
 
 ---
 
@@ -183,8 +183,8 @@ Reconciliation rules:
 | `optimisticWriteAt` | Elapsed since write | Sync behaviour                             |
 | ------------------- | ------------------- | ------------------------------------------ |
 | `null`              | —                   | Always update `currentRecipe` from server  |
-| set                 | < 10 000 ms         | Skip update — protect the optimistic write |
-| set                 | ≥ 10 000 ms         | Update `currentRecipe` from server         |
+| set                 | < 20 000 ms         | Skip update — protect the optimistic write |
+| set                 | ≥ 20 000 ms         | Update `currentRecipe` from server         |
 
 This prevents a background sync from clobbering an optimistic recipe assignment that hasn't yet been confirmed by the server.
 
@@ -215,16 +215,16 @@ The `family_goto` setting stores `{ description, recipeId }` in all cases. Readi
 | Page reload after "Make This Tonight" → menu card still shown     | `home-goto.spec.ts`   | ✅                                               |
 | Quick Find → menu card immediately (optimistic)                   | `home-goto.spec.ts`   | ✅                                               |
 | GOTO pending → "Make This Tonight" disabled, spinner shown        | `home-goto.spec.ts`   | ✅                                               |
-| "Order In" with no recipe → backend write, pivot hidden           | `home-recipe.spec.ts` | ✅                                               |
-| "Order In" with recipe → `SkipRecoveryDialog` opens first         | `home-recipe.spec.ts` | ✅                                               |
-| Page reload after "Order In" → pivot card not shown               | `home-recipe.spec.ts` | ✅                                               |
+| "Take Out" with no recipe → backend write, non-cooking state      | `home-recipe.spec.ts` | ✅                                               |
+| "Take Out" with recipe → `SkipRecoveryDialog` opens first         | `home-recipe.spec.ts` | ✅                                               |
+| Page reload after "Take Out" → saved non-cooking card shown       | `home-recipe.spec.ts` | ✅                                               |
 | SSR returns name=null → pivot card shown (not menu card)          | —                     | ❌ Gap — needs unit test with null-name SSR prop |
 
 > **Note:** `home-recovery.spec.ts` was deleted in `952d879` and split into `home-goto.spec.ts` and `home-recipe.spec.ts`. `home-race.spec.ts` covers polling and optimistic scenarios.
 
 ### SSR constraint (unchanged)
 
-SSR fetches go to `API_INTERNAL_URL` from the Node.js process — `page.route()` cannot intercept them. The "no recipe tonight" state is reached via the client-side `sync()` call returning `days: []`, not by mocking SSR. See [ADR 032](../../specs/decisions/032-ssr-bypass-e2e-testing-pattern.md) and [`.kiro/steering.md` §6](../../.kiro/steering.md).
+SSR fetches go to `API_INTERNAL_URL` from the Node.js process — `page.route()` cannot intercept them. The "no recipe tonight" state is reached via the client-side `sync()` call returning `days: []`, not by mocking SSR. See historical ADR 032 (in Git history) and [Home E2E reference](../../../.kiro/steering/home-e2e.md).
 
 ---
 

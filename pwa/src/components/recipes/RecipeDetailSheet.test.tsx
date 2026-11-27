@@ -2584,6 +2584,89 @@ describe('dated ingredient projection', () => {
     ).toBeVisible();
   });
 
+  it('renders reduced whole and mixed fractions for scaled ingredients on recipe detail', async () => {
+    const id = '550e8400-e29b-41d4-a716-446655440999';
+    mockGetRecipe.mockResolvedValueOnce({
+      id,
+      name: 'Pancakes',
+      servings: 4,
+      isReady: true,
+      ingredients: ['1 cup flour', '1 cup milk'],
+      recipeInstructions: [{ text: 'Whisk 1 cup flour with 1 cup milk.' }],
+    });
+    mockGetIngredientPreview.mockResolvedValueOnce({
+      recipeId: id,
+      contentRevision: 'rev-pancakes',
+      contextKey: 'ctx-pancakes-6',
+      baseServings: 4,
+      targetServings: 6,
+      factor: 1.5,
+      version: 'ver-pancakes-6',
+      status: 'scaled',
+      lines: [
+        {
+          originalText: '1 cup flour',
+          displayText: '6/4 cups flour',
+          name: 'flour',
+          quantity: 1.5,
+          unitText: 'cups',
+          status: 'scaled',
+          issues: [],
+        },
+        {
+          originalText: '2/3 cup milk',
+          displayText: '4/2 cups milk',
+          name: 'milk',
+          quantity: 2,
+          unitText: 'cups',
+          status: 'scaled',
+          issues: [],
+        },
+      ],
+      instructionProjection: {
+        validatedUses: 1,
+        uncertainUses: 0,
+        sections: [
+          {
+            sectionId: 'sec-batter',
+            name: null,
+            steps: [
+              {
+                stepId: 'step-batter',
+                textRevision: 'rev-step',
+                originalText: 'Whisk 1 cup flour with 1 cup milk.',
+                text: 'Whisk 1 1/2 cups flour with 2 cups milk.',
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    render(
+      <RecipeDetailSheet
+        recipeId={id}
+        plannerDayLabel={null}
+        onClose={vi.fn()}
+        onUseForDay={vi.fn()}
+        onFindSimilar={vi.fn()}
+      />
+    );
+
+    await screen.findByTestId('recipe-detail-name');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview 6 portions' }));
+
+    const list = await screen.findByTestId('recipe-ingredient-preview');
+    expect(list).toHaveTextContent('1 1/2 cups flour');
+    expect(list).toHaveTextContent('2 cups milk');
+    expect(list).not.toHaveTextContent('6/4');
+    expect(list).not.toHaveTextContent('4/2');
+    const instructions = screen.getByRole('region', { name: 'Instructions' });
+    expect(
+      within(instructions).getByText('Whisk 1 1/2 cups flour with 2 cups milk.')
+    ).toBeVisible();
+  });
+
   it('places prepared and neutral status banners above the hero in the scrollable reading region while keeping alert tone in the planning dock', async () => {
     const onRetryTarget = vi.fn();
     const onSecondaryPlanningAction = vi.fn();

@@ -17,7 +17,7 @@ graph TB
     end
 
     subgraph CLIENT["Client Domain — Digital Twin"]
-        STORE["todayStore (Zustand)<br/>─────────────────<br/>currentRecipe: ScheduleRecipeDto | null<br/>status: 0 | 2 | 3<br/>isLoading: boolean<br/>optimisticWriteAt: number | null<br/>lastSyncedAt: number<br/>─────────────────<br/>init(recipe, status)<br/>assignRecipe(recipe)<br/>markCooked()<br/>markOrderedIn()<br/>sync()"]
+        STORE["todayStore (Zustand)<br/>─────────────────<br/>currentRecipe: ScheduleRecipeDto | null<br/>status: 0 | 2 | 3<br/>nonCooking: NonCookingSlotDto | null<br/>calendar: DeploymentCalendar | null<br/>occurrenceId: string | null<br/>preparation: SupperPreparationDto | null<br/>isLoading: boolean<br/>optimisticWriteAt: number | null<br/>lastSyncedAt: number<br/>─────────────────<br/>init(recipe, status, ...)<br/>assignRecipe(recipe)<br/>markCooked()<br/>markOrderedIn()<br/>saveRecoveryRecipe(...)<br/>confirmPreparation(...)<br/>sync()"]
 
         HCC["HomeCommandCenter<br/>(pure consumer)"]
         PLANNER["Planner Page<br/>(writer for today's slot)"]
@@ -92,16 +92,16 @@ sequenceDiagram
     participant Store as todayStore
     participant API as Schedule API
 
-    Note over Store: sync() called on mount<br/>or on 60s interval
+    Note over Store: sync() called on mount<br/>and on pageshow / visibilitychange resume
 
     Store->>API: GET /api/schedule?weekOffset=0
     API-->>Store: ScheduleDays { days[] }
 
     alt optimisticWriteAt is null
         Note over Store: No in-flight write<br/>→ update currentRecipe from server
-    else optimisticWriteAt < 10s ago
+    else optimisticWriteAt < 20s ago
         Note over Store: Optimistic write in-flight<br/>→ SKIP currentRecipe update<br/>→ protect optimistic state
-    else optimisticWriteAt > 10s ago
+    else optimisticWriteAt > 20s ago
         Note over Store: Write confirmed or timed out<br/>→ update currentRecipe from server
     end
 
@@ -146,7 +146,7 @@ sequenceDiagram
 | ----------------------- | --------------------------------- | ------------------------------------------------------------- |
 | Today's recipe          | `todayStore` (client)             | Optimistic-first; server is the authority after sync          |
 | Today's status (0/2/3)  | `todayStore` (client)             | Seeded from SSR; server is always authoritative for 2/3       |
-| GOTO recipe readiness   | `HomeCommandCenter` (local state) | Polled from `GET /api/recipes/{id}/status`; not in todayStore |
+| GOTO recipe readiness   | `gotoStore` + SSE `recipe_ready` | Hydrated from `GET /api/goto/active` and updated live via SSE     |
 | Week schedule (planner) | Planner page (local state)        | todayStore only owns today's slot                             |
 | Family settings         | `familyStore` (Zustand)           | Unchanged                                                     |
 | Voting / lock state     | `plannerStore` (Zustand)          | Unchanged                                                     |
@@ -160,7 +160,7 @@ sequenceDiagram
 | ---------------------------------------------------------- | --------------------------------------------- |
 | `HomeCommandCenter` had 6+ `useState` for today's state    | `HomeCommandCenter` reads from `todayStore`   |
 | `router.refresh()` in every action handler (300–800ms lag) | `router.refresh()` removed from critical path |
-| `syncRecipe()` could override optimistic state (Bug 1)     | `sync()` protects writes < 10s old            |
+| `syncRecipe()` could override optimistic state (Bug 1)     | `sync()` protects writes < 20s old            |
 | Planner and home page had no shared state                  | Both read/write `todayStore`                  |
 | `isSkipped`/`sessionDone` reset on reload (Bug 5)          | `todayStatus` prop seeds store from SSR       |
 | `isScheduleRecipe()` passed `{ id: null }` (Bug 2)         | Guard requires non-empty string `id`          |

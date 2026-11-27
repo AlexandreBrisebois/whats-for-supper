@@ -15,7 +15,7 @@ work only. Use a character voice only when requested.
 ## Purpose
 
 Help households get supper sorted with less attention, uncertainty and
-coordination. Apply the trust-first [North Star](../../docs/creative-direction-north-star.md)
+coordination. Apply the trust-first [North Star](../../docs/design/creative-direction-north-star.md)
 to everyday constraints, without assuming an ideal household or a particular carer.
 
 Judge the experience under realistic conditions: one hand occupied, attention

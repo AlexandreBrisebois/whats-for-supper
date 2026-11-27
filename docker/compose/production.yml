@@ -16,10 +16,10 @@ services:
       ELEVATED_ACTIONS_PIN: ${ELEVATED_ACTIONS_PIN:-}
       EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-gemini-embedding-2}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
-      DATA_ROOT: ${DATA_ROOT:-./data}
-      DREAMING_CRON_UTC: "${DREAMING_CRON_UTC:-0 3 * * *}"
-      CORS__ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://pwa.wfs.localhost}
+      GEMINI_MODEL_ID: ${GEMINI_MODEL_ID:-gemini-3.8-flash}
+      DATA_ROOT: /data
+      DREAMING_CRON_UTC: "${DREAMING_CRON_UTC:-0 6 * * *}"
+      Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-http://pwa.wfs.localhost}
     ports:
       - "${API_PORT_EXTERNAL:-9101}:9001"
     volumes:

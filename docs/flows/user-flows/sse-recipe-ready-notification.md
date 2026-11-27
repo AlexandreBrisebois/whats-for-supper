@@ -1,5 +1,7 @@
 # Flow: Recipe Synthesis Complete → Library Notification
 
+> **Superseded by Home Capture Activity Bar & Sheet:** Global `LibraryToast` (`libraryStore.pushNotification`) is no longer mounted in `AppLayout`. On `recipe_ready`, `useScheduleStream.ts` calls `useGotoStore.getState().markReady(recipeId)` and `captureStore.hydrate()` to update Home's `CaptureActivityBar` / `CaptureActivitySheet`.
+
 **Trigger:** SSE `recipe_ready` event — fires when `RecipeReadyProcessor` confirms recipe is fully synthesized and ready for use.
 **Reviewed by:** The Mère-Designer
 

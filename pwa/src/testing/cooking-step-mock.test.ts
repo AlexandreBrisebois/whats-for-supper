@@ -490,7 +490,7 @@ it.each([
     expect(projection.sections[0].steps[0].text).toBe(steps[0].text);
     if (otherValid)
       expect(projection.sections[0].steps[1].text).toBe(
-        `Finish with ${target == null || fault === 'fixedRow' ? '1' : target === 6 ? '3/2' : target / 4} tbsp oil.`
+        `Finish with ${target == null || fault === 'fixedRow' ? '1' : target === 6 ? '1 1/2' : target / 4} tbsp oil.`
       );
   }
   expect(after.instructionSections[0].steps[0].bindings[0].payload).toEqual(binding.payload);

@@ -19,6 +19,16 @@ import argparse
 ROOT = Path(__file__).resolve().parents[2]
 E2E_DIR = ROOT / "pwa" / "e2e"
 CACHE_PATH = ROOT / ".task" / "agent-test-impact" / "last-success.json"
+SMOKE_CACHE_PATH = ROOT / ".task" / "agent-test-impact" / "last-smoke-success.json"
+SMOKE_SPECS = (
+    "auth-flow.spec.ts",
+    "capture-flow.spec.ts",
+    "grocery.spec.ts",
+    "home-recipe.spec.ts",
+    "onboarding.spec.ts",
+    "planner.spec.ts",
+    "recipes.spec.ts",
+)
 CACHE_CONTEXT_FILES = (
     "scripts/agent/test_ops.py",
     "Taskfile.yml",
@@ -215,13 +225,33 @@ def has_success_cache(cache_path: Path, digest: str, tests: list[str]) -> bool:
     return cached == {"digest": digest, "tests": sorted(tests)}
 
 
-def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) -> None:
-    changed_files = get_changed_files() if changed_files is None else changed_files
-    plan = (
-        ImpactPlan((str(E2E_DIR),), ("--all explicitly requested",), True)
-        if run_all
-        else build_impact_plan(changed_files)
+def build_smoke_plan(e2e_dir: Path | None = None) -> ImpactPlan:
+    target_dir = E2E_DIR if e2e_dir is None else e2e_dir
+    missing = [name for name in SMOKE_SPECS if not (target_dir / name).is_file()]
+    if missing:
+        raise FileNotFoundError(f"Missing smoke E2E spec(s): {', '.join(missing)}")
+    tests = tuple(sorted(str(target_dir / name) for name in SMOKE_SPECS))
+    return ImpactPlan(
+        tests,
+        (f"--smoke tier selected ({len(tests)} core mocked E2E specs)",),
+        False,
     )
+
+
+def run_impacted(
+    run_all: bool = False,
+    changed_files: list[str] | None = None,
+    run_smoke: bool = False,
+) -> None:
+    if run_all and run_smoke:
+        raise ValueError("--all and --smoke are mutually exclusive")
+    changed_files = get_changed_files() if changed_files is None else changed_files
+    if run_all:
+        plan = ImpactPlan((str(E2E_DIR),), ("--all explicitly requested",), True)
+    elif run_smoke:
+        plan = build_smoke_plan()
+    else:
+        plan = build_impact_plan(changed_files)
 
     print("🎯 Identifying impacted tests...")
     for reason in plan.reasons:
@@ -232,11 +262,12 @@ def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) 
         return
 
     tests = list(plan.tests)
+    active_cache_path = SMOKE_CACHE_PATH if run_smoke else CACHE_PATH
     digest = build_impact_digest(ROOT, changed_files, tests)
     cache_enabled = (not os.environ.get("CI") and os.environ.get("WFS_DISABLE_TEST_CACHE") != "1"
                      and os.environ.get("WFS_ISOLATED_RUNNER") == "1"
                      and not os.environ.get("BASE_URL"))
-    if cache_enabled and has_success_cache(CACHE_PATH, digest, tests):
+    if cache_enabled and has_success_cache(active_cache_path, digest, tests):
         print(f"✅ Reusing successful impact result for unchanged digest {digest[:12]}.")
         return
 
@@ -245,7 +276,7 @@ def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) 
         print(f"  - {os.path.relpath(test, ROOT)}")
 
     from finish import run_command
-    CACHE_PATH.unlink(missing_ok=True)
+    active_cache_path.unlink(missing_ok=True)
     # Local installed CLI avoids npx downloading a different candidate at run time.
     command = [shutil.which("node") or "node", str(ROOT / "pwa/node_modules/playwright/cli.js"),
                "test", *tests]
@@ -256,23 +287,28 @@ def run_impacted(run_all: bool = False, changed_files: list[str] | None = None) 
 
     post_test_digest = build_impact_digest(ROOT, changed_files, tests)
     if post_test_digest != digest:
-        CACHE_PATH.unlink(missing_ok=True)
+        active_cache_path.unlink(missing_ok=True)
         print("failed: content/config/runtime mutated during tests; success discarded.")
         raise SystemExit(1)
     if cache_enabled:
-        write_success_cache(CACHE_PATH, digest, tests)
+        write_success_cache(active_cache_path, digest, tests)
         print(f"💾 Cached actual tested identity {digest[:12]}.")
     print("✅ Tests passed!")
 
 
-def main() -> None:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument('--impact', action='store_true')
     mode.add_argument('--all', action='store_true')
+    mode.add_argument('--smoke', action='store_true')
     parser.add_argument('--files', nargs='*', default=None)
-    args = parser.parse_args()
-    run_impacted(run_all=args.all, changed_files=args.files)
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    run_impacted(run_all=args.all, changed_files=args.files, run_smoke=args.smoke)
 
 
 if __name__ == "__main__":

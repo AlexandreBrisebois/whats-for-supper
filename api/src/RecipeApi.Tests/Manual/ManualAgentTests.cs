@@ -61,7 +61,7 @@ public class ManualAgentTests : IDisposable
         // 3. AI / Chat Client
         var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? configuration["GEMINI_API_KEY"];
         var endpoint = configuration["GEMINI_ENDPOINT"] ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
-        var modelId = configuration["GEMINI_MODEL_ID"] ?? "gemini-3-flash-preview";
+        var modelId = configuration["GEMINI_MODEL_ID"] ?? "gemini-3.8-flash";
 
         if (string.IsNullOrEmpty(apiKey) || apiKey == "none")
         {

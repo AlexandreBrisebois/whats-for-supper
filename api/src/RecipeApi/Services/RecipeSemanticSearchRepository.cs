@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using RecipeApi.Data;
 using RecipeApi.Dto;
+using RecipeApi.Services.Ai;
 
 namespace RecipeApi.Services;
 
@@ -68,8 +69,8 @@ public sealed class RecipeSemanticSearchOptions
 {
     public bool Enabled { get; init; } = true;
     public int CandidateLimit { get; init; } = 50;
-    public int EmbeddingDimensions { get; init; } = 1536;
-    public string EmbeddingModel { get; init; } = "gemini-embedding-2";
+    public int EmbeddingDimensions { get; init; } = GeminiOptions.DefaultEmbeddingDimensions;
+    public string EmbeddingModel { get; init; } = GeminiOptions.DefaultEmbeddingModelId;
     public string? EmbeddingVersion { get; init; }
     public double LexicalWeight { get; init; } = 0.4;
     public double SemanticWeight { get; init; } = 0.6;

@@ -7,24 +7,24 @@ flowchart LR
     Browser[Family browser] --> Proxy[Traefik]
     Proxy -->|all other paths| PWA[PWA]
     Proxy -->|/api| API[Recipe API]
-    API --> Database[(PostgreSQL)]
+    Proxy -->|/api/stream SSE| API
+    API --> Database[(PostgreSQL + pgvector)]
     API --> Files[Recipe files]
-    API -. optional AI work .-> Gemini[Gemini]
-    API -->|Server-Sent Events| Browser
+    API -->|AI extraction, hero & embeddings| Gemini[Gemini]
 ```
 
 ## Application shape
 
 - The PWA is the family-facing web application.
-- The Recipe API owns household data, recipe workflows, planning, and grocery state.
+- The Recipe API owns household data, YAML-defined recipe/maintenance workflows, planning, and grocery state.
 - WFS retains recipe facts (including ingredients, cuisine, meal types, and the vegetarian classifier) but does not interpret nutritional or dietetic health data. Any dietary interpretation is outside this application boundary.
-- PostgreSQL stores relational data; recipe files are stored on persistent local storage.
-- Traefik gives the browser one origin: `/api` reaches the API and other paths reach the PWA.
-- Gemini supports recipe-processing work when it is configured; core household data remains local.
+- PostgreSQL (`pgvector` + `pg_trgm`) stores relational data and hybrid search documents, migrated on startup by the `migration` init container (`psqldef`); recipe files live on persistent local storage.
+- Traefik gives the browser one origin: `/api` (including unbuffered `/api/stream` SSE) reaches the API and other paths reach the PWA.
+- Gemini is required for recipe extraction, hero illustration generation, and search embeddings (there is no model-free version); core household data remains local.
 
 ## Shared state and access
 
-Planning, grocery, and voting changes are shared through Server-Sent Events, so household devices receive updates without manual refreshes. A household uses a shared `HEARTH_SECRET`; the app also records the active family member in cookies for requests and the event stream.
+Planning, grocery, voting, capture/recipe-ready, search-index, and demo updates are shared through Server-Sent Events, so household devices receive updates without manual refreshes. A household uses a shared `HEARTH_SECRET` (with `ELEVATED_ACTIONS_PIN` gating destructive recovery/purge operations); the app also records the active family member in cookies for requests and the event stream.
 
 The documented public stack runs one API and one PWA on a single Docker host. SSE connections and broadcasts are held in the API process; they are not a durable or cross-replica event bus. Keep this single-instance topology rather than treating shared PostgreSQL alone as support for replicated API deployment.
 

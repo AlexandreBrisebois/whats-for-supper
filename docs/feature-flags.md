@@ -4,11 +4,11 @@ The feature-flag system is a reusable product capability. Keep it when individua
 previews graduate or are abandoned. Retire a particular flag, not the registry,
 resolution service, member-override storage, API, client store or Settings framework.
 
-This guide describes the feature-flag framework and its current 0.1.21 state.
+This guide describes the feature-flag framework and its state since 0.1.21.
 The lifecycle checklists guide future changes; they do not authorize a deployment
 or rollout.
 
-Canonical behavior belongs in [member preferences](../openspec/specs/member-preferences/spec.md)
+Authoritative behavior belongs in [member preferences](../openspec/specs/member-preferences/spec.md)
 and each feature's owning capability. API contracts belong in
 [OpenAPI](../specs/openapi.yaml). Follow [AGENT.md](../AGENT.md) and the
 [contract/testing policy](../.agents/core/contract-testing.md) for changes.
@@ -76,7 +76,7 @@ keep existing identity, permission and input-validation requirements.
 
 ## Current flags and deployment surfaces
 
-Version 0.1.21 ships no registered previews. Cook Mode views, planner hold-to-move
+Since 0.1.21, the release ships no registered previews. Cook Mode views, planner hold-to-move
 and PDF recipe import are ordinary member features. The registry, resolution
 service, member-override storage, API and Settings framework remain available for
 future previews; Settings hides Preview features when there are no opt-in entries.

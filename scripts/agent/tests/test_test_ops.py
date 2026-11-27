@@ -196,6 +196,56 @@ class ImpactPlanningTests(IsolatedGitTestCase):
             self.assertFalse(cache.exists())
             self.assertEqual(run.call_count, 1)
 
+    def test_smoke_plan_selects_existing_mocked_core_specs(self):
+        module = load_module()
+        plan = module.build_smoke_plan()
+
+        self.assertFalse(plan.run_all)
+        self.assertEqual(len(plan.tests), len(module.SMOKE_SPECS))
+        self.assertEqual(plan.tests, tuple(sorted(plan.tests)))
+        for spec_path in plan.tests:
+            path = Path(spec_path)
+            self.assertTrue(path.is_file(), f"Missing smoke spec: {spec_path}")
+            self.assertFalse(path.name.endswith("-live.spec.ts"))
+        self.assertTrue(any("--smoke" in reason for reason in plan.reasons))
+
+    def test_smoke_plan_fails_if_configured_spec_is_missing(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(FileNotFoundError):
+                module.build_smoke_plan(Path(tmp))
+
+    def test_cli_smoke_mode_is_mutually_exclusive_and_isolated_from_impact_cache(self):
+        module = load_module()
+        args = module.parse_args(["--smoke"])
+        self.assertTrue(args.smoke)
+        self.assertFalse(args.impact)
+        self.assertFalse(args.all)
+
+        for invalid in (["--smoke", "--impact"], ["--smoke", "--all"], []):
+            with self.subTest(invalid=invalid):
+                with contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit):
+                        module.parse_args(invalid)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            impact_cache = Path(tmp) / "impact.json"
+            smoke_cache = Path(tmp) / "smoke.json"
+            expected_tests = list(module.build_smoke_plan().tests)
+            with mock.patch.object(module, "get_changed_files", return_value=["unknown.ts"]), \
+                 mock.patch.object(module, "build_impact_digest", return_value="smoke-digest"), \
+                 mock.patch.object(module, "CACHE_PATH", impact_cache), \
+                 mock.patch.object(module, "SMOKE_CACHE_PATH", smoke_cache), \
+                 mock.patch.dict(os.environ, {"WFS_ISOLATED_RUNNER": "1"}, clear=True), \
+                 mock.patch("finish.run_command", return_value=("passed", "exit 0")) as run:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    module.main(["--smoke"])
+                    module.main(["--smoke"])
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(run.call_args[0][0][3:], expected_tests)
+            self.assertFalse(impact_cache.exists())
+            self.assertTrue(module.has_success_cache(smoke_cache, "smoke-digest", expected_tests))
+
 
 if __name__ == "__main__":
     unittest.main()

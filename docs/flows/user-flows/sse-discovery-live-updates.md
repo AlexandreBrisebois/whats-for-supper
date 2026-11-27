@@ -62,7 +62,7 @@ The API endpoint `GET /api/discovery?category={cat}` MUST filter out recipes tha
 
 ### Constraint
 
-**Do NOT change the top card (position 0) in front of a user.** Re-ranking applies only to cards at positions 1, 2, 3 in the visible stack.
+**Do NOT change the top card (position 0) in front of a user.** Position `0` stays locked; the remaining tail (`1..N`) is sorted by `voteCount DESC, queueOrder ASC`.
 
 **Mère-Designer ruling confirmed:** Moving the front card while a user is looking at it is disorienting and breaks the spatial model they've built. Stability of the top card is a hard rule.
 
@@ -75,10 +75,8 @@ Jordan votes ♥ on Recipe X in Discovery (on her device)
 
 Alex's browser (on /discovery):
   ← vote_updated → discoveryStore.applyVoteUpdate({ recipeId, voteCount })
-  ← if recipe is in positions 1-3 of discoveryStack:
-     ← hasFamilyInterest flips to true
-     ← recipe moves up by at most 2 positions (not past position 1)
-     ← slide + scale animation (non-top cards only)
+  ← hasFamilyInterest flips based on voteCount > 0
+  ← position 0 (front) stays locked; the tail sorts by voteCount DESC, queueOrder ASC
   ← family interest indicator appears on card
 ```
 
@@ -86,15 +84,8 @@ Alex's browser (on /discovery):
 
 ```
 Position 0: LOCKED — never moved by vote_updated
-Position 1: Can move to position 1 (no change if already there)
-Position 2: Can move up to position 1
-Position 3: Can move up to position 2 (max 1 step for position 3)
-Position 4+: Not in visible stack — no re-rank until swiped into top 4
+Positions 1..N (tail): sorted by voteCount DESC, breaking ties by queueOrder ASC
 ```
-
-Max movement: **2 positions up, never to position 0, never for cards outside the visible 4**.
-
-If a recipe receives votes but is at position 8 in the stack, it stays at position 8. It will naturally enter the top 4 as the user swipes. The vote indicator will be visible on it when it surfaces.
 
 ### Family interest indicator
 
@@ -120,7 +111,7 @@ Use `AnimatePresence` with `layoutId` on each card. When a card moves up, Framer
 
 ### `hasFamilyInterest` mapping
 
-Currently `hasFamilyInterest` in `DiscoveryRecipe` is always `false` (hardcoded in `mapToDiscoveryRecipe`). The `vote_updated` handler must update this field in-place on the stored recipe object. The DiscoveryCard component already receives this prop; it just needs the visual ring.
+`hasFamilyInterest` is live-updated by `vote_updated` (`discoveryStore.applyVoteUpdate`) and returned directly by `GET /api/discovery`.
 
 ---
 
@@ -138,7 +129,7 @@ This is a **lift-and-shift only** — no fetch logic changes, no component logic
 // Flow 9
 test('fill_the_gap_invalidated → recipe card fades out of Discovery stack', async ({ page }) => {
   // 1. mock SSE to emit fill_the_gap_invalidated
-  // 2. mock /api/discovery/items to return stack WITHOUT recipeId
+  // 2. mock /api/discovery to return stack WITHOUT recipeId
   // 3. navigate to /discovery (stack pre-seeded with recipe)
   // 4. assert recipe card not present after refetch
   // 5. assert "Just planned ✓" badge visible briefly

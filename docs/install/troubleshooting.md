@@ -58,18 +58,18 @@ replace `.env`, delete data or change image versions to try to recover it.
 
 ## For the person helping
 
-- **Storage permissions:** the API must write to `data/app` and PostgreSQL to
-  `data/postgres`; they may need different ownership. Use the
-  [platform reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md#synology-container-manager)
+- **Storage permissions:** the API container runs as non-root UID `1654` and must
+  write to `data/app`, while PostgreSQL writes to `data/postgres`; they may need
+  different ownership. On Linux, run `chmod 755 data && sudo chown -R 1654:1654 data/app`.
+  Use the [platform reference](https://github.com/AlexandreBrisebois/whats-for-supper/blob/main/release-template/synology/README.md#synology-container-manager)
   for Synology. Do not make the entire project world-writable.
 - **Shared tunnel:** the loopback service address above is for the recommended
   bundled connector. An independent connector needs the app's unique proxy alias
   and the matching external network. Follow the
   [shared-tunnel instructions](cloudflare.md#one-independent-tunnel-or-attach-to-an-existing-shared-tunnel).
-- **Release files:** keep files from the same release together. Existing ZIPs may
-  contain the connector in the base Compose file; this development branch's
-  scenario overlays require a complete matching bundle. Follow the
-  [transition guide](updates.md#transition-to-the-scenario-templates) for a planned migration.
+- **Release files:** keep files from the same release together. Follow the
+  [transition guide](updates.md#transition-to-the-scenario-templates) when
+  migrating an older legacy bundle to scenario overlays.
 - **Updates and recovery:** use a consistent backup of PostgreSQL and all recipe
   files. Changing an image version does not guarantee rollback after a database
   migration. Follow the [update and recovery guidance](updates.md).

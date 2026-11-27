@@ -19,13 +19,14 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       WFS_VERSION: ${WFS_VERSION:-}
       ASPNETCORE_URLS: http://+:9001
-      CORS__ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://pwa.wfs.localhost,http://localhost:3000}
+      Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-http://pwa.wfs.localhost,http://localhost:3000}
       DATA_ROOT: /data
-      DREAMING_CRON_UTC: "${DREAMING_CRON_UTC:-0 3 * * *}"
+      DREAMING_CRON_UTC: "${DREAMING_CRON_UTC:-0 6 * * *}"
       ELEVATED_ACTIONS_PIN: ${ELEVATED_ACTIONS_PIN:-}
       EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-gemini-embedding-2}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
+      GEMINI_MODEL_ID: ${GEMINI_MODEL_ID:-gemini-3.8-flash}
+      GEMINI_MODEL_ID_HERO: ${GEMINI_MODEL_ID_HERO:-models/gemini-3-pro-image}
       GEMINI_ENDPOINT: ${GEMINI_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/openai/}
       IMPORT_TARGET_LANGUAGE: ${IMPORT_TARGET_LANGUAGE:-NONE}
       HEARTH_SECRET: ${HEARTH_SECRET}
@@ -54,7 +55,12 @@ services:
       - "traefik.http.routers.api-stream.entrypoints=web"
       - "traefik.http.routers.api-stream.middlewares=sse-headers@file"
       - "traefik.http.routers.api-stream.priority=100"
- 
+    healthcheck:
+      test: ["CMD", "dotnet", "/app/RecipeApi.dll", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # ──────────────────────────────────────────────────────────────────────────
   # Next.js 15 PWA
@@ -77,7 +83,8 @@ services:
       NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE:-en}
       WFS_VERSION: ${WFS_VERSION:-}
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - proxy
     labels:

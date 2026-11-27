@@ -9,10 +9,10 @@ Dreaming is not a special scheduler outside the workflow system. It is a normal 
 The recurring schedule is configured by:
 
 ```env
-DREAMING_CRON_UTC=0 3 * * *
+DREAMING_CRON_UTC=0 6 * * *
 ```
 
-If unset, the default is `0 3 * * *` — every day at 03:00 UTC.
+If unset, the default is `0 6 * * *` — every day at 06:00 UTC.
 
 ## Startup seed flow
 
@@ -23,7 +23,7 @@ flowchart TD
     A[API startup] --> B[DreamingWorkflowSeeder]
     B --> C{Any dreaming instance Pending or Processing?}
     C -->|Yes| D[Do nothing]
-    C -->|No| E[Resolve DREAMING_CRON_UTC defaulting to 0 3 * * *]
+    C -->|No| E[Resolve DREAMING_CRON_UTC defaulting to 0 6 * * *]
     E --> F[Calculate next UTC occurrence]
     F --> G[WorkflowOrchestrator.TriggerAsync dreaming scheduledAt]
     G --> H[Root task receives WorkflowTask.ScheduledAt]
@@ -46,18 +46,28 @@ The workflow instance itself does not need a `scheduled_at` column. Scheduling l
 
 ## Dreaming workflow flow
 
-`api/src/RecipeApi/Workflows/dreaming.yaml`
+`api/src/RecipeApi/Workflows/dreaming.yaml` (11 tasks):
 
 ```mermaid
 flowchart TD
     A[dreaming root task becomes due] --> B[PruneWorkflows]
     A --> C[StartWorkflow db-backup]
     A --> D[ProcessMaintenanceCommands]
+    A --> FO[FinalizeOverdueMeals]
+    A --> RGE[RolloverGroceryExtras]
+    A --> RS[StartWorkflow search-reconciliation]
     D --> E[PruneMaintenanceCommands]
+    FO --> RRR[ReconcileRecipeRotation]
+    FO --> MRSF[MaterializeRecipeSearchFilters]
     B --> F[GenerateDreamingReport]
     C --> F
     D --> F
     E --> F
+    FO --> F
+    RGE --> F
+    RS --> F
+    RRR --> F
+    MRSF --> F
     F --> G[StartWorkflow dreaming with schedule.cron]
     G --> H[New dreaming instance created]
     H --> I[New root task scheduled for next DREAMING_CRON_UTC occurrence]
@@ -65,14 +75,19 @@ flowchart TD
 
 ## Task responsibilities
 
-| Task                         | Processor                    | Responsibility                                                                                                     |
-| ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `prune`                      | `PruneWorkflows`             | Delete completed/failed workflow instances older than 7 days.                                                      |
-| `backup`                     | `StartWorkflow`              | Start the existing `db-backup` workflow instead of duplicating backup logic.                                       |
-| `maintenance`                | `ProcessMaintenanceCommands` | Process up to 50 due maintenance commands.                                                                         |
-| `prune-maintenance-commands` | `PruneMaintenanceCommands`   | After processing, delete at most 500 completed/skipped commands whose completion time is at least 30 UTC days old. |
-| `report`                     | `GenerateDreamingReport`     | Write `DATA_ROOT/reports/dreaming-yyyy-MM-dd.md`.                                                                  |
-| `reschedule`                 | `StartWorkflow`              | Start a new `dreaming` instance scheduled by `DREAMING_CRON_UTC`.                                                  |
+| Task                                | Processor                          | Responsibility                                                                                                     |
+| ----------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `prune`                             | `PruneWorkflows`                   | Delete completed/failed workflow instances older than 7 days.                                                      |
+| `backup`                            | `StartWorkflow`                    | Start the existing `db-backup` workflow instead of duplicating backup logic.                                       |
+| `maintenance`                       | `ProcessMaintenanceCommands`       | Process up to 50 due maintenance commands.                                                                         |
+| `prune-maintenance-commands`        | `PruneMaintenanceCommands`         | After processing, delete at most 500 completed/skipped commands whose completion time is at least 30 UTC days old. |
+| `finalize-overdue-meals`            | `FinalizeOverdueMeals`             | Mark missed planned meals from earlier civil days as cooked.                                                       |
+| `rollover-grocery-extras`           | `RolloverGroceryExtras`            | Carry unchecked grocery extras forward into the current week.                                                      |
+| `reconcile-search`                  | `StartWorkflow`                    | Trigger `search-reconciliation` for missing or stale search sidecars.                                              |
+| `reconcile-recipe-rotation`         | `ReconcileRecipeRotation`          | Pause recently cooked recipes and restore eligible ones after cooldown (`finalize-overdue-meals` dependency).      |
+| `materialize-recipe-search-filters` | `MaterializeRecipeSearchFilters`   | Refresh materialized search filter flags after overdue meal finalization.                                          |
+| `report`                            | `GenerateDreamingReport`           | Write `DATA_ROOT/reports/dreaming-yyyy-MM-dd.md`.                                                                  |
+| `reschedule`                        | `StartWorkflow`                    | Start a new `dreaming` instance scheduled by `DREAMING_CRON_UTC`.                                                  |
 
 ## Report output
 

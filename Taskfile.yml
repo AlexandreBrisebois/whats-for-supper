@@ -12,15 +12,12 @@ shopt: [globstar]
 
 vars:
   PYTHON: '{{.ROOT_DIR}}/.venv/bin/python'
-  API_PORT: '5050'
+  API_PORT: '9001'
   PWA_PORT: '3000'
   DB_PORT: '5432'
   DB_NAME: 'recipe_app_db'
   # Docker Hub namespace for image distribution
   WFS_REGISTRY: '{{.WFS_REGISTRY | default "brisebois"}}'
-  # Default platform (GitHub Actions: amd64, Local: arm64)
-  PLATFORMS: '{{if .PLATFORMS}}{{.PLATFORMS}}{{else if .GITHUB_ACTIONS}}linux/amd64{{else}}linux/arm64{{end}}'
-  TAG: 'v0.1'
   # Database Target (localhost or NAS IP)
   TARGET_DB_HOST: '{{.TARGET_DB_HOST | default "localhost"}}'
   # CLI helper for docker compose
@@ -69,7 +66,7 @@ tasks:
     dir: api
     env:
       ASPNETCORE_ENVIRONMENT: Development
-      RECIPES_ROOT: "/Users/alex/Code/whats-for-supper/data/recipes"
+      RECIPES_ROOT: "{{.ROOT_DIR}}/data/recipes"
       ASPNETCORE_URLS: http://localhost:9001
       HEARTH_SECRET: "{{.HEARTH_SECRET}}"
       Calendar__TimeZone: "{{.CALENDAR_TIMEZONE}}"
@@ -216,8 +213,14 @@ tasks:
     cmds:
       - node ../scripts/ci/production-browser.cjs qualify -- {{.CLI_ARGS}}
 
+  test:e2e:smoke:
+    desc: "🎭 Run fast core mocked E2E smoke subset (Playwright)"
+    cmds:
+      - '"{{.PYTHON}}" -B scripts/agent/test_ops.py --smoke {{.CLI_ARGS}}'
+
   test:audit:
     desc: "🔍 Audit tests for a specific area (Usage: task test:audit AREA=<keyword>)"
+    internal: true
     cmds:
       - '"{{.PYTHON}}" -B scripts/agent/test_audit.py "{{.AREA}}"'
 
@@ -236,49 +239,6 @@ tasks:
     cmds:
       - '"{{.PYTHON}}" -B scripts/agent/docker_smoke.py --down'
 
-
-  # ============================================================================
-  # BUILDING
-  # ============================================================================
-
-  build:
-    desc: "📦 Force rebuild all images (No-cache + Image removal)"
-    cmds:
-      - task: clean:images
-      - docker builder prune -a -f
-      - task: publish
-        vars: { NOCACHE: "true" }
-
-  publish:
-    desc: "🚀 Build images (local by default, set PUSH=true to push)"
-    vars:
-      NEXT_PUBLIC_API_BASE_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default ""}}'
-    cmds:
-      - task: publish:migration
-        vars:
-          NOCACHE: "{{.NOCACHE}}"
-          PUSH: "{{.PUSH}}"
-          TAG: "{{.TAG}}"
-          PLATFORMS: "{{.PLATFORMS}}"
-      - task: publish:api
-        vars:
-          NOCACHE: "{{.NOCACHE}}"
-          PUSH: "{{.PUSH}}"
-          TAG: "{{.TAG}}"
-          PLATFORMS: "{{.PLATFORMS}}"
-      - task: publish:pwa
-        vars:
-          NOCACHE: "{{.NOCACHE}}"
-          PUSH: "{{.PUSH}}"
-          TAG: "{{.TAG}}"
-          PLATFORMS: "{{.PLATFORMS}}"
-          NEXT_PUBLIC_API_BASE_URL: "{{.NEXT_PUBLIC_API_BASE_URL}}"
-      - |
-        if [ "{{.PUSH}}" == "true" ]; then
-          echo "✓ Version {{.TAG}} pushed to {{.WFS_REGISTRY}}"
-        else
-          echo "✓ Version {{.TAG}} built locally"
-        fi
 
   # ============================================================================
   # CODE GENERATION
@@ -316,75 +276,6 @@ tasks:
     cmds:
       - node scripts/generate-splash.mjs {{.CLI_ARGS}}
     silent: true
-
-  publish:api:
-    desc: "Build API image"
-    vars:
-      TAG: '{{default .TAG .CLI_ARGS}}'
-      PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
-      CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
-      NOCACHE_FLAG: '{{if .NOCACHE}}--no-cache{{end}}'
-    cmds:
-      - echo "Building API {{.TAG}} (Push={{.PUSH | default "false"}}, NoCache={{.NOCACHE | default "false"}})..."
-      - >
-        docker buildx build
-        {{.NOCACHE_FLAG}}
-        --platform {{.PLATFORMS}}
-        -t {{.WFS_REGISTRY}}/whats-for-supper-api:{{.TAG}}
-        ./api
-        {{.CACHE_FLAGS}}
-        {{.PUSH_FLAG}}
-        --target production
-
-  publish:pwa:
-    desc: "Build PWA image"
-    vars:
-      TAG: '{{default .TAG .CLI_ARGS}}'
-      PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
-      CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
-      NOCACHE_FLAG: '{{if .NOCACHE}}--no-cache{{end}}'
-      # Read NEXT_PUBLIC_API_BASE_URL from docker/.env.local (if present) then docker/.env
-      PWA_API_URL: '{{.NEXT_PUBLIC_API_BASE_URL | default ""}}'
-    cmds:
-      - echo "Building PWA {{.TAG}} (Push={{.PUSH | default "false"}}, NoCache={{.NOCACHE | default "false"}})..."
-      - >
-        docker buildx build
-        {{.NOCACHE_FLAG}}
-        --platform {{.PLATFORMS}}
-        --build-arg NEXT_PUBLIC_API_BASE_URL={{.PWA_API_URL}}
-        -t {{.WFS_REGISTRY}}/whats-for-supper-pwa:{{.TAG}}
-        ./pwa
-        {{.CACHE_FLAGS}}
-        {{.PUSH_FLAG}}
-        --target production
-
-  publish:migration:
-    desc: "Build migration image"
-    vars:
-      TAG: '{{default .TAG .CLI_ARGS}}'
-      PUSH_FLAG: '{{if eq .PUSH "true"}}--push{{else}}--load{{end}}'
-      CACHE_FLAGS: '{{if .GITHUB_ACTIONS}}--cache-from type=gha --cache-to type=gha,mode=max{{else}}{{end}}'
-      NOCACHE_FLAG: '{{if .NOCACHE}}--no-cache{{end}}'
-    cmds:
-      - echo "Building migration {{.TAG}} (Push={{.PUSH | default "false"}}, NoCache={{.NOCACHE | default "false"}})..."
-      - >
-        docker buildx build
-        {{.NOCACHE_FLAG}}
-        --platform {{.PLATFORMS}}
-        -t {{.WFS_REGISTRY}}/whats-for-supper-db-migration:{{.TAG}}
-        ./api/database
-        {{.CACHE_FLAGS}}
-        {{.PUSH_FLAG}}
-
-  # ============================================================================
-  # PRODUCTION & DEPLOYMENT
-  # ============================================================================
-
-  prod:config:
-    desc: "Generate production compose (for NAS)"
-    cmds:
-      - 'docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/production-overrides.yml config > docker/docker-compose.prod.yml'
-      - echo "✓ Production config generated at docker/docker-compose.prod.yml"
 
   # ============================================================================
   # RELEASE
@@ -471,7 +362,7 @@ tasks:
   db:schema:pull:
     desc: "Update api/database/schema.sql from live database"
     cmds:
-      - 'docker exec whats-for-supper-postgres pg_dump -U recipe_app -s {{.DB_NAME}} > api/database/schema.sql'
+      - 'docker exec whats-for-supper-postgres pg_dump -U {{.POSTGRES_USER}} -s {{.POSTGRES_DB}} > api/database/schema.sql'
       - echo "✓ Schema pulled to api/database/schema.sql"
 
   db:schema:push:
@@ -480,7 +371,7 @@ tasks:
       - |
         DRY_FLAG=""
         if [ "{{.DRY_RUN}}" == "true" ]; then DRY_FLAG="--dry-run"; fi
-        docker run --rm -v $(pwd)/api/database/schema.sql:/schema.sql:ro --network wfs-internal -e PGPASSWORD={{.POSTGRES_PASSWORD}} sqldef/psqldef:3.11.26 -h postgres -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} $DRY_FLAG -f /schema.sql
+        docker run --rm -v $(pwd)/api/database/schema.sql:/schema.sql:ro --network wfs-internal -e PGPASSWORD={{.POSTGRES_PASSWORD}} sqldef/psqldef:3.11.30 -h postgres -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} $DRY_FLAG -f /schema.sql
 
   seed:
     desc: "Populate database with test data"
@@ -540,101 +431,6 @@ tasks:
 
         echo "⚠️  Timeout waiting for seed task to complete. Check 'task logs:api' for details."
 
-  # ============================================================================
-  # RECIPE MANAGEMENT
-  # ============================================================================
-
-  recipes:import:all:
-    desc: "📥 Bulk-trigger recipe-import for all unimported recipes"
-    cmds:
-      - |
-        if [ "${DEV:-false}" = "true" ] || ! docker ps --format '{{`{{.Names}}`}}' 2>/dev/null | grep -q "whats-for-supper-traefik"; then
-          API_BASE="http://localhost:9001"
-          api_curl() { curl -s -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
-          echo "🔧 Using dev API at $API_BASE"
-        else
-          API_BASE="http://localhost"
-          api_curl() { curl -s -H "Host: pwa.wfs.localhost" -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
-        fi
-        echo "🚀 Triggering bulk recipe import..."
-        HTTP_CODE=$(api_curl -X POST -o /tmp/wfs_import.json -w "%{http_code}" "$API_BASE/api/management/bulk-import")
-        RESPONSE=$(cat /tmp/wfs_import.json 2>/dev/null || echo "")
-        if [ "$HTTP_CODE" = "000" ]; then
-          echo "❌ Connection failed — API is not reachable at $API_BASE"
-          echo "   → Check: task logs:api  (or: task up)"
-          exit 1
-        fi
-        QUEUED=$(echo "$RESPONSE" | jq -r '.queuedCount // empty' 2>/dev/null)
-        if [ -z "$QUEUED" ]; then
-          echo "❌ Failed (HTTP $HTTP_CODE): $RESPONSE"
-          exit 1
-        fi
-        echo "✅ Queued $QUEUED recipe-import workflow(s)."
-        echo "$RESPONSE" | jq '.instanceIds'
-
-  recipes:import:
-    desc: "📥 Trigger import for recipes. Usage: task recipes:import -- <recipe-id> [<recipe-id>...]"
-    cmds:
-      - |
-        RECIPE_IDS="{{.CLI_ARGS}}"
-        if [ -z "$RECIPE_IDS" ]; then
-          echo "❌ Error: Recipe ID(s) required."
-          echo "Usage: task recipes:import -- <recipe-id> [<recipe-id>...]"
-          exit 1
-        fi
-
-        # Determine API Base
-        if [ "${DEV:-false}" = "true" ] || ! docker ps --format '{{`{{.Names}}`}}' 2>/dev/null | grep -q "whats-for-supper-traefik"; then
-          API_BASE="http://localhost:9001"
-          api_curl() { curl -s -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
-          echo "🔧 Using dev API at $API_BASE"
-        else
-          API_BASE="http://localhost"
-          api_curl() { curl -s -H "Host: pwa.wfs.localhost" -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
-        fi
-
-        for RECIPE_ID in $RECIPE_IDS; do
-          echo "🚀 Triggering import for recipe $RECIPE_ID..."
-          HTTP_CODE=$(api_curl -X POST -o /tmp/wfs_import.json -w "%{http_code}" "$API_BASE/api/recipes/$RECIPE_ID/import")
-          RESPONSE=$(cat /tmp/wfs_import.json 2>/dev/null || echo "")
-
-          if [ "$HTTP_CODE" = "000" ]; then
-            echo "❌ Connection failed — API is not reachable at $API_BASE"
-            exit 1
-          fi
-
-          IMPORT_ID=$(echo "$RESPONSE" | jq -r '.importId // empty' 2>/dev/null)
-          if [ -z "$IMPORT_ID" ]; then
-            echo "❌ Failed for $RECIPE_ID (HTTP $HTTP_CODE): $RESPONSE"
-          else
-            echo "✅ Import triggered for $RECIPE_ID. Import ID: $IMPORT_ID"
-          fi
-        done
-
-  recipes:import:status:
-    desc: "📊 Get import pipeline summary (imported / queued / failed counts)"
-    cmds:
-      - |
-        if [ "${DEV:-false}" = "true" ] || ! docker ps --format '{{`{{.Names}}`}}' 2>/dev/null | grep -q "whats-for-supper-traefik"; then
-          API_BASE="http://localhost:9001"
-          api_curl() { curl -s -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
-          echo "🔧 Using dev API at $API_BASE"
-        else
-          API_BASE="http://localhost"
-          api_curl() { curl -s -H "Host: pwa.wfs.localhost" -H "X-Hearth-Secret: {{.HEARTH_SECRET}}" "$@"; }
-        fi
-        HTTP_CODE=$(api_curl -o /tmp/wfs_status.json -w "%{http_code}" "$API_BASE/api/recipes/import-status")
-        if [ "$HTTP_CODE" = "000" ]; then
-          echo "❌ Connection failed — API is not reachable at $API_BASE"
-          echo "   → Check: task logs:api  (or: task up)"
-          exit 1
-        fi
-        cat /tmp/wfs_status.json | jq .
-
-
-
-
-
   db:backup:
     desc: "Backup database (Local or Remote)"
     vars:
@@ -642,9 +438,9 @@ tasks:
     cmds:
       - |
         if [ "{{.TARGET_DB_HOST}}" == "localhost" ] || [ "{{.TARGET_DB_HOST}}" == "postgres" ]; then
-          docker exec whats-for-supper-postgres pg_dump -U recipe_app {{.DB_NAME}} > {{.FILENAME}}
+          docker exec whats-for-supper-postgres pg_dump -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} > {{.FILENAME}}
         else
-          pg_dump -h {{.TARGET_DB_HOST}} -U recipe_app {{.DB_NAME}} > {{.FILENAME}}
+          pg_dump -h {{.TARGET_DB_HOST}} -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} > {{.FILENAME}}
         fi
       - echo "✓ Database backed up to {{.FILENAME}}"
 
@@ -666,20 +462,15 @@ tasks:
 
         echo "Restoring $FILE to {{.TARGET_DB_HOST}}..."
         if [ "{{.TARGET_DB_HOST}}" == "localhost" ] || [ "{{.TARGET_DB_HOST}}" == "postgres" ]; then
-          docker exec -i whats-for-supper-postgres psql -U recipe_app {{.DB_NAME}} < "$FILE"
+          docker exec -i whats-for-supper-postgres psql -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} < "$FILE"
         else
-          psql -h {{.TARGET_DB_HOST}} -U recipe_app {{.DB_NAME}} < "$FILE"
+          psql -h {{.TARGET_DB_HOST}} -U {{.POSTGRES_USER}} {{.POSTGRES_DB}} < "$FILE"
         fi
         echo "✓ Database restored"
 
   # ============================================================================
   # CONTAINER SHELLS
   # ============================================================================
-
-  shell:api:
-    desc: "Open bash shell in API container"
-    cmds:
-      - 'docker exec -it whats-for-supper-api bash'
 
   shell:pwa:
     desc: "Open shell in PWA container"
@@ -689,7 +480,7 @@ tasks:
   shell:db:
     desc: "Open psql shell in database"
     cmds:
-      - 'docker exec -it whats-for-supper-postgres psql -U recipe_app -d {{.DB_NAME}}'
+      - 'docker exec -it whats-for-supper-postgres psql -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}}'
 
   # ============================================================================
   # CODE QUALITY
@@ -760,10 +551,10 @@ tasks:
         curl -s -H "Host: pwa.wfs.localhost" http://localhost/api/health 2>/dev/null | jq . 2>/dev/null && echo "  ✓ API running" || echo "  ✗ API not responding"
         echo ""
         echo "PWA (Traefik Route):"
-        curl -s -I -H "Host: pwa.wfs.localhost" http://localhost/api/health | grep -q "200 OK" && echo "  ✓ PWA running" || echo "  ✗ PWA not responding"
+        curl -sf -H "Host: pwa.wfs.localhost" http://localhost/ >/dev/null && echo "  ✓ PWA running" || echo "  ✗ PWA not responding"
         echo ""
         echo "Database:"
-        docker exec whats-for-supper-postgres pg_isready -U postgres 2>/dev/null && echo "  ✓ Database running" || echo "  ✗ Database not responding"
+        docker exec whats-for-supper-postgres pg_isready -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} 2>/dev/null && echo "  ✓ Database running" || echo "  ✗ Database not responding"
 
   env:
     desc: "Show environment configuration"
@@ -777,67 +568,6 @@ tasks:
         echo "  API: {{.API_PORT}}"
         echo "  PWA: {{.PWA_PORT}}"
         echo "  DB:  {{.DB_PORT}}"
-
-  # ============================================================================
-  # OLLAMA
-  # ============================================================================
-
-  ollama:start:
-    desc: "🤖 Start Ollama daemon (bound to 0.0.0.0) and preload gemma4:e4b"
-    vars:
-      OLLAMA_MODEL: '{{.OLLAMA_MODEL | default "gemma4:e4b"}}'
-    cmds:
-      - |
-        if pgrep -x ollama > /dev/null; then
-          echo "✓ Ollama already running (Note: if it's not reachable from outside, run 'task ollama:stop' first)"
-        else
-          echo "🚀 Starting Ollama daemon (0.0.0.0)..."
-          OLLAMA_HOST=0.0.0.0 ollama serve &>/tmp/ollama.log &
-          # Wait for it to be ready
-          for i in $(seq 1 15); do
-            if curl -sf http://localhost:11434/ > /dev/null 2>&1; then
-              echo "  ✓ Ollama daemon ready"
-              break
-            fi
-            [ "$i" -eq 15 ] && echo "  ✗ Ollama failed to start" && exit 1
-            sleep 1
-          done
-        fi
-      - |
-        echo "📥 Pulling model {{.OLLAMA_MODEL}} (no-op if already present)..."
-        ollama pull {{.OLLAMA_MODEL}}
-        echo "🔥 Preloading {{.OLLAMA_MODEL}} into memory..."
-        ollama run {{.OLLAMA_MODEL}} "" 2>/dev/null || true
-        echo "✅ Ollama ready with model {{.OLLAMA_MODEL}}"
-
-  ollama:stop:
-    desc: "🛑 Stop Ollama daemon"
-    cmds:
-      - |
-        if pgrep -x ollama > /dev/null; then
-          pkill -x ollama
-          echo "✓ Ollama daemon stopped"
-        else
-          echo "✓ Ollama is not running"
-        fi
-
-  ollama:status:
-    desc: "📊 Show Ollama daemon status and loaded models"
-    cmds:
-      - |
-        echo "Ollama Daemon:"
-        if pgrep -x ollama > /dev/null; then
-          echo "  ✓ Running (PID: $(pgrep -x ollama))"
-        else
-          echo "  ✗ Not running"
-          exit 0
-        fi
-        echo ""
-        echo "Available Models:"
-        ollama list 2>/dev/null || echo "  (none)"
-        echo ""
-        echo "Running Models:"
-        ollama ps 2>/dev/null || echo "  (none loaded)"
 
   # ============================================================================
   # CLEANUP
@@ -874,56 +604,23 @@ tasks:
           echo "✓ No project images found"
         fi
 
-  # ── IMAGE UTILITIES ──────────────────────────────────────────────────────────
-
-  images:migrate-hero-webp:
-    desc: "🖼️  Convert all hero.jpg files in data/recipes to hero.webp (Python/Pillow, run once). Override path: task images:migrate-hero-webp DIR=/Volumes/nas/data/recipes"
-    vars:
-      DIR: '{{.DIR | default "data/recipes"}}'
-    cmds:
-      - |
-        python3 - "{{.DIR}}" <<'EOF'
-        import sys
-        from pathlib import Path
-        from PIL import Image
-
-        count = 0
-        failed = 0
-
-        for jpg in Path(sys.argv[1]).rglob("hero.jpg"):
-            webp = jpg.with_suffix(".webp")
-            try:
-                with Image.open(jpg) as img:
-                    img.save(webp, "WEBP", quality=85)
-                jpg.unlink()
-                count += 1
-            except Exception as e:
-                print(f"  ✗ Failed: {jpg} — {e}", file=sys.stderr)
-                failed += 1
-
-        print(f"✓ Migration complete — {count} converted, {failed} failed")
-        if failed:
-            sys.exit(1)
-        EOF
-
   # ============================================================================
   # SETUP & INITIALIZATION
   # ============================================================================
 
   init:
-    desc: "Initialize project (first-time setup)"
+    desc: "Initialize project (first-time setup: hooks:setup + env + client + Docker + seed)"
     cmds:
       - |
         echo "Setting up What's For Supper..."
         echo ""
       - task: init:tools
+      - task: hooks:setup
       - task: init:env
-      - task: init:dependencies
       - task: gen:client
       - task: up
       - task: migrate
       - task: seed
-      - task: hooks:install
       - |
         echo ""
         echo "✓ Project initialized!"
@@ -935,7 +632,8 @@ tasks:
         echo "  4. Run: task test (before committing)"
 
   init:env:
-    desc: "Create .env.local from template"
+    desc: "Create docker/.env from template"
+    internal: true
     cmds:
       - |
         if [ ! -f docker/.env ]; then
@@ -948,27 +646,23 @@ tasks:
       - test -f docker/.env
 
   init:dependencies:
-    desc: "Install all dependencies"
+    desc: "Install API, PWA, and Playwright dependencies deterministically"
+    internal: true
     cmds:
+      - dotnet tool restore
+      - dotnet restore api/RecipeApi.csproj
+      - dotnet restore api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
       - |
-        echo "Installing Global/Root dependencies..."
-        dotnet tool restore
-        echo ""
-        echo "Installing API dependencies..."
-        cd api
-        dotnet restore RecipeApi.csproj
-        dotnet restore src/RecipeApi.Tests/RecipeApi.Tests.csproj
-        echo "✓ API dependencies and tools installed"
-        echo ""
-        echo "Installing PWA dependencies..."
-        cd ../pwa
-        npm install
-        echo "Installing Playwright browsers..."
-        npx playwright install --with-deps
-        echo "✓ PWA dependencies and Playwright installed"
+        if [ -f pwa/package-lock.json ]; then
+          npm ci --prefix pwa
+        else
+          npm install --prefix pwa
+        fi
+      - npm exec --prefix pwa -- playwright install chromium
 
   init:python:
     desc: "Create the repository Python environment and install pinned tooling dependencies"
+    internal: true
     cmds:
       - python3 -m venv .venv
       - .venv/bin/python -m pip install --disable-pip-version-check --no-cache-dir --retries 0 --timeout 15 -r scripts/requirements.txt
@@ -976,6 +670,7 @@ tasks:
 
   init:tools:
     desc: "Install required development tools (pre-commit, etc.)"
+    internal: true
     cmds:
       - |
         # Check for core CLI tools
@@ -999,6 +694,7 @@ tasks:
           echo "✓ pre-commit found"
         fi
 
+      - task: check:node
       - task: init:python
 
   # ============================================================================
@@ -1020,9 +716,7 @@ tasks:
       - npm install --global @fission-ai/openspec
       - task: spec:check
       - npm install --global npm@11.21.1
-      - npm ci --prefix pwa
-      - npm exec --prefix pwa -- playwright install chromium
-      - dotnet restore api/src/RecipeApi.Tests/RecipeApi.Tests.csproj
+      - task: init:dependencies
       - task: hooks:install
 
   check:node:
@@ -1092,18 +786,6 @@ tasks:
     cmds:
       - '"{{.PYTHON}}" -B scripts/agent/openspec_audit.py {{.CLI_ARGS}}'
 
-  docs:dev-loop:
-    desc: "Open local development loop documentation"
-    cmds:
-      - |
-        if command -v open &> /dev/null; then
-          open LOCAL_DEV_LOOP.md
-        elif command -v xdg-open &> /dev/null; then
-          xdg-open LOCAL_DEV_LOOP.md
-        else
-          cat LOCAL_DEV_LOOP.md
-        fi
-
   gate:
     desc: "⚡ Fast dev loop: catch what changed (lint + types + unit + impact)"
     cmds:
@@ -1159,16 +841,6 @@ tasks:
       - test:agent
       - test:api
 
-  ship:
-    desc: "Ship checklist: review + clean build + test"
-    cmds:
-      - task: review
-      - task: build
-      - task: up
-      - task: health
-      - echo ""
-      - echo "✓ Everything looks good! Ready to push."
-
   # ============================================================================
   # API & CONTRACTS
   # ============================================================================
@@ -1190,8 +862,14 @@ tasks:
         echo "Source: api/src/RecipeApi/ and pwa/src/"
         echo "Contract: specs/openapi.yaml"
         echo "Specifications: openspec/specs/ and openspec/changes/"
+        echo "Codebase map: docs/generated/route-map.md (refresh: task agent:map)"
         echo "Targeted discovery: task agent:slice -- <route>"
         echo "Resume or state ambiguity: task agent:status"
+
+  agent:map:
+    desc: "🤖 Generate or verify codebase route map (docs/generated/route-map.md; pass -- --check to verify)"
+    cmds:
+      - '"{{.PYTHON}}" -B scripts/agent/route_map.py {{.CLI_ARGS}}'
 
   agent:api:
     desc: "🤖 Map all API endpoints (Low token discovery)"

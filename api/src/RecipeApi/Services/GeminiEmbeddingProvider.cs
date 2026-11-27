@@ -1,5 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Options;
+using RecipeApi.Services.Ai;
 
 namespace RecipeApi.Services;
 
@@ -7,13 +9,18 @@ namespace RecipeApi.Services;
 /// Native HTTP implementation of IEmbeddingProvider to bypass SDK resolution issues.
 /// NOTE FOR USER: Review this for migration back to Microsoft.Extensions.AI once package bindings are stabilized.
 /// </summary>
-public class GeminiEmbeddingProvider(IConfiguration configuration, IHttpClientFactory httpClientFactory) : IEmbeddingProvider
+public class GeminiEmbeddingProvider(
+    IConfiguration configuration,
+    IHttpClientFactory httpClientFactory,
+    IOptions<GeminiOptions>? geminiOptions = null) : IEmbeddingProvider
 {
+    public const string DefaultModelId = GeminiOptions.DefaultEmbeddingModelId;
+
+    public static string ResolveModelId(IConfiguration? configuration = null) =>
+        GeminiOptions.FromConfiguration(configuration).EmbeddingModelId;
+
     private readonly DemoModeOptions _demoMode = new(configuration);
-    private readonly string _apiKey = configuration["GEMINI_API_KEY"] ?? "none";
-    private readonly string _endpoint = configuration["GEMINI_ENDPOINT"] ?? "https://generativelanguage.googleapis.com/v1beta/openai/";
-    private readonly string _modelId = configuration["EMBEDDING_MODEL_ID"] ?? "gemini-embedding-2";
-    private readonly int _dimensions = configuration.GetValue<int?>("EMBEDDING_DIMENSIONS") ?? 1536;
+    private readonly GeminiOptions _options = geminiOptions?.Value ?? GeminiOptions.FromConfiguration(configuration);
 
     public async Task<float[]> GenerateAsync(string text, CancellationToken ct = default)
     {
@@ -21,17 +28,17 @@ public class GeminiEmbeddingProvider(IConfiguration configuration, IHttpClientFa
         if (string.IsNullOrWhiteSpace(text)) return [];
 
         using var client = httpClientFactory.CreateClient();
-        client.DefaultRequestHeaders.Add("x-goog-api-key", _apiKey);
+        client.DefaultRequestHeaders.Add("x-goog-api-key", _options.ApiKeyOrNone);
 
-        var model = _modelId.StartsWith("models/", StringComparison.Ordinal)
-            ? _modelId["models/".Length..]
-            : _modelId;
-        var endpoint = new Uri(new Uri(new Uri(_endpoint).GetLeftPart(UriPartial.Authority)), $"/v1beta/models/{Uri.EscapeDataString(model)}:embedContent");
+        var model = _options.EmbeddingModelId.StartsWith("models/", StringComparison.Ordinal)
+            ? _options.EmbeddingModelId["models/".Length..]
+            : _options.EmbeddingModelId;
+        var endpoint = new Uri(new Uri(new Uri(_options.Endpoint).GetLeftPart(UriPartial.Authority)), $"/v1beta/models/{Uri.EscapeDataString(model)}:embedContent");
         var response = await client.PostAsJsonAsync(endpoint, new
         {
             model = $"models/{model}",
             content = new { parts = new[] { new { text } } },
-            outputDimensionality = _dimensions
+            outputDimensionality = _options.EmbeddingDimensions
         }, ct);
 
         if (!response.IsSuccessStatusCode)

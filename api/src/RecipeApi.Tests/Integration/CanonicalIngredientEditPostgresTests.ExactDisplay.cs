@@ -129,8 +129,8 @@ public sealed partial class CanonicalIngredientEditPostgresTests
                     garlic = garlic.Clone(), readOnlyPersistenceUnchanged = true }, Json));
                 // Intended red is the actual public server field currently null, not internal exact arithmetic.
                 Exact(Line(projected, 2), target == 5 ? "5/9 cup walnuts" : "1/3 cup walnuts", "⅓ cup finely chopped walnuts");
-                Exact(Line(projected, 3), target == 5 ? "10/3–5 cloves garlic" : "2–3 cloves garlic", "2–3 cloves whole garlic cloves");
-                Exact(Line(projected, 4), target == 5 ? "5/3–10/3 cloves garlic" : "1–2 cloves garlic", "1–2 cloves additional garlic cloves");
+                Exact(Line(projected, 3), target == 5 ? "3 1/3–5 cloves garlic" : "2–3 cloves garlic", "2–3 cloves whole garlic cloves");
+                Exact(Line(projected, 4), target == 5 ? "1 2/3–3 1/3 cloves garlic" : "1–2 cloves garlic", "1–2 cloves additional garlic cloves");
                 Assert.Equal(JsonValueKind.Null, Line(projected, 3).GetProperty("quantity").ValueKind);
                 Exact(Line(preview, 2), "2/3 cup walnuts", "⅓ cup finely chopped walnuts");
                 Exact(Line(preview, 3), "4–6 cloves garlic", "2–3 cloves whole garlic cloves");

@@ -37,12 +37,21 @@ it('projects exact non-package fractions and both range endpoints from originals
   const before = structuredClone(recipe);
   const lines = structuredIngredientLines(recipe, 5);
   expect(lines[0].displayText).toBe('5/9 cup flour');
-  expect(lines[1].displayText).toBe('10/3–5 cloves garlic');
+  expect(lines[1].displayText).toBe('3 1/3–5 cloves garlic');
   expect(lines[0].originalText).toBe('⅓ cup saved flour wording');
   expect(ingredientProjectionText(lines[0] as any)).toBe('5/9 cup flour');
-  expect(ingredientProjectionText(lines[1] as any)).toBe('10/3–5 cloves garlic');
+  expect(ingredientProjectionText(lines[1] as any)).toBe('3 1/3–5 cloves garlic');
   expect(structuredIngredientLines(recipe, 3)[0].displayText).toBe('1/3 cup flour');
   expect(recipe).toEqual(before);
+
+  const cupRecipe = fixture();
+  cupRecipe.servings = 4;
+  cupRecipe.ingredientLines[0].amount = { kind: 'scalar', value: { n: '1', d: '1' } };
+  cupRecipe.ingredientLines[0].amountText = '1';
+  cupRecipe.ingredientLines[0].unit = { text: 'cups', definitionId: null };
+  expect(structuredIngredientLines(cupRecipe, 6)[0].displayText).toBe('1 1/2 cups flour');
+  cupRecipe.servings = 2;
+  expect(structuredIngredientLines(cupRecipe, 4)[0].displayText).toBe('2 cups flour');
 });
 
 it('keeps Original notation and honestly omits derived text for unknown proportional basis', () => {

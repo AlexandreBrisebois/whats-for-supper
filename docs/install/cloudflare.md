@@ -4,9 +4,7 @@ These steps are for the recommended setup: one What's for Supper installation
 with its own Cloudflare tunnel. You need a Cloudflare account and a domain you
 manage there. You do not need to open ports on your router.
 
-Use the files and instructions from the same installation ZIP. This development
-branch also contains an upcoming shared-tunnel option; existing releases may not
-include it.
+Use the files and instructions from the same installation ZIP.
 
 ## Before setup: get your tunnel token
 

@@ -8,7 +8,7 @@ services:
       EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-gemini-embedding-2}
       DREAMING_CRON_UTC: "${DREAMING_CRON_UTC:-0 3 * * *}"
       HEARTH_SECRET: ${HEARTH_SECRET}
-      CORS__ALLOWED_ORIGINS: https://${DOMAIN_NAME}
+      Cors__AllowedOrigins: https://${DOMAIN_NAME}
     volumes:
       - ${DATA_ROOT:-/data}:/data
     labels:

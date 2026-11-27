@@ -17,11 +17,17 @@ using System.ClientModel;
 using System.ClientModel.Primitives;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.Extensions.Options;
 
 // Isolated native worker entrypoint: no web host, database, credentials or workflow bootstrap.
 if (args.Length > 0 && args[0] == "--render-pdf")
 {
     return PdfNativeWorker.Run(args);
+}
+
+if (args.Length > 0 && args[0] == "--healthcheck")
+{
+    return await HealthCheckCli.RunAsync(args);
 }
 
 // Bootstrap logger for startup errors before full Serilog is configured.
@@ -103,6 +109,19 @@ try
     builder.Services.AddSingleton<RecipeSearchContinuationStore>();
     builder.Services.AddScoped<RecipeLexicalSearchRepository>();
     builder.Services.AddScoped<RecipeSemanticSearchRepository>();
+    builder.Services.AddSingleton<IValidateOptions<GeminiOptions>, GeminiOptionsValidator>();
+    builder.Services
+        .AddOptions<GeminiOptions>()
+        .Configure<IConfiguration>((opts, cfg) => opts.ApplyFrom(GeminiOptions.FromConfiguration(cfg)))
+        .ValidateOnStart();
+
+    var geminiOptions = GeminiOptions.FromConfiguration(builder.Configuration);
+    var geminiValidation = new GeminiOptionsValidator().Validate(Options.DefaultName, geminiOptions);
+    if (geminiValidation.Failed)
+    {
+        throw new OptionsValidationException(Options.DefaultName, typeof(GeminiOptions), geminiValidation.Failures ?? []);
+    }
+
     builder.Services.AddSingleton(new RecipeSearchRolloutOptions
     {
         ConfigurationVersion = builder.Configuration["WFS_SEARCH_CONFIGURATION_VERSION"] ?? "hybrid-search-v1",
@@ -110,9 +129,9 @@ try
         {
             Enabled = builder.Configuration.GetValue<bool?>("WFS_ENABLE_SEMANTIC_RETRIEVAL") ?? true,
             CandidateLimit = builder.Configuration.GetValue<int?>("WFS_SEMANTIC_CANDIDATE_LIMIT") ?? 50,
-            EmbeddingDimensions = builder.Configuration.GetValue<int?>("EMBEDDING_DIMENSIONS") ?? 1536,
-            EmbeddingModel = builder.Configuration["EMBEDDING_MODEL_ID"] ?? "gemini-embedding-2",
-            EmbeddingVersion = builder.Configuration["EMBEDDING_MODEL_VERSION"]
+            EmbeddingDimensions = geminiOptions.EmbeddingDimensions,
+            EmbeddingModel = geminiOptions.EmbeddingModelId,
+            EmbeddingVersion = geminiOptions.EmbeddingModelVersion
         }
     });
     builder.Services.AddSingleton(sp => new RecipeSearchFilterOptions(
@@ -287,19 +306,9 @@ try
 
     // ── AI / Agent Framework ─────────────────────────────────────────────────
     // ── AI Configuration ─────────────────────────────────────────────────────
-    var modelId = builder.Configuration["GEMINI_MODEL_ID"];
-    if (string.IsNullOrWhiteSpace(modelId))
-    {
-        modelId = "gemini-3-flash-preview";
-    }
-
-    var endpoint = builder.Configuration["GEMINI_ENDPOINT"];
-    if (string.IsNullOrWhiteSpace(endpoint))
-    {
-        endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/";
-    }
-
-    var apiKey = builder.Configuration["GEMINI_API_KEY"];
+    var modelId = geminiOptions.ModelId;
+    var endpoint = geminiOptions.Endpoint;
+    var apiKey = geminiOptions.ApiKey;
     if (string.IsNullOrWhiteSpace(apiKey))
     {
         apiKey = "none";
@@ -309,6 +318,8 @@ try
     Log.Information("─── AI CONFIGURATION ───");
     Log.Information("Endpoint:       {Endpoint}", endpoint);
     Log.Information("Model ID:       {Model}", modelId);
+    Log.Information("Hero Model ID:  {HeroModel}", geminiOptions.ImageModelId);
+    Log.Information("Embedding ID:   {EmbeddingModel} ({Dimensions}d)", geminiOptions.EmbeddingModelId, geminiOptions.EmbeddingDimensions);
     Log.Information("────────────────────────");
 
     builder.Services.AddChatClient(new OpenAIClient(
@@ -401,6 +412,7 @@ try
 
     // ── Build ─────────────────────────────────────────────────────────────────
     var app = builder.Build();
+    _ = app.Services.GetRequiredService<IOptions<GeminiOptions>>().Value;
     _ = app.Services.GetRequiredService<DeploymentCalendar>();
     _ = app.Services.GetRequiredService<RecipeRotationOptions>();
     _ = app.Services.GetRequiredService<HistoricalInterestOptions>();

@@ -54,7 +54,7 @@ implementation as an invariant.
 - **Trust First**: Prioritize understandable tasks, honest outcomes and accessibility.
   Support them with warm, distinctive Shared Table design, a contemporary family cookbook
   aesthetic, and established tokens; use the
-  [North Star](../../docs/creative-direction-north-star.md) for emotional direction.
+  [North Star](../../docs/design/creative-direction-north-star.md) for emotional direction.
 - **Background work**: Keep the primary experience responsive and preserve navigation
   while asynchronous work proceeds. Persisted workflow lifecycle and status behavior
   are defined in the [background-processing capability](../../openspec/specs/background-processing/spec.md).

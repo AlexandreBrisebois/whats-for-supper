@@ -13,7 +13,7 @@ This reference records the current maintainer deployment configuration while the
 | Docker with Compose V2        | `docker compose` (not `docker-compose`)                                                             |
 | 2 GB RAM minimum              | API + PWA + PostgreSQL                                                                              |
 | Persistent local storage      | Mapped via `DATA_ROOT` — recipe images live here                                                    |
-| Google Gemini API key         | Free tier covers a typical household. Get one at [aistudio.google.com](https://aistudio.google.com) |
+| Google Gemini API key         | Required (with billing enabled for text, image, and embedding models; no model-free mode). Get one at [aistudio.google.com](https://aistudio.google.com) |
 | (Optional) Cloudflare account | For remote access via Cloudflare Tunnel                                                             |
 
 ---
@@ -42,17 +42,19 @@ Edit `.env.local` — the fields you **must** set are:
 ## 2. Start the stack
 
 ```bash
-docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml --env-file docker/.env.local up -d
+docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/dev-overrides.yml --env-file docker/.env.local up -d
 ```
+
+For production deployments with Cloudflare Tunnel and `traefik_dynamic.yml`, replace `dev-overrides.yml` with `docker/compose/production-overrides.yml`.
 
 Services that start:
 
-| Container  | Port                  | Role                |
-| ---------- | --------------------- | ------------------- |
-| `traefik`  | 80, 443, 8080 (admin) | Reverse proxy + TLS |
-| `api`      | 9001 (internal)       | .NET API            |
-| `pwa`      | 3000 (internal)       | Next.js PWA         |
-| `postgres` | 5432 (internal)       | PostgreSQL 18       |
+| Container  | Port             | Role                      |
+| ---------- | ---------------- | ------------------------- |
+| `traefik`  | 80, 8080 (admin) | Reverse proxy             |
+| `api`      | 9001 (internal)  | .NET API                  |
+| `pwa`      | 3000 (internal)  | Next.js PWA               |
+| `postgres` | 5432 (internal)  | PostgreSQL 18             |
 
 The database schema is applied by the `psqldef` migration sidecar running `migrate.sh`, not by API startup.
 
@@ -153,13 +155,13 @@ The API seeds a recurring `dreaming` workflow on startup. Each run prunes comple
 
 | Variable            | Default     | What it does                                  |
 | ------------------- | ----------- | --------------------------------------------- |
-| `DREAMING_CRON_UTC` | `0 3 * * *` | UTC cron expression for the next Dreaming run |
+| `DREAMING_CRON_UTC` | `0 6 * * *` | UTC cron expression for the next Dreaming run |
 
 Example:
 
 ```env
-# Run Dreaming every day at 03:00 UTC
-DREAMING_CRON_UTC=0 3 * * *
+# Run Dreaming every day at 06:00 UTC
+DREAMING_CRON_UTC=0 6 * * *
 ```
 
 ### Demo Mode (Showcase)
@@ -185,11 +187,9 @@ In Demo Mode, expensive AI processors (recipe extraction, search re-ranking) are
 
 ---
 
----
+## 8. Automated recipe translation
 
-## 9. Automated recipe translation
-
-WFS can automatically translate recipes into a target language (e.g., French or English) during the import and reimport process. This is controlled by a mandatory environment variable.
+WFS can automatically translate recipes into a target language (e.g., French or English) during the import and reimport process. This is controlled by an optional environment variable (default `NONE`).
 
 | Variable                 | Valid Values                | What it does                                                                                                    |
 | ------------------------ | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -199,7 +199,7 @@ WFS can automatically translate recipes into a target language (e.g., French or 
 
 ---
 
-## 10. Default application language
+## 9. Default application language
 
 WFS supports English and French. You can set the initial language for new users via an environment variable. Individual users can still override this in their profile settings.
 
@@ -209,15 +209,15 @@ WFS supports English and French. You can set the initial language for new users 
 
 ---
 
-## 11. Semantic search configuration
+## 10. Semantic search configuration
 
-Semantic search runs out of the box using trigram-based lexical retrieval (no external service required). Vector-based hybrid search requires a configured embedding provider.
+Semantic search runs out of the box using trigram-based lexical retrieval. Vector-based hybrid search requires the configured Gemini embedding provider.
 
 ### Embedding provider
 
-| Variable             | Default                  | What it does                                                                                                                                          |
-| -------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `EMBEDDING_MODEL_ID` | `text-embedding-3-small` | The embedding model used to generate recipe vectors. Must match the model used when the index was built. Changing this value requires a full reindex. |
+| Variable             | Default             | What it does                                                                                                                                          |
+| -------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EMBEDDING_MODEL_ID` | `gemini-embedding-2` | The embedding model used to generate recipe vectors. Must match the model used when the index was built. Changing this value requires a full reindex. |
 
 When `EMBEDDING_MODEL_ID` is set and an embedding provider is registered, the search pipeline uses hybrid retrieval: lexical trigram candidates merged with pgvector cosine-similarity candidates. If the embedding provider is unavailable or times out (300 ms budget per request), search falls back to lexical-only and reports `resultPath: "fallback-lexical"` — the user sees identical results with no error.
 
@@ -237,20 +237,20 @@ Permanently deleting a recipe from the Recycle Bin requires an **elevated PIN**.
 
 The PIN travels in the `X-Elevated-Pin` request header and is never written to the URL, query string, or response body.
 
-> **Recommendation:** Set a simple 4–6 digit PIN in `.env.local`. Keep it separate from the `HEARTH_SECRET` passphrase — they serve different purposes.
+> **Recommendation:** Set a numeric PIN of at least 6 digits in `.env.local` (matching `setup.sh`). Keep it separate from the `HEARTH_SECRET` passphrase — they serve different purposes.
 
 ```env
-ELEVATED_ACTIONS_PIN=1234
+ELEVATED_ACTIONS_PIN=123456
 ```
 
 ---
 
-## 12. Updating
+## 11. Updating
 
 ```bash
 git pull
-docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml --env-file docker/.env.local pull
-docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml --env-file docker/.env.local up -d
+docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/production-overrides.yml --env-file docker/.env.local pull
+docker compose -f docker/compose/infrastructure.yml -f docker/compose/apps.yml -f docker/compose/production-overrides.yml --env-file docker/.env.local up -d
 ```
 
 Schema changes are applied by the `psqldef` migration sidecar running `migrate.sh` using declarative diffing, not by API startup.
@@ -259,15 +259,17 @@ Schema changes are applied by the `psqldef` migration sidecar running `migrate.s
 
 ## Environment variable reference
 
-See [`docker/.env.example`](docker/.env.example) for the full annotated reference. Key groupings:
+See [`docker/.env.example`](docker/.env.example) and [`release-template/synology/.env.example`](release-template/synology/.env.example) for annotated templates. A Google Gemini API key is required (there is no model-free version). Recreate containers (`docker compose up -d`) after editing runtime `.env` values.
 
-| Group          | Variables                                                                                                          |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Infrastructure | `TRAEFIK_HTTP_PORT`, `TRAEFIK_ADMIN_PORT`, `CLOUDFLARE_TUNNEL_TOKEN`, `DOMAIN_NAME`                                |
-| Database       | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_CONNECTION_STRING`                                  |
-| API            | `API_HOST`, `API_PORT`, `ASPNETCORE_ENVIRONMENT`, `DREAMING_CRON_UTC`                                              |
-| PWA            | `PWA_HOST`, `NEXT_PUBLIC_API_BASE_URL`, `HEARTH_SECRET`, `NEXT_PUBLIC_COOKIE_DOMAIN`, `NEXT_PUBLIC_DEFAULT_LOCALE` |
-| AI             | `GEMINI_API_KEY`, `GEMINI_MODEL_ID`, `GEMINI_ENDPOINT`, `IMPORT_TARGET_LANGUAGE`                                   |
-| Search         | `EMBEDDING_MODEL_ID`                                                                                               |
-| Storage        | `DATA_ROOT`                                                                                                        |
-| Security       | `CORS_ALLOWED_ORIGINS`, `ELEVATED_ACTIONS_PIN`                                                                     |
+| Group | Variables & Defaults |
+| --- | --- |
+| **Required secrets & auth** | `POSTGRES_PASSWORD`, `HEARTH_SECRET`, `GEMINI_API_KEY`, `ELEVATED_ACTIONS_PIN` (6+ digits; empty disables Recycle Bin purge with HTTP 503), `Cors__AllowedOrigins` (mapped from `CORS_ALLOWED_ORIGINS` in `docker/compose/`) |
+| **AI & translation** | `GEMINI_MODEL_ID` (`gemini-3.8-flash`), `GEMINI_MODEL_ID_HERO` (`models/gemini-3-pro-image`), `GEMINI_ENDPOINT` (`https://generativelanguage.googleapis.com/v1beta/openai/`), `GEMINI_MAX_OUTPUT_TOKENS` (`16384`), `IMPORT_TARGET_LANGUAGE` (`NONE` \| `English` \| `French`) |
+| **Search & embeddings** | `EMBEDDING_MODEL_ID` (`gemini-embedding-2`), `EMBEDDING_DIMENSIONS` (`1536`), `EMBEDDING_MODEL_VERSION` (optional), `WFS_ENABLE_SEMANTIC_RETRIEVAL` (`true`), `WFS_SEMANTIC_CANDIDATE_LIMIT` (`50`), `WFS_SEARCH_CONFIGURATION_VERSION` (`hybrid-search-v1`) |
+| **Calendar, interest & rotation** | `Calendar__TimeZone` (`America/Toronto` in Compose, `UTC` API fallback), `HISTORICAL_INTEREST_ENABLED` (`true`), `HISTORICAL_INTEREST_WEEKS` (`4`), `COOKED_COOLDOWN_WEEKS` (`4`), `DREAMING_ROTATION_ENABLED` (`true`), `DREAMING_CRON_UTC` (`0 6 * * *`) |
+| **Exact recovery** | `Recovery__BackupRoot` (optional absolute path outside `DATA_ROOT` / `RECIPES_ROOT`), `Recovery__WaitSeconds` (`5`, 1–60), `Recovery__MaxFreezeSeconds` (`30`, 1–3600) |
+| **Demo mode** | `DEMO_MODE` (`false`), `DEMO_RESTORE_CRON_UTC` (`0 3 * * *`) |
+| **Workflow tuning** | `WorkflowThrottle__Default` (`5`), `WorkflowThrottle__ExtractRecipe` (`1`), `WorkflowThrottle__GenerateHero` (`1`), `WorkflowThrottle__BackupDatabase` (`1`), `WorkflowThrottle__RestoreDatabase` (`1`), `WorkflowThrottle__DisasterRecovery` (`1`), `WorkflowRetry__MaxRetries` (`10`), `WorkflowRetry__QuietWindowStartHour` (`1`), `WorkflowRetry__QuietWindowEndHour` (`5`) |
+| **Storage & database** | `DATA_ROOT` (`/data` in containers), `RECIPES_ROOT`, `WORKFLOWS_ROOT`, `POSTGRES_USER` (`recipe_app`), `POSTGRES_DB` (`recipe_app_db`), `POSTGRES_PORT` (`5432`), `POSTGRES_CONNECTION_STRING`, `WFS_POSTGRES_DEBUG_PORT` (`5432`) |
+| **PWA** | Runtime: `API_INTERNAL_URL` (`http://api:9001`), `HEARTH_SECRET`, `DEMO_MODE`, `WFS_VERSION`. Build-time (`NEXT_PUBLIC_*`, baked into prebuilt Docker images): `NEXT_PUBLIC_API_BASE_URL` (empty behind Traefik), `NEXT_PUBLIC_COOKIE_DOMAIN`, `NEXT_PUBLIC_ENVIRONMENT`, `NEXT_PUBLIC_DEFAULT_LOCALE` (`en` \| `fr`), `NEXT_PUBLIC_AISLE_ORDER` |
+| **Infrastructure & tunnel** | `WFS_VERSION`, `COMPOSE_FILE`, `CLOUDFLARE_TUNNEL_TOKEN`, `WFS_PROXY_NETWORK` (`cloudflare-proxy`), `WFS_PROXY_ALIAS`, `WFS_HTTP_PORT` (`9100`), `DOMAIN_NAME` (`pwa.wfs.localhost`), `TRAEFIK_HTTP_PORT`, `TRAEFIK_ADMIN_PORT`, `DOCKER_ENDPOINT`, `WFS_REGISTRY`, `TAG` |

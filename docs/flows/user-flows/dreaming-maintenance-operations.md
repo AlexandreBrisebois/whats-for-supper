@@ -22,6 +22,9 @@ sequenceDiagram
     Dreaming->>Dreaming: Process queued maintenance commands
     Dreaming->>Dreaming: Prune completed/skipped commands at least 30 days old
     Dreaming->>Dreaming: Finalize overdue planned and locked recipe meals as cooked
+    Dreaming->>Dreaming: Roll over unchecked grocery extras
+    Dreaming->>Dreaming: Reconcile search sidecars and recipe rotation cooldowns
+    Dreaming->>Dreaming: Materialize recipe search filters
     Dreaming->>DataRoot: Write reports/dreaming-yyyy-MM-dd.md
     Dreaming->>Dreaming: Start next dreaming instance with scheduled root task
     Operator->>DataRoot: Optionally review latest Markdown report

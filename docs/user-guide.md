@@ -16,17 +16,19 @@ The app keeps your whole family on the same page — literally. Whatever anyone 
 
 The home screen brings your household's shared table into focus for tonight — one less thing weighing on you. It tells you what's planned for tonight, how long it takes, and what to do next.
 
-If a recipe is set for tonight, you'll see it front and centre with a **Cook's Mode** button. Tap it to check ingredients and read the instructions. Use the **Step by step** or **All steps** view controls in the recipe header; **All steps** is the default until you save a preference. The app remembers a successfully saved choice for the selected family member. Switching views keeps your ingredient checks and reading position; if saving fails, your current view stays available and you can choose **Retry**.
+If a recipe is set for tonight, you'll see it front and centre with a **Cook** button. Tap it to open Cook's Mode, check ingredients, and read the instructions. Use the **Step by step** or **All steps** view controls in the recipe header; **All steps** is the default until you save a preference. The app remembers a successfully saved choice for the selected family member. Switching views keeps your ingredient checks and reading position; if saving fails, your current view stays available and you can choose **Retry**.
 
 Finishing Cook's Mode records the recipe you cooked. It completes tonight's planned meal only when that same recipe is scheduled for tonight; cooking a different recipe leaves the planned meal unchanged.
 
-If tonight's plan changes, tap **Skip**, choose **Take Out** or another backup, then decide what to do with the planned recipe: move it to tomorrow, save it for next week, or drop it. **Save for Next Week** finds the first open day starting next Monday. If next week is full, the app saves it on the next available later date and tells you where it went. You stay on the page you were using.
+If tonight's plan changes, tap **Change plan**, choose **Take Out** or another backup, then decide what to do with the planned recipe: move it to tomorrow, save it for next week, or drop it. **Save for Next Week** finds the first open day starting next Monday. If next week is full, the app saves it on the next available later date and tells you where it went. You stay on the page you were using.
+
+When you add recipes or trigger background repairs, a **Capture activity** progress bar appears on Home showing items being prepared, indexed, enriched, or needing attention. Tap it to open the activity sheet for step status and quick recovery actions.
 
 Overnight, the app marks missed planned meals from earlier days as cooked so recipe rotation stays useful. Recipe-free supper plans, meals already cooked, and future plans are left alone.
 
 If tonight is set to **Take Out**, **Eating out**, or a custom plan, Home shows the saved plan and any note. Choose **Edit supper plan** to change it. **Mystery night** without a ready suggestion explains availability and keeps the usual choices for finding tonight's supper available without clearing the saved plan just because you opened Home. Choosing **Take Out** explicitly replaces a saved Mystery night after the save succeeds.
 
-If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. Use **Search** to browse your recipe library. On a saved Mystery night, **Suggestions** opens a short stack of up to five recipe suggestions. **Skip** moves to the next suggestion; after the stack, you can search your library or start over.
+If nothing is planned yet, you'll see a few fast choices. If your family has **GOTO recipes** saved, the app randomly picks one to show as your featured fallback. Tap **Make This Tonight** to put it on the menu in one step. Refreshing may show another recipe from your GOTO list. Use the **Recipes** tab to browse or search your recipe library. On a saved Mystery night, **Suggestions** opens a short stack of up to five recipe suggestions. **Skip** moves to the next suggestion; after the stack, you can search your library or start over.
 
 This screen saves you from opening the fridge, staring blankly, and ordering pizza for the third time this week.
 
@@ -36,11 +38,7 @@ This screen saves you from opening the fridge, staring blankly, and ordering piz
 
 Your **GOTO recipes** are the fallback meals everyone accepts — the ones you can make when the plan falls apart. By keeping a list of multiple GOTOs, the app can rotate through them randomly on your home screen, saving you from "fallback fatigue."
 
-Manage your list from **Settings → Family GOTO**. You can see all your active fallback meals, remove ones you're tired of, or add new ones.
-
-To add an existing recipe from your library, choose **Search the Library**, open the recipe, and tap the **star** at the top. When the star is selected, it shows **GOTO** beside it. Tapping the star on other recipes will add them to your rotation rather than replacing the old ones.
-
-If you have a new idea that isn't in your library yet, use **Describe it** or **Capture it** directly from the GOTO Settings card. The app will prepare the recipe in the background and automatically add it to your rotation once it is ready.
+To add or remove a recipe from your GOTO list, open the recipe from the **Recipes** tab (or anywhere else) and tap the **star** at the top of its detail view. When selected, it shows **GOTO** beside it. In the **Recipes** tab, use the **Go-To recipes only** star filter to view your active GOTO collection.
 
 ---
 
@@ -52,7 +50,11 @@ Tap a day to assign or replace a recipe. For an empty day, choose **Other plans*
 
 Tap a saved supper plan to edit it, clear the day, or choose a recipe instead. These plans reserve their days through family voting and finalizing the week, and add no grocery ingredients. Clearing one makes the day available again.
 
-Drag a recipe to a different day if plans change. Dragging it onto a saved supper plan swaps the two days, carrying the plan and its message to the recipe's previous day.
+Drag a recipe to a different day if plans change. Dragging it onto a saved supper plan swaps the two days, carrying the plan and its message to the recipe's previous day. When saving or moving a meal that is already marked cooked to next week, choose whether to **Cook it next week** (clear cooked status) or mark it **Already cooked** (for example, prepped ahead or frozen).
+
+### Portions and scaling
+
+Set your household's default supper size in **Settings → Usual portions** (either automatic based on household size or a custom count). You can also override portions for any individual day in the Planner; ingredient quantities on the **grocery list** and in **Cook's Mode** scale automatically to match.
 
 The **grocery list** lives here too. Check items off as you shop — your partner's phone updates live, so you won't both come home with two bags of onions.
 
@@ -88,47 +90,37 @@ Turning **Ask the Family** off keeps a recipe off until you turn it on. Turning 
 
 ### Quick Votes
 
-If your recipe collection is large, turn on **Quick Votes** in **Settings** (directly below **Pass the phone**). This setting applies to everyone in the family and defaults to **16** likes (any whole number of `1` or higher). Swiping in **Discovery** stays counter-free, then shows a calm **"Your picks are in!"** check-in once you reach your target likes while cards remain. From there you can tap **Keep voting** to continue with the next card, **Pass the phone** or **Nudge family** when available, or leave anytime. Returning to **Discovery** later starts a fresh turn right away.
+If your recipe collection is large, turn on **Quick Votes** in **Settings** (directly below **Usual portions**). This setting applies to everyone in the family and defaults to **16** likes (any whole number of `1` or higher). Swiping in **Discovery** stays counter-free, then shows a calm **"Your picks are in!"** check-in once you reach your target likes while cards remain. From there you can tap **Keep voting** to continue with the next card, **Pass the phone** or **Nudge family** when available, or leave anytime. Returning to **Discovery** later starts a fresh turn right away.
 
 ### Voting on one phone
 
-If kids or other family members vote on your phone, turn on **Pass the phone** in **Settings** (just below **Manage Family**). It only turns on for that device. After you finish your stack on **Discovery**, tap **Pass the phone**, choose who votes next, and confirm the handoff screen before handing over the phone. While it is their turn, bottom navigation tucks away into a quiet turn bar so they stay inside Discovery until you tap **← Back to …** to return to your profile and save their votes.
+If kids or other family members vote on your phone, turn on **Pass the phone** in **Settings** (below **Quick Votes**). It only turns on for that device. After you finish your stack on **Discovery**, tap **Pass the phone**, choose who votes next, and confirm the handoff screen before handing over the phone. While it is their turn, bottom navigation tucks away into a quiet turn bar so they stay inside Discovery until you tap **← Back to …** to return to your profile and save their votes.
+
+When enough family votes converge for the week, the center **Discovery** tab turns green and reads **Menu's in** — tapping it takes you straight to that week in the **Planner**.
 
 Discovery saves you from the "I don't know, what do _you_ want?" loop that ends in cereal.
 
 ---
 
-## Searching Your Library
+## Browsing and Searching Your Recipes
 
-When you know exactly what you're looking for, or have a specific craving, use the **Search** tab.
+The **Recipes** tab brings browsing and searching together in one place.
 
-Search by a recipe name, ingredient, or short phrase. The app searches saved recipe text and can also use semantic matching when that service is enabled and available. If semantic matching is unavailable, text search still works. Results depend on your library and its search index; a match is not guaranteed.
+Choose the recipe-card stack or the scrollable recipe list using the view controls at the top, and toggle the **All / Discovery** or **Go-To** controls to focus on voting candidates or family favourites. A successfully saved view choice is remembered for the selected family member.
 
-Opening Search from the planner keeps the day you're choosing for. Typed searches, active filters and **Find similar** keep their search or similarity order: ratings, family votes, past interest and already-planned meals do not move a recipe up or down. With no search words, Focus choices or filters, Search instead offers library suggestions that can use household preferences and cooking history.
+When you know what you're looking for, or have a specific craving, expand **Search** inside the **Recipes** tab. Search by recipe name, ingredient, or short phrase. The app searches saved recipe text and uses Gemini semantic matching alongside keyword matching. If semantic matching is unavailable, text search still works. Results depend on your library and its search index; a match is not guaranteed.
+
+Opening **Recipes** from the planner keeps the day you're choosing for. Typed searches, active filters and **Find similar** keep their search or similarity order: ratings, family votes, past interest and already-planned meals do not move a recipe up or down. With no search words, Focus choices or filters, Search instead offers library suggestions that can use household preferences and cooking history.
 
 Use the **Vegetarian** filter to find recipes that WFS has confirmed as vegetarian. It is a recipe classification, not nutritional or dietetic advice.
 
 Open **Filters** for choices such as **Quick**, **Family Favorite** and **Never Tried**, with more choices under **More filters**. You can also choose a meal type, a Focus such as fish or pasta, and available cuisines. Focus choices guide matching rather than guaranteeing an ingredient. Choose **Apply filters** to search, or close the chooser to discard your changes. **Clear filters** keeps your search words.
 
-Tap any search result to open its recipe detail view. From there you can cook it tonight, plan it for later, find similar recipes, edit notes, or tap the **star** to add it to your family's GOTO list.
+Tap any recipe to open its detail view. From there you can cook it tonight, plan it for later, find similar recipes, edit notes, **Original portions**, **Time (minutes)**, or meal types, or tap the **star** to add it to your family's GOTO list.
 
-When Search receives a library update, it refreshes your current results automatically so newly available recipes can appear. Your search words, filters, similar-recipe choice and planner day stay selected. If loading fails, choose **Retry** to try the same search again; an error does not mean your library is empty. More results load as you scroll. If the next page fails, use **Load more**; if that search has expired, choose **Restart search**.
+When Recipes receives a library update, it refreshes your current results automatically so newly available recipes can appear. Your search words, filters, similar-recipe choice and planner day stay selected. If loading fails, choose **Retry** to try the same search again; an error does not mean your library is empty. More results load as you scroll. If the next page fails, use **Load more**; if that search has expired, choose **Restart search**.
 
-Search saves you from the "I don't know, what do _you_ want?" loop that ends in cereal.
-
----
-
-## Browsing Your Library
-
-Sometimes you don't know what you want, but you want to be inspired by what you already have. Tap **Browse Library** on the Home screen to enter a full-screen, immersive experience.
-
-Choose the recipe-card stack or the scrollable recipe list using the view controls at the top. A successfully saved choice is remembered for the selected family member. The library helps you rediscover recipes you haven't cooked in a while.
-
-Tap a recipe to see its details. Use the **All / Discovery** control to show the whole library or only recipes marked for Discovery. This library filter does not mean every displayed recipe is currently eligible for your voting queue.
-
-The recipe detail view also has the same **GOTO star** at the top, so you can add a rediscovered favourite to your rotation without going back through Settings.
-
-Browsing saves you from the "we always eat the same three things" rut.
+Recipes saves you from both the "we always eat the same three things" rut and the "I don't know, what do _you_ want?" loop.
 
 ---
 
@@ -156,11 +148,11 @@ Use one PDF containing **one recipe**, up to **20 MiB** and **10 pages**. All pa
 - **Android:** install What's for Supper from your household's HTTPS address. In any app that can share a PDF, choose **Share → What's for Supper**. You can also choose the PDF through capture's file picker. After an application update, the installed app may need its installation metadata refreshed or to be reinstalled before it appears as a PDF share target.
 - **iPhone/iPad:** open capture and use the file picker. iOS PDF sharing through a native share extension is not supported.
 
-Review the filename, choose a rating if you want, add notes, and tap **Save**. PDF confirmation has no cooked-dish photo choice and no Cancel button. Acceptance takes you Home while preparation continues. Saving adds the recipe to the shared household library; it does not vote for it, plan a meal, or add groceries. Family GOTO capture excludes PDFs.
+Review the filename, choose a rating if you want, add notes, and tap **Save**. PDF confirmation has no cooked-dish photo choice and no Cancel button. Acceptance takes you Home while preparation continues. Saving adds the recipe to the shared household library; it does not vote for it, plan a meal, or add groceries.
 
 Keep capture open while choosing and saving. Leaving, interrupting the app, unlocking, or changing the selected member clears the unsaved selection, rating and notes. Choose or share the PDF again to restart. A new Android share replaces the previous unsaved PDF. A job already submitted continues even if you leave, switch member or receive another share. If an interrupted upload leaves you unsure whether Save succeeded, check your library and Settings before trying again; retrying an uncertain upload can create another recipe. Unlocking does not recover the shared file; share it again after selecting your member.
 
-Corrupt, encrypted and unsupported documents can be accepted for preparation and then fail. Open **Settings → failed imports** and use the existing **Retry** or **Delete** actions. Retry uses the retained source and can fail again for an invalid PDF. Failed imports are retained until you delete them. A completed recipe's **View original** shows the rendered pages in order. The retained PDF is internal and is not offered as a download.
+Corrupt, encrypted and unsupported documents can be accepted for preparation and then fail. Open **Settings → Failed Captures** and use the existing **Retry** or **Delete** actions. Retry uses the retained source and can fail again for an invalid PDF. Failed imports are retained until you delete them. A completed recipe's **View original** shows the rendered pages in order. The retained PDF is internal and is not offered as a download.
 
 ---
 
@@ -199,6 +191,21 @@ If re-import cannot finish, your report stays saved. Add or change a detail and 
 If an import fails before it creates a usable recipe, open **Settings → Failed Captures** to see the friendly reason and retry it when you are ready. When a recipe-level re-import fails, the issue sheet shows the failure details and an import ID that can help an administrator investigate; it does not expose technical diagnostics in the normal family experience.
 
 In **Cook's Mode**, use the flag in the recipe header while viewing ingredients or steps to open this same reporting flow. Check the result later from the recipe detail screen.
+
+---
+
+## Profile, Preferences, and Search Index
+
+Open the **Profile** tab to switch the active family member, change **Language** (English or French), or toggle **Contrast** (Standard or High contrast).
+
+Tap the gear icon on **Profile** to open **Settings**, which contains:
+
+1. **Manage Family** — add or remove household members.
+2. **Usual portions** — set the default household portion count.
+3. **Quick Votes** — configure Discovery voting round targets.
+4. **Pass the phone** — opt this device into handoff turns during Discovery.
+5. **Search index** — inspect searchable and smart-search-enriched recipe counts, and run **Index missing recipes** or **Rebuild full search index** in the background without interrupting keyword search.
+6. **Failed Captures** — review, retry, or delete failed recipe imports.
 
 ---
 

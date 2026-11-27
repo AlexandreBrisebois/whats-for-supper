@@ -4,10 +4,12 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RecipeApi.Data;
 using RecipeApi.Dto;
 using RecipeApi.Models;
 using RecipeApi.Infrastructure;
+using RecipeApi.Services.Ai;
 
 namespace RecipeApi.Services;
 
@@ -22,10 +24,17 @@ public sealed record StructuredRecipeExport(Guid RecipeId, StructuredRecipeConte
 
 public sealed record StructuredRecipeWriteResult(StructuredRecipeContent Content, IReadOnlyDictionary<string, Guid> CreatedIds);
 
-public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, IClock clock, SupperProjectionInvalidation invalidation, FoodVocabularyStore vocabulary, IValidationService? validation = null)
+public sealed partial class StructuredRecipeContentStore(
+    RecipeDbContext db,
+    IClock clock,
+    SupperProjectionInvalidation invalidation,
+    FoodVocabularyStore vocabulary,
+    IValidationService? validation = null,
+    IOptions<GeminiOptions>? geminiOptions = null)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private static readonly string[] ProtectedFacts = ["description", "amount", "amountText", "unit", "scaling", "package", "shopping"];
+    private readonly GeminiOptions _geminiOptions = geminiOptions?.Value ?? GeminiOptions.FromConfiguration();
 
     public static string InspectContentRevision(Recipe recipe) => Read(recipe)?.ContentRevision ?? RecipeContentRevision.Legacy(recipe);
     public static string InspectSourceRevision(Recipe recipe) => Read(recipe)?.SourceRevision ?? "source." + Hash(new { recipe.SourceUrl, Source = NormalizeJson(recipe.RawMetadata) });
@@ -427,8 +436,21 @@ public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, ICl
         // description. Its numeric source span must never acquire a capacity.
         return string.IsNullOrEmpty(row.Description) ? text : DeclaredPackagePresentation.Append(text, row.Package);
     }
-    internal static string? Format(GroceryQuantity? value) => value is null ? null : value.Kind == "scalar" ? Scalar(value.Value!) : $"{Scalar(value.Min!)}–{Scalar(value.Max!)}";
+    internal static string? Format(GroceryQuantity? value) => value is null ? null : value.Kind == "scalar" ? MixedScalar(value.Value!) : $"{MixedScalar(value.Min!)}–{MixedScalar(value.Max!)}";
+    internal static string? FormatRaw(GroceryQuantity? value) => value is null ? null : value.Kind == "scalar" ? Scalar(value.Value!) : $"{Scalar(value.Min!)}–{Scalar(value.Max!)}";
     private static string Scalar(GroceryRational value) => value.D == "1" ? value.N : $"{value.N}/{value.D}";
+    private static string MixedScalar(GroceryRational value)
+    {
+        var n = System.Numerics.BigInteger.Parse(value.N, System.Globalization.CultureInfo.InvariantCulture);
+        var d = System.Numerics.BigInteger.Parse(value.D, System.Globalization.CultureInfo.InvariantCulture);
+        var gcd = System.Numerics.BigInteger.GreatestCommonDivisor(n, d);
+        n /= gcd;
+        d /= gcd;
+        var whole = System.Numerics.BigInteger.DivRem(n, d, out var rem);
+        if (rem.IsZero) return whole.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (whole.IsZero) return $"{rem.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{d.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        return $"{whole.ToString(System.Globalization.CultureInfo.InvariantCulture)} {rem.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{d.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+    }
     private static string NewRevision() => Guid.NewGuid().ToString("N");
     private static void RequireOperation(Guid id) { if (id == Guid.Empty) throw new ArgumentException("Operation ID is required."); }
     private static RecipeContentConflictException Conflict(Recipe recipe) => new(InspectContentRevision(recipe), false);
@@ -455,7 +477,7 @@ public sealed partial class StructuredRecipeContentStore(RecipeDbContext db, ICl
             SearchMetadata = "{}",
             IndexStatus = "pending",
             EmbeddingStatus = "pending",
-            EmbeddingModel = Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2",
+            EmbeddingModel = _geminiOptions.EmbeddingModelId,
             SchemaVersion = RecipeSearchDocumentBuilder.CurrentSchemaVersion
         });
         else { sidecar.IndexStatus = "pending"; sidecar.EmbeddingStatus = "pending"; sidecar.EmbeddingFingerprint = null; }

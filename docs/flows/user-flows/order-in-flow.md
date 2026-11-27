@@ -34,21 +34,18 @@ sequenceDiagram
     SRD->>HCC: onAction('tomorrow' | 'next_week' | 'drop')
 
     alt action === 'tomorrow'
-        HCC->>API: POST /api/schedule/move { intent: 'push', fromIndex: today, toIndex: today+1 }
+        HCC->>API: POST /api/schedule/move { intent: 'tomorrow', fromIndex: today, toIndex: today+1 }
     else action === 'next_week'
-        HCC->>API: POST /api/schedule/defer { sourceDate: today, recipeId }
+        HCC->>API: POST /api/schedule/move { intent: 'defer', sourceDate: today, recipeId }
         API-->>HCC: final scheduled date and message
     else action === 'drop'
         HCC->>API: DELETE /api/schedule/day/{date}/remove
     end
 
-    HCC->>API: POST /api/schedule/day/{date}/validate { status: 3 }
+    HCC->>API: POST /api/schedule/day/{date}/validate { status: 3, nonCookingKind: 'order_in' }
     API-->>HCC: 200 OK
 
-    HCC->>HCC: setIsSkipped(true), setSessionDone(true)
-    HCC->>HCC: setShowRecovery(false)
-
-    Note over HCC: TonightMenuCard unmounts.<br/>TonightPivotCard renders (pivot shown for rest of session).
+    Note over HCC: todayStore updates status=3 + nonCooking.<br/>TonightMenuCard renders the saved Take Out plan.
 
     Note over HCC: On page reload — see Scenario C
 ```
@@ -75,12 +72,10 @@ sequenceDiagram
 
     Note over HCC: currentRecipe === null<br/>No SkipRecoveryDialog opened.<br/>No recipe to rescue.
 
-    HCC->>API: POST /api/schedule/day/{date}/validate { status: 3 }
+    HCC->>API: POST /api/schedule/day/{date}/validate { status: 3, nonCookingKind: 'order_in' }
     API-->>HCC: 200 OK
 
-    HCC->>HCC: setIsSkipped(true), setSessionDone(true)
-
-    Note over HCC: "Take Out" success state shown.<br/>TonightPivotCard remains visible<br/>(isSkipped=true, sessionDone=true).
+    Note over HCC: todayStore updates status=3 + nonCooking.<br/>Saved Take Out state renders on TonightMenuCard.
 
     Note over HCC: On page reload — see Scenario C
 ```
@@ -116,13 +111,13 @@ sequenceDiagram
     ScheduleAPI-->>HCC: ScheduleDays
 
     alt todaysEntry.status === 2 (Cooked)
-        HCC->>HCC: setIsCooked(true), setSessionDone(true)
-    else todaysEntry.status === 3 (Skipped / Take Out)
-        HCC->>HCC: setIsSkipped(true), setSessionDone(true)
+        HCC->>Store: init(..., status=2)
+    else todaysEntry.status === 3 (Non-cooking / Take Out)
+        HCC->>Store: init(..., status=3, nonCooking)
     else todaysEntry has a recipe
-        HCC->>HCC: setCurrentRecipe(recipe)
+        HCC->>Store: init(recipe, status=0)
     else no recipe
-        HCC->>HCC: setCurrentRecipe(null)
+        HCC->>Store: init(null, status=0)
     end
 
     Note over HCC: Render decision — see state table below
@@ -132,13 +127,12 @@ sequenceDiagram
 
 ## State Decision Table
 
-What `HomeCommandCenter` renders for each `todayStatus` value after the client-side reconcile completes.
+What `HomeCommandCenter` renders for each `todayStatus` value via `todayStore`:
 
-| `todaysEntry.status`          | `isSkipped` | `isCooked` | `sessionDone` | Card shown                                                            |
-| ----------------------------- | ----------- | ---------- | ------------- | --------------------------------------------------------------------- |
-| `0` — Draft (recipe assigned) | `false`     | `false`    | `false`       | **TonightMenuCard**                                                   |
-| `0` — Draft (no recipe)       | `false`     | `false`    | `false`       | **TonightPivotCard**                                                  |
-| `2` — Cooked                  | `false`     | `true`     | `true`        | **CookedSuccessCard**                                                 |
-| `3` — Skipped / Take Out      | `true`      | `false`    | `true`        | **TonightPivotCard** (done state — pivot visible but session is over) |
-
-> **Why TonightPivotCard for status 3?** The render condition is `(!currentRecipe || isSkipped || sessionDone) && !isCooked`. When `isSkipped=true` and `sessionDone=true`, the pivot card renders but the user has already acted — no further action is expected this session. On reload, the same state is re-derived from the API, so the pivot card is shown in its neutral state (no "Take Out" toast, just the card).
+| `todaysEntry.status`          | `nonCooking`        | Card shown                                                         |
+| ----------------------------- | ------------------- | ------------------------------------------------------------------ |
+| `0` — Draft (recipe assigned) | `null`              | **TonightMenuCard** (planned recipe)                               |
+| `0` — Draft (no recipe)       | `null`              | **TonightPivotCard** (empty / Go-To prompt)                        |
+| `2` — Cooked                  | `null`              | **CookedSuccessCard**                                              |
+| `3` — Non-cooking plan        | `order_in` / etc.   | **TonightMenuCard** (saved non-cooking plan + `Edit supper plan`)  |
+| `3` — Mystery night (empty)   | `mystery`           | **TonightPivotCard** (saved Mystery night without ready suggestion)|

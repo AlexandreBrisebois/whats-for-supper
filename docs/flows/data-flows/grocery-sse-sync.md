@@ -40,9 +40,9 @@ This happens on one device too with rapid successive taps: two async handlers in
 ### API contract
 
 ```
-PATCH /api/schedule/{weekOffset}/grocery/item
-Body: { "ingredientName": "Carrots", "checked": true }
-Response: 204 No Content
+PATCH /api/schedule/{weekOffset}/grocery/item[?referenceWeekStartDate=YYYY-MM-DD]
+Body: GroceryItemMutationDto
+Response: 200 OK { data: GroceryMutationResult }
 ```
 
 Each tap is one atomic operation. The server owns the merge.
@@ -55,17 +55,15 @@ Body: { "Carrots": true, "Onions": false, ... }
 Response: 200 { data: { ... } }
 ```
 
-### Server merge (ScheduleService.ToggleGroceryItemAsync)
+### Server merge (`ScheduleService.MutateGroceryItemAsync`)
 
 ```csharp
-var current = Deserialize(weekPlan.GroceryState) ?? new Dictionary<string, bool>();
-current[ingredientName] = checked_;          // single key merge
-weekPlan.GroceryState = Serialize(current);
-await _dbContext.SaveChangesAsync();
-await _publisher.PublishGroceryUpdatedAsync(weekOffset, current, excludeConnectionId);
+// ScheduleService.MutateGroceryItemAsync merges the item mutation into
+// the week's persisted grocery state, increments GroceryListVersion,
+// records GroceryMutationOutcome, and broadcasts via SseEventPublisher.
 ```
 
-The server reads the current persisted state, sets exactly one key, writes back, and broadcasts the full merged map. The database row is the serialisation point — no client can corrupt another client's toggle regardless of arrival order.
+The server reads the current persisted state, applies the single item mutation, writes back, and broadcasts the merged grocery snapshot. The database row is the serialisation point — no client can corrupt another client's toggle regardless of arrival order.
 
 ### Client (GroceryList.handleToggle)
 
@@ -88,13 +86,18 @@ After every per-item toggle, the server publishes:
 {
   "type": "grocery_updated",
   "weekOffset": 0,
-  "groceryState": { "Carrots": true, "Onions": true }
+  "weekStartDate": "2026-11-23",
+  "groceryListVersion": 4,
+  "groceryState": { "Carrots": true, "Onions": true },
+  "groceryItems": [...],
+  "presentationVersion": 2,
+  "presentationEpoch": "..."
 }
 ```
 
-The full merged state is sent (not a delta). All connected clients call `plannerStore.setGroceryState(groceryState)`. Idempotent — applying the same state twice produces no visual change.
+The merged snapshot is sent (not a single-key delta). Connected clients handle `grocery_updated` in `useScheduleStream.ts` via `useWeekStore.getState().applyGrocerySnapshot(payload)` followed by `refreshGroceries()`.
 
-The originating client receives their own echo (no `X-SSE-Connection-ID` suppression — `schedule.ts` uses raw `fetch` which bypasses `HearthAuthProvider`). The echo is harmless: it confirms a state the client already has.
+`pwa/src/lib/api/schedule.ts` calls the generated Kiota `apiClient` (`apiClient.api.schedule.byWeekOffset(offset).grocery.item.patch`), so `HearthAuthProvider` handles auth and connection headers consistently.
 
 ---
 
@@ -108,19 +111,19 @@ This contrasts with the planner move, where the echoed `week_updated` snapshot c
 
 ## SSE event table
 
-| Event             | Payload                        | Trigger                                   | Store updated               |
-| ----------------- | ------------------------------ | ----------------------------------------- | --------------------------- |
-| `grocery_updated` | `{ weekOffset, groceryState }` | `PATCH /grocery/item` or `PATCH /grocery` | `plannerStore.groceryState` |
+| Event             | Payload                                                                                       | Trigger                                   | Store updated                                        |
+| ----------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------- |
+| `grocery_updated` | `{ weekOffset, weekStartDate, groceryListVersion, groceryState, groceryItems, presentation* }` | `PATCH /grocery/item` or `PATCH /grocery` | `weekStore.applyGrocerySnapshot` + `refreshGroceries` |
 
 ---
 
 ## Files
 
-| File                                                  | Change                                                                            |
+| File                                                  | Role                                                                              |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `specs/openapi.yaml`                                  | Added `PATCH /api/schedule/{weekOffset}/grocery/item`                             |
-| `api/src/RecipeApi/Dto/ToggleGroceryItemDto.cs`       | New DTO: `IngredientName`, `Checked`                                              |
-| `api/src/RecipeApi/Controllers/ScheduleController.cs` | New `ToggleGroceryItem` action                                                    |
-| `api/src/RecipeApi/Services/ScheduleService.cs`       | New `ToggleGroceryItemAsync` — server-side merge                                  |
-| `pwa/src/lib/api/schedule.ts`                         | New `toggleGroceryItem` — replaces `updateGroceryState` for per-tap calls         |
-| `pwa/src/components/planner/GroceryList.tsx`          | `handleToggle` calls `toggleGroceryItem` instead of full-map `updateGroceryState` |
+| `specs/openapi.yaml`                                  | Defines `PATCH /api/schedule/{weekOffset}/grocery/item` and `GroceryMutationResult` |
+| `api/src/RecipeApi/Dto/ScheduleDtos.cs`               | `GroceryItemMutationDto` and `GroceryMutationResult`                              |
+| `api/src/RecipeApi/Controllers/ScheduleController.cs` | Grocery item mutation endpoint                                                    |
+| `api/src/RecipeApi/Services/ScheduleService.cs`       | `MutateGroceryItemAsync` — server-side merge & presentation version tracking      |
+| `pwa/src/lib/api/schedule.ts`                         | Uses Kiota `apiClient.api.schedule.byWeekOffset(...).grocery.item.patch`          |
+| `pwa/src/hooks/useScheduleStream.ts`                  | Handles `grocery_updated` via `weekStore.applyGrocerySnapshot` & `refreshGroceries` |

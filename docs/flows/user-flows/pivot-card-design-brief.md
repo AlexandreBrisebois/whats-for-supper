@@ -1,5 +1,7 @@
 # Design Brief — TonightPivotCard
 
+> **Historical design brief (archived context):** Written before `todayStore`, the retirement of the standalone Go-To settings/browse link (`/browse-all-stack`), and the rename of `"Order In"` to `"Take Out"`. Kept for historical rationale only.
+
 **Persona:** The Mère-Designer
 **Component:** `pwa/src/components/home/TonightPivotCard.tsx`
 **Trigger:** User request for ideas to make the pivot card look better.

@@ -2,7 +2,7 @@
 # Select an overlay through COMPOSE_FILE in .env (see .env.example).
 services:
   traefik:
-    image: traefik:v3.7
+    image: traefik:v3.7.19
     restart: unless-stopped
     command:
       - --entrypoints.web.address=:80
@@ -23,7 +23,7 @@ services:
       HEARTH_SECRET: ${HEARTH_SECRET:?HEARTH_SECRET must be set}
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
         required: true
     networks:
       - edge
@@ -46,10 +46,23 @@ services:
       HEARTH_SECRET: ${HEARTH_SECRET:?HEARTH_SECRET must be set}
       ELEVATED_ACTIONS_PIN: ${ELEVATED_ACTIONS_PIN:?ELEVATED_ACTIONS_PIN must be set}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY must be set}
-      GEMINI_MODEL_ID: ${GEMINI_MODEL_ID}
-      GEMINI_MODEL_ID_HERO: ${GEMINI_MODEL_ID_HERO}
-      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID}
+      GEMINI_MODEL_ID: ${GEMINI_MODEL_ID:-gemini-3.8-flash}
+      GEMINI_MODEL_ID_HERO: ${GEMINI_MODEL_ID_HERO:-models/gemini-3-pro-image}
+      GEMINI_ENDPOINT: ${GEMINI_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      GEMINI_MAX_OUTPUT_TOKENS: ${GEMINI_MAX_OUTPUT_TOKENS:-16384}
+      IMPORT_TARGET_LANGUAGE: ${IMPORT_TARGET_LANGUAGE:-NONE}
+      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-gemini-embedding-2}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
+      EMBEDDING_MODEL_VERSION: ${EMBEDDING_MODEL_VERSION:-}
+      WFS_ENABLE_SEMANTIC_RETRIEVAL: ${WFS_ENABLE_SEMANTIC_RETRIEVAL:-true}
+      WFS_SEMANTIC_CANDIDATE_LIMIT: ${WFS_SEMANTIC_CANDIDATE_LIMIT:-50}
+      WFS_SEARCH_CONFIGURATION_VERSION: ${WFS_SEARCH_CONFIGURATION_VERSION:-hybrid-search-v1}
+      DREAMING_CRON_UTC: "${DREAMING_CRON_UTC:-0 6 * * *}"
       DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_RESTORE_CRON_UTC: "${DEMO_RESTORE_CRON_UTC:-0 3 * * *}"
+      Recovery__BackupRoot: ${Recovery__BackupRoot:-}
+      Recovery__WaitSeconds: ${Recovery__WaitSeconds:-5}
+      Recovery__MaxFreezeSeconds: ${Recovery__MaxFreezeSeconds:-30}
     volumes:
       - ./data/app:/data
     depends_on:
@@ -59,6 +72,12 @@ services:
       migration:
         condition: service_completed_successfully
         required: true
+    healthcheck:
+      test: ["CMD", "dotnet", "/app/RecipeApi.dll", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - edge
       - internal
@@ -87,7 +106,7 @@ services:
       - internal
 
   postgres:
-    image: pgvector/pgvector:pg18-trixie
+    image: pgvector/pgvector:0.8.7-pg18-trixie
     restart: unless-stopped
     environment:
       POSTGRES_USER: recipe_app

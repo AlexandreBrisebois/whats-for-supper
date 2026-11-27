@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RecipeApi.Data;
 using RecipeApi.Infrastructure;
 using RecipeApi.Models;
+using RecipeApi.Services.Ai;
 using RecipeApi.Workflow;
 
 namespace RecipeApi.Services;
@@ -15,12 +17,13 @@ public class SearchIndexWorkflow(
     ISearchTelemetry? telemetry = null,
     IRecipeSearchDocumentBuilder? documentBuilder = null,
     DemoModeOptions? demoMode = null,
-    IScheduleEventPublisher? publisher = null) : IWorkflowProcessor
+    IScheduleEventPublisher? publisher = null,
+    IOptions<GeminiOptions>? geminiOptions = null) : IWorkflowProcessor
 {
     public string ProcessorName => "IndexRecipeSearch";
 
-    private static readonly string EmbeddingModelId =
-        Environment.GetEnvironmentVariable("EMBEDDING_MODEL_ID") ?? "gemini-embedding-2";
+    private readonly GeminiOptions _geminiOptions =
+        geminiOptions?.Value ?? GeminiOptions.FromConfiguration();
 
     /// <summary>
     /// Implementation of IWorkflowProcessor. Picked up by the WorkflowWorker.
@@ -154,7 +157,7 @@ public class SearchIndexWorkflow(
                 }
                 doc.Embedding = vector;
                 doc.EmbeddingFingerprint = currentFingerprint;
-                doc.EmbeddingModel = EmbeddingModelId;
+                doc.EmbeddingModel = _geminiOptions.EmbeddingModelId;
                 doc.EmbeddingStatus = "ready";
             }
             else

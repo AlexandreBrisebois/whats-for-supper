@@ -5,13 +5,7 @@ cycle.
 
 ## Key design decision
 
-Ready status is **not stored as an explicit field**. It is a computed property:
-
-```
-ready = Name != null/empty  AND  (ImageCount > 0  OR  IsSynthesized = true)
-```
-
-`recipe.info` stores both `Name` and `ImageCount`, so ready status is **fully reconstructable from disk** after a restore.
+Ready status is persisted on PostgreSQL `recipes.is_ready` (`Recipe.IsReady`) and mirrored in `recipe.info` (`isReady`) when `RecipeReadyProcessor` completes. On restore, if `isReady` is present (or can be reconstructed from `Name` + `ImageCount > 0` / `IsSynthesized = true`), the database row restores cleanly from disk.
 
 `recipe.info` retains the recipe facts WFS owns, including ingredients, cuisine,
 meal types, and confirmed vegetarian-classifier metadata. Nutritional and
@@ -62,7 +56,7 @@ flowchart TD
     H -->|No| I[INSERT Recipe from current WFS fields]
     H -->|Yes| J[UPDATE Recipe metadata from current WFS fields]
 
-    I --> K([Ready status recomputed\nfrom Name + ImageCount])
+    I --> K([Ready status restored from\nrecipe.info / Name + ImageCount])
     J --> K
 ```
 

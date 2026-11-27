@@ -19,7 +19,7 @@ Every search path — normal typed search and Find Similar — flows through the
 
 The implementation is staged:
 
-1. Canonical document indexing (`SearchIndexWorkflow`, `recipe_search_documents` table)
+1. Structured search document indexing (`SearchIndexWorkflow`, `recipe_search_documents` table)
 2. Bounded PostgreSQL lexical retrieval
 3. Optional pgvector retrieval fused with lexical candidates
 4. Planner-aware and family-fit reranking
@@ -35,7 +35,7 @@ That sequence keeps the product shippable at every step.
 flowchart TD
     A[POST /api/recipes/search] --> B[Validate + clamp limit: default 12, minimum 1, maximum 50]
     B --> C[Apply eligibility and hard filters]
-    C --> E[Bounded PostgreSQL lexical retrieval from canonical documents]
+    C --> E[Bounded PostgreSQL lexical retrieval from search documents]
     C --> E2[Optional vector retrieval if index ready — 300 ms budget]
     E --> F
     E2 --> F
@@ -49,7 +49,7 @@ flowchart TD
 ### Retrieval: database lexical
 
 PostgreSQL applies eligibility and hard predicates before `pg_trgm` matching on
-the canonical `recipe_search_documents.document_text`, ranks with
+the published `recipe_search_documents.document_text`, ranks with
 `word_similarity`, and returns no more than the configured candidate limit.
 The service never materializes all eligible recipes for a non-empty lexical
 query. Empty-query browse uses its own bounded database ordering and does not
@@ -76,6 +76,7 @@ When the source embedding is missing, incompatible, or semantic retrieval fails,
 
 | Value              | Meaning                                                               |
 | ------------------ | --------------------------------------------------------------------- |
+| `browse`           | Empty-query browse ordering (no lexical or vector search)             |
 | `lexical-only`     | No vector retrieval attempted (no embeddings configured or available) |
 | `hybrid`           | Both lexical and vector candidates contributed                        |
 | `fallback-lexical` | Vector retrieval timed out or failed; lexical results served          |
@@ -84,18 +85,9 @@ When the source embedding is missing, incompatible, or semantic retrieval fails,
 
 ## Ranking: Score Modifiers
 
-All score constants are named constants in `RecipeSearchService` — not magic numbers.
+Explicit typed/concept searches preserve retrieval order without rating, vote, historical-interest, or planner-preference boosts.
 
-### Family-fit modifiers (normal searches only)
-
-| Signal                                | Modifier                       | Constant                         |
-| ------------------------------------- | ------------------------------ | -------------------------------- |
-| `rating == 3` (Love)                  | `+0.15`                        | `BoostLove`                      |
-| `rating == 2` (Like)                  | `+0.08`                        | `BoostLike`                      |
-| `rating == 1` (Dislike)               | `−0.10`                        | `BoostDislike`                   |
-| Positive discovery votes (normalised) | `+min(0.15, voteCount × 0.05)` | `BoostVotesMax / BoostVotesRate` |
-
-### Planner-aware modifier (when `weekOffset` is provided)
+### Planner-aware modifier (Discovery / empty search with `weekOffset`)
 
 | Signal                                       | Modifier                                                |
 | -------------------------------------------- | ------------------------------------------------------- |
@@ -109,30 +101,20 @@ Every active modifier appears as a `RecipeSearchReasonDto` entry in the result's
 
 ---
 
----
-
 ## Search Document Indexing
 
 ### `source_fingerprint` definition
 
-The fingerprint is the SHA-256 hex digest of the following canonical JSON string (fields sorted alphabetically, values as JSON):
+`SearchFingerprintService` computes the SHA-256 hex digest of:
 
-```json
-{
-  "category": "<value or null>",
-  "description": "<value or null>",
-  "difficulty": "<value or null>",
-  "ingredients": ["<sorted array of strings>"],
-  "isDiscoverable": true,
-  "name": "<value>",
-  "notes": "<value or null>",
-  "rating": 0,
-  "recipeId": "<uuid>",
-  "totalTime": "<value or null>"
-}
+```text
+recipe-search-document
+<content.SchemaVersion>
+<content.DocumentText>
+<content.SearchMetadata>
 ```
 
-This exact field set and sort order is the single source of truth, implemented in `SearchFingerprintService`. Any deviation produces an incompatible fingerprint and a silent correctness bug.
+This single implementation in `SearchFingerprintService` is the source of truth; never duplicate fingerprint calculation elsewhere.
 
 ### Index enqueue trigger points
 
@@ -302,47 +284,15 @@ flowchart TD
 
 ---
 
-## Failed Capture Persistence And Retry
+## Capture Activity, Failure Persistence, And Retry
 
-```mermaid
-flowchart TD
-    A[Capture workflow fails] --> B[CaptureFailureReasonMapper maps to friendlyReason + failureCode]
-    A --> C[Preserve technicalReason]
-    B --> D[INSERT capture_failures — status: failed]
-    C --> D
-    D --> E[GET /api/captures/failures returns items where status != resolved]
-    E --> F[Settings UI shows queue]
-    F --> G[POST /api/captures/failures/id/retry]
-    G --> H{status == retrying?}
-    H -->|Yes| I[HTTP 409 — ALREADY_RETRYING]
-    H -->|No| J[Atomic CAS: UPDATE ... WHERE status = failed RETURNING id]
-    J --> K[Validate photoIds in retry_payload still exist on disk]
-    K --> L{payload_version supported?}
-    L -->|No| M[HTTP 422 — payload version unsupported]
-    L -->|Yes| N[Re-enqueue original capture workflow]
-    N --> O[HTTP 202 — queued: true]
-    O --> P{Workflow outcome}
-    P -->|Success| Q[Set status = resolved — no longer returned by GET]
-    P -->|Failure| R[retry_count + 1, last_failed_at updated, status back to failed]
-```
+Failed and active captures are backed directly by `WorkflowInstances` and `CaptureFailureService` (`CapturesController.cs`), rather than a separate `capture_failures` table:
 
-### Retry idempotency
-
-The `status = retrying` guard is a single `UPDATE … WHERE status = 'failed' RETURNING id` — not a read-then-write. Two concurrent taps of the Retry button produce exactly one workflow enqueue.
-
-### `retry_payload` versioning
-
-```json
-{
-  "version": 1,
-  "sourceType": "url | photos | describe",
-  "url": "string | null",
-  "description": "string | null",
-  "photoIds": ["string"] | null
-}
-```
-
-Implementations must check `payload_version` before reconstructing the workflow request. If photos referenced by `photoIds` are missing on disk, the retry fails gracefully with an updated `friendlyReason`.
+- `GET /api/captures/activity` — drives the Home Capture Activity Bar & Sheet for in-flight, paused, and attention-needed captures.
+- `GET /api/captures/failures` — lists failed capture workflow instances for Settings → Failed Captures.
+- `GET /api/captures/failures/{id}/details` — returns failure metadata and import ID details.
+- `POST /api/captures/failures/{id}/retry` — validates retained assets (such as original photos or PDFs) and re-enqueues the capture workflow.
+- `DELETE /api/captures/failures/{id}` — clears/deletes a failed capture entry.
 
 ---
 
@@ -376,18 +326,14 @@ All events are structured log entries via `ISearchTelemetry` (default impl: `Log
 | `recipe_index_job_stale`              | `{ recipeId, reason: "fingerprint_mismatch" }`                  |
 | `recipe_index_restore_rehydrated`     | `{ recipeId }`                                                  |
 | `recipe_index_restore_marked_pending` | `{ recipeId, reason: "missing \| incompatible" }`               |
-| `pantry_photo_processing_started`     | `{ requestId, photoCount }`                                     |
-| `pantry_photo_processing_completed`   | `{ requestId, durationMs, ingredientCount }`                    |
-| `pantry_photo_processing_busy`        | `{ requestId }`                                                 |
 
-Latency targets (initial defaults, to be tuned after first production telemetry pass):
+Latency targets (matching `docs/operations/hybrid-recipe-search-rollout.md`):
 
-| Path                         | Target p95                |
-| ---------------------------- | ------------------------- |
-| Lexical-only                 | ≤ 350 ms                  |
-| Hybrid (lexical + vector)    | ≤ 800 ms                  |
-| Pantry-photo assisted        | ≤ 15 s (or HTTP 202 busy) |
-| Vector budget inside request | ≤ 300 ms                  |
+| Path                         | Target p95 |
+| ---------------------------- | ---------- |
+| Lexical-only                 | < 250 ms   |
+| Hybrid (lexical + vector)    | < 600 ms   |
+| Vector budget inside request | ≤ 300 ms   |
 
 ---
 
@@ -414,6 +360,6 @@ Latency targets (initial defaults, to be tuned after first production telemetry 
 1. Query-state loss after detail close is primarily a UX problem but often starts as a data-flow ownership bug. `openDetailRecipeId` in page state must never clear `topPick` or `results`.
 2. Hard delete without explicit file cleanup can leave orphaned disk state — filesystem first, then DB.
 3. Restore without reindex can reintroduce a recipe invisible to semantic search — enqueue is the fallback.
-4. If capture failures rely only on SSE or transient stores, Settings recovery will not survive reload. The `capture_failures` DB table is the durable source.
+4. If capture failures rely only on SSE or transient stores, Settings recovery will not survive reload. `WorkflowInstances` queried via `CaptureFailureService` is the durable source.
 5. `source_fingerprint` algorithm must stay in `SearchFingerprintService` — never reimplemented elsewhere. Two independent implementations will silently diverge.
 6. Changing `EMBEDDING_MODEL_ID` without a full reindex produces a mixed-model index that will return inconsistent similarity scores.

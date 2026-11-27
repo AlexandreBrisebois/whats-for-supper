@@ -66,7 +66,20 @@ public sealed partial class CanonicalRecipeReadTests
         Assert.Equal(QuantityMath.Parse("10/3–5"), line.GroceryObservation.Quantity);
         Assert.Null(line.Quantity); // Compatibility scalar cannot represent this exact range.
         Assert.Equal("2–3 cup oil", line.OriginalText);
-        AssertExactDisplayWireText(line, "10/3–5 cup oil");
+        AssertExactDisplayWireText(line, "3 1/3–5 cup oil");
+    }
+
+    [Theory]
+    [InlineData(2, 4, "1", "cup", "2 cup flour")]
+    [InlineData(2, 4, "3/4", "cup", "1 1/2 cup flour")]
+    [InlineData(4, 6, "1", "cups", "1 1/2 cups flour")]
+    [InlineData(4, 6, "1 1/2", "cups", "2 1/4 cups flour")]
+    public void ExactPublicDisplay_PortionRatiosReduceToWholeAndMixedFractions(
+        int basis, int target, string amount, string unit, string expected)
+    {
+        var recipe = ExactDisplayRecipe(basis, ExactDisplayLine("flour", amount, unit));
+        var line = Assert.Single(ExactDisplayRead(recipe, target));
+        AssertExactDisplayWireText(line, expected);
     }
 
     [Fact]
@@ -83,7 +96,7 @@ public sealed partial class CanonicalRecipeReadTests
     [Theory]
     [InlineData("0", null, "0 salt")]
     [InlineData("0", "g", "0 g salt")]
-    [InlineData("2", null, "10/3 salt")]
+    [InlineData("2", null, "3 1/3 salt")]
     public void ExactPublicDisplay_ZeroAndNullUnitStayIndependent(string amount, string? unit, string expected)
     {
         var line = Assert.Single(ExactDisplayRead(ExactDisplayRecipe(3, ExactDisplayLine("salt", amount, unit)), 5));
@@ -170,7 +183,7 @@ public sealed partial class CanonicalRecipeReadTests
         Assert.Equal(row.Package, line.GroceryPackage);
         Assert.Equal("tomato", line.Name);
         Assert.Equal("2 cans tomatoes (400 g / cans; net)", line.OriginalText);
-        AssertExactDisplayWireText(line, "10/3 cans tomatoes (400 g / cans; net)");
+        AssertExactDisplayWireText(line, "3 1/3 cans tomatoes (400 g / cans; net)");
         AssertExactDisplayWireText(Assert.Single(ExactDisplayRead(recipe, null)), "2 cans tomatoes (400 g / cans; net)");
     }
 }

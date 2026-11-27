@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 umask 077
 fail() { echo "Update stopped: $*" >&2; exit 1; }
 [[ -t 0 ]] || fail "Run interactively."
-for cmd in docker sha256sum unzip mktemp cmp; do command -v "$cmd" >/dev/null || fail "Missing $cmd"; done
+for cmd in docker unzip mktemp cmp; do command -v "$cmd" >/dev/null || fail "Missing $cmd"; done
 docker compose version >/dev/null || fail "Docker Compose plugin required."
 [[ -f .env && -f compose.yaml && -f traefik.yml ]] || fail "Run from an existing installation."
 [[ $# -eq 2 ]] || fail "Usage: bash update.sh RELEASE_ZIP BACKUP_EVIDENCE_PATH"

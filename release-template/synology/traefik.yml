@@ -1,5 +1,9 @@
 http:
   middlewares:
+    cf-proto-https:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
     sse-headers:
       headers:
         customResponseHeaders:
@@ -14,17 +18,22 @@ http:
         - web
       service: api
       middlewares:
+        - cf-proto-https
         - sse-headers
       priority: 100
     api:
       rule: PathPrefix(`/api`)
       entryPoints:
         - web
+      middlewares:
+        - cf-proto-https
       service: api
     pwa:
       rule: PathPrefix(`/`)
       entryPoints:
         - web
+      middlewares:
+        - cf-proto-https
       service: pwa
       priority: 1
   services:

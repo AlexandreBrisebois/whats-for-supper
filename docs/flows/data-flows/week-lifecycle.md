@@ -221,12 +221,12 @@ data: { "type": "connected", "schedule": { "weekOffset": 0, "locked": false, "st
 ```typescript
 source.addEventListener('connected', (e) => {
   const { schedule } = JSON.parse(e.data);
-  useTodayStore.getState().clearOptimisticGuard();
   useWeekStore.getState().applySnapshot(schedule);
+  useTodayStore.getState().offerToday(schedule);
 });
 ```
 
-**Why `clearOptimisticGuard` first:** On reconnect, the snapshot is authoritative. Any optimistic write that was in-flight before the disconnect is now confirmed or superseded by the server state. Clearing the guard ensures the snapshot is applied without the 2-second echo window blocking it.
+**Why `offerToday` instead of clearing guards:** We no longer clear optimistic guards on every reconnect so brief reconnects do not cause UI jitter; `offerToday` applies authoritative server state when no active optimistic write guard blocks it.
 
 **Limitation:** The `connected` snapshot covers `weekOffset=0` only. If the user is viewing week 1 on the planner, the `connected` event does not update their view. The planner's `init(weekOffset)` REST fetch is the source of truth for non-zero weeks. SSE `slot_updated` events keep week 1 current after that initial fetch.
 
@@ -301,17 +301,24 @@ The planner lets users navigate between weeks. SSE must work correctly for any w
 
 ## Store Update Summary
 
-| SSE event                  | `weekStore`                | `todayStore`                   | `discoveryStore`       | `plannerStore`                                                      |
-| -------------------------- | -------------------------- | ------------------------------ | ---------------------- | ------------------------------------------------------------------- |
-| `connected`                | `applySnapshot`            | `clearOptimisticGuard`         | —                      | `setGroceryState` (via applySnapshot)                               |
-| `slot_updated`             | `applySlotUpdate`          | `applyServerUpdate` (if today) | —                      | —                                                                   |
-| `week_updated`             | `applySnapshot`            | —                              | —                      | `setGroceryState` (via applySnapshot)                               |
-| `vote_updated`             | `applyVoteUpdate`          | —                              | `applyVoteUpdate`      | —                                                                   |
-| `smart_defaults_updated`   | `applySmartDefaultsUpdate` | —                              | —                      | —                                                                   |
-| `fill_the_gap_invalidated` | —                          | —                              | `invalidateFillTheGap` | —                                                                   |
-| `grocery_updated`          | —                          | —                              | —                      | `setGroceryState`                                                   |
-| `recipe_ready`             | —                          | —                              | —                      | — (→ `gotoStore.markReady`, `libraryStore.pushNotification`)        |
-| `recipe_failed`            | —                          | —                              | —                      | — (→ `captureStore.removePending`, `libraryStore.pushNotification`) |
+| SSE event                    | `weekStore`                | `todayStore`                   | `discoveryStore`       | Other stores                                                                 |
+| ---------------------------- | -------------------------- | ------------------------------ | ---------------------- | ---------------------------------------------------------------------------- |
+| `connected`                  | `applySnapshot`            | `offerToday`                   | —                      | —                                                                            |
+| `slot_updated`               | `applySlotUpdate`          | `applyServerUpdate` (if today) | —                      | —                                                                            |
+| `week_updated`               | `applySnapshot`            | `offerToday` (week 0)          | —                      | —                                                                            |
+| `vote_updated`               | `applyVoteUpdate`          | —                              | `applyVoteUpdate`      | —                                                                            |
+| `voting_session_updated`     | —                          | —                              | updates session state  | —                                                                            |
+| `smart_defaults_updated`     | `applySmartDefaultsUpdate` | —                              | —                      | —                                                                            |
+| `fill_the_gap_invalidated`   | —                          | —                              | `invalidateFillTheGap` | —                                                                            |
+| `grocery_updated`            | `applyGrocerySnapshot`     | —                              | —                      | `refreshGroceries()`                                                         |
+| `grocery_extras_updated`     | —                          | —                              | —                      | refreshes week grocery extras                                                |
+| `capture_step_updated`       | —                          | —                              | —                      | `captureStore.hydrate()`                                                     |
+| `recipe_ready`               | —                          | —                              | —                      | `gotoStore.markReady`, `captureStore.hydrate()`                              |
+| `recipe_failed`              | —                          | —                              | —                      | `captureStore.hydrate()`                                                     |
+| `recipe_searchable`          | —                          | —                              | —                      | `captureStore.hydrate()`, refreshes library search                           |
+| `recipe_enriched`            | —                          | —                              | —                      | `captureStore.hydrate()`                                                     |
+| `recipe_enrichment_failed`   | —                          | —                              | —                      | `captureStore.hydrate()`                                                     |
+| `demo_reset`                 | resets / reloads           | resets / reloads               | resets / reloads       | resets volatile client state to new `X-Demo-Generation`                      |
 
 ---
 
