@@ -51,11 +51,11 @@ export function SettingsPageContent({ buildVersion }: SettingsPageContentProps) 
       <div className="flex min-w-0 flex-col gap-8">
         <FamilyManagement />
 
-        <PassThePhoneSettingsSection />
+        <UsualPortionsSection />
 
         <QuickVotesSettingsSection />
 
-        <UsualPortionsSection />
+        <PassThePhoneSettingsSection />
 
         <SearchIndexSection />
 

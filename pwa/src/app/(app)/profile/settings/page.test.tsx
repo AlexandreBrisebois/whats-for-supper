@@ -40,6 +40,22 @@ vi.mock('@/components/profile/UsualPortionsSection', () => ({
   UsualPortionsSection: () => <div data-testid="usual-portions-stub" />,
 }));
 
+vi.mock('@/components/profile/QuickVotesSettingsSection', () => ({
+  QuickVotesSettingsSection: () => <div data-testid="quick-votes-stub" />,
+}));
+
+vi.mock('@/components/profile/PassThePhoneSettingsSection', () => ({
+  PassThePhoneSettingsSection: () => <div data-testid="pass-the-phone-stub" />,
+}));
+
+vi.mock('@/components/profile/SearchIndexSection', () => ({
+  SearchIndexSection: () => <div data-testid="search-index-stub" />,
+}));
+
+vi.mock('@/components/profile/PreviewFeaturesSection', () => ({
+  PreviewFeaturesSection: () => <div data-testid="preview-features-stub" />,
+}));
+
 // ---------------------------------------------------------------------------
 // Import component under test AFTER mocks
 // ---------------------------------------------------------------------------
@@ -65,6 +81,30 @@ describe('SettingsPage', () => {
     expect(screen.queryByTestId('family-goto-stub')).not.toBeInTheDocument();
     expect(screen.getByTestId('failed-captures-stub')).toBeDefined();
     expect(screen.getByTestId('usual-portions-stub')).toBeInTheDocument();
+  });
+
+  it('orders sections with family members, portions, quick votes, pass the phone, then lower sections', () => {
+    render(<SettingsPageContent />);
+
+    const expectedOrder = [
+      'family-management-stub',
+      'usual-portions-stub',
+      'quick-votes-stub',
+      'pass-the-phone-stub',
+      'search-index-stub',
+      'failed-captures-stub',
+      'preview-features-stub',
+    ];
+
+    const elements = expectedOrder.map((testId) => screen.getByTestId(testId));
+    for (let i = 0; i < elements.length - 1; i++) {
+      expect(
+        Boolean(
+          elements[i].compareDocumentPosition(elements[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING
+        ),
+        `${expectedOrder[i]} should precede ${expectedOrder[i + 1]}`
+      ).toBe(true);
+    }
   });
 
   it('does not render language selection', () => {
