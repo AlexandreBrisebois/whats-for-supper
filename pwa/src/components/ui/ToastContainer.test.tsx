@@ -49,4 +49,15 @@ describe('ToastContainer', () => {
     const toast = screen.getByTestId('toast');
     expect(toast.style.transform).not.toContain('scale(');
   });
+
+  it('unmounts a dismissed toast from the DOM immediately', () => {
+    useUiStore.getState().addToast({ type: 'info', message: 'Shopping list updated' });
+    render(<ToastContainer />);
+
+    expect(screen.getByTestId('toast')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss notification' }));
+
+    expect(screen.queryByTestId('toast')).not.toBeInTheDocument();
+  });
 });

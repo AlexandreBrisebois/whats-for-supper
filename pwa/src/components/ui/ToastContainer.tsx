@@ -1,7 +1,7 @@
 'use client';
 
 import { useUiStore } from '@/store/uiStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, CheckCircle2, AlertCircle, Info, Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -14,11 +14,9 @@ export function ToastContainer() {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <AnimatePresence>
-        {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />
-        ))}
-      </AnimatePresence>
+      {toasts.map((toast) => (
+        <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />
+      ))}
     </div>
   );
 }
@@ -55,7 +53,6 @@ function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) =
       aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
       className={cn(
         'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border border-l-4 bg-white shadow-card min-w-[200px] max-w-sm',
         borderColors[toast.type as keyof typeof borderColors] || borderColors.info

@@ -1043,166 +1043,161 @@ export default function PlannerPage() {
             : 'max-w-[27rem] sm:max-w-sm md:max-w-2xl mx-auto'
         )}
       >
-        <AnimatePresence>
-          {isLoading && schedule.length === 0 ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-20"
-            >
-              <SolarLoader label={t('planner.curatingWeek', 'Curating your week...')} />
-            </motion.div>
-          ) : activeTab === 'grocery' && !isWide ? (
-            <motion.div
-              key={`grocery-${currentWeekOffset}`}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-            >
-              <GroceryList
-                weekOffset={currentWeekOffset}
-                items={groceryItems ?? []}
-                extras={groceryExtras ?? []}
-                onClose={() => setActiveTab('planner')}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="planner"
-              initial={{ opacity: 0, x: currentWeekOffset > prevOffset ? 50 : -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: currentWeekOffset > prevOffset ? -50 : 50 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            >
-              <div className="flex flex-wrap items-start gap-x-1">
-                {portions.strip}
-                {(isVotingOpen || canOpenVoting) && (
-                  <div
-                    data-testid="planner-action-row"
-                    className="mb-4 flex grow basis-auto flex-wrap items-center justify-end gap-1.5"
-                  >
-                    {/* Left Slot: Secondary Actions */}
-                    <div className="flex max-w-full justify-start" />
+        {isLoading && schedule.length === 0 ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-20"
+          >
+            <SolarLoader label={t('planner.curatingWeek', 'Curating your week...')} />
+          </motion.div>
+        ) : activeTab === 'grocery' && !isWide ? (
+          <motion.div
+            key={`grocery-${currentWeekOffset}`}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <GroceryList
+              weekOffset={currentWeekOffset}
+              items={groceryItems ?? []}
+              extras={groceryExtras ?? []}
+              onClose={() => setActiveTab('planner')}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="planner"
+            initial={{ opacity: 0, x: currentWeekOffset > prevOffset ? 50 : -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          >
+            <div className="flex flex-wrap items-start gap-x-1">
+              {portions.strip}
+              {(isVotingOpen || canOpenVoting) && (
+                <div
+                  data-testid="planner-action-row"
+                  className="mb-4 flex grow basis-auto flex-wrap items-center justify-end gap-1.5"
+                >
+                  {/* Left Slot: Secondary Actions */}
+                  <div className="flex max-w-full justify-start" />
 
-                    {/* Right Slot: Primary Actions */}
-                    <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-                      {canOpenVoting && (
-                        <button
-                          onClick={handleAskFamily}
-                          data-testid="ask-family-cta"
-                          className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full bg-garden-fill hover:bg-garden-fill-deep px-4 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
-                        >
-                          <Users size={14} />
-                          {t('planner.askFamily', 'Ask the Family')}
-                        </button>
-                      )}
-                      {isVotingOpen && !isConvergedWeek && (
-                        <button
-                          onClick={handleNudgeFamily}
-                          data-testid="nudge-family-cta"
-                          className="flex min-h-12 min-w-12 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-garden-fill hover:bg-garden-fill-deep px-3 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
-                        >
-                          <Share2 size={14} />
-                          {t('planner.nudge', 'Nudge')}
-                        </button>
-                      )}
-                      {isVotingOpen && (
-                        <button
-                          onClick={handleCloseVoting}
-                          data-testid="close-voting-btn"
-                          className={cn(
-                            'flex min-h-12 min-w-12 max-w-full items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all active:scale-95',
-                            !isConvergedWeek && 'whitespace-nowrap',
-                            isConvergedWeek
-                              ? 'bg-garden-fill hover:bg-garden-fill-deep text-white py-2 text-center leading-tight'
-                              : 'border border-hearth-line bg-white text-hearth-ink hover:bg-hearth-fill-hover active:bg-hearth-fill-active hover:text-white active:text-white'
-                          )}
-                        >
-                          {isConvergedWeek ? <Check size={14} /> : <Ban size={14} />}
-                          {isConvergedWeek && hasPendingSuggestions
-                            ? t('planner.saveMenuAndCloseVoting', 'Save menu & close voting')
-                            : t('planner.closeVoting', 'Close Voting')}
-                        </button>
-                      )}
-                    </div>
+                  {/* Right Slot: Primary Actions */}
+                  <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+                    {canOpenVoting && (
+                      <button
+                        onClick={handleAskFamily}
+                        data-testid="ask-family-cta"
+                        className="flex min-h-12 min-w-12 max-w-full items-center gap-2 rounded-full bg-garden-fill hover:bg-garden-fill-deep px-4 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
+                      >
+                        <Users size={14} />
+                        {t('planner.askFamily', 'Ask the Family')}
+                      </button>
+                    )}
+                    {isVotingOpen && !isConvergedWeek && (
+                      <button
+                        onClick={handleNudgeFamily}
+                        data-testid="nudge-family-cta"
+                        className="flex min-h-12 min-w-12 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-garden-fill hover:bg-garden-fill-deep px-3 text-xs font-semibold text-white shadow-sm transition-all active:scale-95"
+                      >
+                        <Share2 size={14} />
+                        {t('planner.nudge', 'Nudge')}
+                      </button>
+                    )}
+                    {isVotingOpen && (
+                      <button
+                        onClick={handleCloseVoting}
+                        data-testid="close-voting-btn"
+                        className={cn(
+                          'flex min-h-12 min-w-12 max-w-full items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all active:scale-95',
+                          !isConvergedWeek && 'whitespace-nowrap',
+                          isConvergedWeek
+                            ? 'bg-garden-fill hover:bg-garden-fill-deep text-white py-2 text-center leading-tight'
+                            : 'border border-hearth-line bg-white text-hearth-ink hover:bg-hearth-fill-hover active:bg-hearth-fill-active hover:text-white active:text-white'
+                        )}
+                      >
+                        {isConvergedWeek ? <Check size={14} /> : <Ban size={14} />}
+                        {isConvergedWeek && hasPendingSuggestions
+                          ? t('planner.saveMenuAndCloseVoting', 'Save menu & close voting')
+                          : t('planner.closeVoting', 'Close Voting')}
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-
-              {portions.editing ? (
-                portions.rows
-              ) : (
-                <div className="w-full space-y-3.5" data-testid="reorder-group">
-                  {schedule.map((day, index) => (
-                    <PlannerDayCard
-                      key={day.date ?? index}
-                      day={day}
-                      index={index}
-                      successDay={pendingResult ? null : successDay}
-                      successFading={successFading}
-                      reviewDay={pendingResult ? null : reviewDay}
-                      reviewFading={reviewDay !== null && reviewFadedSeq === reviewSeq}
-                      onPivot={() => openPivot(index)}
-                      onViewRecipe={(recipeId) => {
-                        const reference = useWeekStore.getState().calendar?.referenceWeekStartDate;
-                        openDetail(
-                          recipeId,
-                          day.date && reference
-                            ? {
-                                date: day.date,
-                                dayIndex: index,
-                                occurrenceId: !day._isPending
-                                  ? (day.occurrenceId as string)
-                                  : undefined,
-                                context: day._isPending ? 'proposed' : 'assigned',
-                                reference,
-                                weekOffset: currentWeekOffset,
-                              }
-                            : null
-                        );
-                      }}
-                      startDrag={startDrag}
-                      isDragSource={dragPreview?.from === index}
-                      isDropTarget={dragPreview?.target === index && dragPreview.from !== index}
-                      isWide={isWide}
-                      isToday={civilDate(day.date) !== null && day.date === authoritativeToday}
-                      isPast={
-                        !!authoritativeToday &&
-                        civilDate(day.date) !== null &&
-                        day.date! < authoritativeToday
-                      }
-                    />
-                  ))}
                 </div>
               )}
-              {dragPreview &&
-                createPortal(
-                  <div
-                    data-testid="planner-drag-preview"
-                    aria-hidden="true"
-                    className="fixed z-[999] pointer-events-none rounded-2xl border-2 border-sage-700 bg-white p-4 shadow-xl text-ink-body font-bold"
-                    style={{ left: dragPreview.x, top: dragPreview.y, width: dragPreview.width }}
-                  >
-                    {dragPreview.snapshot[dragPreview.from].recipe?.name}
-                    {dragPreview.target !== null && dragPreview.target !== dragPreview.from && (
-                      <span
-                        data-testid="planner-drop-feedback"
-                        className="block mt-2 text-xs font-bold text-garden-ink"
-                      >
-                        {dragPreview.snapshot[dragPreview.target].recipe?.id ||
-                        dragPreview.snapshot[dragPreview.target].status === 3
-                          ? t('planner.swapMeals', 'Swap meals')
-                          : t('planner.moveHere', 'Move here')}
-                      </span>
-                    )}
-                  </div>,
-                  document.body
-                )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+
+            {portions.editing ? (
+              portions.rows
+            ) : (
+              <div className="w-full space-y-3.5" data-testid="reorder-group">
+                {schedule.map((day, index) => (
+                  <PlannerDayCard
+                    key={day.date ?? index}
+                    day={day}
+                    index={index}
+                    successDay={pendingResult ? null : successDay}
+                    successFading={successFading}
+                    reviewDay={pendingResult ? null : reviewDay}
+                    reviewFading={reviewDay !== null && reviewFadedSeq === reviewSeq}
+                    onPivot={() => openPivot(index)}
+                    onViewRecipe={(recipeId) => {
+                      const reference = useWeekStore.getState().calendar?.referenceWeekStartDate;
+                      openDetail(
+                        recipeId,
+                        day.date && reference
+                          ? {
+                              date: day.date,
+                              dayIndex: index,
+                              occurrenceId: !day._isPending
+                                ? (day.occurrenceId as string)
+                                : undefined,
+                              context: day._isPending ? 'proposed' : 'assigned',
+                              reference,
+                              weekOffset: currentWeekOffset,
+                            }
+                          : null
+                      );
+                    }}
+                    startDrag={startDrag}
+                    isDragSource={dragPreview?.from === index}
+                    isDropTarget={dragPreview?.target === index && dragPreview.from !== index}
+                    isWide={isWide}
+                    isToday={civilDate(day.date) !== null && day.date === authoritativeToday}
+                    isPast={
+                      !!authoritativeToday &&
+                      civilDate(day.date) !== null &&
+                      day.date! < authoritativeToday
+                    }
+                  />
+                ))}
+              </div>
+            )}
+            {dragPreview &&
+              createPortal(
+                <div
+                  data-testid="planner-drag-preview"
+                  aria-hidden="true"
+                  className="fixed z-[999] pointer-events-none rounded-2xl border-2 border-sage-700 bg-white p-4 shadow-xl text-ink-body font-bold"
+                  style={{ left: dragPreview.x, top: dragPreview.y, width: dragPreview.width }}
+                >
+                  {dragPreview.snapshot[dragPreview.from].recipe?.name}
+                  {dragPreview.target !== null && dragPreview.target !== dragPreview.from && (
+                    <span
+                      data-testid="planner-drop-feedback"
+                      className="block mt-2 text-xs font-bold text-garden-ink"
+                    >
+                      {dragPreview.snapshot[dragPreview.target].recipe?.id ||
+                      dragPreview.snapshot[dragPreview.target].status === 3
+                        ? t('planner.swapMeals', 'Swap meals')
+                        : t('planner.moveHere', 'Move here')}
+                    </span>
+                  )}
+                </div>,
+                document.body
+              )}
+          </motion.div>
+        )}
 
         {isWide && (
           <motion.div

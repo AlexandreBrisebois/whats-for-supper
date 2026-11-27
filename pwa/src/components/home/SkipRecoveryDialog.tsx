@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Utensils,
   Search,
@@ -338,338 +338,328 @@ function SkipRecoveryDialogContent({
               )
             )}
           </div>
-        ) : (
-          <AnimatePresence initial={false} mode="wait">
-            {step === 1 ? (
-              <motion.div
-                key="step1"
-                initial={reducedMotion ? false : { opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
-                transition={reducedMotion ? { duration: 0 } : undefined}
-                className="flex flex-col"
-              >
-                <div>
-                  <h3 className="font-heading text-xl font-extrabold leading-tight tracking-tight text-ink-body">
-                    {t('home.backupPlanTitle', 'What’s the backup plan?')}
-                  </h3>
-                  {!madePlansOpen && (
-                    <p className="mt-1 text-xs font-medium text-ink-muted">
-                      {t('home.backupPlanSubtitle', 'Plans changed. What are we doing instead?')}
-                    </p>
-                  )}
-                </div>
-
-                <hr className="my-3 border-0 border-t border-chrome-line" />
-
-                <p className="mb-2 text-xs font-semibold text-ink-muted">
-                  {t('home.notCookingLane', 'Not cooking tonight')}
+        ) : step === 1 ? (
+          <motion.div
+            key="step1"
+            initial={reducedMotion ? false : { opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={reducedMotion ? { duration: 0 } : { duration: 0.15, ease: 'easeOut' }}
+            className="flex flex-col"
+          >
+            <div>
+              <h3 className="font-heading text-xl font-extrabold leading-tight tracking-tight text-ink-body">
+                {t('home.backupPlanTitle', 'What’s the backup plan?')}
+              </h3>
+              {!madePlansOpen && (
+                <p className="mt-1 text-xs font-medium text-ink-muted">
+                  {t('home.backupPlanSubtitle', 'Plans changed. What are we doing instead?')}
                 </p>
+              )}
+            </div>
 
-                <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-3">
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => onAction('order_in')}
-                    data-testid="recovery-action-order-in"
-                    className="flex min-h-[76px] items-center justify-start gap-2.5 rounded-[1.125rem] border border-chrome-line bg-white px-3 py-2.5 text-left transition-colors hover:border-hearth-line hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40 min-[360px]:flex-col min-[360px]:justify-center min-[360px]:gap-1.5 min-[360px]:px-2 min-[360px]:text-center"
-                  >
-                    <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[0.6875rem] bg-terracotta-50 text-hearth-ink">
-                      <NonCookingIcon kind="order_in" size={20} />
-                    </span>
-                    <span className="min-w-0 break-words [overflow-wrap:anywhere] font-heading text-[13px] font-bold leading-tight text-ink-body">
-                      {t('home.orderingIn', 'Take Out')}
-                    </span>
-                  </button>
+            <hr className="my-3 border-0 border-t border-chrome-line" />
 
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => onAction('eating_out')}
-                    data-testid="recovery-action-eating-out"
-                    className="flex min-h-[76px] items-center justify-start gap-2.5 rounded-[1.125rem] border border-chrome-line bg-white px-3 py-2.5 text-left transition-colors hover:border-garden-line hover:bg-sage-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40 min-[360px]:flex-col min-[360px]:justify-center min-[360px]:gap-1.5 min-[360px]:px-2 min-[360px]:text-center"
-                  >
-                    <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[0.6875rem] bg-sage-50 text-garden-ink">
-                      <NonCookingIcon kind="eating_out" size={20} />
-                    </span>
-                    <span className="min-w-0 break-words [overflow-wrap:anywhere] font-heading text-[13px] font-bold leading-tight text-ink-body">
-                      {t('planner.eatingOut', 'Eating out')}
-                    </span>
-                  </button>
+            <p className="mb-2 text-xs font-semibold text-ink-muted">
+              {t('home.notCookingLane', 'Not cooking tonight')}
+            </p>
 
-                  <button
-                    type="button"
-                    disabled={pending}
-                    aria-pressed={madePlansOpen}
-                    onClick={() => {
-                      setMadePlansOpen((prev) => !prev);
-                      setCustomPlanError(null);
-                    }}
-                    data-testid="recovery-action-made-plans"
-                    className={cn(
-                      'relative flex min-h-[76px] items-center justify-start gap-2.5 rounded-[1.125rem] px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40 min-[360px]:flex-col min-[360px]:justify-center min-[360px]:gap-1.5 min-[360px]:px-2 min-[360px]:text-center',
-                      madePlansOpen
-                        ? 'border-2 border-garden-ink bg-sage-50'
-                        : 'border border-chrome-line bg-white hover:border-garden-line hover:bg-sage-50'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[0.6875rem] text-garden-ink',
-                        madePlansOpen ? 'bg-white' : 'bg-sage-50'
-                      )}
-                    >
-                      <NonCookingIcon kind="custom" size={20} />
-                    </span>
-                    <span
-                      className={cn(
-                        'min-w-0 break-words [overflow-wrap:anywhere] font-heading text-[13px] leading-tight text-ink-body',
-                        madePlansOpen ? 'font-extrabold' : 'font-bold'
-                      )}
-                    >
-                      {t('home.madePlans', 'Made plans')}
-                    </span>
-                    {madePlansOpen && (
-                      <span
-                        aria-hidden="true"
-                        className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-garden-fill text-white"
-                      >
-                        <Check size={11} strokeWidth={3} />
-                      </span>
-                    )}
-                  </button>
-                </div>
+            <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-3">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAction('order_in')}
+                data-testid="recovery-action-order-in"
+                className="flex min-h-[76px] items-center justify-start gap-2.5 rounded-[1.125rem] border border-chrome-line bg-white px-3 py-2.5 text-left transition-colors hover:border-hearth-line hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40 min-[360px]:flex-col min-[360px]:justify-center min-[360px]:gap-1.5 min-[360px]:px-2 min-[360px]:text-center"
+              >
+                <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[0.6875rem] bg-terracotta-50 text-hearth-ink">
+                  <NonCookingIcon kind="order_in" size={20} />
+                </span>
+                <span className="min-w-0 break-words [overflow-wrap:anywhere] font-heading text-[13px] font-bold leading-tight text-ink-body">
+                  {t('home.orderingIn', 'Take Out')}
+                </span>
+              </button>
 
-                {madePlansOpen && (
-                  <div className="mt-2.5 rounded-[1.125rem] border border-garden-line bg-white p-3">
-                    <label
-                      htmlFor={customInputId}
-                      className="mb-2 block text-xs font-bold text-ink-body"
-                    >
-                      {t('planner.nonCookingMessage', 'Tell the family the plan')}
-                    </label>
-                    <div className="flex flex-wrap items-stretch gap-2 min-[360px]:flex-nowrap">
-                      <input
-                        ref={customInputRef}
-                        id={customInputId}
-                        type="text"
-                        value={customPlanDraft}
-                        disabled={pending}
-                        onChange={(event) => {
-                          setCustomPlanDraft(event.target.value);
-                          if (customPlanError) setCustomPlanError(null);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            submitCustomPlan();
-                          }
-                        }}
-                        placeholder={t('home.madePlansPlaceholder', 'Supper at Grandma’s')}
-                        data-testid="recovery-custom-plan-input"
-                        aria-invalid={!!customPlanError}
-                        aria-describedby={customPlanError ? customErrorId : undefined}
-                        className="min-h-12 min-w-0 flex-1 rounded-xl border border-chrome-line bg-cream px-3 py-2 text-sm text-ink-body placeholder:text-ink-muted focus:border-hearth-line focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-40"
-                      />
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={submitCustomPlan}
-                        data-testid="recovery-custom-plan-next"
-                        className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1 rounded-xl bg-hearth-fill px-3.5 text-sm font-bold text-cream-100 transition-colors motion-reduce:transition-none hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
-                      >
-                        <span>{t('buttons.next', 'Next')}</span>
-                        <ArrowRight size={15} aria-hidden="true" />
-                      </button>
-                    </div>
-                    {customPlanError && (
-                      <p
-                        id={customErrorId}
-                        role="alert"
-                        className="mt-1.5 text-xs font-medium text-hearth-ink"
-                      >
-                        {customPlanError}
-                      </p>
-                    )}
-                  </div>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAction('eating_out')}
+                data-testid="recovery-action-eating-out"
+                className="flex min-h-[76px] items-center justify-start gap-2.5 rounded-[1.125rem] border border-chrome-line bg-white px-3 py-2.5 text-left transition-colors hover:border-garden-line hover:bg-sage-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40 min-[360px]:flex-col min-[360px]:justify-center min-[360px]:gap-1.5 min-[360px]:px-2 min-[360px]:text-center"
+              >
+                <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[0.6875rem] bg-sage-50 text-garden-ink">
+                  <NonCookingIcon kind="eating_out" size={20} />
+                </span>
+                <span className="min-w-0 break-words [overflow-wrap:anywhere] font-heading text-[13px] font-bold leading-tight text-ink-body">
+                  {t('planner.eatingOut', 'Eating out')}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                disabled={pending}
+                aria-pressed={madePlansOpen}
+                onClick={() => {
+                  setMadePlansOpen((prev) => !prev);
+                  setCustomPlanError(null);
+                }}
+                data-testid="recovery-action-made-plans"
+                className={cn(
+                  'relative flex min-h-[76px] items-center justify-start gap-2.5 rounded-[1.125rem] px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40 min-[360px]:flex-col min-[360px]:justify-center min-[360px]:gap-1.5 min-[360px]:px-2 min-[360px]:text-center',
+                  madePlansOpen
+                    ? 'border-2 border-garden-ink bg-sage-50'
+                    : 'border border-chrome-line bg-white hover:border-garden-line hover:bg-sage-50'
                 )}
-
-                <p className="mb-2 mt-3.5 text-xs font-semibold text-ink-muted">
-                  {t('home.cookSomethingElseLane', 'Cook something else')}
-                </p>
-
-                <div className="grid gap-2">
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => onAction('pick_else')}
-                    data-testid="recovery-action-pick-else"
-                    className="flex min-h-[64px] w-full items-center gap-3 rounded-[1.25rem] border border-chrome-line bg-white px-3.5 py-2.5 text-left transition-colors hover:border-sunlight-line hover:bg-ochre-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
-                  >
-                    <span className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-xl bg-ochre-100 text-sunlight-ink">
-                      <Sparkles size={20} aria-hidden="true" />
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
-                      <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
-                        {t('home.pickSomethingElse', 'Suggestions')}
-                      </span>{' '}
-                      <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
-                        {t('home.searchRecipes', 'Browse up to 5 recipe suggestions')}
-                      </span>
-                    </span>
-                    <ChevronRight
-                      size={18}
-                      aria-hidden="true"
-                      className="shrink-0 text-icon-affordance"
-                    />
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => onAction('search')}
-                    data-testid="recovery-action-search"
-                    className="flex min-h-[64px] w-full items-center gap-3 rounded-[1.25rem] border border-chrome-line bg-white px-3.5 py-2.5 text-left transition-colors hover:border-hearth-line hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
-                  >
-                    <span className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-xl bg-terracotta-50 text-hearth-ink">
-                      <Search size={20} aria-hidden="true" />
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
-                      <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
-                        {t('home.searchChoice', 'Search')}
-                      </span>{' '}
-                      <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
-                        {t('home.searchChoiceDescription', 'Find a recipe in your library')}
-                      </span>
-                    </span>
-                    <ChevronRight
-                      size={18}
-                      aria-hidden="true"
-                      className="shrink-0 text-icon-affordance"
-                    />
-                  </button>
-
-                  {searchError && (
-                    <div
-                      role="alert"
-                      className="rounded-2xl border border-hearth-line bg-terracotta-50 p-3.5 text-xs text-ink-body"
-                    >
-                      <p>{searchError}</p>
-                      <button
-                        type="button"
-                        onClick={onRetrySearch}
-                        className="mt-1.5 min-h-12 font-semibold text-hearth-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
-                      >
-                        {t('errors.tryAgain', 'Try again')}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="step2"
-                initial={reducedMotion ? false : { opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
-                transition={reducedMotion ? { duration: 0 } : undefined}
-                className="flex flex-col"
               >
-                <SheetMealContext
-                  testId="recovery-meal-context"
-                  eyebrow={
-                    sourceDate
-                      ? `${t('home.originalMeal', 'Original meal')} · ${sourceDate}`
-                      : t('home.originalMeal', 'Original meal')
-                  }
-                  title={
-                    source?.recipe?.name ||
-                    t('home.tonightRecipeTitle', "What about tonight's recipe?")
-                  }
-                  subtitle={step2Subtitle}
-                />
+                <span
+                  className={cn(
+                    'flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[0.6875rem] text-garden-ink',
+                    madePlansOpen ? 'bg-white' : 'bg-sage-50'
+                  )}
+                >
+                  <NonCookingIcon kind="custom" size={20} />
+                </span>
+                <span
+                  className={cn(
+                    'min-w-0 break-words [overflow-wrap:anywhere] font-heading text-[13px] leading-tight text-ink-body',
+                    madePlansOpen ? 'font-extrabold' : 'font-bold'
+                  )}
+                >
+                  {t('home.madePlans', 'Made plans')}
+                </span>
+                {madePlansOpen && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-garden-fill text-white"
+                  >
+                    <Check size={11} strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            </div>
 
-                <div className="grid gap-2.5">
+            {madePlansOpen && (
+              <div className="mt-2.5 rounded-[1.125rem] border border-garden-line bg-white p-3">
+                <label
+                  htmlFor={customInputId}
+                  className="mb-2 block text-xs font-bold text-ink-body"
+                >
+                  {t('planner.nonCookingMessage', 'Tell the family the plan')}
+                </label>
+                <div className="flex flex-wrap items-stretch gap-2 min-[360px]:flex-nowrap">
+                  <input
+                    ref={customInputRef}
+                    id={customInputId}
+                    type="text"
+                    value={customPlanDraft}
+                    disabled={pending}
+                    onChange={(event) => {
+                      setCustomPlanDraft(event.target.value);
+                      if (customPlanError) setCustomPlanError(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        submitCustomPlan();
+                      }
+                    }}
+                    placeholder={t('home.madePlansPlaceholder', 'Supper at Grandma’s')}
+                    data-testid="recovery-custom-plan-input"
+                    aria-invalid={!!customPlanError}
+                    aria-describedby={customPlanError ? customErrorId : undefined}
+                    className="min-h-12 min-w-0 flex-1 rounded-xl border border-chrome-line bg-cream px-3 py-2 text-sm text-ink-body placeholder:text-ink-muted focus:border-hearth-line focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-body disabled:opacity-40"
+                  />
                   <button
                     type="button"
                     disabled={pending}
-                    onClick={() => onAction('tomorrow')}
-                    data-testid="recovery-action-tomorrow"
-                    className="flex min-h-[68px] w-full items-center gap-3 rounded-[1.25rem] border-[1.5px] border-hearth-line bg-terracotta-50 px-3.5 py-3 text-left transition-colors hover:bg-terracotta-100/70 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
+                    onClick={submitCustomPlan}
+                    data-testid="recovery-custom-plan-next"
+                    className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1 rounded-xl bg-hearth-fill px-3.5 text-sm font-bold text-cream-100 transition-colors motion-reduce:transition-none hover:bg-hearth-fill-hover active:bg-hearth-fill-active focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
                   >
-                    <span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[0.875rem] bg-hearth-fill text-cream-100">
-                      <ArrowRight size={20} aria-hidden="true" />
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
-                      <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
-                        {source
-                          ? tWithVars('planning.replacement.moveDate', 'Move to {{date}}', {
-                              date: shortFollowingDate,
-                            })
-                          : t('home.moveTomorrow', 'Move to Tomorrow')}
-                      </span>{' '}
-                      <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
-                        {t(
-                          'planning.replacement.tomorrowConsequence',
-                          'Moves following meals forward as needed'
-                        )}
-                      </span>
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => onAction('next_week')}
-                    data-testid="recovery-action-next-week"
-                    className="flex min-h-[68px] w-full items-center gap-3 rounded-[1.25rem] border border-chrome-line bg-white px-3.5 py-3 text-left transition-colors hover:border-garden-line hover:bg-sage-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
-                  >
-                    <span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[0.875rem] bg-sage-50 text-garden-ink">
-                      <RefreshCw size={20} aria-hidden="true" />
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
-                      <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
-                        {t('home.saveForNextWeek', 'Save for Next Week')}
-                      </span>{' '}
-                      <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
-                        {t(
-                          'planning.replacement.nextWeekConsequence',
-                          'First open day from the following week; later if full'
-                        )}
-                      </span>
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => onAction('drop')}
-                    data-testid="recovery-action-drop"
-                    className="flex min-h-[68px] w-full items-center gap-3 rounded-[1.25rem] border border-chrome-line bg-white px-3.5 py-3 text-left transition-colors hover:bg-charcoal-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
-                  >
-                    <span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[0.875rem] bg-charcoal-100 text-ink-muted">
-                      <Trash2 size={20} aria-hidden="true" />
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
-                      <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
-                        {source
-                          ? tWithVars('planning.replacement.removeDate', 'Remove from {{date}}', {
-                              date: shortSourceDate,
-                            })
-                          : t('home.dropTonight', 'Just Drop Tonight')}
-                      </span>{' '}
-                      <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
-                        {t(
-                          'planning.replacement.dropConsequence',
-                          'Keeps the recipe in your library'
-                        )}
-                      </span>
-                    </span>
+                    <span>{t('buttons.next', 'Next')}</span>
+                    <ArrowRight size={15} aria-hidden="true" />
                   </button>
                 </div>
-              </motion.div>
+                {customPlanError && (
+                  <p
+                    id={customErrorId}
+                    role="alert"
+                    className="mt-1.5 text-xs font-medium text-hearth-ink"
+                  >
+                    {customPlanError}
+                  </p>
+                )}
+              </div>
             )}
-          </AnimatePresence>
+
+            <p className="mb-2 mt-3.5 text-xs font-semibold text-ink-muted">
+              {t('home.cookSomethingElseLane', 'Cook something else')}
+            </p>
+
+            <div className="grid gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAction('pick_else')}
+                data-testid="recovery-action-pick-else"
+                className="flex min-h-[64px] w-full items-center gap-3 rounded-[1.25rem] border border-chrome-line bg-white px-3.5 py-2.5 text-left transition-colors hover:border-sunlight-line hover:bg-ochre-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
+              >
+                <span className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-xl bg-ochre-100 text-sunlight-ink">
+                  <Sparkles size={20} aria-hidden="true" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
+                  <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
+                    {t('home.pickSomethingElse', 'Suggestions')}
+                  </span>{' '}
+                  <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
+                    {t('home.searchRecipes', 'Browse up to 5 recipe suggestions')}
+                  </span>
+                </span>
+                <ChevronRight
+                  size={18}
+                  aria-hidden="true"
+                  className="shrink-0 text-icon-affordance"
+                />
+              </button>
+
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAction('search')}
+                data-testid="recovery-action-search"
+                className="flex min-h-[64px] w-full items-center gap-3 rounded-[1.25rem] border border-chrome-line bg-white px-3.5 py-2.5 text-left transition-colors hover:border-hearth-line hover:bg-terracotta-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
+              >
+                <span className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-xl bg-terracotta-50 text-hearth-ink">
+                  <Search size={20} aria-hidden="true" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
+                  <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
+                    {t('home.searchChoice', 'Search')}
+                  </span>{' '}
+                  <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
+                    {t('home.searchChoiceDescription', 'Find a recipe in your library')}
+                  </span>
+                </span>
+                <ChevronRight
+                  size={18}
+                  aria-hidden="true"
+                  className="shrink-0 text-icon-affordance"
+                />
+              </button>
+
+              {searchError && (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-hearth-line bg-terracotta-50 p-3.5 text-xs text-ink-body"
+                >
+                  <p>{searchError}</p>
+                  <button
+                    type="button"
+                    onClick={onRetrySearch}
+                    className="mt-1.5 min-h-12 font-semibold text-hearth-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body"
+                  >
+                    {t('errors.tryAgain', 'Try again')}
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="step2"
+            initial={reducedMotion ? false : { opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={reducedMotion ? { duration: 0 } : { duration: 0.15, ease: 'easeOut' }}
+            className="flex flex-col"
+          >
+            <SheetMealContext
+              testId="recovery-meal-context"
+              eyebrow={
+                sourceDate
+                  ? `${t('home.originalMeal', 'Original meal')} · ${sourceDate}`
+                  : t('home.originalMeal', 'Original meal')
+              }
+              title={
+                source?.recipe?.name || t('home.tonightRecipeTitle', "What about tonight's recipe?")
+              }
+              subtitle={step2Subtitle}
+            />
+
+            <div className="grid gap-2.5">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAction('tomorrow')}
+                data-testid="recovery-action-tomorrow"
+                className="flex min-h-[68px] w-full items-center gap-3 rounded-[1.25rem] border-[1.5px] border-hearth-line bg-terracotta-50 px-3.5 py-3 text-left transition-colors hover:bg-terracotta-100/70 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
+              >
+                <span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[0.875rem] bg-hearth-fill text-cream-100">
+                  <ArrowRight size={20} aria-hidden="true" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
+                  <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
+                    {source
+                      ? tWithVars('planning.replacement.moveDate', 'Move to {{date}}', {
+                          date: shortFollowingDate,
+                        })
+                      : t('home.moveTomorrow', 'Move to Tomorrow')}
+                  </span>{' '}
+                  <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
+                    {t(
+                      'planning.replacement.tomorrowConsequence',
+                      'Moves following meals forward as needed'
+                    )}
+                  </span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAction('next_week')}
+                data-testid="recovery-action-next-week"
+                className="flex min-h-[68px] w-full items-center gap-3 rounded-[1.25rem] border border-chrome-line bg-white px-3.5 py-3 text-left transition-colors hover:border-garden-line hover:bg-sage-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
+              >
+                <span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[0.875rem] bg-sage-50 text-garden-ink">
+                  <RefreshCw size={20} aria-hidden="true" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
+                  <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
+                    {t('home.saveForNextWeek', 'Save for Next Week')}
+                  </span>{' '}
+                  <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
+                    {t(
+                      'planning.replacement.nextWeekConsequence',
+                      'First open day from the following week; later if full'
+                    )}
+                  </span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onAction('drop')}
+                data-testid="recovery-action-drop"
+                className="flex min-h-[68px] w-full items-center gap-3 rounded-[1.25rem] border border-chrome-line bg-white px-3.5 py-3 text-left transition-colors hover:bg-charcoal-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-body disabled:opacity-40"
+              >
+                <span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[0.875rem] bg-charcoal-100 text-ink-muted">
+                  <Trash2 size={20} aria-hidden="true" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col items-start text-left [overflow-wrap:anywhere]">
+                  <span className="font-heading text-[15px] font-extrabold leading-tight tracking-tight text-ink-body">
+                    {source
+                      ? tWithVars('planning.replacement.removeDate', 'Remove from {{date}}', {
+                          date: shortSourceDate,
+                        })
+                      : t('home.dropTonight', 'Just Drop Tonight')}
+                  </span>{' '}
+                  <span className="mt-0.5 text-xs font-medium leading-snug text-ink-muted">
+                    {t('planning.replacement.dropConsequence', 'Keeps the recipe in your library')}
+                  </span>
+                </span>
+              </button>
+            </div>
+          </motion.div>
         )}
       </div>
     </PivotSheetShell>

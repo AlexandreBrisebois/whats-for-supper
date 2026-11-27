@@ -70,6 +70,15 @@ export default defineConfig({
 
     // Block service workers so page.route() intercepts work correctly
     serviceWorkers: 'block',
+
+    // Prevent headless Chromium from throttling rAF/WAAPI animation callbacks under parallel CI workers
+    launchOptions: {
+      args: [
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+      ],
+    },
   },
 
   projects: [
