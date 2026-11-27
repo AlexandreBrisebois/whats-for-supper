@@ -146,7 +146,7 @@ A vote cast before a handoff or return SHALL be recorded for the member who cast
 
 ### Requirement: Offer empty-state navigation and feed refresh
 
-An exhausted queue without confirmed convergence and outside a locked handoff turn SHALL offer Refresh recipe suggestions. Its primary action SHALL open Planner when the current member liked a family-interest card since mount or the last handoff, otherwise Capture; Capture SHALL stay reachable. An active, non-converged round SHALL offer Nudge family via existing voting-link sharing, and Pass the phone per `Offer Pass the phone on the exhausted queue when opted in`. This local count SHALL NOT imply server consensus.
+Outside a locked handoff turn, an exhausted queue without confirmed convergence SHALL offer Refresh recipe suggestions. Its primary action SHALL open Planner if this turn liked a family-interest card, otherwise Capture, while keeping Capture reachable. An active non-converged round SHALL offer Nudge family and Pass the phone when opted in. This local count SHALL NOT establish server consensus.
 
 #### Scenario: No local matches
 

@@ -14,7 +14,7 @@ export function ToastContainer() {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence>
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />
         ))}
@@ -53,9 +53,9 @@ function ToastItem({ toast, onDismiss }: { toast: any; onDismiss: (id: string) =
       data-testid="toast"
       role={toast.type === 'error' ? 'alert' : 'status'}
       aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
-      initial={{ opacity: 0, y: -20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
       className={cn(
         'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border border-l-4 bg-white shadow-card min-w-[200px] max-w-sm',
         borderColors[toast.type as keyof typeof borderColors] || borderColors.info

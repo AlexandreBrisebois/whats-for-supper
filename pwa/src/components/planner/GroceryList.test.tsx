@@ -456,6 +456,26 @@ describe('quiet reset notices across absolute weeks', () => {
     expect(mockAddToast).not.toHaveBeenCalled();
     expect(sessionStorage.getItem('serving-grocery-summary:2025-01-13')).toBeNull();
   });
+
+  it('waits for weekStartDate before announcing reset summary so it fires once instead of twice', () => {
+    sessionStorage.clear();
+    useWeekStore.setState({
+      weekOffset: 0,
+      weekStartDate: null,
+      groceryRefresh: {
+        status: 'current',
+        version: 'week-0',
+        appliedVersion: 'week-0',
+        resetSummaryVersion: 'reset-0',
+      },
+    });
+    renderList();
+    expect(mockAddToast).not.toHaveBeenCalled();
+
+    act(() => showWeek('2025-01-06', 'reset-0'));
+    expect(mockAddToast).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem('serving-grocery-summary:2025-01-06')).toBe('reset-0');
+  });
 });
 
 describe('serving refresh acknowledgement lifetime', () => {

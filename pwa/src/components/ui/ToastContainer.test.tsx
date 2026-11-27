@@ -41,4 +41,12 @@ describe('ToastContainer', () => {
     ]);
     expect(persistentToastId).toBeTruthy();
   });
+
+  it('does not scale toast container down on entry so 48px dismiss button keeps full hit target size', () => {
+    useUiStore.getState().addToast({ type: 'success', message: 'Saved' });
+    render(<ToastContainer />);
+
+    const toast = screen.getByTestId('toast');
+    expect(toast.style.transform).not.toContain('scale(');
+  });
 });

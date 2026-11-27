@@ -166,7 +166,7 @@ export function GroceryList({
     }
   };
   useEffect(() => {
-    if (!summary || storeWeekOffset !== weekOffset) return;
+    if (!summary || !weekStartDate || storeWeekOffset !== weekOffset) return;
     const weekKey = weekStartDate ?? '';
     let acknowledged: string | null = announcedSummariesRef.current[weekKey] ?? null;
     if (!acknowledged && noticeKey && typeof window !== 'undefined') {
